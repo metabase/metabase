@@ -173,6 +173,7 @@ interface SetupOpts {
   unauthorizedField?: Field;
   waitForDatabase?: boolean;
   waitForTable?: boolean;
+  shouldSkipTableMocks?: boolean;
 }
 
 const OtherComponent = () => {
@@ -193,9 +194,14 @@ async function setup({
   unauthorizedField,
   waitForDatabase = true,
   waitForTable = true,
+  shouldSkipTableMocks = false,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
+
+  if (!shouldSkipTableMocks) {
+    setupTableEndpoints(createPeopleTable());
+  }
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -499,7 +505,6 @@ describe("DataModelV1", () => {
 
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
       await setup();
-      setupTableEndpoints(createPeopleTable());
 
       await userEvent.click(
         await findTablePickerTable(ORDERS_TABLE.display_name),
@@ -572,7 +577,11 @@ describe("DataModelV1", () => {
 
   describe("multi schema database", () => {
     it("should not select the first schema if there are multiple schemas", async () => {
-      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA], waitForTable: false });
+      await setup({
+        databases: [SAMPLE_DB_MULTI_SCHEMA],
+        waitForTable: false,
+        shouldSkipTableMocks: true,
+      });
 
       expect(
         await findTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
@@ -594,6 +603,7 @@ describe("DataModelV1", () => {
       await setup({
         databases: [SAMPLE_DB, SAMPLE_DB_MULTI_SCHEMA],
         waitForTable: false,
+        shouldSkipTableMocks: true,
       });
 
       expect(
@@ -689,10 +699,6 @@ describe("DataModelV1", () => {
   });
 
   describe("table section", () => {
-    beforeEach(() => {
-      setupTableEndpoints(ORDERS_TABLE);
-    });
-
     it("should allow to rescan field values", async () => {
       await setup();
 
