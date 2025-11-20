@@ -1,9 +1,9 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+// import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { Collection } from "metabase-types/api";
 
 import { createQuestion } from "./createQuestion";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+// const { ORDERS_ID } = SAMPLE_DATABASE;
 
 export const createLibrary = (): Cypress.Chainable<
   Cypress.Response<Collection>
@@ -26,7 +26,7 @@ export const createLibrary = (): Cypress.Chainable<
         name: "Trusted Orders Model",
         type: "model",
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": 1,
         },
         collection_id: modelsCollection.id,
       });
@@ -35,7 +35,7 @@ export const createLibrary = (): Cypress.Chainable<
         name: "Trusted Orders Metric",
         type: "metric",
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": 1,
           aggregation: [["count"]],
         },
         collection_id: metricsCollection.id,
