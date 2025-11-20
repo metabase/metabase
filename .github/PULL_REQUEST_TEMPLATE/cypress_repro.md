@@ -17,7 +17,7 @@ PENDING CI / PENDING REVIEW / READY _(choose one and update accordingly)_
 > _(For still unfixed bug)_
 - Once the issue is fixed, please remove the `.skip` part (unskip the test completely)
 - Make sure the test is passing and
-- Merge it together with the fix
+- Merge it with the fix
 > _(For a fixed bug)_
 - The bug was fixed in #YYYYY
 
