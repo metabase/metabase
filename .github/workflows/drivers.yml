@@ -34,6 +34,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
+            ~/.m2
+            ~/.gitlib
             ~/.deps.clj
             ${{ github.workspace}}/bin/bb
           key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
