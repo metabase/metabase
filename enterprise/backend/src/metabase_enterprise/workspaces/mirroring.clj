@@ -38,6 +38,10 @@
                                         :database database-id
                                         :schema   (:schema output-table)
                                         :name     (:name output-table)}}))]
+    (t2/insert! :model/WorkspaceMappingTransform
+                {:upstream_id   (:id transform)
+                 :downstream_id (:id mirror)
+                 :workspace_id  (:id workspace)})
     (assoc graph :transforms [(assoc transform :mapping (select-keys mirror [:id :name]))])))
 
 (comment
