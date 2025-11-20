@@ -166,7 +166,7 @@
            (mapv (fn [row]
                    {:id (get row result-id) :type :table}))))))
 
-(defn- topo-sort-key-fn [ordering]
+(defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
         index-of  #(get index-map % Integer/MAX_VALUE)]
     (fn [e]
@@ -207,7 +207,7 @@
         ;; What we'd prefer is to have the following:
         ;; 1. Dependencies come before their dependents.
         ;; 2. For independent nodes, order by type (tables before transforms), then by ID.
-        sort-key-fn   (topo-sort-key-fn sorted)]
+        sort-key-fn   (toposort-key-fn sorted)]
     {:check-outs   (vec (sort-by sort-key-fn starting-set))
      ;; By definition, these are all tables, and all external to the subgraph, so ID is the only thing to sort by.
      ;; Ideally, they'd be ordered by their own dependency relationships too, but for now this is good enough.
