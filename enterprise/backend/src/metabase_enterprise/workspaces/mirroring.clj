@@ -6,13 +6,11 @@
 
 ;; TODO (Chris 2025-11-18) not sure why this is here - maybe we should check that between this and mirrored keys
 ;;       that we are fully specifying everything on the model - so we catch if something important is added.
-(def t2-transform-not-mirrored-keys
-  "WIP"
+(def ^:private t2-transform-not-mirrored-keys
   #{:id :creator_id :created_at :updated_at :entity_id})
 
 ;; t2 for snake
-(def t2-transform-keys
-  "WIP"
+(def ^:private t2-transform-keys
   #{:description :name :source :target :source_type})
 
 (defn- mirror-transform!
@@ -94,7 +92,7 @@
   )
 
 (defn mirror-entities!
-  "WIP"
+  "Create mirrored transforms and isolated tables, etc"
   [workspace
    database
    graph]

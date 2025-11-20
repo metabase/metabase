@@ -9,7 +9,7 @@
 
 ;; TODO (Chris 2025-11-20) Just subsume the rest of this up into ws.dag/path-induced-subgraph
 (defn- build-graph
-  "Placeholder for our actual dag module, handling at most 1 transform, and not returning all the analysis."
+  "Thin wrapper around the dag module, that should probably be absorbed by it."
   [upstream]
   (if (not-any? seq (vals upstream))
     {:db_id      nil
@@ -20,6 +20,7 @@
           db-ids       (when-let [table-ids (seq (keep :id (concat (:inputs graph) (:outputs graph))))]
                          (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
           _            (assert (= 1 (count db-ids)) "All inputs and outputs must belong to the same database.")]
+      ;; One reason this is here, is that I don't want the DAG module to have the single-DWH assumption.
       (assoc graph :db_id (first db-ids)))))
 
 ;; TODO: Generate new metabase user for the workspace

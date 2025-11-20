@@ -58,7 +58,7 @@
 ;;;; Transform table duplication
 
 (defmulti duplicate-output-table!
-  "WIP"
+  "Create an isolated copy of the given output tables, for a workspace transform to write to."
   {:added "0.59.0" :arglists '([database transform])}
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
@@ -107,7 +107,7 @@
                                (assoc hydrated-output :mapping isolated-table)))))))
 
 (defn ensure-database-isolation!
-  "WIP"
+  "Wrapper around the driver method, to make migrations easier in future."
   [workspace database]
   ;; TODO: Make this check the ws existence aka fail closed ~atm
   (init-workspace-database-isolation! database workspace))
