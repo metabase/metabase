@@ -176,8 +176,18 @@ jobs:
                 result: jobValues.result
               }));
 
-            // are all jobs successful?
-            if (jobs.every(job => job.result === 'success')) {
+            // Check if all jobs either succeeded or were skipped
+            // Skipped jobs are acceptable (they were intentionally skipped when the label is absent)
+            const allPassedOrSkipped = jobs.every(job =>
+              job.result === 'success' || job.result === 'skipped'
+            );
+
+            // Check if any jobs actually failed (not skipped, not cancelled)
+            const anyFailed = jobs.some(job =>
+              job.result === 'failure'
+            );
+
+            if (allPassedOrSkipped && !anyFailed) {
               console.log("");
               console.log("        _------.        ");
               console.log("       /  ,     \_      ");
@@ -209,7 +219,7 @@ jobs:
             console.log("Minimal tests have failed.");
 
             jobs.forEach((job) => {
-              if (job.result !== 'success') {
+              if (job.result !== 'success' && job.result !== 'skipped') {
                 console.log(`${job.name} - ${job.result}`);
               }
             });
