@@ -110,8 +110,9 @@
    Returns null if this transform has no upstream mapping (i.e., it's not a mirrored transform)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  {:transform (when-let [id (t2/select-one-fn :upstream_id :model/WorkspaceMappingTransform :downstream_id id)]
-                (t2/select-one [:model/Transform :id :name] id))})
+  (let [upstream-id (t2/select-one-fn :upstream_id [:model/WorkspaceMappingTransform :upstream_id] :downstream_id id)]
+    {:transform (when upstream-id
+                  (t2/select-one [:model/Transform :id :name] upstream-id))}))
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
   :- [:map
@@ -126,11 +127,10 @@
    Returns the transforms that were mirrored from this upstream transform, with workspace info."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (let [mappings (t2/select :model/WorkspaceMappingTransform :upstream_id id)]
-    {:transforms (for [m mappings
-                       :let [transform (t2/select-one [:model/Transform :id :name] :id (:downstream_id m))
-                             workspace (t2/select-one [:model/Workspace :id :name] :id (:workspace_id m))]]
-                   (assoc transform :workspace workspace))}))
+  {:transforms (for [m (t2/select :model/WorkspaceMappingTransform :upstream_id id)
+                     :let [transform (t2/select-one [:model/Transform :id :name] :id (:downstream_id m))
+                           workspace (t2/select-one [:model/Workspace :id :name] :id (:workspace_id m))]]
+                 (assoc transform :workspace workspace))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
