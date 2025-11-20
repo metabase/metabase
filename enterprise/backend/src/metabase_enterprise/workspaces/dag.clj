@@ -1,7 +1,6 @@
 (ns metabase-enterprise.workspaces.dag
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -191,13 +190,13 @@
                {:id entity-id :type (keyword entity-type)}))
         tuples))
 
-(defn- build-values-clause
-  "Build a VALUES clause string for the given tuples."
+(defn- tuples->starting-cte
+  "Build a UNION ALL of SELECT statements for the starting tuples."
   [tuples]
-  (str "VALUES "
-       (->> tuples
-            (map (fn [[t id]] (format "('%s', %d)" t id)))
-            (str/join ", "))))
+  {:union-all (mapv (fn [[t id]]
+                      {:select [[[:inline t] :entity_type]
+                                [[:inline id] :entity_id]]})
+                    tuples)})
 
 (defn upstream-entities
   "Given a map of entity types to IDs, find all upstream entities (dependencies).
@@ -208,15 +207,20 @@
   (let [starting-tuples (entities-map->tuples entities-by-type)]
     (when (seq starting-tuples)
       (rows->entity-set
-       (t2/query (str "WITH RECURSIVE upstream(entity_type, entity_id) AS ("
-                      "  " (build-values-clause starting-tuples)
-                      "  UNION "
-                      "  SELECT d.to_entity_type, d.to_entity_id "
-                      "  FROM dependency d "
-                      "  JOIN upstream u ON d.from_entity_type = u.entity_type "
-                      "                 AND d.from_entity_id = u.entity_id"
-                      ") "
-                      "SELECT entity_type, entity_id FROM upstream"))))))
+       (t2/query {:with-recursive
+                  [[:starting (tuples->starting-cte starting-tuples)]
+                   [:upstream {:union-all
+                               [{:select [:entity_type :entity_id]
+                                 :from   [:starting]}
+                                {:select [[:d.to_entity_type :entity_type]
+                                          [:d.to_entity_id :entity_id]]
+                                 :from   [[:dependency :d]]
+                                 :join   [[:upstream :u]
+                                          [:and
+                                           [:= :d.from_entity_type :u.entity_type]
+                                           [:= :d.from_entity_id :u.entity_id]]]}]}]]
+                  :select [:entity_type :entity_id]
+                  :from   [:upstream]})))))
 
 (defn downstream-entities
   "Given a map of entity types to IDs, find all downstream entities (dependents).
@@ -227,15 +231,20 @@
   (let [starting-tuples (entities-map->tuples entities-by-type)]
     (when (seq starting-tuples)
       (rows->entity-set
-       (t2/query (str "WITH RECURSIVE downstream(entity_type, entity_id) AS ("
-                      "  " (build-values-clause starting-tuples)
-                      "  UNION "
-                      "  SELECT d.from_entity_type, d.from_entity_id "
-                      "  FROM dependency d "
-                      "  JOIN downstream dn ON d.to_entity_type = dn.entity_type "
-                      "                    AND d.to_entity_id = dn.entity_id"
-                      ") "
-                      "SELECT entity_type, entity_id FROM downstream"))))))
+       (t2/query {:with-recursive
+                  [[:starting (tuples->starting-cte starting-tuples)]
+                   [:downstream {:union-all
+                                 [{:select [:entity_type :entity_id]
+                                   :from   [:starting]}
+                                  {:select [[:d.from_entity_type :entity_type]
+                                            [:d.from_entity_id :entity_id]]
+                                   :from   [[:dependency :d]]
+                                   :join   [[:downstream :dn]
+                                            [:and
+                                             [:= :d.to_entity_type :dn.entity_type]
+                                             [:= :d.to_entity_id :dn.entity_id]]]}]}]]
+                  :select [:entity_type :entity_id]
+                  :from   [:downstream]})))))
 
 (defn path-induced-subgraph-entities
   "Given a map of entity types to IDs, compute the path-induced subgraph.
