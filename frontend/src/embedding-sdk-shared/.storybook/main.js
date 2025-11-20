@@ -10,14 +10,29 @@ const {
   getBuildInfoValues,
 } = require("build-configs/embedding-sdk/rspack/get-build-info-values");
 
-const appConfig = require("../../../../../rspack.embedding-sdk-bundle.config");
+const appConfig = require("../../../../rspack.embedding-sdk-bundle.config");
 
 const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
   resolveEmbeddingSdkPackage();
 
+// eslint-disable-next-line no-undef
+const rootRepoPath = path.resolve(__dirname, "../../../../");
+
 module.exports = {
-  stories: ["../../embedding-sdk-{package,bundle,shared}/**/*.stories.tsx"],
-  staticDirs: ["../../../../../resources/frontend_client", "./msw-public"],
+  stories: [
+    path.resolve(
+      rootRepoPath,
+      "frontend/src/embedding-sdk-{bundle,shared}/**/*.stories.tsx",
+    ),
+    path.resolve(
+      rootRepoPath,
+      "enterprise/frontend/src/embedding-sdk-ee/**/*.stories.tsx",
+    ),
+  ],
+  staticDirs: [
+    path.resolve(rootRepoPath, "resources/frontend_client"),
+    "./msw-public",
+  ],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-interactions",
