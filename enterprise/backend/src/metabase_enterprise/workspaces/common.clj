@@ -89,14 +89,14 @@
           (clojure.java.jdbc/execute! jdbc-spec [(str "DROP SCHEMA \"" schema "\" CASCADE")])))
       (t2/delete! :model/Workspace :id ws-clause)))
 
-  (def upstream-tx-id (t2/select-one-pk :model/Transform :workspace_id nil {:order-by [:id]}))
-  (def upstream-tx-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:order-by [:id]}))
+  (def upstream-id (t2/select-one-pk :model/Transform :workspace_id nil {:order-by [:id]}))
+  (def upstream-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:order-by [:id]}))
 
   ;; Ensure output table exists
-  (#'metabase-enterprise.transforms.execute/run-mbql-transform! (t2/select-one :model/Transform upstream-tx-id))
+  (#'metabase-enterprise.transforms.execute/run-mbql-transform! (t2/select-one :model/Transform upstream-id))
 
   (let [admin-id (t2/select-one-pk :model/User :is_superuser true {:order-by [:id]})]
     (binding [api/*current-user-id* admin-id]
-      (create-workspace! admin-id {:name "Workplace Workspace", :upstream {:transforms upstream-tx-ids #_[upstream-tx-id]}})))
+      (create-workspace! admin-id {:name "Workplace Workspace", :upstream {:transforms upstream-ids #_[upstream-id]}})))
 
   (clean-up-ws!*))
