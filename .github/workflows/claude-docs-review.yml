@@ -41,11 +41,11 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
         shell: bash
         run: |
-          # Delete old reviews from the bot (reviews contain inline comments)
+          # Delete old reviews from the bot (both submitted and pending reviews contain inline comments)
           old_review_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
           echo "Deleting reviews: $old_review_ids"
           for id in $old_review_ids; do
-            # Note: This deletes the review and all associated comments
+            # Note: This deletes the review and all associated comments (works for both submitted and pending reviews)
             gh api -X DELETE "/repos/$REPO/pulls/$PR_NUMBER/reviews/$id"
             echo "Deleted review $id"
           done
@@ -76,4 +76,4 @@ jobs:
             DO NOT post any comments confirming that something is correct - only post comments for style violations or concerns.
 
           claude_args: |
-            --allowedTools "Skill,mcp__github__get_pull_request,mcp__github__get_pull_request_files,mcp__github__create_pending_pull_request_review,mcp__github__get_pull_request_diff,mcp__github__add_comment_to_pending_review,mcp__github__submit_pending_pull_request_review"
+            --allowedTools "Skill,mcp__github__get_pull_request,mcp__github__get_pull_request_files,mcp__github__create_pending_pull_request_review,mcp__github__get_pull_request_diff,mcp__github__add_comment_to_pending_review,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__delete_pending_pull_request_review,mcp__github__submit_pending_pull_request_review"
