@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -211,7 +211,7 @@ export const useEnsureCollectionSelected = ({
 };
 
 const useGetLibraryCollection = ({ skip = false }: { skip?: boolean }) => {
-  const { data, isLoading } = PLUGIN_LIBRARY.useGetLibraryCollectionQuery({
+  const { data, isLoading } = PLUGIN_DATA_STUDIO.useGetLibraryCollectionQuery({
     skip,
   });
 

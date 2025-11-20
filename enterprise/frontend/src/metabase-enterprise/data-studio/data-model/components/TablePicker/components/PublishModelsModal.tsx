@@ -10,7 +10,7 @@ import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowled
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 import { usePublishModelsMutation } from "metabase-enterprise/api";
 import type {
@@ -47,7 +47,7 @@ export function PublishModelsModal({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const defaultPublishCollection =
-    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
       type: "library-models",
     });
 

@@ -11,7 +11,7 @@ import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
@@ -44,7 +44,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const libraryModelsCollection =
-    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
       type: "library-models",
     });
 

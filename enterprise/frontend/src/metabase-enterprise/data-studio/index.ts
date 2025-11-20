@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api/library";
 import { NavbarLibrarySection } from "metabase-enterprise/data-studio/nav/components/NavbarLibrarySection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { CollectionItem, CollectionType } from "metabase-types/api";
@@ -31,8 +32,10 @@ export function initializePlugin() {
     PLUGIN_DATA_STUDIO.useGetLibraryCollectionQuery = ({
       skip,
     }: { skip?: boolean } = {}) => {
-      const { data = null, isLoading } =
-        PLUGIN_DATA_STUDIO.useGetLibraryCollectionQuery(undefined, { skip });
+      const { data = null, isLoading } = useGetLibraryCollectionQuery(
+        undefined,
+        { skip },
+      );
       return { data, isLoading };
     };
     PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType = ({
