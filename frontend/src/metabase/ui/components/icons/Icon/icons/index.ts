@@ -132,6 +132,8 @@ import dash_component from "./dash.svg?component";
 import dash_source from "./dash.svg?source";
 import dashboard_component from "./dashboard.svg?component";
 import dashboard_source from "./dashboard.svg?source";
+import data_studio_component from "./data_studio.svg?component";
+import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
 import document_component from "./document.svg?component";
@@ -762,6 +764,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     database: {
       component: database_component,
       source: database_source,
+    },
+    data_studio: {
+      component: data_studio_component,
+      source: data_studio_source,
     },
     dash: {
       component: dash_component,
@@ -1632,6 +1638,7 @@ export type IconName =
   | "copy"
   | "curved"
   | "database"
+  | "data_studio"
   | "dash"
   | "dashboard"
   | "curve"

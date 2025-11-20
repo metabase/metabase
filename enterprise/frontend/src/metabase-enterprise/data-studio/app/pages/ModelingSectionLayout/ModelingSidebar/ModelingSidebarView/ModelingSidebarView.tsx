@@ -11,7 +11,6 @@ import type {
 
 import { ModelingSidebarSection } from "../ModelingSidebarSection";
 
-import { CollectionsSection } from "./CollectionsSection";
 import S from "./ModelingSidebarView.module.css";
 import { SnippetsSection } from "./SnippetsSection";
 
@@ -51,15 +50,6 @@ export function ModelingSidebarView({
             />
           </Box>
         )}
-
-        <Box className={S.section} p="md" data-testid="collections-section">
-          <CollectionsSection
-            collections={collections}
-            selectedCollectionId={selectedCollectionId}
-            hasDataAccess={hasDataAccess}
-            hasNativeWrite={hasNativeWrite}
-          />
-        </Box>
 
         {hasNativeWrite && (
           <Box className={S.section} p="md" data-testid="snippets-section">

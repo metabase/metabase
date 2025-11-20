@@ -1188,6 +1188,10 @@ export const PLUGIN_LIBRARY: LibraryPlugin = {
   canPlaceEntityInCollectionOrDescendants: () => true,
 };
 
+export type DataStudioToolbarButtonProps = {
+  question: Question;
+};
+
 export type DataStudioPlugin = {
   isEnabled: boolean;
   canAccessDataStudio: (state: State) => boolean;
@@ -1197,10 +1201,12 @@ export type DataStudioPlugin = {
     CanAccessDataModel: ComponentType,
     CanAccessTransforms: ComponentType,
   ) => ReactNode;
+  DataStudioToolbarButton: ComponentType<DataStudioToolbarButtonProps>;
 };
 
 export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
   isEnabled: false,
   canAccessDataStudio: () => false,
   getDataStudioRoutes: () => null,
+  DataStudioToolbarButton: PluginPlaceholder,
 };
