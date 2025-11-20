@@ -33,6 +33,10 @@ type UseSourceStateResult = {
   rejectProposed: () => void;
 };
 
+/**
+ * Normalizes a transform source by ensuring template tags are properly parsed.
+ * Necessary for model references in a SQL transform to work correctly.
+ */
 function normalizeSource(
   source: DraftTransformSource,
   metadata: Metadata,
