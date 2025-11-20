@@ -335,13 +335,13 @@
                                      :hash   some?}
                      :row_count     1
                      :status        :completed}
-                    (dissoc original-result :data)))
+                    original-result))
             (is (=? {:cache/details {:cached     true
                                      :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
                                      :hash       some?}
                      :row_count     1
                      :status        :completed}
-                    (dissoc cached-result :data)))
+                    cached-result))
             (is (= (seq (-> original-result :cache/details :hash))
                    (seq (-> cached-result :cache/details :hash))))
             (is (= (dissoc original-result :cache/details)
@@ -376,13 +376,13 @@
                                          :hash   some?}
                          :row_count     1
                          :status        :completed}
-                        (dissoc original-result :data)))
+                        original-result))
                 (is (=? {:cache/details {:cached     true
                                          :updated_at #t "2025-02-06T00:00:00.000Z[UTC]"
                                          :hash       some?}
                          :row_count     1
                          :status        :completed}
-                        (dissoc cached-result :data)))
+                        cached-result))
                 (is (= (seq (-> original-result :cache/details :hash))
                        (seq (-> cached-result :cache/details :hash))))
                 (is (= (dissoc original-result :cache/details)
