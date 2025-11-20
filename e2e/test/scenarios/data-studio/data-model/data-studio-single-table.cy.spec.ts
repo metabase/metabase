@@ -18,6 +18,8 @@ interface PublishModelResponse {
 describe("Table editing", () => {
   beforeEach(() => {
     H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
     cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
@@ -38,8 +40,6 @@ describe("Table editing", () => {
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.restore("mysql-8");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA MySQL8").click();
@@ -68,11 +68,9 @@ describe("Table editing", () => {
     "should publish single table to a collection",
     { tags: ["@external"] },
     () => {
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.restore("mysql-8");
+      H.restore("mysql-writable");
       H.DataModel.visitDataStudio();
-      TablePicker.getDatabase("QA MySQL8").click();
+      TablePicker.getDatabase("Writable MySQL8").click();
       TablePicker.getTable("Orders").click();
 
       // Shows publish model information modal
@@ -119,11 +117,9 @@ describe("Table editing", () => {
   );
 
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
-    H.restore("postgres-12");
+    H.restore("postgres-writable");
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("QA Postgres12").click();
+    TablePicker.getDatabase("Writable Postgres12").click();
     TablePicker.getTable("Orders").click();
 
     H.selectHasValue("Owner", "No one").click();
@@ -164,8 +160,6 @@ describe("Table editing", () => {
     "transform-created table should have link and disabled source edit",
     { tags: ["@external"] },
     () => {
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
       H.restore("postgres-writable");
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
 

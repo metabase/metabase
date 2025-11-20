@@ -25,8 +25,10 @@ interface PublishModelResponse {
   }[];
 }
 
-describe("bulk table operations", { tags: ["@external"] }, () => {
+describe("bulk table operations", () => {
   beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
     cy.intercept("POST", "/api/ee/data-studio/table/sync-schema").as(
       "syncSchema",
     );
@@ -47,7 +49,6 @@ describe("bulk table operations", { tags: ["@external"] }, () => {
 
   it("syncing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
