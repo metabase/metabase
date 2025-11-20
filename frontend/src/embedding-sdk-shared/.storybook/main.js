@@ -10,13 +10,15 @@ const {
   getBuildInfoValues,
 } = require("build-configs/embedding-sdk/rspack/get-build-info-values");
 
-const appConfig = require("../../../../rspack.embedding-sdk-bundle.config");
-
 const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
   resolveEmbeddingSdkPackage();
 
 // eslint-disable-next-line no-undef
 const rootRepoPath = path.resolve(__dirname, "../../../../");
+
+const appConfig = require(
+  path.resolve(rootRepoPath, "rspack.embedding-sdk-bundle.config"),
+);
 
 module.exports = {
   stories: [
