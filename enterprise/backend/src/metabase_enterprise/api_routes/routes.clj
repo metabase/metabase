@@ -38,6 +38,7 @@
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
@@ -68,7 +69,6 @@
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
-   :library                    (deferred-tru "Library")
    :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
@@ -76,6 +76,7 @@
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
+   :support-users (deferred-tru "Support Users")
    :transforms-python          (deferred-tru "Transforms Python")})
 
 (defn- premium-handler [handler required-feature]
@@ -123,7 +124,7 @@
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
-   "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
+   "/library"                      (premium-handler metabase-enterprise.library.api/routes :data-studio)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
@@ -134,6 +135,7 @@
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
    "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
    "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)

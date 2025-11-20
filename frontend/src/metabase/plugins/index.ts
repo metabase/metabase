@@ -1034,6 +1034,16 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
+export const PLUGIN_SUPPORT: {
+  isEnabled: boolean;
+  SupportSettings: ComponentType;
+  GrantAccessModal: ComponentType<{ onClose: VoidFunction }>;
+} = {
+  isEnabled: false,
+  SupportSettings: NotFoundPlaceholder,
+  GrantAccessModal: NotFoundPlaceholder,
+};
+
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
@@ -1149,13 +1159,6 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   }),
 };
 
-export type LibrarySectionProps = {
-  collections: Collection[];
-  selectedCollectionId: CollectionId | undefined;
-  hasDataAccess: boolean;
-  hasNativeWrite: boolean;
-};
-
 export type NavbarLibrarySectionProps = {
   collections: Collection[];
   selectedId?: string | number;
@@ -1164,9 +1167,20 @@ export type NavbarLibrarySectionProps = {
 
 export type LibraryCollectionType = "root" | "models" | "metrics";
 
-export type LibraryPlugin = {
+export type DataStudioToolbarButtonProps = {
+  question: Question;
+};
+
+export type DataStudioPlugin = {
   isEnabled: boolean;
-  LibrarySection: ComponentType<LibrarySectionProps>;
+  canAccessDataStudio: (state: State) => boolean;
+  getDataStudioRoutes: (
+    store: Store<State>,
+    CanAccessDataStudio: ComponentType,
+    CanAccessDataModel: ComponentType,
+    CanAccessTransforms: ComponentType,
+  ) => ReactNode;
+  DataStudioToolbarButton: ComponentType<DataStudioToolbarButtonProps>;
   NavbarLibrarySection: ComponentType<NavbarLibrarySectionProps>;
   getLibraryCollectionType: (
     collectionType: CollectionType | null | undefined,
@@ -1191,32 +1205,6 @@ export type LibraryPlugin = {
     skip?: boolean;
     type: CollectionType;
   }) => CollectionItem | undefined;
-};
-
-export const PLUGIN_LIBRARY: LibraryPlugin = {
-  isEnabled: false,
-  LibrarySection: PluginPlaceholder,
-  NavbarLibrarySection: PluginPlaceholder,
-  getLibraryCollectionType: () => undefined,
-  canPlaceEntityInCollection: () => true,
-  canPlaceEntityInCollectionOrDescendants: () => true,
-  useGetLibraryCollectionQuery: ({ skip: _skip }: { skip?: boolean }) => ({
-    data: null,
-    isLoading: false,
-  }),
-  useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
-    undefined,
-};
-
-export type DataStudioPlugin = {
-  isEnabled: boolean;
-  canAccessDataStudio: (state: State) => boolean;
-  getDataStudioRoutes: (
-    store: Store<State>,
-    CanAccessDataStudio: ComponentType,
-    CanAccessDataModel: ComponentType,
-    CanAccessTransforms: ComponentType,
-  ) => ReactNode;
   useGetLibraryCollection: () => {
     data: undefined | MiniPickerCollectionItem;
     isLoading: boolean;
@@ -1227,5 +1215,16 @@ export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
   isEnabled: false,
   canAccessDataStudio: () => false,
   getDataStudioRoutes: () => null,
+  DataStudioToolbarButton: PluginPlaceholder,
+  NavbarLibrarySection: PluginPlaceholder,
+  getLibraryCollectionType: () => undefined,
+  canPlaceEntityInCollection: () => true,
+  canPlaceEntityInCollectionOrDescendants: () => true,
+  useGetLibraryCollectionQuery: ({ skip: _skip }: { skip?: boolean }) => ({
+    data: null,
+    isLoading: false,
+  }),
+  useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
+    undefined,
   useGetLibraryCollection: () => ({ data: undefined, isLoading: false }),
 };

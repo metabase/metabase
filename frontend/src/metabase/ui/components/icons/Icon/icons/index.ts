@@ -132,6 +132,8 @@ import dash_component from "./dash.svg?component";
 import dash_source from "./dash.svg?source";
 import dashboard_component from "./dashboard.svg?component";
 import dashboard_source from "./dashboard.svg?source";
+import data_studio_component from "./data_studio.svg?component";
+import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
 import document_component from "./document.svg?component";
@@ -498,6 +500,8 @@ import verified_component from "./verified.svg?component";
 import verified_source from "./verified.svg?source";
 import verified_filled_component from "./verified_filled.svg?component";
 import verified_filled_source from "./verified_filled.svg?source";
+import verified_round_component from "./verified_round.svg?component";
+import verified_round_source from "./verified_round.svg?source";
 import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
@@ -762,6 +766,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     database: {
       component: database_component,
       source: database_source,
+    },
+    data_studio: {
+      component: data_studio_component,
+      source: data_studio_source,
     },
     dash: {
       component: dash_component,
@@ -1505,6 +1513,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: verified_filled_component,
       source: verified_filled_source,
     },
+    verified_round: {
+      component: verified_round_component,
+      source: verified_round_source,
+    },
     view_archive: {
       component: view_archive_component,
       source: view_archive_source,
@@ -1632,6 +1644,7 @@ export type IconName =
   | "copy"
   | "curved"
   | "database"
+  | "data_studio"
   | "dash"
   | "dashboard"
   | "curve"
@@ -1817,6 +1830,7 @@ export type IconName =
   | "official_collection"
   | "ordered_list"
   | "verified_filled"
+  | "verified_round"
   | "view_archive"
   | "warning"
   | "warning_round_filled"

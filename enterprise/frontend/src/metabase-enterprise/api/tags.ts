@@ -18,6 +18,7 @@ import type {
   PythonLibrary,
   SandboxDependencyNode,
   SnippetDependencyNode,
+  SupportAccessGrant,
   TableDependencyNode,
   Transform,
   TransformDependencyNode,
@@ -48,6 +49,8 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "python-transform-library",
+  "support-access-grant",
+  "support-access-grant-current",
   "library-collection",
 ] as const;
 
@@ -273,4 +276,19 @@ export function provideDependencyGraphTags(
   graph: DependencyGraph,
 ): TagDescription<EnterpriseTagType>[] {
   return provideDependencyNodeListTags(graph.nodes);
+}
+
+export function provideSupportAccessGrantTags(
+  grant: SupportAccessGrant,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("support-access-grant", grant.id)];
+}
+
+export function provideSupportAccessGrantListTags(
+  grants: SupportAccessGrant[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("support-access-grant"),
+    ...grants.flatMap(provideSupportAccessGrantTags),
+  ];
 }

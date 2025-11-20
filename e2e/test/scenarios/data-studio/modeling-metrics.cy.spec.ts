@@ -1,9 +1,5 @@
 const { H } = cy;
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
-
 describe("scenarios > data studio > modeling > metrics", () => {
   beforeEach(() => {
     H.restore();
@@ -15,6 +11,8 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("POST", "/api/collection").as("createCollection");
     cy.intercept("PUT", "/api/collection/*").as("updateCollection");
+
+    H.createLibrary();
   });
 
   describe("empty state", () => {
@@ -103,131 +101,98 @@ describe("scenarios > data studio > modeling > metrics", () => {
     });
   });
 
-  it("should edit metric definition and save changes", () => {
-    H.createQuestion({
-      name: "Revenue Metric",
-      type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    });
+  it("should edit metric definition and save changes", function () {
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
 
-    cy.log("Navigate to Our analytics collection");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.log("Select Metrics collection from sidebar");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    H.DataStudio.Modeling.metricItem("Revenue Metric").click();
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
-    cy.log("Verify metric overview page is visible");
-    H.DataStudio.Metrics.overviewPage().should("be.visible");
-
-    cy.log("Update the metric name and description");
+    cy.log("Verify metric overview page displays correct data");
     H.DataStudio.Metrics.overviewPage()
-      .findByDisplayValue("Revenue Metric")
+      .findByDisplayValue("Trusted Orders Metric")
+      .should("be.visible");
+
+    cy.log("Update the metric name");
+    H.DataStudio.Metrics.overviewPage()
+      .findByDisplayValue("Trusted Orders Metric")
       .clear()
-      .type("Total Revenue{enter}");
+      .type("Updated Orders Metric{enter}");
 
     cy.wait("@updateCard");
 
+    cy.log("Verify updated name appears in overview");
     H.DataStudio.Metrics.overviewPage()
-      .findByPlaceholderText("No description")
-      .type("Sum of all order totals{enter}");
-
-    cy.wait("@updateCard");
-
-    cy.log("Navigate to definition tab");
-    H.DataStudio.Metrics.definitionTab().click();
-
-    cy.log("Add a breakout by Created At");
-    H.DataStudio.Metrics.queryEditor().should("be.visible");
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    H.popover().findByText("Created At").click();
-
-    cy.log("Save the changes");
-    H.DataStudio.Metrics.saveButton().should("be.enabled").click();
-
-    cy.wait("@updateCard");
-
-    cy.log("Navigate back to overview tab");
-    H.DataStudio.Metrics.overviewTab().click();
-
-    cy.log("Verify metric name and description are updated");
-    H.DataStudio.Metrics.overviewPage().within(() => {
-      cy.findByText("Total Revenue").should("be.visible");
-      cy.findByText("Sum of all order totals").should("be.visible");
-    });
-
-    cy.log("Verify chart shows the time series");
-    H.echartsContainer().findByText("Sum of Total").should("be.visible");
+      .findByDisplayValue("Updated Orders Metric")
+      .should("be.visible");
 
     cy.log("Verify updated name appears in collection view");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.visit("/data-studio/modeling");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    H.DataStudio.Modeling.metricItem("Total Revenue").should("be.visible");
+    H.DataStudio.Modeling.metricItem("Updated Orders Metric").should(
+      "be.visible",
+    );
   });
 
   it("should cancel editing and revert changes", () => {
-    H.createQuestion({
-      name: "Revenue Metric",
-      type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    });
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
 
-    cy.log("Navigate to Our analytics collection");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.log("Select Metrics collection from sidebar");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    H.DataStudio.Modeling.metricItem("Revenue Metric").click();
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
 
     cy.log("Change aggregation");
-    H.getNotebookStep("summarize").findByText("Sum of Total").click();
-    H.popover().findByText("Subtotal").click();
+    H.getNotebookStep("summarize").findByText("Count").click();
+    H.popover().findByText("Sum of ...").click();
+    H.popover().findByText("Total").click();
 
     cy.log("Verify save button is enabled, then cancel");
     H.DataStudio.Metrics.saveButton().should("be.enabled");
     H.DataStudio.Metrics.cancelButton().click();
 
     cy.log("Verify changes were reverted");
-    H.getNotebookStep("summarize")
-      .findByText("Sum of Total")
-      .should("be.visible");
+    H.getNotebookStep("summarize").findByText("Count").should("be.visible");
   });
 
   it("should show unsaved changes warning when navigating away", () => {
-    H.createQuestion({
-      name: "Revenue Metric",
-      type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    });
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
 
-    cy.log("Navigate to Our analytics collection");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.log("Select Metrics collection from sidebar");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    H.DataStudio.Modeling.metricItem("Revenue Metric").click();
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
 
-    cy.log("Change aggregation from Sum to Subtotal");
+    cy.log("Change aggregation from Count to Sum");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
-    H.getNotebookStep("summarize").findByText("Sum of Total").click();
-    H.popover().findByText("Subtotal").click();
+    H.getNotebookStep("summarize").findByText("Count").click();
+    H.popover().findByText("Sum of ...").click();
+    H.popover().findByText("Total").click();
 
     cy.log("Try to navigate away");
     H.DataStudio.ModelingSidebar.glossaryLink().click();
@@ -243,34 +208,31 @@ describe("scenarios > data studio > modeling > metrics", () => {
   });
 
   it("should archive and restore a metric", () => {
-    H.createQuestion({
-      name: "Revenue Metric",
-      type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    });
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
 
-    cy.log("Navigate to Our analytics collection");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.log("Select Metrics collection from sidebar");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
 
     cy.log("Wait for collection page to load");
     H.DataStudio.Modeling.collectionPage().should("be.visible");
 
     cy.log("Click on the metric from the collection view");
-    cy.findByRole("table").findByText("Revenue Metric").click();
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+
+    cy.log("Verify metric is loaded before archiving");
+    H.DataStudio.Metrics.overviewPage()
+      .findByDisplayValue("Trusted Orders Metric")
+      .should("be.visible");
 
     cy.log("Archive the metric");
-    H.DataStudio.Metrics.overviewPage().should("be.visible");
-    H.DataStudio.Metrics.header().icon("ellipsis").click();
+    H.DataStudio.Metrics.moreMenu().click();
     H.popover().findByText("Move to trash").click();
 
     cy.log("Confirm archiving in modal");
-    H.modal().within(() => {
-      cy.findByText(/move.*to trash/i).should("be.visible");
-      cy.button("Move to trash").click();
-    });
+    H.modal().button("Move to trash").click();
 
     cy.wait("@updateCard");
 
@@ -278,120 +240,147 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.url().should("include", "/data-studio/modeling");
 
     cy.log("Verify metric is removed from collection view");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.visit("/data-studio/modeling");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    cy.findByRole("table").findByText("Revenue Metric").should("not.exist");
+    H.DataStudio.Modeling.collectionPage()
+      .findByText("No metrics yet")
+      .should("be.visible");
 
     cy.log("Navigate to trash");
     cy.visit("/trash");
 
+    cy.log("Verify metric appears in trash");
+    cy.findByRole("table")
+      .findByText("Trusted Orders Metric")
+      .should("be.visible");
+
     cy.log("Restore the metric");
-    cy.findByRole("table").findByText("Revenue Metric").click();
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+    cy.findByTestId("archive-banner").should("be.visible");
     cy.findByTestId("archive-banner").findByText("Restore").click();
     cy.wait("@updateCard");
 
     cy.log("Verify metric is restored in collection view");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.visit("/data-studio/modeling");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    cy.findByRole("table").findByText("Revenue Metric").should("be.visible");
+    cy.findByRole("table")
+      .findByText("Trusted Orders Metric")
+      .should("be.visible");
   });
 
   it("should view metric in question view via more menu", () => {
-    H.createQuestion({
-      name: "Revenue Metric",
-      type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    }).then(({ body: card }) => {
-      cy.log("Navigate to Our analytics collection");
-      cy.visit("/data-studio/modeling/collections/root");
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
 
-      cy.log("Click on the metric from the collection view");
-      H.DataStudio.Modeling.collectionPage().should("be.visible");
-      cy.findByRole("table").findByText("Revenue Metric").click();
-
-      cy.log("Verify View link opens in new tab");
-      H.DataStudio.Metrics.overviewPage().should("be.visible");
-      H.DataStudio.Metrics.moreMenu().click();
-      H.popover()
-        .findByText("View")
-        .closest("a")
-        .should("have.attr", "target", "_blank")
-        .should("have.attr", "href")
-        .and("include", `/metric/${card.id}`);
-    });
-  });
-
-  it("should duplicate metric via more menu", () => {
-    H.createQuestion({
-      name: "Revenue Metric",
-      type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    });
-
-    cy.log("Navigate to Our analytics collection");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.log("Select Metrics collection from sidebar");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    cy.findByRole("table").findByText("Revenue Metric").click();
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+
+    cy.log("Verify metric is loaded");
+    H.DataStudio.Metrics.overviewPage()
+      .findByDisplayValue("Trusted Orders Metric")
+      .should("be.visible");
+
+    cy.log("Verify View link opens in new tab");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover()
+      .findByText("View")
+      .closest("a")
+      .should("have.attr", "target", "_blank")
+      .should("have.attr", "href")
+      .and("match", /\/metric\/\d+/);
+  });
+
+  it("should duplicate metric via more menu", () => {
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
+
+    cy.log("Select Metrics collection from sidebar");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
+
+    cy.log("Click on the metric from the collection view");
+    H.DataStudio.Modeling.collectionPage().should("be.visible");
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+
+    cy.log("Verify metric is loaded");
+    H.DataStudio.Metrics.overviewPage()
+      .findByDisplayValue("Trusted Orders Metric")
+      .should("be.visible");
 
     cy.log("Open more menu and click Duplicate");
-    H.DataStudio.Metrics.overviewPage().should("be.visible");
     H.DataStudio.Metrics.moreMenu().click();
     H.popover().findByText("Duplicate").click();
 
     cy.log("Save duplicate metric");
-    H.modal().findByText('Duplicate "Revenue Metric"').should("be.visible");
+    H.modal()
+      .findByText('Duplicate "Trusted Orders Metric"')
+      .should("be.visible");
     H.modal()
       .findByLabelText("Name")
-      .should("have.value", "Revenue Metric - Duplicate");
+      .should("have.value", "Trusted Orders Metric - Duplicate");
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
+
     H.entityPickerModalTab("Collections").click();
-    H.entityPickerModal().findByText("Our analytics").click();
-    H.entityPickerModal().button("Select this collection").click();
+    H.entityPickerModal().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("Library").click();
+      cy.findByText("Metrics").click();
+      cy.button("Select this collection").click();
+    });
+
     H.modal().button("Duplicate").click();
 
     cy.wait("@createCard");
 
     cy.log("Verify duplicate metric is created");
     H.DataStudio.Metrics.overviewPage()
-      .findByText("Revenue Metric - Duplicate")
+      .findByText("Trusted Orders Metric - Duplicate")
       .should("be.visible");
 
     cy.log("Verify both metrics appear in collection view");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.visit("/data-studio/modeling");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    cy.findByRole("table").findByText("Revenue Metric").should("be.visible");
-    cy.findByRole("table")
-      .findByText("Revenue Metric - Duplicate")
-      .should("be.visible");
+    cy.findByRole("table").within(() => {
+      cy.findByText("Trusted Orders Metric").should("be.visible");
+      cy.findByText("Trusted Orders Metric - Duplicate").should("be.visible");
+    });
   });
 
   it("should move metric to different collection via more menu", () => {
-    H.createQuestion({
-      name: "Revenue Metric",
-      type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      },
-    });
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
 
-    cy.log("Navigate to Our analytics collection");
-    cy.visit("/data-studio/modeling/collections/root");
+    cy.log("Select Metrics collection from sidebar");
+    H.DataStudio.ModelingSidebar.collectionsTree()
+      .findByText("Metrics")
+      .click();
 
     cy.log("Click on the metric from the collection view");
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    cy.findByRole("table").findByText("Revenue Metric").click();
+    cy.findByRole("table").findByText("Trusted Orders Metric").click();
+
+    cy.log("Verify metric is loaded");
+    H.DataStudio.Metrics.overviewPage()
+      .findByDisplayValue("Trusted Orders Metric")
+      .should("be.visible");
 
     cy.log("Open more menu and click Move");
-    H.DataStudio.Metrics.overviewPage().should("be.visible");
     H.DataStudio.Metrics.moreMenu().click();
     H.popover().findByText("Move").click();
 
@@ -401,17 +390,18 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.wait("@updateCard");
 
-    cy.log("Verify metric is no longer in Our analytics");
-    cy.visit("/data-studio/modeling/collections/root");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
-    cy.findByRole("table").findByText("Revenue Metric").should("not.exist");
-
     cy.log("Verify metric is in First collection");
+    cy.findByTestId("move-card-toast").findByText("First collection").click();
+
+    cy.log("Verify metric is no longer in Metrics collection");
+    cy.visit("/data-studio/modeling");
     H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("First collection")
+      .findByText("Metrics")
       .click();
     H.DataStudio.Modeling.collectionPage().should("be.visible");
-    cy.findByRole("table").findByText("Revenue Metric").should("be.visible");
+    H.DataStudio.Modeling.collectionPage()
+      .findByText("No metrics yet")
+      .should("be.visible");
   });
 });
 

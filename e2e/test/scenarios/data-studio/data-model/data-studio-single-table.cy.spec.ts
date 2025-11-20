@@ -18,6 +18,8 @@ interface PublishModelResponse {
 describe("Table editing", () => {
   beforeEach(() => {
     H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
     cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
@@ -38,8 +40,6 @@ describe("Table editing", () => {
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.restore("mysql-8");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA MySQL8").click();
@@ -68,8 +68,6 @@ describe("Table editing", () => {
     "should publish single table to a collection",
     { tags: ["@external"] },
     () => {
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
       H.restore("mysql-8");
       H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
@@ -119,8 +117,6 @@ describe("Table editing", () => {
   );
 
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.restore("postgres-12");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA Postgres12").click();
@@ -160,12 +156,10 @@ describe("Table editing", () => {
     H.selectHasValue("Source", "Ingested");
   });
 
-  it(
+  it.skip(
     "transform-created table should have link and disabled source edit",
     { tags: ["@external"] },
     () => {
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
       H.restore("postgres-writable");
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
 

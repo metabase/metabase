@@ -592,6 +592,7 @@ const ResultsItem = ({
 
             <Box
               className={cx(S.column, S.publishedColumn)}
+              pl="md"
               data-testid="table-published"
             >
               {publishedDisplay}
@@ -641,10 +642,12 @@ function getExpectedRowsDisplay(
   return formatted;
 }
 
-function getPublishedDisplay(item: FlatItem): string | null {
+function getPublishedDisplay(item: FlatItem): React.ReactNode {
   if (item.type !== "table" || item.isLoading || !item.table) {
     return null;
   }
 
-  return item.table.published_as_model ? t`Yes` : null;
+  return item.table.published_as_model ? (
+    <Icon name="verified_round" aria-label="published" />
+  ) : null;
 }

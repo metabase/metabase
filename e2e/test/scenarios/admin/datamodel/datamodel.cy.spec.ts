@@ -3009,6 +3009,7 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getNameInput().should("have.value", "A");
           FieldSection.get()
             .findByTestId("name-prefix")
+            .scrollIntoView()
             .should("be.visible")
             .and("have.text", "Json:");
           verifyTablePreview({
@@ -3405,9 +3406,9 @@ describe("scenarios > admin > datamodel", () => {
       cy.intercept("POST", "/api/field/*/values", error);
       cy.intercept("POST", "/api/field/*/dimension", error);
       cy.intercept("PUT", "/api/table/*", error);
-      cy.intercept("POST", "/api/ee/data-studio/table/sync-schema", error);
-      cy.intercept("POST", "/api/ee/data-studio/table/rescan-values", error);
-      cy.intercept("POST", "/api/ee/data-studio/table/discard-values", error);
+      cy.intercept("POST", "/api/table/*/sync_schema", error);
+      cy.intercept("POST", "/api/table/*/rescan_values", error);
+      cy.intercept("POST", "/api/table/*/discard_values", error);
     });
 
     it("shows toast errors and preview errors", () => {
@@ -3454,7 +3455,7 @@ describe("scenarios > admin > datamodel", () => {
       cy.log("discard field values");
       H.modal().button("Discard cached field values").click();
       verifyAndCloseToast("Failed to discard values");
-      cy.realPress("Escape");
+      H.modal().findByLabelText("Close").click();
 
       cy.log("field name");
       TableSection.getFieldNameInput("Quantity").type("a").blur();
@@ -3506,6 +3507,15 @@ describe("scenarios > admin > datamodel", () => {
       TablePicker.getDatabase("Writable Postgres12").click();
       TablePicker.getTable("Many Data Types").click();
       TableSection.clickField("Json");
+
+      // navigating away will cause onChange to be triggered in InputBlurChange and TextareaBlurChange
+      // components, so new undos will appear - we need to close them so that they don't interfere
+      // with assertions below
+      H.undoToastList().first().icon("close").click({ force: true });
+      H.undoToastList().first().icon("close").click({ force: true });
+      H.undoToastList().first().icon("close").click({ force: true });
+      H.undoToastList().first().icon("close").click({ force: true });
+
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
@@ -3903,7 +3913,7 @@ function verifyToastAndUndo(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().button("Undo").click();
   H.undoToast().should("contain.text", "Change undone");
-  H.undoToast().icon("close").click();
+  H.undoToast().icon("close").click({ force: true });
 }
 
 function verifyTablesVisible(tables: string[]) {

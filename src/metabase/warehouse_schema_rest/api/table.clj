@@ -49,41 +49,41 @@
 
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
-  (into [:enum] (map name table/writable-data-authority-types)))
+  (into [:enum {:decode/string keyword}] table/writable-data-authority-types))
 
 (mr/def ::data-authority-read
   "Schema for returning a table data authority type."
   (into [:enum] table/readable-data-authority-types))
+
+(mr/def ::data-layers
+  (into [:enum {:decode/string keyword}] table/data-layers))
+
+(mr/def ::data-sources
+  (into [:enum {:decode/string keyword}] table/data-sources))
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only]}
    :- [:map
-       ;; conjunctive search terms
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
-       [:data-layer {:optional true} :string]
-       [:data-source {:optional true} :string]
+       [:data-layer {:optional true} ::data-layers]
+       [:data-source {:optional true} ::data-sources]
        [:owner-user-id {:optional true} [:maybe :int]]
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
-        empty-null (fn [x] (if (and (string? x) (str/blank? x)) nil x))
-        like       (case (app-db/db-type)
-                     (:h2 :postgres) [:ilike :name pattern]
-                     [:raw [:like :name pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]])
+  (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
+        pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
         where      (cond-> [:and [:= :active true]]
-                     (not (str/blank? term)) (conj like)
-                     visibility-type         (conj [:= :visibility_type (empty-null visibility-type)])
-                     data-layer              (conj [:= :data_layer      (empty-null data-layer)])
-                     data-source             (conj [:= :data_source     (empty-null data-source)])
-                     owner-user-id           (conj [:= :owner_user_id   (empty-null owner-user-id)])
-                     owner-email             (conj [:= :owner_email     (empty-null owner-email)])
+                     (not (str/blank? term)) (conj [like :name pattern])
+                     visibility-type         (conj [:= :visibility_type visibility-type])
+                     data-layer              (conj [:= :data_layer      (name data-layer)])
+                     data-source             (conj [:= :data_source     (name data-source)])
+                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
+                     owner-email             (conj [:= :owner_email     owner-email])
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]]))
-        ;; Use LEFT JOIN to efficiently filter orphaned tables
-        ;; Exclude transforms as dependents since they produce tables
         query      (cond-> {:where    where
                             :order-by [[:name :asc]]}
                      (and unused-only (premium-features/has-feature? :dependencies))

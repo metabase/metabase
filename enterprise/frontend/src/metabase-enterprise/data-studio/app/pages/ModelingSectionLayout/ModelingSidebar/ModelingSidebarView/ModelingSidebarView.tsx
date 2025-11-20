@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
+import { LibrarySection } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/LibrarySection";
 import type {
   Collection,
   CollectionId,
@@ -11,7 +11,6 @@ import type {
 
 import { ModelingSidebarSection } from "../ModelingSidebarSection";
 
-import { CollectionsSection } from "./CollectionsSection";
 import S from "./ModelingSidebarView.module.css";
 import { SnippetsSection } from "./SnippetsSection";
 
@@ -41,19 +40,8 @@ export function ModelingSidebarView({
       data-testid="modeling-sidebar"
     >
       <Stack gap={0}>
-        {PLUGIN_LIBRARY.isEnabled && (
-          <Box className={S.section} p="md">
-            <PLUGIN_LIBRARY.LibrarySection
-              collections={collections}
-              selectedCollectionId={selectedCollectionId}
-              hasDataAccess={hasDataAccess}
-              hasNativeWrite={hasNativeWrite}
-            />
-          </Box>
-        )}
-
         <Box className={S.section} p="md" data-testid="collections-section">
-          <CollectionsSection
+          <LibrarySection
             collections={collections}
             selectedCollectionId={selectedCollectionId}
             hasDataAccess={hasDataAccess}

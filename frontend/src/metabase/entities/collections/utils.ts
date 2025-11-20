@@ -5,7 +5,7 @@ import {
   isSyncedCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
-import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Collection, CollectionContentModel } from "metabase-types/api";
@@ -41,7 +41,7 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  switch (PLUGIN_LIBRARY.getLibraryCollectionType(collection.type)) {
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
     case "root":
       return { name: "repository" };
     case "models":

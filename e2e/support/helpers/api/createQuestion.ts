@@ -143,6 +143,7 @@ export const question = (
       name,
       description,
       dataset_query,
+      type,
       display,
       parameters,
       visualization_settings,
@@ -163,9 +164,8 @@ export const question = (
         cy.wrap(body.id).as(idAlias);
       }
 
-      if (type === "model" || type === "metric" || enable_embedding) {
+      if (enable_embedding) {
         cy.request("PUT", `/api/card/${body.id}`, {
-          type,
           enable_embedding,
           embedding_params,
         });

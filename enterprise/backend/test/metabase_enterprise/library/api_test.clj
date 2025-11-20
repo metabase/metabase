@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (deftest get-library
-  (mt/with-premium-features #{:library}
+  (mt/with-premium-features #{:data-studio}
     (mt/with-discard-model-updates! [:model/Collection]
       (without-library
        (testing "When there is no library, returns a messsage but still 200"

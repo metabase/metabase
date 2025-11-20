@@ -15,6 +15,21 @@ export function setupTableEndpoints(
     {},
     { name: `table-${table.id}-put` },
   );
+  fetchMock.post(
+    `path:/api/table/${table.id}/rescan_values`,
+    {},
+    { name: `table-${table.id}-rescan-values` },
+  );
+  fetchMock.post(
+    `path:/api/table/${table.id}/discard_values`,
+    {},
+    { name: `table-${table.id}-discard-values` },
+  );
+  fetchMock.post(
+    `path:/api/table/${table.id}/sync_schema`,
+    {},
+    { name: `table-${table.id}-sync-schema` },
+  );
   setupTableQueryMetadataEndpoint(table);
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }

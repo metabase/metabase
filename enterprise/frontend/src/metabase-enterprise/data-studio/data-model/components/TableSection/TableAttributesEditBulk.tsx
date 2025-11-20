@@ -164,7 +164,6 @@ export function TableAttributesEditBulk() {
           <TableSectionGroup title={t`Attributes`}>
             <Box className={S.container}>
               <UserInput
-                clearable
                 email={email}
                 label={t`Owner`}
                 userId={userId}
@@ -186,7 +185,6 @@ export function TableAttributesEditBulk() {
               />
 
               <LayerInput
-                clearable
                 value={dataLayer}
                 onChange={(newDataLayer) =>
                   handleSubmit({ dataLayer: newDataLayer })
@@ -217,7 +215,6 @@ export function TableAttributesEditBulk() {
               />
 
               <DataSourceInput
-                clearable
                 value={dataSource}
                 onChange={(newDataSource) =>
                   handleSubmit({ dataSource: newDataSource })
