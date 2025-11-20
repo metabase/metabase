@@ -84,7 +84,7 @@
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])
                      owner-email             (conj [:= :owner_email     owner-email])
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]]))
-        query      (cond-> {:where    where
+        query      (cond-> {:where    #p where
                             :order-by [[:name :asc]]}
                      (and unused-only (premium-features/has-feature? :dependencies))
                      (assoc :left-join [[:dependency :d]
