@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import UserAvatar from "metabase/common/components/UserAvatar";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
@@ -60,6 +61,7 @@ export const PeopleListRow = ({
   isConfirmModalOpen,
   isExternalPage,
 }: PeopleListRowProps) => {
+  const isUsingTenants = useSetting("use-tenants");
   const isExternalUser = !!user.tenant_id;
   const membershipsByGroupId = useMemo(
     () =>
@@ -95,9 +97,11 @@ export const PeopleListRow = ({
       <td>{user.email}</td>
       {showDeactivated ? (
         <Fragment>
-          {isExternalUser && (
+          {isUsingTenants && (
             <td>
-              <PLUGIN_TENANTS.TenantDisplayName id={user.tenant_id} />
+              {isExternalUser && (
+                <PLUGIN_TENANTS.TenantDisplayName id={user.tenant_id} />
+              )}
             </td>
           )}
           <td>{dayjs(user.updated_at).fromNow()}</td>
