@@ -719,7 +719,7 @@ describe(
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalLevel(0).findByText("Databases").click();
-        H.entityPickerModalItem(2, "Products").click();
+        H.entityPickerModalItem(3, "Products").click();
       });
 
       // strange: we get different behavior when we go to question/new
@@ -765,9 +765,7 @@ describe(
       cy.wait("@recents");
 
       cy.button(/Orders Model/).click();
-      H.miniPicker().within(() => {
-        cy.findByRole("link", { name: /Our analytics/ }).click();
-      });
+      H.miniPickerHeader().click();
 
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {

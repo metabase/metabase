@@ -53,27 +53,6 @@ describe("scenarios > notebook > data source", () => {
       },
     );
 
-    it("should not show saved questions if only models exist (metabase#25142)", () => {
-      H.createQuestion({
-        name: "GUI Model",
-        query: { "source-table": REVIEWS_ID, limit: 1 },
-        display: "table",
-        type: "model",
-      });
-
-      H.startNewQuestion();
-      H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalItem(0, "Our analytics").click();
-        H.entityPickerModalLevel(1)
-          .findAllByTestId("picker-item")
-          .should("have.length", 1);
-        H.entityPickerModalLevel(1)
-          .findByTestId("picker-item")
-          .should("contain.text", "GUI Model");
-      });
-    });
-
     it("should include dashboard questions (metabase#56887)", () => {
       const QUESTION_NAME = "Find me";
 
@@ -337,28 +316,6 @@ describe("scenarios > notebook > data source", () => {
   });
 });
 
-describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    H.restore("setup");
-    cy.signInAsAdmin();
-  });
-
-  it("should not show saved questions if only models exist (metabase#25142)", () => {
-    H.createQuestion({
-      name: "GUI Model",
-      query: { "source-table": REVIEWS_ID, limit: 1 },
-      display: "table",
-      type: "model",
-    });
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      cy.findAllByRole("tab").should("have.length", 2);
-      H.entityPickerModalTab("Tables").should("be.visible");
-      H.entityPickerModalTab("Collections").should("be.visible");
-    });
-  });
-});
-
 describe("issue 34350", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
@@ -436,8 +393,7 @@ describe("issue 28106", () => {
   );
 });
 
-// Needs to be OSS because EE will always have models due to instance analytics
-describe("issue 32252", { tags: "@OSS" }, () => {
+describe("issue 32252", () => {
   beforeEach(() => {
     H.restore("setup");
     cy.signInAsAdmin();
@@ -463,28 +419,26 @@ describe("issue 32252", { tags: "@OSS" }, () => {
     cy.visit("/");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("be.visible");
-      cy.button("Close").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").click();
+      cy.findByText("My question").should("exist");
     });
 
     cy.findByTestId("sidebar-toggle").click();
     H.navigationSidebar().findByText("Our analytics").click();
 
-    cy.button("Actions").click();
+    cy.findAllByRole("button", { name: "Actions" }).eq(0).click();
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
       .findByText("Trashed collection")
       .should("be.visible");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").should("not.exist");
+      cy.findByText("My question").should("not.exist");
     });
   });
 
@@ -492,17 +446,18 @@ describe("issue 32252", { tags: "@OSS" }, () => {
     cy.visit("/");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("be.visible");
-      cy.button("Close").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").click();
+      cy.findByText("My question").should("exist");
     });
 
     cy.findByTestId("sidebar-toggle").click();
     H.navigationSidebar().findByText("Our analytics").click();
 
-    cy.findByTestId("collection-entry-name").click();
+    cy.findAllByTestId("collection-entry-name")
+      .findByText("My collection")
+      .click();
     cy.button("Actions").click();
     H.popover().findByText("Move to trash").click();
     cy.findByTestId("toast-undo")
@@ -510,11 +465,10 @@ describe("issue 32252", { tags: "@OSS" }, () => {
       .should("be.visible");
 
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Recents").should("not.exist");
-      cy.findByText("Collections").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("My collection").should("not.exist");
+      cy.findByText("My question").should("not.exist");
     });
   });
 });

@@ -153,61 +153,6 @@ describe("issue 25016", () => {
   });
 });
 
-// this is only testable in OSS because EE always has models from auditv2
-describe("issue 25144", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    H.restore("setup");
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("createCard");
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-  });
-
-  it("should show Saved Questions tab after creating the first question (metabase#25144)", () => {
-    cy.visit("/");
-
-    H.newButton("Question").click();
-
-    H.entityPickerModal().within(() => {
-      cy.findByText("Collections").should("not.exist");
-      H.entityPickerModalItem(2, "Orders").click();
-    });
-
-    H.saveQuestion("Orders question");
-
-    H.newButton("Question").click();
-
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").should("be.visible").click();
-      H.entityPickerModalItem(1, "Orders question").should("be.visible");
-    });
-  });
-
-  it("should show Models tab after creation the first model (metabase#24878)", () => {
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText(/use the notebook/i)
-      .click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(2, "Orders").click();
-    });
-
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("Name").clear().type("Orders model");
-      cy.button("Save").click();
-    });
-    cy.wait("@createCard");
-
-    H.newButton("Question").click();
-
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").should("be.visible").click();
-      H.entityPickerModalItem(1, "Orders model").should("be.visible");
-    });
-  });
-});
-
 describe("issue 27104", () => {
   const questionDetails = {
     dataset_query: {
