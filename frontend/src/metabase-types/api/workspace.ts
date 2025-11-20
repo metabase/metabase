@@ -1,0 +1,31 @@
+import type { TransformId } from "./transform";
+
+export type WorkspaceId = number;
+
+export type Workspace = {
+  id: WorkspaceId;
+  name: string;
+  collection_id: number;
+  database_id: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateWorkspaceRequest = {
+  name: string;
+  database_id?: number;
+  upstream: {
+    transforms?: TransformId[];
+  };
+};
+
+export type WorkspaceContentItem = {
+  id: TransformId;
+  name: string;
+};
+
+export type WorkspaceContents = {
+  contents: {
+    transforms: WorkspaceContentItem[];
+  };
+};

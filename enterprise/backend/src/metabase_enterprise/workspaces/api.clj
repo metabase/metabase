@@ -2,7 +2,6 @@
   "`/api/ee/workspace/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,15 +13,28 @@
 
 ;;; schemas
 
-(mr/def ::stuff
-  [:string {:min 1 :max 254}])
+(def ^:private type->t2-model {:transform :model/Transform})
+
+;; The key we use to group entities of the same type in requests and responses.
+(def ^:private type->grouping {:transform :transforms})
+
+(mr/def ::entity-type [:enum :transform])
+
+(mr/def ::entity-grouping [:enum :transforms])
+
+;; Entities that live within the Workspace
+(mr/def ::downstream-entity
+  [:map
+   [:id ms/PositiveInt]
+   [:type ::entity-type]
+   [:name :string]])
 
 (def CreateWorkspace
   "Schema for creating a new workspace"
   [:map
    [:name [:string {:min 1}]]
-   [:database_id :int]
-   [:stuffs [:map-of ::stuff [:sequential ms/PositiveInt]]]])
+   [:database_id {:optional true} :int]
+   [:upstream [:map-of ::entity-grouping [:sequential {:min 1} ms/PositiveInt]]]])
 
 (def Workspace
   "Schema for workspace response"
@@ -34,7 +46,7 @@
    [:created_at :any]
    [:updated_at :any]])
 
-(defn- ws->res [ws]
+(defn- ws->response [ws]
   (select-keys ws [:id :name :collection_id :database_id :created_at :updated_at :archived_at]))
 
 ;;; routes
@@ -47,7 +59,7 @@
                            (cond-> {:order-by [[:created_at :desc]]}
                              (request/limit)  (sql.helpers/limit (request/limit))
                              (request/offset) (sql.helpers/offset (request/offset))))
-                (mapv ws->res))
+                (mapv ws->response))
    :limit  (request/limit)
    :offset (request/offset)})
 
@@ -57,21 +69,26 @@
    _query-params]
   (-> (t2/select-one :model/Workspace :id id)
       api/check-404
-      ws->res))
+      ws->response))
 
-(api.macros/defendpoint :get "/:id/contents" :- [:map [:contents [:map [:transforms [:sequential ms/PositiveInt]]]]]
+(api.macros/defendpoint :get "/:id/contents"
+  :- [:map [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]
   "Get the contents being edited within a Workspace."
   [{workspace-id :id} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  {:contents {:transforms (t2/select [:model/Transform :id] :workspace_id workspace-id)}})
+  (let [fetch-entities (fn [[entity-type entity-grouping]]
+                         (let [t2-model (type->t2-model entity-type)]
+                           (when-let [entities (t2/select [t2-model :id :name] :workspace_id workspace-id)]
+                             [entity-grouping (for [e entities] (assoc e :type entity-type))])))]
+    {:contents (into {} (keep fetch-entities) type->grouping)}))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace"
   [_route-params
    _query-params
-   post :- CreateWorkspace]
-  (-> (ws.common/create-workspace api/*current-user-id* post)
-      ws->res))
+   body :- CreateWorkspace]
+  (-> (ws.common/create-workspace! api/*current-user-id* body)
+      ws->response))
 
 (api.macros/defendpoint :post "/:id/archive" :- Workspace
   "Update a workspace"
@@ -80,18 +97,9 @@
    _body-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
     (api/check-400 (nil? (:archived_at ws)) "You cannot archive an archived workspace")
-    (t2/update! :model/Workspace id {:archived_at (t/offset-date-time)})
+    (t2/update! :model/Workspace id {:archived_at [:now]})
     (-> (t2/select-one :model/Workspace :id id)
-        ws->res)))
-
-;; TODO: no removal yet
-;; (api.macros/defendpoint :delete "/:id"
-;;   "Delete a workspace"
-;;   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-;;    _query-params]
-;;   (api/check-404 (t2/select-one :model/Workspace :id id))
-;;   (t2/delete! :model/Workspace :id id)
-;;   api/generic-204-no-content)
+        ws->response)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
