@@ -3,9 +3,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { Group, Stack, Text } from "metabase/ui";
-import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValueOrArray } from "metabase-types/api";

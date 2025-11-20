@@ -9,14 +9,14 @@ import {
 import { match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
+import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
+import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
-import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase-enterprise/embedding_iframe_sdk/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time
 // by appending the script
-import { setupConfigWatcher } from "metabase-enterprise/embedding_iframe_sdk/embed";
-import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
