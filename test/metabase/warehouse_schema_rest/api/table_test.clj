@@ -1186,7 +1186,7 @@
                (deref sync-called? timeout :sync-never-called)))))))
 
 ;; DEMOWARE bulk-editing APIS
-(deftest ^:parallel list-table-filtering-test
+(deftest list-table-filtering-test
   (testing "term filtering"
 
     (is (=? [{:display_name "Users"}]
