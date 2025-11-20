@@ -1108,7 +1108,11 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-20T08:35:02
       author: christruter
-      comment: Drop collection.workspace_id FK for update
+      comment: Drop collection.workspace_id FK for cascade update
+      preConditions:
+        - onFail: MARK_RAN
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_collection_workspace_id
       changes:
         - dropForeignKeyConstraint:
             baseTableName: collection
@@ -1124,7 +1128,12 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-20T08:35:03
       author: christruter
-      comment: Add collection.workspace_id FK with CASCADE on delete
+      comment: Add collection.workspace_id FK with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_collection_workspace_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: collection
@@ -1141,7 +1150,11 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-20T08:35:04
       author: christruter
-      comment: Drop transform.workspace_id FK for update
+      comment: Drop transform.workspace_id FK for cascade update
+      preConditions:
+        - onFail: MARK_RAN
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_transform_workspace_id
       changes:
         - dropForeignKeyConstraint:
             baseTableName: transform
@@ -1157,7 +1170,12 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-20T08:35:05
       author: christruter
-      comment: Add transform.workspace_id FK with CASCADE on delete
+      comment: Add transform.workspace_id FK with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_transform_workspace_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
@@ -1174,7 +1192,11 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-20T08:35:06
       author: christruter
-      comment: Drop report_card.workspace_id FK for update
+      comment: Drop report_card.workspace_id FK for cascade update
+      preConditions:
+        - onFail: MARK_RAN
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_report_card_workspace_id
       changes:
         - dropForeignKeyConstraint:
             baseTableName: report_card
@@ -1188,9 +1210,14 @@ databaseChangeLog:
             referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:07
+      id: v58.2025-11-20T08:35:09
       author: christruter
-      comment: Add report_card.workspace_id FK with CASCADE on delete
+      comment: Add report_card.workspace_id FK with CASCADE
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_report_card_workspace_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
@@ -1205,58 +1232,76 @@ databaseChangeLog:
             constraintName: fk_report_card_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:08
-      author: christruter
-      comment: Drop metabase_table.workspace_id FK for update
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_table
-            constraintName: fk_metabase_table_workspace_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: metabase_table
-            baseColumnNames: workspace_id
-            constraintName: fk_metabase_table_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-
-  - changeSet:
-      id: v58.2025-11-20T08:35:09
-      author: christruter
-      comment: Add metabase_table.workspace_id FK with SET NULL on delete
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabase_table
-            baseColumnNames: workspace_id
-            constraintName: fk_metabase_table_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-            onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_table
-            constraintName: fk_metabase_table_workspace_id
-
-  - changeSet:
       id: v58.2025-11-20T08:35:10
       author: christruter
-      comment: Drop metabase_field.workspace_id FK for update
+      comment: Drop metabase_table.workspace_id FK for cascade update
+      preConditions:
+        - onFail: MARK_RAN
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_metabase_table_workspace_id
       changes:
         - dropForeignKeyConstraint:
-            baseTableName: metabase_field
-            constraintName: fk_metabase_field_workspace_id
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_workspace_id
       rollback:
         - addForeignKeyConstraint:
-            baseTableName: metabase_field
+            baseTableName: metabase_table
             baseColumnNames: workspace_id
-            constraintName: fk_metabase_field_workspace_id
+            constraintName: fk_metabase_table_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
 
   - changeSet:
       id: v58.2025-11-20T08:35:11
       author: christruter
-      comment: Add metabase_field.workspace_id FK with SET NULL on delete
+      comment: Add metabase_table.workspace_id FK with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabase_table_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_table_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:35:12
+      author: christruter
+      comment: Drop metabase_field.workspace_id FK for cascade update
+      preConditions:
+        - onFail: MARK_RAN
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_metabase_field_workspace_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_metabase_field_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_field_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-11-20T08:35:13
+      author: christruter
+      comment: Add metabase_field.workspace_id FK with SET NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabase_field_workspace_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_field
@@ -1271,7 +1316,7 @@ databaseChangeLog:
             constraintName: fk_metabase_field_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:12
+      id: v58.2025-11-20T08:35:14
       author: christruter
       comment: Add index on metabase_field.workspace_id
       changes:
@@ -1287,7 +1332,7 @@ databaseChangeLog:
             indexName: idx_metabase_field_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:13
+      id: v58.2025-11-20T08:35:15
       author: christruter
       comment: Add index on metabase_table.workspace_id
       changes:
