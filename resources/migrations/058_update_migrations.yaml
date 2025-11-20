@@ -1352,6 +1352,34 @@ databaseChangeLog:
             tableName: metabase_table
             indexName: idx_metabase_table_workspace_id
 
+  - changeSet:
+      id: v58.2025-11-20T21:50:00
+      author: christruter
+      comment: Add unique constraint on workspace_mapping_table.downstream_id
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_mapping_table
+            columnNames: downstream_id
+            constraintName: uq_workspace_mapping_table_downstream_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_mapping_table
+            constraintName: uq_workspace_mapping_table_downstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T21:50:01
+      author: christruter
+      comment: Add unique constraint on workspace_mapping_transform.downstream_id
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_mapping_transform
+            columnNames: downstream_id
+            constraintName: uq_workspace_mapping_transform_downstream_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_mapping_transform
+            constraintName: uq_workspace_mapping_transform_downstream_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
