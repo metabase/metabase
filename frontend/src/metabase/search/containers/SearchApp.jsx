@@ -37,7 +37,8 @@ function SearchApp({ location }) {
 
   usePageTitle(t`Search`);
 
-  const { handleNextPage, handlePreviousPage, page } = usePagination();
+  const { handleNextPage, handlePreviousPage, page, resetPage } =
+    usePagination();
 
   const searchText = useMemo(
     () => getSearchTextFromLocation(location),
@@ -60,19 +61,22 @@ function SearchApp({ location }) {
     include_dashboard_questions: true,
   };
 
-  const onChangeLocation = useCallback(
-    (nextLocation) => dispatch(push(nextLocation)),
-    [dispatch],
+  const changeLocation = useCallback(
+    (nextLocation) => {
+      resetPage();
+      dispatch(push(nextLocation));
+    },
+    [dispatch, resetPage],
   );
 
-  const onFilterChange = useCallback(
+  const changeFilters = useCallback(
     (newFilters) => {
-      onChangeLocation({
+      changeLocation({
         pathname: "search",
         query: { q: searchText.trim(), ...newFilters },
       });
     },
-    [onChangeLocation, searchText],
+    [changeLocation, searchText],
   );
 
   const { data, error, isFetching, requestId } = useSearchQuery(query);
@@ -87,7 +91,7 @@ function SearchApp({ location }) {
       </Text>
       <SearchBody justify="center">
         <SearchControls pb="lg">
-          <SearchSidebar value={searchFilters} onChange={onFilterChange} />
+          <SearchSidebar value={searchFilters} onChange={changeFilters} />
         </SearchControls>
         <SearchResultContainer>
           {(error || isFetching) && (
