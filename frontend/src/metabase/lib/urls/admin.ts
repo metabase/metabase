@@ -7,8 +7,9 @@ import type {
 
 export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
 
-const getPeopleRoutePrefix = (user: BaseUser) =>
-  isInternalUser(user) ? "/admin/people" : "/admin/tenants/people";
+const getPeopleRoutePrefix = (isExternal: boolean) => {
+  return isExternal ? "/admin/tenants/people" : "/admin/people";
+};
 
 export function newUser() {
   return `/admin/people/new`;
@@ -17,24 +18,30 @@ export function newTenantUser() {
   return "/admin/tenants/people/new";
 }
 
-export function editUser(user: BaseUser, routePrefix: string) {
-  return `${routePrefix}/${user.id}/edit`;
+export function editUser(user: BaseUser, isExternal: boolean) {
+  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/edit`;
 }
 
-export function resetPassword(user: BaseUser, routePrefix: string) {
-  return `${routePrefix}/${user.id}/reset`;
+export function resetPassword(user: BaseUser, isExternal: boolean) {
+  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/reset`;
 }
 
 export function newUserSuccess(user: BaseUser) {
-  return `${getPeopleRoutePrefix(user)}/${user.id}/success`;
+  const isExternal = !isInternalUser(user);
+  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/success`;
 }
 
-export function deactivateUser(user: BaseUser, routePrefix: string) {
-  return `${routePrefix}/${user.id}/deactivate`;
+export function deactivateUser(user: BaseUser, isExternal: boolean) {
+  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/deactivate`;
 }
 
 export function reactivateUser(user: BaseUser) {
-  return `${getPeopleRoutePrefix(user)}/${user.id}/reactivate`;
+  const isExternal = !isInternalUser(user);
+  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/reactivate`;
+}
+
+export function unsubscribeUser(user: BaseUser, isExternal: boolean) {
+  return `${getPeopleRoutePrefix(isExternal)}/${user.id}/unsubscribe`;
 }
 
 // TODO: move to EE urls

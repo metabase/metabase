@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -19,10 +20,10 @@ import { isAuditDb } from "./utils";
 export function initializePlugin() {
   if (hasPremiumFeature("audit_app")) {
     // Add new menu item function
-    const menuItemFunction = (user, routePrefix) => [
+    const menuItemFunction = (user, isExternal) => [
       <Menu.Item
         component={ForwardRefLink}
-        to={`${routePrefix}/${user.id}/unsubscribe`}
+        to={Urls.unsubscribeUser(user, isExternal)}
         key="unsubscribe"
       >
         {t`Unsubscribe from all subscriptions / alerts`}

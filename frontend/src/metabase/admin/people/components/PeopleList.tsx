@@ -49,7 +49,7 @@ interface PeopleListProps extends PeopleListQueryProps {
   onNextPage?: () => void;
   onPreviousPage: () => void;
   noResultsMessage: string;
-  routePrefix: string;
+  isExternal: boolean;
 }
 
 export const PeopleList = ({
@@ -60,7 +60,7 @@ export const PeopleList = ({
   onNextPage,
   onPreviousPage,
   noResultsMessage,
-  routePrefix,
+  isExternal,
 }: PeopleListProps) => {
   const { modalContent, show } = useConfirmation();
 
@@ -222,7 +222,7 @@ export const PeopleList = ({
                     membershipData: Partial<Member>,
                   ) => handleChange(groupId, membershipData, user.id)}
                   isConfirmModalOpen={Boolean(modalContent)}
-                  routePrefix={routePrefix}
+                  isExternal={isExternal}
                 />
               ))}
           </tbody>

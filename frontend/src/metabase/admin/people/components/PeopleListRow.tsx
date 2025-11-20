@@ -44,7 +44,7 @@ interface PeopleListRowProps {
   onChange: (groupId: GroupId, membershipData: Partial<Member>) => void;
   onRemove: (groupId: GroupId) => void;
   isConfirmModalOpen: boolean;
-  routePrefix: string;
+  isExternal: boolean;
 }
 
 export const PeopleListRow = ({
@@ -58,9 +58,9 @@ export const PeopleListRow = ({
   onRemove,
   onChange,
   isConfirmModalOpen,
-  routePrefix,
+  isExternal,
 }: PeopleListRowProps) => {
-  const isExternal = !!user.tenant_id;
+  const isExternalUser = !!user.tenant_id;
   const membershipsByGroupId = useMemo(
     () =>
       userMemberships?.reduce((acc, membership) => {
@@ -95,14 +95,14 @@ export const PeopleListRow = ({
       <td>{user.email}</td>
       {showDeactivated ? (
         <Fragment>
-          {isExternal && (
+          {isExternalUser && (
             <td>
               <PLUGIN_TENANTS.TenantDisplayName id={user.tenant_id} />
             </td>
           )}
           <td>{dayjs(user.updated_at).fromNow()}</td>
           <td>
-            {isExternal ? (
+            {isExternalUser ? (
               <PLUGIN_TENANTS.ReactivateExternalUserButton user={user} />
             ) : (
               <ReactivateUserButton user={user} />
@@ -112,7 +112,7 @@ export const PeopleListRow = ({
       ) : (
         <Fragment>
           <td>
-            {isExternal ? (
+            {isExternalUser ? (
               <PLUGIN_TENANTS.TenantDisplayName id={user.tenant_id} />
             ) : (
               <MembershipSelect
@@ -142,7 +142,7 @@ export const PeopleListRow = ({
                 <Menu.Dropdown>
                   <Menu.Item
                     component={ForwardRefLink}
-                    to={Urls.editUser(user, routePrefix)}
+                    to={Urls.editUser(user, isExternal)}
                   >
                     {t`Edit user`}
                   </Menu.Item>
@@ -150,20 +150,20 @@ export const PeopleListRow = ({
                   {isPasswordLoginEnabled && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={Urls.resetPassword(user, routePrefix)}
+                      to={Urls.resetPassword(user, isExternal)}
                     >
                       {t`Reset password`}
                     </Menu.Item>
                   )}
 
                   {PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap((getItems) =>
-                    getItems(user, routePrefix),
+                    getItems(user, isExternal),
                   )}
 
                   {!isCurrentUser && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={Urls.deactivateUser(user, routePrefix)}
+                      to={Urls.deactivateUser(user, isExternal)}
                       c="danger"
                     >
                       {t`Deactivate user`}

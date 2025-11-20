@@ -145,9 +145,7 @@ export function PeopleListingApp({
                   onNextPage={handleNextPage}
                   onPreviousPage={handlePreviousPage}
                   noResultsMessage={noUsersFoundMessage}
-                  routePrefix={
-                    external ? "/admin/tenants/people" : "/admin/people"
-                  }
+                  isExternal={external}
                 />
               )}
 
