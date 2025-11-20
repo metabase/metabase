@@ -110,9 +110,8 @@
    Returns null if this transform has no upstream mapping (i.e., it's not a mirrored transform)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (if-let [id (t2/select-one-fn :upstream_id :model/WorkspaceMappingTransform :downstream_id id)]
-    {:transform (t2/select-one [:model/Transform :id :name] id)}
-    {:transform nil}))
+  {:transform (when-let [id (t2/select-one-fn :upstream_id :model/WorkspaceMappingTransform :downstream_id id)]
+                (t2/select-one [:model/Transform :id :name] id))})
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
   :- [:map
