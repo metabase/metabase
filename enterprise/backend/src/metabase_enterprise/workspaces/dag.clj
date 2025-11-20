@@ -6,10 +6,10 @@
 
 ;;;; Internal helpers
 
-(def ^:private type->db-type
+(def ^:private group->db-type
   "Mapping from our entity type keywords to the dependency table's type strings."
-  {:transform "transform"
-   #_#_:model "card"})
+  {:transforms "transform"
+   #_#_:models "card"})
 
 (defn- rows->entity-set
   "Convert query result rows to a set of {:id :type} maps."
@@ -23,10 +23,10 @@
   "Convert a map of {type ids} to a sequence of [db-type id] tuples.
    `entities-by-type` is a map like {:transform [1 2 3]}."
   [entities-by-type]
-  (assert (every? type->db-type (keys entities-by-type)) "Not all entity types are supported")
+  (assert (every? group->db-type (keys entities-by-type)) "Not all entity types are supported")
   (into []
         (mapcat (fn [[entity-type ids]]
-                  (let [dep-type (type->db-type entity-type)]
+                  (let [dep-type (group->db-type entity-type)]
                     (map (fn [id] [dep-type id]) ids))))
         entities-by-type))
 
