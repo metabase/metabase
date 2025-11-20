@@ -43,9 +43,9 @@
         people-query (table-query mp people-id)
         birth-date-id (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "Birth Date")
         state-id (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "State")
-        orders-id (mt/id :orders)
-        orders-query (table-query mp orders-id)
-        category-id (visible-field-id orders-query (metabot-v3.tools.u/table-field-id-prefix orders-id) "Category")]
+        products-id (mt/id :products)
+        products-query (table-query mp products-id)
+        category-id (visible-field-id products-query (metabot-v3.tools.u/table-field-id-prefix products-id) "Category")]
     (testing "No read permission results in an error."
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot-v3.tools.field-stats/field-values
@@ -69,7 +69,7 @@
                                                 :percent-state  1.0
                                                 :average-length 2.0}
                                    :values     ["AK" "AL" "AR" "AZ" "CA"]}
-          orders-id category-id   {:statistics {:distinct-count 4
+          products-id category-id {:statistics {:distinct-count 4
                                                 :percent-null   0.0
                                                 :percent-json   0.0
                                                 :percent-url    0.0
