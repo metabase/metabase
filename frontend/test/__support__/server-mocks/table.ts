@@ -25,6 +25,11 @@ export function setupTableEndpoints(
     {},
     { name: `table-${table.id}-discard-values` },
   );
+  fetchMock.post(
+    `path:/api/table/${table.id}/sync_schema`,
+    {},
+    { name: `table-${table.id}-sync-schema` },
+  );
   setupTableQueryMetadataEndpoint(table);
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }
