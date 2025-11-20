@@ -1,5 +1,8 @@
 (ns metabase-enterprise.workspaces.sync
   (:require
+   ;; TODO (Chris 2025-11-20) -- Decide whether to mirror metadata manually, and drop sync dependency
+   #_{:clj-kondo/ignore [:metabase/modules]}
+   #_{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
