@@ -6,8 +6,8 @@
 
 ;; TODO (Chris 2025-11-18) not sure why this is here - maybe we should check that between this and mirrored keys
 ;;       that we are fully specifying everything on the model - so we catch if something important is added.
-(def ^:private t2-transform-not-mirrored-keys
-  #{:id :creator_id :created_at :updated_at :entity_id})
+#_(def ^:private t2-transform-not-mirrored-keys
+    #{:id :creator_id :created_at :updated_at :entity_id})
 
 ;; t2 for snake
 (def ^:private t2-transform-keys

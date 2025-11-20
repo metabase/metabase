@@ -53,6 +53,8 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
+    :model/WorkspaceMappingTable
+    :model/WorkspaceMappingTransform
     :model/Undo
     :model/UserKeyValue
     :model/Workspace})

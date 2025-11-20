@@ -95,6 +95,8 @@
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
+    :model/WorkspaceMappingTable
+    :model/WorkspaceMappingTransform
     :model/PythonLibrary
     :model/Undo
     :model/User
