@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.dag-test
   (:require
    [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.dependencies.models.dependency :as deps]
    [metabase-enterprise.workspaces.dag :as dag]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
@@ -21,6 +22,18 @@
 
 ;;;; Test data helpers
 
+(defn- kw->type
+  "Convert shorthand keyword to dependency type string.
+   :x<n> -> \"transform\", :t<n> -> \"table\", :m<n> -> \"card\""
+  [kw]
+  (case (first (name kw))
+    \x "transform"
+    \t "table"
+    \m "card"))
+
+(defn- transform? [kw] (= \x (first (name kw))))
+(defn- table? [kw] (= \t (first (name kw))))
+
 (defn- create-test-graph!
   "Create test transforms and tables from shorthand notation, returning id mappings.
 
@@ -36,8 +49,8 @@
   (let [all-ids    (set (concat (keys dependencies)
                                 (mapcat val dependencies)
                                 check-outs))
-        transforms (filter #(= \x (first (name %))) all-ids)
-        tables     (filter #(= \t (first (name %))) all-ids)
+        transforms (filter transform? all-ids)
+        tables     (filter table? all-ids)
         ;; Create mock tables
         table-ids  (into {}
                          (for [t tables]
@@ -51,7 +64,7 @@
                          (for [tx transforms]
                            (let [;; Find parent tables for this transform
                                  parent-tables (->> (get dependencies tx [])
-                                                    (filter #(= \t (first (name %))))
+                                                    (filter table?)
                                                     (map table-ids))
                                  source-table  (first parent-tables)
                                  id            (t2/insert-returning-pk! :model/Transform
@@ -71,20 +84,12 @@
         id-map     (merge tx-ids table-ids)]
     ;; Create dependencies
     (doseq [[child parents] dependencies
-            :let [child-type (case (first (name child))
-                               \x "transform"
-                               \t "table"
-                               \m "card")
-                  child-id   (id-map child)]
+            :let [child-id (id-map child)]
             parent parents
-            :let [parent-type (case (first (name parent))
-                                \x "transform"
-                                \t "table"
-                                \m "card")
-                  parent-id   (id-map parent)]]
+            :let [parent-id (id-map parent)]]
       (deps/replace-dependencies!
-       child-type child-id
-       {parent-type #{parent-id}}))
+       (kw->type child) child-id
+       {(kw->type parent) #{parent-id}}))
     id-map))
 
 (defn- translate-result
@@ -93,12 +98,9 @@
   (let [reverse-map (into {} (map (fn [[k v]] [v k]) id-map))
         translate   (fn [{:keys [id]}]
                       (get reverse-map id))]
-    (-> result
-        (update :check-outs #(set (map translate %)))
-        (update :inputs #(set (map translate %)))
-        (update :outputs #(set (map translate %)))
-        (update :transforms #(set (map translate %)))
-        (update :entities #(set (map translate %)))
+    (-> (reduce (fn [m k] (update m k #(set (map translate %))))
+                result
+                [:check-outs :inputs :outputs :transforms :entities])
         (update :dependencies
                 (fn [deps]
                   (into {}
@@ -221,13 +223,19 @@
                            :m13 [:t11 :m12]}}
            (dag-abstract/expand-shorthand example)))))
 
-(testing "path-induced-subgraph computes correct result for example graph"
-  (let [result (dag-abstract/path-induced-subgraph (dag-abstract/expand-shorthand example))]
-    ;; Check that we get the expected structure
-    (is (= 4 (count (:check-outs result))))
-    (is (every? #(contains? (set (:check-outs result)) %)
-                [:x3 :m6 :m10 :m13]))
-    ;; Inputs should be external tables
-    (is (every? #(dag-abstract/is? :t %) (:inputs result)))
-    ;; Transforms should only be :x entities
-    (is (every? #(dag-abstract/is? :x %) (:transforms result)))))
+(deftest abstract-path-induced-subgraph-test
+  (testing "path-induced-subgraph computes correct result for example graph"
+    (is (= {:check-outs   [:x3 :m6 :m10 :m13]
+            :inputs       [:t1 :t2 :t5 :t9]
+            :tables       [:t3 :t4 :t11]
+            :transforms   [:x3 :x4 :x11]
+            :entities     [:x3 :x4 :m6 :m10 :x11 :m12 :m13]
+            :dependencies (ordered-map/ordered-map
+                           :m10 []
+                           :x11 [:m10]
+                           :m12 [:t11]
+                           :m13 [:t11 :m12]
+                           :x3  []
+                           :x4  [:t3]
+                           :m6  [:t4])}
+           (dag-abstract/path-induced-subgraph (dag-abstract/expand-shorthand example))))))
