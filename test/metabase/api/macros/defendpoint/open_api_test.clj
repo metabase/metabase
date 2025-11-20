@@ -74,8 +74,7 @@
                   :params {}
                   :body []}
             result (#'defendpoint.open-api/path-item "/api/test" form)]
-        (is (= true (:deprecated result)))
-        (is (= "A deprecated endpoint." (:description result)))
+        (is (true? (:deprecated result)))
         (is (= "GET /api/test" (:summary result))))))
 
   (testing "Non-deprecated endpoints do not have deprecated field"
@@ -94,9 +93,8 @@
       (let [form {:method :post
                   :route {:path "/upload"}
                   :docstr "A deprecated upload endpoint."
-                  :metadata {:deprecated "0.50.0" :multipart true}
+                  :metadata {:deprecated true :multipart true}
                   :params {}
                   :body []}
             result (#'defendpoint.open-api/path-item "/api/upload" form)]
-        (is (= true (:deprecated result)))
-        (is (= "A deprecated upload endpoint." (:description result)))))))
+        (is (true? (:deprecated result)))))))

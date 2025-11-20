@@ -151,11 +151,6 @@
   (mjs-collect-definitions :metabase.timeline.api.timeline/Timeline)
   (schema->response-obj :metabase.timeline.api.timeline/Timeline))
 
-(defn- deprecate-description [description deprecated?]
-  (if (string? deprecated?)
-    (str description " **Deprecated since " deprecated? ".**")
-    (str description " **Deprecated.**")))
-
 (mu/defn- path-item :- :metabase.api.open-api/path-item
   "Generate OpenAPI desc for `defendpoint` 2.0 ([[metabase.api.macros/defendpoint]]) handler.
 
@@ -189,8 +184,7 @@
                :responses  default-response-schema}
         body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
         response-schema (update :responses merge (schema->response-obj response-schema))
-        deprecated?     (assoc :deprecated true)
-        deprecated?     (update :description deprecate-description deprecated?)))
+        deprecated?     (assoc :deprecated true)))
     (catch Throwable e
       (throw (ex-info (str (format "Error creating OpenAPI spec for endpoint %s %s: %s"
                                    (:method form)
