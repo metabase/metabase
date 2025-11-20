@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   Breakout,
   BreakoutDropdown,
@@ -22,11 +23,11 @@ import {
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
-import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
@@ -80,20 +81,28 @@ export type StaticQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-const StaticQuestionInner = ({
-  questionId,
-  token,
-  withChartTypeSelector,
-  height,
-  width,
-  className,
-  style,
-  initialSqlParameters,
-  hiddenParameters,
-  withDownloads,
-  title = false, // Hidden by default for backwards-compatibility.
-  children,
-}: StaticQuestionProps): JSX.Element | null => {
+const StaticQuestionInner = (
+  props: StaticQuestionProps,
+): JSX.Element | null => {
+  // Normalize props for Guest Embed usage (e.g. enforce withDownloads in OSS).
+  const normalizedProps =
+    useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
+
+  const {
+    questionId,
+    token,
+    withChartTypeSelector,
+    height,
+    width,
+    className,
+    style,
+    initialSqlParameters,
+    hiddenParameters,
+    withDownloads,
+    title = false, // Hidden by default for backwards-compatibility.
+    children,
+  } = normalizedProps;
+
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const getClickActionMode: ClickActionModeGetter = ({
@@ -191,7 +200,7 @@ const subComponents: StaticQuestionComponents = {
 };
 
 export const StaticQuestion = Object.assign(
-  withValidLicenseGuard(StaticQuestionInner, {
+  withPublicComponentWrapper(StaticQuestionInner, {
     isComponentWithGuestEmbedSupport: true,
   }),
   subComponents,

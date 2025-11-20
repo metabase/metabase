@@ -1,4 +1,5 @@
-import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
@@ -26,6 +27,12 @@ export type StaticDashboardProps = Omit<
   SdkDashboardEntityPublicProps;
 
 const StaticDashboardInner = (props: StaticDashboardProps) => {
+  // Normalize props for Guest Embed usage (e.g. enforce withDownloads in OSS).
+  const normalizedProps =
+    useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
+
+  const { withDownloads } = normalizedProps;
+
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>
     getEmbeddingMode({
       question,
@@ -34,14 +41,14 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
 
   return (
     <SdkDashboard
-      {...(props as SdkDashboardProps)}
+      {...(normalizedProps as SdkDashboardProps)}
       getClickActionMode={getClickActionMode}
       dashboardActions={({ downloadsEnabled }) =>
         downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
       }
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>
-        props.withDownloads &&
+        withDownloads &&
         isQuestionCard(dashcard.card) &&
         !!result?.data &&
         !result?.error && (
@@ -53,7 +60,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
 };
 
 export const StaticDashboard = Object.assign(
-  withValidLicenseGuard(StaticDashboardInner, {
+  withPublicComponentWrapper(StaticDashboardInner, {
     isComponentWithGuestEmbedSupport: true,
   }),
   {

@@ -409,9 +409,9 @@ const SdkDashboardInner = ({
   );
 };
 
-export const SdkDashboard = withPublicComponentWrapper(
-  SdkDashboardInner,
-) as typeof SdkDashboardInner &
+export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
+  isComponentWithGuestEmbedSupport: true,
+}) as typeof SdkDashboardInner &
   Pick<
     typeof Dashboard,
     | "Grid"

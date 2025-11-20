@@ -1,7 +1,7 @@
 import type { ComponentProviderProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
-export const normalizeComponentProviderProps = (
+export const useNormalizeComponentProviderProps = (
   props: Omit<ComponentProviderProps, "children">,
 ): Omit<ComponentProviderProps, "children"> => {
   const isEmbeddingSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();

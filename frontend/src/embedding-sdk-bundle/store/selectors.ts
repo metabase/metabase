@@ -1,5 +1,7 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { getSetting } from "metabase/selectors/settings";
+import { getTokenFeature } from "metabase/setup";
 import type { State } from "metabase-types/store";
 
 export const getIsGuestEmbedRaw = (state: SdkStoreState) =>
@@ -44,3 +46,6 @@ export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
 
 export const getAvailableFonts = (state: SdkStoreState) =>
   getSetting(state, "available-fonts");
+
+export const getHasTokenFeature = (state: SdkStoreState) =>
+  getTokenFeature(state, EMBEDDING_SDK_CONFIG.tokenFeatureKey);

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -60,7 +60,9 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
 };
 
 export const InteractiveDashboard = Object.assign(
-  withValidLicenseGuard(InteractiveDashboardInner),
+  withPublicComponentWrapper(InteractiveDashboardInner, {
+    isComponentWithGuestEmbedSupport: false,
+  }),
   {
     schema: interactiveDashboardSchema,
   },

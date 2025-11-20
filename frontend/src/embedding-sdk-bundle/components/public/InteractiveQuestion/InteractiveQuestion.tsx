@@ -1,3 +1,4 @@
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   BackButton,
   Breakout,
@@ -22,7 +23,6 @@ import {
   Title,
   VisualizationButton,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
-import { withValidLicenseGuard } from "embedding-sdk-bundle/components/private/ValidLicenseGuard";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -104,7 +104,9 @@ const subComponents: InteractiveQuestionComponents = {
 };
 
 export const InteractiveQuestion = Object.assign(
-  withValidLicenseGuard(_InteractiveQuestion),
+  withPublicComponentWrapper(_InteractiveQuestion, {
+    isComponentWithGuestEmbedSupport: false,
+  }),
   subComponents,
   { schema: interactiveQuestionSchema },
 );
