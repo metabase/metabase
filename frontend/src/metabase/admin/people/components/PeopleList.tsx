@@ -47,8 +47,8 @@ interface PeopleListProps extends PeopleListQueryProps {
   isAdmin: boolean;
   onNextPage?: () => void;
   onPreviousPage: () => void;
-  external?: boolean;
   noResultsMessage: string;
+  routePrefix: string;
 }
 
 export const PeopleList = ({
@@ -58,8 +58,8 @@ export const PeopleList = ({
   query,
   onNextPage,
   onPreviousPage,
-  external = false,
   noResultsMessage,
+  routePrefix,
 }: PeopleListProps) => {
   const { modalContent, show } = useConfirmation();
 
@@ -183,13 +183,13 @@ export const PeopleList = ({
               <th>{t`Email`}</th>
               {showDeactivated ? (
                 <Fragment>
-                  {external && <th>{t`Tenant`}</th>}
+                  <th>{t`Groups / Tenant`}</th>
                   <th>{t`Deactivated`}</th>
                   <th />
                 </Fragment>
               ) : (
                 <Fragment>
-                  {external ? <th>{t`Tenant`}</th> : <th>{t`Groups`}</th>}
+                  <th>{t`Groups / Tenant`}</th>
                   <th>{t`Last Login`}</th>
                   <th />
                 </Fragment>
@@ -216,6 +216,7 @@ export const PeopleList = ({
                     membershipData: Partial<Member>,
                   ) => handleChange(groupId, membershipData, user.id)}
                   isConfirmModalOpen={Boolean(modalContent)}
+                  routePrefix={routePrefix}
                 />
               ))}
           </tbody>

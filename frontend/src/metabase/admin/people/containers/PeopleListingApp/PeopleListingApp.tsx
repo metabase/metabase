@@ -6,10 +6,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  useListPermissionsGroupsQuery,
-  useListUsersQuery,
-} from "metabase/api";
+import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -59,12 +56,12 @@ export function PeopleListingApp({
     updateStatus,
     handleNextPage,
     handlePreviousPage,
-  } = usePeopleQuery(PAGE_SIZE, external ? "external" : "internal");
+  } = usePeopleQuery(PAGE_SIZE, external ? "external" : "all");
 
   const { data: usersData } = useListUsersQuery({
     status: "deactivated",
     limit: 0,
-    ...(external ? { tenancy: "external" } : { tenancy: "internal" }),
+    ...(external ? { tenancy: "external" } : { tenancy: "all" }),
   });
   const hasDeactivatedUsers = usersData && usersData.total > 0;
 
@@ -141,7 +138,6 @@ export function PeopleListingApp({
 
               {currentUser && (
                 <PeopleList
-                  external={external}
                   groups={groups}
                   isAdmin={isAdmin}
                   currentUser={currentUser}
@@ -149,6 +145,9 @@ export function PeopleListingApp({
                   onNextPage={handleNextPage}
                   onPreviousPage={handlePreviousPage}
                   noResultsMessage={noUsersFoundMessage}
+                  routePrefix={
+                    external ? "/admin/tenants/people" : "/admin/people"
+                  }
                 />
               )}
 

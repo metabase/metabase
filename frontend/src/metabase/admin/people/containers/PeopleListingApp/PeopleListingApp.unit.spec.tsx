@@ -79,7 +79,7 @@ describe("people table", () => {
 
     expect(await screen.findByText("Name")).toBeInTheDocument();
     expect(await screen.findByText("Email")).toBeInTheDocument();
-    expect(await screen.findByText("Groups")).toBeInTheDocument();
+    expect(await screen.findByText("Groups / Tenant")).toBeInTheDocument();
     expect(await screen.findByText("Last Login")).toBeInTheDocument();
   });
 });

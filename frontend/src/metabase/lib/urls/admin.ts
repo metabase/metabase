@@ -1,12 +1,14 @@
 import type {
-  DatabaseId,
   BaseUser,
+  DatabaseId,
   SchemaName,
   TableId,
-  UserId,
 } from "metabase-types/api";
 
 export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
+
+const getPeopleRoutePrefix = (user: BaseUser) =>
+  isInternalUser(user) ? "/admin/people" : "/admin/tenants/people";
 
 export function newUser() {
   return `/admin/people/new`;
@@ -15,34 +17,24 @@ export function newTenantUser() {
   return "/admin/tenants/people/new";
 }
 
-export function editUser(user: BaseUser) {
-  return isInternalUser(user)
-    ? `/admin/people/${user.id}/edit`
-    : `/admin/tenants/people/${user.id}/edit`;
+export function editUser(user: BaseUser, routePrefix: string) {
+  return `${routePrefix}/${user.id}/edit`;
 }
 
-export function resetPassword(user: BaseUser) {
-  return isInternalUser(user)
-    ? `/admin/people/${user.id}/reset`
-    : `/admin/tenants/people/${user.id}/reset`;
+export function resetPassword(user: BaseUser, routePrefix: string) {
+  return `${routePrefix}/${user.id}/reset`;
 }
 
 export function newUserSuccess(user: BaseUser) {
-  return isInternalUser(user)
-    ? `/admin/people/${user.id}/success`
-    : `/admin/tenants/people/${user.id}/success`;
+  return `${getPeopleRoutePrefix(user)}/${user.id}/success`;
 }
 
-export function deactivateUser(user: BaseUser) {
-  return isInternalUser(user)
-    ? `/admin/people/${user.id}/deactivate`
-    : `/admin/tenants/people/${user.id}/deactivate`;
+export function deactivateUser(user: BaseUser, routePrefix: string) {
+  return `${routePrefix}/${user.id}/deactivate`;
 }
 
 export function reactivateUser(user: BaseUser) {
-  return isInternalUser(user)
-    ? `/admin/people/${user.id}/reactivate`
-    : `/admin/tenants/people/${user.id}/reactivate`;
+  return `${getPeopleRoutePrefix(user)}/${user.id}/reactivate`;
 }
 
 // TODO: move to EE urls
