@@ -24,7 +24,6 @@ Restricting Metabot to verified models and metrics (and only models and metrics)
 ## When embedding Metabot, you can pick a collection for Metabot to have access to
 
 When embedding Metabot in your app, you can select a collection for Metabot:
-
 1. Go to **Settings** > **Admin settings** > **AI**.
 2. Click **Embedded Metabot**.
 3. In the **Collection Embedded Metabot can use** section, click **Pick a collection**.
@@ -32,7 +31,7 @@ When embedding Metabot in your app, you can select a collection for Metabot:
 
 Metabot will use the models and metrics in that collection to help answer questions and generate queries. You can change this collection at any time. To give Metabot access to all collections, you can set the collection to the root collection, called "Our Analytics" (the default).
 
-Alternatively (or additionally), you can restrict Metabot to [verified content](#verified-content).
+Alternatively (or additionally), you can utilize restrict Metabot to [verified content](#verified-content).
 
 ## Tips for making the most of Metabot
 
@@ -54,7 +53,7 @@ For example, if people often ask questions about customer lifetime value (LTV), 
 
 Add descriptions to your [models](../data-modeling/models.md#add-metadata-to-columns-in-a-model), [metrics](../data-modeling/metrics.md), [dashboards](../dashboards/introduction.md), and [questions](../questions/introduction.md). Write descriptions to provide context, define terms, and explain business logic.
 
-Admins can also curate [table metadata](../data-modeling/metadata-editing.md) by adding descriptions for tables and their fields.
+Admins cannot also curate [table metadata](../data-modeling/metadata-editing.md) by adding descriptions for tables and their fields.
 
 For example, here's a decent description for an ID field that provides additional context for the data:
 
@@ -64,7 +63,7 @@ This is a unique ID for the product. It is also called the “Invoice number” 
 
 You can even ask Metabot to write descriptions for you. But Metabot will only have access to the data in the database. It can't know things like "this ID is called the 'Invoice number' in the web app", which is the kind of contextual information worth documenting.
 
-### Make sure the semantic types for each field are correct
+### Make Sure The Semantic Types For Each Field Are Correct.
 
 Make sure the semantic types for each field accurately describe the field's "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
 
