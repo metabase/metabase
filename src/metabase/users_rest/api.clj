@@ -124,7 +124,7 @@
 
 (def ^:private attribute-merge-order
   "What order to merge attributes in when used with combine"
-  [:jwt :user])
+  [:jwt :tenant :user])
 
 (mu/defn- combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
@@ -147,7 +147,13 @@
 
 (defn- add-structured-attributes
   [{:keys [login_attributes jwt_attributes] :as user}]
-  (assoc user :structured_attributes (combine {:jwt jwt_attributes :user login_attributes} nil)))
+  (let [tenant (tenants/user->tenant user)]
+    (assoc user :structured_attributes
+           (combine {:jwt jwt_attributes
+                     :user login_attributes
+                     :tenant (:attributes tenant)}
+                    (when-let [slug (:slug tenant)]
+                      {"@tenant.slug" slug})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -398,7 +404,7 @@
       (perms/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
       (t2/hydrate :user_group_memberships)
-      tenants/attribute-structure))
+      add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
