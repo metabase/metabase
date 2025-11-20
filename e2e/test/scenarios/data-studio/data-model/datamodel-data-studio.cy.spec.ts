@@ -3678,6 +3678,15 @@ describe("scenarios > data studio > datamodel", () => {
       TablePicker.getDatabase("Writable Postgres12").click();
       TablePicker.getTable("Many Data Types").click();
       TableSection.clickField("Json");
+
+      // navigating away will cause onChange to be triggered in InputBlurChange and TextareaBlurChange
+      // components, so new undos will appear - we need to close them so that they don't interfere
+      // with assertions below
+      H.undoToastList().first().icon("close").click({ force: true });
+      H.undoToastList().first().icon("close").click({ force: true });
+      H.undoToastList().first().icon("close").click({ force: true });
+      H.undoToastList().first().icon("close").click({ force: true });
+
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
