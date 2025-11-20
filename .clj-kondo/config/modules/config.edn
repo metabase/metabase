@@ -208,8 +208,8 @@
 
   auth-identity
   {:team "UX West"
-   :api #{metabase.auth-identity.core
-          metabase.auth-identity.init}
+   :api  #{metabase.auth-identity.core
+           metabase.auth-identity.init}
    :uses #{channel
            events
            login-history
@@ -989,7 +989,7 @@
            metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema}      ; TODO FIXME
+           metabase.queries.schema} ; TODO FIXME
    :uses #{analytics
            analyze
            api
@@ -1118,7 +1118,7 @@
    :uses #{api
            config
            embedding
-           permissions                  ; FIXME
+           permissions ; FIXME
            session
            settings
            users
@@ -1757,7 +1757,7 @@
 
   enterprise/auth-identity
   {:team "UX West"
-   :api #{}
+   :api  #{}
    :uses #{premium-features}}
 
   enterprise/auth-provider
@@ -2199,6 +2199,19 @@
            queries
            request
            settings
+           util}}
+
+  enterprise/support-access-grants
+  {:team "UX West"
+   :api  #{metabase-enterprise.support-access-grants.api
+           metabase-enterprise.support-access-grants.init}
+   :uses #{api
+           auth-identity
+           events
+           models
+           request
+           settings
+           system
            util}}
 
   enterprise/transforms
