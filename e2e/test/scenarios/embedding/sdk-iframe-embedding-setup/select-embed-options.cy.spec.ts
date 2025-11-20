@@ -44,9 +44,7 @@ describe(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByText("Authentication").should("be.visible");
 
-      cy.findByLabelText("Unauthenticated")
-        .should("be.visible")
-        .should("be.checked");
+      cy.findByLabelText("Guest").should("be.visible").should("be.checked");
       cy.findByLabelText("Existing Metabase session")
         .should("be.visible")
         .should("not.be.checked");
@@ -164,7 +162,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=unauthorized,drills=false,withDownloads=true,withTitle=true",
+        "settings=custom,theme=default,auth=guest_embed,drills=false,withDownloads=true,withTitle=true",
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -200,7 +198,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=unauthorized,drills=false,withDownloads=false,withTitle=false",
+        "settings=custom,theme=default,auth=guest_embed,drills=false,withDownloads=false,withTitle=false",
     });
 
     codeBlock().should("contain", 'with-title="false"');
@@ -273,7 +271,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=unauthorized,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false",
+        "settings=custom,theme=default,auth=guest_embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false",
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -474,7 +472,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=custom,auth=unauthorized,drills=false,withDownloads=false,withTitle=true",
+        "settings=custom,theme=custom,auth=guest_embed,drills=false,withDownloads=false,withTitle=true",
     });
 
     codeBlock().should("contain", '"theme": {');

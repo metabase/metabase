@@ -58,12 +58,12 @@ export const SdkIframeEmbedRoute = () => {
 
   const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
 
-  const { isStatic, theme, locale } = embedSettings;
+  const { isGuestEmbed, theme, locale } = embedSettings;
   const isProduction = !embedSettings._isLocalhost;
 
   // If the parent page is not running on localhost, it's not the unauthenticated embedding, and
   // the token feature is not present, we show an error message
-  if (isProduction && !isStatic && !hasEmbedTokenFeature) {
+  if (isProduction && !isGuestEmbed && !hasEmbedTokenFeature) {
     return <SdkIframeInvalidLicenseError />;
   }
 
@@ -84,7 +84,7 @@ export const SdkIframeEmbedRoute = () => {
 
   return (
     <ComponentProvider
-      isStatic={isStatic}
+      isGuestEmbed={isGuestEmbed}
       authConfig={authConfig}
       theme={theme}
       locale={locale}
@@ -103,7 +103,7 @@ export const SdkIframeEmbedRoute = () => {
       >
         <SdkIframeEmbedView settings={embedSettings} />
 
-        {isStatic && <EmbedBrandingFooter />}
+        {isGuestEmbed && <EmbedBrandingFooter />}
       </Stack>
     </ComponentProvider>
   );
@@ -142,13 +142,13 @@ const SdkIframeEmbedView = ({
         ),
       )
       .with(
-        // Embedding based on a dashboardId (non-anonymous) with disabled drills
+        // Embedding based on a dashboardId (Metabase Account auth type) with disabled drills
         {
           componentName: "metabase-dashboard",
           dashboardId: P.nonNullable,
           drills: false,
         },
-        // Embedding based on a token (anonymous) with default/disabled drills
+        // Embedding based on a token (Guest Embed auth type) with default/disabled drills
         {
           componentName: "metabase-dashboard",
           token: P.nonNullable,
@@ -175,7 +175,7 @@ const SdkIframeEmbedView = ({
         },
       )
       .with(
-        // Embedding based on a questionId (non-anonymous) with default/enabled drills
+        // Embedding based on a questionId (Metabase Account auth type) with default/enabled drills
         {
           componentName: "metabase-dashboard",
           dashboardId: P.nonNullable,
@@ -196,13 +196,13 @@ const SdkIframeEmbedView = ({
         ),
       )
       .with(
-        // Embedding based on a questionId (non-anonymous) with disabled drills
+        // Embedding based on a questionId (Metabase Account auth type) with disabled drills
         {
           componentName: "metabase-question",
           questionId: P.intersection(P.nonNullable, P.not("new")),
           drills: false,
         },
-        // Embedding based on a token (anonymous) with default/disabled drills
+        // Embedding based on a token (Guest Embed auth type) with default/disabled drills
         {
           componentName: "metabase-question",
           token: P.nonNullable,
@@ -229,9 +229,9 @@ const SdkIframeEmbedView = ({
           );
         },
       )
-      // Anonymous embedding for question
+      // Guest Embed of a question
       .with(
-        // Embedding based on a questionId (non-anonymous) with default/enabled drills
+        // Embedding based on a questionId (Metabase Account auth type) with default/enabled drills
         {
           componentName: "metabase-question",
           questionId: P.nonNullable,

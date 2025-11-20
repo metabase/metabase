@@ -1,4 +1,4 @@
-import { withStaticNotAllowedGuard } from "embedding-sdk-bundle/components/private/StaticEmbeddingNotAllowedGuard";
+import { withGustEmbedNotAllowedGuard } from "embedding-sdk-bundle/components/private/GuestEmbedNotAllowedGuard";
 
 import {
   InteractiveQuestion,
@@ -19,6 +19,6 @@ const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
   <InteractiveQuestion {...props} questionId="new" />
 );
 
-export const CreateQuestion = withStaticNotAllowedGuard(
+export const CreateQuestion = withGustEmbedNotAllowedGuard(
   CreateQuestionInner,
 ) as typeof CreateQuestionInner;

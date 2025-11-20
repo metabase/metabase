@@ -5,7 +5,7 @@ import type {
   QuestionSharingModalType,
 } from "metabase/embedding/components/SharingMenu/types";
 import {
-  STATIC_EMBED_JS_EMBEDDING_TYPE,
+  GUEST_EMBED_EMBEDDING_TYPE,
   STATIC_LEGACY_EMBEDDING_TYPE,
 } from "metabase/embedding/constants";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
@@ -36,7 +36,7 @@ export const useSharingModal = <
     initialState: {
       resourceId: resource.id,
       resourceType,
-      isStatic: true,
+      isGuestEmbed: true,
       useExistingUserSession: true,
     },
   });
@@ -59,7 +59,7 @@ export const useSharingModal = <
       }
 
       switch (modalType) {
-        case STATIC_EMBED_JS_EMBEDDING_TYPE:
+        case GUEST_EMBED_EMBEDDING_TYPE:
           openEmbedJsWizard({ onBeforeOpen: () => setModalType(null) });
           break;
 

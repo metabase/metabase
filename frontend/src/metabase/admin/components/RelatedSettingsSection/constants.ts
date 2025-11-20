@@ -42,31 +42,30 @@ export const getModularEmbeddingRelatedSettingItems =
     },
   ];
 
-export const getStaticEmbeddingRelatedSettingItems =
-  (): RelatedSettingItem[] => [
-    {
-      icon: "shield_outline",
-      name: t`Security`,
-      to: "/admin/embedding/security",
-    },
-    {
-      icon: "database",
-      name: t`Databases`,
-      to: "/admin/databases",
-    },
-    {
-      icon: "person",
-      name: t`People`,
-      to: "/admin/people",
-    },
-    {
-      icon: "group",
-      name: t`Permissions`,
-      to: "/admin/permissions",
-    },
-    {
-      icon: "palette",
-      name: t`Appearance`,
-      to: "/admin/settings/appearance",
-    },
-  ];
+export const getGuestEmbedsRelatedSettingItems = (): RelatedSettingItem[] => [
+  {
+    icon: "shield_outline",
+    name: t`Security`,
+    to: "/admin/embedding/security",
+  },
+  {
+    icon: "database",
+    name: t`Databases`,
+    to: "/admin/databases",
+  },
+  {
+    icon: "person",
+    name: t`People`,
+    to: "/admin/people",
+  },
+  {
+    icon: "group",
+    name: t`Permissions`,
+    to: "/admin/permissions",
+  },
+  {
+    icon: "palette",
+    name: t`Appearance`,
+    to: "/admin/settings/appearance",
+  },
+];

@@ -24,7 +24,7 @@ import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import {
   EmbeddingSecuritySettings,
   EmbeddingSettings,
-  StaticEmbeddingSettings,
+  GuestEmbedsSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
 import { Help } from "metabase/admin/tools/components/Help";
 import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
@@ -159,9 +159,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           {isEEBuild() && (
             <>
               <Route
-                path="static"
+                path="guest"
                 title={t`Unauthenticated embeds`}
-                component={StaticEmbeddingSettings}
+                component={GuestEmbedsSettings}
               />
 
               <Route
@@ -178,7 +178,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {!isEEBuild() && (
         <>
           <Redirect
-            from="/admin/embedding/static"
+            from="/admin/embedding/guest"
             to="/admin/embedding/modular"
           />
 
@@ -204,7 +204,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/standalone"
-        to="/admin/embedding/static"
+        to="/admin/embedding/guest"
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/sdk"

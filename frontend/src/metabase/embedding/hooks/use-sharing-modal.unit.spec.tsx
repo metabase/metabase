@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 
 import type { DashboardSharingModalType } from "metabase/embedding/components/SharingMenu/types";
 import {
-  STATIC_EMBED_JS_EMBEDDING_TYPE,
+  GUEST_EMBED_EMBEDDING_TYPE,
   STATIC_LEGACY_EMBEDDING_TYPE,
 } from "metabase/embedding/constants";
 import { setOpenModal, setOpenModalWithProps } from "metabase/redux/ui";
@@ -143,7 +143,7 @@ describe("useSharingModal", () => {
     );
 
     act(() => {
-      result.current.setModalType(STATIC_EMBED_JS_EMBEDDING_TYPE);
+      result.current.setModalType(GUEST_EMBED_EMBEDDING_TYPE);
     });
 
     expect(mockDispatch).toHaveBeenCalledWith(
@@ -174,7 +174,7 @@ describe("useSharingModal", () => {
     expect(result.current.modalType).toBe(STATIC_LEGACY_EMBEDDING_TYPE);
 
     act(() => {
-      result.current.setModalType(STATIC_EMBED_JS_EMBEDDING_TYPE);
+      result.current.setModalType(GUEST_EMBED_EMBEDDING_TYPE);
     });
 
     expect(result.current.modalType).toBeNull();

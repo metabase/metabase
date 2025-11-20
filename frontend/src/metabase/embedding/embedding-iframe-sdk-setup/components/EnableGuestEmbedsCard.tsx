@@ -4,11 +4,11 @@ import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-ifra
 
 import { EmbeddingControlCard } from "./EmbeddingControlCard";
 
-export const EnableStaticEmbeddingCard = () => {
+export const EnableGuestEmbedsCard = () => {
   const {
     isSimpleEmbedFeatureAvailable,
-    isStaticEmbeddingEnabled,
-    isStaticEmbeddingTermsAccepted,
+    isGuestEmbedsEnabled,
+    isGuestEmbedsTermsAccepted,
   } = useSdkIframeEmbedSetupContext();
 
   if (isSimpleEmbedFeatureAvailable) {
@@ -17,20 +17,20 @@ export const EnableStaticEmbeddingCard = () => {
 
   return (
     <EmbeddingControlCard
-      embeddingType="unauthenticated embeds"
-      isEnabled={isStaticEmbeddingEnabled}
-      termsAccepted={isStaticEmbeddingTermsAccepted}
+      embeddingType="Guest embeds"
+      isEnabled={isGuestEmbedsEnabled}
+      termsAccepted={isGuestEmbedsTermsAccepted}
       settingsToUpdate={{
         "enable-embedding-static": true,
         // When the simple embed feature is not available (oss), we toggle both static and simple embedding
         ...(!isSimpleEmbedFeatureAvailable && {
           "enable-embedding-simple": true,
         }),
-        ...(!isStaticEmbeddingTermsAccepted && {
+        ...(!isGuestEmbedsTermsAccepted && {
           "show-static-embed-terms": false,
         }),
       }}
-      errorMessage={t`Failed to enable unauthenticated embedding`}
+      errorMessage={t`Failed to enable Guest embeds`}
     />
   );
 };

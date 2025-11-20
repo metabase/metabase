@@ -10,37 +10,37 @@ export const getAdjustedSdkIframeEmbedSetting = ({
   defaultSettings,
   prevSettings,
   settings,
-  isStaticEmbeddingEnabled,
+  isGuestEmbedsEnabled,
 }: {
   defaultSettings: SdkIframeEmbedSetupSettings;
   prevSettings: SdkIframeEmbedSetupSettings;
   settings: SdkIframeEmbedSetupSettings;
-  isStaticEmbeddingEnabled: boolean;
+  isGuestEmbedsEnabled: boolean;
 }): SdkIframeEmbedSetupSettings => {
   const experience = getExperienceFromSettings(settings);
 
   return match({ prevSettings, settings })
     .with(
       {
-        prevSettings: { isStatic: false },
-        settings: { isStatic: true },
+        prevSettings: { isGuestEmbed: false },
+        settings: { isGuestEmbed: true },
       },
       ({ settings }) => ({
         ...settings,
         ...getCommonEmbedSettings({
           state: {
-            isStatic: settings.isStatic,
+            isGuestEmbed: settings.isGuestEmbed,
             useExistingUserSession: settings.useExistingUserSession,
           },
           experience,
-          isStaticEmbeddingEnabled,
+          isGuestEmbedsEnabled,
         }),
       }),
     )
     .with(
       {
-        prevSettings: { isStatic: true },
-        settings: { isStatic: false },
+        prevSettings: { isGuestEmbed: true },
+        settings: { isGuestEmbed: false },
       },
       ({ settings }) => ({
         ...settings,
@@ -49,11 +49,11 @@ export const getAdjustedSdkIframeEmbedSetting = ({
           "isSaveEnabled" in defaultSettings && defaultSettings.isSaveEnabled,
         ...getCommonEmbedSettings({
           state: {
-            isStatic: settings.isStatic,
+            isGuestEmbed: settings.isGuestEmbed,
             useExistingUserSession: settings.useExistingUserSession,
           },
           experience,
-          isStaticEmbeddingEnabled,
+          isGuestEmbedsEnabled,
         }),
         useExistingUserSession: settings.useExistingUserSession,
       }),

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { overrideRequestsForStaticEmbedding } from "embedding-sdk-bundle/lib/override-requests-for-static-embedding";
+import { overrideRequestsForGuestEmbeds } from "embedding-sdk-bundle/lib/override-requests-for-guest-embeds";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import {
   setFetchRefreshTokenFn,
@@ -25,7 +25,7 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
-  isStatic?: boolean;
+  isGuestEmbed?: boolean;
   authConfig: MetabaseAuthConfig;
   isLocalHost?: boolean;
 }
@@ -46,14 +46,14 @@ export const useInitData = () => {
 
   useInitDataInternal({
     reduxStore,
-    isStatic: props.isStatic,
+    isGuestEmbed: props.isGuestEmbed,
     authConfig,
   });
 };
 
 export const useInitDataInternal = ({
   reduxStore,
-  isStatic,
+  isGuestEmbed,
   authConfig,
   isLocalHost,
 }: InitDataLoaderParameters) => {
@@ -105,12 +105,12 @@ export const useInitDataInternal = ({
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
-    if (isStatic) {
-      overrideRequestsForStaticEmbedding();
+    if (isGuestEmbed) {
+      overrideRequestsForGuestEmbeds();
       dispatch(refreshSiteSettings());
     }
 
-    if (!isStatic && isAuthUninitialized()) {
+    if (!isGuestEmbed && isAuthUninitialized()) {
       dispatch(initAuth({ ...authConfig, isLocalHost }));
     }
   });

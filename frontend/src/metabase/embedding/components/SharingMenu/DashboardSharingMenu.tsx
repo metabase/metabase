@@ -1,7 +1,7 @@
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
-import { STATIC_EMBED_JS_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { Flex, Menu } from "metabase/ui";
@@ -60,7 +60,7 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
               onClick={() => setModalType("dashboard-public-link")}
             />
             <EmbedMenuItem
-              onClick={() => setModalType(STATIC_EMBED_JS_EMBEDDING_TYPE)}
+              onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
             />
           </>
         )}

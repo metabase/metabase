@@ -1,5 +1,5 @@
 import { EnableEmbeddedAnalyticsCard } from "metabase/embedding/embedding-iframe-sdk-setup/components/EnableEmbeddedAnalyticsCard";
-import { EnableStaticEmbeddingCard } from "metabase/embedding/embedding-iframe-sdk-setup/components/EnableStaticEmbeddingCard";
+import { EnableGuestEmbedsCard } from "metabase/embedding/embedding-iframe-sdk-setup/components/EnableGuestEmbedsCard";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 
 export const SdkIframeStepHeader = () => {
@@ -11,6 +11,6 @@ export const SdkIframeStepHeader = () => {
   return isSimpleEmbedFeatureAvailable ? (
     <EnableEmbeddedAnalyticsCard key={rerenderKey} />
   ) : (
-    <EnableStaticEmbeddingCard key={rerenderKey} />
+    <EnableGuestEmbedsCard key={rerenderKey} />
   );
 };

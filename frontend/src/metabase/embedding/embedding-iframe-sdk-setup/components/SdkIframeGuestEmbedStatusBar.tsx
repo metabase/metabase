@@ -5,7 +5,7 @@ import {
   useUpdateDashboardEnableEmbeddingMutation,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { STATIC_EMBED_JS_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
@@ -20,7 +20,7 @@ type Props = Pick<StaticEmbedSetupPaneProps, "resource" | "resourceType"> & {
   initialEmbeddingParameters: EmbeddingParameters;
 };
 
-const SdkIframeStaticEmbeddingStatusBarInner = ({
+const SdkIframeGuestEmbedStatusBarInner = ({
   resource,
   resourceType,
   initialEmbeddingParameters,
@@ -49,7 +49,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
     await handlersMap[resourceType]?.({
       id: resource.id as number,
       enable_embedding: enableEmbedding,
-      embedding_type: enableEmbedding ? STATIC_EMBED_JS_EMBEDDING_TYPE : null,
+      embedding_type: enableEmbedding ? GUEST_EMBED_EMBEDDING_TYPE : null,
     });
   };
 
@@ -64,7 +64,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
     await handlersMap[resourceType]?.({
       id: resource.id as number,
       embedding_params: embeddingParams,
-      embedding_type: STATIC_EMBED_JS_EMBEDDING_TYPE,
+      embedding_type: GUEST_EMBED_EMBEDDING_TYPE,
     });
   };
 
@@ -101,7 +101,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
   );
 };
 
-export const SdkIframeStaticEmbeddingStatusBar = () => {
+export const SdkIframeGuestEmbedStatusBar = () => {
   const {
     currentStep,
     settings,
@@ -111,7 +111,7 @@ export const SdkIframeStaticEmbeddingStatusBar = () => {
     initialEmbeddingParameters,
   } = useSdkIframeEmbedSetupContext();
 
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
 
   const resourceType = getResourceTypeFromExperience(experience);
 
@@ -119,7 +119,7 @@ export const SdkIframeStaticEmbeddingStatusBar = () => {
   const shouldShowForResource =
     resourceType === "dashboard" || resourceType === "question";
 
-  if (!isStaticEmbedding || !shouldShowForStep || !shouldShowForResource) {
+  if (!isGuestEmbed || !shouldShowForStep || !shouldShowForResource) {
     return null;
   }
 
@@ -133,7 +133,7 @@ export const SdkIframeStaticEmbeddingStatusBar = () => {
   }
 
   return (
-    <SdkIframeStaticEmbeddingStatusBarInner
+    <SdkIframeGuestEmbedStatusBarInner
       resource={resource}
       resourceType={resourceType}
       initialEmbeddingParameters={initialEmbeddingParameters}

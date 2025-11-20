@@ -30,7 +30,7 @@ export type SdkQuestionEntityPublicProps =
   | {
       questionId?: never;
       /**
-       * A valid JWT token for the anonymous embedding.
+       * A valid JWT token for the guest embed.
        */
       token: SdkEntityToken | null;
     };

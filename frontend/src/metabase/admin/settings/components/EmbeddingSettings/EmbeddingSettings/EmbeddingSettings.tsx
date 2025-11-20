@@ -78,7 +78,7 @@ function EmbeddingSettingsEE() {
                 "initialState"
               > = {
                 initialState: {
-                  isStatic: true,
+                  isGuestEmbed: true,
                   useExistingUserSession: false,
                 },
               };

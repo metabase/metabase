@@ -35,10 +35,10 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
-  const { isStaticEmbedding } = useDashboardContext();
+  const { isGuestEmbed } = useDashboardContext();
 
   useMount(() => {
-    if (!isStaticEmbedding) {
+    if (!isGuestEmbed) {
       dispatch(fetchPulseFormInput());
     }
   });
@@ -60,7 +60,7 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
     useGetCollectionQuery(
       { id: dashboard.collection_id || "root" },
       {
-        skip: isStaticEmbedding,
+        skip: isGuestEmbed,
       },
     );
 
@@ -112,7 +112,7 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   };
 
   // We don't fetch collection info for static embedding
-  if (!isStaticEmbedding) {
+  if (!isGuestEmbed) {
     if (isLoadingCollection || !collection) {
       return (
         <Flex justify="center" py="1.5rem">

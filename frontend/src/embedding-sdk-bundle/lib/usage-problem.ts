@@ -13,7 +13,7 @@ import { getIsLocalhost } from "./get-is-localhost";
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
   isEnabled: boolean;
-  isStaticEmbedding: boolean | null;
+  isGuestEmbed: boolean | null;
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
   session: MetabaseEmbeddingSessionToken | null;
@@ -68,7 +68,7 @@ export function getSdkUsageProblem(
 ): SdkUsageProblem | null {
   const {
     isEnabled,
-    isStaticEmbedding,
+    isGuestEmbed,
     hasTokenFeature,
     authConfig,
     isDevelopmentMode,
@@ -89,7 +89,7 @@ export function getSdkUsageProblem(
     return toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE");
   }
 
-  if (isStaticEmbedding === null || isStaticEmbedding) {
+  if (isGuestEmbed === null || isGuestEmbed) {
     return null;
   }
 

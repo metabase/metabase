@@ -22,7 +22,7 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
 }) => {
   const { settings } = useSdkIframeEmbedSetupContext();
 
-  const disabled = !!settings.isStatic;
+  const disabled = !!settings.isGuestEmbed;
 
   const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "admin_permissions" }),

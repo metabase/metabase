@@ -34,7 +34,7 @@ interface UpdateQuestionParams {
 
   queryResults?: any[];
   cancelDeferred?: Deferred;
-  isStaticEmbedding: boolean;
+  isGuestEmbed: boolean;
   token: string | null | undefined;
 
   /** Optimistic update the question in the query builder UI */
@@ -57,7 +57,7 @@ export const updateQuestionSdk =
       queryResults,
       optimisticUpdateQuestion: onQuestionChange,
       shouldRunQueryOnQuestionChange = false,
-      isStaticEmbedding,
+      isGuestEmbed,
       token,
     } = params;
 
@@ -67,7 +67,7 @@ export const updateQuestionSdk =
       shouldStartAdHocQuestion,
     });
 
-    if (!isStaticEmbedding && !nextQuestion.canAutoRun()) {
+    if (!isGuestEmbed && !nextQuestion.canAutoRun()) {
       shouldRunQueryOnQuestionChange = false;
     }
 
@@ -126,7 +126,7 @@ export const updateQuestionSdk =
     if (shouldRunQueryOnQuestionChange) {
       return runQuestionQuerySdk({
         question: nextQuestion,
-        isStaticEmbedding,
+        isGuestEmbed,
         token,
         originalQuestion,
         parameterValues: nextParameterValues,

@@ -55,7 +55,7 @@ export function useSdkIframeEmbedServerSnippet() {
   const { experience, resource, previewParameterValuesBySlug, settings } =
     useSdkIframeEmbedSetupContext();
 
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
   const isQuestionOrDashboardEmbed =
     (experience === "dashboard" && settings.dashboardId) ||
     (experience === "chart" && settings.questionId);
@@ -89,11 +89,7 @@ export function useSdkIframeEmbedServerSnippet() {
     serverSnippetOptions.find(({ id }) => id === selectedServerSnippetId) ??
     null;
 
-  if (
-    !isStaticEmbedding ||
-    !isQuestionOrDashboardEmbed ||
-    !serverSnippetOption
-  ) {
+  if (!isGuestEmbed || !isQuestionOrDashboardEmbed || !serverSnippetOption) {
     return null;
   }
 

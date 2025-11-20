@@ -33,14 +33,14 @@ export function SharedCombinedEmbeddingSettings({
 }: Props) {
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
-  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
 
   const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "admin_permissions" }),
   );
 
   const dependentSettingKeys: EmbeddingSettingKey[] = useMemo(
-    // When the simple embed feature is not available (oss), we toggle both static and simple embedding
+    // When the simple embed feature is not available (oss), we toggle both guest and simple embeds
     () => (isSimpleEmbedFeatureAvailable ? [] : ["enable-embedding-simple"]),
     [isSimpleEmbedFeatureAvailable],
   );
@@ -75,7 +75,7 @@ export function SharedCombinedEmbeddingSettings({
         <EmbeddingSecretKeyWidget />
       </SettingsSection>
 
-      {isStaticEmbeddingEnabled && (
+      {isGuestEmbedsEnabled && (
         <SettingsSection>
           <Box data-testid="embedded-resources">
             <SettingTitle

@@ -27,7 +27,7 @@ import {
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { isStaticEntityLoadingError } from "embedding-sdk-bundle/lib/is-static-entity-loading-error";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -154,23 +154,23 @@ const SdkDashboardInner = ({
   dataPickerProps,
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
-  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const {
     entityId: dashboardId,
     token,
     tokenError,
   } = useExtractEntityIdFromJwtToken({
-    isStaticEmbedding,
+    isGuestEmbed,
     entityId: rawDashboardId,
     token: rawToken ?? undefined,
   });
 
   useEffect(() => {
-    if (isStaticEmbedding && token) {
+    if (isGuestEmbed && token) {
       PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
     }
-  }, [isStaticEmbedding, token]);
+  }, [isGuestEmbed, token]);
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -265,7 +265,7 @@ const SdkDashboardInner = ({
     );
   }
 
-  if (isStaticEmbedding && isStaticEntityLoadingError(errorPage)) {
+  if (isGuestEmbed && isStaticEntityLoadingError(errorPage)) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkError message={errorPage.data ?? t`Something's gone wrong`} />
@@ -301,7 +301,7 @@ const SdkDashboardInner = ({
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
       token={token}
-      isStaticEmbedding={isStaticEmbedding}
+      isGuestEmbed={isGuestEmbed}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={
         navigateToNewCardFromDashboard !== undefined
@@ -352,7 +352,7 @@ const SdkDashboardInner = ({
       }}
       autoScrollToDashcardId={autoScrollToDashcardId}
     >
-      {match({ finalRenderMode, isStaticEmbedding })
+      {match({ finalRenderMode, isGuestEmbed })
         .with({ finalRenderMode: "question" }, () => (
           <SdkDashboardStyledWrapperWithRef className={className} style={style}>
             <SdkAdHocQuestion
@@ -381,11 +381,11 @@ const SdkDashboardInner = ({
             )}
           </SdkDashboardProvider>
         ))
-        .with({ finalRenderMode: "queryBuilder" }, ({ isStaticEmbedding }) =>
-          isStaticEmbedding ? (
+        .with({ finalRenderMode: "queryBuilder" }, ({ isGuestEmbed }) =>
+          isGuestEmbed ? (
             <SdkDashboardStyledWrapper className={className} style={style}>
               <SdkError
-                message={t`You can't save questions in anonymous embedding`}
+                message={t`You can't save questions in Guest Embed mode`}
               />
             </SdkDashboardStyledWrapper>
           ) : (

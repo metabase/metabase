@@ -32,7 +32,7 @@ export type SdkStore = Omit<Store<SdkStoreState, Action>, "dispatch"> & {
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
 export type SdkState = {
-  isStaticEmbedding: boolean | null;
+  isGuestEmbed: boolean | null;
   metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
   metabaseInstanceVersion: string | null;
   token: EmbeddingSessionTokenState;

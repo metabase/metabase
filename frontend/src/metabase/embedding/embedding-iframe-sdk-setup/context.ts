@@ -23,8 +23,8 @@ export interface SdkIframeEmbedSetupContextType {
   isSimpleEmbeddingEnabled: boolean;
   isSimpleEmbeddingTermsAccepted: boolean;
 
-  isStaticEmbeddingEnabled: boolean;
-  isStaticEmbeddingTermsAccepted: boolean;
+  isGuestEmbedsEnabled: boolean;
+  isGuestEmbedsTermsAccepted: boolean;
 
   // Navigation
   currentStep: SdkIframeEmbedSetupStep;
@@ -72,9 +72,9 @@ export interface SdkIframeEmbedSetupContextType {
 
   isEmbedSettingsLoaded: boolean;
 
-  // static embedding
-  staticEmbeddingSignedTokenForSnippet: string | null;
-  staticEmbeddingSignedTokenForPreview: string | null;
+  // guest embed
+  guestEmbedSignedTokenForSnippet: string | null;
+  guestEmbedSignedTokenForPreview: string | null;
 
   // modal handlers
   onClose: () => void;

@@ -3,10 +3,10 @@ import { useId, useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
+import { withGustEmbedNotAllowedGuard } from "embedding-sdk-bundle/components/private/GuestEmbedNotAllowedGuard";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
-import { withStaticNotAllowedGuard } from "embedding-sdk-bundle/components/private/StaticEmbeddingNotAllowedGuard";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
@@ -134,6 +134,8 @@ const MetabotQuestionWrapped = (props: MetabotQuestionProps) => {
 
 // side effect that activates the plugin
 METABOT_SDK_EE_PLUGIN.MetabotQuestion = Object.assign(
-  withStaticNotAllowedGuard(withPublicComponentWrapper(MetabotQuestionWrapped)),
+  withGustEmbedNotAllowedGuard(
+    withPublicComponentWrapper(MetabotQuestionWrapped),
+  ),
   { schema: metabotQuestionSchema },
 );

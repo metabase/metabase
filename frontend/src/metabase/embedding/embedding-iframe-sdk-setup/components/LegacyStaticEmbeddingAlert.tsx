@@ -8,19 +8,19 @@ import { setOpenModal } from "metabase/redux/ui";
 import { Alert, Anchor, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 
 export const LegacyStaticEmbeddingAlert = () => {
-  const { isStaticEmbeddingEnabled, settings, resource, experience, onClose } =
+  const { isGuestEmbedsEnabled, settings, resource, experience, onClose } =
     useSdkIframeEmbedSetupContext();
 
   const dispatch = useDispatch();
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
 
   const resourceType = getResourceTypeFromExperience(experience);
   const shouldShowForResource =
     resourceType === "dashboard" || resourceType === "question";
 
   if (
-    !isStaticEmbeddingEnabled ||
-    !isStaticEmbedding ||
+    !isGuestEmbedsEnabled ||
+    !isGuestEmbed ||
     !resource ||
     !resourceType ||
     !shouldShowForResource

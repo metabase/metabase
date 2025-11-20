@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
-  ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP,
+  ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
 } from "metabase/embedding/embedding-iframe-sdk/constants";
 import type {
@@ -28,12 +28,12 @@ export function getEmbedSnippet({
   settings,
   instanceUrl,
   experience,
-  staticEmbeddingSignedToken,
+  guestEmbedSignedTokenForSnippet,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   instanceUrl: string;
   experience: SdkIframeEmbedSetupExperience;
-  staticEmbeddingSignedToken: string | null;
+  guestEmbedSignedTokenForSnippet: string | null;
 }): string {
   // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
   return `<script defer src="${instanceUrl}/app/embed.js"></script>
@@ -55,20 +55,20 @@ function defineMetabaseConfig(config) {
 ${getEmbedCustomElementSnippet({
   settings,
   experience,
-  staticEmbeddingSignedToken,
+  guestEmbedSignedTokenForSnippet,
 })}`;
 }
 
 export function getEmbedCustomElementSnippet({
   settings,
   experience,
-  staticEmbeddingSignedToken,
+  guestEmbedSignedTokenForSnippet,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   experience: SdkIframeEmbedSetupExperience;
-  staticEmbeddingSignedToken: string | null;
+  guestEmbedSignedTokenForSnippet: string | null;
 }): string {
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
 
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
@@ -84,8 +84,8 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ..._.omit(settings, "questionId", "token"),
-        ...(isStaticEmbedding
-          ? { token: staticEmbeddingSignedToken }
+        ...(isGuestEmbed
+          ? { token: guestEmbedSignedTokenForSnippet }
           : { questionId: settings?.questionId }),
         initialSqlParameters: getVisibleParameters(
           questionSettings.initialSqlParameters,
@@ -110,8 +110,8 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ..._.omit(settings, "dashboardId", "token"),
-        ...(isStaticEmbedding
-          ? { token: staticEmbeddingSignedToken }
+        ...(isGuestEmbed
+          ? { token: guestEmbedSignedTokenForSnippet }
           : { dashboardId: settings?.dashboardId }),
         initialParameters: getVisibleParameters(
           dashboardSettings.initialParameters,
@@ -126,13 +126,13 @@ export function getEmbedCustomElementSnippet({
 
   const attributes = transformEmbedSettingsToAttributes(
     settingsWithOverrides,
-    isStaticEmbedding
-      ? ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP[experience]
+    isGuestEmbed
+      ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP[experience]
       : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
   const customElementSnippetParts = [
-    staticEmbeddingSignedToken
+    guestEmbedSignedTokenForSnippet
       ? `<!--\nTHIS IS THE EXAMPLE!\nNEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!\n\nFetch the JWT token from your backend and programmatically pass it to the '${elementName}'.\n-->`
       : "",
     `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`,
@@ -188,21 +188,21 @@ export function getMetabaseConfigSnippet({
   settings: Partial<SdkIframeEmbedSetupSettings>;
   instanceUrl: string;
 }): string {
-  const isStaticEmbedding = !!settings.isStatic;
+  const isGuestEmbed = !!settings.isGuestEmbed;
 
   const config = _.pick(
     settings,
-    isStaticEmbedding
-      ? ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.base
+    isGuestEmbed
+      ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.base
       : ALLOWED_EMBED_SETTING_KEYS_MAP.base,
   );
 
   const cleanedConfig = {
-    ..._.omit(config, ["isStatic", "useExistingUserSession"]),
+    ..._.omit(config, ["isGuestEmbed", "useExistingUserSession"]),
 
     // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),
-    ...(isStaticEmbedding ? { isStatic: true } : {}),
+    ...(isGuestEmbed ? { isGuestEmbed: true } : {}),
 
     // Append these settings that can't be controlled by users.
     instanceUrl,

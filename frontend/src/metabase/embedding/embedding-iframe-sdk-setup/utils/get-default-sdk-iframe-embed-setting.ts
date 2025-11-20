@@ -21,12 +21,12 @@ export const getDefaultSdkIframeEmbedSettings = ({
   initialState,
   experience,
   resourceId,
-  isStaticEmbeddingEnabled,
+  isGuestEmbedsEnabled,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;
-  isStaticEmbeddingEnabled: boolean;
+  isGuestEmbedsEnabled: boolean;
 }): SdkIframeEmbedSetupSettings => {
   const defaults = match(experience)
     .with(
@@ -80,7 +80,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
     ...getCommonEmbedSettings({
       state: initialState,
       experience,
-      isStaticEmbeddingEnabled,
+      isGuestEmbedsEnabled,
     }),
   };
 };
