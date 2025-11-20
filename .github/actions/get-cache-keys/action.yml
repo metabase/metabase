@@ -16,6 +16,9 @@ outputs:
   types-cache-key:
     description: "The cache key for generated OpenAPI TypeScript types"
     value: ${{ steps.keys-factory.outputs.types-cache-key }}
+  cypress-cache-key:
+    description: "The cache key for Cypress cache"
+    value: ${{ steps.keys-factory.outputs.cypress-cache-key }}
 
 runs:
   using: "composite"
@@ -27,6 +30,7 @@ runs:
         NODE_CACHE_PREFIX='node-modules'
         ESLINT_CACHE_PREFIX='eslint'
         TYPES_CACHE_PREFIX='types-openapi'
+        CYPRESS_CACHE_PREFIX='cypress'
         WEEK_OF_YEAR=$(/bin/date "+%G-%V")
         CACHE_SUFFIX="${{ runner.os }}-$WEEK_OF_YEAR"
 
@@ -34,4 +38,5 @@ runs:
         echo "node-cache-key=$NODE_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
         echo "eslint-cache-key=$ESLINT_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
         echo "types-cache-key=$TYPES_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
+        echo "cypress-cache-key=$CYPRESS_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
       shell: bash

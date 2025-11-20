@@ -49,6 +49,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :support-users
                               :transforms
                               :transforms-python
                               :upload-management
@@ -95,6 +96,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :support-users                  true
             :table_data_editing             false
             :transforms                     true
             :transforms-python              true

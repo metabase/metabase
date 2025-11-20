@@ -14,4 +14,5 @@ export type MetabaseErrorCode =
   | "CANNOT_CONNECT_TO_INSTANCE"
   | "INVALID_AUTH_METHOD"
   | "AUTH_TIMEOUT"
-  | "EMBED_TAG_ERROR";
+  | "EMBED_TAG_ERROR"
+  | "SSO_NOT_ALLOWED";

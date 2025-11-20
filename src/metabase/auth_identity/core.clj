@@ -59,4 +59,17 @@
 ;; Import emailed-secret provider functions
 (p/import-vars
  [emailed-secret
-  create-password-reset!])
+  create-password-reset!
+  create-reset-token-metadata
+  generate-reset-token
+  mark-token-consumed])
+
+(defn with-fallback
+  "Try multiple providers until one works. Always returns the result of the last provider run."
+  [method [provider & rst-providers] request]
+  (let [{:keys [success?] :as response} (try (method provider request)
+                                             (catch Throwable _
+                                               {:success? false}))]
+    (if (or success? (empty? rst-providers))
+      response
+      (recur method rst-providers request))))
