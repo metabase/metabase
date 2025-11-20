@@ -218,7 +218,7 @@ function getSidebar(
 
     /**
      * If the model hasn't been saved with "list" view setting, but user has
-     * just selected this option through UI, we use temporary `modelSettings`
+     * just selected this option through UI, we use `modelSettings`
      * to properly render the settings sidebar and its internal elements (list of unused columns)
      * As soon as we detect that question has been saved, we use proper settings
      * origin.
@@ -290,7 +290,7 @@ function getTempRawSeries(
   ] as RawSeries;
 }
 
-function getTempVisualizationSettings(
+function getComputedVisualizationSettings(
   series: Series | null,
 ): ComputedVisualizationSettings | null {
   if (series == null) {
@@ -344,35 +344,43 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   );
 
   /**
-   * tempModelSettings and tempRawSeries are introduced as a workaround to support new "list" display type for models.
-   * - `tempModelSettings` stores local state for currently selected display and allows to switch between 'Columns'/'Settings' tabs
-   * without triggering question changes detection, because otherwise updating `display` property would open LeaveConfirmationModal.
-   * 'Columns' tab works only for "table" display type, so when user opens 'Settings' for Model saved with "list" display type,
-   *  and wants to see 'Columns' tab, we need to update `display` property to "table".
-   * - `tempRawSeries` is introduced for the same reason. It patches `rawSeries` property inside nested `VisualizationResult` component,
-   *  so that it renders correct visualization for 'Columns' tab.
+   * `modelSettings` is a local configuration state, required to allow the user to
+   * change different metadata settings without updating the question object
+   * in store before hitting "Save".
+   * It stores currently selected display setting, and is used both
+   * for rendering question and its data (series) according to the selected display type (table / list).
+   * When 'list' display type is selected, we also store respective visualization settings,
+   * specifically currently selected columns displayed in a list item.
+   *
+   * At the same time, the logic behind DatasetEditor tabs is tied to specific
+   * display types. For example, "Columns" tab can only work with a model with 'table' display.
+   * Because of this, we change 'display' in `modelSettings` when switching between tabs,
+   * but we also track if the user has made explicit changes to 'display' settings
+   * through settings sidebar. This allows to properly enable/disable "Save changes" button
+   * when there were actual changes.
+   *
+   * `tempRawSeries` is an additional piece of this logic.
+   * It patches model's data with selected display type to properly render the rows
+   * as table/list items when browsing through editor tabs.
    */
-  const [tempModelSettings, setTempModelSettings] = useState<ModelSettings>(
-    () => {
-      return {
-        display: question.display(),
-        visualizationSettings:
-          getTempVisualizationSettings(rawSeries) || question.settings(),
-        isDirty: false,
-      };
-    },
-  );
+  const [modelSettings, setModelSettings] = useState<ModelSettings>(() => {
+    return {
+      display: question.display(),
+      visualizationSettings:
+        getComputedVisualizationSettings(rawSeries) || question.settings(),
+      isDirty: false,
+    };
+  });
 
   const tempRawSeries = useMemo(() => {
-    if (!rawSeries || !rawSeries.length || !tempModelSettings.display) {
+    if (!rawSeries || !rawSeries.length || !modelSettings.display) {
       return rawSeries;
     }
 
-    return getTempRawSeries(rawSeries, tempModelSettings.display);
-  }, [tempModelSettings, rawSeries]);
+    return getTempRawSeries(rawSeries, modelSettings.display);
+  }, [modelSettings, rawSeries]);
 
-  const isDirty =
-    tempModelSettings.isDirty || isModelQueryDirty || isMetadataDirty;
+  const isDirty = modelSettings.isDirty || isModelQueryDirty || isMetadataDirty;
 
   const { data: modelIndexes } = useListModelIndexesQuery(
     {
@@ -473,16 +481,16 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       /**
        * The only way to properly display interface for "Columns" tab is to
        * set model's display type to "table".
-       * We use local `tempModelSettings` to store unsaved changes to avoid
+       * We use local `modelSettings` to store unsaved changes to avoid
        * affecting the `question` object in store, which triggers unwanted
        * `dirty` checks.
        */
       const display = question.display();
-      const tempDisplay = tempModelSettings.display;
+      const tempDisplay = modelSettings.display;
       const hasListViewSelected = display === "list" || tempDisplay === "list";
       if (hasListViewSelected) {
         if (tab !== "metadata") {
-          setTempModelSettings((prevSettings) => ({
+          setModelSettings((prevSettings) => ({
             ...prevSettings,
             visualizationSettings: question.settings(),
             display: "table",
@@ -490,10 +498,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         }
       }
       if (tab === "metadata") {
-        setTempModelSettings((prevSettings) => ({
+        setModelSettings((prevSettings) => ({
           ...prevSettings,
           visualizationSettings:
-            getTempVisualizationSettings(tempRawSeries) ||
+            getComputedVisualizationSettings(tempRawSeries) ||
             prevSettings.visualizationSettings,
           display: question.display(),
         }));
@@ -508,7 +516,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       question,
       dispatch,
       isShowingListViewConfiguration,
-      tempModelSettings,
+      modelSettings,
       tempRawSeries,
     ],
   );
@@ -562,12 +570,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
      * When updating 'display' setting, we need to check if there were actually
      * any user-driven changes, because the same temp setting value is used
      * to display proper UI when switching between 'Columns' and 'Settings' tabs.
-     * (see comment for `tempModelSettings`)
+     * (see comment for `modelSettings`)
      */
-    if (!!tempModelSettings.display && tempModelSettings.isDirty) {
-      questionWithUpdatedSettings = question.setDisplay(
-        tempModelSettings.display,
-      );
+    if (modelSettings.isDirty) {
+      questionWithUpdatedSettings = question.setDisplay(modelSettings.display);
     }
     const questionWithMetadata =
       questionWithUpdatedSettings.setResultMetadataDiff(metadataDiff);
@@ -588,8 +594,8 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
   }, [
     question,
-    tempModelSettings.display,
-    tempModelSettings.isDirty,
+    modelSettings.display,
+    modelSettings.isDirty,
     metadataDiff,
     isShowingListViewConfiguration,
     dispatch,
@@ -718,12 +724,12 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       onMappedDatabaseColumnChange,
       onUpdateModelSettings: (settings) => {
         if (settings.display !== undefined) {
-          setTempModelSettings((prevSettings) => ({
+          setModelSettings((prevSettings) => ({
             ...prevSettings,
             display: settings.display || prevSettings.display,
             visualizationSettings:
               settings.display === "list" && rawSeries != null
-                ? getTempVisualizationSettings(
+                ? getComputedVisualizationSettings(
                     getTempRawSeries(rawSeries, settings.display),
                   ) || prevSettings.visualizationSettings
                 : prevSettings.visualizationSettings,
@@ -731,7 +737,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           }));
         }
       },
-      modelSettings: tempModelSettings,
+      modelSettings: modelSettings,
     },
   );
 

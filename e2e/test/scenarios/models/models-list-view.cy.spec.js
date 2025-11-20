@@ -362,7 +362,7 @@ describe("scenarios > models list view", () => {
           }
           return field;
         });
-        cy.visit(`/model/${nativeModelId}`);
+        H.visitModel(nativeModelId);
       });
 
       cy.findByTestId("list-view").within(() => {
@@ -375,9 +375,7 @@ describe("scenarios > models list view", () => {
 
       cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
 
-      cy.findByTestId("table-header")
-        .findByText(/Subtotal/i)
-        .click();
+      H.tableHeaderClick(/Subtotal/i);
 
       H.sidebar().findByRole("tab", { name: "Formatting" }).click();
 
@@ -388,9 +386,7 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
       cy.wait("@dataset");
 
-      cy.findByTestId("list-view").within(() => {
-        cy.findAllByTestId("mini-bar-container").should("not.exist");
-      });
+      cy.findByTestId("mini-bar-container").should("not.exist");
     });
   });
 });
