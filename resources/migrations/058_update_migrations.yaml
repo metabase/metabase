@@ -1108,22 +1108,12 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-20T08:35:02
       author: christruter
-      comment: Update collection.workspace_id FK to CASCADE on delete
+      comment: Drop collection.workspace_id FK for update
       changes:
         - dropForeignKeyConstraint:
             baseTableName: collection
             constraintName: fk_collection_workspace_id
-        - addForeignKeyConstraint:
-            baseTableName: collection
-            baseColumnNames: workspace_id
-            constraintName: fk_collection_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-            onDelete: CASCADE
       rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: collection
-            constraintName: fk_collection_workspace_id
         - addForeignKeyConstraint:
             baseTableName: collection
             baseColumnNames: workspace_id
@@ -1134,89 +1124,140 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-20T08:35:03
       author: christruter
-      comment: Update transform.workspace_id FK to CASCADE on delete
+      comment: Add collection.workspace_id FK with CASCADE on delete
       changes:
-        - dropForeignKeyConstraint:
-            baseTableName: transform
-            constraintName: fk_transform_workspace_id
         - addForeignKeyConstraint:
-            baseTableName: transform
+            baseTableName: collection
             baseColumnNames: workspace_id
-            constraintName: fk_transform_workspace_id
+            constraintName: fk_collection_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
             onDelete: CASCADE
       rollback:
         - dropForeignKeyConstraint:
-            baseTableName: transform
-            constraintName: fk_transform_workspace_id
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: workspace_id
-            constraintName: fk_transform_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
+            baseTableName: collection
+            constraintName: fk_collection_workspace_id
 
   - changeSet:
       id: v58.2025-11-20T08:35:04
       author: christruter
-      comment: Update report_card.workspace_id FK to CASCADE on delete
+      comment: Drop transform.workspace_id FK for update
       changes:
         - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_report_card_workspace_id
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: workspace_id
-            constraintName: fk_report_card_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-            onDelete: CASCADE
+            baseTableName: transform
+            constraintName: fk_transform_workspace_id
       rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_report_card_workspace_id
         - addForeignKeyConstraint:
-            baseTableName: report_card
+            baseTableName: transform
             baseColumnNames: workspace_id
-            constraintName: fk_report_card_workspace_id
+            constraintName: fk_transform_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
 
   - changeSet:
       id: v58.2025-11-20T08:35:05
       author: christruter
-      comment: Update metabase_table.workspace_id FK to SET NULL on delete
+      comment: Add transform.workspace_id FK with CASCADE on delete
       changes:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_table
-            constraintName: fk_metabase_table_workspace_id
         - addForeignKeyConstraint:
-            baseTableName: metabase_table
+            baseTableName: transform
             baseColumnNames: workspace_id
-            constraintName: fk_metabase_table_workspace_id
+            constraintName: fk_transform_workspace_id
             referencedTableName: workspace
             referencedColumnNames: id
-            onDelete: SET NULL
+            onDelete: CASCADE
       rollback:
         - dropForeignKeyConstraint:
-            baseTableName: metabase_table
-            constraintName: fk_metabase_table_workspace_id
-        - addForeignKeyConstraint:
-            baseTableName: metabase_table
-            baseColumnNames: workspace_id
-            constraintName: fk_metabase_table_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
+            baseTableName: transform
+            constraintName: fk_transform_workspace_id
 
   - changeSet:
       id: v58.2025-11-20T08:35:06
       author: christruter
-      comment: Update metabase_field.workspace_id FK to SET NULL on delete
+      comment: Drop report_card.workspace_id FK for update
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: workspace_id
+            constraintName: fk_report_card_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-11-20T08:35:07
+      author: christruter
+      comment: Add report_card.workspace_id FK with CASCADE on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: workspace_id
+            constraintName: fk_report_card_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:35:08
+      author: christruter
+      comment: Drop metabase_table.workspace_id FK for update
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_table_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-11-20T08:35:09
+      author: christruter
+      comment: Add metabase_table.workspace_id FK with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_table_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:35:10
+      author: christruter
+      comment: Drop metabase_field.workspace_id FK for update
       changes:
         - dropForeignKeyConstraint:
             baseTableName: metabase_field
             constraintName: fk_metabase_field_workspace_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_field_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-11-20T08:35:11
+      author: christruter
+      comment: Add metabase_field.workspace_id FK with SET NULL on delete
+      changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_field
             baseColumnNames: workspace_id
@@ -1228,15 +1269,9 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: metabase_field
             constraintName: fk_metabase_field_workspace_id
-        - addForeignKeyConstraint:
-            baseTableName: metabase_field
-            baseColumnNames: workspace_id
-            constraintName: fk_metabase_field_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:00
+      id: v58.2025-11-20T08:35:12
       author: christruter
       comment: Add index on metabase_field.workspace_id
       changes:
@@ -1252,7 +1287,7 @@ databaseChangeLog:
             indexName: idx_metabase_field_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:01
+      id: v58.2025-11-20T08:35:13
       author: christruter
       comment: Add index on metabase_table.workspace_id
       changes:
