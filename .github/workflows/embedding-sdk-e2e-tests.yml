@@ -98,7 +98,7 @@ jobs:
         test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
         environment: ["production", "development"]
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.get-sample-apps-data.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
@@ -229,8 +229,6 @@ jobs:
             "angular-20-host-app-e2e",
           ]
         environment: ["production", "development"]
-    if: |
-      !cancelled() && needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
