@@ -125,6 +125,7 @@ export {
 } from "./oss/transforms";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
+export { PLUGIN_SUPPORT } from "./oss/support";
 
 // Re-export types that are used by other files
 export type {
