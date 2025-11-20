@@ -718,7 +718,6 @@
     (when cancel-chan
       (a/go
         (when-let [cancelled (a/<! cancel-chan)]
-          (.cancel client job-id)
           (deliver result-promise [:cancel cancelled])
           (some-> query-future future-cancel))))
 
@@ -727,7 +726,9 @@
     (let [[status result] @result-promise]
       (case status
         :error  (handle-bigquery-exception result sql parameters)
-        :cancel (throw-cancelled sql parameters)
+        :cancel (do
+                  (.cancel client job-id)
+                  (throw-cancelled sql parameters))
         :ready  (bigquery-execute-response result client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*
