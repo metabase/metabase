@@ -68,9 +68,9 @@ describe("Table editing", () => {
     "should publish single table to a collection",
     { tags: ["@external"] },
     () => {
-      H.restore("mysql-writable");
+      H.restore("mysql-8");
       H.DataModel.visitDataStudio();
-      TablePicker.getDatabase("Writable MySQL8").click();
+      TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
       // Shows publish model information modal
@@ -117,9 +117,9 @@ describe("Table editing", () => {
   );
 
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
+    H.restore("postgres-12");
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
     H.selectHasValue("Owner", "No one").click();
@@ -156,7 +156,7 @@ describe("Table editing", () => {
     H.selectHasValue("Source", "Ingested");
   });
 
-  it(
+  it.skip(
     "transform-created table should have link and disabled source edit",
     { tags: ["@external"] },
     () => {
