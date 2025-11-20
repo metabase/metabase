@@ -3,10 +3,10 @@ import { t } from "ttag";
 import { useUpdateSettingsMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
+import { CopyCodeSnippetButton } from "metabase/embedding/embedding-iframe-sdk-setup/components/CodeSnippet/CopyCodeSnippetButton";
+import { useSdkIframeEmbedServerSnippet } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-sdk-iframe-embed-server-snippet";
 import { EmbedServerSnippetLanguageSelect } from "metabase/public/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
 import { Card, Flex, Stack, Text } from "metabase/ui";
-import { CopyCodeSnippetButton } from "metabase-enterprise/embedding_iframe_sdk_setup/components/CodeSnippet/CopyCodeSnippetButton";
-import { useSdkIframeEmbedServerSnippet } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-sdk-iframe-embed-server-snippet";
 import type { SettingKey } from "metabase-types/api";
 
 import { trackEmbedWizardCodeCopied } from "../analytics";

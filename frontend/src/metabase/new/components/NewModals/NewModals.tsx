@@ -9,6 +9,7 @@ import CreateCollectionModal from "metabase/collections/containers/CreateCollect
 import Modal from "metabase/common/components/Modal";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -17,9 +18,6 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
-// TODO: FIX IT!
-// eslint-disable-next-line -- SdkIframeEmbedSetupModal must be moved to OSS folder
-import { SdkIframeEmbedSetupModal } from "metabase-enterprise/embedding_iframe_sdk_setup/components/SdkIframeEmbedSetupModal";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {

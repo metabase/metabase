@@ -2,8 +2,6 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { WithSimpleEmbeddingFeatureUpsellTooltip } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
 import { PLUGIN_METABOT } from "metabase/plugins";

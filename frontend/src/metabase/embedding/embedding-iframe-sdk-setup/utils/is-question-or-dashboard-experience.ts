@@ -1,4 +1,4 @@
-import type { SdkIframeEmbedSetupExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 
 export const isQuestionOrDashboardExperience = (
   experience: SdkIframeEmbedSetupExperience,

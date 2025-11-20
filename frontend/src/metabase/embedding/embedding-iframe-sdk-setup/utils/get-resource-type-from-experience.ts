@@ -1,5 +1,5 @@
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { StaticEmbedResourceType } from "metabase/public/lib/types";
-import type { SdkIframeEmbedSetupExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 export const getResourceTypeFromExperience = (
   experience: SdkIframeEmbedSetupExperience,

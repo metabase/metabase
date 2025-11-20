@@ -22,10 +22,10 @@ EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
 // load the embedding_iframe_sdk EE plugin
 import "sdk-iframe-embedding-ee-plugins";
-// TODO: move to OSS
+
 // Must be imported after the EE plugins are loaded
-// eslint-disable-next-line no-restricted-imports
-import { SdkIframeEmbedRoute } from "metabase-enterprise/embedding_iframe_sdk/components/SdkIframeEmbedRoute";
+// eslint-disable-next-line import/order
+import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute";
 
 function _init() {
   document.body.style.margin = "0";

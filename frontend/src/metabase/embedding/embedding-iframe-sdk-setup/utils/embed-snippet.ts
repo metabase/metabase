@@ -1,7 +1,6 @@
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk/components/ParameterSettings/utils/get-visible-parameters";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP,
@@ -12,6 +11,7 @@ import type {
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/components/ParameterSettings/utils/get-visible-parameters";
 
 import type {
   SdkIframeDashboardEmbedSettings,

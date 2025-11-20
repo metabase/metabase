@@ -9,6 +9,8 @@ import "react-resizable/css/styles.css";
 import noResultsSource from "assets/img/no_results.svg";
 import { useUpdateSettingsMutation } from "metabase/api";
 import CS from "metabase/css/core/index.css";
+import { SdkIframeStaticEmbeddingStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStaticEmbeddingStatusBar";
+import { SdkIframeStepHeader } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepHeader";
 import { useDispatch } from "metabase/lib/redux";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal } from "metabase/redux/ui";
@@ -23,8 +25,6 @@ import {
   Modal,
   Stack,
 } from "metabase/ui";
-import { SdkIframeStaticEmbeddingStatusBar } from "metabase-enterprise/embedding_iframe_sdk_setup/components/SdkIframeStaticEmbeddingStatusBar";
-import { SdkIframeStepHeader } from "metabase-enterprise/embedding_iframe_sdk_setup/components/SdkIframeStepHeader";
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";

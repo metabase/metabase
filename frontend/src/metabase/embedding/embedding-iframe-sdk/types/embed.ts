@@ -7,16 +7,16 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
+import type {
+  SdkIframeDashboardEmbedSettings,
+  SdkIframeQuestionEmbedSettings,
+} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
   MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
 } from "metabase/embedding-sdk/types/refresh-token";
 import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";

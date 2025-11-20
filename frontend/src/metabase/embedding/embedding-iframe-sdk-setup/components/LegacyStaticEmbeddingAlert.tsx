@@ -1,11 +1,11 @@
 import { c, t } from "ttag";
 
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { useDispatch } from "metabase/lib/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { Alert, Anchor, Box, Flex, Icon, Stack, Text } from "metabase/ui";
-import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
-import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 
 export const LegacyStaticEmbeddingAlert = () => {
   const { isStaticEmbeddingEnabled, settings, resource, experience, onClose } =
