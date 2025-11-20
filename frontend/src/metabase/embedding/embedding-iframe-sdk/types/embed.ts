@@ -1,13 +1,12 @@
+import type { CollectionBrowserListColumns } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { MetabaseError } from "embedding-sdk-bundle/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
-import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
 import type {
-  CollectionBrowserListColumns,
-  EmbeddingEntityType,
   EntityTypeFilterKeys,
+  MetabaseAuthMethod,
   MetabaseTheme,
   SqlParameterValues,
-} from "embedding-sdk-package";
+} from "embedding-sdk-bundle/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
   MetabaseEmbeddingSessionToken,
@@ -15,6 +14,7 @@ import type {
 } from "metabase/embedding-sdk/types/refresh-token";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =

@@ -401,226 +401,6 @@ databaseChangeLog:
             constraintName: fk_auth_identity_core_user_id
 
   - changeSet:
-      id: v58.2025-11-12T00:00:03
-      author: edpaget
-      comment: Migrate password authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                email,
-                json_build_object('password_hash', password, 'password_salt', password_salt)::text,
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                email,
-                json_object('password_hash', password, 'password_salt', password_salt),
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL;
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                email,
-                CONCAT('{"password_hash":"', password, '","password_salt":"', password_salt, '"}'),
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = 'password'
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider = 'password';
-
-  - changeSet:
-      id: v58.2025-11-12T00:00:04
-      author: edpaget
-      comment: Migrate LDAP authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'ldap',
-                email,
-                NULL,
-                json_build_object('login_attributes', login_attributes)::text,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'ldap'
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'ldap',
-                email,
-                NULL,
-                json_object('login_attributes', login_attributes),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'ldap';
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'ldap',
-                email,
-                NULL,
-                CONCAT('{"login_attributes":', COALESCE(login_attributes, 'null'), '}'),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'ldap'
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = 'ldap'
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider = 'ldap';
-
-  - changeSet:
-      id: v58.2025-11-12T00:00:05
-      author: edpaget
-      comment: Migrate Google SSO authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'google',
-                email,
-                NULL,
-                json_build_object('sso_source', 'google', 'login_attributes', login_attributes)::text,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'google'
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'google',
-                email,
-                NULL,
-                json_object('sso_source', 'google', 'login_attributes', login_attributes),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'google';
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'google',
-                email,
-                NULL,
-                CONCAT('{"sso_source":"google","login_attributes":', COALESCE(login_attributes, 'null'), '}'),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'google'
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = 'google'
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider = 'google';
-
-  - changeSet:
-      id: v58.2025-11-12T00:00:06
-      author: edpaget
-      comment: Migrate SAML and JWT authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                sso_source,
-                email,
-                NULL,
-                json_build_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes)::text,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source IN ('saml', 'jwt')
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                sso_source,
-                email,
-                NULL,
-                json_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source IN ('saml', 'jwt');
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                sso_source,
-                email,
-                NULL,
-                CONCAT('{"sso_source":"', sso_source, '","login_attributes":', COALESCE(login_attributes, 'null'), ',"jwt_attributes":', COALESCE(jwt_attributes, 'null'), '}'),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source IN ('saml', 'jwt')
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = core_user.sso_source
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
-
-  - changeSet:
       id: v58.2025-11-12T00:00:07
       author: edpaget
       comment: Add auth_identity_id columns to core_session table
@@ -692,86 +472,224 @@ databaseChangeLog:
             constraintName: fk_session_auth_identity
 
   - changeSet:
-      id: v58.2025-11-12T11:57:00
-      author: wotbrew
-      comment: Add data_source column to metabase_table
+      id: v58.2025-11-12T00:00:11
+      author: edpaget
+      comment: Migrate password authentication to auth_identity table
       changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: data_source
-                  type: varchar(254)
-                  remarks: The origin type of the data (e.g. metabase-transform)
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v58.2025-11-12T11:57:02
-      author: wotbrew
-      comment: Add data_layer column to metabase_table
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: data_layer
-                  type: varchar(254)
-                  remarks: The (new) enum for visibility class
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v58.2025-11-12T11:57:03
-      author: wotbrew
-      comment: Add owner_email column to metabase_table
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: owner_email
-                  type: ${text.type}
-                  remarks: An optional email address of the 'owner' of this table, exclusive with owner_user_id.
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v58.2025-11-12T11:57:04
-      author: wotbrew
-      comment: Add owner_user_id column to metabase_table
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: owner_user_id
-                  type: int
-                  remarks: An (metabase) user id of the 'owner' of this table, exclusive with owner_email.
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v58.2025-11-13T10:00:00
-      author: qnkhuat
-      comment: Backfill data_layer from visibility_type
-      changes:
-        - sql: >-
-            UPDATE metabase_table
-            SET data_layer = CASE
-              WHEN visibility_type IN ('hidden', 'retired', 'sensitive', 'technical', 'cruft') THEN 'copper'
-              ELSE 'bronze'
-            END
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                LEFT(email, 255),
+                json_build_object('password_hash', password, 'password_salt', password_salt)::text,
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                LEFT(email, 255),
+                json_object('password_hash', password, 'password_salt', password_salt),
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                LEFT(email, 255),
+                CONCAT('{"password_hash":"', password, '","password_salt":"', password_salt, '"}'),
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'password'
+                );
       rollback:
-        - sql: >-
-            UPDATE metabase_table
-            SET visibility_type = CASE
-              WHEN data_layer = 'copper' THEN 'hidden'
-              ELSE NULL
-            END
-        - sql: >-
-            UPDATE metabase_table
-            SET data_layer = NULL
+        - sql: DELETE FROM auth_identity WHERE provider = 'password';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:12
+      author: edpaget
+      comment: Migrate LDAP authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                LEFT(email, 255),
+                NULL,
+                json_build_object('login_attributes', login_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap'
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                LEFT(email, 255),
+                NULL,
+                json_object('login_attributes', login_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                LEFT(email, 255),
+                NULL,
+                CONCAT('{"login_attributes":', COALESCE(login_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap'
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'ldap'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'ldap';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:13
+      author: edpaget
+      comment: Migrate Google SSO authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                LEFT(email, 255),
+                NULL,
+                json_build_object('sso_source', 'google', 'login_attributes', login_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google'
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                LEFT(email, 255),
+                NULL,
+                json_object('sso_source', 'google', 'login_attributes', login_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                LEFT(email, 255),
+                NULL,
+                CONCAT('{"sso_source":"google","login_attributes":', COALESCE(login_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google'
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'google'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'google';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:14
+      author: edpaget
+      comment: Migrate SAML and JWT authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                LEFT(email, 255),
+                NULL,
+                json_build_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt')
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                LEFT(email, 255),
+                NULL,
+                json_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt');
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                LEFT(email, 255),
+                NULL,
+                CONCAT('{"sso_source":"', sso_source, '","login_attributes":', COALESCE(login_attributes, 'null'), ',"jwt_attributes":', COALESCE(jwt_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt')
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = core_user.sso_source
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

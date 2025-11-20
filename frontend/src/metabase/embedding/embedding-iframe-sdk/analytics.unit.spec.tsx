@@ -1,6 +1,6 @@
 // Ensure the custom elements are registered
-import "metabase-enterprise/embedding_iframe_sdk/embed";
-import type { MetabaseEmbedElement } from "metabase-enterprise/embedding_iframe_sdk/embed";
+import "metabase/embedding/embedding-iframe-sdk/embed";
+import type { MetabaseEmbedElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 
 import { createEmbeddedAnalyticsJsUsage } from "./analytics";
 import type { SdkIframeEmbedBaseSettings } from "./types/embed";

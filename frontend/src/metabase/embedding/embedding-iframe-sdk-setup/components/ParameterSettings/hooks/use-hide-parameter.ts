@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import type { SdkIframeEmbedSetupContextType } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
+import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 
 export function useHideParameter({
   settings,
