@@ -118,6 +118,10 @@ jobs:
           yarn cypress verify
         shell: bash
 
+      - name: Run Prettier to populate cache
+        run: yarn lint-prettier-pure
+        continue-on-error: true
+
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
         with:
