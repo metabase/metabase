@@ -328,8 +328,7 @@ describe(
 
     it("should work for both simple and nested questions based on previously converted GUI query", () => {
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
         cy.findByText(MONGO_DB_NAME).click();
         cy.findByText("Products").click();
       });
