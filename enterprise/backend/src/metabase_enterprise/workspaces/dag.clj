@@ -59,6 +59,7 @@
             [visited' (conj result' node)])))
 
 (defn- toposort-dfs [child->parents]
+  ;; TODO (Chris 2025-11-20): Detect cycles and throw an error. (In practice inputs will never be cyclic, but still.)
   (let [all-nodes (set (keys child->parents))]
     (loop [visited   #{}
            result    []
