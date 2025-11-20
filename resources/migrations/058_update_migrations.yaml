@@ -801,6 +801,294 @@ databaseChangeLog:
             baseTableName: transform
             constraintName: fk_transform_workspace_id
 
+  - changeSet:
+      id: v58.2025-11-20T08:34:41
+      author: christruter
+      comment: Create workspace_mapping_table for mirroring tables in workspaces
+      changes:
+        - createTable:
+            tableName: workspace_mapping_table
+            remarks: Maps upstream tables to downstream tables within a workspace
+            columns:
+              - column:
+                  name: upstream_id
+                  type: int
+                  remarks: ID of the source table outside the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: downstream_id
+                  type: int
+                  remarks: ID of the mirrored table inside the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: ID of the workspace containing the mapping
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_mapping_table
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:42
+      author: christruter
+      comment: Add primary key constraint to workspace_mapping_table
+      changes:
+        - addPrimaryKey:
+            tableName: workspace_mapping_table
+            columnNames: upstream_id, downstream_id
+            constraintName: pk_workspace_mapping_table
+      rollback:
+        - dropPrimaryKey:
+            tableName: workspace_mapping_table
+            constraintName: pk_workspace_mapping_table
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:44
+      author: christruter
+      comment: Add index on upstream_id for workspace_mapping_table
+      changes:
+        - createIndex:
+            tableName: workspace_mapping_table
+            indexName: idx_workspace_mapping_table_upstream_id
+            columns:
+              - column:
+                  name: upstream_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_mapping_table
+            indexName: idx_workspace_mapping_table_upstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:45
+      author: christruter
+      comment: Add index on downstream_id for workspace_mapping_table
+      changes:
+        - createIndex:
+            tableName: workspace_mapping_table
+            indexName: idx_workspace_mapping_table_downstream_id
+            columns:
+              - column:
+                  name: downstream_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_mapping_table
+            indexName: idx_workspace_mapping_table_downstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:46
+      author: christruter
+      comment: Add index on workspace_id for workspace_mapping_table
+      changes:
+        - createIndex:
+            tableName: workspace_mapping_table
+            indexName: idx_workspace_mapping_table_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_mapping_table
+            indexName: idx_workspace_mapping_table_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:47
+      author: christruter
+      comment: Add foreign key constraint from workspace_mapping_table.upstream_id to metabase_table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_mapping_table
+            baseColumnNames: upstream_id
+            constraintName: fk_workspace_mapping_table_upstream_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_mapping_table
+            constraintName: fk_workspace_mapping_table_upstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:48
+      author: christruter
+      comment: Add foreign key constraint from workspace_mapping_table.downstream_id to metabase_table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_mapping_table
+            baseColumnNames: downstream_id
+            constraintName: fk_workspace_mapping_table_downstream_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_mapping_table
+            constraintName: fk_workspace_mapping_table_downstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:49
+      author: christruter
+      comment: Add foreign key constraint from workspace_mapping_table.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_mapping_table
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_mapping_table_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_mapping_table
+            constraintName: fk_workspace_mapping_table_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:50
+      author: christruter
+      comment: Create workspace_mapping_transform for mirroring transforms in workspaces
+      changes:
+        - createTable:
+            tableName: workspace_mapping_transform
+            remarks: Maps upstream transforms to downstream transforms within a workspace
+            columns:
+              - column:
+                  name: upstream_id
+                  type: int
+                  remarks: ID of the source transform outside the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: downstream_id
+                  type: int
+                  remarks: ID of the mirrored transform inside the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: ID of the workspace containing the mapping
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_mapping_transform
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:51
+      author: christruter
+      comment: Add primary key constraint to workspace_mapping_transform
+      changes:
+        - addPrimaryKey:
+            tableName: workspace_mapping_transform
+            columnNames: upstream_id, downstream_id
+            constraintName: pk_workspace_mapping_transform
+      rollback:
+        - dropPrimaryKey:
+            tableName: workspace_mapping_transform
+            constraintName: pk_workspace_mapping_transform
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:53
+      author: christruter
+      comment: Add index on upstream_id for workspace_mapping_transform
+      changes:
+        - createIndex:
+            tableName: workspace_mapping_transform
+            indexName: idx_workspace_mapping_transform_upstream_id
+            columns:
+              - column:
+                  name: upstream_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_mapping_transform
+            indexName: idx_workspace_mapping_transform_upstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:54
+      author: christruter
+      comment: Add index on downstream_id for workspace_mapping_transform
+      changes:
+        - createIndex:
+            tableName: workspace_mapping_transform
+            indexName: idx_workspace_mapping_transform_downstream_id
+            columns:
+              - column:
+                  name: downstream_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_mapping_transform
+            indexName: idx_workspace_mapping_transform_downstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:55
+      author: christruter
+      comment: Add index on workspace_id for workspace_mapping_transform
+      changes:
+        - createIndex:
+            tableName: workspace_mapping_transform
+            indexName: idx_workspace_mapping_transform_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_mapping_transform
+            indexName: idx_workspace_mapping_transform_workspace_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:56
+      author: christruter
+      comment: Add foreign key constraint from workspace_mapping_transform.upstream_id to transform
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_mapping_transform
+            baseColumnNames: upstream_id
+            constraintName: fk_workspace_mapping_transform_upstream_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_mapping_transform
+            constraintName: fk_workspace_mapping_transform_upstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:57
+      author: christruter
+      comment: Add foreign key constraint from workspace_mapping_transform.downstream_id to transform
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_mapping_transform
+            baseColumnNames: downstream_id
+            constraintName: fk_workspace_mapping_transform_downstream_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_mapping_transform
+            constraintName: fk_workspace_mapping_transform_downstream_id
+
+  - changeSet:
+      id: v58.2025-11-20T08:34:58
+      author: christruter
+      comment: Add foreign key constraint from workspace_mapping_transform.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_mapping_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_mapping_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_mapping_transform
+            constraintName: fk_workspace_mapping_transform_workspace_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

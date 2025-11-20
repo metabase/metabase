@@ -1,19 +1,14 @@
 (ns metabase-enterprise.workspaces.dag
-  (:require [clojure.set :as set]
-            [flatland.ordered.map :as ordered-map]
-            [metabase.util :as u]))
+  (:require
+   [clojure.set :as set]
+   [flatland.ordered.map :as ordered-map]
+   [metabase.util :as u]))
 
 ;; TODO handle shadowing / execution of transforms that depend on checkout out models
-
-(defn- example-type [id]
-  (-> id name first {\t :table
-                     \x :transform
-                     \m :model}))
 
 (defn- related [t id]
   (keyword (str (name t) (subs (name id) 1))))
 
-(def ^:private t->x (partial related :x))
 (def ^:private x->t (partial related :t))
 
 (defn- is? [t id] (= (name t) (str (first (name id)))))
@@ -159,7 +154,7 @@
                    next-up)))))))
 
 (comment
-  #p (path-induced-subgraph example))
+  (path-induced-subgraph example))
 
 ;; (path-induced-subgraph example) =>
 {:check-outs   '(:x3 :m6 :m10 :m12),

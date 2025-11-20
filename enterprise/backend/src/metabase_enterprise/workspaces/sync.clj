@@ -1,8 +1,11 @@
 (ns metabase-enterprise.workspaces.sync
+  ;; TODO (Chris 2025-11-20) -- Decide whether to mirror metadata manually, and drop sync dependency
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.sync.core :as sync]
+   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.sync.sync-metadata.tables :as sync-tables]))
 
 ;; this ns will be probably moved

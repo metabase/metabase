@@ -8,7 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.system.core :as system]
-   [metabase.util :as u]))
+   [toucan2.core :as t2]))
 
 ;;;; Naming
 
@@ -92,6 +92,10 @@
   (assoc graph :outputs (vec
                          (for [upstream-output (:outputs graph)]
                            (let [isolated-table (duplicate-output-table! database workspace upstream-output)]
+                             (t2/insert! :model/WorkspaceMappingTable
+                                         {:upstream_id   (:id upstream-output)
+                                          :downstream_id (:id isolated-table)
+                                          :workspace_id  (:id workspace)})
                              (assoc upstream-output :mapping isolated-table))))))
 
 (defn ensure-database-isolation!
