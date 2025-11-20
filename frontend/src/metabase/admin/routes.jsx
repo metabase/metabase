@@ -145,17 +145,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* EMBEDDING */}
       <Route path="embedding" component={createAdminRouteGuard("embedding")}>
         <Route title={t`Embedding`} component={AdminEmbeddingApp}>
-          <IndexRedirect to="modular" />
+          <IndexRoute component={EmbeddingSettings} />
+
           <Route
             path="setup-guide"
             title={t`Setup guide`}
             component={EmbeddingHubAdminSettingsPage}
           />
-          <Route
-            path="modular"
-            title={t`Settings`}
-            component={EmbeddingSettings}
-          />
+
           {isEEBuild() && (
             <>
               <Route
@@ -177,30 +174,22 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* EE has all embedding settings on the same page */}
       {!isEEBuild() && (
         <>
-          <Redirect
-            from="/admin/embedding/guest"
-            to="/admin/embedding/modular"
-          />
+          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
 
-          <Redirect
-            from="/admin/embedding/security"
-            to="/admin/embedding/modular"
-          />
+          <Redirect from="/admin/embedding/security" to="/admin/embedding" />
         </>
       )}
 
       {/* Backwards compatibility for embedding settings */}
-      <Redirect
-        from="/admin/embedding/interactive"
-        to="/admin/embedding/modular"
-      />
+      <Redirect from="/admin/embedding/modular" to="/admin/embedding" />
+      <Redirect from="/admin/embedding/interactive" to="/admin/embedding" />
       <Redirect
         from="/admin/settings/embedding-in-other-applications"
-        to="/admin/embedding/modular"
+        to="/admin/embedding"
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/full-app"
-        to="/admin/embedding/modular"
+        to="/admin/embedding"
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/standalone"
@@ -208,7 +197,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/sdk"
-        to="/admin/embedding/modular"
+        to="/admin/embedding"
       />
 
       {/* SETTINGS */}

@@ -17,7 +17,7 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   );
   cy.intercept("GET", "/api/setting").as("getSettings");
   cy.signInAsAdmin();
-  cy.visit("/admin/embedding/modular");
+  cy.visit("/admin/embedding");
   cy.wait("@getSettings");
 
   cy.findByTestId("content-localization-setting").findByText(
