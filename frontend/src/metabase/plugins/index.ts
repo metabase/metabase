@@ -1147,13 +1147,6 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
   }),
 };
 
-export type LibrarySectionProps = {
-  collections: Collection[];
-  selectedCollectionId: CollectionId | undefined;
-  hasDataAccess: boolean;
-  hasNativeWrite: boolean;
-};
-
 export type NavbarLibrarySectionProps = {
   collections: Collection[];
   selectedId?: string | number;
@@ -1161,32 +1154,6 @@ export type NavbarLibrarySectionProps = {
 };
 
 export type LibraryCollectionType = "root" | "models" | "metrics";
-
-export type LibraryPlugin = {
-  isEnabled: boolean;
-  LibrarySection: ComponentType<LibrarySectionProps>;
-  NavbarLibrarySection: ComponentType<NavbarLibrarySectionProps>;
-  getLibraryCollectionType: (
-    collectionType: CollectionType | null | undefined,
-  ) => LibraryCollectionType | undefined;
-  canPlaceEntityInCollection: (
-    entityType: CollectionItemModel,
-    collectionType: CollectionType | null | undefined,
-  ) => boolean;
-  canPlaceEntityInCollectionOrDescendants: (
-    entityType: CollectionItemModel,
-    collectionType: CollectionType | null | undefined,
-  ) => boolean;
-};
-
-export const PLUGIN_LIBRARY: LibraryPlugin = {
-  isEnabled: false,
-  LibrarySection: PluginPlaceholder,
-  NavbarLibrarySection: PluginPlaceholder,
-  getLibraryCollectionType: () => undefined,
-  canPlaceEntityInCollection: () => true,
-  canPlaceEntityInCollectionOrDescendants: () => true,
-};
 
 export type DataStudioToolbarButtonProps = {
   question: Question;
@@ -1202,6 +1169,18 @@ export type DataStudioPlugin = {
     CanAccessTransforms: ComponentType,
   ) => ReactNode;
   DataStudioToolbarButton: ComponentType<DataStudioToolbarButtonProps>;
+  NavbarLibrarySection: ComponentType<NavbarLibrarySectionProps>;
+  getLibraryCollectionType: (
+    collectionType: CollectionType | null | undefined,
+  ) => LibraryCollectionType | undefined;
+  canPlaceEntityInCollection: (
+    entityType: CollectionItemModel,
+    collectionType: CollectionType | null | undefined,
+  ) => boolean;
+  canPlaceEntityInCollectionOrDescendants: (
+    entityType: CollectionItemModel,
+    collectionType: CollectionType | null | undefined,
+  ) => boolean;
 };
 
 export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
@@ -1209,4 +1188,8 @@ export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
   canAccessDataStudio: () => false,
   getDataStudioRoutes: () => null,
   DataStudioToolbarButton: PluginPlaceholder,
+  NavbarLibrarySection: PluginPlaceholder,
+  getLibraryCollectionType: () => undefined,
+  canPlaceEntityInCollection: () => true,
+  canPlaceEntityInCollectionOrDescendants: () => true,
 };

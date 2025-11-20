@@ -6,13 +6,19 @@ import { t } from "ttag";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { LibrarySectionProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ModelingSidebarSection } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarSection";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { CreateLibraryModal } from "./CreateLibraryModal";
 import { LibraryCollectionTree } from "./LibraryCollectionTree";
+
+export type LibrarySectionProps = {
+  collections: Collection[];
+  selectedCollectionId: CollectionId | undefined;
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+};
 
 export function LibrarySection({
   collections,

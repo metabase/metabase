@@ -1,5 +1,5 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
@@ -71,7 +71,7 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "person" };
   }
 
-  switch (PLUGIN_LIBRARY.getLibraryCollectionType(item.type)) {
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type)) {
     case "root":
       return { name: "repository" };
     case "models":

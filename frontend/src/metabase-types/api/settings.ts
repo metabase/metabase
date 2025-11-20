@@ -331,7 +331,6 @@ export const tokenFeatures = [
   "transforms",
   "transforms-python",
   "data_studio",
-  "library",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
