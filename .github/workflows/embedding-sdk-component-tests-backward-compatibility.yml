@@ -50,7 +50,8 @@ jobs:
       CYPRESS_CI: true
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the code from the previous commit
+        uses: actions/checkout@v4
         with:
           ref: ${{ needs.decide-target-ref.outputs.target-ref }}
 
@@ -60,7 +61,18 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
+      - name: Attempt to retrieve the ee uberjar artifact from the previous commit
+        id: download-uberjar
+        uses: ./.github/actions/fetch-artifact
+        with:
+          name: metabase-ee-${{ needs.decide-target-ref.outputs.target-ref }}-uberjar
+        continue-on-error: true # do not break the whole job if this step doesn't succeed
+
+      # Build the uberjar from the previous commit only it we couldn't fetch it.
+      # `step.foo.OUTCOME` is impotant because it looks at the step status *before* continue-on-error is applied.
+      # Do not confuse it with `step.foo.conclusion`.
       - name: Build MB uberjar from the commit N-1
+        if: steps.download-uberjar.outcome != "success"
         run: ./bin/build.sh
 
       - name: Retrieve Embedding SDK dist artifact built from the current commit N
