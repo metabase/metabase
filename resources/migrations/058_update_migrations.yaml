@@ -1109,6 +1109,7 @@ databaseChangeLog:
       id: v58.2025-11-20T08:35:02
       author: christruter
       comment: Drop collection.workspace_id FK for cascade update
+      validCheckSum: ANY
       preConditions:
         - onFail: MARK_RAN
         - foreignKeyConstraintExists:
@@ -1129,6 +1130,7 @@ databaseChangeLog:
       id: v58.2025-11-20T08:35:03
       author: christruter
       comment: Add collection.workspace_id FK with CASCADE
+      validCheckSum: ANY
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -1151,6 +1153,7 @@ databaseChangeLog:
       id: v58.2025-11-20T08:35:04
       author: christruter
       comment: Drop transform.workspace_id FK for cascade update
+      validCheckSum: ANY
       preConditions:
         - onFail: MARK_RAN
         - foreignKeyConstraintExists:
@@ -1171,6 +1174,7 @@ databaseChangeLog:
       id: v58.2025-11-20T08:35:05
       author: christruter
       comment: Add transform.workspace_id FK with CASCADE
+      validCheckSum: ANY
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -1193,6 +1197,7 @@ databaseChangeLog:
       id: v58.2025-11-20T08:35:06
       author: christruter
       comment: Drop report_card.workspace_id FK for cascade update
+      validCheckSum: ANY
       preConditions:
         - onFail: MARK_RAN
         - foreignKeyConstraintExists:
