@@ -26,7 +26,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  build:
+  build-sdk-package:
     needs: [files-changed]
     if: |
       !cancelled() &&
@@ -54,10 +54,10 @@ jobs:
           path: resources/embedding-sdk
 
   embedding-sdk-cli-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk-package]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk-package.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -73,10 +73,10 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk-package]
     if: |
       needs.files-changed.outputs.embedding_documentation == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk-package.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -92,10 +92,10 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk-package]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk-package.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -143,7 +143,7 @@ jobs:
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   embedding-sdk-component-tests:
     name: "SDK component tests"
-    needs: [build, files-changed]
+    needs: [build-sdk-package, files-changed]
     if: needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
@@ -152,16 +152,16 @@ jobs:
 
   embedding-sdk-component-tests-backward-compatibility:
     name: "SDK component tests for the backward compatibility"
-    needs: [build, files-changed]
+    needs: [build-sdk-package, files-changed]
     if: needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     uses: ./.github/workflows/embedding-sdk-component-tests-backward-compatibility.yml
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  not-required-embedding-sdk-e2e-tests:
-    name: "SDK e2e tests (host/sample) apps"
-    needs: [build, files-changed]
+  not-required-embedding-sdk-apps-compatibility-tests:
+    name: "SDK e2e tests for compatibility with (host/sample) apps"
+    needs: [build-sdk-package, files-changed]
     if: needs.files-changed.outputs.e2e_embedding_sdk_compatibility == 'true'
     uses: ./.github/workflows/embedding-sdk-e2e-tests.yml
     secrets: inherit
