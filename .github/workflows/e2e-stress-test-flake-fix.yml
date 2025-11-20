@@ -37,26 +37,26 @@ on:
         default: true
 
 jobs:
-  determine-suite:
-    name: Determine test suite
+  determine-test-type:
+    name: Determine test type
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
-      suite: ${{ steps.detect.outputs.suite }}
+      type: ${{ steps.detect.outputs.type }}
     steps:
-      - name: Detect suite from spec path
+      - name: Detect test type from spec path
         id: detect
         run: |
           SPEC='${{ inputs.spec }}'
           if [[ "$SPEC" == e2e/test-component/scenarios/embedding-sdk/* ]]; then
-            echo "suite=component" >> $GITHUB_OUTPUT
+            echo "type=component" >> $GITHUB_OUTPUT
           else
-            echo "suite=e2e" >> $GITHUB_OUTPUT
+            echo "type=e2e" >> $GITHUB_OUTPUT
           fi
 
   workflow-summary:
     name: Stress test inputs
-    needs: [determine-suite]
+    needs: [determine-test-type]
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
@@ -66,7 +66,7 @@ jobs:
           echo '' >> $GITHUB_STEP_SUMMARY
           echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
           echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `test_suite` (inferred): ${{ needs.determine-suite.outputs.suite }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `test_type` (inferred): ${{ needs.determine-test-type.outputs.type }}' >> $GITHUB_STEP_SUMMARY
           echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
           echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
@@ -75,7 +75,7 @@ jobs:
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
   stress-test-flake-fix:
-    needs: [determine-suite]
+    needs: [determine-test-type]
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     name: Stress test E2E flake fix
@@ -122,12 +122,12 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Prepare back-end environment
-        if: ${{ needs.determine-suite.outputs.suite == 'component' }}
+        if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
       - name: Build Embedding SDK package
-        if: ${{ needs.determine-suite.outputs.suite == 'component' }}
+        if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         run: yarn build-embedding-sdk-package
 
       - name: Prepare JDK 21
@@ -148,12 +148,12 @@ jobs:
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         env:
           GREP: ${{ github.event.inputs.grep }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
-          node e2e/runner/run_cypress_ci.js ${{ needs.determine-suite.outputs.suite }} \
+          node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }} \
-          --config-file e2e/support/cypress-stress-test.config.js \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --config-file e2e/support/cypress-stress-test.config.js
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

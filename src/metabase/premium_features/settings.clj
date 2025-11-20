@@ -311,6 +311,10 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
+(define-premium-feature ^{:added "0.57.1"} enable-support-users?
+  "Should users be allowed to enable support users in-app?"
+  :support-users)
+
 (define-premium-feature ^{:added "0.58.0"} enable-data-studio?
   "Should we enable the Data Studio?"
   :data-studio)
@@ -362,6 +366,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)

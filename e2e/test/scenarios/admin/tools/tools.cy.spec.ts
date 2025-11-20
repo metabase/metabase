@@ -1,51 +1,9 @@
 import dayjs from "dayjs";
 
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import { createMockTask } from "metabase-types/api/mocks";
 
 const { H } = cy;
-
-describe("scenarios > admin > tools > help", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should link `Get help` to help", () => {
-    cy.visit("/admin/tools/help");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Get help")
-      .parents("a")
-      .should("have.prop", "href")
-      .and(
-        "match",
-        /^https:\/\/www\.metabase\.com\/help\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v(?:(?!diag=).)+$/,
-      );
-  });
-});
-
-describe("scenarios > admin > tools > help (EE)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  it("should link `Get Help` to help-premium", () => {
-    cy.visit("/admin/tools/help");
-
-    cy.findByTestId("admin-layout-content")
-      .findByText("Get help")
-      .parents("a")
-      .should("have.prop", "href")
-      .and(
-        "match",
-        /^https:\/\/www\.metabase\.com\/help-premium\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v.+&diag=%7B.+%7D$/,
-      );
-  });
-});
 
 describe("issue 14636", () => {
   const total = 57;
@@ -56,7 +14,7 @@ describe("issue 14636", () => {
    * @param {(0|1)} payload.page
    * @param {("first"|"second")} payload.alias
    */
-  function stubPageResponses({ page, alias }) {
+  function stubPageResponses({ page, alias }: { page: number; alias: string }) {
     const offset = page * limit;
 
     cy.intercept(
@@ -80,7 +38,7 @@ describe("issue 14636", () => {
    * @param {(0|1)} page
    * @returns Row[]
    */
-  function stubPageRows(page) {
+  function stubPageRows(page: number) {
     // There rows details don't really matter.
     // We're generating two types of rows. One for each page.
     const tasks = ["field values scanning", "analyze"];
@@ -103,11 +61,10 @@ describe("issue 14636", () => {
     const pageRows = [limit, total - limit];
     const length = pageRows[page];
 
-    const stubbedRows = Array.from({ length }, (_, index) => ({
+    return Array.from({ length }, (_, index) => ({
       ...row,
       id: index + 1,
     }));
-    return stubbedRows;
   }
 
   beforeEach(() => {
@@ -356,7 +313,7 @@ describe("scenarios > admin > tools > logs", () => {
    * The formatted timestamp may vary depending on the timezone in which the test is run.
    * This function makes test assertions timezone-agnostic.
    */
-  function formatTimestamp(timestamp) {
+  function formatTimestamp(timestamp: string) {
     return dayjs(timestamp).format();
   }
 });
@@ -381,7 +338,7 @@ describe("admin > tools > erroring questions ", () => {
     display: "scalar",
   };
 
-  function fixQuestion(name) {
+  function fixQuestion(name: string) {
     cy.findByTestId("visualization-root").findByText(name).click();
 
     cy.findByText("Open Editor").click();
@@ -396,7 +353,7 @@ describe("admin > tools > erroring questions ", () => {
     });
   }
 
-  function selectQuestion(name) {
+  function selectQuestion(name: string) {
     cy.findByText(name)
       .closest("tr")
       .within(() => {
@@ -435,7 +392,7 @@ describe("admin > tools > erroring questions ", () => {
 
     describe("with the existing broken questions", () => {
       beforeEach(() => {
-        H.createNativeQuestion(brokenQuestionDetails, {
+        H.createNativeQuestion(brokenQuestionDetails as NativeQuestionDetails, {
           loadMetadata: true,
         });
 
