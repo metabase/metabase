@@ -1006,7 +1006,8 @@
         (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
                 :errors
                 {:login_attributes
-                 "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}
+                 {(keyword "@foo")
+                  "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
                (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
                                      {:email            "testuser@metabase.com"
                                       :login_attributes {"@foo" "foo"}}))))))
@@ -1018,7 +1019,8 @@
           (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
                   :errors
                   {:login_attributes
-                   "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}
+                   {(keyword "@foo")
+                    "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
                  (mt/user-http-request :crowberto :post 400 "user"
                                        {:first_name       user-name
                                         :last_name        user-name
