@@ -153,7 +153,7 @@ describe("useSharingModal", () => {
           initialState: {
             resourceType: mockResourceType,
             resourceId: mockResource.id,
-            isStatic: true,
+            isGuestEmbed: true,
             useExistingUserSession: true,
           },
         },
