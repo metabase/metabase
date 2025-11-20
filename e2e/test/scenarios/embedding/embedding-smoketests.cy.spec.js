@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const standalonePath = "/admin/embedding/static";
+const standalonePath = "/admin/embedding/guest";
 
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
