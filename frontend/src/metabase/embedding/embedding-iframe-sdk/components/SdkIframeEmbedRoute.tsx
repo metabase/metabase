@@ -14,7 +14,7 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
-import type { MetabaseAuthConfig } from "embedding-sdk-package";
+import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createTracker } from "metabase/lib/analytics-untyped";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
