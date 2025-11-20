@@ -38,7 +38,6 @@
                               :offer-metabase-ai
                               :offer-metabase-ai-tiered
                               :official-collections
-                              :library
                               :query-reference-validation
                               :remote-sync
                               :sandboxes
@@ -86,7 +85,6 @@
             :offer_metabase_ai              true
             :offer_metabase_ai_tiered       true
             :official_collections           true
-            :library                        true
             :query_reference_validation     true
             :remote_sync                    true
             :sandboxes                      true

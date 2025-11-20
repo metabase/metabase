@@ -66,7 +66,6 @@
   enable-remote-sync?
   enable-sandboxes?
   enable-scim?
-  enable-library?
   enable-semantic-search?
   enable-serialization?
   enable-session-timeout-config?

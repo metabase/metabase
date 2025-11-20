@@ -6,7 +6,7 @@
    [toucan2.core :as t2]))
 
 (deftest get-library
-  (mt/with-premium-features #{:library}
+  (mt/with-premium-features #{:data-studio}
     (mt/with-discard-model-updates! [:model/Collection]
       ;; move existing library out of the way
       (t2/update! (t2/table-name :model/Collection) :type collection/library-collection-type {:type nil})

@@ -68,7 +68,6 @@
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
-   :library                    (deferred-tru "Library")
    :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
@@ -123,7 +122,7 @@
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
-   "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
+   "/library"                      (premium-handler metabase-enterprise.library.api/routes :data-studio)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)

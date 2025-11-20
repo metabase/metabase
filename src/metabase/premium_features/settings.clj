@@ -315,10 +315,6 @@
   "Should we enable the Data Studio?"
   :data-studio)
 
-(define-premium-feature ^{:added "0.58.0"} enable-library?
-  "Should we eanble the Library?"
-  :library)
-
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -349,7 +345,6 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :library                        (enable-library?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
    :offer_metabase_ai              (offer-metabase-ai-trial?)
