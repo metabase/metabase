@@ -248,7 +248,6 @@
     "@types/underscore": "^1.11.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "arg": "^5.0.0",
     "babel-eslint": "10.1.0",
     "babel-loader": "^9.1.2",
     "babel-plugin-ttag": "^1.7.26",
