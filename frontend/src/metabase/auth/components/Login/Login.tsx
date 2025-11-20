@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useSelector } from "metabase/lib/redux";
 import type { AuthProvider } from "metabase/plugins/types";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -28,6 +29,8 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
   const selection = getSelectedProvider(providers, params?.provider);
   const redirectUrl = location?.query?.redirect;
   const applicationName = useSelector(getApplicationName);
+
+  usePageTitle(t`Login`);
 
   const [passwordProvider, otherProviders] = _.partition(
     providers,
