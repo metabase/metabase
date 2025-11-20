@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import { convertParameterValuesBySlugToById } from "metabase/embedding/embedding-iframe-sdk-setup/utils/convert-parameter-values-by-slug-to-by-id";
 import type { EmbeddingParametersValues } from "metabase/public/lib/types";
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
-import { convertParameterValuesBySlugToById } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/convert-parameter-values-by-slug-to-by-id";
 import type { Parameter } from "metabase-types/api";
 
 export const useParametersValues = ({
