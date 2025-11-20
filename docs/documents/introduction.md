@@ -88,7 +88,7 @@ After arranging your charts, save your changes!
 
 ![Supporting text next to a chart](./images/supporting-text.png)
 
-You can add supporting text blocks next to charts to provide context.
+You can add a supporting text block next to charts to provide context.
 
 To add supporting text to a chart:
 
@@ -97,9 +97,9 @@ To add supporting text to a chart:
 3. Select **Add supporting text**.
 4. Type your text in the supporting text block.
 
-You can only have one supporting text block per group of charts. A group can contain up to three items total (charts and supporting text blocks combined).
+You can only have one supporting text block per group of charts. A group can contain up to three items total (charts and supporting text block combined).
 
-You can drag and drop supporting text blocks to reorder them within a group of charts. You can only move supporting text within its current group; you cannot drag it out to create a standalone text block.
+You can drag and drop a supporting text block to reorder them within a group of charts. You can only move supporting text within its current group; you can't drag it out to create a standalone text block.
 
 Supporting text blocks support the same Markdown formatting as the rest of the document, including headings, lists, blockquotes, and code blocks. But you can't add charts in supporting text.
 
