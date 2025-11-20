@@ -726,9 +726,12 @@
     (let [[status result] @result-promise]
       (case status
         :error  (handle-bigquery-exception result sql parameters)
-        :cancel (do
+        :cancel (try
                   (.cancel client job-id)
-                  (throw-cancelled sql parameters))
+                  (catch Throwable t
+                    (log/warnf t "Couldn't cancel job %s" job-id))
+                  (finally
+                    (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*
