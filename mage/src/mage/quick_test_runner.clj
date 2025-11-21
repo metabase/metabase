@@ -54,7 +54,7 @@
                       :theme :minimal
                       :label-theme :marquee
                       :label "To Rerun Directly"}
-                     (c/cyan "mage quick-test -d " (str/join "," test-dirs))))))
+                     (c/cyan "mage quick-test " (str/join " " test-dirs))))))
 
 ;; namespaces will be converted to their file paths, so this check will work.
 (defn- check-arg [arg]
