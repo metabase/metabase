@@ -40,14 +40,15 @@ let refreshTokenPromise: ReturnType<
 
 // Side effect happening here.
 PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
-  {
-    metabaseInstanceUrl,
-    preferredAuthMethod,
-    apiKey,
-    isLocalHost,
-  }: MetabaseAuthConfig & { isLocalHost?: boolean },
+  config: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
+  const { metabaseInstanceUrl, preferredAuthMethod, apiKey, isLocalHost } =
+    config;
+  const jwtProviderUri =
+    preferredAuthMethod === "jwt" && "jwtProviderUri" in config
+      ? config.jwtProviderUri
+      : undefined;
   // remove any stale tokens that might be there from a previous session=
   samlTokenStorage.remove();
 
@@ -69,6 +70,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           getOrRefreshSession({
             metabaseInstanceUrl,
             preferredAuthMethod,
+            jwtProviderUri,
           }),
         ).unwrap();
         if (session?.id) {
@@ -81,6 +83,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         getOrRefreshSession({
           metabaseInstanceUrl,
           preferredAuthMethod,
+          jwtProviderUri,
         }),
       ).unwrap();
     } catch (e) {
@@ -116,7 +119,12 @@ const refreshTokenImpl = async (
   {
     metabaseInstanceUrl,
     preferredAuthMethod,
-  }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
+    jwtProviderUri,
+  }: {
+    metabaseInstanceUrl: string;
+    preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+    jwtProviderUri?: string;
+  },
   { getState }: { getState: () => unknown },
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
   const state = getState() as SdkStoreState;
@@ -130,6 +138,7 @@ const refreshTokenImpl = async (
   const session = await getRefreshToken({
     metabaseInstanceUrl,
     preferredAuthMethod,
+    jwtProviderUri,
     fetchRequestToken: customGetRefreshToken,
   });
   validateSession(session);
@@ -149,10 +158,11 @@ PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = refreshTokenImpl;
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
-    authConfig: Pick<
-      MetabaseAuthConfig,
-      "metabaseInstanceUrl" | "preferredAuthMethod"
-    >,
+    authConfig: {
+      metabaseInstanceUrl: string;
+      preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+      jwtProviderUri?: string;
+    },
     { dispatch, getState },
   ) => {
     // necessary to ensure that we don't use a popup every time the user
@@ -190,14 +200,23 @@ const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,
   fetchRequestToken: customGetRequestToken,
-}: Pick<
-  MetabaseAuthConfig,
-  "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
->) => {
-  const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
-    preferredAuthMethod,
-    headers: getSdkRequestHeaders(),
-  });
+  jwtProviderUri,
+}: {
+  metabaseInstanceUrl: string;
+  preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+  fetchRequestToken?: MetabaseAuthConfig["fetchRequestToken"];
+  jwtProviderUri?: string;
+}) => {
+  const shouldSkipSsoDiscovery =
+    preferredAuthMethod === "jwt" && Boolean(jwtProviderUri);
+
+  const urlResponseJson = shouldSkipSsoDiscovery
+    ? { method: "jwt", url: jwtProviderUri }
+    : await connectToInstanceAuthSso(metabaseInstanceUrl, {
+        preferredAuthMethod,
+        headers: getSdkRequestHeaders(),
+      });
+
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
     const token = await openSamlLoginPopup(responseUrl);
@@ -205,13 +224,19 @@ const getRefreshToken = async ({
 
     return token;
   }
-  if (method === "jwt") {
+  if (method === "jwt" && responseUrl) {
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       metabaseInstanceUrl,
       getSdkRequestHeaders(hash),
       customGetRequestToken,
     );
+  }
+  if (method === "jwt") {
+    throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
+      instanceUrl: metabaseInstanceUrl,
+      message: "Missing JWT provider URI",
+    });
   }
   throw MetabaseError.INVALID_AUTH_METHOD({ method });
 };
