@@ -83,6 +83,7 @@ const DataSelectorDatabasePicker = ({
       className={CS.textBrand}
       hasInitialFocus={hasInitialFocus}
       sections={sections}
+      globalSearch={true}
       onChange={(item: Item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
       itemIsClickable={(item: Item) => !databaseIsDisabled?.(item.database)}
