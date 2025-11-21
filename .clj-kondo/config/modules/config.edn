@@ -2080,9 +2080,11 @@
           metabase-enterprise.representations.init}
    :uses #{api
            collections
+           collections-rest
            config
            driver
            lib
+           lib-be
            models
            util}}
 
