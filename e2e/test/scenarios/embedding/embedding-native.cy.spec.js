@@ -363,6 +363,7 @@ describe("scenarios > embedding > native questions", () => {
           resource: "question",
           resourceId: id,
           activeTab: "parameters",
+          unpublishBeforeOpen: false,
         });
       });
 
