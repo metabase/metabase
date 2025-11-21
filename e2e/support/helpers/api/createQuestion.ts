@@ -155,7 +155,8 @@ export const question = (
   if (validTypes.includes(type)) {
     payload.type = type;
   }
-  return cy.request<Card>("POST", "/api/card", payload).then(({ body }) => {
+  return cy.request<Card>("POST", "/api/card", payload).then((response) => {
+    const { body } = response;
     /**
      * Optionally, if you need question's id later in the test, outside the scope of this function,
      * you can use it like this:
@@ -189,6 +190,8 @@ export const question = (
         cy.wait("@" + interceptAlias); // Wait for `result_metadata` to load
       }
     }
+
+    return cy.wrap(response);
   });
 };
 
