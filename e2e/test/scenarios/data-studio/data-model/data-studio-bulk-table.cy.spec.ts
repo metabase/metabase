@@ -50,6 +50,7 @@ describe("bulk table operations", () => {
 
   it("syncing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
+    H.activateToken("bleeding-edge");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
@@ -104,6 +105,7 @@ describe("bulk table operations", () => {
 
   it("allows publishing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
+    H.activateToken("bleeding-edge");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
@@ -133,6 +135,7 @@ describe("bulk table operations", () => {
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
+    H.activateToken("bleeding-edge");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
@@ -161,6 +164,7 @@ describe("bulk table operations", () => {
 
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
+    H.activateToken("bleeding-edge");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12")
@@ -203,6 +207,7 @@ describe("bulk table operations", () => {
 
   it("allows to edit attributes for schema", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
+    H.activateToken("bleeding-edge");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
