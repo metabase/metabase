@@ -106,10 +106,11 @@ export const SdkIframeEmbedSetupProvider = ({
     questionId: settings.questionId,
   });
 
-  const { availableParameters } = useAvailableParameters({
-    experience,
-    resource,
-  });
+  const { availableParameters, initialAvailableParameters } =
+    useAvailableParameters({
+      experience,
+      resource,
+    });
 
   const {
     embeddingParameters,
@@ -120,6 +121,7 @@ export const SdkIframeEmbedSetupProvider = ({
     updateSettings,
     resource,
     availableParameters,
+    initialAvailableParameters,
   });
 
   const { parametersValuesById, previewParameterValuesBySlug } =

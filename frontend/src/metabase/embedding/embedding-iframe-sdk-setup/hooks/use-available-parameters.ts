@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
@@ -9,63 +9,61 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
-interface UseAvailableParametersProps {
+type UseParameterListProps = {
   experience: SdkIframeEmbedSetupExperience;
   resource: Dashboard | Card | null;
-}
-
-const extractParameters = (
-  resource: Dashboard | Card,
-  experience: SdkIframeEmbedSetupExperience,
-  metadata: ReturnType<typeof getMetadata>,
-): Parameter[] => {
-  if (experience === "dashboard") {
-    const dashboard = resource as Dashboard;
-    return getSavedDashboardUiParameters(
-      dashboard.dashcards,
-      dashboard.parameters,
-      dashboard.param_fields,
-      metadata,
-    );
-  }
-
-  if (experience === "chart") {
-    const card = resource as Card;
-    return getCardUiParameters(card, metadata) || [];
-  }
-
-  return [];
 };
 
-/**
- * Extracts available parameters from a dashboard or card resource.
- * Also adds parameter fields to Redux for dropdown widget population.
- */
 export const useAvailableParameters = ({
   experience,
   resource,
-}: UseAvailableParametersProps) => {
+}: UseParameterListProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  // Prevents unnecessary re-renders on metadata changes
-  // See PublicOrEmbeddedQuestion.tsx for reference
+  const initialAvailableParametersRef = useRef<Parameter[] | null>(null);
+
+  // This prevents `availableParameters` from being updated on every metadata change,
+  // which would cause unnecessary re-renders in the component using this hook.
+  // See [PublicOrEmbeddedQuestion.tsx] for reference.
   const metadataRef = useLatest(metadata);
 
+  // Extract parameters from the loaded dashboard/card
   const availableParameters = useMemo((): Parameter[] => {
     if (!resource) {
       return [];
     }
 
-    return extractParameters(resource, experience, metadataRef.current);
-  }, [resource, experience, metadataRef]);
+    if (experience === "dashboard") {
+      const dashboard = resource as Dashboard;
+      return getSavedDashboardUiParameters(
+        dashboard.dashcards,
+        dashboard.parameters,
+        dashboard.param_fields,
+        metadata,
+      );
+    } else if (experience === "chart") {
+      const card = resource as Card;
+      return getCardUiParameters(card, metadataRef.current) || [];
+    }
 
-  // Add parameter fields to Redux for dropdown widget population
+    return [];
+  }, [resource, experience, metadata, metadataRef]);
+
+  if (resource && initialAvailableParametersRef.current === null) {
+    initialAvailableParametersRef.current = availableParameters;
+  }
+
   useEffect(() => {
     if (resource && "param_fields" in resource && resource.param_fields) {
+      // This is needed to make some parameter widget populate the dropdown list
+      // otherwise they will use a normal text input
       dispatch(addFields(Object.values(resource.param_fields).flat()));
     }
   }, [resource, dispatch]);
 
-  return { availableParameters };
+  return {
+    availableParameters,
+    initialAvailableParameters: initialAvailableParametersRef.current,
+  };
 };

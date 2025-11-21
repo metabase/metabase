@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useParameterVisibility } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-parameter-visibility";
@@ -6,12 +6,6 @@ import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase/embedd
 import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
-
-interface UseEmbeddingParametersProps
-  extends Pick<SdkIframeEmbedSetupContextType, "settings" | "updateSettings"> {
-  resource: Dashboard | Card | null;
-  availableParameters: Parameter[];
-}
 
 const buildEmbeddingParametersFromSettings = (
   parameters: Parameter[],
@@ -30,42 +24,36 @@ const buildEmbeddingParametersFromSettings = (
   }, {});
 };
 
-/**
- * Manages embedding parameters state (locked/disabled/enabled).
- * Provides both current state and initial defaults from the resource.
- */
 export const useEmbeddingParameters = ({
   settings,
   updateSettings,
   resource,
+  initialAvailableParameters,
   availableParameters,
-}: UseEmbeddingParametersProps) => {
+}: Pick<SdkIframeEmbedSetupContextType, "settings" | "updateSettings"> & {
+  resource: Dashboard | Card | null;
+  initialAvailableParameters: Parameter[] | null;
+  availableParameters: Parameter[];
+}) => {
   const { isHiddenParameter, isLockedParameter } = useParameterVisibility({
     settings,
     updateSettings,
   });
 
-  const initialEmbeddingParametersRef = useRef<EmbeddingParameters | null>(
-    null,
-  );
+  // Wait until we have `hiddenParameters` or `lockedParameters` initialized
+  const areEmbeddingParametersInitialized =
+    (!!settings.dashboardId || !!settings.questionId) &&
+    (!!settings.hiddenParameters || !!settings.lockedParameters);
 
-  // Compute initial embedding parameters only once when resource first loads
-  if (resource && !initialEmbeddingParametersRef.current) {
-    initialEmbeddingParametersRef.current = getDefaultEmbeddingParams(
-      resource,
-      availableParameters,
-      { getAllParams: true },
-    );
-  }
+  const initialEmbeddingParameters = useMemo(() => {
+    if (!resource || !initialAvailableParameters) {
+      return null;
+    }
 
-  // Clear initial parameters when resource changes
-  const resourceIdRef = useRef<number | string | null>(null);
-  const currentResourceId = resource?.id ?? null;
-
-  if (currentResourceId !== resourceIdRef.current) {
-    resourceIdRef.current = currentResourceId;
-    initialEmbeddingParametersRef.current = null;
-  }
+    return getDefaultEmbeddingParams(resource, initialAvailableParameters, {
+      getAllParams: true,
+    });
+  }, [initialAvailableParameters, resource]);
 
   const embeddingParameters = useMemo(
     () =>
@@ -87,7 +75,8 @@ export const useEmbeddingParameters = ({
   );
 
   return {
-    initialEmbeddingParameters: initialEmbeddingParametersRef.current,
+    areEmbeddingParametersInitialized,
+    initialEmbeddingParameters,
     embeddingParameters,
     onEmbeddingParametersChange,
   };
