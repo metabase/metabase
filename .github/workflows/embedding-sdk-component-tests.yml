@@ -176,6 +176,8 @@ jobs:
         uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ steps.get-commit-sha.outputs.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
         continue-on-error: true # do not break the whole job if this step doesn't succeed
 
       # Build the uberjar from the previous commit only if we couldn't fetch it.
