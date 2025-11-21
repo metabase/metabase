@@ -89,10 +89,7 @@ describe("scenarios > dashboard", () => {
 
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "Pro",
-        );
-        cy.findByText("Everywhere").click();
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
