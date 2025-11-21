@@ -155,22 +155,13 @@ function ModernDataPicker({
   const [focusPicker, setFocusPicker] = useState(false);
 
   const shouldHide = useMemo(() => {
-    const shouldShow = !canChangeDatabase
-      ? createShouldShowItem(modelList, databaseId)
-      : undefined;
-
-    return (item: MiniPickerItem | unknown) => {
-      if (shouldShow && !shouldShow(item as DataPickerItem)) {
-        return true;
-      }
-
-      if (shouldDisableItem && shouldDisableItem(item as DataPickerItem)) {
-        return true;
-      }
-
-      return false;
-    };
-  }, [databaseId, canChangeDatabase, modelList, shouldDisableItem]);
+    if (!canChangeDatabase) {
+      const shouldShow = createShouldShowItem(modelList, databaseId);
+      return (item: MiniPickerItem | unknown) =>
+        !shouldShow(item as DataPickerItem);
+    }
+    return undefined;
+  }, [databaseId, canChangeDatabase, modelList]);
 
   return (
     <>
