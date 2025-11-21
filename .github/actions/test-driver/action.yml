@@ -18,7 +18,7 @@ runs:
       shell: bash
       run: |
         # Fetch CI config and check if driver should be skipped
-        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/main/ci-test-config.json || true
+        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json || true
 
         # Check if the driver is in the ignored list (gracefully handle missing/invalid config)
         IS_IGNORED=$(jq --arg driver "$DRIVERS" '.ignored.drivers // [] | contains([$driver])' ci-test-config.json 2>/dev/null || echo "false")
