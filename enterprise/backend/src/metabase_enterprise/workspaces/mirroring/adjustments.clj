@@ -8,36 +8,11 @@
   
   The X2c is now dependent on T1c. Hence references to T1 in the X2c have to be adjusted to point to T1c instead."
   (:require
+   [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(defn- field-mappings
-  "Return a map of {old-field-id new-field-id}. Matching against name. Name is unique."
-  [old-table-id new-table-id]
-  (let [old-fields (t2/select [:model/Field :id :name] :table_id old-table-id)
-        new-fields (t2/select [:model/Field :id :name] :table_id new-table-id)
-        old->new (u/for-map
-                  [{:keys [id name]} old-fields]
-                   (let [matching-id (:id (m/find-first (comp #{name} :name) new-fields))]
-                     [id matching-id]))]
-    (assert (= (count old-fields) (count new-fields) (count old->new)))
-    old->new))
-
-;; TODO (lbrdnk 2025-11-20) This is naive and should by handled by _some_ lib function.
-(defn- query-table-id
-  "Get source table from query. Queries with source-card not supported. "
-  [query]
-  (u/prog1 (some-> query :stages first :source-table)
-    (assert (pos-int? <>))))
-
-(defn- mappings
-  "Return map of {<:tables|:fields> {old-id new-id}}. `new-table-id` is id of duplicated table a transform depends on."
-  [old-table-id new-table-id]
-  (let [fields-old->new (field-mappings old-table-id new-table-id)]
-    {:fields fields-old->new
-     :tables {old-table-id new-table-id}}))
 
 (defn- clause-dispatch
   [x & _]
@@ -76,18 +51,68 @@
     (assert (pos-int? remapped))
     (assoc source-table-entry 1 remapped)))
 
+;; Later use single query instead
+(defn- field-mappings
+  "Return a map of {old-field-id new-field-id}. Matching against name. Name is unique."
+  [old-table-id new-table-id]
+  (let [old-fields (t2/select [:model/Field :id :name] :table_id old-table-id :active true)
+        new-fields (t2/select [:model/Field :id :name] :table_id new-table-id :active true)
+        old->new (u/for-map
+                  [{:keys [id name]} old-fields]
+                   (let [matching-id (:id (m/find-first (comp #{name} :name) new-fields))]
+                     [id matching-id]))]
+    (assert (= (count old-fields) (count new-fields) (count old->new)))
+    old->new))
+
+(defn- fields-mapping-rf
+  [source->dest* [source-table-id dest-table-id]]
+  (let [field-mappings* (field-mappings source-table-id dest-table-id)]
+    (assert (empty? (set/intersection (set (keys field-mappings*))
+                                      (set (keys (:fields source->dest*)))))
+            "Duplicate field id")
+    (update source->dest* :fields (fnil into {}) field-mappings*)))
+
 ;;;; Public?
 
+;; TODO (lbrdnk 2025-11-20) This is naive and should by handled by _some_ lib function.
+;; TODO (lbrdnk 2025-11-21) Moving to joins support I think we could use rather
+;;                          `metabase.lib.walk.util/all-source-table-ids`. Leaving this here until things are settled.
+(defn query-table-id
+  "Get source table from query. Queries with source-card not supported."
+  [query]
+  (u/prog1 (some-> query :stages first :source-table)
+    (assert (pos-int? <>))))
+
+(defn mappings
+  "For the mapping `source->dest` of form return mapping that includes fields.
+
+  Inputs:
+  - `source->dest`: map of a from {<source-table-id> <dest-table-id>},
+  
+  Returns mapping of mapping of {:tables {<source-table-id> <dest-table-id>}
+                                 :fields {<source-field-id> <dest-field-id>}}"
+  [source->dest]
+  (assert (and (< 0 (count source->dest))
+               (every? (fn [[k v]] (and (pos-int? k) (pos-int? v))) source->dest))
+          "At least one table mapping expected")
+  (reduce
+   fields-mapping-rf
+   {:tables source->dest}
+   source->dest))
+
 (defn rewrite-mappings
-  "Return transform with remapped ids. Checks for whether mappings _should_ be rewritten should be done upstream."
-  [transform new-table-id]
+  "Return transform with remapped ids. Checks for whether mappings _should_ be rewritten should be done upstream.
+
+  Input:
+  - `transform`: model/Transform that is being duplicated
+  - `source->dest`: mapping of {:tables {<source-table-id> <dest-table-id>}
+                                :fields {<source-field-id> <dest-field-id>}}
+
+  Returns transform with the query with remapped ids."
+  [transform source->dest]
   (assert (-> transform :source_type (= :mbql))
           "Supporting only mbql sourced transforms")
   (assert (-> transform :source :query :stages (nth 0) :source-table pos-int?)
           "Supporting only transforms with source table")
-  (let [source (:source transform)
-        query (:query source)
-        old-table-id (query-table-id query)
-        mappings (mappings old-table-id new-table-id)
-        remapped (walk/postwalk #(rewrite-clause % mappings) query)]
-    (assoc-in transform [:source :query] remapped)))
+  (update-in transform [:source :query]
+             (partial walk/postwalk #(rewrite-clause % source->dest))))
