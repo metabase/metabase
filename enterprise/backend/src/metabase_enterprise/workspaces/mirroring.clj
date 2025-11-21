@@ -25,6 +25,8 @@
         mirror        (let [transform (t2/select-one (into [:model/Transform] t2-transform-keys) (:id transform))
                             target    (:target transform)
                             old-s+n   ((juxt :schema :name) target)
+                            ;; TODO: I think this should be nil if not found. 
+                            ;;       We don't want to write to orig target right?
                             new-s+n   (table-mapping old-s+n old-s+n)]
                         (assert (= "table" (:type target)) "We only support mirroring transforms that target tables.")
                         (assert (= database-id (:database target)) "Unexpected target database for transform.")

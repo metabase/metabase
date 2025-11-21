@@ -72,16 +72,19 @@
         isolated-schema    (isolation-schema-name (:id workspace))
         isolated-table     (isolated-table-name output)]
     (assert (every? some? [source-schema source-table isolated-schema isolated-table]) "Figured out table")
-    ;; TODO: execute the following only if the transform was previously executed and its table exists.
-    (jdbc/execute! jdbc-spec [(format (str "CREATE TABLE \"%s\".\"%s\""
-                                           "  AS SELECT * FROM \"%s\".\"%s\""
-                                           "WITH NO DATA")
-                                      isolated-schema
-                                      isolated-table
-                                      source-schema
-                                      source-table)])
-    (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
-      (select-keys table-metadata [:id :schema :name]))))
+    (if (driver/table-exists? driver* database {:schema source-schema :name source-table})
+      (do (jdbc/execute! jdbc-spec [(format (str "CREATE TABLE \"%s\".\"%s\""
+                                                 "  AS SELECT * FROM \"%s\".\"%s\""
+                                                 "WITH NO DATA")
+                                            isolated-schema
+                                            isolated-table
+                                            source-schema
+                                            source-table)])
+          (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
+            (select-keys table-metadata [:id :schema :name])))
+      ;; Are we ok returing this without id if original transform was not executed yet?
+      {:schema isolated-schema
+       :name isolated-table})))
 
 ;;;; To be public when things are settled
 
@@ -102,6 +105,7 @@
                              (let [isolated-table (duplicate-output-table! database workspace hydrated-output)]
                                (t2/insert! :model/WorkspaceMappingTable
                                            {:upstream_id   (:id upstream-output)
+                                            ;; Following can be nil in case table was not created
                                             :downstream_id (:id isolated-table)
                                             :workspace_id  (:id workspace)})
                                (assoc hydrated-output :mapping isolated-table)))))))
