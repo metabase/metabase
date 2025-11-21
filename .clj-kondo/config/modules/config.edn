@@ -172,7 +172,7 @@
   api-routes
   {:team "UX West"
    :api  #{metabase.api-routes.core
-           metabase.api-routes.init}
+           metabase.api-routes.cmd}
    :uses :any}
 
   app-db

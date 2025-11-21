@@ -49,7 +49,7 @@
 ;; ### Here's an example repl session showing how it works:
 ;;
 ;; <pre><code>
-;; 
+;;
 ;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
 ;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
 ;;          '[malli.transform :as mtx] '[metabase.api.macros :as api.macros])
