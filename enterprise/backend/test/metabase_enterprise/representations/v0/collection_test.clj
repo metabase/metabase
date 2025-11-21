@@ -65,9 +65,9 @@
               rep (yaml/parse-string yaml-str)
               normalized (rep-read/parse rep)
               _imported (import/yaml->toucan normalized nil)
-            ;; Persist and reload
+              ;; Persist and reload
               persisted (mt/with-test-user :crowberto
-                          (import/persist! normalized nil))
+                          (import/insert! normalized (v0-common/map-entity-index {})))
               export-2 (export/export-entity persisted)]
           (is (= (:name export-1) (:name export-2)))
           (is (= (:description export-1) (:description export-2)))
