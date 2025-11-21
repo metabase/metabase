@@ -1338,9 +1338,19 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field
+            constraintName: fk_metabase_field_workspace_id
         - dropIndex:
             tableName: metabase_field
             indexName: idx_metabase_field_workspace_id
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_field_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: SET NULL
 
   - changeSet:
       id: v58.2025-11-20T08:35:15
@@ -1360,9 +1370,18 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_workspace_id
         - dropIndex:
             tableName: metabase_table
             indexName: idx_metabase_table_workspace_id
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: workspace_id
+            constraintName: fk_metabase_table_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
 
   - changeSet:
       id: v58.2025-11-20T21:50:00
