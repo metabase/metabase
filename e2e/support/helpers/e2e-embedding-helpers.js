@@ -234,7 +234,7 @@ export function openLegacyStaticEmbeddingModal({
     modal().within(() => {
       cy.findByText("Static embedding").should("be.visible");
 
-      if (unpublishBeforeOpen && resource === "dashboard") {
+      if (unpublishBeforeOpen) {
         unpublishChanges(apiPath);
       }
 
