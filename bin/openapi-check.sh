@@ -23,7 +23,15 @@ fi
 if ! git diff --exit-code resources/openapi/openapi.json >/dev/null 2>&1; then
         echo "Error: OpenAPI specs are out of date!"
         echo "The schema in resources/openapi/openapi.json does not match the current Malli schema definitions."
-        echo "Please run 'yarn generate-openapi' to update resources/openapi/openapi.json."
+        echo ""
+        echo "This can happen when:"
+        echo "  1. You added/modified API endpoints but didn't regenerate the OpenAPI spec"
+        echo "  2. Your branch is behind master, which has new API endpoints"
+        echo ""
+        echo "To fix this:"
+        echo "  1. Pull the latest changes from master: git pull origin master"
+        echo "  2. Run 'yarn generate-openapi' to update resources/openapi/openapi.json"
+        echo "  3. Commit the updated openapi.json file"
         echo ""
         echo "Differences:"
         git diff resources/openapi/openapi.json || true
