@@ -1,0 +1,35 @@
+display_name: This is my document
+type: document
+version: v0
+name: document-1
+entity-id: -refHqV7RAXzw6ji-POfh
+content:
+  type: doc
+  content:
+    - type: heading
+      attrs:
+        level: 1
+        _id: 45cfcc03-9c4f-df83-b091-071a301b839b
+      content:
+        - type: text
+          text: Let's make a document.
+    - type: paragraph
+      attrs:
+        _id: 048f343b-6957-1a17-6fa2-026fad799e42
+      content:
+        - type: text
+          text: 'Here is a question:'
+    - type: resizeNode
+      attrs:
+        height: 442
+        minHeight: 280
+      content:
+        - type: cardEmbed
+          attrs:
+            id: 325
+            name: null
+            _id: ab365220-b387-d3c6-992a-e6034057ddd5
+    - type: paragraph
+      attrs:
+        _id: b7085b94-6ea4-b138-4030-01f36f8526e9
+content_type: application/json+vnd.prose-mirror

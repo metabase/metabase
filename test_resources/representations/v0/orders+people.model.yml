@@ -1,0 +1,124 @@
+display_name: Orders + People
+type: model
+name: model-1
+entity-id: _GiVL6zYmsnBb1oqLCp4u
+description: Sample orders joined with products
+mbql_query:
+  expressions:
+    Age:
+      - datetime-diff
+      - database: ref:database-1
+        schema: PUBLIC
+        table: PEOPLE
+        field: BIRTH_DATE
+      -   - now
+      - year
+  joins:
+    - alias: People - User
+      condition:
+        - =
+        - database: ref:database-1
+          schema: PUBLIC
+          table: ORDERS
+          field: USER_ID
+        - database: ref:database-1
+          schema: PUBLIC
+          table: PEOPLE
+          field: ID
+      fields:
+        - database: ref:database-1
+          schema: PUBLIC
+          table: PEOPLE
+          field: EMAIL
+        - database: ref:database-1
+          schema: PUBLIC
+          table: PEOPLE
+          field: STATE
+      source-table: 1
+      strategy: left-join
+  source-table:
+    database: ref:database-1
+    schema: PUBLIC
+    table: ORDERS
+database: ref:database-1
+columns:
+  - name: ID
+    display_name: ID
+    description: This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.
+    semantic_type: type/PK
+    visibility_type: normal
+    fk_target_field_id: null
+  - name: USER_ID
+    display_name: User ID
+    description: The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.
+    semantic_type: type/FK
+    visibility_type: normal
+    fk_target_field_id: 4
+  - name: PRODUCT_ID
+    display_name: Product ID
+    description: The product ID. This is an internal identifier for the product, NOT the SKU.
+    semantic_type: type/FK
+    visibility_type: normal
+    fk_target_field_id: 8
+  - name: SUBTOTAL
+    display_name: Subtotal
+    description: The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.
+    semantic_type: type/Currency
+    visibility_type: normal
+    fk_target_field_id: null
+    settings:
+      view_as: null
+  - name: TAX
+    display_name: Tax
+    description: This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.
+    semantic_type: type/Currency
+    visibility_type: normal
+    fk_target_field_id: null
+  - name: TOTAL
+    display_name: Total
+    description: The total billed amount.
+    semantic_type: type/Currency
+    visibility_type: normal
+    fk_target_field_id: null
+    settings:
+      currency: USD
+  - name: DISCOUNT
+    display_name: Discount
+    description: Discount amount.
+    semantic_type: type/Discount
+    visibility_type: normal
+    fk_target_field_id: null
+  - name: CREATED_AT
+    display_name: Created At
+    description: The date and time an order was submitted.
+    semantic_type: type/CreationTimestamp
+    visibility_type: normal
+    fk_target_field_id: null
+    settings:
+      time_enabled: milliseconds
+  - name: QUANTITY
+    display_name: Quantity
+    description: Number of products bought.
+    semantic_type: type/Quantity
+    visibility_type: normal
+    fk_target_field_id: null
+    settings:
+      show_mini_bar: false
+  - name: Age
+    display_name: Age
+    description: Age of the customer in years.
+    semantic_type: type/Quantity
+  - name: EMAIL
+    display_name: Customer Email
+    description: The contact email for the account.
+    semantic_type: type/Email
+    visibility_type: normal
+    fk_target_field_id: null
+    settings:
+      link_text: ''
+  - name: STATE
+    display_name: State
+    description: The state or province of the account’s billing address.
+    semantic_type: type/State
+    visibility_type: normal
+    fk_target_field_id: null

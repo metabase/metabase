@@ -1,0 +1,22 @@
+type: transform
+ref: pokemon-type
+name: Pokemon Type Summary (Transform)
+description: Aggregated statistics by Pokemon type combos
+database: Postgres
+source:
+  query: |
+    SELECT
+        type_1,
+        type_2,
+        COUNT(*) AS combination_count,
+        AVG(avg) AS overall_avg,
+        AVG(avg_2) AS secondary_avg,
+        AVG(avg_3) AS tertiary_avg,
+        MAX(avg) AS max_primary_stat
+    FROM public.pokemon_type1_type2
+    WHERE type_1 IS NOT NULL
+    GROUP BY type_1, type_2
+    ORDER BY combination_count DESC
+target:
+  table: pokemon_type_summary
+  schema: public

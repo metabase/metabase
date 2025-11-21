@@ -1,0 +1,6 @@
+display_name: RTDDSRUAEFJLNYWASIFS
+type: metric
+version: v0
+name: metric-126
+query: select 1
+database: ref:database-3
