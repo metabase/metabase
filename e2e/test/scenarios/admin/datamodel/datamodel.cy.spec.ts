@@ -3504,23 +3504,17 @@ describe("scenarios > admin > datamodel", () => {
       verifyAndCloseToast("Failed to update display values of Quantity");
 
       cy.log("JSON unfolding");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      // navigating away would cause onChange to be triggered in InputBlurChange and TextareaBlurChange
+      // components, so new undos will appear - this makes this test flaky, so we navigate with page reload instead
+      H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
       TableSection.clickField("Json");
-
-      // navigating away will cause onChange to be triggered in InputBlurChange and TextareaBlurChange
-      // components, so new undos will appear - we need to close them so that they don't interfere
-      // with assertions below
-      H.undoToastList().should("have.length", 4);
-      H.undoToastList().each((toast) => {
-        cy.wrap(toast).icon("close").click({ force: true });
-      });
-
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
 
       cy.log("formatting");
+      TablePicker.getDatabase("Sample Database").click();
       TablePicker.getTable("Orders").click();
       TableSection.clickField("Quantity");
       FieldSection.getPrefixInput().type("5").blur();
