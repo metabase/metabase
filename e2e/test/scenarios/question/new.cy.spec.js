@@ -769,7 +769,7 @@ describe(
 
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Collections", ["Recents", "Tables", "Collections"]);
+        H.tabsShouldBe("Collections", ["Recents", "Data"]);
         H.entityPickerModalTab("Recents").click();
         cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });
