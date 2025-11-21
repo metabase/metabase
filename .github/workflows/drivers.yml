@@ -1019,6 +1019,7 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-snowflake-ee:
+    needs: determine-driver-skips
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
