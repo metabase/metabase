@@ -199,7 +199,8 @@
                        (filter :fk-field-id))
         related-table-ids (->> fk-fields
                                (map :table-id)
-                               (into #{}))]
+                               (into #{})
+                               sort)]
     (when (seq related-table-ids)
       (map #(table-details % {:with-fields? with-fields?
                               :field-values-fn field-values-fn

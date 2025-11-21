@@ -262,17 +262,17 @@
                                        [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
                                        [:= [:get-year [:field %created_at {}]] 2008]]})
                     :result_columns
-                    [{:field_id (str "q" query-id "/0")
+                    [{:field_id (str "q" query-id "-0")
                       :name "CREATED_AT"
                       :display_name "Created At: Week"
                       :type "datetime"
                       :semantic_type "creation_timestamp"}
-                     {:field_id (str "q" query-id "/1")
+                     {:field_id (str "q" query-id "-1")
                       :name "CREATED_AT_2"
                       :display_name "Created At: Day"
                       :type "datetime"
                       :semantic_type "creation_timestamp"}
-                     {:field_id (str "q" query-id "/2")
+                     {:field_id (str "q" query-id "-2")
                       :name "avg"
                       :display_name "Metrica"
                       :type "number"
@@ -653,8 +653,8 @@
                                    :query_id string?
                                    :query map?
                                    :result_columns
-                                   [{:field_id (str "q" generated-id "/0"), :name "CREATED_AT", :display_name "Created At: Week", :type "datetime"}
-                                    {:field_id (str "q" generated-id "/1"), :name "avg", :display_name "Average of Rating", :type "number"}]}
+                                   [{:field_id (str "q" generated-id "-0"), :name "CREATED_AT", :display_name "Created At: Week", :type "datetime"}
+                                    {:field_id (str "q" generated-id "-1"), :name "avg", :display_name "Average of Rating", :type "number"}]}
                :conversation_id conversation-id}
               response))
       ;; Verify the query is normalized (supports both MBQL v4 and v5)
@@ -745,21 +745,6 @@
         ;; Related tables via FK (order matches what related-tables function returns)
         expected-related-tables
         [{:type "table"
-          :id (mt/id :products)
-          :name "PRODUCTS"
-          :display_name "Products"
-          :database_id (mt/id)
-          :database_schema "PUBLIC"
-          :fields
-          [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
-           {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?}
-           {:name "TITLE", :display_name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
-           {:name "CATEGORY", :display_name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
-           {:name "VENDOR", :display_name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
-           {:name "PRICE", :display_name "Price", :type "number"}
-           {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score"}
-           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}
-         {:type "table"
           :id (mt/id :people)
           :name "PEOPLE"
           :display_name "People"
@@ -778,6 +763,21 @@
            {:name "BIRTH_DATE", :display_name "Birth Date", :type "date"}
            {:name "ZIP", :display_name "Zip", :type "string"}
            {:name "LATITUDE", :display_name "Latitude", :type "number", :semantic_type "latitude"}
+           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}
+         {:type "table"
+          :id (mt/id :products)
+          :name "PRODUCTS"
+          :display_name "Products"
+          :database_id (mt/id)
+          :database_schema "PUBLIC"
+          :fields
+          [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
+           {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?}
+           {:name "TITLE", :display_name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
+           {:name "CATEGORY", :display_name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
+           {:name "VENDOR", :display_name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+           {:name "PRICE", :display_name "Price", :type "number"}
+           {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score"}
            {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}]]
     {:model-data model-data
      :metric-data metric-data
@@ -1046,40 +1046,7 @@
            {:name "TOTAL", :display_name "Total", :type "number"}
            {:name "DISCOUNT", :display_name "Discount", :type "number", :semantic_type "discount"}
            {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}
-           {:name "QUANTITY", :display_name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}
-           {:name "ID", :display_name "ID", :type "number", :semantic_type "pk", :table_reference "User"}
-           {:name "ADDRESS", :display_name "Address", :type "string", :table_reference "User"}
-           {:name "EMAIL", :display_name "Email", :type "string", :semantic_type "email", :table_reference "User"}
-           {:name "PASSWORD", :display_name "Password", :type "string", :table_reference "User"}
-           {:name "NAME", :display_name "Name", :type "string", :semantic_type "name", :table_reference "User"}
-           {:name "CITY", :display_name "City", :type "string", :semantic_type "city", :table_reference "User"}
-           {:name "LONGITUDE", :display_name "Longitude", :type "number", :semantic_type "longitude", :table_reference "User"}
-           {:name "STATE", :display_name "State", :type "string", :semantic_type "state", :table_reference "User"}
-           {:name "SOURCE", :display_name "Source", :type "string", :semantic_type "source", :table_reference "User"}
-           {:name "BIRTH_DATE", :display_name "Birth Date", :type "date", :table_reference "User"}
-           {:name "ZIP", :display_name "Zip", :type "string", :table_reference "User"}
-           {:name "LATITUDE", :display_name "Latitude", :type "number", :semantic_type "latitude", :table_reference "User"}
-           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "User"}
-           {:name "ID", :display_name "ID", :type "number", :semantic_type "pk", :table_reference "Product"}
-           {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?, :table_reference "Product"}
-           {:name "TITLE", :display_name "Title"
-            :type "string"
-            :semantic_type "title"
-            :field_values string-sequence?
-            :table_reference "Product"}
-           {:name "CATEGORY", :display_name "Category"
-            :type "string"
-            :semantic_type "category"
-            :field_values string-sequence?
-            :table_reference "Product"}
-           {:name "VENDOR", :display_name "Vendor"
-            :type "string"
-            :semantic_type "company"
-            :field_values string-sequence?
-            :table_reference "Product"}
-           {:name "PRICE", :display_name "Price", :type "number", :table_reference "Product"}
-           {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score", :table_reference "Product"}
-           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "Product"}]
+           {:name "QUANTITY", :display_name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}]
           request (fn [arguments]
                     (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
