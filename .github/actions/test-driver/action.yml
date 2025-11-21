@@ -72,7 +72,7 @@ runs:
         list-tests: failed
         fail-on-error: false
     - name: Upload Logs on Failure
-      if: ${{ always() && steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true' }}
+      if: always() && steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true'
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-${{ github.job }}
