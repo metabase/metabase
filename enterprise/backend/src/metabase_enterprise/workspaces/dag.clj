@@ -7,9 +7,14 @@
 ;;;; Internal helpers
 
 (def ^:private group->db-type
-  "Mapping from our entity type keywords to the dependency table's type strings."
+  "Mapping from our entity type grouping keywords to the dependency table's type strings."
   {:transforms "transform"
    #_#_:models "card"})
+
+(def ^:private type->db-type
+  "Mapping from our entity type keywords to the dependency table's type strings."
+  {:transform "transform"
+   #_#_:model "card"})
 
 (defn- rows->entity-set
   "Convert query result rows to a set of {:id :type} maps."
@@ -146,27 +151,23 @@
                              entity-set)]
     (toposort-dfs child->parents)))
 
-(defn- fetch-related-tables
-  "Find tables related to entities via the dependency table.
-   `direction` is :upstream (tables we depend on) or :downstream (tables that depend on us)."
-  [entities direction]
+(defn- fetch-dependent-tables
+  "Fetch tables that depend on the given entities, i.e. the output tables of the transforms."
+  [entities]
   (when (seq entities)
-    (let [[match-type match-id result-type result-id]
-          (case direction
-            :upstream   [:from_entity_type, :from_entity_id, :to_entity_type,   :to_entity_id]
-            :downstream [:to_entity_type,   :to_entity_id,   :from_entity_type, :from_entity_id])
-          conditions (mapv (fn [{:keys [id type]}]
+    (let [conditions (mapv (fn [{:keys [id type]}]
                              [:and
-                              [:= match-type (name type)]
-                              [:= match-id id]])
+                              [:= :to_entity_type (type->db-type type)]
+                              [:= :to_entity_id id]])
                            entities)
-          rows       (t2/query {:select-distinct [result-type result-id]
-                                :from   [:dependency]
-                                :where  (into [:or] conditions)})]
-      (->> rows
-           (filter #(= "table" (get % result-type)))
-           (mapv (fn [row]
-                   {:id (get row result-id) :type :table}))))))
+          rows       (t2/query {:select-distinct [:from_entity_id]
+                                :from            [:dependency]
+                                :where           [:and
+                                                  [:= :from_entity_type "table"]
+                                                  (into [:or] conditions)]})]
+      (mapv (fn [row]
+              {:id (get row :from_entity_id) :type :table})
+            rows))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
@@ -196,7 +197,7 @@
         downstream    (or (downstream-entities entities-by-type) #{})
         subgraph      (set/intersection upstream downstream)
         transforms    (filterv transform? subgraph)
-        output-tables (or (fetch-related-tables transforms :downstream) [])
+        output-tables (or (fetch-dependent-tables transforms) [])
         inputs        (->> upstream
                            (filter table?)
                            (remove subgraph)

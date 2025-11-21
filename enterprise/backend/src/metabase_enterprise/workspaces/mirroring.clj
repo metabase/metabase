@@ -20,12 +20,13 @@
   ;; but for now doing plain copy-paste schema name here.
   ;; TODO (lbrdnk 2025-11-18) revisit schema, name vs db specific access pattern.
   (let [table-mapping (u/for-map [{:keys [name schema mapping]} (:outputs graph)]
-                        [[name schema] ((juxt :name :schema) mapping)])
+                        [[schema name] ((juxt :schema :name) mapping)])
         ;; TODO (Chris 2025-11-19) avoid re-selecting here, by passing what we need from the start
         mirror        (let [transform (t2/select-one (into [:model/Transform] t2-transform-keys) (:id transform))
                             target    (:target transform)
                             old-s+n   ((juxt :schema :name) target)
-                            new-s+n   (table-mapping old-s+n old-s+n)]
+                            new-s+n   (table-mapping old-s+n)]
+                        (assert new-s+n "Unable to find isolated table mapping for transform target.")
                         (assert (= "table" (:type target)) "We only support mirroring transforms that target tables.")
                         (assert (= database-id (:database target)) "Unexpected target database for transform.")
                         (merge transform
