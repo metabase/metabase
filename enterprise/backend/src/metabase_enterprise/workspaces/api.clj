@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -111,8 +112,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [upstream-id (t2/select-one-fn :upstream_id [:model/WorkspaceMappingTransform :upstream_id] :downstream_id id)]
-    {:transform (when upstream-id
-                  (t2/select-one [:model/Transform :id :name] upstream-id))}))
+    {:transform (t2/select-one [:model/Transform :id :name] :id upstream-id)}))
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
   :- [:map
@@ -127,10 +127,17 @@
    Returns the transforms that were mirrored from this upstream transform, with workspace info."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  {:transforms (for [m (t2/select :model/WorkspaceMappingTransform :upstream_id id)
-                     :let [transform (t2/select-one [:model/Transform :id :name] :id (:downstream_id m))
-                           workspace (t2/select-one [:model/Workspace :id :name] :id (:workspace_id m))]]
-                 (assoc transform :workspace workspace))})
+  (let [mappings         (t2/select :model/WorkspaceMappingTransform :upstream_id id)
+        tid->wid         (u/for-map [m mappings]
+                           [(:downstream_id m) (:workspace_id m)])
+        transform-ids    (map :downstream_id mappings)
+        workspace-ids    (map :workspace_id mappings)
+        transforms       (when (seq transform-ids)
+                           (t2/select [:model/Transform :id :name] :id [:in transform-ids] {:order-by [:created_at]}))
+        workspaces-by-id (when (seq workspace-ids)
+                           (u/index-by :id (t2/select [:model/Workspace :id :name] :id [:in workspace-ids])))]
+    {:transforms (for [transform transforms]
+                   (assoc transform :workspace (get workspaces-by-id (tid->wid (:id transform)))))}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
