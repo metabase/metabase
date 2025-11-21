@@ -1,14 +1,20 @@
 import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
+import {
+  PLUGIN_TENANTS,
+  type SdkIframeEmbedSetupModalProps,
+} from "metabase/plugins";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
 import type { EmbeddingHubStep } from "../types";
 
 export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const dispatch = useDispatch();
+  const isUsingTenants = useSetting("use-tenants");
 
   const openEmbedModal = useCallback(
     (props: Pick<SdkIframeEmbedSetupModalProps, "initialState">) => {
@@ -23,6 +29,8 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   );
 
   return useMemo(() => {
+    const isTenantsFeatureAvailable = PLUGIN_TENANTS.isEnabled;
+
     const TEST_EMBED: EmbeddingHubStep = {
       id: "create-test-embed",
       title: t`Create embed`,
@@ -38,6 +46,24 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           },
           variant: "outline",
         },
+        ...(isTenantsFeatureAvailable
+          ? [
+              {
+                title: t`Set up tenants`,
+                description: t`Define a multi tenant user strategy to manage access for external users.`,
+                onClick: () => {
+                  dispatch(
+                    push(
+                      isUsingTenants
+                        ? "/admin/tenants"
+                        : "/admin/people/user-strategy",
+                    ),
+                  );
+                },
+                optional: true,
+              },
+            ]
+          : []),
       ],
       image: {
         src: "app/assets/img/embedding_hub_create_embed.png",
@@ -154,5 +180,5 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
     ];
-  }, [openEmbedModal]);
+  }, [dispatch, isUsingTenants, openEmbedModal]);
 };

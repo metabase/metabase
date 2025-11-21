@@ -1058,6 +1058,7 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
 };
 
 export const PLUGIN_TENANTS = {
+  isEnabled: false,
   userStrategyRoute: null as React.ReactElement | null,
   tenantsRoutes: null as React.ReactElement | null,
   EditUserStrategySettingsButton: PluginPlaceholder,
