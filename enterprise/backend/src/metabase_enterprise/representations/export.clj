@@ -8,7 +8,7 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.core :as v0]
    [metabase-enterprise.representations.yaml :as rep-yaml]
-   [metabase.collections.api :as coll.api]
+   [metabase.collections-rest.api :as coll.api]
    [metabase.util :as mu]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -246,24 +246,3 @@
                          (-> (t2/select-one :model/Database :id db-id)
                              export-entity))
                        (mapcat :databases child-reps)))))
-
-;;;;;;;;;;;;;;;;
-;; Transforms ;;
-
-(defn export-transform-representations
-  "Exports transform representations to the associated local dir"
-  ([] (export-transform-representations v0-common/representations-export-dir))
-  ([path]
-   (let [trans-dir "transforms/"
-         transforms (t2/select :model/Transform)]
-     (.mkdirs (File. (str path trans-dir)))
-     (doseq [transform transforms]
-       (let [transform-id (:id transform)]
-         (try
-           (let [entity-yaml (->> (t2/select-one :model/Transform :id transform-id)
-                                  export-entity
-                                  (rep-yaml/generate-string))
-                 file-name (v0-common/file-sys-name transform-id (:name transform) ".yaml")]
-             (spit (str path trans-dir file-name) entity-yaml))
-           (catch Exception e
-             (log/errorf e "Unable to export representation of type transform with id %s" transform-id))))))))
