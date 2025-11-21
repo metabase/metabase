@@ -49,11 +49,15 @@
       (finally
         (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))
 
-(deftest snippet-export-import-entity-test
+(deftest snippet-export-import-basic-test
   (testing "snippet with template tag is exported correctly"
-    (run-snippet-export-import-test! "snippet one" "the first snippet" "foo = 1" {}))
+    (run-snippet-export-import-test! "snippet one" "the first snippet" "foo = 1" {})))
+
+(deftest snippet-export-import-variable-template-tag-test
   (testing "snippet with variable template tag is exported correctly"
-    (run-snippet-export-import-test! "foo snippet" "a test snippet" "foo = {{ val }}" {"val" {:type :text :name "val" :display-name "Val"}}))
+    (run-snippet-export-import-test! "foo snippet" "a test snippet" "foo = {{ val }}" {"val" {:type :text :name "val" :display-name "Val"}})))
+
+(deftest snippet-export-import-card-template-tag-test
   (testing "snippet with card template tag is exported correctly"
     (let [mp (mt/metadata-provider)
           venues (lib.metadata/table mp (mt/id :venues))]
@@ -101,7 +105,9 @@
                                       :display-name (str "#" card-id " Card One")}}}
                     persisted-snippet)))
           (finally
-            (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id)))))))
+            (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))))
+
+(deftest snippet-export-import-snippet-template-tag-test
   (testing "snippet with snippet template tag is exported correctly"
     (mt/with-temp [:model/NativeQuerySnippet {bar-snippet-id :id} {:name "bar snippet"
                                                                    :content "bar = 2"}
@@ -146,7 +152,9 @@
                                        :display-name "Snippet: Bar Snippet"}}}
                      persisted-snippet)))
            (finally
-             (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))
+             (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id)))))))
+
+(deftest snippet-export-import-multiple-template-tags-test
   (testing "snippet with multiple template tags is exported correctly"
     (let [mp (mt/metadata-provider)
           venues (lib.metadata/table mp (mt/id :venues))]

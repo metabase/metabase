@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase.lib.native :as lib.native]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -24,7 +24,7 @@
        :description description
        :content sql
        :collection_id (v0-common/find-collection-id collection)
-       :template_tags (lib.native/recognize-template-tags sql)}
+       :template_tags (lib/recognize-template-tags sql)}
       u/remove-nils))
 
 (defn persist!
