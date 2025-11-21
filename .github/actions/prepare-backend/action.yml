@@ -28,7 +28,7 @@ runs:
     - name: Fetch CI config
       shell: bash
       run: |
-        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
+        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json
 
     - name: Get M2 cache key
       uses: ./.github/actions/get-cache-keys
