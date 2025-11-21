@@ -1,4 +1,5 @@
 const { H } = cy;
+import { createLibraryWithItems } from "e2e/support/test-library-data";
 
 describe("scenarios > data studio > modeling > metrics", () => {
   beforeEach(() => {
@@ -12,7 +13,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.intercept("POST", "/api/collection").as("createCollection");
     cy.intercept("PUT", "/api/collection/*").as("updateCollection");
 
-    H.createLibrary();
+    createLibraryWithItems();
   });
 
   describe("empty state", () => {

@@ -1,4 +1,5 @@
 const { H } = cy;
+import { createLibraryWithItems } from "e2e/support/test-library-data";
 
 describe("scenarios > data studio > modeling > models", () => {
   beforeEach(() => {
@@ -13,10 +14,10 @@ describe("scenarios > data studio > modeling > models", () => {
     cy.intercept("PUT", "/api/collection/*").as("updateCollection");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.createLibrary();
+    createLibraryWithItems();
   });
 
-  it("should edit model name and description", function () {
+  it("should edit model name and description", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
