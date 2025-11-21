@@ -284,6 +284,14 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/");
 
+      cy.log("'Set up tenants' should now be marked as done");
+      H.main()
+        .findByText("Set up tenants")
+        .closest("button")
+        .scrollIntoView()
+        .findByText("Done", { timeout: 10_000 })
+        .should("be.visible");
+
       cy.log("clicking on tenants should go to tenants page");
       H.main().findByText("Set up tenants").click();
       cy.url().should("include", "/admin/tenants");
