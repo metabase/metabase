@@ -181,10 +181,13 @@
     (println "  mage <task-name> -h")
     task+descriptions))
 
-(defn- can-run? [cmd]
+(def ^:dynamic *skip-warning* false)
+
+(defn can-run? [cmd]
   (try (boolean (sh (str "command -v " cmd)))
        (catch Exception _
-         (println (c/red "MAGE checked if you can run " cmd ", but it is not installed. Consider installing it for a better experience."))
+         (when-not *skip-warning*
+           (println (c/red "MAGE checked if you can run " cmd ", but it is not installed. Consider installing it for a better experience.")))
          false)))
 
 (defn- check-run!

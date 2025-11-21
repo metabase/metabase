@@ -1,7 +1,9 @@
 (ns mage.quick-test-runner
   (:require
    [babashka.fs :as fs]
+   [bling.banner :refer [banner]]
    [bling.core :as bling]
+   [bling.fonts.drippy]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [mage.be-dev :as backend]
@@ -125,8 +127,15 @@
         (println "Running tests via ⏩🏎️✨" (c/green (c/bold "THE REPL")) "✨🏎️⏪.")
         (run-tests-over-nrepl test-dirs))
       (do
-        (println "Running via " (c/underline (c/magenta (c/on-cyan "the command line"))) "."
+        (println "Running via " (c/bold (c/magenta "the command line")) "."
                  (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECCOMENDED!! "))
                  "Please consider starting a backend \nFor quicker test runs, use: " (c/magenta "  clj -M:test:dev:ee:ee-dev:drivers:drivers-dev:dev-start"))
+        (println "\n" (banner
+                       {:font               bling.fonts.drippy/drippy
+                        :text               "Please open a REPL!"
+                        :gradient-direction :to-top
+                        :gradient-colors    [:magenta :red]}))
         (run-tests-cli test-dirs)))))
+
+
 
