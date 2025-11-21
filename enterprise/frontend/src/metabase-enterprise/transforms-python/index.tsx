@@ -1,7 +1,7 @@
+import { Route } from "react-router";
 import { t } from "ttag";
 
 import { AdminNavItem } from "metabase/admin/components/AdminNav";
-import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";

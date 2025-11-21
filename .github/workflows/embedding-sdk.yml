@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 3
     outputs:
       e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
+      e2e_embedding_sdk_compatibility: ${{ steps.changes.outputs.e2e_embedding_sdk_compatibility }}
       frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
     steps:
@@ -25,7 +26,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  build:
+  build-sdk-package:
     needs: [files-changed]
     if: |
       !cancelled() &&
@@ -53,10 +54,10 @@ jobs:
           path: resources/embedding-sdk
 
   embedding-sdk-cli-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk-package]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk-package.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -72,10 +73,10 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk-package]
     if: |
       needs.files-changed.outputs.embedding_documentation == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk-package.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -91,10 +92,10 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    needs: [files-changed, build]
+    needs: [files-changed, build-sdk-package]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success'
+      needs.build-sdk-package.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -140,18 +141,20 @@ jobs:
         run: exit 1
 
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
-  sdk-e2e-tests:
-    name: "SDK e2e tests"
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
-    needs: [build]
+  embedding-sdk-component-tests:
+    name: "SDK component tests"
+    needs: [build-sdk-package, files-changed]
+    if: needs.files-changed.outputs.e2e_embedding_sdk == 'true'
+    uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  e2e-component-tests-embedding-sdk-backward-compatibility:
-    name: "SDK e2e backward compatibility tests"
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-backward-compatibility.yml
-    needs: [build]
+  not-required-embedding-sdk-apps-compatibility-tests:
+    name: "SDK e2e tests for compatibility with (host/sample) apps"
+    needs: [build-sdk-package, files-changed]
+    if: needs.files-changed.outputs.e2e_embedding_sdk_compatibility == 'true'
+    uses: ./.github/workflows/embedding-sdk-e2e-tests.yml
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
@@ -161,8 +164,7 @@ jobs:
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
-      - sdk-e2e-tests
-      - e2e-component-tests-embedding-sdk-backward-compatibility
+      - embedding-sdk-component-tests
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5

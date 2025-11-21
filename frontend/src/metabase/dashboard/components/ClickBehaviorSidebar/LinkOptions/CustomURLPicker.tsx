@@ -1,13 +1,12 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/common/components/InputBlurChange";
-import ModalContent from "metabase/common/components/ModalContent";
-import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import { Box, Button, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Modal, Text } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 import type {
@@ -37,6 +36,8 @@ export function CustomURLPicker({
 }: Props) {
   const [url, setUrl] = useState(clickBehavior?.linkTemplate ?? "");
   const hasLinkTemplate = !!clickBehavior.linkTemplate;
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(!hasLinkTemplate);
   const canSelect = clickBehaviorIsValid({
     ...clickBehavior,
     linkTemplate: url,
@@ -65,41 +66,40 @@ export function CustomURLPicker({
   }, [clickBehavior, updateSettings]);
 
   return (
-    <ModalWithTrigger
-      isInitiallyOpen={!hasLinkTemplate}
-      triggerElement={
-        <Button.Group>
-          <Button
-            justify="flex-start"
-            leftSection={<Icon name="link" />}
-            size="lg"
-            variant="filled"
-            classNames={{
-              root: LinkOptionsS.ButtonRoot,
-            }}
-          >
-            <SidebarItem.Name>
-              {hasLinkTemplate ? clickBehavior.linkTemplate : t`URL`}
-            </SidebarItem.Name>
-          </Button>
-          <Button
-            onClick={handleReset}
-            miw="3rem"
-            size="lg"
-            variant="filled"
-            rightSection={<Icon name="close" />}
-          />
-        </Button.Group>
-      }
-    >
-      {({ onClose }: { onClose: () => void }) => (
-        <ModalContent
-          title={t`Enter a URL to link to`}
-          onClose={hasLinkTemplate ? onClose : undefined}
+    <>
+      <Button.Group>
+        <Button
+          justify="flex-start"
+          leftSection={<Icon name="link" />}
+          size="lg"
+          variant="filled"
+          classNames={{
+            root: LinkOptionsS.ButtonRoot,
+          }}
+          onClick={openModal}
         >
-          <Box component="span" mb="md">
+          <SidebarItem.Name>
+            {hasLinkTemplate ? clickBehavior.linkTemplate : t`URL`}
+          </SidebarItem.Name>
+        </Button>
+        <Button
+          onClick={handleReset}
+          miw="3rem"
+          size="lg"
+          variant="filled"
+          rightSection={<Icon name="close" />}
+        />
+      </Button.Group>
+      <Modal
+        opened={modalOpened}
+        onClose={closeModal}
+        title={t`Enter a URL to link to`}
+        size="lg"
+      >
+        <Flex direction="column" gap="md" mt="sm">
+          <Text>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
-          </Box>
+          </Text>
           <InputBlurChange
             autoFocus
             value={url}
@@ -121,12 +121,12 @@ export function CustomURLPicker({
             type="button"
             onClick={() => {
               handleSubmit();
-              onClose();
+              closeModal();
             }}
             disabled={!canSelect}
           >{t`Done`}</Button>
-        </ModalContent>
-      )}
-    </ModalWithTrigger>
+        </Flex>
+      </Modal>
+    </>
   );
 }

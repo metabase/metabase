@@ -21,19 +21,26 @@ import {
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { DashboardContextProvider } from "metabase/dashboard/context";
+import {
+  DashboardContextProvider,
+  useDashboardContext,
+} from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
+import {
+  usePageTitle,
+  usePageTitleWithLoadingTime,
+} from "metabase/hooks/use-page-title";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
+import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
-import { getFavicon } from "../../selectors";
+import { getDocumentTitle, getFavicon } from "../../selectors";
 
-import { DashboardTitle } from "./DashboardTitle";
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
@@ -57,10 +64,18 @@ function DashboardAppInner({
   const pageFavicon = useSelector(getFavicon);
   useFavicon({ favicon: pageFavicon });
   useSlowCardNotification();
+  const { dashboard, loadingStartTime, isRunning } = useDashboardContext();
+  const documentTitle = useSelector(getDocumentTitle);
+
+  usePageTitleWithLoadingTime(documentTitle || dashboard?.name || "", {
+    titleIndex: 2,
+    startTime: loadingStartTime,
+    isRunning,
+  });
+  usePageTitle("Dashboard", { titleIndex: 1 });
 
   return (
     <>
-      <DashboardTitle />
       <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
         <DashboardLeaveConfirmationModal route={route} />
         <Dashboard />
@@ -146,6 +161,11 @@ export const DashboardApp = ({
 
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
+
+  const isRouteInSync = window.location.pathname === location.pathname;
+  if (isWithinIframe() && !isRouteInSync) {
+    return null; // Don't render until route syncs (metabase#65500)
+  }
 
   return (
     <ErrorBoundary message={error}>

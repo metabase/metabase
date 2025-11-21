@@ -67,7 +67,7 @@ Copy the token immediately after generating it.
 
 ### 3. Connect your development Metabase to your repository
 
-![Development settings](./images/development-settings.png)
+![Development settings](./images/read-write-settings.png)
 
 You can put any Metabase into Read-write mode. We also offer [Development instances](./development-instance.md) that you can use for Remote Sync or any other kind of development.
 
@@ -130,7 +130,7 @@ Copy the token immediately after generating it — you'll need to paste it into 
 
 ### 7. Connect your production Metabase to your repository
 
-![Production settings](./images/production-settings.png)
+![Production settings](./images/read-only-settings.png)
 
 In your production Metabase instance:
 
@@ -156,7 +156,7 @@ In your production Metabase instance:
 
 In Read-only mode, the synced collection appears in the regular collections list with a special icon to indicate it's versioned and read-only.
 
-![Production Metabase](./images/production-view.png)
+![Production Metabase](./images/read-only-view.png)
 
 At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced collection in your production Metabase.
 
