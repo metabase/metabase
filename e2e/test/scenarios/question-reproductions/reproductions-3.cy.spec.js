@@ -1370,6 +1370,7 @@ describe("issue 19894", () => {
 
     H.startNewQuestion();
 
+    H.miniPicker().should("exist");
     cy.realType("Q1");
     H.miniPicker().findByText("Q1").click();
 

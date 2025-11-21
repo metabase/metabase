@@ -118,6 +118,5 @@ const CONTAINER_STYLE = {
 
 const RIGHT_CONTAINER_STYLE = {
   width: 37,
-  height: "100%",
   padding: 0,
 };
