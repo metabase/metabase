@@ -20,10 +20,10 @@ import { Card } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
+import { getVisibleParameters } from "../utils/get-visible-parameters";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
-import { getVisibleParameters } from "./ParameterSettings/utils/get-visible-parameters";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {

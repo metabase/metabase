@@ -107,7 +107,6 @@ export const SdkIframeGuestEmbedStatusBar = () => {
     settings,
     resource,
     experience,
-    areEmbeddingParametersInitialized,
     initialEmbeddingParameters,
   } = useSdkIframeEmbedSetupContext();
 
@@ -123,12 +122,7 @@ export const SdkIframeGuestEmbedStatusBar = () => {
     return null;
   }
 
-  if (
-    !resource ||
-    !resourceType ||
-    !initialEmbeddingParameters ||
-    !areEmbeddingParametersInitialized
-  ) {
+  if (!resource || !resourceType || !initialEmbeddingParameters) {
     return null;
   }
 

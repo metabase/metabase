@@ -11,7 +11,7 @@ import type {
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/components/ParameterSettings/utils/get-visible-parameters";
+import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-visible-parameters";
 
 import type {
   SdkIframeDashboardEmbedSettings,

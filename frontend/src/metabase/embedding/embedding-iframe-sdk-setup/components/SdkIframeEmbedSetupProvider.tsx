@@ -16,8 +16,8 @@ import {
   type SdkIframeEmbedSetupContextType,
 } from "../context";
 import {
+  useAvailableParameters,
   useGetCurrentResource,
-  useParameters,
   useParametersValues,
   useRecentItems,
 } from "../hooks";
@@ -106,12 +106,12 @@ export const SdkIframeEmbedSetupProvider = ({
     questionId: settings.questionId,
   });
 
-  const { availableParameters, initialAvailableParameters } = useParameters({
+  const { availableParameters } = useAvailableParameters({
     experience,
     resource,
   });
+
   const {
-    areEmbeddingParametersInitialized,
     embeddingParameters,
     initialEmbeddingParameters,
     onEmbeddingParametersChange,
@@ -119,7 +119,6 @@ export const SdkIframeEmbedSetupProvider = ({
     settings,
     updateSettings,
     resource,
-    initialAvailableParameters,
     availableParameters,
   });
 
@@ -179,7 +178,6 @@ export const SdkIframeEmbedSetupProvider = ({
     initialEmbeddingParameters,
     parametersValuesById,
     previewParameterValuesBySlug,
-    areEmbeddingParametersInitialized,
     embeddingParameters,
     onEmbeddingParametersChange,
     guestEmbedSignedTokenForSnippet,
