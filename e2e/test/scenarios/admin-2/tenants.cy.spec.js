@@ -7,7 +7,7 @@ const {
   COLLECTION_GROUP_ID,
   ALL_EXTERNAL_USERS_GROUP_ID,
 } = require("e2e/support/cypress_sample_instance_data");
-const { getPermissionRowPermissions } = require("e2e/support/helpers");
+const { getPermissionRowPermissions, isPermissionDisabled } = require("e2e/support/helpers");
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
 
@@ -351,11 +351,9 @@ describe("Tenants - management", () => {
 
     getPermissionRowPermissions("All External Users")
       .eq(3)
-      .parent()
       .should("have.attr", "aria-disabled", "true");
     getPermissionRowPermissions("All External Users")
       .eq(4)
-      .parent()
       .should("have.attr", "aria-disabled", "true");
 
     hasGlobeIcon(EXTERNAL_USER_GROUP_NAME);
@@ -434,7 +432,7 @@ describe("Tenants - management", () => {
     cy.findByPlaceholderText("Choose an attribute").click();
     H.popover()
       .findByRole("option", { name: /@tenant.slug/ })
-      .findByRole("img", { name: /info/ })
+      .findByTestId("system-defined-tooltip-icon")
       .realHover();
     // The select input also has a tooltip on hover, so we need to findAll
     cy.findAllByRole("tooltip").should(
@@ -461,7 +459,7 @@ describe("Tenants - management", () => {
     cy.log("check that tenant attributes propagate to users");
 
     cy.visit("/admin/tenants/people");
-    cy.findByTestId("admin-layout-content").findByText("External Users");
+    cy.findByTestId("nav-item").findByText("External Users", 1000);
     cy.findByTestId("admin-people-list-table").within(() => {
       cy.findByText(`${GIZMO_USER.first_name} ${GIZMO_USER.last_name}`).should(
         "exist",
