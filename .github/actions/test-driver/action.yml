@@ -18,7 +18,7 @@ runs:
       shell: bash
       run: |
         echo "Fetching CI test configuration..."
-        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/main/ci-test-config.json || {
+        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json || {
           echo "Failed to fetch CI config, proceeding with tests"
           echo "skip=false" >> $GITHUB_OUTPUT
           exit 0
