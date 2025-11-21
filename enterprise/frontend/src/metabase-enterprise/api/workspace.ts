@@ -11,8 +11,19 @@ import type {
 import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, listTag, tag } from "./tags";
 
+type WorkspaceListResponse = {
+  items: Workspace[];
+};
+
 export const workspaceApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getWorkspaces: builder.query<WorkspaceListResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/workspace",
+      }),
+      providesTags: (_, error) => invalidateTags(error, [listTag("workspace")]),
+    }),
     getWorkspace: builder.query<Workspace, WorkspaceId>({
       query: (id) => ({
         method: "GET",
@@ -68,6 +79,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetWorkspacesQuery,
   useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useGetWorkspaceContentsQuery,

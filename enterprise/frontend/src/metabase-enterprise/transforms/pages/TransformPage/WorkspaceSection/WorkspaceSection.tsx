@@ -89,9 +89,10 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
             <Group>
               <Icon name="folder" aria-hidden />
               <Text>
-                {workspace
-                  ? t`This is part of ${workspace.name} (${transform.workspace_id})`
-                  : t`This is part of Workspace ${transform.workspace_id}`}
+                {t`This is part of`}{" "}
+                <Anchor href={Urls.workspace(transform.workspace_id!)}>
+                  {workspace?.name ?? t`Workspace ${transform.workspace_id}`}
+                </Anchor>
               </Text>
             </Group>
             {!isLoadingMappings && upstreamMapping?.transform != null && (
