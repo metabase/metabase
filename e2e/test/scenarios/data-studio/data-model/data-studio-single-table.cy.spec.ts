@@ -159,7 +159,7 @@ describe("Table editing", () => {
     H.selectHasValue("Source", "Ingested");
   });
 
-  it.skip(
+  it(
     "transform-created table should have link and disabled source edit",
     { tags: ["@external"] },
     () => {
