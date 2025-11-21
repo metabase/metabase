@@ -79,7 +79,7 @@ function EmbeddingSettingsEE() {
               > = {
                 initialState: {
                   isGuestEmbed: true,
-                  useExistingUserSession: false,
+                  useExistingUserSession: true,
                 },
               };
 
