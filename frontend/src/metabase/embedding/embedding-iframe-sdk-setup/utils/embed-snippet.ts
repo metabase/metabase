@@ -154,7 +154,7 @@ export function getEmbedCustomElementSnippet({
   );
 
   const customElementSnippetParts = [
-    guestEmbedSignedTokenForSnippet
+    isGuestEmbed && guestEmbedSignedTokenForSnippet
       ? `<!--\nTHIS IS THE EXAMPLE!\nNEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!\n\nFetch the JWT token from your backend and programmatically pass it to the '${elementName}'.\n-->`
       : "",
     `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`,
