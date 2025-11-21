@@ -83,17 +83,16 @@
                      data-source             (conj [:= :data_source     (name data-source)])
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])
                      owner-email             (conj [:= :owner_email     owner-email])
-                     orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]]))
-        query      (cond-> {:where    where
-                            :order-by [[:name :asc]]}
+                     orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
                      (and unused-only (premium-features/has-feature? :dependencies))
-                     (assoc :left-join [[:dependency :d]
-                                        [:and
-                                         [:= :d.to_entity_type "table"]
-                                         [:= :d.to_entity_id :metabase_table.id]]]
-                            :where     [:and where [:= :d.id nil]]))
+                     (conj [:not-exists {:select [:*]
+                                         :from   [[:dependency :d]]
+                                         :where  [:and
+                                                  [:= :d.to_entity_id :metabase_table.id]
+                                                  [:= :d.to_entity_type "table"]]}]))
+        query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db :published_as_model]
-                     (premium-features/has-feature? :transforms)   (conj :transform))]
+                     (premium-features/has-feature? :transforms) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
