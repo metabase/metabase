@@ -153,10 +153,26 @@ const SdkIframeEmbedPreviewInner = () => {
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
             ...(isGuestEmbed
-              ? { token: guestEmbedSignedTokenForPreview }
+              ? {
+                  token: guestEmbedSignedTokenForPreview,
+                  "initial-sql-parameters": s.initialSqlParameters
+                    ? JSON.stringify(
+                        getVisibleParameters(
+                          s.initialSqlParameters,
+                          s.lockedParameters,
+                        ),
+                      )
+                    : undefined,
+                }
               : {
                   "question-id": s.questionId,
                   "is-save-enabled": s.isSaveEnabled,
+                  "initial-sql-parameters": s.initialSqlParameters
+                    ? JSON.stringify(s.initialSqlParameters)
+                    : undefined,
+                  "hidden-parameters": s.hiddenParameters
+                    ? JSON.stringify(s.hiddenParameters)
+                    : undefined,
                 }),
             "with-title": s.withTitle,
             drills: s.drills,
@@ -165,37 +181,34 @@ const SdkIframeEmbedPreviewInner = () => {
             "entity-types": s.entityTypes
               ? JSON.stringify(s.entityTypes)
               : undefined,
-            "initial-sql-parameters": s.initialSqlParameters
-              ? JSON.stringify(
-                  getVisibleParameters(
-                    s.initialSqlParameters,
-                    s.lockedParameters,
-                  ),
-                )
-              : undefined,
-            "hidden-parameters": s.hiddenParameters
-              ? JSON.stringify(s.hiddenParameters)
-              : undefined,
           }),
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
             ...(isGuestEmbed
-              ? { token: guestEmbedSignedTokenForPreview }
+              ? {
+                  token: guestEmbedSignedTokenForPreview,
+                  "initial-parameters": s.initialParameters
+                    ? JSON.stringify(
+                        getVisibleParameters(
+                          s.initialParameters,
+                          s.lockedParameters,
+                        ),
+                      )
+                    : undefined,
+                }
               : {
                   "dashboard-id": s.dashboardId,
+                  "initial-parameters": s.initialParameters
+                    ? JSON.stringify(s.initialParameters)
+                    : undefined,
+                  "hidden-parameters": s.hiddenParameters
+                    ? JSON.stringify(s.hiddenParameters)
+                    : undefined,
                 }),
             "with-title": s.withTitle,
             drills: s.drills,
             "with-downloads": s.withDownloads,
-            "initial-parameters": s.initialParameters
-              ? JSON.stringify(
-                  getVisibleParameters(s.initialParameters, s.lockedParameters),
-                )
-              : undefined,
-            "hidden-parameters": s.hiddenParameters
-              ? JSON.stringify(s.hiddenParameters)
-              : undefined,
           }),
         )
         .with({ componentName: "metabase-browser" }, (s) =>
