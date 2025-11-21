@@ -817,15 +817,15 @@
                                                        :type "model"
                                                        :display_name "Model Model"
                                                        :verified true
-                                                       :fields (add-field-ids (format "c%d/%%d" model-id) expected-core-fields)
+                                                       :fields (add-field-ids (format "c%d-%%d" model-id) expected-core-fields)
                                                        :related_tables
                                                        (map #(update % :fields
-                                                                     (partial add-field-ids (format "t%d/%%d" (:id %))))
+                                                                     (partial add-field-ids (format "t%d-%%d" (:id %))))
                                                             expected-related-tables)
                                                        :metrics [(assoc metric-data
                                                                         :id metric-id
                                                                         :type "metric"
-                                                                        :default_time_dimension_field_id (format "c%d/7" metric-id))]))
+                                                                        :default_time_dimension_field_id (format "c%d-7" metric-id))]))
                          :conversation_id conversation-id}
                         (request arguments)))))))))))
 
@@ -855,18 +855,18 @@
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields
-                                                     (add-field-ids (format "c%d/%%d" model-id) expected-core-fields
+                                                     (add-field-ids (format "c%d-%%d" model-id) expected-core-fields
                                                                     #(assoc % :field_values missing-value))
                                                      :related_tables
                                                      (map (fn [table]
                                                             (update table :fields
-                                                                    #(add-field-ids (format "t%d/%%d" (:id table)) %
+                                                                    #(add-field-ids (format "t%d-%%d" (:id table)) %
                                                                                     (fn [f] (assoc f :field_values missing-value)))))
                                                           expected-related-tables)
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
-                                                                      :default_time_dimension_field_id (format "c%d/7" metric-id))]))
+                                                                      :default_time_dimension_field_id (format "c%d-7" metric-id))]))
                        :conversation_id conversation-id}
                       (request (assoc arguments :with_field_values false)))))))))))
 
@@ -901,7 +901,7 @@
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
-                                                                      :default_time_dimension_field_id (format "c%d/7" metric-id))]))
+                                                                      :default_time_dimension_field_id (format "c%d-7" metric-id))]))
                        :conversation_id conversation-id}
                       (request (assoc arguments :with_fields false)))))))))))
 
@@ -1103,7 +1103,7 @@
                                          :metrics [(assoc metric-data
                                                           :id metric-id
                                                           :type "metric"
-                                                          :default_time_dimension_field_id (format "c%d/7" metric-id))]}
+                                                          :default_time_dimension_field_id (format "c%d-7" metric-id))]}
                      :conversation_id conversation-id}
                     (request {:table_id arg-id})))))
         (let [arguments {:table_id table-id}]
@@ -1121,7 +1121,7 @@
                                          :metrics [(assoc metric-data
                                                           :id metric-id
                                                           :type "metric"
-                                                          :default_time_dimension_field_id (format "c%d/7" metric-id))]}
+                                                          :default_time_dimension_field_id (format "c%d-7" metric-id))]}
                      :conversation_id conversation-id}
                     (request (assoc arguments :with_field_values false)))))
           (testing "Without fields"
@@ -1135,7 +1135,7 @@
                                          :metrics [(assoc metric-data
                                                           :id metric-id
                                                           :type "metric"
-                                                          :default_time_dimension_field_id (format "c%d/7" metric-id))]}
+                                                          :default_time_dimension_field_id (format "c%d-7" metric-id))]}
                      :conversation_id conversation-id}
                     (request (assoc arguments :with_fields false)))))
           (testing "Without fields and metric default time dimension"
