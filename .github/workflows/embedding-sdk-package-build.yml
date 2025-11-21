@@ -1,4 +1,4 @@
-name: Emedding SDK Package Build
+name: Embedding SDK Package Build
 
 on:
   workflow_call:
