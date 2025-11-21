@@ -6,6 +6,7 @@ import type {
   CollectionItemModel,
   DatabaseId,
   RecentItem,
+  Table,
 } from "metabase-types/api";
 
 import type { QuestionPickerItem } from "../QuestionPicker";
@@ -124,8 +125,14 @@ export const createShouldShowItem = (
     if (!isNullOrUndefined(databaseId) && item.model === "database") {
       return item.id === databaseId;
     }
+
     if (item.model === "table") {
-      return isNullOrUndefined(databaseId) || item.database_id === databaseId;
+      const itemDbId = item.database_id ?? (item as unknown as Table).db_id;
+      return isNullOrUndefined(databaseId) || itemDbId === databaseId;
+    }
+
+    if (item.model === "schema") {
+      return isNullOrUndefined(databaseId) || item.dbId === databaseId;
     }
 
     if (

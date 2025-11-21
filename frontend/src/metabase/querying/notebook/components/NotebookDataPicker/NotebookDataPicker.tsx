@@ -155,11 +155,13 @@ function ModernDataPicker({
   const [focusPicker, setFocusPicker] = useState(false);
 
   const shouldHide = useMemo(() => {
-    const shouldShow = createShouldShowItem([], databaseId);
-    return (item: MiniPickerItem) => {
-      return !shouldShow(item as DataPickerItem);
-    };
-  }, [databaseId]);
+    if (!canChangeDatabase) {
+      const shouldShow = createShouldShowItem(modelList, databaseId);
+      return (item: MiniPickerItem | unknown) =>
+        !shouldShow(item as DataPickerItem);
+    }
+    return undefined;
+  }, [databaseId, canChangeDatabase, modelList]);
 
   return (
     <>
@@ -167,7 +169,7 @@ function ModernDataPicker({
         value={tableValue}
         opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
-        models={["table", "dataset", "metric", "card"]}
+        models={modelList}
         searchQuery={dataSourceSearchQuery}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}

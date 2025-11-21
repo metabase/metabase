@@ -10,11 +10,12 @@ import type { SchemaName } from "metabase-types/api";
 import type { DataPickerValue } from "../DataPicker";
 import type { TablePickerValue } from "../TablePicker";
 
-import type {
-  MiniPickerCollectionItem,
-  MiniPickerFolderItem,
-  MiniPickerItem,
-  MiniPickerPickableItem,
+import {
+  type MiniPickerCollectionItem,
+  type MiniPickerFolderItem,
+  MiniPickerFolderModel,
+  type MiniPickerItem,
+  type MiniPickerPickableItem,
 } from "./types";
 
 export const getOurAnalytics = (): MiniPickerFolderItem => ({
@@ -172,6 +173,17 @@ export function getFolderAndHiddenFunctions(
       return false;
     }
 
+    if (
+      item.model === MiniPickerFolderModel.Database ||
+      item.model === MiniPickerFolderModel.Schema
+    ) {
+      return true;
+    }
+
+    if (item.model !== MiniPickerFolderModel.Collection) {
+      return false;
+    }
+
     if (!("here" in item) && !("below" in item)) {
       return false;
     }
@@ -190,13 +202,16 @@ export function getFolderAndHiddenFunctions(
 
   const isHidden = (item: MiniPickerItem | unknown): item is unknown => {
     if (!item || typeof item !== "object" || !("model" in item)) {
-      return false;
+      return true;
+    }
+
+    if (shouldHide && shouldHide(item)) {
+      return true;
     }
 
     return (
-      !modelSet.has(item.model as any) &&
-      !isFolder(item) &&
-      (shouldHide?.(item) ?? false)
+      !modelSet.has(item.model as MiniPickerPickableItem["model"]) &&
+      !isFolder(item)
     );
   };
   return { isFolder, isHidden };

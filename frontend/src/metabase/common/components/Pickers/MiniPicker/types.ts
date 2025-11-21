@@ -41,6 +41,12 @@ export type MiniPickerDatabaseItem = {
   name: string;
 };
 
+export enum MiniPickerFolderModel {
+  Database = "database",
+  Schema = "schema",
+  Collection = "collection",
+}
+
 // this includes all possible item types that can be shown in the mini picker
 export type MiniPickerItem =
   | MiniPickerCollectionItem

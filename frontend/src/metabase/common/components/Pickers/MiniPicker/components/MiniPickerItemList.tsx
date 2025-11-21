@@ -51,7 +51,7 @@ export function MiniPickerItemList() {
 
 function RootItemList() {
   const { data: databases } = useListDatabasesQuery();
-  const { setPath } = useMiniPickerContext();
+  const { setPath, isHidden } = useMiniPickerContext();
   const { data: libraryCollection, isLoading } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
@@ -67,6 +67,7 @@ function RootItemList() {
           <MiniPickerItem
             key={db.id}
             name={db.name}
+            isHidden={isHidden({ model: "database", id: db.id, name: db.name })}
             model="database"
             isFolder
             onClick={() => {
@@ -97,6 +98,7 @@ function RootItemList() {
           key={db.id}
           name={db.name}
           model="database"
+          isHidden={isHidden({ model: "database", id: db.id, name: db.name })}
           isFolder
           onClick={() => {
             setPath([{ model: "database", id: db.id, name: db.name }]);
@@ -126,7 +128,7 @@ function DatabaseItemList({
 }: {
   parent: MiniPickerDatabaseItem | MiniPickerSchemaItem;
 }) {
-  const { setPath, onChange } = useMiniPickerContext();
+  const { setPath, onChange, isHidden } = useMiniPickerContext();
   const { data: schemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       parent.model === "database" ? { id: parent.id } : skipToken,
@@ -162,6 +164,12 @@ function DatabaseItemList({
           <MiniPickerItem
             key={schema}
             name={schema}
+            isHidden={isHidden({
+              model: "schema",
+              id: schema,
+              dbId,
+              name: schema,
+            })}
             isFolder
             model="schema"
             onClick={() => {
@@ -197,6 +205,7 @@ function DatabaseItemList({
           <MiniPickerItem
             key={table.id}
             name={table.display_name}
+            isHidden={isHidden({ model: "table", ...table })}
             model="table"
             onClick={() => {
               onChange({

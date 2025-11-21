@@ -5,7 +5,7 @@ import { Box, Menu } from "metabase/ui";
 
 import type { DataPickerValue } from "../../DataPicker";
 import { MiniPickerContext } from "../context";
-import type { MiniPickerPickableItem } from "../types";
+import type { MiniPickerItem, MiniPickerPickableItem } from "../types";
 import {
   focusFirstMiniPickerItem,
   getFolderAndHiddenFunctions,
@@ -24,6 +24,7 @@ export type MiniPickerProps = {
   onClose: () => void;
   models: MiniPickerPickableItem["model"][];
   onBrowseAll?: () => void;
+  shouldHide?: (item: MiniPickerItem | unknown) => boolean;
 };
 
 export function MiniPicker({
@@ -35,6 +36,7 @@ export function MiniPicker({
   models,
   onBrowseAll,
   trapFocus = false,
+  shouldHide,
 }: MiniPickerProps) {
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection();
@@ -46,8 +48,8 @@ export function MiniPicker({
   });
 
   const { isFolder, isHidden } = useMemo(() => {
-    return getFolderAndHiddenFunctions(models);
-  }, [models]);
+    return getFolderAndHiddenFunctions(models, shouldHide);
+  }, [models, shouldHide]);
 
   useEffect(() => {
     if (trapFocus && path) {
