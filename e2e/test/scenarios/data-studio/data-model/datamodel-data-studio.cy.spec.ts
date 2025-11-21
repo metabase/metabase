@@ -505,13 +505,14 @@ describe("scenarios > data studio > datamodel", () => {
         H.DataModel.visitDataStudio();
         TablePicker.getSearchInput().type("a");
 
-        TablePicker.getTables().should("have.length", 9);
+        TablePicker.getTables().should("have.length", 4);
         TablePicker.getTable("Accounts").find('input[type="checkbox"]').click();
-        TablePicker.getTable("Api Key")
+        TablePicker.getTable("Animals")
+          .eq(0)
           .find('input[type="checkbox"]')
           .click({ shiftKey: true });
 
-        cy.findByRole("heading", { name: /4 tables selected/i }).should(
+        cy.findByRole("heading", { name: /3 tables selected/i }).should(
           "be.visible",
         );
       });
@@ -542,15 +543,15 @@ describe("scenarios > data studio > datamodel", () => {
       it("should select/deselect tables with clicking checkboxes", () => {
         H.DataModel.visitDataStudio();
         TablePicker.getSearchInput().type("a");
-        TablePicker.getTables().should("have.length", 9);
+        TablePicker.getTables().should("have.length", 4);
         TablePicker.getTable("Accounts")
           .find('input[type="checkbox"]')
           .as("accountsCheckbox");
-        TablePicker.getTable("Api Key")
+        TablePicker.getTable("Analytic Events")
           .find('input[type="checkbox"]')
-          .as("apiKeyCheckbox");
+          .as("analyticEventsCheckbox");
         cy.get("@accountsCheckbox").check();
-        cy.get("@apiKeyCheckbox").check();
+        cy.get("@analyticEventsCheckbox").check();
         cy.findByRole("heading", { name: /2 tables selected/i }).should(
           "be.visible",
         );
