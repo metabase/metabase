@@ -232,7 +232,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         enable_embedding: true,
       });
-      visitAndEnableSharing("question");
+      visitAndEnableSharing("question", false);
 
       H.modal().within(() => {
         cy.findByRole("tab", { name: "Parameters" }).click();
@@ -306,23 +306,24 @@ function ensureEmbeddingIsDisabled() {
 }
 
 function visitAndEnableSharing(object, unpublishBeforeOpen = true) {
-  if (object === "question") {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openLegacyStaticEmbeddingModal({
-      resource: "question",
-      resourceId: ORDERS_QUESTION_ID,
-      unpublishBeforeOpen,
-    });
-  }
+  const { id, visitFunction } = {
+    question: {
+      id: ORDERS_QUESTION_ID,
+      visitFunction: H.visitQuestion,
+    },
+    dashboard: {
+      id: ORDERS_DASHBOARD_ID,
+      visitFunction: H.visitDashboard,
+    },
+  }[object];
 
-  if (object === "dashboard") {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.openLegacyStaticEmbeddingModal({
-      resource: "dashboard",
-      resourceId: ORDERS_DASHBOARD_ID,
-      unpublishBeforeOpen,
-    });
-  }
+  visitFunction(id);
+
+  H.openLegacyStaticEmbeddingModal({
+    resource: object,
+    resourceId: id,
+    unpublishBeforeOpen,
+  });
 }
 
 function mainPage() {

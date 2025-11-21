@@ -814,24 +814,24 @@ describe("#39152 sharing an unsaved question", () => {
             .click();
 
           cy.then(function () {
-            // TODO: figure out why does not work for dashboards
-            if (resource === "question") {
-              H.expectUnstructuredSnowplowEvent({
-                event: "static_embed_published",
-                artifact: resource,
-                new_embed: true,
-                time_since_creation: closeTo(
-                  toSecond(Date.now() - this.timeAfterResourceCreation),
-                  15,
-                ),
-                time_since_initial_publication: null,
-                params: {
-                  disabled: 3,
-                  locked: 0,
-                  enabled: 0,
-                },
-              });
-            }
+            H.expectUnstructuredSnowplowEvent({
+              event: "static_embed_published",
+              artifact: resource,
+              new_embed: false,
+              time_since_creation: closeTo(
+                toSecond(Date.now() - this.timeAfterResourceCreation),
+                15,
+              ),
+              time_since_initial_publication: closeTo(
+                toSecond(Date.now() - this.timeAfterResourceCreation),
+                15,
+              ),
+              params: {
+                disabled: 3,
+                locked: 0,
+                enabled: 0,
+              },
+            });
           });
 
           cy.log("Assert `time_since_initial_publication` and `params`");
