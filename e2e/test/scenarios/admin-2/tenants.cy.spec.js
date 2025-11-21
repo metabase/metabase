@@ -773,6 +773,87 @@ describe("tenant users", () => {
       },
     );
   });
+
+  describe("people list page", () => {
+    it("shows both internal and external users in the people list", () => {
+      cy.visit("/admin/people");
+
+      cy.findByTestId("admin-people-list-table").within(() => {
+        cy.log("shows internal users");
+        cy.findByText("Bobby Tables").should("exist");
+
+        cy.log("shows external users");
+        cy.findByText("gizmo user").should("exist");
+        cy.findByText("doohickey user").should("exist");
+
+        cy.log("column header contains Groups / Tenant");
+        cy.findByRole("columnheader", { name: "Groups / Tenant" }).should(
+          "exist",
+        );
+      });
+    });
+
+    it("opens the correct 'Edit user' modal for internal and external users", () => {
+      cy.visit("/admin/people");
+
+      cy.findByTestId("admin-people-list-table")
+        .findByText("Bobby Tables")
+        .closest("tr")
+        .findByLabelText("ellipsis icon")
+        .click();
+
+      H.popover().findByText("Edit user").click();
+
+      cy.log("shows Groups in the edit user modal");
+      H.modal().within(() => {
+        cy.findByText("Groups").should("exist");
+        cy.findByText("Tenant").should("not.exist");
+        cy.findByText("Tenant Groups").should("not.exist");
+        cy.button("Cancel").click();
+      });
+
+      cy.url().should("include", "/admin/people");
+
+      cy.findByTestId("admin-people-list-table")
+        .findByText("gizmo user")
+        .closest("tr")
+        .findByLabelText("ellipsis icon")
+        .click();
+
+      H.popover().findByText("Edit user").click();
+
+      cy.log("shows Tenant Groups and Tenant in the edit user modal");
+      H.modal().within(() => {
+        cy.findByText("Tenant Groups").should("exist");
+        cy.findByText("Tenant").should("exist");
+        cy.findByText("Groups").should("not.exist");
+
+        cy.button("Cancel").click();
+      });
+
+      cy.url().should("include", "/admin/people");
+    });
+
+    it("hides external users when tenants are disabled", () => {
+      cy.request("PUT", "/api/setting", { "use-tenants": false });
+      cy.visit("/admin/people");
+
+      cy.findByTestId("admin-people-list-table").within(() => {
+        cy.log("shows internal users");
+        cy.findByText("Bobby Tables").should("exist");
+
+        cy.log("does not show external users");
+        cy.findByText("gizmo user").should("not.exist");
+        cy.findByText("doohickey user").should("not.exist");
+
+        cy.findByText("shows the Groups in column header").should("not.exist");
+        cy.findByRole("columnheader", { name: "Groups" }).should("exist");
+        cy.findByRole("columnheader", { name: "Groups / Tenant" }).should(
+          "not.exist",
+        );
+      });
+    });
+  });
 });
 
 const assertPermissionTableColumnsExist = (assertions) => {
