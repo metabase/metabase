@@ -11,31 +11,23 @@ import {
 } from "metabase-types/api/mocks";
 
 jest.mock(
-  "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-parameter-visibility",
+  "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion",
 );
 jest.mock(
   "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params",
 );
-jest.mock(
-  "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters",
-);
 
-const mockUseParameterVisibility = jest.requireMock(
-  "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-parameter-visibility",
-).useParameterVisibility;
+const mockUseEmbeddingParametersConversion = jest.requireMock(
+  "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion",
+).useEmbeddingParametersConversion;
 
 const mockGetDefaultEmbeddingParams = jest.requireMock(
   "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params",
 ).getDefaultEmbeddingParams;
 
-const mockGetSdkIframeEmbedSettingsForEmbeddingParameters = jest.requireMock(
-  "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters",
-).getSdkIframeEmbedSettingsForEmbeddingParameters;
-
 const mockUpdateSettings = jest.fn();
-const mockIsHiddenParameter = jest.fn();
-const mockIsLockedParameter = jest.fn();
-const mockToggleParameterVisibility = jest.fn();
+const mockConvertToEmbedSettings = jest.fn();
+const mockConvertToEmbeddingParameters = jest.fn();
 
 const mockParameter1 = createMockParameter({
   id: "param1",
@@ -70,26 +62,31 @@ describe("useEmbeddingParameters", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockUseParameterVisibility.mockReturnValue({
-      isHiddenParameter: mockIsHiddenParameter,
-      isLockedParameter: mockIsLockedParameter,
-      toggleParameterVisibility: mockToggleParameterVisibility,
+    mockUseEmbeddingParametersConversion.mockReturnValue({
+      convertToEmbedSettings: mockConvertToEmbedSettings,
+      convertToEmbeddingParameters: mockConvertToEmbeddingParameters,
     });
 
-    mockIsHiddenParameter.mockImplementation((slug: string) =>
-      defaultSettings.hiddenParameters.includes(slug),
+    mockConvertToEmbeddingParameters.mockImplementation(
+      (
+        parameters: Parameter[],
+        hiddenParameters: string[] = [],
+        lockedParameters: string[] = [],
+      ) => {
+        return parameters.reduce<EmbeddingParameters>((acc, { slug }) => {
+          if (lockedParameters.includes(slug)) {
+            acc[slug] = "locked";
+          } else if (hiddenParameters.includes(slug)) {
+            acc[slug] = "disabled";
+          } else {
+            acc[slug] = "enabled";
+          }
+          return acc;
+        }, {});
+      },
     );
 
-    mockIsLockedParameter.mockImplementation((slug: string) =>
-      defaultSettings.lockedParameters.includes(slug),
-    );
-
-    mockGetDefaultEmbeddingParams.mockReturnValue({
-      category: "enabled",
-      status: "enabled",
-    });
-
-    mockGetSdkIframeEmbedSettingsForEmbeddingParameters.mockImplementation(
+    mockConvertToEmbedSettings.mockImplementation(
       (params: EmbeddingParameters) => ({
         hiddenParameters: Object.keys(params).filter(
           (key) => params[key] === "disabled",
@@ -99,6 +96,11 @@ describe("useEmbeddingParameters", () => {
         ),
       }),
     );
+
+    mockGetDefaultEmbeddingParams.mockReturnValue({
+      category: "enabled",
+      status: "enabled",
+    });
   });
 
   describe("areEmbeddingParametersInitialized", () => {
@@ -236,12 +238,14 @@ describe("useEmbeddingParameters", () => {
     });
 
     it("should mark parameter as enabled when not hidden or locked", () => {
-      mockIsHiddenParameter.mockReturnValue(false);
-      mockIsLockedParameter.mockReturnValue(false);
-
       const { result } = renderHook(() =>
         useEmbeddingParameters({
-          settings: defaultSettings,
+          settings: {
+            dashboardId: 1,
+            hiddenParameters: [],
+            lockedParameters: [],
+            isGuestEmbed: true,
+          } as any,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
           initialAvailableParameters: [mockParameter1],
@@ -255,12 +259,14 @@ describe("useEmbeddingParameters", () => {
     });
 
     it("should prioritize locked over hidden", () => {
-      mockIsHiddenParameter.mockReturnValue(true);
-      mockIsLockedParameter.mockReturnValue(true);
-
       const { result } = renderHook(() =>
         useEmbeddingParameters({
-          settings: defaultSettings,
+          settings: {
+            dashboardId: 1,
+            hiddenParameters: ["category"],
+            lockedParameters: ["category"],
+            isGuestEmbed: true,
+          } as any,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
           initialAvailableParameters: [mockParameter1],
@@ -307,9 +313,7 @@ describe("useEmbeddingParameters", () => {
 
       result.current.onEmbeddingParametersChange(newParams);
 
-      expect(
-        mockGetSdkIframeEmbedSettingsForEmbeddingParameters,
-      ).toHaveBeenCalledWith(newParams);
+      expect(mockConvertToEmbedSettings).toHaveBeenCalledWith(newParams);
       expect(mockUpdateSettings).toHaveBeenCalled();
     });
   });
@@ -493,18 +497,14 @@ describe("useEmbeddingParameters", () => {
         name: "Special Param",
       });
 
-      mockIsHiddenParameter.mockImplementation(
-        (slug: string) => slug === "param-with-dash_and_underscore",
-      );
-      mockIsLockedParameter.mockReturnValue(false);
-
       const { result } = renderHook(() =>
         useEmbeddingParameters({
           settings: {
             dashboardId: 1,
             hiddenParameters: ["param-with-dash_and_underscore"],
+            lockedParameters: [],
             isGuestEmbed: true,
-          } as SdkIframeEmbedSetupSettings,
+          } as any,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
           initialAvailableParameters: [specialParam],
