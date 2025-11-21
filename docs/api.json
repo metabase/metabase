@@ -3853,7 +3853,7 @@
           "required" : [ "type", "subject", "body" ]
         } ]
       },
-      "metabase.collections.api.DashboardQuestionCandidate" : {
+      "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
         "properties" : {
           "description" : {
@@ -3885,13 +3885,13 @@
         },
         "required" : [ "id", "name", "sole_dashboard_info" ]
       },
-      "metabase.collections.api.DashboardQuestionCandidatesResponse" : {
+      "metabase.collections-rest.api.DashboardQuestionCandidatesResponse" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "type" : "array",
             "items" : {
-              "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidate"
+              "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidate"
             }
           },
           "total" : {
@@ -3900,7 +3900,7 @@
         },
         "required" : [ "data", "total" ]
       },
-      "metabase.collections.api.MoveDashboardQuestionCandidatesResponse" : {
+      "metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse" : {
         "type" : "object",
         "properties" : {
           "moved" : {
@@ -9211,7 +9211,7 @@
         "type" : "string",
         "enum" : [ "events" ]
       },
-      "metabase.users.api.user-group-membership" : {
+      "metabase.users-rest.api.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
         "properties" : {
@@ -9267,12 +9267,12 @@
         },
         "required" : [ "schedule_type" ]
       },
-      "metabase.warehouse-schema.api.table.data-authority-write" : {
+      "metabase.warehouse-schema-rest.api.table.data-authority-write" : {
         "description" : "Schema for writing a valid table data authority.",
         "type" : "string",
         "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
       },
-      "metabase.warehouses.api.available-settings" : {
+      "metabase.warehouses-rest.api.available-settings" : {
         "type" : "object",
         "additionalProperties" : {
           "type" : "object",
@@ -12530,7 +12530,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -12656,7 +12656,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.MoveDashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -12914,7 +12914,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -13049,7 +13049,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.MoveDashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -15119,7 +15119,7 @@
                   "type" : "object",
                   "properties" : {
                     "settings" : {
-                      "$ref" : "#/components/schemas/metabase.warehouses.api.available-settings"
+                      "$ref" : "#/components/schemas/metabase.warehouses-rest.api.available-settings"
                     }
                   },
                   "required" : [ "settings" ]
@@ -28814,7 +28814,7 @@
                     "enum" : [ "technical", "hidden", "cruft" ]
                   },
                   "data_authority" : {
-                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -28977,7 +28977,7 @@
                     "enum" : [ "technical", "hidden", "cruft" ]
                   },
                   "data_authority" : {
-                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -30473,7 +30473,7 @@
                   "user_group_memberships" : {
                     "type" : "array",
                     "items" : {
-                      "$ref" : "#/components/schemas/metabase.users.api.user-group-membership"
+                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                     }
                   }
                 },
@@ -30611,7 +30611,7 @@
                   "user_group_memberships" : {
                     "type" : "array",
                     "items" : {
-                      "$ref" : "#/components/schemas/metabase.users.api.user-group-membership"
+                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                     }
                   }
                 }

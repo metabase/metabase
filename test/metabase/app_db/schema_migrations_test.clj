@@ -2764,7 +2764,7 @@
 
 (deftest migrate-password-auth-test
   (testing "Migration v58.2025-11-04T23:10:03: Migrate password authentication to auth_identity table"
-    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:03"] [migrate!]
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:11"] [migrate!]
       ;; Insert users with password auth before migration
       (t2/query-one {:insert-into :core_user
                      :values      [{:first_name    "Password"
@@ -2792,7 +2792,7 @@
 
 (deftest migrate-ldap-auth-test-2
   (testing "Migration v58.2025-11-04T23:10:04: Migrate LDAP authentication to auth_identity table"
-    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:04"] [migrate!]
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:12"] [migrate!]
       ;; Insert users with LDAP auth before migration (using sso_source='ldap' from current schema)
       (t2/query-one {:insert-into :core_user
                      :values      [{:first_name    "LDAP"
@@ -2819,7 +2819,7 @@
 
 (deftest migrate-google-sso-auth-test
   (testing "Migration v58.2025-11-04T23:10:05: Migrate Google SSO authentication to auth_identity table"
-    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:05"] [migrate!]
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:13"] [migrate!]
       ;; Insert users with Google SSO before migration
       (t2/query-one {:insert-into :core_user
                      :values      [{:first_name    "Google"
@@ -2845,7 +2845,7 @@
 
 (deftest migrate-saml-jwt-auth-test
   (testing "Migration v58.2025-11-04T23:10:06: Migrate SAML and JWT authentication to auth_identity table"
-    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:06"] [migrate!]
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:14"] [migrate!]
       ;; Insert users with SAML and JWT before migration
       (t2/query-one {:insert-into :core_user
                      :values      [{:first_name    "SAML"

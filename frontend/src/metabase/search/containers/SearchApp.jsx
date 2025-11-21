@@ -11,6 +11,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import Search from "metabase/entities/search";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
@@ -33,6 +34,8 @@ import { Box, Group, Paper, Text } from "metabase/ui";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
+
+  usePageTitle(t`Search`);
 
   const { handleNextPage, handlePreviousPage, page } = usePagination();
 
