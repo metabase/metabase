@@ -408,9 +408,13 @@ describe("scenarios > embedding > dashboard parameters", () => {
   it("should allow searching dashboard parameters in preview embed modal", () => {
     H.visitDashboard("@dashboardId");
 
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboardId,
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
     });
 
     H.modal().within(() => {
@@ -465,7 +469,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.visitEmbeddedPage(payload);
 
       H.getDashboardCard()
-        .findByText("There was a problem displaying this chart.")
+        .findByText("Assert failed: (map? token-params)")
         .should("be.visible");
     });
   });
@@ -720,7 +724,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     // and the card will not display.
 
     H.getDashboardCard()
-      .findByText("There was a problem displaying this chart.")
+      .findByText("You must specify a value for :source in the JWT.")
       .should("be.visible");
   });
 
