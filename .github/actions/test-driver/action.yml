@@ -13,7 +13,59 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Fetch CI config
+      id: ci-config
+      shell: bash
+      run: |
+        echo "Fetching CI test configuration..."
+        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/main/ci-test-config.json || {
+          echo "Failed to fetch CI config, proceeding with tests"
+          echo "skip=false" >> $GITHUB_OUTPUT
+          exit 0
+        }
+
+        # Show the config for debugging
+        echo "CI Config contents:"
+        cat ci-test-config.json
+
+    - name: Check if driver is ignored
+      id: check-driver
+      shell: bash
+      run: |
+        if [ -z "$DRIVERS" ]; then
+          echo "DRIVERS env var not set, proceeding with tests"
+          echo "skip=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        if [ ! -f ci-test-config.json ]; then
+          echo "CI config not found, proceeding with tests"
+          echo "skip=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Check if the driver is in the ignored list
+        IS_IGNORED=$(jq --arg driver "$DRIVERS" '.ignored.drivers | contains([$driver])' ci-test-config.json)
+
+        if [ "$IS_IGNORED" = "true" ]; then
+          echo "⚠️  Driver '$DRIVERS' is in the ignored list. Skipping tests."
+
+          # Extract metadata for context
+          REASON=$(jq -r '.metadata.reason // "No reason provided"' ci-test-config.json)
+          UPDATED_BY=$(jq -r '.metadata.updated_by // "unknown"' ci-test-config.json)
+          LAST_UPDATED=$(jq -r '.metadata.last_updated // "unknown"' ci-test-config.json)
+
+          echo "Reason: $REASON"
+          echo "Updated by: $UPDATED_BY"
+          echo "Last updated: $LAST_UPDATED"
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "Driver '$DRIVERS' is not ignored. Proceeding with tests."
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Prepare back-end environment
+      if: steps.check-driver.outputs.skip != 'true'
       uses: ./.github/actions/prepare-backend
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
