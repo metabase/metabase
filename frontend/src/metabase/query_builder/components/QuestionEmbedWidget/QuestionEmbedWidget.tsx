@@ -11,10 +11,11 @@ import type { Card } from "metabase-types/api";
 
 type QuestionEmbedWidgetProps = {
   card: Card;
+  onBack?: () => void;
   onClose: () => void;
 };
 export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
-  const { card, onClose } = props;
+  const { card, onBack, onClose } = props;
 
   const metadata = useSelector(getMetadata);
 
@@ -42,6 +43,7 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
           embedding_type: STATIC_LEGACY_EMBEDDING_TYPE,
         })
       }
+      onBack={onBack}
       onClose={onClose}
     />
   );

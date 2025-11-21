@@ -1,8 +1,5 @@
 import { type Ref, forwardRef } from "react";
 
-import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
@@ -47,7 +44,7 @@ type SharingModalProps = BaseSharingModalProps &
       }
   );
 
-export const SharingModals = ({
+export const PublicLinkModals = ({
   modalType,
   onClose,
   question,
@@ -64,26 +61,11 @@ export const SharingModals = ({
     );
   }
 
-  if (modalType === STATIC_LEGACY_EMBEDDING_TYPE && question) {
-    return <QuestionEmbedWidget card={question._card} onClose={onClose} />;
-  }
-
   if (modalType === "dashboard-public-link") {
     return (
       <DashboardPublicLinkPopover
         dashboard={dashboard}
         target={<MenuTarget />}
-        onClose={onClose}
-        isOpen
-      />
-    );
-  }
-
-  if (modalType === STATIC_LEGACY_EMBEDDING_TYPE && dashboard) {
-    return (
-      <DashboardSharingEmbeddingModal
-        key="dashboard-embed"
-        dashboard={dashboard}
         onClose={onClose}
         isOpen
       />

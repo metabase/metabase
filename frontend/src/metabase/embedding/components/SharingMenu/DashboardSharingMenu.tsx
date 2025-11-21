@@ -12,8 +12,8 @@ import { useSharingModal } from "../../hooks/use-sharing-modal";
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
 import { ExportPdfMenuItem } from "./MenuItems/ExportPdfMenuItem";
 import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
+import { PublicLinkModals } from "./PublicLinkModals";
 import { SharingMenu } from "./SharingMenu";
-import { SharingModals } from "./SharingModals";
 import type { DashboardSharingModalType } from "./types";
 
 export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
@@ -65,7 +65,7 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
           </>
         )}
       </SharingMenu>
-      <SharingModals
+      <PublicLinkModals
         modalType={modalType}
         dashboard={dashboard}
         onClose={() => setModalType(null)}

@@ -1,10 +1,11 @@
 import { c, t } from "ttag";
 
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import type { LegacyStaticEmbeddingModalProps } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { useDispatch } from "metabase/lib/redux";
-import { setOpenModal } from "metabase/redux/ui";
+import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Alert, Anchor, Box, Flex, Icon, Stack, Text } from "metabase/ui";
 
 export const LegacyStaticEmbeddingAlert = () => {
@@ -12,7 +13,9 @@ export const LegacyStaticEmbeddingAlert = () => {
     useSdkIframeEmbedSetupContext();
 
   const dispatch = useDispatch();
+
   const isGuestEmbed = !!settings.isGuestEmbed;
+  const useExistingUserSession = !!settings.useExistingUserSession;
 
   const resourceType = getResourceTypeFromExperience(experience);
   const shouldShowForResource =
@@ -32,7 +35,7 @@ export const LegacyStaticEmbeddingAlert = () => {
     resource.enable_embedding && resource.embedding_type === "static-legacy";
 
   if (!shouldShowLegacyStaticEmbeddingAlert) {
-    return null;
+    // return null;
   }
 
   return (
@@ -55,7 +58,24 @@ export const LegacyStaticEmbeddingAlert = () => {
             onClick={() => {
               onClose();
 
-              dispatch(setOpenModal(STATIC_LEGACY_EMBEDDING_TYPE));
+              const modalProps: LegacyStaticEmbeddingModalProps = {
+                experience,
+                dashboardId: settings.dashboardId,
+                questionId: settings.questionId,
+                parentInitialState: {
+                  resourceId: resource.id,
+                  resourceType,
+                  isGuestEmbed,
+                  useExistingUserSession,
+                },
+              };
+
+              dispatch(
+                setOpenModalWithProps({
+                  id: STATIC_LEGACY_EMBEDDING_TYPE,
+                  props: modalProps,
+                }),
+              );
             }}
           >
             {c("A link that toggles the legacy static embedding wizard.")

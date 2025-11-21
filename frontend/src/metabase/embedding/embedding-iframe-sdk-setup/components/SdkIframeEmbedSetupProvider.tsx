@@ -102,7 +102,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const { resource, isError, isLoading, isFetching } = useGetCurrentResource({
     experience,
-    settings,
+    dashboardId: settings.dashboardId,
+    questionId: settings.questionId,
   });
 
   const { availableParameters, initialAvailableParameters } = useParameters({
