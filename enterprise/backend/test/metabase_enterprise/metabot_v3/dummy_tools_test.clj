@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.dummy-tools :as dummy-tools]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
