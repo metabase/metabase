@@ -5,7 +5,6 @@ import type {
 } from "metabase-types/api";
 
 import type { PickerState } from "../../EntityPicker";
-import { isCollectionItem } from "../DataPicker";
 import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type { CollectionPickerItem } from "./types";
@@ -43,8 +42,8 @@ export const getPathLevelForItem = (
     return 0;
   }
 
-  const parentCollectionId = isCollectionItem;
-  item.collection_id ??
+  const parentCollectionId =
+    item.collection_id ??
     getParentCollectionId(item?.effective_location ?? item?.location);
 
   // set selected item at the correct level
