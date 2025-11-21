@@ -253,9 +253,10 @@ describe("scenarios > question > new", () => {
 
     H.popover().findByText("Question").click();
 
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Orders").click();
     });
 
     cy.log(
