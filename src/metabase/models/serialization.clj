@@ -62,6 +62,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.config.core :as config]
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -79,6 +80,9 @@
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
+
+(def serdes-version "current version stored in :serdes/version"
+  (:tag config/mb-version-info))
 
 ;; there was no science behind picking 100 as a number
 (def ^:private extract-nested-batch-limit "max amount of entities to fetch nested entities for" 100)
@@ -483,6 +487,7 @@
       (-> (select-keys instance (:copy spec))
           ;; won't assoc if `generate-path` returned `nil`
           (m/assoc-some :serdes/meta (generate-path model-name instance))
+          (#(if (:serdes/meta %) (assoc % :serdes/version serdes-version) %))
           (into (for [[k transform] (:transform spec)
                       :let [_         (assert-one-defined transform :export :export-with-context)
                             export-k  (:as transform k)

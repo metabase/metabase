@@ -69,7 +69,8 @@
                    :parent_id         nil}
                   ser))
           (is (not (contains? ser :location)))
-          (is (not (contains? ser :id)))))
+          (is (not (contains? ser :id)))
+          (is (some? (:serdes/version ser)))))
 
       (testing "a nested collection is extracted with the right parent_id"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id child-id))]
