@@ -28,11 +28,17 @@ const setup = ({
   authConfig,
   locale,
 }: Pick<MetabaseProviderProps, "authConfig" | "locale">) => {
-  setupMockJwtEndpoints();
+  const { ssoInitMock } = setupMockJwtEndpoints();
+  const ssoUrl = new URL("/auth/sso", MOCK_INSTANCE_URL).toString();
   return {
     ...baseSetup({ authConfig, locale }),
     getLastAuthProviderApiCall: () =>
       fetchMock.callHistory.lastCall(`${MOCK_JWT_PROVIDER_URI}?response=json`),
+    getSsoInitCallCount: () =>
+      (ssoInitMock as any)?.callHistory?.calls?.()?.length ??
+      (((fetchMock as any).calls?.() ?? []) as Array<[string]>).filter(
+        ([url]) => url.startsWith(ssoUrl) && !url.includes("jwt="),
+      ).length,
   };
 };
 
@@ -102,6 +108,22 @@ describe("Auth Flow - JWT", () => {
       "x-metabase-session",
       MOCK_SESSION_TOKEN_ID,
     );
+  });
+
+  it("should skip the initial /auth/sso request when jwtProviderUri is provided", async () => {
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      preferredAuthMethod: "jwt",
+      jwtProviderUri: MOCK_JWT_PROVIDER_URI,
+    });
+
+    const { getLastAuthProviderApiCall, getSsoInitCallCount } = setup({
+      authConfig,
+    });
+
+    await waitForRequest(() => getLastAuthProviderApiCall());
+
+    expect(getSsoInitCallCount()).toBe(0);
   });
 
   it("should use `fetchRequestToken` if provided", async () => {
