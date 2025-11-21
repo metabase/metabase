@@ -28,7 +28,7 @@ jobs:
       frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
       embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
-      embedding_sdk_host_sample-apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
+      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
     steps:
       - uses: actions/checkout@v4
