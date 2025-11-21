@@ -155,6 +155,9 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
 
 export const PLUGIN_DEPENDENCIES = getDefaultPluginDependencies();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_TRANSFORMS, getDefaultPluginTransforms());
   Object.assign(PLUGIN_TRANSFORMS_PYTHON, getDefaultPluginTransformsPython());

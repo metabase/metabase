@@ -35,6 +35,9 @@ const getDefaultPluginAdminUserFormFields = () => ({
 export const PLUGIN_ADMIN_USER_FORM_FIELDS =
   getDefaultPluginAdminUserFormFields();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_AUTH_PROVIDERS, getDefaultPluginAuthProviders());
   Object.assign(PLUGIN_LDAP_FORM_FIELDS, getDefaultPluginLdapFormFields());

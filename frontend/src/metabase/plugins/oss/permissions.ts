@@ -186,6 +186,9 @@ const getDefaultGroupManagers = (): PluginGroupManagersType => ({
 
 export const PLUGIN_GROUP_MANAGERS = getDefaultGroupManagers();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.length = 0;
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(

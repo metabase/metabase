@@ -147,6 +147,9 @@ const getDefaultIsEeBuild = () => ({
 
 export const PLUGIN_IS_EE_BUILD = getDefaultIsEeBuild();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   PLUGIN_APP_INIT_FUNCTIONS.length = 0;
   PLUGIN_APP_INIT_FUNCTIONS.push(...getDefaultAppInitFunctions());

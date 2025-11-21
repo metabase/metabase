@@ -23,6 +23,9 @@ export const PLUGIN_ADMIN_SETTINGS: {
   };
 } = getDefaultPluginAdminSettings();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_ADMIN_SETTINGS, getDefaultPluginAdminSettings());
 }

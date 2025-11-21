@@ -107,6 +107,9 @@ const getDefaultPluginCollectionComponents = () => ({
 export const PLUGIN_COLLECTION_COMPONENTS =
   getDefaultPluginCollectionComponents();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_COLLECTIONS, getDefaultPluginCollections());
   Object.assign(

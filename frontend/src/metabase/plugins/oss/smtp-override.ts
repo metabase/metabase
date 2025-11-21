@@ -12,6 +12,9 @@ export const PLUGIN_SMTP_OVERRIDE: {
   SMTPOverrideConnectionForm: ComponentType<{ onClose: () => void }>;
 } = getDefaultPluginSmtpOverride();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_SMTP_OVERRIDE, getDefaultPluginSmtpOverride());
 }

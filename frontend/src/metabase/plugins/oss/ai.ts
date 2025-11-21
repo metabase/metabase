@@ -119,6 +119,9 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_AI_SQL_FIXER, getDefaultPluginAiSqlFixer());
   Object.assign(PLUGIN_AI_ENTITY_ANALYSIS, getDefaultPluginAIEntityAnalysis());

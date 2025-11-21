@@ -52,6 +52,9 @@ const getDefaultPluginTableEditing = () => ({
 
 export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_DB_ROUTING, getDefaultPluginDbRouting());
   Object.assign(

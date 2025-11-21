@@ -23,6 +23,9 @@ const getDefaultPluginEmbedding = () => ({
 
 export const PLUGIN_EMBEDDING = getDefaultPluginEmbedding();
 
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
 export function reinitialize() {
   Object.assign(PLUGIN_EMBEDDING, getDefaultPluginEmbedding());
 }
