@@ -14,13 +14,13 @@ import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embeddin
 // by appending the script
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
-import { getVisibleParameters } from "../utils/get-visible-parameters";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
@@ -38,8 +38,6 @@ const SdkIframeEmbedPreviewInner = () => {
   const { settings, guestEmbedSignedTokenForPreview } =
     useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
-
-  const isGuestEmbed = !!settings.isGuestEmbed;
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
@@ -139,89 +137,59 @@ const SdkIframeEmbedPreviewInner = () => {
         .with(
           { componentName: "metabase-question", template: "exploration" },
           (s) =>
-            createElement("metabase-question", {
-              "question-id": "new",
-              "target-collection": s.targetCollection,
-              "entity-types": s.entityTypes
-                ? JSON.stringify(s.entityTypes)
-                : undefined,
-              ...(!isGuestEmbed && {
-                "is-save-enabled": s.isSaveEnabled,
+            createElement(
+              "metabase-question",
+              buildEmbedAttributes({
+                experience: "exploration",
+                settings: s,
+                token: guestEmbedSignedTokenForPreview,
+                wrapWithQuotes: false,
               }),
-            }),
+            ),
         )
         .with({ componentName: "metabase-question" }, (s) =>
-          createElement("metabase-question", {
-            ...(isGuestEmbed
-              ? {
-                  token: guestEmbedSignedTokenForPreview,
-                  "initial-sql-parameters": s.initialSqlParameters
-                    ? JSON.stringify(
-                        getVisibleParameters(
-                          s.initialSqlParameters,
-                          s.lockedParameters,
-                        ),
-                      )
-                    : undefined,
-                }
-              : {
-                  "question-id": s.questionId,
-                  "is-save-enabled": s.isSaveEnabled,
-                  "initial-sql-parameters": s.initialSqlParameters
-                    ? JSON.stringify(s.initialSqlParameters)
-                    : undefined,
-                  "hidden-parameters": s.hiddenParameters
-                    ? JSON.stringify(s.hiddenParameters)
-                    : undefined,
-                }),
-            "with-title": s.withTitle,
-            drills: s.drills,
-            "with-downloads": s.withDownloads,
-            "target-collection": s.targetCollection,
-            "entity-types": s.entityTypes
-              ? JSON.stringify(s.entityTypes)
-              : undefined,
-          }),
+          createElement(
+            "metabase-question",
+            buildEmbedAttributes({
+              experience: "chart",
+              settings: s,
+              token: guestEmbedSignedTokenForPreview,
+              wrapWithQuotes: false,
+            }),
+          ),
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
-          createElement("metabase-dashboard", {
-            ...(isGuestEmbed
-              ? {
-                  token: guestEmbedSignedTokenForPreview,
-                  "initial-parameters": s.initialParameters
-                    ? JSON.stringify(
-                        getVisibleParameters(
-                          s.initialParameters,
-                          s.lockedParameters,
-                        ),
-                      )
-                    : undefined,
-                }
-              : {
-                  "dashboard-id": s.dashboardId,
-                  "initial-parameters": s.initialParameters
-                    ? JSON.stringify(s.initialParameters)
-                    : undefined,
-                  "hidden-parameters": s.hiddenParameters
-                    ? JSON.stringify(s.hiddenParameters)
-                    : undefined,
-                }),
-            "with-title": s.withTitle,
-            drills: s.drills,
-            "with-downloads": s.withDownloads,
-          }),
+          createElement(
+            "metabase-dashboard",
+            buildEmbedAttributes({
+              experience: "dashboard",
+              settings: s,
+              token: guestEmbedSignedTokenForPreview,
+              wrapWithQuotes: false,
+            }),
+          ),
         )
         .with({ componentName: "metabase-browser" }, (s) =>
-          createElement("metabase-browser", {
-            "read-only": s.readOnly,
-            "initial-collection": s.initialCollection,
-            "collection-visible-columns": s.collectionVisibleColumns
-              ? JSON.stringify(s.collectionVisibleColumns)
-              : undefined,
-          }),
+          createElement(
+            "metabase-browser",
+            buildEmbedAttributes({
+              experience: "browser",
+              settings: s,
+              token: guestEmbedSignedTokenForPreview,
+              wrapWithQuotes: false,
+            }),
+          ),
         )
         .with({ componentName: "metabase-metabot" }, (s) =>
-          createElement("metabase-metabot", { layout: s.layout }),
+          createElement(
+            "metabase-metabot",
+            buildEmbedAttributes({
+              experience: "metabot",
+              settings: s,
+              token: guestEmbedSignedTokenForPreview,
+              wrapWithQuotes: false,
+            }),
+          ),
         )
         .exhaustive()}
 

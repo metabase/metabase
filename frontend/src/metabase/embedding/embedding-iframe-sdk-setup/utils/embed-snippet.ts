@@ -4,25 +4,15 @@ import _ from "underscore";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
-  type AllowedEmbedSettingKey,
 } from "metabase/embedding/embedding-iframe-sdk/constants";
-import type {
-  DashboardEmbedOptions,
-  QuestionEmbedOptions,
-  SdkIframeEmbedBaseSettings,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-visible-parameters";
+import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 
 import type {
-  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
-  SdkIframeQuestionEmbedSettings,
 } from "../types";
 
 import { filterEmptySettings } from "./filter-empty-settings";
-
-type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
 
 export function getEmbedSnippet({
   settings,
@@ -78,129 +68,25 @@ export function getEmbedCustomElementSnippet({
     .with("metabot", () => "metabase-metabot")
     .exhaustive();
 
-  const settingsWithOverrides = match(experience)
-    .with("chart", () => {
-      const questionSettings = settings as SdkIframeQuestionEmbedSettings;
+  const attributes = buildEmbedAttributes({
+    experience,
+    settings,
+    token: guestEmbedSignedTokenForSnippet,
+    wrapWithQuotes: true,
+  });
 
-      return {
-        ..._.omit(
-          settings,
-          "questionId",
-          "token",
-          "initialSqlParameters",
-          "hiddenParameters",
-        ),
-        ...(isGuestEmbed
-          ? {
-              token: guestEmbedSignedTokenForSnippet,
-              initialSqlParameters: getVisibleParameters(
-                questionSettings.initialSqlParameters,
-                questionSettings.lockedParameters,
-              ),
-            }
-          : {
-              questionId: settings?.questionId,
-              initialSqlParameters: questionSettings.initialSqlParameters,
-              hiddenParameters: questionSettings.hiddenParameters?.length
-                ? questionSettings.hiddenParameters
-                : undefined,
-            }),
-      } as QuestionEmbedOptions;
-    })
-    .with(
-      "exploration",
-      () =>
-        ({
-          ...settings,
-          questionId: "new" as const,
-          template: undefined,
-        }) as QuestionEmbedOptions,
-    )
-    .with("dashboard", () => {
-      const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
-
-      return {
-        ..._.omit(
-          settings,
-          "dashboardId",
-          "token",
-          "initialParameters",
-          "hiddenParameters",
-        ),
-        ...(isGuestEmbed
-          ? {
-              token: guestEmbedSignedTokenForSnippet,
-              initialParameters: getVisibleParameters(
-                dashboardSettings.initialParameters,
-                dashboardSettings.lockedParameters,
-              ),
-            }
-          : {
-              dashboardId: settings?.dashboardId,
-              initialParameters: dashboardSettings.initialParameters,
-              hiddenParameters: dashboardSettings.hiddenParameters?.length
-                ? dashboardSettings.hiddenParameters
-                : undefined,
-            }),
-      } as DashboardEmbedOptions;
-    })
-    .otherwise(() => settings);
-
-  const attributes = transformEmbedSettingsToAttributes(
-    settingsWithOverrides,
-    isGuestEmbed
-      ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP[experience]
-      : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
-  );
+  const attributesString = Object.entries(attributes)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(" ");
 
   const customElementSnippetParts = [
     isGuestEmbed && guestEmbedSignedTokenForSnippet
       ? `<!--\nTHIS IS THE EXAMPLE!\nNEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!\n\nFetch the JWT token from your backend and programmatically pass it to the '${elementName}'.\n-->`
       : "",
-    `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`,
+    `<${elementName}${attributesString.trim() ? ` ${attributesString}` : ""}></${elementName}>`,
   ].filter(Boolean);
 
   return customElementSnippetParts.join("\n");
-}
-
-// Convert camelCase keys to lower-dash-case for web components
-const toDashCase = (str: string): string =>
-  str.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-
-// Convert values to string attributes
-export const formatAttributeValue = (value: unknown): string => {
-  if (Array.isArray(value) || typeof value === "object") {
-    const jsonString = JSON.stringify(value);
-    const escapedString = jsonString.replace(/'/g, "&#39;");
-    return `'${escapedString}'`;
-  }
-
-  return `"${value}"`;
-};
-
-export function transformEmbedSettingsToAttributes(
-  settings: Partial<SdkIframeEmbedSetupSettings>,
-  keysToProcess: AllowedEmbedSettingKey[],
-): string {
-  const attributes: string[] = [];
-
-  for (const key of keysToProcess) {
-    const value = (settings as any)[key];
-
-    if (value === undefined || value === null) {
-      continue;
-    }
-
-    // Skip base configuration keys that go into defineMetabaseConfig
-    if (ALLOWED_EMBED_SETTING_KEYS_MAP.base.includes(key as SettingKey)) {
-      continue;
-    }
-
-    const attributeName = toDashCase(key);
-    attributes.push(`${attributeName}=${formatAttributeValue(value)}`);
-  }
-
-  return attributes.join(" ");
 }
 
 export function getMetabaseConfigSnippet({
