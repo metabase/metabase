@@ -7,13 +7,9 @@
    [metabase-enterprise.representations.common :as common]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.core :as v0]
-   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.collections-rest.api :as coll.api]
    [metabase.util :as mu]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   [java.io File]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +27,7 @@
         (export-entity))))
 
 (defn export-set
-  "Returns a transitive set of ref-dependencies"
+  "Returns a transitive set of ref-dependencies. Requires basic refs (use before rename-refs)."
   [representations]
   (loop [acc (set representations)
          prev #{}]
@@ -190,42 +186,8 @@
   (let [kw (keyword (:model model))]
     (get {:dataset :model :card :question} kw kw)))
 
-(defn export-collection-representations
-  "Export the stuff."
-  ([id] (export-collection-representations id v0-common/representations-export-dir))
-  ([id path]
-   (let [collection (t2/select-one :model/Collection :id id)
-         coll-dir (str path (v0-common/file-sys-name id (:name collection) "/"))
-         refs-dir (str coll-dir "refs/")
-         children (-> collection
-                      (coll.api/collection-children {:show-dashboard-questions? true :archived? false})
-                      :data)
-         database-ids (into #{} (mapcat child->database-ids) children)]
-     (.mkdirs (File. refs-dir))
-     (doseq [db-id database-ids]
-       (try
-         (let [database (t2/select-one :model/Database :id db-id)
-               db-yaml (-> database export-entity rep-yaml/generate-string)
-               file-name (v0-common/file-sys-name db-id (:name database) ".database.yml")]
-           (spit (str refs-dir file-name) db-yaml))
-         (catch Exception e
-           (log/errorf e "Unable to export database with id %s" db-id))))
-     (doseq [child children]
-       (let [child-id (:id child)
-             model-type (model->card-type child)]
-         (if (= model-type :collection)
-           (export-collection-representations child-id coll-dir)
-           (try
-             (let [card (t2/select-one :model/Card :id child-id :type model-type)
-                   entity-yaml (-> card export-entity rep-yaml/generate-string)
-                   suffix (format ".%s.yml" (name model-type))
-                   card-file-name (v0-common/file-sys-name child-id (:entity_id child) suffix)]
-               (spit (str coll-dir card-file-name) entity-yaml))
-             (catch Exception e
-               (log/errorf e "Unable to export representation of type %s with id %s" model-type child-id)))))))))
-
 (defn export-entire-collection
-  "Generate a list of yaml representations to export"
+  "Generate a list of yaml representations to export. Probably only works on cards and sub-collections."
   [id]
   (let [collection (t2/select-one :model/Collection :id id)
         children (-> collection

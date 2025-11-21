@@ -43,13 +43,19 @@
   ([valid-representation ref-index]
    (import/yaml->toucan valid-representation ref-index)))
 
-(defn persist!
-  "Persist the representation with t2"
+(defn insert!
+  "Insert a representation into the App DB as a new entity."
   ([representation]
-   (persist! representation (v0-common/map-entity-index {})))
+   (import/insert! representation (v0-common/map-entity-index {})))
   ([representation ref-index]
-   (when-let [validated (normalize-representation representation)]
-     (import/persist! validated ref-index))))
+   (import/insert! representation ref-index)))
+
+(defn update!
+  "Update an existing representation into the App DB given its PK id."
+  ([representation id]
+   (import/update! representation id (v0-common/map-entity-index {})))
+  ([representation id ref-index]
+   (import/update! representation id ref-index)))
 
 ;; =============================================================== ;;
 
@@ -59,15 +65,17 @@
   [t2-model]
   (export/export-entity t2-model))
 
-(defn export-collection-representations
-  "Export a collection and all its contents to YAML files.
-   Delegates to export/export-collection-representations."
-  ([id]
-   (export/export-collection-representations id))
-  ([id path]
-   (export/export-collection-representations id path)))
+(defn export-collection-nested
+  "Export a collection and all its contents."
+  ([collection-id]
+   (export/export-entire-collection collection-id)))
 
-(defn import-collection-representations
-  "Because I didn't potemkin yet."
-  [id]
-  (import/import-collection-representations id))
+(defn export-set
+  "Export the transitive closure of the dependencies."
+  ([representations]
+   (export/export-set representations)))
+
+(defn order-representations
+  "Topologically sort the representations."
+  ([representations]
+   (v0-common/order-representations representations)))
