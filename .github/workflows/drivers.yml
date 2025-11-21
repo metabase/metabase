@@ -1011,7 +1011,7 @@ jobs:
           ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: !matrix.job.skip && !cancelled() && steps.test-driver.outputs.quarantine-skipped != 'true'
+      if: ${{ !matrix.job.skip && !cancelled() && steps.test-driver.outputs.quarantine-skipped != 'true' }}
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
