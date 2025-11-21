@@ -63,7 +63,6 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
           isGuestEmbed: false,
           useExistingUserSession: state?.useExistingUserSession,
           drills: true,
-          lockedParameters: [],
         }
       : {
           isGuestEmbed: false,

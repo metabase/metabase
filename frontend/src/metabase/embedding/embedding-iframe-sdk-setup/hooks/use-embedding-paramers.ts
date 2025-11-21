@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useParameterVisibility } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-parameter-visibility";
@@ -40,6 +40,9 @@ export const useEmbeddingParameters = ({
     updateSettings,
   });
 
+  // Track whether we've already initialized the embedding parameters
+  const hasInitializedRef = useRef(false);
+
   // Wait until we have `hiddenParameters` or `lockedParameters` initialized
   const areEmbeddingParametersInitialized =
     (!!settings.dashboardId || !!settings.questionId) &&
@@ -73,6 +76,23 @@ export const useEmbeddingParameters = ({
     },
     [updateSettings],
   );
+
+  // Call onEmbeddingParametersChange ONLY ONCE when initialEmbeddingParameters
+  // changes from null to a non-null value (for guest embeds only)
+  useEffect(() => {
+    if (
+      !hasInitializedRef.current &&
+      settings.isGuestEmbed &&
+      initialEmbeddingParameters !== null
+    ) {
+      hasInitializedRef.current = true;
+      onEmbeddingParametersChange(initialEmbeddingParameters);
+    }
+  }, [
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+    settings.isGuestEmbed,
+  ]);
 
   return {
     areEmbeddingParametersInitialized,
