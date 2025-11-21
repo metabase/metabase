@@ -82,12 +82,10 @@ function SearchApp({ location }) {
   );
 
   const advancePage = (howMany = 1) => {
-    dispatch(
-      push({
-        pathname: "search",
-        query: { q: searchText.trim(), ...searchFilters, page: page + howMany },
-      }),
-    );
+    onChangeLocation({
+      pathname: "search",
+      query: { q: searchText.trim(), ...searchFilters, page: page + howMany },
+    });
   };
 
   const { data, error, isFetching, requestId } = useSearchQuery(query);
