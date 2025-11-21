@@ -1083,7 +1083,9 @@ describe("scenarios > organization > entity picker", () => {
       );
 
       H.newButton("Question").click();
-      H.entityPickerModalLevel(2).findByText("People").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalLevel(3).findByText("People").click();
       H.queryBuilderHeader().findByRole("button", { name: "Save" }).click();
 
       H.modal()
