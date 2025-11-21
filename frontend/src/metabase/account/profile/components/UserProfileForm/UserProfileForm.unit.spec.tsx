@@ -35,6 +35,7 @@ const getProps = (
   opts?: Partial<UserProfileFormProps>,
 ): UserProfileFormProps => ({
   user: createMockUser(),
+  locales: null,
   isSsoUser: false,
   onSubmit: jest.fn(),
   ...opts,

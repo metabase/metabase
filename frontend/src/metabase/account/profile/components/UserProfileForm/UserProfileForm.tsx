@@ -16,7 +16,6 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Box, Text } from "metabase/ui";
 import type { LocaleData, User } from "metabase-types/api";
-import { MetabaseSessionApiAvailableLocale } from "metabase-types/openapi";
 
 import type { UserProfileData } from "../../types";
 
@@ -30,27 +29,16 @@ const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
   email: Yup.string().ensure().required(Errors.required).email(Errors.email),
 });
 
-const getLocaleOptions = (locales: LocaleData[] | null) => {
-  const options = _.chain(locales ?? [["en", "English"]])
-    .map(([value, label]) => ({ label, value }))
-    .sortBy(({ label }) => label)
-    .value();
-
-  return [{ label: t`Use site default`, value: "" }, ...options];
-};
-
-const localeOptions = getLocaleOptions(
-  Object.values(MetabaseSessionApiAvailableLocale).map((x) => [x[0], x[1]]),
-);
-
 export interface UserProfileFormProps {
   user: User;
+  locales: LocaleData[] | null;
   isSsoUser: boolean;
   onSubmit: (user: User, data: UserProfileData) => void;
 }
 
 const UserProfileForm = ({
   user,
+  locales,
   isSsoUser,
   onSubmit,
 }: UserProfileFormProps): JSX.Element => {
@@ -64,6 +52,10 @@ const UserProfileForm = ({
     }
     return values;
   }, [user, schema]);
+
+  const localeOptions = useMemo(() => {
+    return getLocaleOptions(locales);
+  }, [locales]);
 
   const handleSubmit = useCallback(
     (values: UserProfileData) =>
@@ -132,6 +124,15 @@ const UserProfileForm = ({
       </FormProvider>
     </Box>
   );
+};
+
+const getLocaleOptions = (locales: LocaleData[] | null) => {
+  const options = _.chain(locales ?? [["en", "English"]])
+    .map(([value, label]) => ({ label, value }))
+    .sortBy(({ label }) => label)
+    .value();
+
+  return [{ label: t`Use site default`, value: "" }, ...options];
 };
 
 const ColorSchemeSwitcher = () => {
