@@ -7,6 +7,7 @@ import type {
   TransformRunMethod,
   TransformRunStatus,
   TransformTagId,
+  WorkspaceId,
 } from "metabase-types/api";
 
 const ROOT_URL = "/admin/transforms";
@@ -166,4 +167,12 @@ export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
   return `/question#?db=${databaseId}&table=${tableId}`;
+}
+
+export function workspaceList() {
+  return `${ROOT_URL}/workspaces`;
+}
+
+export function workspace(workspaceId: WorkspaceId) {
+  return `${ROOT_URL}/workspaces/${workspaceId}`;
 }

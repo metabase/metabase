@@ -26,6 +26,8 @@ import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
 import { DetailsPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
+import { WorkspaceListPage } from "./pages/WorkspaceListPage/WorkspaceListPage";
+import { WorkspacePage } from "./pages/WorkspacePage/WorkspacePage";
 
 /**
  * Initialize transforms plugin features that depend on hasPremiumFeature.
@@ -46,10 +48,12 @@ export function initializePlugin() {
             <IndexRoute component={TransformListPage} />
             <Route path="jobs" component={JobListPage} />
             <Route path="runs" component={RunListPage} />
+            <Route path="workspaces" component={WorkspaceListPage} />
           </Route>
           <Route component={DetailsPageLayout}>
             <Route path="jobs/new" component={NewJobPage} />
             <Route path="jobs/:jobId" component={JobPage} />
+            <Route path="workspaces/:workspaceId" component={WorkspacePage} />
             <Route path=":transformId" component={TransformPage} />
           </Route>
           {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
