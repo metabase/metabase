@@ -83,17 +83,28 @@ export function getEmbedCustomElementSnippet({
       const questionSettings = settings as SdkIframeQuestionEmbedSettings;
 
       return {
-        ..._.omit(settings, "questionId", "token"),
-        ...(isGuestEmbed
-          ? { token: guestEmbedSignedTokenForSnippet }
-          : { questionId: settings?.questionId }),
-        initialSqlParameters: getVisibleParameters(
-          questionSettings.initialSqlParameters,
-          questionSettings.lockedParameters,
+        ..._.omit(
+          settings,
+          "questionId",
+          "token",
+          "initialSqlParameters",
+          "hiddenParameters",
         ),
-        hiddenParameters: questionSettings.hiddenParameters?.length
-          ? questionSettings.hiddenParameters
-          : undefined,
+        ...(isGuestEmbed
+          ? {
+              token: guestEmbedSignedTokenForSnippet,
+              initialSqlParameters: getVisibleParameters(
+                questionSettings.initialSqlParameters,
+                questionSettings.lockedParameters,
+              ),
+            }
+          : {
+              questionId: settings?.questionId,
+              initialSqlParameters: questionSettings.initialSqlParameters,
+              hiddenParameters: questionSettings.hiddenParameters?.length
+                ? questionSettings.hiddenParameters
+                : undefined,
+            }),
       } as QuestionEmbedOptions;
     })
     .with(
@@ -109,17 +120,28 @@ export function getEmbedCustomElementSnippet({
       const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
 
       return {
-        ..._.omit(settings, "dashboardId", "token"),
-        ...(isGuestEmbed
-          ? { token: guestEmbedSignedTokenForSnippet }
-          : { dashboardId: settings?.dashboardId }),
-        initialParameters: getVisibleParameters(
-          dashboardSettings.initialParameters,
-          dashboardSettings.lockedParameters,
+        ..._.omit(
+          settings,
+          "dashboardId",
+          "token",
+          "initialParameters",
+          "hiddenParameters",
         ),
-        hiddenParameters: dashboardSettings.hiddenParameters?.length
-          ? dashboardSettings.hiddenParameters
-          : undefined,
+        ...(isGuestEmbed
+          ? {
+              token: guestEmbedSignedTokenForSnippet,
+              initialParameters: getVisibleParameters(
+                dashboardSettings.initialParameters,
+                dashboardSettings.lockedParameters,
+              ),
+            }
+          : {
+              dashboardId: settings?.dashboardId,
+              initialParameters: dashboardSettings.initialParameters,
+              hiddenParameters: dashboardSettings.hiddenParameters?.length
+                ? dashboardSettings.hiddenParameters
+                : undefined,
+            }),
       } as DashboardEmbedOptions;
     })
     .otherwise(() => settings);
