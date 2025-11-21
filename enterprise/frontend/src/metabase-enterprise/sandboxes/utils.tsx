@@ -20,7 +20,7 @@ const TENANT_SLUG_ATTRIBUTE = "@tenant.slug";
 const GET_USER_ATTRIBUTE_ICON_MAP: () => Record<string, ReactNode> = () => ({
   [TENANT_SLUG_ATTRIBUTE]: (
     <Tooltip label={t`This attribute is system defined`}>
-      <Icon name="info" />
+      <Icon data-testid="system-defined-tooltip-icon" name="info" />
     </Tooltip>
   ),
 });
