@@ -11,6 +11,7 @@ describe("isValidIso8601", () => {
     "2016-W06-5",
     "2016-043",
     "2024-06-28 00:00:00",
+    "2025-11-21 05:00",
   ];
 
   VALID_ISO_8601_DATES.forEach((isoDate) => {
