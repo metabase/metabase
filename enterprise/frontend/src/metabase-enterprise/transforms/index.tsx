@@ -1,8 +1,7 @@
-import { IndexRoute } from "react-router";
+import { IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
-import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ENTITIES,
   PLUGIN_TRANSFORMS,
@@ -41,7 +40,7 @@ export function initializePlugin() {
 
     PLUGIN_TRANSFORMS.getAdminRoutes = () => (
       <Route path="transforms" component={createAdminRouteGuard("transforms")}>
-        <Route title={t`Transforms`}>
+        <Route>
           <Route component={ListPageLayout}>
             <IndexRoute component={TransformListPage} />
             <Route path="jobs" component={JobListPage} />
