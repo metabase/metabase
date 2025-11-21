@@ -2,6 +2,8 @@ import type { Location } from "history";
 import _ from "underscore";
 
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
+import type { StaticEmbeddingEntityError } from "metabase/lib/errors/types";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import {
@@ -295,6 +297,17 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,
+    };
+  }
+
+  const staticEntityLoadingError = datasets.find((dataset) =>
+    isStaticEmbeddingEntityLoadingError(dataset.error),
+  )?.error as StaticEmbeddingEntityError | undefined;
+
+  if (staticEntityLoadingError) {
+    return {
+      message: staticEntityLoadingError.data,
+      icon: "warning" as const,
     };
   }
 

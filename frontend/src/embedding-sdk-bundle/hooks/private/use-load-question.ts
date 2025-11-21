@@ -1,7 +1,6 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
-import { isStaticEntityLoadingError } from "embedding-sdk-bundle/lib/is-static-entity-loading-error";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -17,6 +16,7 @@ import type {
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
@@ -142,7 +142,7 @@ export function useLoadQuestion({
         return {};
       }
 
-      if (isGuestEmbed && isStaticEntityLoadingError(err)) {
+      if (isGuestEmbed && isStaticEmbeddingEntityLoadingError(err)) {
         dispatch(
           setError({
             status: err.status,
