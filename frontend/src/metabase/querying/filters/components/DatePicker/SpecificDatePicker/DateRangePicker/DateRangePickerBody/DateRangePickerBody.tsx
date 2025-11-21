@@ -14,6 +14,23 @@ import {
 
 import { setDatePart, setTimePart } from "../../utils";
 
+function getDateFormatForLocale(): string {
+  const locale = dayjs.locale();
+
+  const localeFormats: Record<string, string> = {
+    de: "DD.MM.YYYY",
+    fr: "DD/MM/YYYY",
+    es: "DD/MM/YYYY",
+    it: "DD/MM/YYYY",
+    pt: "DD/MM/YYYY",
+    en: "MM/DD/YYYY",
+    "en-US": "MM/DD/YYYY",
+    "en-GB": "DD/MM/YYYY",
+  };
+
+  return localeFormats[locale] || "MM/DD/YYYY";
+}
+
 import S from "./DateRangePickerBody.module.css";
 
 interface DateRangePickerBodyProps {
@@ -79,12 +96,15 @@ export function DateRangePickerBody({
     }
   };
 
+  const dateFormat = getDateFormatForLocale();
+
   return (
     <Stack className={S.Root}>
       <Group align="center">
         <DateInput
           className={S.FlexDateInput}
           value={startDate}
+          valueFormat={dateFormat}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
@@ -93,6 +113,7 @@ export function DateRangePickerBody({
         <DateInput
           className={S.FlexDateInput}
           value={endDate}
+          valueFormat={dateFormat}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
           onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
