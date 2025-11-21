@@ -35,7 +35,7 @@ export const LegacyStaticEmbeddingAlert = () => {
     resource.enable_embedding && resource.embedding_type === "static-legacy";
 
   if (!shouldShowLegacyStaticEmbeddingAlert) {
-    // return null;
+    return null;
   }
 
   return (
