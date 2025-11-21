@@ -381,10 +381,7 @@ describe("issue 51020", () => {
         .click();
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "foo",
-        );
-        cy.findByText("Everywhere").click();
+        cy.findByPlaceholderText("Search…").type("foo");
         cy.findByText("Foo").click();
       });
       cy.findByTestId("run-button").click();
@@ -400,6 +397,7 @@ describe("issue 51020", () => {
 
       H.newButton("Question").click();
       H.miniPickerBrowseAll().click();
+      H.entityPickerModalTab("Data").click();
       H.entityPickerModalItem(1, "Model 51020").click();
       H.saveQuestion("Question 51020", undefined, {
         tab: "Browse",
