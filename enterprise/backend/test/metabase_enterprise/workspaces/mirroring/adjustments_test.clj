@@ -92,7 +92,7 @@
                    :model/Field _ {:table_id (:id products-mirror)}
                    :model/Field _ {:table_id (:id products-mirror)}
                    :model/Field _ {:table_id (:id products-mirror)}]
-      (testing "source-table and fields in query are correctly remapped in duplicated transform"
+      (testing "source-table and fields remapped in transform with joins"
         (is (=? {:source {:query {:stages [{:source-table (:id orders-mirror)
                                             :joins [{:stages [{:source-table (:id products-mirror)}]
                                                      :conditions [[:= {}
