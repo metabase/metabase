@@ -103,9 +103,11 @@
           (recur))))
     @final-value))
 
-(defn nrepl-open? []
+(defn nrepl-open?
+  "Checks if an nREPL server is running on the given port (or the port in .nrepl-port if none given)."
+  [& port]
   (try
-    (let [port (nrepl-port nil)
+    (let [port (nrepl-port port)
           s    (java.net.Socket. "localhost" port)]
       (.close s)
       true)
