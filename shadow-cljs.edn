@@ -8,6 +8,7 @@
    refactor-nrepl.middleware/wrap-refactor]
   :port 50655}
 
+;; Trigger CI - TEST
  :builds
  {:app
   {:target     :npm-module
