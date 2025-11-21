@@ -6,18 +6,23 @@ on:
       cli-snippets-type-check:
         description: "Whether to run cli snippets type check."
         required: true
+        type: boolean
       docs-snippets-type-check:
         description: "Whether to run cli snippets type check."
         required: true
+        type: boolean
       documentation-validation:
         description: "Whether to run documentation generation validation check."
         required: true
+        type: boolean
       component-tests:
         description: "Whether to run component tests."
         required: true
+        type: boolean
       host-sample-apps-tests:
         description: "Whether to run host and sample apps compatibility tests."
         required: true
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
