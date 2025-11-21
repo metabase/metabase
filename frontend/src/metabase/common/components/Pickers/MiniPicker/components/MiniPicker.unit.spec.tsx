@@ -104,6 +104,12 @@ const setup = async (props: Partial<MiniPickerProps> = {}) => {
         name: "NetherField",
         collection_id: "root",
       }),
+      createMockCollectionItem({
+        id: 106,
+        model: "metric",
+        name: "Catherine",
+        collection_id: "root",
+      }),
     ],
   });
 
@@ -302,11 +308,32 @@ describe("MiniPicker", () => {
       });
     });
 
+    it("can pick a metric", async () => {
+      const { onChangeSpy } = await setup();
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(await screen.findByText("Brighton")).toBeInTheDocument();
+      await userEvent.click(await screen.findByText("Catherine"));
+      expect(onChangeSpy).toHaveBeenCalledWith({
+        id: 106,
+        model: "metric",
+        name: "Catherine",
+      });
+    });
+
     it("ignores documents", async () => {
       await setup();
       await userEvent.click(await screen.findByText("Our analytics"));
       expect(await screen.findByText("Brighton")).toBeInTheDocument();
       expect(screen.queryByText("Longbourn")).not.toBeInTheDocument();
+    });
+
+    it("ignores metrics when the model is missing", async () => {
+      await setup({
+        models: ["table", "dataset", "card"],
+      });
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(await screen.findByText("Brighton")).toBeInTheDocument();
+      expect(screen.queryByText("Catherine")).not.toBeInTheDocument();
     });
 
     it("should show a collection when provided a card as a value", async () => {
