@@ -16,10 +16,9 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.i18n :as u.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n  :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
@@ -244,12 +243,7 @@
                       {:token token})]
     {:valid (:success? auth-result)}))
 
-(mr/def ::available-locale (into [:enum] (u.i18n/available-locales-with-names)))
-
-(mr/def ::available-locales [:sequential ::available-locale])
-
-(api.macros/defendpoint :get "/properties" :- [:map
-                                               [:available-locales ::available-locales]]
+(api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
   []
