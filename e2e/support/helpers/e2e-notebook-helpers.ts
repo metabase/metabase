@@ -2,6 +2,7 @@ import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
 import {
   entityPickerModal,
+  entityPickerModalTab,
   miniPicker,
   miniPickerBrowseAll,
   popover,
@@ -213,6 +214,7 @@ export function selectSavedQuestionsToJoin(
   cy.icon("join_left_outer").click();
 
   miniPickerBrowseAll().click();
+  entityPickerModalTab("Data").click();
   entityPickerModal().findByText(secondQuestionName).click();
 }
 

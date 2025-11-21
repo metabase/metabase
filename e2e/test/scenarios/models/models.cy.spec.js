@@ -433,6 +433,7 @@ describe("scenarios > models", () => {
 
       cy.icon("join_left_outer").click();
       H.miniPickerBrowseAll().click();
+      H.entityPickerModalTab("Data").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(0, "Databases").click();
         H.entityPickerModalItem(1, "Orders").should("exist");
