@@ -108,7 +108,8 @@
    ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
    [:and
     {:error/message "non-blank string"
-     :json-schema   {:type "string" :minLength 1}}
+     :json-schema   {:type "string" :minLength 1}
+     :api/regex     #".+"}
     [:string {:min 1}]
     [:fn
      {:error/message "non-blank string"}
@@ -152,7 +153,7 @@
       :description (str message)
       :error/fn    (fn [_ _]
                      (str message))
-      :api/regex   #"[1-9]\d*"}]))
+      :api/regex   #"-[1-9]\d*"}]))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
