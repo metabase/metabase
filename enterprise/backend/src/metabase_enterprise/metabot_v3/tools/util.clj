@@ -44,21 +44,21 @@
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."
   [table-id]
-  (str "t" table-id "/"))
+  (str "t" table-id "-"))
 
 (defn card-field-id-prefix
   "Return the field ID prefix for a model or a metric with ID `card-id`."
   [card-id]
-  (str "c" card-id "/"))
+  (str "c" card-id "-"))
 
 (defn query-field-id-prefix
   "Return the field ID prefix for `query-id`."
   [query-id]
-  (str "q" query-id "/"))
+  (str "q" query-id "-"))
 
 (def any-prefix-pattern
   "A prefix pattern accepting columns from any entity."
-  #"^.*/(\d+)")
+  #"^.*-(\d+)")
 
 (defn ->result-column
   "Return tool result columns for `column` of `query`. The position of `column` is determined by `index`.
@@ -79,7 +79,7 @@
 (defn parse-field-id
   "Parse a field-id string into its components.
 
-  The field-id format is '<model-tag><model-id>/<field-index>' where:
+  The field-id format is '<model-tag><model-id>-<field-index>' where:
   - model-tag is 't' for tables, 'c' for cards/models/metrics, or 'q' for ad-hoc queries
   - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
   - field-index is the index within that model's visible columns
@@ -87,10 +87,10 @@
   Returns a map with :model-tag, :model-id, and :field-index keys, or nil if the format is invalid.
 
   Examples:
-    (parse-field-id \"t154/1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
-    (parse-field-id \"qpuL95JSvym3k23W1UUuog/0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}"
+    (parse-field-id \"t154-1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
+    (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}"
   [field-id]
-  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])([^/]+)/(\d+)$" field-id)]
+  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])([^-]+)-(\d+)$" field-id)]
     {:model-tag model-tag
      ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
      :model-id (if (= model-tag "q")
@@ -101,13 +101,13 @@
 (defn resolve-column
   "Resolve the reference `field-id` in filter `item` by finding the column in `columns` specified by `field-id`.
 
-  The field-id format is '<model-tag><model-id>/<field-index>' where:
+  The field-id format is '<model-tag><model-id>-<field-index>' where:
   - model-tag is 't' for tables, 'c' for cards/models/metrics, or 'q' for ad-hoc queries
   - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
   - field-index is the index within that model's visible columns
 
-  For example, 't154/1' refers to the second visible column (index 1) from table 154, and
-  'qpuL95JSvym3k23W1UUuog/0' refers to the first column (index 0) from query with nano-id puL95JSvym3k23W1UUuog."
+  For example, 't154-1' refers to the second visible column (index 1) from table 154, and
+  'qpuL95JSvym3k23W1UUuog-0' refers to the first column (index 0) from query with nano-id puL95JSvym3k23W1UUuog."
   [{:keys [field-id] :as item} columns]
   (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
     (let [;; Filter columns to those from the specified model

@@ -110,13 +110,13 @@
                                              :query-id query-id
                                              :query {}
                                              :result-columns []}})]
-          (let [filters [{:field_id "q2a/1", :operation "is-not-null"}
-                         {:field_id "q2a/2", :operation "equals", :value "3"}
-                         {:field_id "q2a/3", :operation "equals", :values ["3" "4"]}
-                         {:field_id "q2a/5", :operation "not-equals", :values [3 4]}
-                         {:field_id "q2a/6", :operation "month-equals", :values [4 5 9]}
-                         {:field_id "c2a/6", :bucket "week-of-year" :operation "not-equals", :values [14 15 19]}
-                         {:field_id "q2a/6", :operation "year-equals", :value 2008}]
+          (let [filters [{:field_id "q2a-1", :operation "is-not-null"}
+                         {:field_id "q2a-2", :operation "equals", :value "3"}
+                         {:field_id "q2a-3", :operation "equals", :values ["3" "4"]}
+                         {:field_id "q2a-5", :operation "not-equals", :values [3 4]}
+                         {:field_id "q2a-6", :operation "month-equals", :values [4 5 9]}
+                         {:field_id "c2a-6", :bucket "week-of-year" :operation "not-equals", :values [14 15 19]}
+                         {:field_id "q2a-6", :operation "year-equals", :value 2008}]
                 response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/filter-records"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                {:arguments       {:data_source data-source
@@ -132,11 +132,11 @@
                     response))))))))
 
 (deftest find-outliers-test
-  (doseq [data-source [{:query {:database 1}, :query_id "query ID", :result_field_id "q1233/2"}
-                       {:query {:database 1}, :result_field_id "q1233/2"}
+  (doseq [data-source [{:query {:database 1}, :query_id "query ID", :result_field_id "q1233-2"}
+                       {:query {:database 1}, :result_field_id "q1233-2"}
                        {:metric_id 1}
-                       {:report_id 1, :result_field_id "c131/3"}
-                       {:table_id "card__1", :result_field_id "t42/7"}]]
+                       {:report_id 1, :result_field_id "c131-3"}
+                       {:table_id "card__1", :result_field_id "t42-7"}]]
     (mt/with-premium-features #{:metabot-v3}
       (let [tool-requests (atom [])
             conversation-id (str (random-uuid))
@@ -194,15 +194,15 @@
                                            :query-id output
                                            :query {}
                                            :result-columns []}})]
-        (let [filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
-                       {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
-                       {:field_id "c2/5", :operation "not-equals", :values [3 4]}
-                       {:field_id "c2/6", :operation "month-equals", :values [4 5 9]}
-                       {:field_id "c2/6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
-                       {:field_id "c2/6", :bucket "day-of-week" :operation "equals", :values [1 7]}
-                       {:field_id "c2/6", :operation "year-equals", :value 2008}]
-              breakouts [{:field_id "c2/4", :field_granularity "week"}
-                         {:field_id "c2/6", :field_granularity "day"}]
+        (let [filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+                       {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
+                       {:field_id "c2-5", :operation "not-equals", :values [3 4]}
+                       {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
+                       {:field_id "c2-6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
+                       {:field_id "c2-6", :bucket "day-of-week" :operation "equals", :values [1 7]}
+                       {:field_id "c2-6", :operation "year-equals", :value 2008}]
+              breakouts [{:field_id "c2-4", :field_granularity "week"}
+                         {:field_id "c2-6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-metric"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:metric_id 1
