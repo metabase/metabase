@@ -5,6 +5,7 @@ import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ClientSideOnlyWrapper } from "embedding-sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { useLoadSdkBundle } from "embedding-sdk-package/hooks/private/use-load-sdk-bundle";
+import { useEarlyAuth } from "embedding-sdk-package/hooks/private/use-early-auth";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
@@ -29,6 +30,9 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper() {
 const MetabaseProviderInner = memo(function MetabaseProviderInner(
   props: Omit<MetabaseProviderProps, "children">,
 ) {
+  // Start JWT auth immediately (before bundle loads) for JWT configs
+  useEarlyAuth(props.authConfig);
+
   useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
 
   const { isLoading } = useSdkLoadingState();

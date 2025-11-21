@@ -22,6 +22,10 @@ import type {
 } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import {
+  readAuthState,
+  waitForAuthCompletion,
+} from "embedding-sdk-shared/lib/jwt-auth-standalone";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
@@ -207,6 +211,48 @@ const getRefreshToken = async ({
   fetchRequestToken?: MetabaseAuthConfig["fetchRequestToken"];
   jwtProviderUri?: string;
 }) => {
+  // Check if the package has already started JWT auth (JWT only, not SAML)
+  if (preferredAuthMethod === "jwt") {
+    const authState = readAuthState();
+    console.log("[bundle] Checking package auth state:", authState.status);
+
+    // If package started auth, wait for it to complete
+    if (authState.status === "in-progress") {
+      console.log("[bundle] Package auth in progress, waiting...");
+      await waitForAuthCompletion();
+      const completedState = readAuthState();
+
+      if (completedState.session) {
+        console.log("[bundle] Using session from package auth");
+        return completedState.session;
+      }
+
+      // If we got here, auth completed but without a session (shouldn't happen)
+      throw (
+        completedState.error ||
+        new Error("Auth completed without session or error")
+      );
+    }
+
+    // If package already completed auth, use the cached session
+    if (authState.status === "completed" && authState.session) {
+      console.log("[bundle] Using cached session from package auth");
+      return authState.session;
+    }
+
+    // If package encountered an error, throw it
+    if (authState.status === "error") {
+      console.error("[bundle] Package auth had an error, rethrowing");
+      throw authState.error || new Error("Auth failed with unknown error");
+    }
+
+    // Otherwise, authState.status === "idle", so proceed with normal flow
+    // This happens when using an old SDK package that doesn't have early auth
+    console.log(
+      "[bundle] Package auth not started (status: idle), proceeding with bundle auth",
+    );
+  }
+
   const shouldSkipSsoDiscovery =
     preferredAuthMethod === "jwt" && Boolean(jwtProviderUri);
 
