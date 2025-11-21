@@ -72,7 +72,8 @@ function addQADatabase({
   idAlias,
   details,
 }) {
-  const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
+  const OPTIONS =
+    engine === "mysql" ? "allowPublicKeyRetrieval=true&useSSL=false" : null;
 
   const db_name =
     dbName ??
@@ -97,6 +98,7 @@ function addQADatabase({
         password: QA_DB_CREDENTIALS.password,
         "additional-options": OPTIONS,
         "tunnel-enabled": false,
+        ...(engine === "postgres" ? { ssl: false } : {}),
       },
       auto_run_queries: true,
       is_full_sync: true,
