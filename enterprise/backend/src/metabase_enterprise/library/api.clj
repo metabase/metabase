@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

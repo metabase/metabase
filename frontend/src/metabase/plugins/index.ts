@@ -36,6 +36,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/common/components/Link";
+import type { MiniPickerCollectionItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -68,6 +69,7 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  CollectionItem,
   CollectionItemModel,
   CollectionType,
   DashCardId,
@@ -1191,6 +1193,17 @@ export type DataStudioPlugin = {
     entityType: CollectionItemModel,
     collectionType: CollectionType | null | undefined,
   ) => boolean;
+  useGetLibraryChildCollectionByType: ({
+    skip,
+    type,
+  }: {
+    skip?: boolean;
+    type: CollectionType;
+  }) => CollectionItem | undefined;
+  useGetLibraryCollection: (props?: { skip?: boolean }) => {
+    data: undefined | MiniPickerCollectionItem;
+    isLoading: boolean;
+  };
 };
 
 export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
@@ -1202,4 +1215,7 @@ export const PLUGIN_DATA_STUDIO: DataStudioPlugin = {
   getLibraryCollectionType: () => undefined,
   canPlaceEntityInCollection: () => true,
   canPlaceEntityInCollectionOrDescendants: () => true,
+  useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
+    undefined,
+  useGetLibraryCollection: (_props) => ({ data: undefined, isLoading: false }),
 };

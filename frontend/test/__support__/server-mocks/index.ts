@@ -24,6 +24,7 @@ export * from "./geojson";
 export * from "./google";
 export * from "./group";
 export * from "./impersonation";
+export * from "./library";
 export * from "./logger";
 export * from "./model-indexes";
 export * from "./native-query-snippet";

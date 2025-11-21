@@ -9,6 +9,8 @@ import {
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
   getLibraryCollectionType,
+  useGetLibraryChildCollectionByType,
+  useGetLibraryCollection,
 } from "./utils";
 
 export function initializePlugin() {
@@ -22,5 +24,8 @@ export function initializePlugin() {
     PLUGIN_DATA_STUDIO.canPlaceEntityInCollection = canPlaceEntityInCollection;
     PLUGIN_DATA_STUDIO.canPlaceEntityInCollectionOrDescendants =
       canPlaceEntityInCollectionOrDescendants;
+    PLUGIN_DATA_STUDIO.useGetLibraryCollection = useGetLibraryCollection;
+    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType =
+      useGetLibraryChildCollectionByType;
   }
 }

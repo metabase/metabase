@@ -42,6 +42,7 @@ export const collectionsQuery = {
   tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
+  "include-library": true,
 };
 
 export const getIsDirty = createSelector(

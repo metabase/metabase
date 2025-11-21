@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
+import { useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import { Flex } from "metabase/ui";
 
 import type {
@@ -27,6 +29,7 @@ export interface NestedItemPickerProps<
   onItemSelect: (item: Item) => void;
   options: Options;
   path: PickerState<Item, Query>;
+  initialValue?: TablePickerValue;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
   shouldDisableItem?: (item: Item) => boolean;
@@ -48,6 +51,7 @@ export function NestedItemPicker<
   listResolver: ListResolver,
   shouldDisableItem,
   shouldShowItem,
+  initialValue,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
@@ -56,13 +60,14 @@ export function NestedItemPicker<
       onItemSelect(item);
     }
   };
+  const [hashBuster, setHashBuster] = useState(0);
 
   const lastSelectedItem = findLastSelectedItem(path);
 
   return (
     <AutoScrollBox
       data-testid="nested-item-picker"
-      contentHash={generateKey(path[path.length - 1].query)}
+      contentHash={generateKey(path[path.length - 1].query) + hashBuster}
     >
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
@@ -89,6 +94,8 @@ export function NestedItemPicker<
                   shouldDisableItem={shouldDisableItem}
                   shouldShowItem={shouldShowItem}
                   isFolder={isFolder}
+                  refresh={() => setHashBuster((b) => b + 1)}
+                  initialValue={initialValue}
                 />
               </ErrorBoundary>
             </ListBox>

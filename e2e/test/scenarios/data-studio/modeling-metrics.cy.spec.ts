@@ -36,8 +36,8 @@ describe("scenarios > data studio > modeling > metrics", () => {
     H.DataStudio.Metrics.queryEditor().should("be.visible");
     H.DataStudio.Metrics.saveButton().should("be.disabled");
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 

@@ -3,12 +3,14 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { METAKEY } from "metabase/lib/browser";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
 import { CONTAINER_PADDING } from "../../NotebookCell/constants";
 import { NotebookDataPicker } from "../../NotebookDataPicker";
+import { DataPickerTarget } from "../../NotebookDataPicker/DataPickerTarget";
 
 import S from "./JoinTablePicker.module.css";
 
@@ -31,13 +33,27 @@ export function JoinTablePicker({
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
-  const isDisabled = isReadOnly;
+  const [isOpened, setIsOpened] = useState(!table);
 
-  return (
+  return isOpened || !table ? (
+    <NotebookDataPicker
+      title={t`Pick data to join`}
+      query={query}
+      stageIndex={stageIndex}
+      table={table}
+      placeholder={t`Pick data…`}
+      isOpened={isOpened}
+      setIsOpened={setIsOpened}
+      canChangeDatabase={false}
+      hasMetrics={false}
+      isDisabled={isReadOnly}
+      onChange={onChange}
+    />
+  ) : (
     <NotebookCellItem
       inactive={!table}
       readOnly={isReadOnly}
-      disabled={isDisabled}
+      disabled={isReadOnly}
       color={color}
       right={
         table != null && !isReadOnly ? (
@@ -48,17 +64,19 @@ export function JoinTablePicker({
       rightContainerStyle={RIGHT_CONTAINER_STYLE}
       aria-label={t`Right table`}
     >
-      <NotebookDataPicker
-        title={t`Pick data to join`}
-        query={query}
-        stageIndex={stageIndex}
-        table={table}
-        placeholder={t`Pick data…`}
-        canChangeDatabase={false}
-        hasMetrics={false}
-        isDisabled={isDisabled}
-        onChange={onChange}
-      />
+      <Tooltip
+        label={t`${METAKEY}+click to open in new tab`}
+        hidden={!table || isReadOnly}
+        events={{ hover: true, focus: false, touch: false }}
+      >
+        <DataPickerTarget
+          table={table}
+          query={query}
+          setIsOpened={setIsOpened}
+          stageIndex={stageIndex}
+          isDisabled={isReadOnly}
+        />
+      </Tooltip>
     </NotebookCellItem>
   );
 }

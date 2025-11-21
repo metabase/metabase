@@ -71,6 +71,10 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "person" };
   }
 
+  if (item.model === "collection" && item.id === "databases") {
+    return { name: "database" };
+  }
+
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type)) {
     case "root":
       return { name: "repository" };

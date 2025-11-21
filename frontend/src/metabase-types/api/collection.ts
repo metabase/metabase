@@ -216,6 +216,7 @@ export interface ListCollectionsRequest {
 export interface ListCollectionsTreeRequest {
   "exclude-archived"?: boolean;
   "exclude-other-user-collections"?: boolean;
+  "include-library"?: boolean;
   namespace?: string;
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;

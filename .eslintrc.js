@@ -240,6 +240,7 @@ module.exports = {
       plugins: ["@typescript-eslint"],
       rules: {
         "prefer-rest-params": "off",
+        "react/prop-types": "off", // TypeScript handles prop validation
         "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",

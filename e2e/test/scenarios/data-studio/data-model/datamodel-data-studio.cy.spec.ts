@@ -1121,8 +1121,8 @@ describe("scenarios > data studio > datamodel", () => {
         TableSection.getNameInput().should("have.value", "New orders");
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("New orders").should("be.visible");
         });
@@ -1174,8 +1174,8 @@ describe("scenarios > data studio > datamodel", () => {
 
         cy.signInAsNormalUser();
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("New orders").should("be.visible");
         });
@@ -2068,8 +2068,8 @@ describe("scenarios > data studio > datamodel", () => {
             mode: "notebook",
           });
           cy.icon("join_left_outer").click();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");
@@ -2127,8 +2127,8 @@ describe("scenarios > data studio > datamodel", () => {
             mode: "notebook",
           });
           cy.icon("join_left_outer").click();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");

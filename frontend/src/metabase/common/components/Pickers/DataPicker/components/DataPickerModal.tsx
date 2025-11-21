@@ -32,7 +32,6 @@ import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
   getRecentItemDatabaseId,
-  isCollectionItem,
   isTableItem,
   isValueItem,
 } from "../utils";
@@ -50,6 +49,7 @@ interface Props {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentItem,
   ) => boolean;
+  options?: DataPickerModalOptions;
 }
 
 type FilterOption = { label: string; value: CollectionItemModel };
@@ -63,11 +63,13 @@ const QUESTION_PICKER_MODELS: CollectionItemModel[] = [
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
-const options: DataPickerModalOptions = {
+const OPTIONS: DataPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
   showPersonalCollections: true,
   showRootCollection: true,
+  showLibrary: true,
+  showDatabases: true,
   hasRecents: true,
 };
 
@@ -75,15 +77,21 @@ export const DataPickerModal = ({
   databaseId,
   title,
   value,
-  models = ["table", "card", "dataset"],
   onChange,
   onClose,
   shouldDisableItem,
+  options,
+  models,
 }: Props) => {
+  options = {
+    ...OPTIONS,
+    ...options,
+  };
   const [modelFilter, setModelFilter] = useState<CollectionItemModel[]>(
     QUESTION_PICKER_MODELS,
   );
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
+
   const {
     hasQuestions,
     hasModels,
@@ -164,7 +172,6 @@ export const DataPickerModal = ({
 
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
-
   const filterButton = (
     <FilterButton
       value={modelFilter}
@@ -180,7 +187,7 @@ export const DataPickerModal = ({
       DataPickerItem
     >[] = [];
 
-    if (models.includes("table")) {
+    if (!hasNestedQueriesEnabled) {
       computedTabs.push({
         id: "tables-tab",
         displayName: t`Tables`,
@@ -198,26 +205,22 @@ export const DataPickerModal = ({
           />
         ),
       });
-    }
-
-    const shouldShowCollectionsTab =
-      (hasQuestions || hasMetrics || hasModels) &&
-      hasNestedQueriesEnabled &&
-      (models.includes("card") ||
-        models.includes("dataset") ||
-        models.includes("metric"));
-
-    if (shouldShowCollectionsTab) {
+    } else {
       computedTabs.push({
         id: "questions-tab",
-        displayName: t`Collections`,
-        models: ["card" as const, "dataset" as const, "metric" as const],
-        folderModels: ["collection" as const, "dashboard" as const],
+        displayName: t`Data`,
+        models: [
+          "card" as const,
+          "dataset" as const,
+          "metric" as const,
+          "table" as const,
+        ],
+        folderModels: ["collection", "dashboard", "schema", "database"],
         icon: "folder",
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
-            initialValue={isCollectionItem(value) ? value : undefined}
+            initialValue={value}
             models={QUESTION_PICKER_MODELS}
             options={options}
             path={questionsPath}
@@ -250,6 +253,7 @@ export const DataPickerModal = ({
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData}
       searchExtraButtons={[filterButton]}
+      searchModels={models}
     />
   );
 };

@@ -522,8 +522,8 @@ describe("scenarios > admin > datamodel", () => {
         verifyAndCloseToast("Hid Orders");
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("Orders").should("not.exist");
         });
@@ -540,8 +540,8 @@ describe("scenarios > admin > datamodel", () => {
         verifyAndCloseToast("Unhid Orders");
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("Orders").should("be.visible");
         });
@@ -741,8 +741,8 @@ describe("scenarios > admin > datamodel", () => {
 
         // It shouldn't show in a new question data picker
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.contains("Products").should("exist");
           cy.contains("Orders").should("not.exist");
         });
@@ -938,8 +938,8 @@ describe("scenarios > admin > datamodel", () => {
         TableSection.getNameInput().should("have.value", "New orders");
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("New orders").should("be.visible");
         });
@@ -964,8 +964,8 @@ describe("scenarios > admin > datamodel", () => {
 
         cy.signInAsNormalUser();
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("New orders").should("be.visible");
         });
@@ -1879,8 +1879,8 @@ describe("scenarios > admin > datamodel", () => {
             mode: "notebook",
           });
           cy.icon("join_left_outer").click();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");
@@ -1936,8 +1936,8 @@ describe("scenarios > admin > datamodel", () => {
             mode: "notebook",
           });
           cy.icon("join_left_outer").click();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");

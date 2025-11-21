@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from "react";
+import { useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -8,15 +8,16 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import { METAKEY } from "metabase/lib/browser";
+import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
+import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Tooltip } from "metabase/ui";
+import { Icon, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { RecentCollectionItem, TableId } from "metabase-types/api";
 
 import {
@@ -24,9 +25,7 @@ import {
   useNotebookContext,
 } from "../Notebook/context";
 
-import { DataPickerTarget } from "./DataPickerTarget";
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
-import { getUrl } from "./utils";
 
 export interface NotebookDataPickerProps {
   title: string;
@@ -37,6 +36,8 @@ export interface NotebookDataPickerProps {
   canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
+  isOpened: boolean;
+  setIsOpened: (isOpened: boolean) => void;
   onChange: (
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
@@ -55,6 +56,8 @@ export function NotebookDataPicker({
   canChangeDatabase,
   hasMetrics,
   isDisabled,
+  isOpened,
+  setIsOpened,
   onChange,
   shouldDisableItem,
 }: NotebookDataPickerProps) {
@@ -96,6 +99,8 @@ export function NotebookDataPicker({
         placeholder={placeholder}
         canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
+        isOpened={isOpened}
+        setIsOpened={setIsOpened}
         isDisabled={isDisabled}
         onChange={handleChange}
         shouldDisableItem={shouldDisableItem}
@@ -110,6 +115,8 @@ type ModernDataPickerProps = {
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   title: string;
   placeholder: string;
+  isOpened: boolean;
+  setIsOpened: (isOpened: boolean) => void;
   canChangeDatabase: boolean;
   hasMetrics: boolean;
   isDisabled: boolean;
@@ -124,76 +131,88 @@ function ModernDataPicker({
   stageIndex,
   table,
   title,
-  placeholder,
+  isOpened,
+  setIsOpened,
   canChangeDatabase,
   hasMetrics,
   isDisabled,
   onChange,
   shouldDisableItem,
 }: ModernDataPickerProps) {
-  const [isOpened, setIsOpened] = useState(!table);
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
 
   const databaseId = Lib.databaseID(query) ?? undefined;
-  const tableInfo =
-    table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
+
   const tableValue =
     table != null ? getDataPickerValue(query, stageIndex, table) : undefined;
-
-  const openDataSourceInNewTab = () => {
-    const url = getUrl({ query, table, stageIndex });
-    if (url) {
-      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
-      Urls.openInNewTab(subpathSafeUrl);
-    }
-  };
-
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    const isCtrlOrMetaClick =
-      (event.ctrlKey || event.metaKey) && event.button === 0;
-    if (isCtrlOrMetaClick) {
-      openDataSourceInNewTab();
-    } else {
-      setIsOpened(true);
-    }
-  };
-
-  const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
-    const isMiddleClick = event.button === 1;
-    if (isMiddleClick) {
-      openDataSourceInNewTab();
-    } else {
-      setIsOpened(true);
-    }
-  };
+  const [dataSourceSearchQuery, setDataSourceSearchQuery] = useState("");
+  const [isBrowsing, setIsBrowsing] = useState(false);
+  const [focusPicker, setFocusPicker] = useState(false);
 
   return (
     <>
-      <Tooltip
-        label={t`${METAKEY}+click to open in new tab`}
-        hidden={!table || isDisabled}
-        events={{ hover: true, focus: false, touch: false }}
-      >
-        <DataPickerTarget
-          tableInfo={tableInfo}
-          placeholder={placeholder}
-          isDisabled={isDisabled}
-          onClick={handleClick}
-          onAuxClick={handleAuxClick}
-        />
-      </Tooltip>
-      {isOpened && (
+      <MiniPicker
+        value={tableValue}
+        opened={isOpened && !isBrowsing}
+        onClose={() => setIsOpened(false)}
+        models={["table", "dataset", "metric", "card"]}
+        searchQuery={dataSourceSearchQuery}
+        onBrowseAll={() => setIsBrowsing(true)}
+        trapFocus={focusPicker}
+        onChange={(value: MiniPickerPickableItem) => {
+          const id =
+            value.model === "table"
+              ? value.id
+              : getQuestionVirtualTableId(value.id);
+          onChange(id);
+          setDataSourceSearchQuery("");
+          setIsOpened(false);
+        }}
+      />
+      {isOpened && isBrowsing && (
         <DataPickerModal
           title={title}
           value={tableValue}
           databaseId={canChangeDatabase ? undefined : databaseId}
           models={modelList}
-          onChange={onChange}
-          onClose={() => setIsOpened(false)}
+          onChange={(i) => {
+            onChange(i);
+          }}
+          onClose={() => {
+            setIsBrowsing(false);
+            setIsOpened(false);
+          }}
           shouldDisableItem={shouldDisableItem}
         />
       )}
+      {isOpened || !table ? (
+        <TextInput
+          placeholder={t`Search for tables and more...`}
+          value={dataSourceSearchQuery}
+          variant="unstyled"
+          styles={{
+            input: { background: "transparent ", border: "none", p: 0 },
+          }}
+          leftSection={<Icon name="search" />}
+          onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown" || e.key === "tab") {
+              e.preventDefault();
+              e.stopPropagation();
+              setFocusPicker(true);
+            }
+          }}
+          onClickCapture={(e) => {
+            e.stopPropagation();
+            setIsOpened(true);
+            setFocusPicker(false);
+          }}
+          miw="20rem"
+          autoFocus={isOpened}
+          disabled={isDisabled}
+        />
+      ) : null}
     </>
   );
 }
