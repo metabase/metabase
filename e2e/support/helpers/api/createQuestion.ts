@@ -138,61 +138,54 @@ export const question = (
     interceptAlias = "cardQuery",
   }: Options = {},
 ) => {
-  const payload = {
-    name,
-    description,
-    dataset_query,
-    type,
-    display,
-    parameters,
-    visualization_settings,
-    collection_id,
-    dashboard_id,
-    collection_position,
-  };
-  // TODO (Sasha 20/11/25): Many e2e tests pass `type` as "query" instead of "question" which is not valid, but this should be addressed in a separate PR.
-  const validTypes = ["model", "metric", "question"];
-  if (validTypes.includes(type)) {
-    payload.type = type;
-  }
-  return cy.request<Card>("POST", "/api/card", payload).then((response) => {
-    const { body } = response;
-    /**
-     * Optionally, if you need question's id later in the test, outside the scope of this function,
-     * you can use it like this:
-     *
-     * `cy.get("@questionId").then(id=> {
-     *   doSomethingWith(id);
-     * })
-     */
-    if (wrapId) {
-      cy.wrap(body.id).as(idAlias);
-    }
-
-    if (enable_embedding) {
-      cy.request("PUT", `/api/card/${body.id}`, {
-        enable_embedding,
-        embedding_params,
-      });
-    }
-
-    if (loadMetadata || shouldVisitQuestion) {
-      if (type === "model") {
-        visitModel(body.id);
-      } else if (type === "metric") {
-        visitMetric(body.id);
-      } else {
-        // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
-        cy.intercept("POST", `/api/card/**/${body.id}/query`).as(
-          interceptAlias,
-        );
-        visitQuestion(body.id);
-        cy.wait("@" + interceptAlias); // Wait for `result_metadata` to load
+  return cy
+    .request<Card>("POST", "/api/card", {
+      name,
+      description,
+      dataset_query,
+      display,
+      parameters,
+      visualization_settings,
+      collection_id,
+      dashboard_id,
+      collection_position,
+    })
+    .then(({ body }) => {
+      /**
+       * Optionally, if you need question's id later in the test, outside the scope of this function,
+       * you can use it like this:
+       *
+       * `cy.get("@questionId").then(id=> {
+       *   doSomethingWith(id);
+       * })
+       */
+      if (wrapId) {
+        cy.wrap(body.id).as(idAlias);
       }
-    }
 
-    return cy.wrap(response);
-  });
+      if (type === "model" || type === "metric" || enable_embedding) {
+        cy.request("PUT", `/api/card/${body.id}`, {
+          type,
+          enable_embedding,
+          embedding_params,
+        });
+      }
+
+      if (loadMetadata || shouldVisitQuestion) {
+        if (type === "model") {
+          visitModel(body.id);
+        } else if (type === "metric") {
+          visitMetric(body.id);
+        } else {
+          // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+          cy.intercept("POST", `/api/card/**/${body.id}/query`).as(
+            interceptAlias,
+          );
+          visitQuestion(body.id);
+          cy.wait("@" + interceptAlias); // Wait for `result_metadata` to load
+        }
+      }
+    });
 };
 
 export const logAction = (
