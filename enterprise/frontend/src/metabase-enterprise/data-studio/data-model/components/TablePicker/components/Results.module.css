@@ -11,6 +11,7 @@
   align-items: center;
   padding-left: var(--mantine-spacing-md);
   padding-bottom: var(--mantine-spacing-xs);
+  border-bottom: 1px solid var(--mb-color-border);
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -32,8 +33,7 @@
 
 .item {
   --item-top-border-color: transparent;
-  /* box-shadow is a way to avoid layout shifts and doubled borders in the items */
-  box-shadow: inset 0 1px 0 var(--item-top-border-color);
+
   position: absolute;
   cursor: pointer;
   border-bottom: 1px solid var(--mb-color-border);
@@ -61,10 +61,6 @@
       opacity: 1;
     }
   }
-
-  &:first-of-type {
-    --item-top-border-color: var(--mb-color-border);
-  }
 }
 
 .icon {
@@ -85,7 +81,8 @@
 .checkbox {
   flex-shrink: 0;
   width: 40px;
-  height: 40px;
+  max-height: 40px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;

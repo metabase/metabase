@@ -493,6 +493,7 @@ const ResultsItem = ({
       justify="flex-start"
       gap={0}
       w="100%"
+      mih={ITEM_MIN_HEIGHT}
       className={cx(S.item, S[type], {
         [S.active]: isActive,
         [S.selected]: selectedIndex === index,
@@ -527,14 +528,7 @@ const ResultsItem = ({
         />
       </Box>
 
-      <Flex
-        align="center"
-        mih={ITEM_MIN_HEIGHT}
-        py="xs"
-        w="100%"
-        pl={indent}
-        gap="sm"
-      >
+      <Flex align="center" py="xs" w="100%" pl={indent} gap="sm">
         <Flex align="flex-start" gap="xs" className={S.content}>
           <Flex align="center" gap="xs">
             <Box className={S.chevronSlot} w={INDENT_OFFSET}>
