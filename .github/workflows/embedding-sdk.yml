@@ -8,7 +8,7 @@ on:
         required: true
         type: boolean
       docs-snippets-type-check:
-        description: "Whether to run cli snippets type check."
+        description: "Whether to run docs snippets type check."
         required: true
         type: boolean
       documentation-validation:
@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   embedding-sdk-cli-snippets-type-check:
-    if: inputs.cli-snippets-type-check == 'true'
+    if: inputs.cli-snippets-type-check
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -46,7 +46,7 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    if: inputs.docs-snippets-type-check == 'true'
+    if: inputs.docs-snippets-type-check
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -62,7 +62,7 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    if: inputs.documentation-validation == 'true'
+    if: inputs.documentation-validation
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -110,13 +110,13 @@ jobs:
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   embedding-sdk-component-tests:
     name: "SDK component tests"
-    if: inputs.component-tests == 'true'
+    if: inputs.component-tests
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
 
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
-    if: inputs.host-sample-apps-tests == 'true'
+    if: inputs.host-sample-apps-tests
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
