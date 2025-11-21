@@ -1,9 +1,8 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
-import { IndexRoute } from "react-router";
+import { IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
-import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
