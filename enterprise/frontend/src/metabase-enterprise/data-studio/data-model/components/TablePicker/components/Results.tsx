@@ -18,7 +18,7 @@ import {
 } from "metabase/common/hooks/use-number-formatter";
 import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
 import { getUrl } from "metabase/metadata/pages/shared/utils";
-import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Skeleton, Stack, rem } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -162,7 +162,7 @@ export function TablePickerResults({
   };
 
   return (
-    <Box className={S.root}>
+    <Stack className={S.root} gap={0}>
       <Flex className={S.header} gap="sm" justify="flex-end">
         <Box className={cx(S.headerCell, S.ownerColumn)}>{t`Owner`}</Box>
         <Box className={cx(S.headerCell, S.rowsColumn)}>{t`Rows`}</Box>
@@ -170,7 +170,7 @@ export function TablePickerResults({
           className={cx(S.headerCell, S.publishedColumn)}
         >{t`Published`}</Box>
       </Flex>
-      <Box ref={ref} pb="lg" className={S.results}>
+      <Box ref={ref} className={S.results}>
         <Box style={{ height: virtual.getTotalSize() }}>
           {virtualItems.map(({ start, index }) => {
             const item = items[index];
@@ -198,7 +198,7 @@ export function TablePickerResults({
           })}
         </Box>
       </Box>
-    </Box>
+    </Stack>
   );
 }
 
@@ -501,7 +501,7 @@ const ResultsItem = ({
       data-open={isExpanded}
       tabIndex={disabled ? -1 : 0}
       style={{
-        top: start,
+        transform: `translateY(${start}px)`,
         pointerEvents: disabled ? "none" : undefined,
       }}
       to={getUrl(baseUrl, {

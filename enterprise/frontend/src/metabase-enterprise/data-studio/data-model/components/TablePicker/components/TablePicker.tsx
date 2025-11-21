@@ -144,7 +144,7 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Box style={{ overflow: "auto" }}>
+      <Box mih={0} flex="1 1 auto">
         {deferredQuery === "" && filtersCount === 0 ? (
           <Tree
             path={path}
