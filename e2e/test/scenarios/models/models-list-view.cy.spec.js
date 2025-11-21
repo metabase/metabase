@@ -37,6 +37,16 @@ describe("scenarios > models list view", () => {
       cy.log("Ensure List view is enabled");
       cy.findByTestId("list-view").should("be.visible");
 
+      cy.log(
+        "Ensure that List View setting stays applied after switching between tabs",
+      );
+      cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
+      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
+      cy.findByTestId("list-view").should("be.visible");
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByLabelText("List").should("be.checked");
+      });
+
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
       cy.wait("@dataset");
 
