@@ -288,8 +288,12 @@ class DashboardSubscriptionsSidebarInner extends Component {
   editPulse = (pulse, channelType) => {
     this.setPulse(pulse);
     this.setState(({ editingMode, returnMode }) => {
+      const editingModeMap = {
+        [CHANNEL_TYPES.EMAIL]: EDITING_MODES.ADD_EMAIL,
+        [CHANNEL_TYPES.SLACK]: EDITING_MODES.ADD_SLACK,
+      };
       return {
-        editingMode: "add-edit-" + channelType,
+        editingMode: editingModeMap[channelType],
         returnMode: returnMode.concat([
           editingMode || EDITING_MODES.LIST_PULSES,
         ]),
