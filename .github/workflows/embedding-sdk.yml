@@ -62,7 +62,7 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    if: inputs.
+    if: inputs.documentation-validation == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
