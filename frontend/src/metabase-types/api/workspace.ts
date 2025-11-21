@@ -49,3 +49,10 @@ export type DownstreamTransformInfo = {
 export type TransformDownstreamMapping = {
   transforms: DownstreamTransformInfo[];
 };
+
+export type WorkspaceMergeResponse = {
+  promoted: { id: TransformId; name: string }[];
+  errors?: { id: TransformId; name: string; error: string }[];
+  workspace: { id: WorkspaceId; name: string };
+  archived_at: string | null;
+};

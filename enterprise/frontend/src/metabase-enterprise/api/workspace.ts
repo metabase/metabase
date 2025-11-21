@@ -6,6 +6,7 @@ import type {
   Workspace,
   WorkspaceContents,
   WorkspaceId,
+  WorkspaceMergeResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -75,6 +76,18 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id)]),
     }),
+    mergeWorkspace: builder.mutation<WorkspaceMergeResponse, WorkspaceId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/merge`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          listTag("transform"),
+          tag("transform"),
+        ]),
+    }),
   }),
 });
 
@@ -85,4 +98,5 @@ export const {
   useGetWorkspaceContentsQuery,
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,
+  useMergeWorkspaceMutation,
 } = workspaceApi;
