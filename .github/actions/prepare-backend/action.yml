@@ -28,10 +28,6 @@ runs:
       run: |
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
-    - name: Fetch CI config
-      shell: bash
-      run: |
-        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
