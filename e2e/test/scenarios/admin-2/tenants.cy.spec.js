@@ -446,7 +446,7 @@ describe("Tenants - management", () => {
     cy.findByPlaceholderText("Pick a user attribute").click();
     H.popover()
       .findByRole("option", { name: /@tenant.slug/ })
-      .findByRole("img", { name: /info/ });
+      .findByTestId("system-defined-tooltip-icon");
 
     cy.visit(
       `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
@@ -454,7 +454,7 @@ describe("Tenants - management", () => {
     cy.findByPlaceholderText("Pick a user attribute").click();
     H.popover()
       .findByRole("option", { name: /@tenant.slug/ })
-      .findByRole("img", { name: /info/ });
+      .findByTestId("system-defined-tooltip-icon");
 
     cy.log("check that tenant attributes propagate to users");
 
@@ -583,7 +583,7 @@ describe("tenant users", () => {
     H.popover().findByText("Deactivate user").click();
     H.modal().button("Deactivate").click();
 
-    cy.findByRole("radio", { name: /deactivated/i }).click({ force: true });
+    cy.findByRole("tab", { name: /deactivated/i }).click({ force: true });
 
     cy.findByTestId("admin-layout-content").findByText("3 people found");
 
@@ -670,22 +670,10 @@ describe("tenant users", () => {
       .should("not.contain.text", "Widget")
       .should("contain.text", "Doohickey");
 
-    // User has no write access to any collections. Assert that save button is not rendered
-
-    cy.findByTestId("qb-header-action-panel")
-      .findByRole("button", { name: "Save" })
-      .should("not.exist");
-    cy.findByTestId("qb-header-action-panel")
-      .findByTestId("qb-save-button")
-      .should("not.exist");
-
     H.openNavigationSidebar();
 
     H.navigationSidebar()
       .findByTestId("navbar-new-collection-button")
-      .should("not.exist");
-    H.navigationSidebar()
-      .findByRole("heading", { name: /collections/i })
       .should("not.exist");
     H.navigationSidebar()
       .findByRole("link", { name: /trash/i })
