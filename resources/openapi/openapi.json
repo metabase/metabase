@@ -7406,7 +7406,6 @@
         "type" : "string"
       },
       "metabase.lib.schema.expression.temporal.timezone-id" : {
-        "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string",
         "allOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
         }, {
