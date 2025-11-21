@@ -124,7 +124,7 @@ const myModel = createMockCollectionItem({
     id: 101,
     name: "My Model",
     collection_id: 3,
-    type: "model",
+    type: "card-type/model",
   }),
   model: "dataset",
 });
@@ -134,7 +134,7 @@ const myMetric = createMockCollectionItem({
     id: 102,
     name: "My Metric",
     collection_id: 3,
-    type: "metric",
+    type: "card-type/metric",
   }),
   model: "metric",
 });

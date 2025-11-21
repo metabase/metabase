@@ -203,7 +203,7 @@ function getQuestion({
       ...extraCardParams,
       display: "table",
       visualization_settings: {},
-      type: "question",
+      type: "card-type/question",
       dataset_query: {
         type: "query",
         database: SAMPLE_DB_ID,

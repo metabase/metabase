@@ -224,11 +224,11 @@ const Questions = createEntity({
 });
 
 function getLabel(card) {
-  if (card.type === "model" || card.model === "dataset") {
+  if (card.type === "card-type/model" || card.model === "dataset") {
     return t`model`;
   }
 
-  if (card.type === "metric" || card.model === "metric") {
+  if (card.type === "card-type/metric" || card.model === "metric") {
     return t`metric`;
   }
 
@@ -246,11 +246,11 @@ export function getIcon(card) {
     };
   }
 
-  if (card.type === "model" || card.model === "dataset") {
+  if (card.type === "card-type/model" || card.model === "dataset") {
     return { name: "model" };
   }
 
-  if (card.type === "metric" || card.model === "metric") {
+  if (card.type === "card-type/metric" || card.model === "metric") {
     return { name: "metric" };
   }
 

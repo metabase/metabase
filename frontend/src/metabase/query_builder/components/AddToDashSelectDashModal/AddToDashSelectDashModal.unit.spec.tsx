@@ -110,20 +110,20 @@ const COLLECTIONS = [
 const CARD_IN_ROOT_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  type: "model",
+  type: "card-type/model",
 });
 
 const CARD_IN_PUBLIC_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  type: "model",
+  type: "card-type/model",
   collection: COLLECTION,
 });
 
 const CARD_IN_PUBLIC_SUBCOLLECTION = createMockCard({
   id: getNextId(),
   name: "Model Uno",
-  type: "model",
+  type: "card-type/model",
   collection_id: SUBCOLLECTION.id as number,
   collection: SUBCOLLECTION,
 });
@@ -131,7 +131,7 @@ const CARD_IN_PUBLIC_SUBCOLLECTION = createMockCard({
 const CARD_IN_PERSONAL_COLLECTION = createMockCard({
   id: getNextId(),
   name: "Card in a personal collection",
-  type: "model",
+  type: "card-type/model",
   collection: PERSONAL_COLLECTION,
   collection_id: PERSONAL_COLLECTION.id as number,
 });

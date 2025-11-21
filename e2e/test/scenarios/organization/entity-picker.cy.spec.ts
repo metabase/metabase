@@ -21,7 +21,7 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const cardDetails: StructuredQuestionDetails = {
   name: "Question",
-  type: "question",
+  type: "card-type/question",
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],

@@ -23,12 +23,12 @@ describe("QuestionInfoSidebar", () => {
       createMockCard({
         name: "Question",
         description: DESCRIPTION,
-        type: "question",
+        type: "card-type/question",
       }),
       createMockCard({
         name: "Model",
         description: DESCRIPTION,
-        type: "model",
+        type: "card-type/model",
       }),
     ])("should display description of a $name", async (card) => {
       await setup({ card });
@@ -230,7 +230,7 @@ describe("QuestionInfoSidebar", () => {
     it("is shown for models", async () => {
       const card = createMockCard({
         name: "abc",
-        type: "model",
+        type: "card-type/model",
       });
       await setup({ card });
 
@@ -266,7 +266,7 @@ describe("QuestionInfoSidebar", () => {
     it("should show joined tables for a model (metabase#57469)", async () => {
       const query = getJoinedQuery();
       const card = createMockCard({
-        type: "model",
+        type: "card-type/model",
         dataset_query: Lib.toJsQuery(query),
       });
       await setup({ card });

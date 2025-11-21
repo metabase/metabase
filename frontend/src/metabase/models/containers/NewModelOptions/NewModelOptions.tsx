@@ -74,7 +74,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
               to={Urls.newQuestion({
                 mode: "query",
                 creationType: "custom_question",
-                cardType: "model",
+                cardType: "card-type/model",
                 collectionId,
               })}
             />
@@ -90,7 +90,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
                 mode: "query",
                 DEPRECATED_RAW_MBQL_type: "native",
                 creationType: "native_question",
-                cardType: "model",
+                cardType: "card-type/model",
                 collectionId,
                 DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
               })}

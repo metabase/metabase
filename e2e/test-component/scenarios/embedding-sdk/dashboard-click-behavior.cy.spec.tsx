@@ -268,7 +268,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
           const questionData = response.body;
           return cy.request("PUT", `/api/card/${questionId}`, {
             ...questionData,
-            type: "model",
+            type: "card-type/model",
           });
         })
         .then(() => {

@@ -129,7 +129,7 @@ describe("CheckDependenciesForm", () => {
           success: false,
           bad_cards: [
             createMockCard({
-              type: "question",
+              type: "card-type/question",
               display,
             }),
           ],
@@ -146,7 +146,7 @@ describe("CheckDependenciesForm", () => {
         bad_cards: [
           createMockCard({
             name: "Card",
-            type: "question",
+            type: "card-type/question",
             collection: createMockCollection({
               id: 1,
               name: "First collection",

@@ -706,7 +706,7 @@ function createModel(
   /* result_metadata needs to be passed, otherwise test setup would be incorrect */
   result_metadata: StructuredCard["result_metadata"],
 ) {
-  const card = createMockCard({ type: "model", result_metadata });
+  const card = createMockCard({ type: "card-type/model", result_metadata });
   const metadata = createMockMetadata({
     databases: [sampleDb, savedQuestionsDb],
     tables: [getModelVirtualTable(card)],

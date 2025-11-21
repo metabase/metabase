@@ -10,7 +10,7 @@ const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
-  type: "metric",
+  type: "card-type/metric",
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -20,7 +20,7 @@ const ORDERS_SCALAR_METRIC = {
 
 const ORDERS_SCALAR_MODEL_METRIC = {
   name: "Orders model metric",
-  type: "metric",
+  type: "card-type/metric",
   query: {
     "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
@@ -30,7 +30,7 @@ const ORDERS_SCALAR_MODEL_METRIC = {
 
 const ORDERS_TIMESERIES_METRIC = {
   name: "Count of orders over time",
-  type: "metric",
+  type: "card-type/metric",
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],

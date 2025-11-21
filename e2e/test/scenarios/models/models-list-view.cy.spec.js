@@ -11,7 +11,7 @@ describe("scenarios > models list view", () => {
       H.createNativeQuestion(
         {
           name: "Native Model",
-          type: "model",
+          type: "card-type/model",
           native: {
             query: "SELECT * FROM ORDERS LIMIT 5",
           },
@@ -257,7 +257,7 @@ describe("scenarios > models list view", () => {
       H.createNativeQuestion(
         {
           name: "Native Model",
-          type: "model",
+          type: "card-type/model",
           display: "list",
           native: {
             query: "SELECT * FROM ORDERS LIMIT 5",
@@ -303,7 +303,7 @@ describe("scenarios > models list view", () => {
       H.createNativeQuestion(
         {
           name: "Native Model",
-          type: "model",
+          type: "card-type/model",
           display: "list",
           native: {
             query: "SELECT * FROM ORDERS LIMIT 5",

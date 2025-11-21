@@ -43,7 +43,7 @@ export function ObjectDetailWrapper({
   const areImplicitActionsEnabled = Boolean(
     question &&
       question.canWrite() &&
-      question.type() === "model" &&
+      question.type() === "card-type/model" &&
       question.supportsImplicitActions(),
   );
 

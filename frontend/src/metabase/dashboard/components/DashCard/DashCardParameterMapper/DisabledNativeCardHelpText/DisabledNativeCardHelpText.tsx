@@ -27,7 +27,7 @@ export function DisabledNativeCardHelpText({
   question,
   parameter,
 }: DisabledNativeCardHelpTextProps) {
-  if (question.type() === "model") {
+  if (question.type() === "card-type/model") {
     return <ModelHelpText />;
   } else {
     return <ParameterHelpText parameter={parameter} />;

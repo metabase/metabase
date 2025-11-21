@@ -31,8 +31,8 @@ const mockSavedCard = createMockCard({
     },
   }),
 });
-const mockSavedModel = { ...mockSavedCard, type: "model" };
-const mockSavedMetric = { ...mockSavedCard, type: "metric" };
+const mockSavedModel = { ...mockSavedCard, type: "card-type/model" };
+const mockSavedMetric = { ...mockSavedCard, type: "card-type/metric" };
 const mockUnsavedCard = createMockUnsavedCard();
 
 const noop = () => {};

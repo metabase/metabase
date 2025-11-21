@@ -5,7 +5,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
-  type: "metric",
+  type: "card-type/metric",
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],

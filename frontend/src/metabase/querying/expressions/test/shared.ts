@@ -58,7 +58,7 @@ const metadata = createMockMetadata({
             createMockCard({
               id: getNextId(),
               name: "Foo Metric",
-              type: "metric",
+              type: "card-type/metric",
               table_id: ORDERS_ID,
               dataset_query: createMockStructuredDatasetQuery({
                 database: SAMPLE_DB_ID,

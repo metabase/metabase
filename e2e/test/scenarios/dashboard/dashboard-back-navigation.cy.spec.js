@@ -98,7 +98,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
     const cardTitle = "Orders by Subtotal";
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`);
     cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
@@ -336,7 +336,7 @@ const createDashboardWithCards = () => {
   const modelDetails = {
     name: "Orders model",
     query: { "source-table": ORDERS_ID },
-    type: "model",
+    type: "card-type/model",
   };
 
   const actionDetails = {

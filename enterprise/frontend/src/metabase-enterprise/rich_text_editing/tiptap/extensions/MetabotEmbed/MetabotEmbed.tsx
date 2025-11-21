@@ -202,7 +202,7 @@ export const MetabotComponent = memo(
         updated_at: "",
         name: data.draft_card.name || t`Exploration`,
         description: null,
-        type: "question",
+        type: "card-type/question",
         public_uuid: null,
         enable_embedding: false,
         embedding_params: null,

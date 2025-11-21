@@ -146,7 +146,7 @@ function useSourceEntityCollectionId(query: Lib.Query) {
   const sourceTable = useSourceTable(query);
   const isCard =
     sourceTable?.type &&
-    (["model", "question"] as CardType[]).includes(sourceTable.type);
+    (["card-type/model", "card-type/question"] as CardType[]).includes(sourceTable.type);
   const cardId = isCard
     ? getQuestionIdFromVirtualTableId(sourceTable?.id)
     : undefined;

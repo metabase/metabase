@@ -168,7 +168,7 @@ describe("AggregateStep", () => {
   describe("metrics", () => {
     it("should not allow to remove an existing aggregation or add another one", () => {
       const query = createAggregatedQuery();
-      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const question = DEFAULT_QUESTION.setType("card-type/metric").setQuery(query);
       const step = createMockNotebookStep({ question, query });
       setup({ step });
 
@@ -183,7 +183,7 @@ describe("AggregateStep", () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
       });
-      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const question = DEFAULT_QUESTION.setType("card-type/metric").setQuery(query);
       const step = createMockNotebookStep({ question, query });
       setup({ step });
 
@@ -198,7 +198,7 @@ describe("AggregateStep", () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
       });
-      const question = DEFAULT_QUESTION.setType("question").setQuery(query);
+      const question = DEFAULT_QUESTION.setType("card-type/question").setQuery(query);
       const step = createMockNotebookStep({ question, query });
       setup({ step });
 

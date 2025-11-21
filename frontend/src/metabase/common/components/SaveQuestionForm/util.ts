@@ -104,7 +104,7 @@ export const getInitialValues = (
   initialCollectionId: FormValues["collection_id"],
   initialDashboardId: FormValues["dashboard_id"],
 ): FormValues => {
-  const isNewQuestion = originalQuestion && question.card().type === "question";
+  const isNewQuestion = originalQuestion && question.card().type === "card-type/question";
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   const dashboardId =
@@ -128,7 +128,7 @@ export const getInitialValues = (
     dashboard_tab_id: undefined,
     saveType:
       originalQuestion &&
-      originalQuestion.type() === "question" &&
+      originalQuestion.type() === "card-type/question" &&
       originalQuestion.canWrite()
         ? "overwrite"
         : "create",

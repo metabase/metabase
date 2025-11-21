@@ -66,7 +66,7 @@ export function getUrlWithParameters(
     if (isEditable) {
       // treat the dataset/model question like it is already composed so that we can apply
       // dataset/model-specific metadata to the underlying dimension options
-      const needsComposing = question.type() !== "question";
+      const needsComposing = question.type() !== "card-type/question";
       questionWithParameters = needsComposing
         ? question.composeQuestionAdhoc().setParameters(parameters)
         : questionWithParameters;

@@ -7,7 +7,7 @@ import type NativeQuery from "../NativeQuery";
 
 export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
   const question = nativeQuery.question();
-  const isModel = question.type() === "model" && question.isSaved();
+  const isModel = question.type() === "card-type/model" && question.isSaved();
 
   if (isModel) {
     return question.metadata().table(getQuestionVirtualTableId(question.id()));

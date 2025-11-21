@@ -59,7 +59,7 @@ describe("issue 29943", () => {
   it("selects the right column when clicking a column header (metabase#29943)", () => {
     H.createQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": ORDERS_ID,
           expressions: {
@@ -142,7 +142,7 @@ describe("issue 35711", () => {
   it("can edit metadata of a model with a custom column (metabase#35711)", () => {
     H.createQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": ORDERS_ID,
           expressions: {
@@ -178,7 +178,7 @@ describe("issues 25884 and 34349", () => {
   it("should show empty description input for columns without description in metadata (metabase#25884, metabase#34349)", () => {
     H.createQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": ORDERS_ID,
           expressions: {
@@ -218,7 +218,7 @@ describe("issue 23103", () => {
   it("shows correct number of distinct values (metabase#23103)", () => {
     H.createNativeQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         native: {
           query: "select * from products limit 5",
         },
@@ -258,7 +258,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
 
     H.createQuestion({
       name: "Source Model",
-      type: "model",
+      type: "card-type/model",
       query: {
         "source-table": PRODUCTS_ID,
         expressions: {
@@ -279,7 +279,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
       H.createQuestion(
         {
           name: "Nested Model",
-          type: "model",
+          type: "card-type/model",
           query: {
             "source-table": `card__${sourceModelId}`,
           },
@@ -309,7 +309,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
   it("allows custom columns with the same name as the aggregation column from the souce model (metabase#39150-2)", () => {
     H.createQuestion({
       name: "Source Model",
-      type: "model",
+      type: "card-type/model",
       query: {
         "source-table": PRODUCTS_ID,
         aggregation: [["count"]],
@@ -327,7 +327,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     }).then(({ body: { id: sourceModelId } }) => {
       H.createQuestion(
         {
-          type: "model",
+          type: "card-type/model",
           query: {
             "source-table": `card__${sourceModelId}`,
           },
@@ -359,7 +359,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     cy.get("@nestedModelId").then((nestedModelId) => {
       H.createQuestion(
         {
-          type: "model",
+          type: "card-type/model",
           query: {
             "source-table": `card__${nestedModelId}`,
           },
@@ -593,7 +593,7 @@ describe("issue 33427", () => {
   it("does not confuse the names of various native model columns mapped to the same database field (metabase#33427)", () => {
     H.createNativeQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         native: {
           query: `
             select o.ID, p1.title as created_by, p2.title as updated_by
@@ -643,7 +643,7 @@ describe("issue 33427", () => {
 describe("issue 25113", () => {
   const questionDetails: StructuredQuestionDetails = {
     name: "People Question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": PEOPLE_ID,
       fields: [["field", PEOPLE.ID, null]],
@@ -653,7 +653,7 @@ describe("issue 25113", () => {
   const modelDetails: StructuredQuestionDetails = {
     ...questionDetails,
     name: "People Model",
-    type: "model",
+    type: "card-type/model",
   };
 
   beforeEach(() => {
@@ -685,7 +685,7 @@ describe("issue 25113", () => {
 
 describe("issue 39749", () => {
   const modelDetails: StructuredQuestionDetails = {
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
       aggregation: [
@@ -741,7 +741,7 @@ describe("issue 39749", () => {
 
 describe("issue 25885", () => {
   const mbqlModelDetails: StructuredQuestionDetails = {
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
       fields: [["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
@@ -833,7 +833,7 @@ describe("issue 33844", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card").as("createModel");
     cy.intercept("PUT", "/api/card/*").as("updateModel");
@@ -903,7 +903,7 @@ describe("issue 45924", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
@@ -955,7 +955,7 @@ describe("issue 39993", () => {
   const columnName = "Exp";
 
   const modelDetails: StructuredQuestionDetails = {
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
       fields: [
@@ -1005,7 +1005,7 @@ describe("issue 34574", () => {
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
     const modelDetails: StructuredQuestionDetails = {
       name: "34574",
-      type: "model",
+      type: "card-type/model",
       query: {
         "source-table": PRODUCTS_ID,
         limit: 2,
@@ -1084,7 +1084,7 @@ describe("issue 35840", () => {
   const questionName = "Q1";
 
   const modelDetails: StructuredQuestionDetails = {
-    type: "model",
+    type: "card-type/model",
     name: modelName,
     query: {
       "source-table": PRODUCTS_ID,
@@ -1095,7 +1095,7 @@ describe("issue 35840", () => {
   };
 
   const getQuestionDetails = (modelId: CardId): StructuredQuestionDetails => ({
-    type: "question",
+    type: "card-type/question",
     name: questionName,
     query: {
       "source-table": `card__${modelId}`,
@@ -1347,7 +1347,7 @@ describe("issue 46221", () => {
   const modelDetails: NativeQuestionDetails = {
     name: "46221",
     native: { query: "select 42" },
-    type: "model",
+    type: "card-type/model",
     collection_id: FIRST_COLLECTION_ID as number,
   };
 
@@ -1382,7 +1382,7 @@ describe("issue 46221", () => {
 describe("issue 20624", () => {
   const questionDetails: StructuredQuestionDetails = {
     name: "Question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": PRODUCTS_ID,
     },
@@ -1439,7 +1439,7 @@ describe("issue 37300", () => {
 
     H.createQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": PRODUCTS_ID,
           filter: ["=", ["field", PRODUCTS.ID, null], "999991"],
@@ -1604,7 +1604,7 @@ describe("issue 56698", () => {
       {
         name: "Native model",
         native: { query: "select 1 union all select 2" },
-        type: "model",
+        type: "card-type/model",
       },
       { wrapId: true, idAlias: "modelId" },
     );
@@ -1631,7 +1631,7 @@ describe("issue 57557", () => {
       {
         name: "Native model",
         native: { query: "select 1 union all select 2" },
-        type: "model",
+        type: "card-type/model",
       },
       { wrapId: true, idAlias: "modelId" },
     );
@@ -1661,7 +1661,7 @@ describe("issue 56775", () => {
     cy.signInAsNormalUser();
     H.createQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         name: MODEL_NAME,
         query: {
           "source-table": PRODUCTS_ID,
@@ -1728,7 +1728,7 @@ describe("issue 55486", () => {
     cy.signInAsNormalUser();
     H.createQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         name: MODEL_NAME,
         query: {
           "source-table": PRODUCTS_ID,
@@ -1804,7 +1804,7 @@ describe("Issue 30712", () => {
 describe("issue 60930", { tags: "@skip" }, () => {
   const modelDetails: StructuredQuestionDetails = {
     name: "Model",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
       joins: [

@@ -977,7 +977,7 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should allow to x-ray models from collection views", () => {
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
       cy.visit("/collection/root");
 
       openEllipsisMenuFor("Orders");

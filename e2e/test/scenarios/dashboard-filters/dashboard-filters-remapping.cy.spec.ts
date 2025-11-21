@@ -78,7 +78,7 @@ function clearWidget(name: string) {
 function createDashboard() {
   const ordersModelDetails: StructuredQuestionDetails = {
     name: "Orders model",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
     },
@@ -87,14 +87,14 @@ function createDashboard() {
     modelId: CardId,
   ): StructuredQuestionDetails => ({
     name: "Orders question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": `card__${modelId}`,
     },
   });
   const peopleModelDetails: StructuredQuestionDetails = {
     name: "People model",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": PEOPLE_ID,
     },
@@ -103,7 +103,7 @@ function createDashboard() {
     modelId: CardId,
   ): StructuredQuestionDetails => ({
     name: "People question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": `card__${modelId}`,
     },

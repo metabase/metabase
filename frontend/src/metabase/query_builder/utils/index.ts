@@ -88,7 +88,7 @@ export const isNavigationAllowed = ({
     .filter(Boolean)
     .map(String);
 
-  if (question.type() === "model") {
+  if (question.type() === "card-type/model") {
     const isRunningModel = pathname === "/model" && hash.length > 0;
     const allowedPathnames = isNewQuestion
       ? ["/model/query", "/model/columns"]
@@ -101,7 +101,7 @@ export const isNavigationAllowed = ({
     return isRunningModel || allowedPathnames.includes(pathname);
   }
 
-  if (question.type() === "metric") {
+  if (question.type() === "card-type/metric") {
     const isRunningMetric = pathname === "/metric" && hash.length > 0;
     const allowedPathnames = isNewQuestion
       ? ["/metric/query"]

@@ -377,7 +377,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       model_id: question.id(),
     },
     {
-      skip: !question.isSaved() || question.type() !== "model",
+      skip: !question.isSaved() || question.type() !== "card-type/model",
     },
   );
 

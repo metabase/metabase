@@ -747,7 +747,7 @@ describe(
       H.createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
-        type: "model",
+        type: "card-type/model",
       });
 
       cy.intercept("POST", "/api/activity/recents").as("recents");

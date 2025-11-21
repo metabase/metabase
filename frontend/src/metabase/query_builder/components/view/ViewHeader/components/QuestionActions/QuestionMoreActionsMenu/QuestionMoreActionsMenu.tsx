@@ -65,9 +65,9 @@ export const QuestionMoreActionsMenu = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
-  const isQuestion = question.type() === "question";
-  const isModel = question.type() === "model";
-  const isMetric = question.type() === "metric";
+  const isQuestion = question.type() === "card-type/question";
+  const isModel = question.type() === "card-type/model";
+  const isMetric = question.type() === "card-type/metric";
   const isModelOrMetric = isModel || isMetric;
 
   const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());

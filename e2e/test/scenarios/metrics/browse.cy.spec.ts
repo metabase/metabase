@@ -15,7 +15,7 @@ type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
 
 const ORDERS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of orders",
-  type: "metric",
+  type: "card-type/metric",
   description: "A metric",
   query: {
     "source-table": ORDERS_ID,
@@ -26,7 +26,7 @@ const ORDERS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
 
 const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
   name: "Orders model metric",
-  type: "metric",
+  type: "card-type/metric",
   description: "A metric",
   query: {
     "source-table": `card__${ORDERS_MODEL_ID}`,
@@ -38,7 +38,7 @@ const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
 
 const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of orders over time",
-  type: "metric",
+  type: "card-type/metric",
   description: "A metric",
   query: {
     "source-table": ORDERS_ID,
@@ -56,7 +56,7 @@ const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
 
 const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of products",
-  type: "metric",
+  type: "card-type/metric",
   description: "A metric",
   query: {
     "source-table": PRODUCTS_ID,
@@ -67,7 +67,7 @@ const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
 
 const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
   name: "Max of product category",
-  type: "metric",
+  type: "card-type/metric",
   description: "A metric",
   query: {
     "source-table": PRODUCTS_ID,

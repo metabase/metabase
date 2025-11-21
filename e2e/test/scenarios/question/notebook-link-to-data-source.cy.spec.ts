@@ -224,7 +224,7 @@ describe("scenarios > notebook > link to data source", () => {
           query: "select 1 as foo",
           "template-tags": {},
         },
-        type: "model",
+        type: "card-type/model",
       };
 
       H.createNativeQuestion(source).then(({ body: sourceQuestion }) => {
@@ -315,7 +315,7 @@ describe("scenarios > notebook > link to data source", () => {
           query: "select 1 as foo",
           "template-tags": {},
         },
-        type: "model",
+        type: "card-type/model",
       };
 
       H.createNativeQuestion(model).then(({ body: { id, name } }) => {
@@ -343,7 +343,7 @@ describe("scenarios > notebook > link to data source", () => {
         {
           name: "Nested model based on a question",
           query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
-          type: "model",
+          type: "card-type/model",
         },
         { visitQuestion: true, wrapId: true, idAlias: "nestedModelId" },
       );
@@ -375,7 +375,7 @@ describe("scenarios > notebook > link to data source", () => {
         {
           name: "Nested model based on a model",
           query: { "source-table": `card__${ORDERS_MODEL_ID}` },
-          type: "model",
+          type: "card-type/model",
         },
         { visitQuestion: true, wrapId: true, idAlias: "nestedModelId" },
       );

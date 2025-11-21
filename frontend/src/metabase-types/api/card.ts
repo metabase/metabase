@@ -29,7 +29,7 @@ import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-export type CardType = "model" | "question" | "metric";
+export type CardType = "card-type/model" | "card-type/question" | "card-type/metric"; // "card-type/table-symlink"
 
 export type CardCreatorInfo = Pick<
   UserInfo,

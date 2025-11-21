@@ -1892,7 +1892,7 @@ describe("issue 55300", () => {
 
       H.createQuestion({
         name: "Count",
-        type: "metric",
+        type: "card-type/metric",
         description: "A metric",
         query: {
           "source-table": ORDERS_ID,
@@ -2357,7 +2357,7 @@ describe("issue 52451", () => {
 describe("issue 56602", () => {
   const productsModelDetails = {
     name: "M1",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": PRODUCTS_ID,
     },
@@ -2365,7 +2365,7 @@ describe("issue 56602", () => {
 
   const ordersModelDetails = {
     name: "M2",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
     },

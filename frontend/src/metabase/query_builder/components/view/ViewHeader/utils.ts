@@ -30,7 +30,7 @@ export const canShowNativePreview = ({
   queryBuilderMode,
 }: CanShowNativePreviewOpts) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isMetric = question.type() === "metric";
+  const isMetric = question.type() === "card-type/metric";
 
   return (
     !isNative &&

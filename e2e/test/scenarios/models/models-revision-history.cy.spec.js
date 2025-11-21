@@ -9,7 +9,7 @@ describe("scenarios > models > revision history", () => {
     H.enableTracking();
     cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
-      type: "model",
+      type: "card-type/model",
     });
   });
 

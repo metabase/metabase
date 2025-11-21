@@ -13,7 +13,7 @@ describe("issue 6010", () => {
     return H.createQuestion({
       name: "Metric",
       description: "Metric with a filter",
-      type: "metric",
+      type: "card-type/metric",
       query: {
         "source-table": ORDERS_ID,
         filter: [">", ORDERS.TOTAL, 150],
@@ -966,7 +966,7 @@ describe("issue 45481", () => {
 
 describe("issue 12368", () => {
   const questionDetails = {
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],

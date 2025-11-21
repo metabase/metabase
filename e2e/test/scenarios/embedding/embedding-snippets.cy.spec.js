@@ -143,7 +143,7 @@ tokens.forEach((token) => {
           .should(
             "match",
             getEmbeddingJsCode({
-              type: "question",
+              type: "card-type/question",
               id: ORDERS_QUESTION_ID,
               downloads: defaultDownloadsValue,
             }),
@@ -161,7 +161,7 @@ tokens.forEach((token) => {
             .should(
               "match",
               getEmbeddingJsCode({
-                type: "question",
+                type: "card-type/question",
                 id: ORDERS_QUESTION_ID,
                 downloads: false,
               }),

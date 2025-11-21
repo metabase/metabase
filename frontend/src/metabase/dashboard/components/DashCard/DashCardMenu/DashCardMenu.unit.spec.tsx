@@ -55,7 +55,7 @@ const TEST_CARD_NATIVE = createMockCard({
 
 const TEST_CARD_MODEL = createMockCard({
   can_write: true,
-  type: "model",
+  type: "card-type/model",
   dataset_query: createMockStructuredDatasetQuery({
     database: SAMPLE_DB_ID,
     query: {
@@ -66,7 +66,7 @@ const TEST_CARD_MODEL = createMockCard({
 
 const TEST_CARD_METRIC = createMockCard({
   can_write: true,
-  type: "metric",
+  type: "card-type/metric",
   dataset_query: createMockStructuredDatasetQuery({
     database: SAMPLE_DB_ID,
     query: {

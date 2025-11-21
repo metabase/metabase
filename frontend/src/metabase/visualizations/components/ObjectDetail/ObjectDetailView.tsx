@@ -259,11 +259,11 @@ export function ObjectDetailView({
   const areImplicitActionsEnabled = Boolean(
     question &&
       question.canWrite() &&
-      question.type() === "model" &&
+      question.type() === "card-type/model" &&
       question.supportsImplicitActions(),
   );
 
-  const modelId = question?.type() === "model" ? question.id() : undefined;
+  const modelId = question?.type() === "card-type/model" ? question.id() : undefined;
 
   const { data: actions = [] } = useListActionsQuery(
     areImplicitActionsEnabled && modelId != null

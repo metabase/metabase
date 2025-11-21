@@ -214,7 +214,7 @@ function createSummarizedQuestion(type: CardType) {
 }
 
 describe("Notebook", () => {
-  it.each<CardType>(["question", "model"])(
+  it.each<CardType>(["card-type/question", "card-type/model"])(
     "should have regular copy for the summarize step for %s queries",
     (type) => {
       setup({
@@ -234,7 +234,7 @@ describe("Notebook", () => {
 
   it("should have metric-specific copy for the summarize step", () => {
     setup({
-      question: createSummarizedQuestion("metric"),
+      question: createSummarizedQuestion("card-type/metric"),
     });
 
     const step = screen.getByTestId("step-summarize-0-0");
@@ -249,7 +249,7 @@ describe("Notebook", () => {
     ).not.toBeInTheDocument();
   });
 
-  it.each<CardType>(["question", "model"])(
+  it.each<CardType>(["card-type/question", "card-type/model"])(
     "should be able to remove the summarize step for %s queries",
     (type) => {
       setup({
@@ -263,7 +263,7 @@ describe("Notebook", () => {
 
   it("should not be able to remove the summarize step for metrics", () => {
     setup({
-      question: createSummarizedQuestion("metric"),
+      question: createSummarizedQuestion("card-type/metric"),
     });
 
     const step = screen.getByTestId("step-summarize-0-0");
@@ -276,7 +276,7 @@ describe("Notebook", () => {
     describe("tab behavior", () => {
       it("should not show tabs if only no type is chosen and recents are populated", async () => {
         setup({
-          question: createSummarizedQuestion("question"),
+          question: createSummarizedQuestion("card-type/question"),
           modelsFilterList: [],
         });
 
@@ -289,7 +289,7 @@ describe("Notebook", () => {
 
       it("should not show tabs if only one type is chosen and recents are not populated", async () => {
         setup({
-          question: createSummarizedQuestion("question"),
+          question: createSummarizedQuestion("card-type/question"),
           modelsFilterList: ["table"],
           hasRecents: false,
         });
@@ -310,7 +310,7 @@ describe("Notebook", () => {
         const models: DataPickerValue["model"][] = ["dataset", "card"];
 
         setup({
-          question: createSummarizedQuestion("question"),
+          question: createSummarizedQuestion("card-type/question"),
           modelsFilterList: models,
           hasRecents: false,
         });
@@ -332,7 +332,7 @@ describe("Notebook", () => {
 
       it("should show all tabs if no filter is selected", async () => {
         setup({
-          question: createSummarizedQuestion("question"),
+          question: createSummarizedQuestion("card-type/question"),
         });
 
         await goToEntityModal();
@@ -355,7 +355,7 @@ describe("Notebook", () => {
       (entityType) => {
         it(`should show the Collection item picker when modelsFilterList=[${entityType}]`, async () => {
           setup({
-            question: createSummarizedQuestion("question"),
+            question: createSummarizedQuestion("card-type/question"),
             modelsFilterList: [entityType],
           });
 

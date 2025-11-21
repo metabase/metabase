@@ -487,7 +487,7 @@ describe("BreakoutStep", () => {
 
   describe("metrics", () => {
     it("should allow to select date and datetime columns only", async () => {
-      const question = DEFAULT_QUESTION.setType("metric");
+      const question = DEFAULT_QUESTION.setType("card-type/metric");
       const step = createMockNotebookStep({ question });
       const { getNextBreakouts } = setup({ step });
 
@@ -508,7 +508,7 @@ describe("BreakoutStep", () => {
     });
 
     it("should not allow to select columns in readonly mode", () => {
-      const question = DEFAULT_QUESTION.setType("metric");
+      const question = DEFAULT_QUESTION.setType("card-type/metric");
       const step = createMockNotebookStep({ question });
       setup({ step, readOnly: true });
 
@@ -529,7 +529,7 @@ describe("BreakoutStep", () => {
         ],
       });
       const question = new Question(
-        createMockCard({ type: "metric" }),
+        createMockCard({ type: "card-type/metric" }),
         metadata,
       );
       const step = createMockNotebookStep({
@@ -550,7 +550,7 @@ describe("BreakoutStep", () => {
       const query = createQueryWithClauses({
         breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
       });
-      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const question = DEFAULT_QUESTION.setType("card-type/metric").setQuery(query);
       const step = createMockNotebookStep({ question });
       setup({ step });
 

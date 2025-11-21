@@ -292,8 +292,8 @@ export const getQuestion = createSelector(
       return;
     }
 
-    const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
+    const isModel = question.type() === "card-type/model";
+    const isMetric = question.type() === "card-type/metric";
     if ((isModel || isMetric) && queryBuilderMode === "dataset") {
       return isModel ? question.lockDisplay() : question;
     }
@@ -412,7 +412,7 @@ function areComposedEntitiesEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  const isQuestion = originalQuestion?.type() === "question";
+  const isQuestion = originalQuestion?.type() === "card-type/question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
     return false;
   }
@@ -1067,7 +1067,7 @@ export const getSubmittableQuestion = (state, question) => {
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
 
-  if (question.type() === "model" && resultsMetadata) {
+  if (question.type() === "card-type/model" && resultsMetadata) {
     resultsMetadata.columns = cleanIndexFlags(resultsMetadata.columns);
   }
 

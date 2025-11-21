@@ -120,7 +120,7 @@ export const question = (
     name = "test question",
     description,
     dataset_query,
-    type = "question",
+    type = "card-type/question",
     display = "table",
     parameters,
     visualization_settings = {},

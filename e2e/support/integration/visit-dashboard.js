@@ -40,7 +40,7 @@ const questionDetails = {
 const modelDetails = {
   name: "GUI Model",
   query: { "source-table": PRODUCTS_ID },
-  type: "model",
+  type: "card-type/model",
 };
 
 const pivotTable = {

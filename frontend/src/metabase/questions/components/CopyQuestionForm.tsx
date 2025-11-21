@@ -67,7 +67,7 @@ export const CopyQuestionForm = ({
   model,
 }: CopyQuestionFormProps) => {
   const formProviderProps = useMemo(() => {
-    return model === "question"
+    return model === "card-type/question"
       ? {
           validationSchema: MAYBE_DASHBOARD_QUESTION_SCHEMA,
           initialValues: {
@@ -97,7 +97,7 @@ export const CopyQuestionForm = ({
   };
 
   const models: CollectionPickerModel[] =
-    model === "question" ? ["collection", "dashboard"] : ["collection"];
+    model === "card-type/question" ? ["collection", "dashboard"] : ["collection"];
 
   return (
     <FormProvider

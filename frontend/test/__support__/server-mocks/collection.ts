@@ -75,7 +75,7 @@ export function setupCollectionVirtualSchemaEndpoints(
 
   const [models, questions] = _.partition(
     cards,
-    (card) => card.type === "model",
+    (card) => card.type === "card-type/model",
   );
   const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
   const questionVirtualTables = questions.map(

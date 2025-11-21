@@ -227,7 +227,7 @@
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
          card-query (when query-needed?
-                      (lib/query metadata-provider (if (and (#{:question} card-type)
+                      (lib/query metadata-provider (if (and (#{:question :table-symlink} card-type)
                                                             (#{:pivot} (:display base))
                                                             (#{:query} (:type dataset-query)))
                                                      dataset-query

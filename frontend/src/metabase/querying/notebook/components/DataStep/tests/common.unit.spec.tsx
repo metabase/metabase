@@ -108,8 +108,8 @@ describe("DataStep", () => {
   });
 
   it.each<{ type: CardType; icon: IconName }>([
-    { type: "question", icon: "table2" },
-    { type: "model", icon: "model" },
+    { type: "card-type/question", icon: "table2" },
+    { type: "card-type/model", icon: "model" },
   ])("should render with a selected card", ({ type, icon }) => {
     const card = createSavedStructuredCard({
       id: 1,
@@ -329,7 +329,7 @@ describe("DataStep", () => {
   describe("metrics", () => {
     it("should automatically aggregate by count for metrics", async () => {
       const step = createMockNotebookStep({
-        question: DEFAULT_QUESTION.setType("metric"),
+        question: DEFAULT_QUESTION.setType("card-type/metric"),
       });
       const { getNextQuery } = setup({ step });
 

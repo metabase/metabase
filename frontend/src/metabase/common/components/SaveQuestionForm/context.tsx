@@ -112,7 +112,7 @@ export const SaveQuestionProvider = ({
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
 
   const initialDashboardId =
-    question.type() === "question" &&
+    question.type() === "card-type/question" &&
     !isAnalytics &&
     // `userTargetCollection` comes from the `targetCollection` sdk prop and should take precedence over the recent dashboards
     userTargetCollection === undefined &&
@@ -160,8 +160,8 @@ export const SaveQuestionProvider = ({
   const showSaveType =
     isSavedQuestionInitiallyChanged &&
     originalQuestion != null &&
-    originalQuestion.type() !== "model" &&
-    originalQuestion.type() !== "metric" &&
+    originalQuestion.type() !== "card-type/model" &&
+    originalQuestion.type() !== "card-type/metric" &&
     originalQuestion.canWrite();
 
   const saveToDashboard =

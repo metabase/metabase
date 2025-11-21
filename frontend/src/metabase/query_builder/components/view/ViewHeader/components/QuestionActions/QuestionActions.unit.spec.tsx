@@ -126,7 +126,7 @@ describe("QuestionActions", () => {
     it("should allow to edit the model with write data & collection permissions", async () => {
       const { onSetQueryBuilderMode } = setup({
         card: createMockCard({
-          type: "model",
+          type: "card-type/model",
           can_write: true,
         }),
       });
@@ -153,7 +153,7 @@ describe("QuestionActions", () => {
     it("should not allow to edit the model without write collection permissions", async () => {
       setup({
         card: createMockCard({
-          type: "model",
+          type: "card-type/model",
           can_write: false,
         }),
       });
@@ -169,7 +169,7 @@ describe("QuestionActions", () => {
     it("should allow to edit metadata but not the query without data permissions", async () => {
       setup({
         card: createMockCard({
-          type: "model",
+          type: "card-type/model",
           can_write: true,
         }),
         hasDataPermissions: false,
@@ -188,7 +188,7 @@ describe("QuestionActions", () => {
     it("should allow to turn into a model with write data & collection permissions", async () => {
       const { onOpenModal } = setup({
         card: createMockCard({
-          type: "question",
+          type: "card-type/question",
           can_write: true,
         }),
       });
@@ -206,7 +206,7 @@ describe("QuestionActions", () => {
 
       const { onOpenModal } = setup({
         card: createMockCard({
-          type: "question",
+          type: "card-type/question",
           can_write: true,
         }),
         hasAcknowledgedModelModal: true,
@@ -228,7 +228,7 @@ describe("QuestionActions", () => {
         .mockImplementation(() => () => Promise.resolve());
       setup({
         card: createMockCard({
-          type: "model",
+          type: "card-type/model",
           can_write: true,
         }),
       });
@@ -242,7 +242,7 @@ describe("QuestionActions", () => {
     it("should not allow to turn into a model without write collection permissions", async () => {
       setup({
         card: createMockCard({
-          type: "question",
+          type: "card-type/question",
           can_write: false,
         }),
       });
@@ -255,7 +255,7 @@ describe("QuestionActions", () => {
     it("should not allow to turn into a question without write collection permissions", async () => {
       setup({
         card: createMockCard({
-          type: "model",
+          type: "card-type/model",
           can_write: false,
         }),
       });
@@ -270,7 +270,7 @@ describe("QuestionActions", () => {
     it("should allow to turn into a model without data permissions", async () => {
       const { onOpenModal } = setup({
         card: createMockCard({
-          type: "question",
+          type: "card-type/question",
           can_write: true,
         }),
         hasDataPermissions: false,
@@ -288,7 +288,7 @@ describe("QuestionActions", () => {
         .mockImplementation(() => () => Promise.resolve());
       setup({
         card: createMockCard({
-          type: "model",
+          type: "card-type/model",
           can_write: true,
         }),
         hasDataPermissions: false,
@@ -304,7 +304,7 @@ describe("QuestionActions", () => {
   it("should not render the menu when there are no menu items", () => {
     setup({
       card: createMockCard({
-        type: "model",
+        type: "card-type/model",
         can_write: false,
       }),
       hasDataPermissions: false,

@@ -57,7 +57,7 @@ export function question(
     query = "?" + query;
   }
 
-  const isModel = card?.type === "model" || card?.model === "dataset";
+  const isModel = card?.type === "card-type/model" || card?.model === "dataset";
   const fallbackPath = isModel ? "model" : "question";
   let path: string = card?.type ?? fallbackPath;
 
@@ -88,7 +88,7 @@ export function question(
   if (mode === "notebook") {
     path = `${path}/notebook`;
   } else if (mode === "query") {
-    if (card.type === "model" || card.type === "metric") {
+    if (card.type === "card-type/model" || card.type === "card-type/metric") {
       path = `${path}/query`;
     } else {
       path = `${path}/notebook`;

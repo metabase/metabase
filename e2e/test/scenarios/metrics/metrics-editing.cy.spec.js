@@ -6,7 +6,7 @@ const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Orders metric",
-  type: "metric",
+  type: "card-type/metric",
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -16,7 +16,7 @@ const ORDERS_SCALAR_METRIC = {
 
 const ORDERS_SCALAR_MODEL_METRIC = {
   name: "Orders model metric",
-  type: "metric",
+  type: "card-type/metric",
   query: {
     "source-table": `card__${ORDERS_MODEL_ID}`,
     aggregation: [["count"]],
@@ -26,7 +26,7 @@ const ORDERS_SCALAR_MODEL_METRIC = {
 
 const ORDERS_SCALAR_FILTER_METRIC = {
   name: "Orders metric with filter",
-  type: "metric",
+  type: "card-type/metric",
   description: "This is a description _with markdown_",
   query: {
     "source-table": ORDERS_ID,
@@ -38,7 +38,7 @@ const ORDERS_SCALAR_FILTER_METRIC = {
 
 const PRODUCTS_SCALAR_METRIC = {
   name: "Products metric",
-  type: "metric",
+  type: "card-type/metric",
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
@@ -48,7 +48,7 @@ const PRODUCTS_SCALAR_METRIC = {
 
 const ORDERS_MULTI_STAGE_QUESTION = {
   name: "Orders question multi-stage",
-  type: "question",
+  type: "card-type/question",
   query: {
     "source-query": {
       "source-table": ORDERS_ID,
@@ -219,7 +219,7 @@ describe("scenarios > metrics > editing", () => {
     });
 
     it("should create a metric based on a multi-stage model", () => {
-      H.createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "model" });
+      H.createQuestion({ ...ORDERS_MULTI_STAGE_QUESTION, type: "card-type/model" });
       H.startNewMetric();
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Collections").click();

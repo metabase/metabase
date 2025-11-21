@@ -367,8 +367,8 @@ describe("scenarios > admin > transforms", () => {
         H.assertQueryBuilderRowCount(3);
       }
 
-      testCardSource({ type: "question", label: "Questions" });
-      testCardSource({ type: "model", label: "Models" });
+      testCardSource({ type: "card-type/question", label: "Questions" });
+      testCardSource({ type: "card-type/model", label: "Models" });
     });
 
     it("should be possible to convert an MBQL transform to a SQL transform", () => {
@@ -534,7 +534,7 @@ LIMIT
         (tableId) =>
           H.createQuestion({
             name: "Metric",
-            type: "metric",
+            type: "card-type/metric",
             query: {
               "source-table": tableId,
               aggregation: [["count"]],
@@ -598,8 +598,8 @@ LIMIT
         });
       }
 
-      testCardSource({ type: "question", label: "Questions" });
-      testCardSource({ type: "model", label: "Models" });
+      testCardSource({ type: "card-type/question", label: "Questions" });
+      testCardSource({ type: "card-type/model", label: "Models" });
     });
 
     it("should not auto-pivot query results for MBQL transforms", () => {

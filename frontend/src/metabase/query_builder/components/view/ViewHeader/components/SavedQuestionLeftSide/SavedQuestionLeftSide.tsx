@@ -48,7 +48,7 @@ export function SavedQuestionLeftSide({
 
   const renderDataSource =
     QuestionDataSource.shouldRender({ question, isObjectDetail }) &&
-    type === "question";
+    type === "card-type/question";
   const renderLastEdit = hasLastEditInfo && isAdditionalInfoVisible;
 
   useEffect(() => {

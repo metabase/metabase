@@ -26,7 +26,7 @@ export const DataStep = ({
   const table = tableId
     ? (Lib.tableOrCardMetadata(query, tableId) ?? undefined)
     : undefined;
-  const isMetric = question.type() === "metric";
+  const isMetric = question.type() === "card-type/metric";
 
   const isRaw = useMemo(() => {
     return (

@@ -70,7 +70,7 @@ describe("parameters/utils/mapping-options", () => {
         dataset = question.setCard({
           ...question.card(),
           id: 123,
-          type: "model",
+          type: "card-type/model",
         });
 
         // create a virtual table for the card
@@ -119,7 +119,7 @@ describe("parameters/utils/mapping-options", () => {
     describe("native model", () => {
       it("should not return mapping options for native models", () => {
         const card = createMockCard({
-          type: "model",
+          type: "card-type/model",
           dataset_query: createMockNativeDatasetQuery({
             native: {
               query: "SELECT * FROM ORDERS",

@@ -22,7 +22,7 @@ describe("scenarios > models metadata", () => {
           "source-table": ORDERS_ID,
           limit: 5,
         },
-        type: "model",
+        type: "card-type/model",
       };
 
       H.createQuestion(modelDetails, { visitQuestion: true, wrapId: true });
@@ -116,7 +116,7 @@ describe("scenarios > models metadata", () => {
     H.createNativeQuestion(
       {
         name: "Native Model",
-        type: "model",
+        type: "card-type/model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -167,7 +167,7 @@ describe("scenarios > models metadata", () => {
     H.createNativeQuestion(
       {
         name: "Native Model",
-        type: "model",
+        type: "card-type/model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -190,7 +190,7 @@ describe("scenarios > models metadata", () => {
     H.createNativeQuestion(
       {
         name: "Native Model",
-        type: "model",
+        type: "card-type/model",
         native: {
           query: "SELECT * FROM ORDERS LIMIT 5",
         },
@@ -218,7 +218,7 @@ describe("scenarios > models metadata", () => {
 
     H.createNativeQuestion({
       name: "Native Model",
-      type: "model",
+      type: "card-type/model",
       native: {
         query: "SELECT * FROM ORDERS LIMIT 5",
       },
@@ -270,7 +270,7 @@ describe("scenarios > models metadata", () => {
 
   it("should allow reordering columns by the edge of column header (metabase#41419)", () => {
     const ordersJoinProductsQuery = {
-      type: "model",
+      type: "card-type/model",
       query: {
         "source-table": ORDERS_ID,
         joins: [
@@ -315,7 +315,7 @@ describe("scenarios > models metadata", () => {
       H.createNativeQuestion(
         {
           name: "Native Model",
-          type: "model",
+          type: "card-type/model",
           native: {
             query: "select * from orders limit 100",
           },
@@ -456,7 +456,7 @@ describe("scenarios > models metadata", () => {
 
       const questionDetails = {
         name: "22521",
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": PRODUCTS_ID,
           limit: 5,
@@ -479,7 +479,7 @@ describe("scenarios > models metadata", () => {
   it("does not confuse the names of various native model columns mapped to the same database field", () => {
     H.createNativeQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         native: {
           query: "select 1 as A, 2 as B, 3 as C",
         },

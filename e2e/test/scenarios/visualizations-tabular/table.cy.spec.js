@@ -609,7 +609,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     H.createQuestionAndDashboard({
       questionDetails: {
         name: "reviews",
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": SAMPLE_DATABASE.REVIEWS_ID,
         },
@@ -729,7 +729,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     H.createQuestionAndDashboard({
       questionDetails: {
         name: "reviews",
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": SAMPLE_DATABASE.REVIEWS_ID,
         },

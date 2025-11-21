@@ -270,7 +270,7 @@ export const MoveQuestionModal = ({
       initialCollectionId={question.collectionId() ?? "root"}
       onClose={onClose}
       onMove={handleChooseMoveLocation}
-      canMoveToDashboard={question.type() === "question"}
+      canMoveToDashboard={question.type() === "card-type/question"}
       recentAndSearchFilter={recentAndSearchFilter}
     />
   );

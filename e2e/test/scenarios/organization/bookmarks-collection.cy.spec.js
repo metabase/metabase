@@ -175,7 +175,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
       H.createQuestion({
         name: "Orders Model",
         query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
-        type: "model",
+        type: "card-type/model",
       });
 
       addBookmarkTo("Orders Model");

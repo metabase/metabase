@@ -14,7 +14,7 @@ describe("issue 47058", () => {
 
     H.createQuestion({
       name: "Metric 47058",
-      type: "metric",
+      type: "card-type/metric",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
@@ -22,7 +22,7 @@ describe("issue 47058", () => {
     }).then(({ body: { id: metricId } }) => {
       H.createQuestion({
         name: "Question 47058",
-        type: "question",
+        type: "card-type/question",
         query: {
           "source-table": ORDERS_ID,
           fields: [
@@ -61,7 +61,7 @@ describe("issue 47058", () => {
 describe("issue 44171", () => {
   const METRIC_A: StructuredQuestionDetails = {
     name: "Metric 44171-A",
-    type: "metric",
+    type: "card-type/metric",
     display: "line",
     query: {
       "source-table": ORDERS_ID,
@@ -78,7 +78,7 @@ describe("issue 44171", () => {
 
   const METRIC_B: StructuredQuestionDetails = {
     name: "Metric 44171-B",
-    type: "metric",
+    type: "card-type/metric",
     display: "line",
     query: {
       "source-table": ORDERS_ID,
@@ -156,7 +156,7 @@ describe("issue 32037", () => {
     cy.signInAsNormalUser();
     H.createQuestion({
       name: "Metric 32037",
-      type: "metric",
+      type: "card-type/metric",
       display: "line",
       query: {
         "source-table": ORDERS_ID,

@@ -38,7 +38,7 @@ export const turnQuestionIntoModel =
     }
 
     const model = question
-      .setType("model")
+      .setType("card-type/model")
       .setPinned(true)
       .setDisplay("table")
       .setSettings({});
@@ -59,7 +59,7 @@ export const turnModelIntoQuestion =
       return;
     }
 
-    let question = model.setType("question");
+    let question = model.setType("card-type/question");
     // Display 'list' is not supported for questions, for now.
     if (question.display() === "list") {
       question = question.setDisplay("table");

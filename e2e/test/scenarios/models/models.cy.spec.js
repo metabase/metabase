@@ -41,7 +41,7 @@ describe("scenarios > models", () => {
       {
         name: "Accounts Model",
         query: { "source-table": ACCOUNTS_ID },
-        type: "model",
+        type: "card-type/model",
       },
       {
         wrapId: true,
@@ -283,7 +283,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a model back into a saved question", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("cardUpdate");
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
 
@@ -307,7 +307,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows duplicating a model", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     cy.intercept("POST", "/api/card").as("cardCreate");
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
 
@@ -345,7 +345,7 @@ describe("scenarios > models", () => {
   });
 
   it("redirects to /model URL when opening a model with /question URL", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     // Important - do not use visitQuestion(ORDERS_QUESTION_ID) here!
     cy.visit("/question/" + ORDERS_QUESTION_ID);
     cy.wait("@dataset");
@@ -357,7 +357,7 @@ describe("scenarios > models", () => {
   describe("data picker", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/search*").as("search");
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     });
 
     it("transforms the data picker", () => {
@@ -494,7 +494,7 @@ describe("scenarios > models", () => {
     beforeEach(() => {
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
-        type: "model",
+        type: "card-type/model",
       });
     });
 
@@ -640,7 +640,7 @@ describe("scenarios > models", () => {
     H.createNativeQuestion({
       native: { query: "SELECT * FROM products" },
     }).then(({ body: { id: modelId } }) => {
-      cy.request("PUT", `/api/card/${modelId}`, { type: "model" }).then(() => {
+      cy.request("PUT", `/api/card/${modelId}`, { type: "card-type/model" }).then(() => {
         cy.visit(`/model/${modelId}/query`);
         H.NativeEditor.focus().type("{movetoend}").type(" WHERE {{F", {
           parseSpecialCharSequences: false,
@@ -654,7 +654,7 @@ describe("scenarios > models", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     H.createNativeQuestion({
       name: "TEST MODEL",
-      type: "model",
+      type: "card-type/model",
       native: {
         query: "select * from orders",
       },
@@ -697,7 +697,7 @@ describe("scenarios > models", () => {
         "source-table": ORDERS_ID,
         limit: 5,
       },
-      type: "model",
+      type: "card-type/model",
     };
 
     beforeEach(() => {

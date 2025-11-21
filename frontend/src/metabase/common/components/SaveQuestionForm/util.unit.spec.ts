@@ -14,7 +14,7 @@ const mockCard = createMockCard({
   name: "Test Question",
   description: "Test Description",
   collection_id: 1,
-  type: "question",
+  type: "card-type/question",
 });
 
 const mockOriginalCard = createMockCard({
@@ -22,7 +22,7 @@ const mockOriginalCard = createMockCard({
   name: "Original Question",
   description: "Original Description",
   collection_id: 2,
-  type: "question",
+  type: "card-type/question",
 });
 
 const mockQuestion = new Question(mockCard);

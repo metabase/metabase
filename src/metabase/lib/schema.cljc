@@ -520,3 +520,21 @@
   [:and
    [:ref ::query]
    [:fn {:error/message "native-only query"} native-only-query?]])
+
+#_(mr/def ::table-symlink-query.stage
+    "Schema for the first and only stage of a Table Symlink query. An MBQL stage that has only the keys `:lib/type` and
+  `:source-table`."
+    [:map
+     {:closed             true
+      :decode/normalize   #'normalize-mbql-stage
+      :encode/for-hashing #'encode-mbql-stage-for-hashing}
+     [:lib/type     [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
+     [:source-table {:optional true} [:ref ::id/table]]])
+
+#_(mr/def ::table-symlink-query
+    "Schema for a `:dataset-query` for a Card with `:type` `:table-symlink`. A Table Symlink is only allowed to have the
+  MBQL equivalent of `SELECT * FROM <table>`."
+    [:merge
+     ::query
+     [:map
+      [:stages [:sequential {:min 1, :max 1} [:ref ::table-symlink-query.stage]]]]])

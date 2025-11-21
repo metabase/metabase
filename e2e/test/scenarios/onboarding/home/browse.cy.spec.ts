@@ -269,7 +269,7 @@ describe("scenarios > browse (EE)", () => {
           "source-table": PRODUCTS_ID,
           limit: 10,
         },
-        type: "model",
+        type: "card-type/model",
       });
     });
 

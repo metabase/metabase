@@ -12,7 +12,7 @@ export const QuestionRelationshipsTab = ({
 }: {
   question: Question;
 }) => {
-  const isModel = question.type() === "model";
+  const isModel = question.type() === "card-type/model";
 
   return (
     <Stack gap="lg">

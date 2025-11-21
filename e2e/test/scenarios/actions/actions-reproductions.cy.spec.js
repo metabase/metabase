@@ -422,7 +422,7 @@ describe("issue 32840", () => {
 
     H.createQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         name: "Products model",
         database: SAMPLE_DB_ID,
         query: {

@@ -143,7 +143,7 @@ describe("QuestionSources", () => {
   it("shows source information for a model (its database and table)", async () => {
     const model = createMockCard({
       name: "My Model",
-      type: "model",
+      type: "card-type/model",
     });
 
     await setup({ card: model });

@@ -324,7 +324,7 @@ describe("extract action", () => {
             ],
           },
         },
-        type: "model",
+        type: "card-type/model",
       };
 
       H.createQuestion(questionDetails).then(({ body: { id: modelId } }) => {

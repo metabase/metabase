@@ -62,59 +62,65 @@
   [query :- ::lib.schema/query]
   (count (:stages query)))
 
-(defmulti can-run-method
+(defmulti ^:private can-run-method
   "Returns whether the query is runnable based on first stage :lib/type"
   {:arglists '([query card-type])}
-  (fn [query _card-type]
-    (:lib/type (lib.util/query-stage query 0))))
+  (fn [query card-type]
+    [(:lib/type (lib.util/query-stage query 0))
+     (keyword card-type)]))
 
 (defmethod can-run-method :default
   [_query _card-type]
   true)
 
-(defmethod can-run-method :mbql.stage/mbql
-  [query card-type]
-  (or (not= card-type :metric)
-      (let [stage        (lib.util/query-stage query 0)
-            aggregations (:aggregation stage)
-            breakouts    (:breakout stage)]
-        (and (= (stage-count query) 1)
-             (= (count aggregations) 1)
-             (or (empty? breakouts)
-                 (and (= (count breakouts) 1)
-                      (-> (lib.metadata.calculation/metadata query (first breakouts))
-                          ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
-                          ;; before doing type checks
-                          (lib.temporal-bucket/with-temporal-bucket nil)
-                          lib.types.isa/date-or-datetime?)))))))
+(defmethod can-run-method [:mbql.stage/mbql :card-type/question] [_query _card-type] true)
+(defmethod can-run-method [:mbql.stage/mbql :card-type/model]    [_query _card-type] true)
+
+(defmethod can-run-method [:mbql.stage/mbql :card-type/metric]
+  [query _card-type]
+  (let [stage        (lib.util/query-stage query 0)
+        aggregations (:aggregation stage)
+        breakouts    (:breakout stage)]
+    (and (= (stage-count query) 1)
+         (= (count aggregations) 1)
+         (or (empty? breakouts)
+             (and (= (count breakouts) 1)
+                  (-> (lib.metadata.calculation/metadata query (first breakouts))
+                      ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
+                      ;; before doing type checks
+                      (lib.temporal-bucket/with-temporal-bucket nil)
+                      lib.types.isa/date-or-datetime?))))))
+
+;;; You can't have a table symlink card with a native stage
+#_(defmethod can-run-method [:mbql.stage/native :card-type/table-symlink]
+    [_query _card-type]
+    false)
+
+#_(defmethod can-run-method [:mbql.stage/mbql :card-type/table-symlink]
+    [query _stage-type]
+    (mr/validate ::lib.schema/table-symlink-query query))
 
 (mu/defn can-run :- :boolean
-  "Returns whether the query is runnable. Manually validate schema for cljs."
-  [query :- ::lib.schema/query
+  "Returns whether the query is 'physically' runnable, i.e. valid enough to run. Manually validate schema for
+  cljs. (This is not a permissions check for whether the current user can run this query or not.)"
+  [query     :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
-  (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-         (mr/validate ::lib.schema/query query))
-       (:database query)
-       (boolean (can-run-method query card-type))))
-
-(defmulti can-save-method
-  "Returns whether the query can be saved based on first stage :lib/type."
-  {:arglists '([query card-type])}
-  (fn [query _card-type]
-    (:lib/type (lib.util/query-stage query 0))))
-
-(defmethod can-save-method :default
-  [_query _card-type]
-  true)
+  (boolean
+   (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+          (mr/validate ::lib.schema/query query))
+        (:database query)
+        (can-run-method query card-type))))
 
 ;;; TODO FIXME -- boolean functions should end in `?`
 (mu/defn can-save :- :boolean
-  "Returns whether `query` for a card of `card-type` can be saved."
-  [query :- ::lib.schema/query
+  "Returns whether `query` for a card of `card-type` is valid enough to be saved. (This is not a permissions check for
+  whether the current user can save this query or not.)"
+  [query     :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
        (can-run query card-type)
-       (boolean (can-save-method query card-type))))
+       ;; you cannot edit a table-symlink
+       (not= card-type :table-symlink)))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.

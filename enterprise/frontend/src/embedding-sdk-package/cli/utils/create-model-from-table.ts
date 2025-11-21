@@ -26,7 +26,7 @@ export async function createModelFromTable(options: Options) {
     headers: { "content-type": "application/json", cookie },
     body: JSON.stringify({
       name: table.display_name,
-      type: "model",
+      type: "card-type/model",
       display: "table",
       result_metadata: null,
       collection_id: collectionId,

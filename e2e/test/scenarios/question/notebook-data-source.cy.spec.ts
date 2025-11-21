@@ -56,7 +56,7 @@ describe("scenarios > notebook > data source", () => {
         name: "GUI Model",
         query: { "source-table": REVIEWS_ID, limit: 1 },
         display: "table",
-        type: "model",
+        type: "card-type/model",
       });
 
       H.startNewQuestion();
@@ -241,7 +241,7 @@ describe("scenarios > notebook > data source", () => {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
-      type: "model",
+      type: "card-type/model",
       collection_id: SECOND_COLLECTION_ID,
     };
 
@@ -373,7 +373,7 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
-      type: "model",
+      type: "card-type/model",
     });
     H.startNewQuestion();
     H.entityPickerModal().within(() => {

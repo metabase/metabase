@@ -34,7 +34,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   dataset_query: createMockStructuredDatasetQuery(),
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],
-  type: "question",
+  type: "card-type/question",
   can_write: true,
   can_restore: false,
   can_delete: false,

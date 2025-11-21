@@ -339,8 +339,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should connect a parameter to a model", () => {
-      H.createQuestion({ ...singleBreakoutQuestionDetails, type: "model" });
-      H.createNativeQuestion({ ...nativeQuestionDetails, type: "model" });
+      H.createQuestion({ ...singleBreakoutQuestionDetails, type: "card-type/model" });
+      H.createNativeQuestion({ ...nativeQuestionDetails, type: "card-type/model" });
       H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
@@ -356,7 +356,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should connect a parameter to a metric", () => {
-      H.createQuestion({ ...singleBreakoutQuestionDetails, type: "metric" });
+      H.createQuestion({ ...singleBreakoutQuestionDetails, type: "card-type/metric" });
       H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );

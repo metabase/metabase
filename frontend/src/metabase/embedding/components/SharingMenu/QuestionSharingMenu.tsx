@@ -25,7 +25,7 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
     null,
   );
   const hasPublicLink = !!question?.publicUUID?.();
-  const isModel = question.type() === "model";
+  const isModel = question.type() === "card-type/model";
   const isArchived = question.isArchived();
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);

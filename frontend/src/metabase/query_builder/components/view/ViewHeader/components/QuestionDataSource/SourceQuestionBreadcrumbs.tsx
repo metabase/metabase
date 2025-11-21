@@ -37,7 +37,7 @@ export function SourceQuestionBreadcrumbs({
     return null;
   }
 
-  if (sourceQuestion.type() === "model" || sourceQuestion.type() === "metric") {
+  if (sourceQuestion.type() === "card-type/model" || sourceQuestion.type() === "card-type/metric") {
     return (
       <SourceDatasetBreadcrumbs
         question={sourceQuestion}

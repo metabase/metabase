@@ -102,7 +102,7 @@ describe("scenarios > search", () => {
         H.createQuestion({
           name: "Orders Model",
           query: { "source-table": ORDERS_ID },
-          type: "model",
+          type: "card-type/model",
         }).then(({ body: { id } }) => {
           H.createAction({
             name: "Update orders quantity",
@@ -128,7 +128,7 @@ describe("scenarios > search", () => {
           {
             name: "Products Model",
             query: { "source-table": PRODUCTS_ID },
-            type: "model",
+            type: "card-type/model",
           },
           { wrapId: true, idAlias: "modelId" },
         );

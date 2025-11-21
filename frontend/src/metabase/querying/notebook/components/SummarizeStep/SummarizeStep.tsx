@@ -14,7 +14,7 @@ export function SummarizeStep({
   readOnly,
   ...props
 }: NotebookStepProps) {
-  const isMetric = step.question.type() === "metric";
+  const isMetric = step.question.type() === "card-type/metric";
 
   const hasBreakouts = Lib.breakouts(step.query, step.stageIndex).length > 0;
   const showBreakouts = !readOnly || hasBreakouts;

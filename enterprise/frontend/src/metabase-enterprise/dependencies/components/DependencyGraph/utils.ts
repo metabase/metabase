@@ -265,7 +265,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "card":
       // view_count is not calculated property for models and metrics since
       // they are typically not run directly
-      return node.data.type === "question"
+      return node.data.type === "card-type/question"
         ? (node.data.view_count ?? null)
         : null;
     case "dashboard":

@@ -12,7 +12,7 @@ export function SummarizeStepHeader({
   canRevert,
   onRevert,
 }: NotebookStepHeaderProps) {
-  const isMetric = step.question.type() === "metric";
+  const isMetric = step.question.type() === "card-type/metric";
   if (!isMetric) {
     return (
       <NotebookStepHeader

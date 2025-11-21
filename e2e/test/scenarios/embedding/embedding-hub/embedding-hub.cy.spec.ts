@@ -127,7 +127,7 @@ describe("scenarios - embedding hub", () => {
         H.createNativeQuestion(
           {
             name: "Test Model",
-            type: "model",
+            type: "card-type/model",
             database: dbId,
             native: { query: "SELECT 1 as t" },
           },

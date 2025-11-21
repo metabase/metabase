@@ -26,20 +26,20 @@ const nativeCard = createMockCard({
 const structuredModelCard = createMockCard({
   id: getNextId(),
   name: "structured model",
-  type: "model",
+  type: "card-type/model",
 });
 
 const nativeModelCard = createMockCard({
   id: getNextId(),
   name: "native model",
-  type: "model",
+  type: "card-type/model",
   dataset_query: createMockNativeDatasetQuery(),
 });
 
 const structuredMetricCard = createMockCard({
   id: getNextId(),
   name: "structured metric",
-  type: "metric",
+  type: "card-type/metric",
 });
 
 const cards: Card[] = [

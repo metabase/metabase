@@ -1938,7 +1938,7 @@ describe("Issue 46337", () => {
     H.restore();
     cy.signInAsAdmin();
     H.createQuestion({
-      type: "model",
+      type: "card-type/model",
       name: MODEL_NAME,
       query: {
         "source-table": ORDERS_ID,

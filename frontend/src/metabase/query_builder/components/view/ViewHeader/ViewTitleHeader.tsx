@@ -142,7 +142,7 @@ export function ViewTitleHeader({
 
   const isSaved = question.isSaved();
   const isModelOrMetric =
-    question.type() === "model" || question.type() === "metric";
+    question.type() === "card-type/model" || question.type() === "card-type/metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
 
   return (

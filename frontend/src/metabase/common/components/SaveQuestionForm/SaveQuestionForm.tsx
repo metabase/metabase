@@ -53,7 +53,7 @@ export const SaveQuestionForm = ({
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
   const models: CollectionPickerModel[] =
-    question.type() === "question"
+    question.type() === "card-type/question"
       ? ["collection", "dashboard"]
       : ["collection"];
 

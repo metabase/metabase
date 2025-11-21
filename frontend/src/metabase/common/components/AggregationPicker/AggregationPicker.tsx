@@ -56,7 +56,7 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
 };
 
 type MetricListItem = Lib.MetricDisplayInfo & {
-  type: "metric";
+  type: "card-type/metric";
   metric: Lib.MetricMetadata;
   name: string;
   selected: boolean;
@@ -279,7 +279,7 @@ export function AggregationPicker({
     (item: Item) => {
       if (item.type === "operator") {
         handleOperatorSelect(item);
-      } else if (item.type === "metric") {
+      } else if (item.type === "card-type/metric") {
         handleMetricSelect(item);
       } else if (item.type === "expression-clause") {
         handleExpressionSelect(item.clause.name);
@@ -501,7 +501,7 @@ function getMetricListItem(
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,
-    type: "metric",
+    type: "card-type/metric",
     name: metricInfo.displayName,
     metric,
     selected:

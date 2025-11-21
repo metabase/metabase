@@ -5,6 +5,6 @@ export const createMockBookmark = (opts?: Partial<Bookmark>): Bookmark => ({
   name: "My Collection",
   item_id: 1,
   type: "collection",
-  card_type: "question",
+  card_type: "card-type/question",
   ...opts,
 });

@@ -138,7 +138,7 @@ describe("scenarios > question > nested", () => {
     const metric = {
       name: "Sum of discounts",
       description: "Discounted orders.",
-      type: "metric",
+      type: "card-type/metric",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

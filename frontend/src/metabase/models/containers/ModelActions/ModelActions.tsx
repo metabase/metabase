@@ -77,7 +77,7 @@ function ModelActions({
 
   useMount(() => {
     const card = model.card();
-    const isModel = model.type() === "model";
+    const isModel = model.type() === "card-type/model";
     if (isModel) {
       if (model.database()) {
         loadMetadataForCard(card);
