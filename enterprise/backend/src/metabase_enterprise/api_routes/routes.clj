@@ -31,7 +31,6 @@
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.public-sharing.api]
    [metabase-enterprise.remote-sync.api]
-   [metabase-enterprise.representations.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.semantic-search.api]
@@ -126,7 +125,6 @@
    "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    "/public"                       (api.routes.common/+public-exceptions metabase-enterprise.public-sharing.api/routes)
-   "/representation"               metabase-enterprise.representations.api/routes
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)

@@ -6,8 +6,6 @@
    [metabase-enterprise.representations.v0.document]
    [metabase-enterprise.representations.v0.metric]
    [metabase-enterprise.representations.v0.model]
-   [metabase-enterprise.representations.v0.pulse]
    [metabase-enterprise.representations.v0.question]
    [metabase-enterprise.representations.v0.snippet]
-   [metabase-enterprise.representations.v0.timeline]
    [metabase-enterprise.representations.v0.transform]))
