@@ -12,6 +12,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.impl-test :as upload-test]

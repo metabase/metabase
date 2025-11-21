@@ -10,7 +10,7 @@
   (mt/with-premium-features #{:data-studio}
     (mt/with-discard-model-updates! [:model/Collection]
       (without-library
-       (testing "When there is no library, returns a messsage but still 200"
+       (testing "When there is no library, returns a message but still 200"
          (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
            (is (= {:message "Library does not exist"} response))))
        (let [_          (collection/create-library-collection!)
