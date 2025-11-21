@@ -6,6 +6,7 @@ import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
+import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
@@ -202,7 +203,7 @@ export const useEnsureCollectionSelected = ({
     }, [currentCollection, currentDashboard]);
 
   const defaultCollectionItem = useRootCollection
-    ? items[0]
+    ? items.find(isRootCollection)
     : currentCollectionItem;
 
   useEffect(() => {
