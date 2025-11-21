@@ -13,6 +13,7 @@ export * from "./remote-sync";
 export * from "./metabot";
 export * from "./saml";
 export * from "./scim";
+export * from "./support-access-grants";
 export * from "./tags";
 export * from "./transform";
 export * from "./transform-job";

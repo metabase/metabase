@@ -198,10 +198,11 @@ export const MetabotChat = ({
               ref={metabot.promptInputRef}
               value={metabot.prompt}
               autoFocus
-              disabled={metabot.isDoingScience}
+              isResponding={metabot.isDoingScience}
               placeholder={t`Tell me to do something, or ask a question`}
               onChange={handleEditorChange}
               onSubmit={handleEditorSubmit}
+              onStop={metabot.cancelRequest}
               suggestionModels={config.suggestionModels}
             />
           </Paper>

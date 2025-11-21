@@ -141,6 +141,7 @@ When posting to GitHub (PR mode), use the **pending review workflow**:
 
 5. **Submit the review**: Use `mcp__github__submit_pending_pull_request_review` to publish all comments at once
    - Use event type `"COMMENT"` (NOT "REQUEST_CHANGES") to make it non-blocking
+   - **Do NOT include a body message** - Leave the body empty or omit it entirely
    - All comments will appear together as one cohesive review
 
 **Comment format example:**
@@ -156,6 +157,7 @@ This uses backticks for the UI element. Use **bold** instead: **Filter** not `Fi
 - Always start the comment body with `**Issue N: [Brief title]**`
 - **MUST add all comments in parallel in a single response** - Do NOT add them one after another in separate responses
 - Do NOT output a summary message to the conversation - only post GitHub review comments
+- When submitting the review, do NOT include a body parameter (or leave it empty) to avoid cluttering the PR with summary text
 - The review will appear as a single review with multiple comments when submitted
 
 ## Final check

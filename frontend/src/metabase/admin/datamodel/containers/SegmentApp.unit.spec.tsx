@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -17,7 +18,6 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
-import { Route } from "metabase/hoc/Title";
 import { checkNotNull } from "metabase/lib/types";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
