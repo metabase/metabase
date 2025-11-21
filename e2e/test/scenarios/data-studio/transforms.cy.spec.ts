@@ -547,7 +547,7 @@ LIMIT
 
       H.miniPicker().within(() => {
         cy.findByText("Our analytics").click();
-        cy.findByText("Metric").should("have.attr", "data-disabled", "true");
+        cy.findByText("Metric").should("not.exist");
       });
 
       H.miniPickerHeader().click();
