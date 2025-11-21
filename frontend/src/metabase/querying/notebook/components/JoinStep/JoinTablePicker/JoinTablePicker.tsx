@@ -49,6 +49,11 @@ export function JoinTablePicker({
           hasMetrics={false}
           isDisabled={isReadOnly}
           onChange={onChange}
+          columnPicker={
+            table != null && !isReadOnly ? (
+              <JoinTableColumnPicker columnPicker={columnPicker} />
+            ) : null
+          }
         />
       ) : (
         <NotebookCellItem

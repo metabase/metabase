@@ -67,6 +67,13 @@ export const DataStep = ({
           setIsOpened={setIsOpened}
           isDisabled={readOnly}
           onChange={handleTableChange}
+          columnPicker={
+            <DataFieldPopover
+              query={query}
+              stageIndex={stageIndex}
+              updateQuery={updateQuery}
+            />
+          }
           {...dataPickerOptions}
         />
       ) : (
@@ -112,7 +119,7 @@ interface DataFieldPopoverProps {
   updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
-function DataFieldPopover({
+export function DataFieldPopover({
   query,
   stageIndex,
   updateQuery,

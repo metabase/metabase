@@ -28,6 +28,7 @@ import {
   type NotebookContextType,
   useNotebookContext,
 } from "../Notebook/context";
+import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
 
@@ -49,6 +50,7 @@ export interface NotebookDataPickerProps {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
+  columnPicker: React.ReactNode;
 }
 
 export function NotebookDataPicker({
@@ -64,6 +66,7 @@ export function NotebookDataPicker({
   setIsOpened,
   onChange,
   shouldDisableItem,
+  columnPicker,
 }: NotebookDataPickerProps) {
   const store = useStore();
   const dispatch = useDispatch();
@@ -80,18 +83,35 @@ export function NotebookDataPicker({
       onChangeRef.current?.(table, metadataProvider);
     }
   };
+  const isRaw = useMemo(() => {
+    return (
+      Lib.aggregations(query, stageIndex).length === 0 &&
+      Lib.breakouts(query, stageIndex).length === 0
+    );
+  }, [query, stageIndex]);
 
   if (isEmbedding) {
+    const canSelectTableColumns = table && isRaw && !isDisabled;
     return (
-      <EmbeddingDataPicker
-        query={query}
-        stageIndex={stageIndex}
-        table={table}
-        placeholder={placeholder}
-        canChangeDatabase={canChangeDatabase}
-        isDisabled={isDisabled}
-        onChange={handleChange}
-      />
+      <NotebookCellItem
+        color="var(--mb-color-brand)"
+        inactive={!table}
+        right={canSelectTableColumns && columnPicker}
+        containerStyle={{ padding: 0 }}
+        rightContainerStyle={{ width: 37, padding: 0 }}
+        data-testid="data-step-cell"
+        disabled={isDisabled}
+      >
+        <EmbeddingDataPicker
+          query={query}
+          stageIndex={stageIndex}
+          table={table}
+          placeholder={placeholder}
+          canChangeDatabase={canChangeDatabase}
+          isDisabled={isDisabled}
+          onChange={handleChange}
+        />
+      </NotebookCellItem>
     );
   } else {
     return (
