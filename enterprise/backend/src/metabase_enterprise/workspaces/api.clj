@@ -165,7 +165,7 @@
    _body-params]
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id id)
                            (api/check-404 <>)
-                           #_(api/check-400 (nil? (:archived_at <>)) "Cannot promote an already archived workspace"))
+                           (api/check-400 (nil? (:archived_at <>)) "Cannot promote an already archived workspace"))
         {:keys [promoted
                 errors]} (ws.promotion/promote-transforms! ws)]
     (u/prog1
