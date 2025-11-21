@@ -25,7 +25,6 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
-import { isStaticEntityLoadingError } from "embedding-sdk-bundle/lib/is-static-entity-loading-error";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
@@ -47,6 +46,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -265,7 +265,7 @@ const SdkDashboardInner = ({
     );
   }
 
-  if (isGuestEmbed && isStaticEntityLoadingError(errorPage)) {
+  if (isGuestEmbed && isStaticEmbeddingEntityLoadingError(errorPage)) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkError message={errorPage.data ?? t`Something's gone wrong`} />
