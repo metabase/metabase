@@ -13,39 +13,15 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Fetch CI config
-      id: ci-config
-      shell: bash
-      run: |
-        echo "Fetching CI test configuration..."
-        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json || {
-          echo "Failed to fetch CI config, proceeding with tests"
-          echo "skip=false" >> $GITHUB_OUTPUT
-          exit 0
-        }
-
-        # Show the config for debugging
-        echo "CI Config contents:"
-        cat ci-test-config.json
-
     - name: Check if driver is ignored
       id: check-driver
       shell: bash
       run: |
-        if [ -z "$DRIVERS" ]; then
-          echo "DRIVERS env var not set, proceeding with tests"
-          echo "skip=false" >> $GITHUB_OUTPUT
-          exit 0
-        fi
+        # Fetch CI config and check if driver should be skipped
+        curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/main/ci-test-config.json || true
 
-        if [ ! -f ci-test-config.json ]; then
-          echo "CI config not found, proceeding with tests"
-          echo "skip=false" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        # Check if the driver is in the ignored list
-        IS_IGNORED=$(jq --arg driver "$DRIVERS" '.ignored.drivers | contains([$driver])' ci-test-config.json)
+        # Check if the driver is in the ignored list (gracefully handle missing/invalid config)
+        IS_IGNORED=$(jq --arg driver "$DRIVERS" '.ignored.drivers // [] | contains([$driver])' ci-test-config.json 2>/dev/null || echo "false")
 
         if [ "$IS_IGNORED" = "true" ]; then
           echo "⚠️  Driver '$DRIVERS' is in the ignored list. Skipping tests."
@@ -59,15 +35,16 @@ runs:
       if: steps.check-driver.outputs.skip != 'true'
       uses: ./.github/actions/prepare-backend
     - name: Prepare front-end environment
+      if: ${{ steps.check-driver.outputs.skip != 'true' && inputs.build-static-viz == 'true' }}
       uses: ./.github/actions/prepare-frontend
-      if: ${{ inputs.build-static-viz == 'true' }}
     - name: Build static viz frontend
+      if: ${{ steps.check-driver.outputs.skip != 'true' && inputs.build-static-viz == 'true' }}
       run: yarn build-static-viz
       shell: bash
-      if: ${{ inputs.build-static-viz == 'true' }}
       env:
         MB_EDITION: ee
     - name: Test database driver
+      if: steps.check-driver.outputs.skip != 'true'
       run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
       shell: bash
       id: run-test
