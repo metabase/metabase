@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -51,15 +50,9 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
               {
                 title: t`Set up tenants`,
                 description: t`Define a multi tenant user strategy to manage access for external users.`,
-                onClick: () => {
-                  dispatch(
-                    push(
-                      isUsingTenants
-                        ? "/admin/tenants"
-                        : "/admin/people/user-strategy",
-                    ),
-                  );
-                },
+                to: isUsingTenants
+                  ? "/admin/tenants"
+                  : "/admin/people/user-strategy",
                 optional: true,
               },
             ]
@@ -180,5 +173,5 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       SECURE_EMBEDS,
       EMBED_PRODUCTION,
     ];
-  }, [dispatch, isUsingTenants, openEmbedModal]);
+  }, [isUsingTenants, openEmbedModal]);
 };
