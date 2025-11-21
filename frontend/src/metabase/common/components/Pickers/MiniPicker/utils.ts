@@ -162,6 +162,7 @@ async function getCollectionPathFromValue(
 // not a factory
 export function getFolderAndHiddenFunctions(
   models: MiniPickerPickableItem["model"][],
+  shouldHide?: (item: MiniPickerItem | unknown) => boolean,
 ) {
   const modelSet = new Set(models);
   const isFolder = (
@@ -192,7 +193,11 @@ export function getFolderAndHiddenFunctions(
       return false;
     }
 
-    return !modelSet.has(item.model as any) && !isFolder(item);
+    return (
+      !modelSet.has(item.model as any) &&
+      !isFolder(item) &&
+      (shouldHide?.(item) ?? false)
+    );
   };
   return { isFolder, isHidden };
 }

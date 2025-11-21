@@ -167,8 +167,15 @@ export const TablePicker = ({
       const hasDbs = !isLoadingDatabases && databases && databases.length > 0;
 
       if (hasDbs && !selectedDbItem) {
-        const firstDatabase = databases[0];
-        const item = getDbItem(databases, firstDatabase.id);
+        const firstDatabase = shouldDisableItem
+          ? databases.find(
+              (db) => !shouldDisableItem({ ...db, model: "database" }),
+            )
+          : databases[0];
+
+        const item = firstDatabase
+          ? getDbItem(databases, firstDatabase.id)
+          : undefined;
 
         if (item) {
           handleFolderSelectRef.current(item);
@@ -181,6 +188,7 @@ export const TablePicker = ({
       databases,
       handleFolderSelectRef,
       selectedDbItem,
+      shouldDisableItem,
     ],
   );
 

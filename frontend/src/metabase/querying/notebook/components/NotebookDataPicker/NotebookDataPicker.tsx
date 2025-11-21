@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -6,10 +6,14 @@ import type { CollectionPickerItem } from "metabase/common/components/Pickers/Co
 import {
   type DataPickerItem,
   DataPickerModal,
+  createShouldShowItem,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
-import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
+import type {
+  MiniPickerItem,
+  MiniPickerPickableItem,
+} from "metabase/common/components/Pickers/MiniPicker/types";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
@@ -150,6 +154,13 @@ function ModernDataPicker({
   const [isBrowsing, setIsBrowsing] = useState(false);
   const [focusPicker, setFocusPicker] = useState(false);
 
+  const shouldHide = useMemo(() => {
+    const shouldShow = createShouldShowItem([], databaseId);
+    return (item: MiniPickerItem) => {
+      return !shouldShow(item as DataPickerItem);
+    };
+  }, [databaseId]);
+
   return (
     <>
       <MiniPicker
@@ -169,6 +180,7 @@ function ModernDataPicker({
           setDataSourceSearchQuery("");
           setIsOpened(false);
         }}
+        shouldHide={shouldHide}
       />
       {isOpened && isBrowsing && (
         <DataPickerModal
