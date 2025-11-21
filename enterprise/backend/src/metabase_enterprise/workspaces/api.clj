@@ -112,6 +112,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [upstream-id (t2/select-one-fn :upstream_id [:model/WorkspaceMappingTransform :upstream_id] :downstream_id id)]
+    (when (nil? upstream-id) (api/check-404 (t2/exists? :model/Workspace id)))
     {:transform (t2/select-one [:model/Transform :id :name] :id upstream-id)}))
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
@@ -128,6 +129,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [mappings         (t2/select :model/WorkspaceMappingTransform :upstream_id id)
+        _                (when (empty? mappings) (api/check-404 (t2/exists? :model/Workspace id)))
         tid->wid         (u/for-map [m mappings]
                            [(:downstream_id m) (:workspace_id m)])
         transform-ids    (map :downstream_id mappings)
