@@ -41,6 +41,7 @@ describe("Table editing", () => {
 
   it("should display metadata information", { tags: ["@external"] }, () => {
     H.restore("mysql-8");
+    H.activateToken("bleeding-edge");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA MySQL8").click();
     TablePicker.getTable("Orders").click();
@@ -69,6 +70,7 @@ describe("Table editing", () => {
     { tags: ["@external"] },
     () => {
       H.restore("mysql-8");
+      H.activateToken("bleeding-edge");
       H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
@@ -118,6 +120,7 @@ describe("Table editing", () => {
 
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
     H.restore("postgres-12");
+    H.activateToken("bleeding-edge");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
@@ -161,6 +164,7 @@ describe("Table editing", () => {
     { tags: ["@external"] },
     () => {
       H.restore("postgres-writable");
+      H.activateToken("bleeding-edge");
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
 
       const SOURCE_TABLE = "Animals";

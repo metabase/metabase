@@ -109,6 +109,7 @@ describe("scenarios > data studio > datamodel", () => {
       { tags: ["@external"] },
       () => {
         H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
@@ -166,6 +167,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("1 database, no schemas", () => {
       it("should allow to navigate tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
+        H.activateToken("bleeding-edge");
         cy.signInAsAdmin();
 
         H.DataModel.visitDataStudio();
@@ -191,6 +193,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       it("should allow searching for tables", { tags: ["@external"] }, () => {
         H.restore("mysql-8");
+        H.activateToken("bleeding-edge");
         cy.signInAsAdmin();
 
         H.DataModel.visitDataStudio();
@@ -210,6 +213,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       it("should restore previously selected table when expanding the tree", () => {
         H.restore("mysql-8");
+        H.activateToken("bleeding-edge");
         cy.signInAsAdmin();
 
         H.DataModel.visitDataStudio({
@@ -294,6 +298,7 @@ describe("scenarios > data studio > datamodel", () => {
       () => {
         beforeEach(() => {
           H.restore("postgres-writable");
+          H.activateToken("bleeding-edge");
           cy.signInAsAdmin();
 
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
@@ -471,6 +476,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Search", () => {
       beforeEach(() => {
         H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
       });
@@ -564,6 +570,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       beforeEach(() => {
         H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
       });
@@ -805,6 +812,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     it("select/deselect functionality", { tags: ["@external"] }, () => {
       H.restore("postgres-writable");
+      H.activateToken("bleeding-edge");
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
@@ -1070,6 +1078,7 @@ describe("scenarios > data studio > datamodel", () => {
       { tags: ["@external"] },
       () => {
         H.restore("mysql-8");
+        H.activateToken("bleeding-edge");
 
         H.DataModel.visitDataStudio({
           databaseId: MYSQL_DB_ID,
@@ -1089,6 +1098,7 @@ describe("scenarios > data studio > datamodel", () => {
       { tags: ["@external"] },
       () => {
         H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.queryWritableDB(
           'alter table "Domestic"."Animals" drop column Name, drop column Score',
@@ -2291,6 +2301,7 @@ describe("scenarios > data studio > datamodel", () => {
           { tags: "@external" },
           () => {
             H.restore("postgres-writable");
+            H.activateToken("bleeding-edge");
             H.resetTestTable({ type: "postgres", table: "many_data_types" });
             cy.signInAsAdmin();
             H.resyncDatabase({
@@ -2516,6 +2527,7 @@ describe("scenarios > data studio > datamodel", () => {
           { tags: ["@external"] },
           () => {
             H.restore("mysql-8");
+            H.activateToken("bleeding-edge");
             H.DataModel.visitDataStudio({
               databaseId: MYSQL_DB_ID,
               schemaId: MYSQL_DB_SCHEMA_ID,
@@ -3118,6 +3130,7 @@ describe("scenarios > data studio > datamodel", () => {
       describe("Unfold JSON", { tags: "@external" }, () => {
         beforeEach(() => {
           H.restore("postgres-writable");
+          H.activateToken("bleeding-edge");
           H.resetTestTable({ type: "postgres", table: "many_data_types" });
           cy.signInAsAdmin();
           H.resyncDatabase({
@@ -3508,6 +3521,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Empty states", { tags: "@external" }, () => {
       beforeEach(() => {
         H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         H.queryWritableDB('delete from "Domestic"."Animals"');
@@ -3595,6 +3609,7 @@ describe("scenarios > data studio > datamodel", () => {
   describe("Error handling", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore("postgres-writable");
+      H.activateToken("bleeding-edge");
       H.resetTestTable({ type: "postgres", table: "many_data_types" });
       cy.signInAsAdmin();
       H.resyncDatabase({
@@ -3749,6 +3764,7 @@ describe("scenarios > data studio > datamodel", () => {
   describe("Undos", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore("postgres-writable");
+      H.activateToken("bleeding-edge");
       H.resetTestTable({ type: "postgres", table: "many_data_types" });
       cy.signInAsAdmin();
       H.resyncDatabase({
