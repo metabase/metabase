@@ -25,7 +25,7 @@ import type {
 
 export type FormattedParameterValueProps = {
   parameter: UiParameter;
-  value: boolean | string | number | number[];
+  value: string | number | number[] | ParameterValue;
   cardId?: CardId;
   dashboardId?: DashboardId;
   placeholder?: string;
@@ -97,7 +97,7 @@ function FormattedParameterValue({
 }
 
 function getValue(
-  value: boolean | string | number | number[] | ParameterValue | undefined,
+  value: string | number | number[] | ParameterValue | undefined,
 ): RowValue | undefined {
   if (Array.isArray(value)) {
     return value[0];
