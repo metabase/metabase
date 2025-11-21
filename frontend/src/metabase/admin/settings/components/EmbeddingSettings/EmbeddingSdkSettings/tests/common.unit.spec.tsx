@@ -137,6 +137,17 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     expect(await screen.findByText("Appearance")).toBeInTheDocument();
   });
 
+  it("should not show Tenants in related settings when tenants feature is not available", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      showSdkEmbedTerms: false,
+      hasEnterprisePlugins: false,
+      tokenFeatures: { tenants: false },
+    });
+
+    expect(screen.queryByText("Tenants")).not.toBeInTheDocument();
+  });
+
   it("shows the Embedded Analytics JS toggle is Disabled when token features are missing (EMB-801)", () => {
     setup({ tokenFeatures: { embedding_simple: false } });
 
