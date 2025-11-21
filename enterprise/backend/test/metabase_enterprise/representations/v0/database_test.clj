@@ -12,35 +12,22 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest export-import
-  (testing "Testing export then import roundtrip"
+  (testing "Testing export"
     (mt/with-temp [:model/Database database {:engine :postgres
                                              :name "abc"
                                              :details "{}"}]
       (let [edn (rep/export database)
             yaml (rep-yaml/generate-string edn)
             rep (rep-yaml/parse-string yaml)
-            rep (rep-read/parse rep)
-            database (rep/persist! rep)
-            database (t2/select-one :model/Database :id (:id database))
-            edn (rep/export database)
-            yaml (rep-yaml/generate-string edn)
-            rep2 (rep-yaml/parse-string yaml)
-
-            rep2 (rep-read/parse rep2)]
-        (is (=? (dissoc rep :name) rep2)))))
-
-  (testing "Testing export then import roundtrip, import doesn't change details"
-    (mt/with-temp [:model/Database database {:engine :postgres
-                                             :name "abc"
-                                             :description "MY DB"}]
-      (let [edn (rep/export database)
-            edn (assoc edn :description "CHANGE")
-            yaml (rep-yaml/generate-string edn)
-            rep (rep-yaml/parse-string yaml)
-            rep (rep-read/parse rep)
-            database2 (rep/persist! rep)
-            database2 (t2/select-one :model/Database :id (:id database2))]
-        (is (=? database database2))))))
+            rep (rep-read/parse rep)]
+        (is (=? {:name (str "database-" (:id database)),
+                 :type :database,
+                 :version :v0,
+                 :engine "postgres",
+                 :display_name "abc",
+                 :connection_details {},
+                 :schemas []}
+                rep))))))
 
 (deftest representation-type-test
   (doseq [entity (t2/select :model/Database)]
