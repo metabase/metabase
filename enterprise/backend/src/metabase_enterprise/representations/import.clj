@@ -161,29 +161,3 @@
               {}
               ordered)
       new-collection)))
-
-;;;;;;;;;;;;;;;;
-;; Transforms ;;
-
-(defn import-transform-representations
-  "Import all transforms from the associated local directory"
-  []
-  (let [trans-dir "transforms/"
-        trans-path (str v0-common/representations-export-dir trans-dir)]
-    (doseq [^java.io.File file (file-seq (io/file trans-path))]
-      (when (.isFile file)
-        (try
-          (let [valid-repr (-> (slurp file)
-                               (rep-yaml/parse-string)
-                               (rep-read/parse))
-                id (-> (:name valid-repr)
-                       (str/split #"-")
-                       (last)
-                       (Long/parseLong))
-                toucan-model (yaml->toucan valid-repr nil)
-                update-transform (assoc toucan-model
-                                        :id id
-                                        :updated_at (java.time.OffsetDateTime/now))]
-            (t2/update! :model/Transform id update-transform))
-          (catch Exception e
-            (log/errorf e "Failed to ingest representation file %s" (.getName file))))))))
