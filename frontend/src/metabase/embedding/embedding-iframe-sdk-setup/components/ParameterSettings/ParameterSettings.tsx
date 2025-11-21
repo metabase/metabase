@@ -1,20 +1,17 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
-import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
 import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
+import { useInitialParameterValues } from "../../hooks/use-initial-parameter-values";
 import { useParameterVisibility } from "../../hooks/use-parameter-visibility";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
@@ -28,6 +25,7 @@ export const ParameterSettings = () => {
     parametersValuesById,
     embeddingParameters,
     isLoading,
+    onEmbeddingParametersChange,
   } = useSdkIframeEmbedSetupContext();
 
   const { isHiddenParameter, toggleParameterVisibility } =
@@ -36,51 +34,15 @@ export const ParameterSettings = () => {
       updateSettings,
     });
 
+  const { updateInitialParameterValue, removeInitialParameterValue } =
+    useInitialParameterValues({
+      settings,
+      updateSettings,
+    });
+
   const isGuestEmbed = !!settings.isGuestEmbed;
   const isQuestionOrDashboardEmbed =
     !!settings.questionId || !!settings.dashboardId;
-
-  const updateInitialParameterValue = useDebouncedCallback(
-    useCallback(
-      (slug: string, value: ParameterValueOrArray | null | undefined) => {
-        if (settings.dashboardId) {
-          updateSettings({
-            initialParameters: {
-              ...settings.initialParameters,
-              [slug]: value,
-            },
-          });
-        } else if (settings.questionId) {
-          updateSettings({
-            initialSqlParameters: {
-              ...settings.initialSqlParameters,
-              [slug]: value,
-            },
-          });
-        }
-      },
-      [settings, updateSettings],
-    ),
-    SET_INITIAL_PARAMETER_DEBOUNCE_MS,
-  );
-  const removeInitialParameterValue = useCallback(
-    (slug: string) => {
-      if (settings.dashboardId) {
-        const nextInitialParameters = { ...settings.initialParameters };
-        delete nextInitialParameters[slug];
-        updateSettings({
-          initialParameters: nextInitialParameters,
-        });
-      } else if (settings.questionId) {
-        const nextInitialSqlParameters = { ...settings.initialSqlParameters };
-        delete nextInitialSqlParameters[slug];
-        updateSettings({
-          initialSqlParameters: nextInitialSqlParameters,
-        });
-      }
-    },
-    [settings, updateSettings],
-  );
 
   const uiParameters = useMemo(
     () =>
@@ -124,13 +86,7 @@ export const ParameterSettings = () => {
         lockedParameters={lockedParameters}
         parameterValues={parametersValuesById}
         withInitialValues
-        onChangeEmbeddingParameters={(embeddingParameters) => {
-          updateSettings(
-            getSdkIframeEmbedSettingsForEmbeddingParameters(
-              embeddingParameters,
-            ),
-          );
-        }}
+        onChangeEmbeddingParameters={onEmbeddingParametersChange}
         onChangeParameterValue={({ slug, value }) =>
           updateInitialParameterValue(slug, value)
         }
