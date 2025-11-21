@@ -166,6 +166,11 @@ import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
 
+/**
+ * Mostly for test purposes, reinitialize all plugins.
+ * You don't reinitialize plugins individually because some plugins depend on others,
+ * so reinitializing them all ensures that dependencies are correctly set up.
+ */
 export function reinitialize() {
   reinitializeAi();
   reinitializeApi();
