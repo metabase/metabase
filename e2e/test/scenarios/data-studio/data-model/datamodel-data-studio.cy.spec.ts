@@ -3156,14 +3156,16 @@ describe("scenarios > data studio > datamodel", () => {
           TableSection.getField("Json → A").should("exist");
           TableSection.getField("Json → A")
             .findByTestId("name-prefix")
-            .should("exist")
+            .scrollIntoView()
+            .should("be.visible")
             .and("have.text", "Json:");
 
           cy.log("shows prefix in field section");
           TableSection.clickField("Json → A");
           FieldSection.get()
             .findByTestId("name-prefix")
-            .should("exist")
+            .scrollIntoView()
+            .should("be.visible")
             .and("have.text", "Json:");
           FieldSection.getRawName().should("exist").and("have.text", "json.a");
 
@@ -3227,6 +3229,7 @@ describe("scenarios > data studio > datamodel", () => {
           FieldSection.getNameInput().should("have.value", "A");
           FieldSection.get()
             .findByTestId("name-prefix")
+            .scrollIntoView()
             .should("be.visible")
             .and("have.text", "Json:");
           verifyTablePreview({
