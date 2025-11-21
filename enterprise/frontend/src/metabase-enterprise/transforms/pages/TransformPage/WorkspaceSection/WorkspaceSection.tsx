@@ -12,6 +12,7 @@ import {
   useGetTransformUpstreamMappingQuery,
   useGetWorkspaceContentsQuery,
   useGetWorkspaceQuery,
+  useMergeWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
@@ -24,8 +25,11 @@ type WorkspaceSectionProps = {
 export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
   const dispatch = useDispatch();
   const hasWorkspace = transform.workspace_id != null;
-  const [createWorkspace, { isLoading }] = useCreateWorkspaceMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const [createWorkspace, { isLoading: isCreating }] =
+    useCreateWorkspaceMutation();
+  const [mergeWorkspace, { isLoading: isMerging }] =
+    useMergeWorkspaceMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [createdWorkspaceId, setCreatedWorkspaceId] = useState<number | null>(
     null,
   );
@@ -81,6 +85,25 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     }
   };
 
+  const handleMergeClick = async () => {
+    if (!transform.workspace_id || !upstreamMapping?.transform) {
+      return;
+    }
+
+    try {
+      const result = await mergeWorkspace(transform.workspace_id).unwrap();
+
+      if (result.errors && result.errors.length > 0) {
+        sendErrorToast(t`Some transforms failed to merge`);
+      } else {
+        sendSuccessToast(t`Successfully merged workspace`);
+        dispatch(push(Urls.transform(upstreamMapping.transform.id)));
+      }
+    } catch (error) {
+      sendErrorToast(t`Failed to merge workspace`);
+    }
+  };
+
   return (
     <TitleSection label={t`Workspace`}>
       <Card p="md" shadow="none" withBorder>
@@ -106,6 +129,14 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
                 </Text>
               </Group>
             )}
+            <Button
+              leftSection={<Icon name="upload" aria-hidden />}
+              onClick={handleMergeClick}
+              loading={isMerging}
+              disabled={!upstreamMapping?.transform}
+            >
+              {t`Merge`}
+            </Button>
           </Stack>
         ) : (
           <Stack gap="sm">
@@ -117,7 +148,8 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
               <Button
                 leftSection={<Icon name="add" aria-hidden />}
                 onClick={handleCheckoutClick}
-                loading={isLoading}
+                loading={isCreating}
+                disabled={!transform.table}
               >
                 {t`Check this out in a new workspace`}
               </Button>
