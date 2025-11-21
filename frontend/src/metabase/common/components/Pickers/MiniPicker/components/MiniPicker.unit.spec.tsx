@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -151,6 +152,8 @@ const setup = async (props: Partial<MiniPickerProps> = {}) => {
     createMockSearchResult({ id: 304, model: "document", name: "Wickham" }),
     createMockSearchResult({ id: 305, model: "collection", name: "Reynolds" }),
   ]);
+
+  setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"], {}, true);
 
   renderWithProviders(
     <MiniPicker
