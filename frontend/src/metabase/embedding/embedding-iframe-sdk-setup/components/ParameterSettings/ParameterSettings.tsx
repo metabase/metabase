@@ -15,9 +15,9 @@ import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/pa
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
+import { useParameterVisibility } from "../../hooks/use-parameter-visibility";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
-import { useHideParameter } from "./hooks/use-hide-parameter";
 
 export const ParameterSettings = () => {
   const {
@@ -30,10 +30,11 @@ export const ParameterSettings = () => {
     isLoading,
   } = useSdkIframeEmbedSetupContext();
 
-  const { isParameterHidden, toggleParameterVisibility } = useHideParameter({
-    settings,
-    updateSettings,
-  });
+  const { isHiddenParameter, toggleParameterVisibility } =
+    useParameterVisibility({
+      settings,
+      updateSettings,
+    });
 
   const isGuestEmbed = !!settings.isGuestEmbed;
   const isQuestionOrDashboardEmbed =
@@ -158,7 +159,7 @@ export const ParameterSettings = () => {
             <ParameterVisibilityToggle
               parameterName={parameter.slug}
               experience={experience}
-              isHidden={isParameterHidden(parameter.slug)}
+              isHidden={isHiddenParameter(parameter.slug)}
               onToggle={toggleParameterVisibility}
             />
           </Group>
