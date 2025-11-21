@@ -37,6 +37,7 @@
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
@@ -73,6 +74,7 @@
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
+   :support-users (deferred-tru "Support Users")
    :transforms-python          (deferred-tru "Transforms Python")})
 
 (defn- premium-handler [handler required-feature]
@@ -130,6 +132,7 @@
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
    "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
    "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)

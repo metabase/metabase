@@ -51,10 +51,13 @@ if (command === "snapshot") {
 
 // Metabase component or e2e tests
 if (command === "component") {
-  runTests({
-    configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
-    testingType: "component",
-  });
+  runTests(
+    {
+      configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
+      testingType: "component",
+    },
+    cliArguments,
+  );
 }
 
 if (command === "e2e") {

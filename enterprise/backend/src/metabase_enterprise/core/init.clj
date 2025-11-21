@@ -23,5 +23,6 @@
    [metabase-enterprise.semantic-search.init]
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]
+   [metabase-enterprise.support-access-grants.init]
    [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms.init]))

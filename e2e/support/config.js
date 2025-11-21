@@ -204,6 +204,7 @@ const mainConfig = {
 
 const embeddingSdkComponentTestConfig = {
   ...defaultConfig,
+  baseUrl: undefined, // baseUrl should not be set for component tests,
   defaultCommandTimeout: 10000,
   requestTimeout: 10000,
   video: false,
