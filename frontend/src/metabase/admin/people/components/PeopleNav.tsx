@@ -36,19 +36,19 @@ export function PeopleNav() {
             <Divider my="sm" />
             <PeopleNavItem
               path="/admin/tenants"
-              data-testid="nav-item"
+              data-testid="nav-item-tenants"
               label={t`Tenants`}
               icon="globe"
             />
             <PeopleNavItem
               path="/admin/tenants/groups"
-              data-testid="nav-item"
+              data-testid="nav-item-tenant-groups"
               label={t`Tenant Groups`}
               icon="group"
             />
             <PeopleNavItem
               path="/admin/tenants/people"
-              data-testid="nav-item"
+              data-testid="nav-item-external-users"
               label={t`External Users`}
               icon="person"
             />
