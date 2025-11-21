@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
+  setupCardEndpoints,
   setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
@@ -13,6 +15,7 @@ import {
 } from "__support__/ui";
 import type { CollectionContentModel } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
@@ -186,6 +189,28 @@ describe("MiniPicker", () => {
     expect(screen.queryByText("Browse all")).not.toBeInTheDocument();
   });
 
+  it("records recent items when an item is picked", async () => {
+    const { onChangeSpy } = await setup();
+    await userEvent.click(await screen.findByText("Mini Db"));
+    await userEvent.click(await screen.findByText("public"));
+    await userEvent.click(await screen.findByText("roads"));
+
+    expect(onChangeSpy).toHaveBeenCalledWith({
+      id: 2,
+      model: "table",
+      name: "roads",
+    });
+
+    const [req] = await findRequests("POST");
+
+    expect(req.url).toContain("/api/activity/recents");
+    expect(req.body).toEqual({
+      context: "selection",
+      model: "table",
+      model_id: 2,
+    });
+  });
+
   describe("tables", () => {
     it("can pick a table from a db with multiple schemas", async () => {
       const { onChangeSpy } = await setup();
@@ -236,6 +261,21 @@ describe("MiniPicker", () => {
       expect(await screen.findByText("pokemon")).toBeInTheDocument(); // schema header
       expect(await screen.findByText("pokedex")).toBeInTheDocument(); // table
     });
+
+    it("should show a schema when provided a table as a value", async () => {
+      await setup({
+        value: {
+          model: "table",
+          id: 4,
+          db_id: 1,
+          schema: "pokemon",
+          name: "cards",
+        },
+      });
+      expect(await screen.findByText("pokemon")).toBeInTheDocument();
+      expect(await screen.findByText("cards")).toBeInTheDocument();
+      expect(await screen.findByText("pokedex")).toBeInTheDocument();
+    });
   });
 
   describe("collections", () => {
@@ -267,6 +307,31 @@ describe("MiniPicker", () => {
       await userEvent.click(await screen.findByText("Our analytics"));
       expect(await screen.findByText("Brighton")).toBeInTheDocument();
       expect(screen.queryByText("Longbourn")).not.toBeInTheDocument();
+    });
+
+    it("should show a collection when provided a card as a value", async () => {
+      setupCardEndpoints(
+        createMockCard({
+          id: 202,
+          name: "Rosings",
+          collection_id: 101,
+          collection: createMockCollection({
+            effective_location: "/",
+          }),
+        }),
+      );
+      await setup({
+        value: {
+          id: 202,
+          model: "card",
+          name: "Rosings",
+          database_id: 1,
+        },
+      });
+      expect(await screen.findByText("more things")).toBeInTheDocument();
+      expect(await screen.findByText("Rosings")).toBeInTheDocument();
+      expect(await screen.findByText("Meryton")).toBeInTheDocument(); // sibling
+      expect(screen.queryByText(/Our analytics/)).not.toBeInTheDocument(); // document sibling
     });
   });
 
