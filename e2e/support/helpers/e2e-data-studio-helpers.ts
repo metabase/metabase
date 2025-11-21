@@ -12,6 +12,8 @@ const modelOverviewPage = () => cy.findByTestId("model-overview-page");
 const modelQueryEditor = () => cy.findByTestId("model-query-editor");
 const modelFieldsPage = () => cy.findByTestId("model-fields-page");
 const collectionPage = () => cy.findByTestId("collection-page");
+const modelingEmptyPage = () =>
+  cy.findByText("Pick a collection or create a new model or metric");
 
 export const DataStudio = {
   header: () => cy.findByTestId("data-studio-header"),
@@ -99,6 +101,7 @@ export const DataStudio = {
       DataStudio.Models.header().findByText("Dependencies"),
   },
   Modeling: {
+    emptyPage: modelingEmptyPage,
     collectionPage: collectionPage,
     collectionTitle: () => collectionPage().findByRole("heading"),
     metricItem: (name: string) => cy.findByTestId("metric-name").contains(name),
