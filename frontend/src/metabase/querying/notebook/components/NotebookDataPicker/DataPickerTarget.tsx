@@ -2,7 +2,9 @@ import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getIsEmbedding } from "metabase/selectors/embed";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -37,8 +39,12 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
 ) {
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
+  const isEmbedding = useSelector(getIsEmbedding);
 
   const openDataSourceInNewTab = () => {
+    if (isEmbedding) {
+      return;
+    }
     const url = getUrl({ query, table, stageIndex });
     if (url) {
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
