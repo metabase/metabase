@@ -424,21 +424,21 @@ describe("scenarios > data studio > datamodel", () => {
         it("should allow to search for tables", () => {
           H.DataModel.visitDataStudio();
 
-          TablePicker.getSearchInput().type("b");
-          TablePicker.getTables().should("have.length", 2);
-          TablePicker.getTable("Bookmark Ordering").should("be.visible");
-          TablePicker.getTable("Birds").should("be.visible");
+          TablePicker.getSearchInput().type("an");
+          TablePicker.getTables().should("have.length", 3);
+          TablePicker.getTable("Animals").should("have.length", 2);
+          TablePicker.getTable("Analytic Events").should("be.visible");
 
-          TablePicker.getSearchInput().clear().type("bi");
-          TablePicker.getTables().should("have.length", 1);
-          TablePicker.getTable("Birds").should("be.visible").click();
+          TablePicker.getSearchInput().clear().type("ani");
+          TablePicker.getTables().should("have.length", 2);
+          TablePicker.getTable("Animals").eq(1).should("be.visible").click();
 
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
               `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
             );
           });
-          TableSection.getNameInput().should("have.value", "Birds");
+          TableSection.getNameInput().should("have.value", "Animals");
 
           cy.log("go back to browsing");
           TablePicker.getSearchInput().clear();
