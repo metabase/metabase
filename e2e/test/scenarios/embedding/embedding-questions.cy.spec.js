@@ -77,6 +77,7 @@ describe("scenarios > embedding > questions", () => {
         resource: "question",
         resourceId: id,
         activeTab: "parameters",
+        unpublishBeforeOpen: false,
       });
     });
 
@@ -121,6 +122,7 @@ describe("scenarios > embedding > questions", () => {
         resource: "question",
         resourceId: id,
         activeTab: "parameters",
+        unpublishBeforeOpen: false,
       });
     });
 
