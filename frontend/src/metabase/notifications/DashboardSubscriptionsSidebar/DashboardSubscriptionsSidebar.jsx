@@ -46,7 +46,7 @@ const EDITING_MODES = {
   ADD_EMAIL: "add-edit-email",
   ADD_SLACK: "add-edit-slack",
   NEW_PULSE: "new-pulse",
-  LIST_PULSES: "list-pulses",
+  LIST_PULSES_OR_NEW_PULSE: "list-pulses-or-new-pulse",
 };
 
 const CHANNEL_TYPES = {
@@ -107,7 +107,7 @@ const mapDispatchToProps = {
 
 class DashboardSubscriptionsSidebarInner extends Component {
   state = {
-    editingMode: EDITING_MODES.LIST_PULSES,
+    editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
     // use this to know where to go "back" to
     returnMode: [],
     isSaving: false,
@@ -140,13 +140,6 @@ class DashboardSubscriptionsSidebarInner extends Component {
     const { editingMode } = this.state;
     const { isAdmin, pulses } = this.props;
 
-    if (editingMode === EDITING_MODES.LIST_PULSES && pulses?.length === 0) {
-      this.setState({
-        editingMode: EDITING_MODES.NEW_PULSE,
-        returnMode: [],
-      });
-    }
-
     /**
      * (EMB-976): In SDK/EAJS context we need to avoid showing the NEW_PULSE view (the view that lets users select
      * between Email and Slack options) because we only allow email subscriptions there.
@@ -155,7 +148,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
      * Otherwise, we won't show the subscription button to open this sidebar
      * in the first place.
      */
-    if (isEmbeddingSdk() && editingMode === EDITING_MODES.NEW_PULSE) {
+    if (isEmbeddingSdk() && shouldDisplayNewPulse(editingMode, pulses)) {
       this.setState({
         editingMode: EDITING_MODES.ADD_EMAIL,
       });
@@ -181,7 +174,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
     if (newPulses?.length > 0 && prevPulses?.length === 0) {
       this.setState(() => {
         return {
-          editingMode: EDITING_MODES.LIST_PULSES,
+          editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
           returnMode: [],
         };
       });
@@ -189,7 +182,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
       return;
     }
 
-    const isEditingModeForwardable = editingMode === EDITING_MODES.NEW_PULSE;
+    const isEditingModeForwardable = shouldDisplayNewPulse(
+      editingMode,
+      newPulses,
+    );
 
     if (isEditingModeForwardable) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
@@ -292,7 +288,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
       this.setState({ isSaving: true });
       await this.props.updateEditingPulse(cleanedPulse);
       await this.props.saveEditingPulse();
-      this.setState({ editingMode: EDITING_MODES.LIST_PULSES, returnMode: [] });
+      this.setState({
+        editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
+        returnMode: [],
+      });
     } finally {
       this.setState({ isSaving: false });
     }
@@ -317,7 +316,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       return {
         editingMode: editingModeMap[channelType],
         returnMode: returnMode.concat([
-          editingMode || EDITING_MODES.LIST_PULSES,
+          editingMode || EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
         ]),
       };
     });
@@ -325,7 +324,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
   handleArchive = async () => {
     await this.props.setPulseArchived(this.props.pulse, true);
-    this.setState({ editingMode: EDITING_MODES.LIST_PULSES, returnMode: [] });
+    this.setState({
+      editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
+      returnMode: [],
+    });
   };
 
   // Because you can navigate down the sidebar, we need to wrap
@@ -359,7 +361,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (editingMode === EDITING_MODES.LIST_PULSES) {
+    if (
+      editingMode === EDITING_MODES.LIST_PULSES_OR_NEW_PULSE &&
+      pulses.length > 0
+    ) {
       return (
         <PulsesListSidebar
           pulses={pulses}
@@ -459,7 +464,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (editingMode === EDITING_MODES.NEW_PULSE) {
+    if (shouldDisplayNewPulse(editingMode, pulses)) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
       const slackConfigured = formInput?.channels?.slack?.configured || false;
 
@@ -496,6 +501,21 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
     return <Sidebar />;
   }
+}
+
+function shouldDisplayNewPulse(editingMode, pulses) {
+  if (editingMode === EDITING_MODES.NEW_PULSE) {
+    return true;
+  }
+
+  if (
+    editingMode === EDITING_MODES.LIST_PULSES_OR_NEW_PULSE &&
+    pulses?.length === 0
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 const DashboardSubscriptionsSidebarConnected = _.compose(
