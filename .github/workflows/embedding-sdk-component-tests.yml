@@ -178,9 +178,9 @@ jobs:
           name: metabase-ee-${{ steps.get-commit-sha.outputs.sha }}-uberjar
         continue-on-error: true # do not break the whole job if this step doesn't succeed
 
-      # Build the uberjar from the previous commit only it we couldn't fetch it.
-      # `step.foo.OUTCOME` is impotant because it looks at the step status *before* continue-on-error is applied.
-      # Do not confuse it with `step.foo.conclusion`.
+      # Build the uberjar from the previous commit only if we couldn't fetch it.
+      # `step.foo.OUTCOME` is important because it looks at the step status *before* continue-on-error is applied.
+      # Do not confuse it with the `step.foo.conclusion`.
       - name: Build MB uberjar from the commit N-1
         if: steps.download-uberjar.outcome != 'success'
         run: ./bin/build.sh
