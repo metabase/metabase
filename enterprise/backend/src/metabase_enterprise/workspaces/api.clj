@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -100,6 +101,45 @@
     (t2/update! :model/Workspace id {:archived_at [:now]})
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
+
+(api.macros/defendpoint :get "/mapping/transform/:id/upstream"
+  :- [:map
+      [:transform [:maybe [:map
+                           [:id ms/PositiveInt]
+                           [:name :string]]]]]
+  "Get the upstream transform for a transform that is in a workspace.
+   Returns null if this transform has no upstream mapping (i.e., it's not a mirrored transform)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (let [upstream-id (t2/select-one-fn :upstream_id [:model/WorkspaceMappingTransform :upstream_id] :downstream_id id)]
+    (when (nil? upstream-id) (api/check-404 (t2/exists? :model/Workspace id)))
+    {:transform (t2/select-one [:model/Transform :id :name] :id upstream-id)}))
+
+(api.macros/defendpoint :get "/mapping/transform/:id/downstream"
+  :- [:map
+      [:transforms [:sequential
+                    [:map
+                     [:id ms/PositiveInt]
+                     [:name :string]
+                     [:workspace [:map
+                                  [:id ms/PositiveInt]
+                                  [:name :string]]]]]]]
+  "Get all downstream transforms for a transform that is not in a workspace.
+   Returns the transforms that were mirrored from this upstream transform, with workspace info."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (let [mappings         (t2/select :model/WorkspaceMappingTransform :upstream_id id)
+        _                (when (empty? mappings) (api/check-404 (t2/exists? :model/Workspace id)))
+        tid->wid         (u/for-map [m mappings]
+                           [(:downstream_id m) (:workspace_id m)])
+        transform-ids    (map :downstream_id mappings)
+        workspace-ids    (map :workspace_id mappings)
+        transforms       (when (seq transform-ids)
+                           (t2/select [:model/Transform :id :name] :id [:in transform-ids] {:order-by [:created_at]}))
+        workspaces-by-id (when (seq workspace-ids)
+                           (u/index-by :id (t2/select [:model/Workspace :id :name] :id [:in workspace-ids])))]
+    {:transforms (for [transform transforms]
+                   (assoc transform :workspace (get workspaces-by-id (tid->wid (:id transform)))))}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."

@@ -29,3 +29,23 @@ export type WorkspaceContents = {
     transforms: WorkspaceContentItem[];
   };
 };
+
+export type TransformUpstreamMapping = {
+  transform: {
+    id: TransformId;
+    name: string;
+  } | null;
+};
+
+export type DownstreamTransformInfo = {
+  id: TransformId;
+  name: string;
+  workspace: {
+    id: WorkspaceId;
+    name: string;
+  };
+};
+
+export type TransformDownstreamMapping = {
+  transforms: DownstreamTransformInfo[];
+};

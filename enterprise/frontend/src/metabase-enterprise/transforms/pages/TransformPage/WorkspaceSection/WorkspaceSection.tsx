@@ -5,9 +5,11 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Card, Group, Icon, Text } from "metabase/ui";
+import { Anchor, Button, Card, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useCreateWorkspaceMutation,
+  useGetTransformDownstreamMappingQuery,
+  useGetTransformUpstreamMappingQuery,
   useGetWorkspaceContentsQuery,
   useGetWorkspaceQuery,
 } from "metabase-enterprise/api";
@@ -42,6 +44,18 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     },
   );
 
+  const { data: upstreamMapping, isLoading: isLoadingUpstream } =
+    useGetTransformUpstreamMappingQuery(transform.id, {
+      skip: !hasWorkspace,
+    });
+
+  const { data: downstreamMapping, isLoading: isLoadingDownstream } =
+    useGetTransformDownstreamMappingQuery(transform.id, {
+      skip: hasWorkspace,
+    });
+
+  const isLoadingMappings = isLoadingUpstream || isLoadingDownstream;
+
   useEffect(() => {
     if (
       workspaceContents &&
@@ -71,28 +85,61 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     <TitleSection label={t`Workspace`}>
       <Card p="md" shadow="none" withBorder>
         {hasWorkspace ? (
-          <Group>
-            <Icon name="folder" aria-hidden />
-            <Text>
-              {workspace
-                ? t`This is part of ${workspace.name} (${transform.workspace_id})`
-                : t`This is part of Workspace ${transform.workspace_id}`}
-            </Text>
-          </Group>
+          <Stack gap="sm">
+            <Group>
+              <Icon name="folder" aria-hidden />
+              <Text>
+                {workspace
+                  ? t`This is part of ${workspace.name} (${transform.workspace_id})`
+                  : t`This is part of Workspace ${transform.workspace_id}`}
+              </Text>
+            </Group>
+            {!isLoadingMappings && upstreamMapping?.transform != null && (
+              <Group>
+                <Icon name="arrow_left" aria-hidden />
+                <Text>
+                  {t`Live version:`}{" "}
+                  <Anchor href={Urls.transform(upstreamMapping.transform.id)}>
+                    {upstreamMapping.transform.name}
+                  </Anchor>
+                </Text>
+              </Group>
+            )}
+          </Stack>
         ) : (
-          <Group>
-            <Icon name="folder" aria-hidden />
-            <Text c="text-secondary">
-              {t`This transform is not part of any workspace`}
-            </Text>
-            <Button
-              leftSection={<Icon name="add" aria-hidden />}
-              onClick={handleCheckoutClick}
-              loading={isLoading}
-            >
-              {t`Check this out in a new workspace`}
-            </Button>
-          </Group>
+          <Stack gap="sm">
+            <Group>
+              <Icon name="folder" aria-hidden />
+              <Text c="text-secondary">
+                {t`This transform is not part of any workspace`}
+              </Text>
+              <Button
+                leftSection={<Icon name="add" aria-hidden />}
+                onClick={handleCheckoutClick}
+                loading={isLoading}
+              >
+                {t`Check this out in a new workspace`}
+              </Button>
+            </Group>
+            {!isLoadingMappings &&
+              downstreamMapping &&
+              downstreamMapping.transforms.length > 0 && (
+                <Stack gap="xs">
+                  <Group>
+                    <Icon name="arrow_right" aria-hidden />
+                    <Text>{t`It is checked out as part of the following workspaces:`}</Text>
+                  </Group>
+                  {downstreamMapping.transforms.map((item) => (
+                    <Group key={item.id} ml="xl" gap="xs">
+                      <Text c="text-secondary">•</Text>
+                      <Anchor href={Urls.transform(item.id)}>
+                        {item.workspace.name}
+                      </Anchor>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+          </Stack>
         )}
       </Card>
     </TitleSection>

@@ -1,11 +1,41 @@
 (ns metabase-enterprise.workspaces.common
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [toucan2.core :as t2]))
+
+(defn- extract-suffix-number
+  "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."
+  [ws-name base-name]
+  (when (= (str/replace ws-name #"\s*\(\d+\)$" "") base-name)
+    (when-let [[_ n] (re-find #"\((\d+)\)$" ws-name)]
+      (parse-long n))))
+
+(defn- generate-unique-workspace-name
+  "Generate a unique workspace name by appending (N) if the name already exists.
+
+  Strategy:
+  1. If the base name doesn't exist, use it as-is
+  2. If it exists, strip any existing (N) suffix and find the highest N among similar names
+  3. Return the base name with (N+1) appended
+
+  Note: This function has a potential race condition between checking existence and insertion.
+  Callers should handle unique constraint violations by retrying."
+  [base-name]
+  (when (str/blank? base-name)
+    (throw (ex-info "Workspace name cannot be empty" {:status-code 400})))
+  (if-not (t2/exists? :model/Workspace :name base-name)
+    base-name
+    (let [stripped-name (str/replace base-name #"\s*\(\d+\)$" "")
+          existing      (t2/select-fn-set :name :model/Workspace
+                                          :name [:like (str stripped-name " (%)")])
+          numbers       (keep #(extract-suffix-number % stripped-name) existing)
+          next-num      (inc (apply max 0 numbers))]
+      (str stripped-name " (" next-num ")"))))
 
 ;; TODO (Chris 2025-11-20) Just subsume the rest of this up into ws.dag/path-induced-subgraph
 (defn- build-graph
@@ -50,6 +80,35 @@
     #_(log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
     ws))
 
+(defn- unique-constraint-violation?
+  "Check if an exception is due to a unique constraint violation."
+  [e]
+  (let [msg (str (ex-message e) (some-> (ex-cause e) ex-message))]
+    (or (str/includes? msg "unique")
+        (str/includes? msg "duplicate")
+        (str/includes? msg "UNIQUE"))))
+
+;; TODO (Chris 2025-11-20) We have not added a uniqueness constraint to the db, we should either do that, or remove
+;;                         the whole retry song and dance.
+(defn- create-workspace-with-unique-name!
+  "Create a workspace, retrying with a new unique name if there's a constraint violation."
+  [creator-id db-id database ws-name graph max-retries]
+  (loop [attempt 1]
+    (let [unique-name (generate-unique-workspace-name ws-name)
+          result      (try
+                        {:workspace (create-workspace-container! creator-id db-id unique-name)}
+                        (catch Exception e
+                          (if (and (< attempt max-retries) (unique-constraint-violation? e))
+                            {:retry true}
+                            (throw e))))]
+      (if (:retry result)
+        (recur (inc attempt))
+        (let [workspace (:workspace result)]
+          (ws.isolation/ensure-database-isolation! workspace database)
+          (let [graph (ws.mirroring/mirror-entities! workspace database graph)]
+            (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
+            (assoc workspace :graph graph)))))))
+
 ;; TODO internal: test!
 (defn create-workspace!
   "Create workspace"
@@ -58,21 +117,14 @@
                upstream    :upstream}]
   ;; TODO put this in the malli schema for a request
   (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
-  (let [graph          (build-graph upstream)
-        inferred-db-id (:db_id graph)
-        _              (when (and maybe-db-id inferred-db-id)
-                         (assert (= maybe-db-id inferred-db-id)
-                                 "The database_id provided must match that of the upstream entities."))
-        db-id          (or inferred-db-id maybe-db-id)
-        _              (assert db-id "Was not given and could not infer a database_id for the workspace.")
-        database       (api/check-500 (t2/select-one :model/Database :id db-id))
-        workspace      (create-workspace-container! creator-id db-id ws-name)
-        ;; Creates the new schema database schema
-        _              (ws.isolation/ensure-database-isolation! workspace database)
-        graph          (ws.mirroring/mirror-entities! workspace database graph)
-        _              (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
-        workspace      (assoc workspace :graph graph)]
-    workspace))
+  (let [graph    (build-graph upstream)
+        db-id    (or (:db_id graph) maybe-db-id)
+        _        (when (and maybe-db-id (:db_id graph))
+                   (assert (= maybe-db-id (:db_id graph))
+                           "The database_id provided must match that of the upstream entities."))
+        _        (assert db-id "Was not given and could not infer a database_id for the workspace.")
+        database (api/check-500 (t2/select-one :model/Database :id db-id))]
+    (create-workspace-with-unique-name! creator-id db-id database ws-name graph 5)))
 
 #_:clj-kondo/ignore
 (comment
