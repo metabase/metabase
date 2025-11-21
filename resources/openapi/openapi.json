@@ -10914,15 +10914,6 @@
         "enum" : [ "csv", "api", "xlsx", "json" ],
         "type" : "string"
       },
-      "metabase.session.api.available-locale" : {
-        "enum" : [ [ "ar", "Arabic" ], [ "ar_SA", "Arabic (Saudi Arabia)" ], [ "bg", "Bulgarian" ], [ "ca", "Catalan" ], [ "cs", "Czech" ], [ "da", "Danish" ], [ "de", "German" ], [ "en", "English" ], [ "es", "Spanish" ], [ "fa", "Persian" ], [ "fi", "Finnish" ], [ "fr", "French" ], [ "he", "Hebrew" ], [ "hu", "Hungarian" ], [ "id", "Indonesian" ], [ "it", "Italian" ], [ "ja", "Japanese" ], [ "ko", "Korean" ], [ "lv", "Latvian" ], [ "ms", "Malay" ], [ "nb", "Norwegian Bokmål" ], [ "nl", "Dutch" ], [ "pl", "Polish" ], [ "pt_BR", "Portuguese (Brazil)" ], [ "ru", "Russian" ], [ "sk", "Slovak" ], [ "sl", "Slovenian" ], [ "sq", "Albanian" ], [ "sr", "Serbian" ], [ "sv", "Swedish" ], [ "tr", "Turkish" ], [ "uk", "Ukrainian" ], [ "vi", "Vietnamese" ], [ "zh_CN", "Chinese (China)" ], [ "zh_HK", "Chinese (Hong Kong SAR China)" ], [ "zh_TW", "Chinese (Taiwan)" ] ]
-      },
-      "metabase.session.api.available-locales" : {
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.session.api.available-locale"
-        },
-        "type" : "array"
-      },
       "metabase.sync.schedules.ExpandedSchedulesMap" : {
         "description" : "value must be a valid map of schedule maps for a DB.",
         "properties" : {
@@ -32048,20 +32039,7 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "available-locales" : {
-                      "$ref" : "#/components/schemas/metabase.session.api.available-locales"
-                    }
-                  },
-                  "required" : [ "available-locales" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "map where {:available-locales -> <sequence of enum of [\"ar\" \"Arabic\"], [\"ar_SA\" \"Arabic (Saudi Arabia)\"], [\"bg\" \"Bulgarian\"], [\"ca\" \"Catalan\"], [\"cs\" \"Czech\"], [\"da\" \"Danish\"], [\"de\" \"German\"], [\"en\" \"English\"], [\"es\" \"Spanish\"], [\"fa\" \"Persian\"], [\"fi\" \"Finnish\"], [\"fr\" \"French\"], [\"he\" \"Hebrew\"], [\"hu\" \"Hungarian\"], [\"id\" \"Indonesian\"], [\"it\" \"Italian\"], [\"ja\" \"Japanese\"], [\"ko\" \"Korean\"], [\"lv\" \"Latvian\"], [\"ms\" \"Malay\"], [\"nb\" \"Norwegian Bokmål\"], [\"nl\" \"Dutch\"], [\"pl\" \"Polish\"], [\"pt_BR\" \"Portuguese (Brazil)\"], [\"ru\" \"Russian\"], [\"sk\" \"Slovak\"], [\"sl\" \"Slovenian\"], [\"sq\" \"Albanian\"], [\"sr\" \"Serbian\"], [\"sv\" \"Swedish\"], [\"tr\" \"Turkish\"], [\"uk\" \"Ukrainian\"], [\"vi\" \"Vietnamese\"], [\"zh_CN\" \"Chinese (China)\"], [\"zh_HK\" \"Chinese (Hong Kong SAR China)\"], [\"zh_TW\" \"Chinese (Taiwan)\"]>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
