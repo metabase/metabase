@@ -112,7 +112,7 @@ jobs:
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
     if: input.host-sample-apps-tests == 'true'
-    uses: ./.github/workflows/embedding-sdk-e2e-tests.yml
+    uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
   embedding-sdk-tests-result:
