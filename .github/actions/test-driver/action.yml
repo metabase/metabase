@@ -30,6 +30,7 @@ runs:
 
         if [ "$IS_IGNORED" = "true" ]; then
           echo "⚠️  Driver '$DRIVERS' is in the ignored list. Skipping tests."
+          echo "View the ignored list here: https://github.com/metabase/ci-test-config/blob/master/ci-test-config.json"
           echo "skip=true" >> $GITHUB_OUTPUT
         else
           echo "Driver '$DRIVERS' is not ignored. Proceeding with tests."
