@@ -118,6 +118,13 @@ describe("Tenants - management", () => {
       cy.button("Apply").click();
     });
 
+    cy.log("should show toast hint message about tenant collections");
+    cy.findAllByText(
+      "You can create tenant collections from the main Metabase navigation",
+    )
+      .first()
+      .should("be.visible");
+
     cy.findByRole("link", { name: /External Users/ }).should("exist");
     cy.findByRole("link", { name: /Tenants/ }).click();
 

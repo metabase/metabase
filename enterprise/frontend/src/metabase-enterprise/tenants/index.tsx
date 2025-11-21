@@ -42,6 +42,8 @@ import {
 
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
+    PLUGIN_TENANTS.isEnabled = true;
+
     // Register tenant collection permissions tab and routes
     PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
       name: t`Tenant Collections`,
