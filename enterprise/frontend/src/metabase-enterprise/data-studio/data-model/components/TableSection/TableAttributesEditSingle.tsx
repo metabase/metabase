@@ -195,6 +195,7 @@ export function TableAttributesEditSingle({ table }: Props) {
         />
 
         <DataSourceInput
+          disabled={table.data_source === "metabase-transform"}
           value={table.data_source ?? "unknown"}
           onChange={handleDataSourceChange}
           styles={{

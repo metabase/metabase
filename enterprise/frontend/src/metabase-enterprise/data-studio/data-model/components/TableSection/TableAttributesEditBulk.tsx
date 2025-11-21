@@ -215,6 +215,7 @@ export function TableAttributesEditBulk() {
               />
 
               <DataSourceInput
+                disabled={dataSource === "metabase-transform"}
                 value={dataSource}
                 onChange={(newDataSource) =>
                   handleSubmit({ dataSource: newDataSource })

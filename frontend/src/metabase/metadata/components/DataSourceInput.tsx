@@ -29,7 +29,6 @@ export const DataSourceInput = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      disabled={value === "metabase-transform"}
       data={getData(showMetabaseTransform || value === "metabase-transform")}
       label={t`Source`}
       placeholder={t`Select a data source`}
