@@ -13,6 +13,7 @@ import {
 } from "../../../EntityPicker";
 import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
 import { NewDashboardDialog } from "../../DashboardPicker/components/NewDashboardDialog";
+import { getNamespaceForItem, isNamespaceRoot } from "../../utils";
 import type {
   CollectionPickerItem,
   CollectionPickerModel,
@@ -59,7 +60,7 @@ export const CollectionPickerModal = ({
   onClose,
   value,
   options = defaultOptions,
-  shouldDisableItem,
+  shouldDisableItem: shouldDisableItemProp,
   searchResultFilter,
   recentFilter,
   models: modelsProp,
@@ -72,6 +73,9 @@ export const CollectionPickerModal = ({
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
     null,
   );
+
+  // canSelectItem determines if the Confirm button should be enabled
+  // Namespace roots can be navigated into but not selected as final destinations
   const canSelectItem = useCallback(
     (
       item:
@@ -79,9 +83,22 @@ export const CollectionPickerModal = ({
         | null
         | undefined,
     ): item is CollectionPickerValueItem => {
-      return baseCanSelectItem(item) && (_canSelectItem?.(item) ?? true);
+      if (!baseCanSelectItem(item)) {
+        return false;
+      }
+
+      // Check if namespace root is disallowed for this savingModel
+      if (
+        options.savingModel &&
+        options.savingModel !== "collection" &&
+        isNamespaceRoot(item as CollectionPickerItem)
+      ) {
+        return false;
+      }
+
+      return _canSelectItem?.(item) ?? true;
     },
-    [_canSelectItem],
+    [_canSelectItem, options.savingModel],
   );
 
   const { tryLogRecentItem } = useLogRecentItem();
@@ -141,7 +158,10 @@ export const CollectionPickerModal = ({
             miw="9.5rem"
             onClick={openCreateDashboardDialog}
             leftSection={<Icon name="add_to_dash" />}
-            disabled={selectedItem?.can_write === false}
+            disabled={
+              selectedItem?.can_write === false ||
+              (selectedItem && isNamespaceRoot(selectedItem))
+            }
           >
             {t`New dashboard`}
           </Button>
@@ -180,7 +200,7 @@ export const CollectionPickerModal = ({
           options={options}
           path={collectionsPath}
           ref={pickerRef}
-          shouldDisableItem={shouldDisableItem}
+          shouldDisableItem={shouldDisableItemProp}
           onInit={handleInit}
           onItemSelect={onItemSelect}
           onPathChange={setCollectionsPath}
@@ -209,7 +229,13 @@ export const CollectionPickerModal = ({
   );
 
   const parentCollectionId = useMemo(() => {
-    if (canSelectItem(selectedItem)) {
+    if (
+      selectedItem &&
+      isNamespaceRoot(selectedItem) &&
+      selectedItem.can_write
+    ) {
+      return selectedItem.id;
+    } else if (canSelectItem(selectedItem)) {
       return selectedItem.model === "dashboard"
         ? selectedItem.collection_id
         : selectedItem.id;
@@ -219,6 +245,18 @@ export const CollectionPickerModal = ({
       return "root";
     }
   }, [selectedItem, value, canSelectItem]);
+
+  // Determine the effective namespace for creating new collections
+  // Priority: 1) options.namespace (explicit), 2) selectedItem namespace, 3) undefined
+  const effectiveNamespace = useMemo(() => {
+    // If explicitly set in options, use that
+    if (options.namespace) {
+      return options.namespace;
+    }
+
+    // Get namespace from the currently selected item
+    return getNamespaceForItem(selectedItem);
+  }, [options.namespace, selectedItem]);
 
   return (
     <>
@@ -248,7 +286,7 @@ export const CollectionPickerModal = ({
         onClose={closeCreateCollectionDialog}
         parentCollectionId={parentCollectionId}
         onNewCollection={handleNewCollectionCreate}
-        namespace={options.namespace}
+        namespace={effectiveNamespace}
       />
       <NewDashboardDialog
         isOpen={isCreateDashboardDialogOpen}

@@ -59,21 +59,21 @@ const collectionTwo = createMockCollection({
 const sharedTenantSubCollectionOne = createMockCollection({
   id: 5,
   name: "Shared Tenant Sub Collection One",
-  type: "shared-tenant-collection",
+  namespace: "shared-tenant-collection",
   children: [],
 });
 
 const sharedTenantSubCollectionTwo = createMockCollection({
   id: 6,
   name: "Shared Tenant Sub Collection Two",
-  type: "shared-tenant-collection",
+  namespace: "shared-tenant-collection",
   children: [],
 });
 
 const sharedTenantCollection = createMockCollection({
   id: 7,
   name: "Shared Tenant Collection",
-  type: "shared-tenant-collection",
+  namespace: "shared-tenant-collection",
   children: [sharedTenantSubCollectionOne, sharedTenantSubCollectionTwo],
 });
 

@@ -645,27 +645,28 @@
                                                                      :moderator_id        user-id
                                                                      :most_recent         true}]
         (is (= (mt/obj->json->obj
-                [{:collection_id       (:id collection)
-                  :dashboard_count     0
-                  :dashboard           nil
-                  :dashboard_id        nil
-                  :can_write           true
-                  :can_delete          false
-                  :can_restore         false
-                  :id                  card-id
-                  :archived            false
-                  :location            nil
-                  :name                (:name card)
-                  :collection_position nil
-                  :collection_preview  true
-                  :database_id         (mt/id)
-                  :display             "table"
-                  :description         nil
-                  :entity_id           (:entity_id card)
-                  :moderated_status    "verified"
-                  :is_remote_synced    false
-                  :model               "card"
-                  :last_used_at        (:last_used_at card)
+                [{:collection_id        (:id collection)
+                  :dashboard_count      0
+                  :dashboard            nil
+                  :dashboard_id         nil
+                  :can_write            true
+                  :can_delete           false
+                  :can_restore          false
+                  :collection_namespace nil
+                  :id                   card-id
+                  :archived             false
+                  :location             nil
+                  :name                 (:name card)
+                  :collection_position  nil
+                  :collection_preview   true
+                  :database_id          (mt/id)
+                  :display              "table"
+                  :description          nil
+                  :entity_id            (:entity_id card)
+                  :moderated_status     "verified"
+                  :is_remote_synced     false
+                  :model                "card"
+                  :last_used_at         (:last_used_at card)
                   :fully_parameterized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
@@ -1182,7 +1183,7 @@
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
       (is (= [[:authority_level :asc :nulls-last]
-              [:collection_type :asc :nulls-first]
+              [:type :asc :nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
              (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
@@ -1190,7 +1191,7 @@
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [:type :asc :nulls-first]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1202,7 +1203,7 @@
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [:type :asc :nulls-first]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1214,7 +1215,7 @@
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [:type :asc :nulls-first]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
@@ -1228,7 +1229,7 @@
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [:type :asc :nulls-first]
             [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
@@ -1242,7 +1243,7 @@
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [:type :asc :nulls-first]
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
@@ -1253,7 +1254,7 @@
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [:type :asc :nulls-first]
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
@@ -2926,7 +2927,7 @@
                  :model/Card card {}]
     (testing "Collections can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id collection)) {:parent_id (collection/trash-collection-id)})
-      (is (not (t2/exists? :model/Collection :location (collection/trash-path)))))
+      (is (not (t2/exists? :model/Collection :id (u/the-id collection) :location (collection/trash-path)))))
     (testing "Dashboards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "dashboard/" (u/the-id dashboard)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Dashboard :collection_id (collection/trash-collection-id)))))

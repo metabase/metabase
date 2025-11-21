@@ -27,6 +27,11 @@ interface BaseMoveModalProps {
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
   recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
+  /**
+   * The type of item being moved. When set to a non-collection model,
+   * namespace root collections (like tenant root) will be disabled.
+   */
+  savingModel?: "collection" | "dashboard" | "question" | "model";
 }
 
 type MoveModalProps =
@@ -69,6 +74,7 @@ export const MoveModal = ({
   movingCollectionId,
   canMoveToDashboard,
   recentAndSearchFilter,
+  savingModel,
 }: MoveModalProps) => {
   // if we are moving a collection, we can't move it into itself or any of its children
   const shouldDisableItem = movingCollectionId
@@ -144,6 +150,7 @@ export const MoveModal = ({
         showRootCollection: true,
         showPersonalCollections: true,
         confirmButtonText: t`Move`,
+        savingModel,
       }}
       shouldDisableItem={shouldDisableItem}
       searchResultFilter={searchResultFilter}

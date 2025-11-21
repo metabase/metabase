@@ -77,12 +77,8 @@
   The Trash Collection itself (the container for archived items) is *always* included.
 
   To select only personal collections, pass in `personal-only` as `true`.
-  This will select only collections where `personal_owner_id` is not `nil`.
-
-  Normally, tenant collections will not be included in the results. Passing `include-tenant-collections=true`
-  will restrict the results to tenant collections."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only
-           include-tenant-collections]}]
+  This will select only collections where `personal_owner_id` is not `nil`."
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -101,9 +97,6 @@
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
-                       (if include-tenant-collections
-                         (collection/tenant-collection-where-clause)
-                         [:not (collection/tenant-collection-where-clause)])
                        (collection/visible-collection-filter-clause
                         :id
                         {:include-archived-items (if archived
@@ -203,10 +196,8 @@
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
   some point in the future."
   [_route-params
-   {:keys [exclude-archived exclude-other-user-collections
-           namespace shallow collection-id include-tenant-collections]}
+   {:keys [exclude-archived exclude-other-user-collections namespace shallow collection-id]}
    :- [:map
-       [:include-tenant-collections     {:default false} [:maybe :boolean]]
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
@@ -217,8 +208,7 @@
                                          :exclude-other-user-collections exclude-other-user-collections
                                          :namespace                      namespace
                                          :shallow                        shallow
-                                         :collection-id                  collection-id
-                                         :include-tenant-collections     include-tenant-collections})]
+                                         :collection-id                  collection-id})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
@@ -268,7 +258,7 @@
 
 (def ^:private CollectionType
   "Collection types that the root/items endpoint can filter on"
-  [:enum "remote-synced" "shared-tenant-collection"])
+  [:enum "remote-synced"])
 
 (def ^:private CollectionChildrenOptions
   [:map
@@ -351,9 +341,10 @@
                     (assoc :location (or (when collection
                                            (collection/children-location collection))
                                          "/"))
+                    (dissoc :namespace)
                     (update :archived api/bit->boolean)
                     (update :archived_directly api/bit->boolean)))
-              :can_write :can_restore :can_delete :is_remote_synced))
+              :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state]}]
@@ -407,8 +398,8 @@
   [_ _ _ rows]
   (for [row rows]
     (dissoc row
-            :description :display :authority_level :moderated_status :icon :personal_owner_id
-            :collection_preview :dataset_query :table_id :query_type :is_upload)))
+            :description :display :authority_level :moderated_status :icon :personal_owner_id :namespace
+            :collection_preview :dataset_query :table_id :query_type :is_upload :collection_namespace)))
 
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
@@ -437,15 +428,16 @@
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
-            :collection_preview :dataset_query :table_id :query_type :is_upload)))
+            :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)))
 
 (defmethod post-process-collection-children :snippet
   [_ _options _collection rows]
   (for [row rows]
-    (dissoc row
-            :description :collection_position :display :authority_level
-            :moderated_status :icon :personal_owner_id :collection_preview
-            :dataset_query :table_id :query_type :is_upload)))
+    (-> (dissoc row
+                :description :collection_position :display :authority_level
+                :moderated_status :icon :personal_owner_id :collection_preview
+                :dataset_query :table_id :query_type :is_upload :namespace)
+        (assoc :collection_namespace "snippets"))))
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
   (-> {:select    (cond->
@@ -523,7 +515,7 @@
       (update :archived_directly api/bit->boolean)))
 
 (defn- post-process-card-row-after-hydrate [row]
-  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
+  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
@@ -534,6 +526,7 @@
                            :can_delete
                            :dashboard_count
                            :is_remote_synced
+                           :collection_namespace
                            [:dashboard :moderation_status]]
                     include-can-run-adhoc-query (conj :can_run_adhoc_query))]
     (as-> (map post-process-card-row rows) $
@@ -599,7 +592,7 @@
       (assoc :is_tenant_dashboard (collection/is-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced)
+      (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -651,7 +644,9 @@
            (collection/tenant-collection-where-clause)
            [:not (collection/tenant-collection-where-clause)])
          (when collection-type
-           [:= :type collection-type])
+           (if (= collection-type "remote-synced")
+             [:= :is_remote_synced true]
+             [:= :type collection-type]))
          (if archived?
            [:or
             [:= :archived true]
@@ -670,6 +665,7 @@
                 :personal_owner_id
                 :location
                 :archived_directly
+                :namespace
                 ;; selected as `type` for compatibility with collection fns that expect it
                 :type
                 [[:case [:= :is_remote_synced nil] [:inline false] :else :is_remote_synced] :is_remote_synced]
@@ -832,7 +828,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean]
+   :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean] :namespace
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -871,6 +867,9 @@
   (when official-collections-first?
     [:authority_level :asc :nulls-last]))
 
+(def ^:private normal-collections-first-sort-clause
+  [:type :asc :nulls-first])
+
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
@@ -879,7 +878,7 @@
         (comp cat
               (remove nil?))
         [[(official-collections-first-sort-clause sort-info)]
-         [[:collection_type :asc :nulls-first]]
+         [normal-collections-first-sort-clause]
          (case ((juxt :sort-column :sort-direction) sort-info)
            [nil nil]               [[:%lower.name :asc]]
            [:name :asc]            [[:%lower.name :asc]]
@@ -1187,8 +1186,8 @@
      {:archived?                   (boolean archived)
       :include-can-run-adhoc-query include_can_run_adhoc_query
       :show-dashboard-questions?   (boolean show_dashboard_questions)
-      :collection-type collection_type
-      :models                      model-kwds
+      :collection-type             collection_type
+      :models                      (if-not (or (nil? namespace) (= namespace "snippets")) #{:collection} model-kwds)
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                     :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
@@ -1201,19 +1200,30 @@
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
-  [collection-id collection-namespace]
+  [{collection-id :parent_id collection-namespace :namespace :as coll}]
   (api/write-check (if collection-id
                      (t2/select-one :model/Collection :id collection-id)
                      (cond-> collection/root-collection
-                       collection-namespace (assoc :namespace collection-namespace)))))
+                       collection-namespace (assoc :namespace collection-namespace))))
+  coll)
+
+(defn- write-check-authority-level
+  "Check that a superuser is creating this collection if they are setting the authority level."
+  [{authority-level :authority_level :as coll}]
+  (when (some? authority-level)
+    ;; make sure only admin and an EE token is present to be able to create an Official token
+    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
+    (api/check-superuser))
+  coll)
 
 (defenterprise validate-new-tenant-collection!
   "OSS version. Throws API exceptions if the passed collection is an invalid tenant collection, which in OSS
   means 'any tenant collection.'"
   metabase-enterprise.tenants.core
-  [{ttype :type :as _new-coll}]
-  (when (collection/is-tenant-collection-type? ttype)
-    (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400}))))
+  [collection]
+  (when (collection/is-tenant-collection? collection)
+    (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400})))
+  collection)
 
 (def ^:private CreateCollectionArguments
   "The arguments to the `POST /api/collection` endpoint, i.e. what the API needs to create a collection."
@@ -1222,14 +1232,15 @@
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
    [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
-   [:type            {:optional true} [:maybe [:enum "shared-tenant-collection"]]]])
+   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
 
 (def ^:private NewCollectionArguments
   "What we use internally to actually create a collection, i.e. what `t2/insert!` needs to create a collection."
   (-> CreateCollectionArguments
       (malli.util/dissoc :parent_id)
       (malli.util/assoc :location [:maybe ms/NonBlankString])
+      (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
+      (malli.util/assoc :is_remote_synced [:maybe :boolean])
       (malli.util/optional-keys [:location])
       (malli.util/closed-schema)))
 
@@ -1238,47 +1249,26 @@
   toucan needs to create a collection."
   [coll-data :- CreateCollectionArguments]
   (let [parent-coll (when-let [pid (:parent_id coll-data)]
-                      (t2/select-one :model/Collection pid))]
-    (cond-> coll-data
-      ;; default to the same type of tenant collection, if applicable
-      (some-> parent-coll collection/is-tenant-collection?) (assoc :type (:type parent-coll))
-      ;; set the location
-      parent-coll (assoc :location (collection/children-location parent-coll))
-      ;; select only the known set of keys
-      true (select-keys (malli.util/keys NewCollectionArguments)))))
+                      (t2/select-one [:model/Collection :id :location :namespace :is_remote_synced] pid))]
+    (-> (cond-> coll-data
+          (and (:namespace parent-coll)
+               (not (contains? coll-data :namespace))) (assoc :namespace (:namespace parent-coll))
+          parent-coll (assoc :location (collection/children-location parent-coll)))
+        (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
+        (select-keys (malli.util/keys NewCollectionArguments)))))
 
 (mu/defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level] :as coll-data}]
-  ;; To create a new collection, you need write perms for the location you are going to be putting it in...
-  (write-check-collection-or-root-collection parent_id namespace)
-  (when (some? authority_level)
-    ;; make sure only admin and an EE token is present to be able to create an Official token
-    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-    (api/check-superuser))
-  ;; Get namespace from parent collection if not provided
-  (let [{remote-synced? :is_remote_synced
-         :as parent-collection} (when parent_id
-                                  (t2/select-one [:model/Collection :location :id :namespace :is_remote_synced] :id parent_id))
-        effective-namespace (cond
-                              (contains? coll-data :namespace) namespace
-                              parent-collection (:namespace parent-collection)
-                              :else nil)]
-    (validate-new-tenant-collection! coll-data)
-     ;; Now create the new Collection :)
-    (u/prog1 (t2/insert-returning-instance!
-              :model/Collection
-              (merge
-               {:name             name
-                :description      description
-                :is_remote_synced (boolean remote-synced?)
-                :authority_level  authority_level
-                :namespace        effective-namespace}
-               (when parent-collection
-                 {:location (collection/children-location parent-collection)})))
-      (when config/ee-available?
-        (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
-      (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
+  [coll-data]
+  (u/prog1 (t2/insert-returning-instance!
+            :model/Collection
+            (-> (write-check-collection-or-root-collection coll-data)
+                apply-defaults-to-collection
+                write-check-authority-level
+                validate-new-tenant-collection!))
+    (when config/ee-available?
+      (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
+    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 (api.macros/defendpoint :post "/"
   "Create a new Collection."

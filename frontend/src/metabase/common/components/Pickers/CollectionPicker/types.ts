@@ -34,20 +34,20 @@ export type CollectionPickerItem = TypeWithModel<
   CollectionItemId,
   CollectionPickerModel
 > &
-  Pick<Partial<SearchResult>, "description" | "can_write" | "database_id"> & {
+  Pick<Partial<SearchResult>, "description" | "can_write" | "database_id"> &
+  Partial<
+    Pick<
+      CollectionItem,
+      "is_tenant_collection" | "is_tenant_dashboard" | "collection_namespace"
+    >
+  > & {
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;
     collection_id?: CollectionId | null;
     here?: CollectionItemModel[];
     below?: CollectionItemModel[];
-  } & Pick<CollectionItem, "is_tenant_collection" | "is_tenant_dashboard"> & {
-    location?: string | null;
-    effective_location?: string | null;
-    is_personal?: boolean;
-    collection_id?: CollectionId | null;
-    here?: CollectionItemModel[];
-    below?: CollectionItemModel[];
+    namespace?: string;
   };
 
 export type CollectionPickerValueItem =
@@ -65,7 +65,12 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
   allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
-  namespace?: "snippets";
+  namespace?: string;
+  /**
+   * The type of item being saved. When set to a non-collection model,
+   * namespace root collections (like tenant root) will be disabled.
+   */
+  savingModel?: "collection" | "dashboard" | "question" | "model";
 };
 
 export type CollectionItemListProps = ListProps<
