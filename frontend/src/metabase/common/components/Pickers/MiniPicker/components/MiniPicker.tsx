@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Menu } from "metabase/ui";
 
+import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
 import type { DataPickerValue } from "../../DataPicker";
 import { MiniPickerContext } from "../context";
 import type { MiniPickerItem, MiniPickerPickableItem } from "../types";
@@ -58,12 +59,22 @@ export function MiniPicker({
     }
   }, [path, trapFocus]);
 
+  const { tryLogRecentItem } = useLogRecentItem();
+
+  const handleChange = useCallback(
+    async (item: MiniPickerPickableItem) => {
+      await onChange(item);
+      tryLogRecentItem(item);
+    },
+    [onChange, tryLogRecentItem],
+  );
+
   return (
     <MiniPickerContext.Provider
       value={{
         path,
         setPath,
-        onChange,
+        onChange: handleChange,
         isFolder,
         isHidden,
         searchQuery,

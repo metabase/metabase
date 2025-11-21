@@ -99,8 +99,8 @@ const dataPickerValueMap: Record<
   }
 > = {
   table: {
-    tabIcon: "table",
-    tabDisplayName: "Tables",
+    tabIcon: "folder",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_TABLE,
     itemPickerData: checkNotNull(MOCK_DATABASE.tables).map(
       (table) => table.display_name,
@@ -109,19 +109,19 @@ const dataPickerValueMap: Record<
   },
   card: {
     tabIcon: "folder",
-    tabDisplayName: "Collections",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_CARD,
     itemPickerData: ["card"],
   },
   dataset: {
     tabIcon: "folder",
-    tabDisplayName: "Collections",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_MODEL,
     itemPickerData: ["dataset"],
   },
   metric: {
     tabIcon: "folder",
-    tabDisplayName: "Collections",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_METRIC,
     itemPickerData: ["metric"],
   },

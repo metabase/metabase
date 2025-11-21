@@ -8,11 +8,11 @@ import { isValidCollectionId } from "metabase/collections/utils";
 import { DATABASES_COLLECTION } from "metabase/entities/collections";
 import type { Collection } from "metabase-types/api";
 
-import type { CollectionPickerItem } from "./CollectionPicker";
+import type { QuestionPickerItem } from "./QuestionPicker";
 import type { TablePickerValue } from "./TablePicker";
 
 export const useGetInitialContainer = (
-  initialValue?: Pick<CollectionPickerItem, "model" | "id"> | TablePickerValue,
+  initialValue?: Pick<QuestionPickerItem, "model" | "id"> | TablePickerValue,
 ) => {
   // Figure out what we're working with
   const isQuestion =

@@ -153,7 +153,11 @@ function setup({
   databases?: Database[];
 } = {}) {
   setupDatabasesEndpoints(databases);
-  setupTableSearchEndpoint(databases.flatMap((db) => db.tables ?? []));
+  setupTableSearchEndpoint(
+    databases.flatMap(
+      (db) => db.tables?.map((t) => ({ ...t, db_id: db.id })) ?? [],
+    ),
+  );
   setupUsersEndpoints([currentUser]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
@@ -485,6 +489,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   if (input === null) {
     throw new Error("item() was called with null");
   }
+
   const name =
     typeof input === "string" ? input : (input.display_name ?? input.name);
   return (screen.queryByText(name)?.parentNode?.parentNode?.parentNode ??

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { METAKEY } from "metabase/lib/browser";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { Box, Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
@@ -34,50 +34,52 @@ export function JoinTablePicker({
   onChange,
 }: JoinTablePickerProps) {
   const [isOpened, setIsOpened] = useState(!table);
-
-  return isOpened || !table ? (
-    <NotebookDataPicker
-      title={t`Pick data to join`}
-      query={query}
-      stageIndex={stageIndex}
-      table={table}
-      placeholder={t`Pick data…`}
-      isOpened={isOpened}
-      setIsOpened={setIsOpened}
-      canChangeDatabase={false}
-      hasMetrics={false}
-      isDisabled={isReadOnly}
-      onChange={onChange}
-    />
-  ) : (
-    <NotebookCellItem
-      inactive={!table}
-      readOnly={isReadOnly}
-      disabled={isReadOnly}
-      color={color}
-      right={
-        table != null && !isReadOnly ? (
-          <JoinTableColumnPicker columnPicker={columnPicker} />
-        ) : null
-      }
-      containerStyle={CONTAINER_STYLE}
-      rightContainerStyle={RIGHT_CONTAINER_STYLE}
-      aria-label={t`Right table`}
-    >
-      <Tooltip
-        label={t`${METAKEY}+click to open in new tab`}
-        hidden={!table || isReadOnly}
-        events={{ hover: true, focus: false, touch: false }}
-      >
-        <DataPickerTarget
-          table={table}
+  return (
+    <Box aria-label={t`Right table`}>
+      {isOpened || !table ? (
+        <NotebookDataPicker
+          title={t`Pick data to join`}
           query={query}
-          setIsOpened={setIsOpened}
           stageIndex={stageIndex}
+          table={table}
+          placeholder={t`Pick data…`}
+          isOpened={isOpened}
+          setIsOpened={setIsOpened}
+          canChangeDatabase={false}
+          hasMetrics={false}
           isDisabled={isReadOnly}
+          onChange={onChange}
         />
-      </Tooltip>
-    </NotebookCellItem>
+      ) : (
+        <NotebookCellItem
+          inactive={!table}
+          readOnly={isReadOnly}
+          disabled={isReadOnly}
+          color={color}
+          right={
+            table != null && !isReadOnly ? (
+              <JoinTableColumnPicker columnPicker={columnPicker} />
+            ) : null
+          }
+          containerStyle={CONTAINER_STYLE}
+          rightContainerStyle={RIGHT_CONTAINER_STYLE}
+        >
+          <Tooltip
+            label={t`${METAKEY}+click to open in new tab`}
+            hidden={!table || isReadOnly}
+            events={{ hover: true, focus: false, touch: false }}
+          >
+            <DataPickerTarget
+              table={table}
+              query={query}
+              setIsOpened={setIsOpened}
+              stageIndex={stageIndex}
+              isDisabled={isReadOnly}
+            />
+          </Tooltip>
+        </NotebookCellItem>
+      )}
+    </Box>
   );
 }
 

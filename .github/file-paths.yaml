@@ -19,7 +19,7 @@ frontend_ci: &frontend_ci
 frontend_embedding_sdk_ci: &frontend_embedding_sdk_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
-  - ".github/workflows/*embedding-sdk*.yml"
+  - ".github/workflows/embedding-sdk*.yml"
 
 frontend_configs: &frontend_configs
   - "yarn.lock"

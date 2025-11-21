@@ -5,7 +5,6 @@ import { useSetting } from "metabase/common/hooks";
 import { Button, Checkbox, Icon, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  CollectionItemModel,
   DatabaseId,
   RecentContexts,
   RecentItem,
@@ -18,6 +17,7 @@ import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-ite
 import type { CollectionPickerItem } from "../../CollectionPicker";
 import {
   QuestionPicker,
+  type QuestionPickerModel,
   type QuestionPickerStatePath,
 } from "../../QuestionPicker";
 import { TablePicker } from "../../TablePicker";
@@ -52,13 +52,14 @@ interface Props {
   options?: DataPickerModalOptions;
 }
 
-type FilterOption = { label: string; value: CollectionItemModel };
+type FilterOption = { label: string; value: QuestionPickerModel };
 
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = [
+const QUESTION_PICKER_MODELS: QuestionPickerModel[] = [
   "card",
   "dataset",
   "metric",
   "dashboard",
+  "table", // yes, tables are in the question picker now, I'm sorry
 ];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
@@ -87,7 +88,7 @@ export const DataPickerModal = ({
     ...OPTIONS,
     ...options,
   };
-  const [modelFilter, setModelFilter] = useState<CollectionItemModel[]>(
+  const [modelFilter, setModelFilter] = useState<QuestionPickerModel[]>(
     QUESTION_PICKER_MODELS,
   );
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
@@ -96,6 +97,7 @@ export const DataPickerModal = ({
     hasQuestions,
     hasModels,
     hasMetrics,
+    hasTables,
     isLoading: isLoadingAvailableData,
   } = useAvailableData({
     databaseId,
@@ -122,8 +124,14 @@ export const DataPickerModal = ({
         value: "metric" as const,
       });
     }
+    if (hasTables) {
+      filterOptions.push({
+        label: t`Tables`,
+        value: "table" as const,
+      });
+    }
     return filterOptions;
-  }, [hasQuestions, hasModels, hasMetrics]);
+  }, [hasQuestions, hasModels, hasMetrics, hasTables]);
 
   const { tryLogRecentItem } = useLogRecentItem();
 
@@ -263,8 +271,8 @@ const FilterButton = ({
   onChange,
   options,
 }: {
-  value: CollectionItemModel[];
-  onChange: (value: CollectionItemModel[]) => void;
+  value: QuestionPickerModel[];
+  onChange: (value: QuestionPickerModel[]) => void;
   options: FilterOption[];
 }) => {
   return (
@@ -278,7 +286,7 @@ const FilterButton = ({
         <Checkbox.Group
           value={value}
           onChange={(newValues: string[]) =>
-            onChange(newValues as CollectionItemModel[])
+            onChange(newValues as QuestionPickerModel[])
           }
           px="1rem"
           py="0.5rem"

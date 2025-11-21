@@ -1,8 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
+  setupCardEndpoints,
   setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -12,6 +15,7 @@ import {
 } from "__support__/ui";
 import type { CollectionContentModel } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
@@ -100,6 +104,12 @@ const setup = async (props: Partial<MiniPickerProps> = {}) => {
         name: "NetherField",
         collection_id: "root",
       }),
+      createMockCollectionItem({
+        id: 106,
+        model: "metric",
+        name: "Catherine",
+        collection_id: "root",
+      }),
     ],
   });
 
@@ -152,6 +162,8 @@ const setup = async (props: Partial<MiniPickerProps> = {}) => {
     createMockSearchResult({ id: 305, model: "collection", name: "Reynolds" }),
   ]);
 
+  setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"], {}, true);
+
   renderWithProviders(
     <MiniPicker
       opened
@@ -181,6 +193,28 @@ describe("MiniPicker", () => {
     //@ts-expect-error - using a null value to test absence of prop
     await setup({ onBrowseAll: null });
     expect(screen.queryByText("Browse all")).not.toBeInTheDocument();
+  });
+
+  it("records recent items when an item is picked", async () => {
+    const { onChangeSpy } = await setup();
+    await userEvent.click(await screen.findByText("Mini Db"));
+    await userEvent.click(await screen.findByText("public"));
+    await userEvent.click(await screen.findByText("roads"));
+
+    expect(onChangeSpy).toHaveBeenCalledWith({
+      id: 2,
+      model: "table",
+      name: "roads",
+    });
+
+    const [req] = await findRequests("POST");
+
+    expect(req.url).toContain("/api/activity/recents");
+    expect(req.body).toEqual({
+      context: "selection",
+      model: "table",
+      model_id: 2,
+    });
   });
 
   describe("tables", () => {
@@ -233,6 +267,21 @@ describe("MiniPicker", () => {
       expect(await screen.findByText("pokemon")).toBeInTheDocument(); // schema header
       expect(await screen.findByText("pokedex")).toBeInTheDocument(); // table
     });
+
+    it("should show a schema when provided a table as a value", async () => {
+      await setup({
+        value: {
+          model: "table",
+          id: 4,
+          db_id: 1,
+          schema: "pokemon",
+          name: "cards",
+        },
+      });
+      expect(await screen.findByText("pokemon")).toBeInTheDocument();
+      expect(await screen.findByText("cards")).toBeInTheDocument();
+      expect(await screen.findByText("pokedex")).toBeInTheDocument();
+    });
   });
 
   describe("collections", () => {
@@ -259,11 +308,57 @@ describe("MiniPicker", () => {
       });
     });
 
+    it("can pick a metric", async () => {
+      const { onChangeSpy } = await setup();
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(await screen.findByText("Brighton")).toBeInTheDocument();
+      await userEvent.click(await screen.findByText("Catherine"));
+      expect(onChangeSpy).toHaveBeenCalledWith({
+        id: 106,
+        model: "metric",
+        name: "Catherine",
+      });
+    });
+
     it("ignores documents", async () => {
       await setup();
       await userEvent.click(await screen.findByText("Our analytics"));
       expect(await screen.findByText("Brighton")).toBeInTheDocument();
       expect(screen.queryByText("Longbourn")).not.toBeInTheDocument();
+    });
+
+    it("ignores metrics when the model is missing", async () => {
+      await setup({
+        models: ["table", "dataset", "card"],
+      });
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(await screen.findByText("Brighton")).toBeInTheDocument();
+      expect(screen.queryByText("Catherine")).not.toBeInTheDocument();
+    });
+
+    it("should show a collection when provided a card as a value", async () => {
+      setupCardEndpoints(
+        createMockCard({
+          id: 202,
+          name: "Rosings",
+          collection_id: 101,
+          collection: createMockCollection({
+            effective_location: "/",
+          }),
+        }),
+      );
+      await setup({
+        value: {
+          id: 202,
+          model: "card",
+          name: "Rosings",
+          database_id: 1,
+        },
+      });
+      expect(await screen.findByText("more things")).toBeInTheDocument();
+      expect(await screen.findByText("Rosings")).toBeInTheDocument();
+      expect(await screen.findByText("Meryton")).toBeInTheDocument(); // sibling
+      expect(screen.queryByText(/Our analytics/)).not.toBeInTheDocument(); // document sibling
     });
   });
 

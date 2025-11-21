@@ -3,10 +3,13 @@ import { useDeepCompareEffect } from "react-use";
 
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { CollectionItemModel } from "metabase-types/api";
 
 import { DelayedLoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
-import { useEnsureCollectionSelected } from "../../CollectionPicker";
+import {
+  type CollectionPickerItem,
+  type CollectionPickerModel,
+  useEnsureCollectionSelected,
+} from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import {
@@ -18,6 +21,7 @@ import { useGetInitialContainer } from "../../hooks";
 import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
 import type {
   QuestionPickerItem,
+  QuestionPickerModel,
   QuestionPickerOptions,
   QuestionPickerStatePath,
 } from "../types";
@@ -35,7 +39,7 @@ export const defaultOptions: QuestionPickerOptions = {
 
 interface QuestionPickerProps {
   initialValue?: Pick<QuestionPickerItem, "model" | "id"> | TablePickerValue;
-  models?: CollectionItemModel[];
+  models?: QuestionPickerModel[];
   options: QuestionPickerOptions;
   path: QuestionPickerStatePath | undefined;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
@@ -57,7 +61,10 @@ export const QuestionPicker = ({
   shouldDisableItem,
 }: QuestionPickerProps) => {
   const defaultPath = useMemo(() => {
-    return getStateFromIdPath({ idPath: ["root"], models });
+    return getStateFromIdPath({
+      idPath: ["root"],
+      models: models as CollectionPickerModel[],
+    });
   }, [models]);
   const path = pathProp ?? defaultPath;
 
@@ -71,10 +78,13 @@ export const QuestionPicker = ({
       onItemSelect(folder);
 
       //if it's actually a folder
-      if (isFolder(folder, models)) {
+      if (isFolder(folder, models as QuestionPickerModel[])) {
         const newPath = getStateFromIdPath({
-          idPath: getCollectionIdPath(folder, userPersonalCollectionId),
-          models,
+          idPath: getCollectionIdPath(
+            folder as CollectionPickerItem,
+            userPersonalCollectionId,
+          ),
+          models: models as CollectionPickerModel[],
         });
 
         onPathChange(newPath);
@@ -119,7 +129,7 @@ export const QuestionPicker = ({
 
         const newPath = getStateFromIdPath({
           idPath,
-          models,
+          models: models as CollectionPickerModel[],
         });
 
         // start with the current item selected if we can
@@ -142,7 +152,7 @@ export const QuestionPicker = ({
             { ...currentCollection, model: "collection" },
             userPersonalCollectionId,
           ),
-          models,
+          models: models as CollectionPickerModel[],
         });
 
         // start with the current item selected if we can
@@ -189,11 +199,15 @@ export const QuestionPicker = ({
     <NestedItemPicker
       initialValue={isTablePickerValue(initialValue) ? initialValue : undefined}
       isFolder={(item: QuestionPickerItem | TablePickerItem) =>
-        isTablePickerFolderOrQuestionPickerFolder(item, models)
+        isTablePickerFolderOrQuestionPickerFolder(
+          item,
+          models as QuestionPickerModel[],
+        )
       }
       options={options}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
+      // @ts-expect-error - CollectionPickerItem and QuestionPickerItem don't mix 😢
       path={path}
       listResolver={CollectionItemPickerResolver}
       shouldShowItem={shouldShowItem}
