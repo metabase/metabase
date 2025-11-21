@@ -49,15 +49,6 @@ runs:
 
         if [ "$IS_IGNORED" = "true" ]; then
           echo "⚠️  Driver '$DRIVERS' is in the ignored list. Skipping tests."
-
-          # Extract metadata for context
-          REASON=$(jq -r '.metadata.reason // "No reason provided"' ci-test-config.json)
-          UPDATED_BY=$(jq -r '.metadata.updated_by // "unknown"' ci-test-config.json)
-          LAST_UPDATED=$(jq -r '.metadata.last_updated // "unknown"' ci-test-config.json)
-
-          echo "Reason: $REASON"
-          echo "Updated by: $UPDATED_BY"
-          echo "Last updated: $LAST_UPDATED"
           echo "skip=true" >> $GITHUB_OUTPUT
         else
           echo "Driver '$DRIVERS' is not ignored. Proceeding with tests."
