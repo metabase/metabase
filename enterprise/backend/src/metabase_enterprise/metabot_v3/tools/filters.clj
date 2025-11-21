@@ -413,12 +413,12 @@
             api/*is-superuser?* true]
     (-> (filter-records #_{:data-source {:tabl-id 3}
                            :filters [{:operation "number-greater-than"
-                                      :field-id "t3/6"
+                                      :field-id "t3-6"
                                       :value 50}]}
          {:data-source {:table-id 1}
           :filters [{:operation "greater-than"
                      :bucket "month-of-year"
-                     :field-id "t1/3"
+                     :field-id "t1-3"
                      :value #_"2020-01-01" 1}]})
         :structured-output :query qp/process-query :data :native_form :query))
   -)

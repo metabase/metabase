@@ -230,7 +230,7 @@
                        :dataset_query (lib/->legacy-MBQL source-query)
                        :type :metric}]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
-        (let [fid #(format "c%d/%d" metric-id %)
+        (let [fid #(format "c%d-%d" metric-id %)
               filters [{:field_id (fid 0), :operation "number-greater-than", :value 50} ; ID
                        {:field_id (fid 2), :operation "equals", :values ["3" "4"]}      ; Title
                        {:field_id (fid 6), :operation "not-equals", :values [3 4]}      ; Rating
@@ -294,19 +294,19 @@
                                            :query-id output
                                            :query {}
                                            :result-columns []}})]
-        (let [fields [{:field_id "c2/8", :bucket "year-of-era"}
-                      {:field_id "c2/9"}]
-              filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
-                       {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
-                       {:field_id "c2/5", :operation "not-equals", :values [3 4]}
-                       {:field_id "c2/6", :operation "month-equals", :values [4 5 9]}
-                       {:field_id "c2/6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
-                       {:field_id "c2/6", :bucket "day-of-week" :operation "equals", :values [1 7]}
-                       {:field_id "c2/6", :operation "year-equals", :value 2008}]
-              aggregations [{:field_id "c2/10", :bucket "week", :function "count-distinct"}
-                            {:field_id "c2/11", :function "sum"}]
-              breakouts [{:field_id "c2/4", :field_granularity "week"}
-                         {:field_id "c2/6", :field_granularity "day"}]
+        (let [fields [{:field_id "c2-8", :bucket "year-of-era"}
+                      {:field_id "c2-9"}]
+              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+                       {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
+                       {:field_id "c2-5", :operation "not-equals", :values [3 4]}
+                       {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
+                       {:field_id "c2-6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
+                       {:field_id "c2-6", :bucket "day-of-week" :operation "equals", :values [1 7]}
+                       {:field_id "c2-6", :operation "year-equals", :value 2008}]
+              aggregations [{:field_id "c2-10", :bucket "week", :function "count-distinct"}
+                            {:field_id "c2-11", :function "sum"}]
+              breakouts [{:field_id "c2-4", :field_granularity "week"}
+                         {:field_id "c2-6", :field_granularity "day"}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
@@ -338,7 +338,7 @@
                       (swap! tool-requests conj arguments)
                       {:structured-output output})]
         (let [fields []
-              filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}]
+              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
@@ -427,17 +427,17 @@
                                           (assoc :id metric-id
                                                  :type "metric"
                                                  :verified true
-                                                 :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                 :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                  :queryable_dimensions
-                                                 (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
+                                                 (map-indexed #(assoc %2 :field_id (format "c%d-%d" metric-id %1))
                                                               expected-fields)))
                                       (-> model-metric-data
                                           (select-keys [:name :description])
                                           (assoc :id model-metric-id
                                                  :type "metric"
-                                                 :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)
+                                                 :default_time_dimension_field_id (format "c%d-%d" model-metric-id 7)
                                                  :queryable_dimensions
-                                                 (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-metric-id %1))
+                                                 (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-metric-id %1))
                                                               expected-fields)))]
                             :models [(-> model-data
                                          (select-keys [:name :description :database_id])
@@ -445,13 +445,13 @@
                                                 :type "model"
                                                 :verified true
                                                 :display_name "Model Model"
-                                                :fields (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
+                                                :fields (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-id %1))
                                                                      expected-fields)
                                                 :metrics
                                                 [{:id model-metric-id
                                                   :name "Model metric"
                                                   :description "Model metric desc"
-                                                  :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)}]))]}
+                                                  :default_time_dimension_field_id (format "c%d-%d" model-metric-id 7)}]))]}
                            :conversation_id conversation-id}
                           response))))
               (testing "Minimal call"
@@ -589,9 +589,9 @@
                                             (assoc :id metric-id
                                                    :type "metric"
                                                    :verified true
-                                                   :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                   :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                    :queryable_dimensions
-                                                   (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
+                                                   (map-indexed #(assoc %2 :field_id (format "c%d-%d" metric-id %1))
                                                                 expected-fields)))
                      :conversation_id conversation-id}
                     (request {:metric_id metric-id}))))
@@ -601,10 +601,10 @@
                                             (assoc :id metric-id
                                                    :type "metric"
                                                    :verified true
-                                                   :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                   :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                    :queryable_dimensions
                                                    (map-indexed #(assoc %2
-                                                                        :field_id (format "c%d/%d" metric-id %1)
+                                                                        :field_id (format "c%d-%d" metric-id %1)
                                                                         :field_values missing-value)
                                                                 expected-fields)))
                      :conversation_id conversation-id}
@@ -616,7 +616,7 @@
                                             (assoc :id metric-id
                                                    :type "metric"
                                                    :verified true
-                                                   :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                                   :default_time_dimension_field_id (format "c%d-%d" metric-id 7)
                                                    :queryable_dimensions missing-value))
                      :conversation_id conversation-id}
                     (request {:metric_id                 metric-id
@@ -693,7 +693,7 @@
                                                      :type "question"
                                                      :verified true
                                                      :result_columns
-                                                     (map-indexed #(assoc %2 :field_id (format "c%d/%d" question-id %1))
+                                                     (map-indexed #(assoc %2 :field_id (format "c%d-%d" question-id %1))
                                                                   expected-fields)))
                        :conversation_id conversation-id}
                       (request arguments))))
@@ -704,7 +704,7 @@
                                                      :type "question"
                                                      :result_columns
                                                      (map-indexed #(assoc %2
-                                                                          :field_id (format "c%d/%d" question-id %1)
+                                                                          :field_id (format "c%d-%d" question-id %1)
                                                                           :field_values missing-value)
                                                                   expected-fields)))
                        :conversation_id conversation-id}
@@ -1098,7 +1098,7 @@
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
-                                         :fields (map-indexed #(assoc %2 :field_id (format "t%d/%d" table-id %1))
+                                         :fields (map-indexed #(assoc %2 :field_id (format "t%d-%d" table-id %1))
                                                               expected-fields)
                                          :metrics [(assoc metric-data
                                                           :id metric-id
@@ -1115,7 +1115,7 @@
                                          :id table-id
                                          :type "table"
                                          :fields (map-indexed #(assoc %2
-                                                                      :field_id (format "t%d/%d" table-id %1)
+                                                                      :field_id (format "t%d-%d" table-id %1)
                                                                       :field_values missing-value)
                                                               expected-fields)
                                          :metrics [(assoc metric-data
