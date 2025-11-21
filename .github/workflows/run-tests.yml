@@ -123,7 +123,7 @@ jobs:
       specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
 
   sdk-tests:
-    needs: files-changed
+    needs: [uberjar]
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
 
