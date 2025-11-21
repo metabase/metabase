@@ -57,7 +57,7 @@ runs:
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
       # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
       # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
-      if: steps.run-test.outcome != 'success'
+      if: ${{ steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true' }}
       with:
         path: "target/junit/**/*_test.xml"
         name: JUnit Test Report ${{ inputs.junit-name }}
@@ -66,7 +66,7 @@ runs:
         list-tests: failed
         fail-on-error: false
     - name: Upload Logs on Failure
-      if: always() && steps.run-test.outcome != 'success'
+      if: ${{ always() && steps.run-test.outcome != 'success' && steps.check-driver.outputs.skip != 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-${{ github.job }}
