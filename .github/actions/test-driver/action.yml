@@ -22,6 +22,13 @@ runs:
       id: check-driver
       shell: bash
       run: |
+        # If DRIVERS env var is not set, proceed with tests
+        if [ -z "$DRIVERS" ]; then
+          echo "No DRIVERS env var set. Proceeding with tests."
+          echo "skip=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
         # Fetch CI config and check if driver should be skipped
         curl -sSf -o ci-test-config.json https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json || true
 
