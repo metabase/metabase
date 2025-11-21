@@ -3511,10 +3511,10 @@ describe("scenarios > admin > datamodel", () => {
       // navigating away will cause onChange to be triggered in InputBlurChange and TextareaBlurChange
       // components, so new undos will appear - we need to close them so that they don't interfere
       // with assertions below
-      H.undoToastList().first().icon("close").click({ force: true });
-      H.undoToastList().first().icon("close").click({ force: true });
-      H.undoToastList().first().icon("close").click({ force: true });
-      H.undoToastList().first().icon("close").click({ force: true });
+      H.undoToastList().should("have.length", 4);
+      H.undoToastList().each((toast) => {
+        cy.wrap(toast).icon("close").click({ force: true });
+      });
 
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
