@@ -75,5 +75,3 @@
           toucan (yaml->toucan representation ref-index)]
       (t2/update! model id toucan)
       (t2/select-one model :id id))))
-
-
