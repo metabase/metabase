@@ -28,20 +28,6 @@
       (v0-common/hydrate-env-vars)
       (u/remove-nils)))
 
-(defn persist!
-  "Persist a v0 database representation by matching it to an existing database."
-  [representation ref-index]
-  (let [representation (yaml->toucan representation ref-index)]
-    (if-some [existing (t2/select-one :model/Database
-                                      :name (:name representation)
-                                      :engine (:engine representation))]
-      (do
-        (log/info "Found existing database" (:name representation) "with name" (:name representation))
-        existing)
-      (throw (ex-info (str "Could not match database by name: " (:name representation)
-                           " and engine: " (:engine representation))
-                      {:representation representation})))))
-
 ;;; ------------------------------------ Export Functions ------------------------------------
 
 (defn- get-fk-reference

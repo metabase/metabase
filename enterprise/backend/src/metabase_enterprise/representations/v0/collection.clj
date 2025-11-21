@@ -63,17 +63,6 @@
     (t2/update! :model/Collection (:id existing-collection) {:name archived-name})
     (insert-collection! new-collection)))
 
-(defn persist!
-  "Persist a v0 collection representation by creating or updating it in the database."
-  [representation ref-index]
-  (let [new-collection (->> (yaml->toucan representation ref-index)
-                            (rep-t2/with-toucan-defaults :model/Collection))
-        collection-name (:name new-collection)
-        existing (t2/select-one :model/Collection :name collection-name :location "/")]
-    (if existing
-      (archive-and-persist! existing new-collection)
-      (insert-collection! new-collection))))
-
 (defn export-collection
   "Export a Collection Toucan entity to a v0 collection representation."
   [t2-collection]

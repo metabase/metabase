@@ -27,22 +27,6 @@
        :template_tags (lib/recognize-template-tags sql)}
       u/remove-nils))
 
-(defn persist!
-  "Persist a v0 snippet representation by creating or updating it in the database."
-  [representation ref-index]
-  (let [snippet-data (->> (yaml->toucan representation ref-index)
-                          (rep-t2/with-toucan-defaults :model/NativeQuerySnippet))
-        entity-id (:entity_id snippet-data)
-        existing (when entity-id (t2/select-one :model/NativeQuerySnippet :entity_id entity-id))]
-    (if existing
-      (do
-        (log/info "Updating existing snippet" (:name snippet-data) "with name" (:name representation))
-        (t2/update! :model/NativeQuerySnippet (:id existing) (dissoc snippet-data :entity_id))
-        (t2/select-one :model/NativeQuerySnippet :id (:id existing)))
-      (do
-        (log/info "Creating new snippet" (:name snippet-data))
-        (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet-data))))))
-
 (defn- template-tag-ref
   "Given a template tag map, return its ref string."
   [template-tag]

@@ -39,28 +39,6 @@
          :collection_id (v0-common/find-collection-id collection)}
         u/remove-nils)))
 
-(defn persist!
-  "Persist a v0 metric representation by creating or updating it in the database."
-  [representation ref-index]
-  (let [metric-data (->> (yaml->toucan representation ref-index)
-                         (rep-t2/with-toucan-defaults :model/Card))
-        ;; Generate stable entity_id from ref and collection
-        entity-id (v0-common/generate-entity-id representation)
-        existing (when entity-id
-                   (t2/select-one :model/Card :entity_id entity-id))]
-    (if existing
-      (do
-        (log/info "Updating existing metric" (:name metric-data) "with name" (:name representation))
-        (t2/update! :model/Card (:id existing) (dissoc metric-data :entity_id))
-        (t2/select-one :model/Card :id (:id existing)))
-      (do
-        (log/info "Creating new metric" (:name metric-data))
-        (let [metric-data-with-creator (-> metric-data
-                                           (assoc :creator_id (or api/*current-user-id*
-                                                                  config/internal-mb-user-id))
-                                           (assoc :entity_id entity-id))]
-          (first (t2/insert-returning-instances! :model/Card metric-data-with-creator)))))))
-
 ;;; -- Export --
 
 (defn export-metric

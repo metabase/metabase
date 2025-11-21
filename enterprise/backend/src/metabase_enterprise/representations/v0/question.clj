@@ -30,23 +30,6 @@
          :type :question}
         u/remove-nils)))
 
-(defn persist!
-  "Persist a v0 question representation by creating or updating it in the database."
-  [representation ref-index]
-  (let [question-data (->> (yaml->toucan representation ref-index)
-                           (rep-t2/with-toucan-defaults :model/Card))
-        entity-id (:entity_id question-data)
-        existing (when entity-id
-                   (t2/select-one :model/Card :entity_id entity-id))]
-    (if existing
-      (do
-        (log/info "Updating existing question" (:name question-data) "with ref" (:name representation))
-        (t2/update! :model/Card (:id existing) (dissoc question-data :entity_id))
-        (t2/select-one :model/Card :id (:id existing)))
-      (do
-        (log/info "Creating new question" (:name question-data))
-        (first (t2/insert-returning-instances! :model/Card question-data))))))
-
 ;; -- Export --
 
 (defn export-question

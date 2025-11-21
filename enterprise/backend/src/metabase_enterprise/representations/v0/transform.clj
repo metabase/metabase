@@ -74,27 +74,6 @@
       (set-up-tags id (:tags representation))
       (t2/hydrate (t2/select-one :model/Transform :id id) :transform_tag_names))))
 
-(defn persist!
-  "Persist a v0 transform representation by creating or updating it in the database."
-  [representation ref-index]
-  (let [transform-data (->> (yaml->toucan representation ref-index)
-                            (rep-t2/with-toucan-defaults :model/Transform))
-        entity-id (:entity_id transform-data)
-        existing (when entity-id
-                   (t2/select-one :model/Transform :entity_id entity-id))]
-    (if existing
-      (do
-        (log/info "Updating existing transform" (:name transform-data) "with name" (:name representation))
-        (t2/update! :model/Transform (:id existing) (dissoc transform-data :entity_id))
-        (t2/delete! :model/TransformTransformTag :transform_id (:id existing))
-        (set-up-tags (:id existing) (:tags representation))
-        (t2/hydrate (t2/select-one :model/Transform :id (:id existing)) :transform_tag_names))
-      (do
-        (log/info "Creating new transform" (:name transform-data))
-        (let [transform (t2/insert-returning-instance! :model/Transform transform-data)]
-          (set-up-tags (:id transform) (:tags representation))
-          (t2/hydrate transform :transform_tag_names))))))
-
 ;; EXPORT
 
 (defn export-transform

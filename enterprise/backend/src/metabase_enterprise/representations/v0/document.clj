@@ -28,23 +28,6 @@
      :document (json/encode yaml-content)
      :content_type "application/json+vnd.prose-mirror"}))
 
-(defn persist!
-  "Persist a v0 document representation by creating or updating it in the database."
-  [representation ref-index]
-  (let [document-data (->> (yaml->toucan representation ref-index)
-                           (rep-t2/with-toucan-defaults :model/Document))
-        entity-id (:entity_id document-data)
-        existing (when entity-id
-                   (t2/select-one :model/Document :entity_id entity-id))]
-    (if existing
-      (do
-        (log/info "Updating existing document" (:name document-data) "with name" (:name representation))
-        (t2/update! :model/Document (:id existing) (dissoc document-data :entity_id))
-        (t2/select-one :model/Document :id (:id existing)))
-      (do
-        (log/info "Creating new document" (:name document-data))
-        (first (t2/insert-returning-instances! :model/Document document-data))))))
-
 (defn- patch-refs-for-export
   [yaml]
   (walk/postwalk

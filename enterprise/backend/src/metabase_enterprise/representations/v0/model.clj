@@ -56,27 +56,6 @@
          :collection_id (v0-common/find-collection-id collection)}
         u/remove-nils)))
 
-(defn persist!
-  "Persist a v0 model representation by creating or updating it in the database."
-  [representation ref-index]
-  (let [model-data (->> (yaml->toucan representation ref-index)
-                        (rep-t2/with-toucan-defaults :model/Card))
-        entity-id (:entity_id model-data)
-        existing (when entity-id
-                   (t2/select-one :model/Card :entity_id entity-id))]
-    (if existing
-      (do
-        (log/info "Updating existing model" (:name model-data) "with name" (:name representation))
-        (t2/update! :model/Card (:id existing) (dissoc model-data :entity_id))
-        (t2/select-one :model/Card :id (:id existing)))
-      (do
-        (log/info "Creating new model" (:name model-data))
-        (let [model-data-with-creator (-> model-data
-                                          (assoc :creator_id (or api/*current-user-id*
-                                                                 config/internal-mb-user-id))
-                                          (assoc :entity_id entity-id))]
-          (first (t2/insert-returning-instances! :model/Card model-data-with-creator)))))))
-
 ;;; -- Export --
 
 (defn- extract-user-editable-settings

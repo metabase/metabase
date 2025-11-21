@@ -54,19 +54,6 @@
     :snippet (v0-snippet/yaml->toucan representation ref-index)
     :transform (v0-transform/yaml->toucan representation ref-index)))
 
-(defn persist!
-  "Persist a v0 representation by creating or updating the entity in the database."
-  [representation ref-index]
-  (case (:type representation)
-    :collection (v0-coll/persist! representation ref-index)
-    :database (v0-database/persist! representation ref-index)
-    :document (v0-document/persist! representation ref-index)
-    :metric (v0-metric/persist! representation ref-index)
-    :model (v0-model/persist! representation ref-index)
-    :question (v0-question/persist! representation ref-index)
-    :snippet (v0-snippet/persist! representation ref-index)
-    :transform (v0-transform/persist! representation ref-index)))
-
 (defn insert!
   "Insert a v0 representation as a new entity."
   [representation ref-index]
