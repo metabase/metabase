@@ -84,7 +84,8 @@ export const useGetLibraryCollection = ({
   const { data: libraryCollection, isLoading: isLoadingCollection } =
     useGetLibraryCollectionQuery(undefined, { skip });
   const hasStuff = Boolean(
-    libraryCollection && libraryCollection?.below?.length,
+    libraryCollection &&
+      (libraryCollection?.below?.length || libraryCollection?.here?.length),
   );
   const { data: libraryItems, isLoading: isLoadingItems } =
     useListCollectionItemsQuery(

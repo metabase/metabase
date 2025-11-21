@@ -8,17 +8,13 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 import { usePublishModelsMutation } from "metabase-enterprise/api";
-import type {
-  DatabaseId,
-  PublishModelsResponse,
-  SchemaId,
-  TableId,
-} from "metabase-types/api";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
+import { getPublishSeeItLink } from "../utils";
 
 interface Props {
   tables?: Set<TableId>;
@@ -73,7 +69,7 @@ export function PublishModelsModal({
       sendSuccessToast(
         t`Published`,
         () => {
-          dispatch(push(getLink(data)));
+          dispatch(push(getPublishSeeItLink(data)));
         },
         t`See it`,
       );
@@ -130,14 +126,6 @@ export function PublishModelsModal({
       }}
     />
   );
-}
-
-function getLink(response: PublishModelsResponse) {
-  if (response.created_count === 1) {
-    return Urls.dataStudioModel(response.models[0].id);
-  }
-
-  return Urls.dataStudioCollection(response.target_collection?.id ?? "root");
 }
 
 function AcknowledgePublishModelsModal({
