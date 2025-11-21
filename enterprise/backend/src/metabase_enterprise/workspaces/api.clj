@@ -2,7 +2,6 @@
   "`/api/ee/workspace/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.workspaces.cleanup :as ws.cleanup]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.promotion :as ws.promotion]
    [metabase.api.common :as api]
@@ -167,9 +166,7 @@
                 errors]} (ws.promotion/promote-transforms! ws)]
     {:promoted    (vec promoted)
      :errors      errors
-     :workspace   {:id id :name (:name ws)}
-     :archived_at (when-not errors
-                    (:archived-at (ws.cleanup/archive-workspace! id)))}))
+     :workspace   {:id id :name (:name ws)}}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."

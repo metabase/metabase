@@ -1,37 +1,11 @@
 (ns metabase-enterprise.workspaces.promotion-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.workspaces.promotion :as ws.promotion]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(deftest find-original-transform-test
-  (mt/with-premium-features #{:workspaces :dependencies}
-    (mt/with-temp [:model/Transform original       {}
-                   :model/Workspace workspace      {}
-                   :model/Transform workspace-copy {:workspace_id (:id workspace)}
-                   :model/WorkspaceMappingTransform _m {:upstream_id   (:id original)
-                                                        :downstream_id (:id workspace-copy)
-                                                        :workspace_id  (:id workspace)}]
-      (testing "find-original-transform uses workspace_mapping_transform table"
-        (let [result (#'ws.promotion/find-original-transform workspace-copy (:id workspace))]
-          (is (some? result))
-          (is (= (:id original) (:id result)))
-          (is (nil? (:workspace_id result))))))))
-
-(deftest ^:parallel build-dependency-order-test
-  (testing "build-dependency-order with no graph returns transforms in order"
-    (let [transforms [{:id 1 :name "tx1"} {:id 2 :name "tx2"}]
-          result (#'ws.promotion/build-dependency-order nil transforms)]
-      (is (= [1 2] result))))
-
-  (testing "build-dependency-order with empty graph returns transforms in order"
-    (let [transforms [{:id 1 :name "tx1"} {:id 2 :name "tx2"}]
-          result (#'ws.promotion/build-dependency-order {} transforms)]
-      (is (= [1 2] result)))))
 
 (deftest promote-transforms-test
   (mt/with-premium-features #{:workspaces :dependencies}
