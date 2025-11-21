@@ -595,7 +595,7 @@ describe("Remote Sync", () => {
 
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText("Sync branch").clear().type("test");
-      cy.button("Save changes").click();
+      cy.findByTestId("remote-sync-submit-button").click();
 
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
@@ -607,7 +607,7 @@ describe("Remote Sync", () => {
 
       H.waitForTask({ taskName: "import" });
 
-      cy.findByRole("button", { name: "Save changes" }).should("be.disabled");
+      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
 
       cy.visit("/");
 
