@@ -7,6 +7,7 @@ import _ from "underscore";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Pulses from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
@@ -144,6 +145,21 @@ class DashboardSubscriptionsSidebarInner extends Component {
         editingMode: EDITING_MODES.NEW_PULSE,
         returnMode: [],
       });
+    }
+
+    /**
+     * (EMB-976): In SDK/EAJS context we need to avoid showing the NEW_PULSE view (the view that lets users select
+     * between Email and Slack options) because we only allow email subscriptions there.
+     *
+     * And it's guaranteed that email would already be set up in SDK/EAJS context.
+     * Otherwise, we won't show the subscription button to open this sidebar
+     * in the first place.
+     */
+    if (isEmbeddingSdk() && editingMode === EDITING_MODES.NEW_PULSE) {
+      this.setState({
+        editingMode: EDITING_MODES.ADD_EMAIL,
+      });
+      this.setPulseWithChannel(CHANNEL_TYPES.EMAIL);
     }
 
     if (!isAdmin) {
