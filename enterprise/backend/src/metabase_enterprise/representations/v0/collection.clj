@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase.collections.api :as coll.api]
+   [metabase.collections-rest.api :as coll.api]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

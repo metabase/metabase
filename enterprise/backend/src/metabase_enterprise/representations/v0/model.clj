@@ -10,7 +10,6 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -43,7 +42,7 @@
         dataset-query (-> (assoc representation :database database-id)
                           (v0-mbql/import-dataset-query ref-index))
         metadata-provider (lib-be/application-database-metadata-provider database-id)
-        normalized-query (card.metadata/normalize-dataset-query dataset-query)
+        normalized-query (lib-be/normalize-query dataset-query)
         mlv2-query (lib/query metadata-provider normalized-query)
         inferred-metadata (lib/returned-columns mlv2-query)]
     (-> {:name (or model-name name)
