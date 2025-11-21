@@ -170,9 +170,10 @@
            table-query (when query-needed?
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
-                  (->> (lib/visible-columns table-query)
+                  (->> (lib/visible-columns table-query #_#_-1 {:include-implicitly-joinable? false})
                        field-values-fn
                        (map #(metabot-v3.tools.u/add-table-reference table-query %))))
+           _ (def cols cols)
            field-id-prefix (when with-fields?
                              (metabot-v3.tools.u/table-field-id-prefix id))
            related-tables (when with-related-tables?
