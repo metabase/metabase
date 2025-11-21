@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { type ReactNode, useContext, useLayoutEffect } from "react";
 import { t } from "ttag";
 
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex } from "metabase/ui";
 import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
@@ -32,6 +33,8 @@ export function ModelingSectionLayout({
 
   const { isSidebarOpened, setIsSidebarOpened, setIsSidebarAvailable } =
     useContext(DataStudioContext);
+
+  usePageTitle(t`Modeling`);
 
   useLayoutEffect(() => {
     setIsSidebarOpened(true);
