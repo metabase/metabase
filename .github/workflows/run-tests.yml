@@ -109,9 +109,9 @@ jobs:
     secrets: inherit
 
   sdk-tests:
-    needs: [uberjar, embedding-sdk-package]
+    needs: [uberjar, embedding-sdk-package, files-changed]
     if: |
-      needs.build-sdk-package.result == 'success' &&
+      needs.embedding-sdk-package.result == 'success' &&
       needs.uberjar.result == 'success'
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
