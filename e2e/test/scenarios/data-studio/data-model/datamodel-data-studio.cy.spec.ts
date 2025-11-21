@@ -780,12 +780,16 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should filter unused tables only", () => {
+        H.restore("postgres-writable");
+        H.activateToken("bleeding-edge");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         const usedTableName = "Animals";
         const unusedTableName = "Birds";
 
         getTableId({
           databaseId: WRITABLE_DB_ID,
-          name: usedTableName,
+          displayName: usedTableName,
         }).then((tableId) => {
           cy.wrap(tableId).as("usedTableId");
           return H.createQuestion({
