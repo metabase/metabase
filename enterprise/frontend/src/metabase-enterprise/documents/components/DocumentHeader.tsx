@@ -9,7 +9,6 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -69,8 +68,6 @@ export const DocumentHeader = ({
   onArchive,
   hasComments = false,
 }: DocumentHeaderProps) => {
-  const [isRepresentationsModalOpen, setIsRepresentationsModalOpen] =
-    useState(false);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const hasDocumentsFeature = useHasTokenFeature("documents");
   const isAdmin = useSelector(getUserIsAdmin);
@@ -159,14 +156,6 @@ export const DocumentHeader = ({
             </Box>
           )}
         </Transition>
-        {!isNewDocument && document && (
-          <Button
-            onClick={() => setIsRepresentationsModalOpen(true)}
-            data-hide-on-print
-          >
-            {t`Representations`}
-          </Button>
-        )}
         {!isNewDocument && hasComments && !isWithinIframe() && (
           <Tooltip label={t`Show all comments`}>
             <Box>
@@ -281,14 +270,6 @@ export const DocumentHeader = ({
           />
         )}
       </Flex>
-      {document && (
-        <RepresentationsModal
-          opened={isRepresentationsModalOpen}
-          onClose={() => setIsRepresentationsModalOpen(false)}
-          entityId={document.id}
-          entityType="document"
-        />
-      )}
     </Flex>
   );
 };

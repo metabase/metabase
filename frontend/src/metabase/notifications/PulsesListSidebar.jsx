@@ -2,7 +2,6 @@
 
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -20,7 +19,6 @@ import { getActivePulseParameters } from "metabase/lib/pulse";
 import { connect } from "metabase/lib/redux";
 import { formatFrame } from "metabase/lib/time-dayjs";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
-import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
@@ -41,16 +39,6 @@ function _PulsesListSidebar({
   editPulse,
   parameters,
 }) {
-  const [representationsModalOpen, setRepresentationsModalOpen] =
-    useState(false);
-  const [selectedPulseId, setSelectedPulseId] = useState(null);
-
-  const handleShowRepresentations = (e, pulseId) => {
-    e.stopPropagation();
-    setSelectedPulseId(pulseId);
-    setRepresentationsModalOpen(true);
-  };
-
   return (
     <Sidebar>
       <div
@@ -108,35 +96,23 @@ function _PulsesListSidebar({
                   className={cx(
                     CS.flex,
                     CS.alignCenter,
-                    CS.justifyBetween,
                     CS.hoverChild,
                     CS.hoverInherit,
                   )}
                 >
-                  <div className={cx(CS.flex, CS.alignCenter)}>
-                    <Icon
-                      name={
-                        pulse.channels[0].channel_type === "email"
-                          ? "mail"
-                          : "slack"
-                      }
-                      className={CS.mr1}
-                      style={{ paddingBottom: "5px" }}
-                      size={16}
-                    />
-                    <Label className={cx(CS.hoverChild, CS.hoverInherit)}>
-                      {friendlySchedule(pulse.channels[0])}
-                    </Label>
-                  </div>
-                  <Tooltip label={t`View representation`}>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      onClick={(e) => handleShowRepresentations(e, pulse.id)}
-                    >
-                      <Icon name="info" size={14} />
-                    </Button>
-                  </Tooltip>
+                  <Icon
+                    name={
+                      pulse.channels[0].channel_type === "email"
+                        ? "mail"
+                        : "slack"
+                    }
+                    className={CS.mr1}
+                    style={{ paddingBottom: "5px" }}
+                    size={16}
+                  />
+                  <Label className={cx(CS.hoverChild, CS.hoverInherit)}>
+                    {friendlySchedule(pulse.channels[0])}
+                  </Label>
                 </div>
                 <PulseDetails pulse={pulse} parameters={parameters} />
               </div>
@@ -144,12 +120,6 @@ function _PulsesListSidebar({
           );
         })}
       </div>
-      <RepresentationsModal
-        opened={representationsModalOpen}
-        onClose={() => setRepresentationsModalOpen(false)}
-        entityId={selectedPulseId}
-        entityType="pulse"
-      />
     </Sidebar>
   );
 }

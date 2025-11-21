@@ -10,9 +10,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getTimelineName } from "metabase/lib/timelines";
 import * as Urls from "metabase/lib/urls";
-import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { Button } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import type { MenuItem } from "../../types";
@@ -24,7 +22,6 @@ import {
   ModalBody,
   ModalRoot,
   ModalToolbar,
-  ModalToolbarButton,
   ModalToolbarInput,
   ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
@@ -50,8 +47,6 @@ const TimelineDetailsModal = ({
 }: TimelineDetailsModalProps): JSX.Element => {
   const title = isArchive ? t`Archived events` : getTimelineName(timeline);
   const [inputText, setInputText] = useState("");
-  const [isRepresentationsModalOpen, setIsRepresentationsModalOpen] =
-    useState(false);
 
   const searchText = useDebouncedValue(
     inputText.toLowerCase(),
@@ -105,13 +100,6 @@ const TimelineDetailsModal = ({
               role="button"
             >{t`Create event`}</ModalToolbarLink>
           )}
-          {!isArchive && (
-            <ModalToolbarButton>
-              <Button onClick={() => setIsRepresentationsModalOpen(true)}>
-                {t`Representations`}
-              </Button>
-            </ModalToolbarButton>
-          )}
         </ModalToolbar>
       )}
       <ModalBody isTopAligned={isNotEmpty}>
@@ -128,12 +116,6 @@ const TimelineDetailsModal = ({
           <TimelineEmptyState timeline={timeline} />
         )}
       </ModalBody>
-      <RepresentationsModal
-        opened={isRepresentationsModalOpen}
-        onClose={() => setIsRepresentationsModalOpen(false)}
-        entityId={timeline.id}
-        entityType="timeline"
-      />
     </ModalRoot>
   );
 };

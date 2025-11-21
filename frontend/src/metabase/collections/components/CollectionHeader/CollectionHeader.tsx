@@ -1,13 +1,9 @@
-import { useState } from "react";
 import { withRouter } from "react-router";
-import { t } from "ttag";
 
 import {
   isInstanceAnalyticsCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
-import { RepresentationsModal } from "metabase/representations/RepresentationsModal";
-import { Button } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
@@ -44,9 +40,6 @@ const CollectionHeader = ({
   canUpload,
   uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
-  const [isRepresentationsModalOpen, setIsRepresentationsModalOpen] =
-    useState(false);
-
   const isTrash = isTrashedCollection(collection);
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
@@ -84,9 +77,6 @@ const CollectionHeader = ({
             onCreateBookmark={onCreateBookmark}
             onDeleteBookmark={onDeleteBookmark}
           />
-          <Button onClick={() => setIsRepresentationsModalOpen(true)}>
-            {t`Representations`}
-          </Button>
           <CollectionInfoSidebarToggle
             collection={collection}
             onUpdateCollection={onUpdateCollection}
@@ -100,12 +90,6 @@ const CollectionHeader = ({
           )}
         </HeaderActions>
       )}
-      <RepresentationsModal
-        opened={isRepresentationsModalOpen}
-        onClose={() => setIsRepresentationsModalOpen(false)}
-        entityId={collection.id}
-        entityType="collection"
-      />
     </HeaderRoot>
   );
 };
