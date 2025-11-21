@@ -9,12 +9,12 @@
 (defn- find-original-transform
   "Find the original transform that was mirrored into this workspace.
    Uses the workspace_mapping_transform table to find the upstream transform."
-  [x0 workspace-id]
+  [xf workspace-id]
   (or (when-let [mapping (t2/select-one :model/WorkspaceMappingTransform
-                                        :downstream_id (:id x0)
+                                        :downstream_id (:id xf)
                                         :workspace_id workspace-id)]
         (t2/select-one :model/Transform :id (:upstream_id mapping)))
-      (throw (ex-info "Original transform not found" {:transform-id (:id x0)
+      (throw (ex-info "Original transform not found" {:transform-id (:id xf)
                                                       :workspace-id workspace-id}))))
 
 (defn- promote-single-transform!
@@ -22,17 +22,11 @@
    Returns a map with :id, :name, and :status."
   [xf upstream]
   (try
-    (let [upstream-id (:id upstream)]
+    (let [upstream-id (:id upstream)
+          updates (select-keys xf [:source :description])]
       (log/infof "Promoting transform %d -> %d: %s" (:id xf) upstream-id (:name upstream))
-
-      (let [updates (select-keys xf [:source :description])]
-        (t2/update! :model/Transform upstream-id updates))
-
-      ;; no execution for now
-      ;; (log/infof "Re-executing transform %d in original schema" upstream-id)
-      ;; (let [updated-transform (t2/select-one :model/Transform :id upstream-id)]
-      ;;   (transforms/run-mbql-transform! updated-transform))
-
+      ;; TODO: do query remapping here
+      (t2/update! :model/Transform upstream-id updates)
       {:id     upstream-id
        :name   (:name upstream)})
     (catch Throwable e
@@ -67,9 +61,9 @@
                           ;; fallback for when there is no graph
                           (t2/select :model/Transform :workspace_id (:id ws)))
         _               (log/infof "Found %d workspace transforms to promote" (count xs))
-        results         (for [x0   xs
-                              :let [original (find-original-transform x0 (:id ws))]]
-                          (promote-single-transform! x0 original))
+        results         (for [x   xs
+                              :let [original (find-original-transform x (:id ws))]]
+                          (promote-single-transform! x original))
         {promoted false
          errors   true} (group-by #(contains? % :error) results)]
 
