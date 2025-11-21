@@ -17,6 +17,7 @@
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -59,7 +60,7 @@
   efficiently sync tables from different databases."
   [newly-unhidden]
   (when (seq newly-unhidden)
-    (quick-task/submit-task!
+    (u.jvm/in-virtual-thread*
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
          (let [database (t2/select-one :model/Database db-id)]

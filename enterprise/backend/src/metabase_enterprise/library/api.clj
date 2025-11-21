@@ -24,8 +24,8 @@
   (let [descendent-ids (map :id (collection/descendants-flat collection))
         below          (t2/select-fn-set :type [:model/Card :type] :collection_id [:in descendent-ids])]
     ;;This function is only used on the root Library which cannot have items directly in it
-    ;;So can assume :here is only card, and all descendants are :below
-    (assoc collection :here #{:card}
+    ;;So can assume :here is only collection, and all descendants are :below
+    (assoc collection :here #{:collection}
            :below (cond-> below
                     (contains? below :model)
                     (-> (disj :model) (conj :dataset))
