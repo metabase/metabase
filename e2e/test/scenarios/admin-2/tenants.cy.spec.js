@@ -113,6 +113,14 @@ describe("Tenants - management", () => {
 
     H.modal().findByRole("textbox", { name: "User strategy" }).click();
     H.popover().findByText("Multi tenant").click();
+
+    cy.log("should show toast hint message about tenant collections");
+    cy.findAllByText(
+      "You can create tenant collections from the main Metabase navigation",
+    )
+      .first()
+      .should("be.visible");
+
     H.modal().button("Close").click();
 
     cy.findByRole("link", { name: /External Users/ }).should("exist");

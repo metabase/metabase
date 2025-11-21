@@ -259,5 +259,34 @@ describe("scenarios - embedding hub", () => {
         .findByText("Get started with Embedded Analytics JS")
         .should("not.exist");
     });
+
+    it('"Set up tenants" card should navigate to admin settings', () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.request("PUT", "/api/setting/embedding-homepage", {
+        value: "visible",
+      });
+
+      cy.visit("/");
+
+      H.main().findByText("Set up tenants").should("be.visible").click();
+
+      H.modal().within(() => {
+        cy.findByText("People settings").should("be.visible");
+
+        cy.log("enable multi-tenancy");
+        cy.findByLabelText("User strategy").should("be.visible").click();
+      });
+
+      H.popover().findByText("Multi tenant").click();
+
+      cy.visit("/");
+
+      cy.log("clicking on tenants should go to tenants page");
+      H.main().findByText("Set up tenants").click();
+      cy.url().should("include", "/admin/tenants");
+    });
   });
 });

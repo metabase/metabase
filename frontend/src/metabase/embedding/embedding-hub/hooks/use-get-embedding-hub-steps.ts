@@ -54,6 +54,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
                   ? "/admin/tenants"
                   : "/admin/people/user-strategy",
                 optional: true,
+                stepId: "setup-tenants" as const,
               },
             ]
           : []),
