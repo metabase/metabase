@@ -18,7 +18,7 @@ Metabase will print out the help text for available commands.
 
 ## `api-documentation`
 
-Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`.
+Generate an HTML and JSON files for all API endpoints.
 
 ## `command-documentation`
 
