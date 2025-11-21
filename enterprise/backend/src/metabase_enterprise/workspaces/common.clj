@@ -88,6 +88,8 @@
         (str/includes? msg "duplicate")
         (str/includes? msg "UNIQUE"))))
 
+;; TODO (Chris 2025-11-20) We have not added a uniqueness constraint to the db, we should either do that, or remove
+;;                         the whole retry song and dance.
 (defn- create-workspace-with-unique-name!
   "Create a workspace, retrying with a new unique name if there's a constraint violation."
   [creator-id db-id database ws-name graph max-retries]
