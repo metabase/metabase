@@ -1,5 +1,12 @@
 import { MetabaseError } from "./base";
 
+export function SSO_NOT_ALLOWED() {
+  return new MetabaseError(
+    "SSO_NOT_ALLOWED",
+    "SSO authentication is not allowed for this instance.",
+  );
+}
+
 export function USER_FETCH_FAILED() {
   return new MetabaseError(
     "USER_FETCH_FAILED",

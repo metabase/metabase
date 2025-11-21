@@ -42,7 +42,7 @@ jobs:
       - name: Restore ESLint cache
         uses: actions/cache/restore@v4
         with:
-          path: .eslintcache
+          path: ${{ github.workspace}}/.eslintcache
           key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
 
       - name: Compile CLJS
