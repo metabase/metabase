@@ -19,7 +19,7 @@
              response   (mt/user-http-request :crowberto :get 200 "ee/library")]
          (testing "When library exists, but no content"
            (is (= "Library" (:name response)))
-           (is (= [] (:here response)))
+           (is (= ["collection"] (:here response)))
            (is (= [] (:below response))))
          (testing "With content in the library"
            (mt/with-temp [:model/Card _ {:name          "Card in Models"
@@ -34,4 +34,4 @@
              (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
                (is (= "Library" (:name response)))
                (is (= ["dataset" "metric"] (:below response)))
-               (is (= [] (:here response)))))))))))
+               (is (= ["collection"] (:here response)))))))))))
