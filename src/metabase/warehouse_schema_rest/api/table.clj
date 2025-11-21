@@ -156,7 +156,6 @@
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                           :present [:description :caveats :points_of_interest :visibility_type
-                                    ;; bulk-metadata-editing
                                     :data_layer :data_authority :data_source :owner_email :owner_user_id])
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
@@ -216,7 +215,6 @@
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
             [:field_order             {:optional true} [:maybe FieldOrder]]
             [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-            ;; bulk-metadata-editing
             [:data_source             {:optional true} [:maybe :string]]
             [:data_layer              {:optional true} [:maybe :string]]
             [:owner_email             {:optional true} [:maybe :string]]
@@ -239,7 +237,6 @@
                                [:points_of_interest      {:optional true} [:maybe :string]]
                                [:show_in_getting_started {:optional true} [:maybe :boolean]]
                                [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-                               ;; bulk-metadata-editing
                                [:data_source             {:optional true} [:maybe :string]]
                                [:data_layer              {:optional true} [:maybe :string]]
                                [:owner_email             {:optional true} [:maybe :string]]

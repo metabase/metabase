@@ -410,7 +410,6 @@
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                             {:display_name     "Userz"
                              :description      "What a nice table!"
-                             ;; bulk-metadata-editing
                              :data_source      "transform"
                              :data_layer       "copper"
                              :owner_email      "bob@org.com"
@@ -426,7 +425,6 @@
                :visibility_type "hidden"
                :display_name    "Userz"
                :is_writable     nil
-               ;; bulk-metadata-editing
                :data_source      "transform"
                :data_layer       "copper"
                ;; exclusive later (not now)
