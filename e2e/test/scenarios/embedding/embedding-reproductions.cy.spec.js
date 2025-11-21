@@ -1547,6 +1547,7 @@ describe("issue 63687", () => {
         resource: "question",
         resourceId: questionId,
         activeTab: "parameters",
+        unpublishBeforeOpen: false,
       });
     });
 
