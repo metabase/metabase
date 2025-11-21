@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
@@ -140,18 +140,6 @@ export const SdkIframeEmbedSetupProvider = ({
     previewParameterValuesBySlug,
     embeddingParameters,
   });
-
-  useEffect(() => {
-    if (!settings.isGuestEmbed || !initialEmbeddingParameters) {
-      return;
-    }
-
-    onEmbeddingParametersChange(initialEmbeddingParameters);
-  }, [
-    settings.isGuestEmbed,
-    initialEmbeddingParameters,
-    onEmbeddingParametersChange,
-  ]);
 
   const value: SdkIframeEmbedSetupContextType = {
     isSimpleEmbedFeatureAvailable,
