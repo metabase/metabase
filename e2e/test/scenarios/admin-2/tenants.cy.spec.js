@@ -7,7 +7,7 @@ const {
   COLLECTION_GROUP_ID,
   ALL_EXTERNAL_USERS_GROUP_ID,
 } = require("e2e/support/cypress_sample_instance_data");
-const { getPermissionRowPermissions, isPermissionDisabled } = require("e2e/support/helpers");
+const { getPermissionRowPermissions } = require("e2e/support/helpers");
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
 
@@ -459,7 +459,10 @@ describe("Tenants - management", () => {
     cy.log("check that tenant attributes propagate to users");
 
     cy.visit("/admin/tenants/people");
-    cy.findByTestId("nav-item").findByText("External Users", 1000);
+    cy.findByTestId("nav-item-external-users").findByText(
+      "External Users",
+      1000,
+    );
     cy.findByTestId("admin-people-list-table").within(() => {
       cy.findByText(`${GIZMO_USER.first_name} ${GIZMO_USER.last_name}`).should(
         "exist",
