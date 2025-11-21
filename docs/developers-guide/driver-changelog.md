@@ -6,7 +6,7 @@ title: Driver interface changelog
 
 ## Metabase 0.58.0
 
-- Added a `:collate`feature for drivers that support collation settings on text fields
+- Added a `:collate` feature for drivers that support collation settings on text fields
 
 ## Metabase 0.57.0
 
