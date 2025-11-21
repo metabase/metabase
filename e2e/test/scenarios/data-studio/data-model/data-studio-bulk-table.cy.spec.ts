@@ -201,7 +201,8 @@ describe("bulk table operations", () => {
           .should("have.text", "Bobby Tables");
         cy.wrap(table)
           .findByTestId("table-published")
-          .should("have.text", "Yes");
+          .findByLabelText("published")
+          .should("be.visible");
       });
   });
 
