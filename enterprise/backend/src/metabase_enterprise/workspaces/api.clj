@@ -2,6 +2,7 @@
   "`/api/ee/workspace/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.promotion :as ws.promotion]
    [metabase.api.common :as api]
@@ -142,7 +143,7 @@
     {:transforms (for [transform transforms]
                    (assoc transform :workspace (get workspaces-by-id (tid->wid (:id transform)))))}))
 
-(api.macros/defendpoint :post "/:id/promote"
+(api.macros/defendpoint :post "/:id/merge"
   :- [:map
       [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
       [:errors {:optional true} [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]
@@ -166,7 +167,10 @@
                 errors]} (ws.promotion/promote-transforms! ws)]
     {:promoted    (vec promoted)
      :errors      errors
-     :workspace   {:id id :name (:name ws)}}))
+     :workspace   {:id id :name (:name ws)}
+     :archived_at (when-not (seq errors)
+                    (t2/update! :model/Workspace :id id {:archived_at (t/offset-date-time)})
+                    (t2/select-one-fn :archived_at [:model/Workspace :archived_at] :id id))}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."

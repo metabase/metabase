@@ -35,7 +35,7 @@
   (mt/with-temp [:model/Workspace workspace {:name "Promote Workspace"}]
     (testing "POST /api/ee/workspace/:id/promote requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/promote")))))))
+             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/merge")))))))
 
 (deftest workspace-crud-flow-test
   (mt/with-premium-features [:workspaces :dependencies]
@@ -70,10 +70,10 @@
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
     (mt/with-temp [:model/Workspace workspace {:name "Promote Test"}]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/promote"))))))
+             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/merge"))))))
 
   (testing "Cannot promote an already archived workspace"
     (mt/with-temp [:model/Workspace workspace {:name      "Archived Workspace"
                                                :archived_at (java.time.OffsetDateTime/now)}]
       (is (= "Cannot promote an already archived workspace"
-             (mt/user-http-request :crowberto :post 400 (str "ee/workspace/" (:id workspace) "/promote")))))))
+             (mt/user-http-request :crowberto :post 400 (str "ee/workspace/" (:id workspace) "/merge")))))))
