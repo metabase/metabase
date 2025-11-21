@@ -96,8 +96,10 @@
 (def UpdateWorkspaceContents
   "Schema for updating workspace contents (adding/removing entities)"
   [:map
-   [:added {:optional true} [:map-of ::entity-grouping [:sequential ms/PositiveInt]]]
-   [:removed {:optional true} [:map-of ::entity-grouping [:sequential ms/PositiveInt]]]])
+   [:upstream
+    [:map
+     [:added {:optional true} [:map-of ::entity-grouping [:sequential ms/PositiveInt]]]
+     [:removed {:optional true} [:map-of ::entity-grouping [:sequential ms/PositiveInt]]]]]])
 
 (def Workspace
   "Schema for workspace response"
@@ -217,7 +219,7 @@
   ;; TODO (Chris 11/21/25) -- implement actual deletion logic
   {:ok true})
 
-(api.macros/defendpoint :put "/:id/contents" :- Workspace
+(api.macros/defendpoint :post "/:id/contents" :- Workspace
   "Update workspace contents by adding or removing entities.
    Has the same error responses as create-workspace (graph-not-closed, contains-uncloneable-entities)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -225,8 +227,9 @@
    body :- UpdateWorkspaceContents]
   (api/check-404 (t2/select-one :model/Workspace :id id))
   ;; TODO (Chris 11/21/25) -- implement update contents logic
-  (let [_added (:added body)
-        _removed (:removed body)]
+  (let [upstream (:upstream body)
+        _added (:added upstream)
+        _removed (:removed upstream)]
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
 
