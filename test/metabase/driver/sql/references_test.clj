@@ -784,6 +784,22 @@ SELECT * FROM active_users"))))
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM products"))))
 
+(deftest ^:parallel multilevel-cte-test
+  (is (= {:used-fields
+          #{{:column "id",
+             :alias nil,
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}},
+          :returned-fields
+          [{:column "id",
+            :alias nil,
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "orders"}}]]}]}
+         (->references "
+WITH orders_a AS (select * from orders),
+orders_b AS (select * from orders_a)
+SELECT id from orders_b"))))
+
 (deftest ^:parallel shadowed-cte-test
   (is (= {:used-fields
           #{{:column "y",
