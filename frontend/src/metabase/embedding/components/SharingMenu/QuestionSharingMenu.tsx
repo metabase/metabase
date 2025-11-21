@@ -17,8 +17,8 @@ import { useSharingModal } from "../../hooks/use-sharing-modal";
 
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
 import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
+import { PublicLinkModals } from "./PublicLinkModals";
 import { SharingButton, SharingMenu } from "./SharingMenu";
-import { SharingModals } from "./SharingModals";
 import type { QuestionSharingModalType } from "./types";
 
 export function QuestionSharingMenu({ question }: { question: Question }) {
@@ -77,7 +77,7 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
           tooltip={t`Public link`}
           onClick={() => setModalType("question-public-link")}
         />
-        <SharingModals
+        <PublicLinkModals
           modalType={modalType}
           question={question}
           onClose={() => setModalType(null)}
@@ -97,7 +97,7 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
           onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
         />
       </SharingMenu>
-      <SharingModals
+      <PublicLinkModals
         modalType={modalType}
         question={question}
         onClose={() => setModalType(null)}

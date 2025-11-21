@@ -11,12 +11,14 @@ import type { Dashboard } from "metabase-types/api";
 export type DashboardSharingEmbeddingModalProps = {
   dashboard: Dashboard;
   isOpen: boolean;
+  onBack?: () => void;
   onClose: () => void;
 };
 
 export const DashboardSharingEmbeddingModal = ({
   dashboard,
   isOpen,
+  onBack,
   onClose,
 }: DashboardSharingEmbeddingModalProps) => {
   const parameters = useSelector(getParameters);
@@ -48,6 +50,7 @@ export const DashboardSharingEmbeddingModal = ({
           embedding_type: STATIC_LEGACY_EMBEDDING_TYPE,
         })
       }
+      onBack={onBack}
       onClose={onClose}
     />
   );
