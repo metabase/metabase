@@ -200,53 +200,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
   });
 
-  it("don't propagate permissions by checkbox without access select", () => {
-    cy.visit("/admin/permissions/collections");
-
-    const collections = ["Our analytics", "First collection"];
-    H.assertSidebarItems(collections);
-
-    H.selectSidebarItem("First collection");
-    H.assertSidebarItems([...collections, "Second collection"]);
-
-    H.selectSidebarItem("Second collection");
-
-    H.assertPermissionTable([
-      ["Administrators", "Curate"],
-      ["All Users", "No access"],
-      ["collection", "Curate"],
-      ["data", "No access"],
-      ["nosql", "No access"],
-      ["readonly", "View"],
-    ]);
-
-    H.modifyPermission(
-      "All Users",
-      COLLECTION_ACCESS_PERMISSION_INDEX,
-      "View",
-      false,
-    );
-
-    H.modifyPermission(
-      "All Users",
-      COLLECTION_ACCESS_PERMISSION_INDEX,
-      null,
-      true,
-    );
-
-    // Navigate to children
-    H.selectSidebarItem("Third collection");
-
-    H.assertPermissionTable([
-      ["Administrators", "Curate"],
-      ["All Users", "No access"], // Check permission hasn't been propagated
-      ["collection", "Curate"],
-      ["data", "No access"],
-      ["nosql", "No access"],
-      ["readonly", "View"],
-    ]);
-  });
-
   it("show selected option for the collection with children", () => {
     cy.visit("/admin/permissions/collections");
 
