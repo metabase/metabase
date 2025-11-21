@@ -111,7 +111,7 @@
 (def ^:private AttributeStatus
   "Describes a possible value of an attribute and where it is sourced from."
   [:map
-   [:source [:enum :user :jwt :system]]
+   [:source [:enum :user :jwt :system :tenant]]
    [:frozen boolean?]
    [:value :string]])
 
