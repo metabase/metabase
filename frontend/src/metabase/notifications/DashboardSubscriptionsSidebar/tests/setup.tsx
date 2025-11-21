@@ -29,6 +29,13 @@ import {
 
 import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
 
+const mockIsEmbeddingSdkObject = {
+  value: false,
+};
+jest.mock("metabase/embedding-sdk/config", () => ({
+  isEmbeddingSdk: jest.fn(() => mockIsEmbeddingSdkObject.value),
+}));
+
 export const dashcard = createMockDashboardCard();
 
 const actionDashcard = createMockActionDashboardCard({
@@ -74,6 +81,17 @@ function createDashboardState(
   });
 }
 
+type SetupOpts = {
+  email?: boolean;
+  slack?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
+  hasEnterprisePlugins?: boolean;
+  isAdmin?: boolean;
+  dashcards?: DashboardCard[];
+  parameters?: UiParameter[];
+  isEmbeddingSdk?: boolean;
+};
+
 export function setup(
   {
     email,
@@ -83,15 +101,8 @@ export function setup(
     isAdmin = false,
     dashcards = defaultDashcards,
     parameters = defaultParameters,
-  }: {
-    email?: boolean;
-    slack?: boolean;
-    tokenFeatures?: Partial<TokenFeatures>;
-    hasEnterprisePlugins?: boolean;
-    isAdmin?: boolean;
-    dashcards?: DashboardCard[];
-    parameters?: UiParameter[];
-  } = {
+    isEmbeddingSdk = false,
+  }: SetupOpts = {
     email: true,
     slack: true,
     tokenFeatures: {},
@@ -140,6 +151,8 @@ export function setup(
       ],
     };
   }
+
+  mockIsEmbeddingSdkObject.value = isEmbeddingSdk;
 
   setupNotificationChannelsEndpoints(channelData.channels);
 

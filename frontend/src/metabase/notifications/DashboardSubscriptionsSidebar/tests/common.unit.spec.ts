@@ -41,6 +41,26 @@ describe("DashboardSubscriptionsSidebar", () => {
     expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
   });
 
+  describe("Embedding SDK", () => {
+    it("should not show subscription options when Slack is set up", async () => {
+      setup({ isEmbeddingSdk: true, email: true, slack: true });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show subscription options when Slack is not set up", async () => {
+      setup({ isEmbeddingSdk: true, email: true, slack: false });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+    });
+
+    // We don't test `email: false` because this sidebar is only accessible when email is already set up
+  });
+
   describe("Slack Subscription sidebar", () => {
     it("should not show advanced filter options in OSS", async () => {
       setup();
