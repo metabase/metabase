@@ -1,12 +1,13 @@
 (ns metabase-enterprise.workspaces.promotion
   "Functionality for promoting workspace transforms back to main Metabase."
   (:require
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- find-original-transform
+(defn- find-upstream-xf
   "Find the original transform that was mirrored into this workspace.
    Uses the workspace_mapping_transform table to find the upstream transform."
   [xf workspace-id]
@@ -20,19 +21,29 @@
 (defn- promote-single-transform!
   "Promote a single workspace transform to replace its original.
    Returns a map with :id, :name, and :status."
-  [xf upstream]
+  [downstream-xf upstream-xf new->old-s+n]
   (try
-    (let [upstream-id (:id upstream)
-          updates (select-keys xf [:source :description])]
-      (log/infof "Promoting transform %d -> %d: %s" (:id xf) upstream-id (:name upstream))
-      ;; TODO: do query remapping here
+    (let [upstream-id (:id upstream-xf)
+          remapped-xf (-> downstream-xf
+                          ;; TODO: do query remapping here, if the transform is dependent on an isolated table.
+                          ;;   ... with the current FE this is not possible! :-D
+                          (update :target (fn [target]
+                                            ;; TODO assert database is what we expect
+                                            (assert (= "table" (:type target)) "Only table targets are supported for promotion.")
+                                            (let [[old-schema old-name] (new->old-s+n [(:schema target) (:name target)])]
+                                              (assert old-name "Unable to find the upstream table to sub for the isolated one.")
+                                              (assoc target
+                                                     :schema old-schema
+                                                     :name old-name)))))
+          ;; TODO revisit whether there are any other fields we want
+          updates (select-keys remapped-xf [:name :description :source :target])]
+      (log/infof "Promoting transform %d -> %d: %s" (:id downstream-xf) upstream-id (:name upstream-xf))
       (t2/update! :model/Transform upstream-id updates)
-      {:id     upstream-id
-       :name   (:name upstream)})
+      (assoc updates :id upstream-id))
     (catch Throwable e
-      (log/errorf e "Failed to promote transform %s" (:name xf))
-      {:id     (:id xf)
-       :name   (:name xf)
+      (log/errorf e "Failed to promote transform %s" (:name downstream-xf))
+      {:id     (:id downstream-xf)
+       :name   (:name downstream-xf)
        :error  (ex-message e)})))
 
 (defn- transform-ids [graph]
@@ -61,9 +72,23 @@
                           ;; fallback for when there is no graph
                           (t2/select :model/Transform :workspace_id (:id ws)))
         _               (log/infof "Found %d workspace transforms to promote" (count xs))
-        results         (for [x   xs
-                              :let [original (find-original-transform x (:id ws))]]
-                          (promote-single-transform! x original))
+        new->old-s+n    (u/for-map [{:keys [old_schema old_name new_schema new_name]}
+                                    (t2/query {:select [[:t1.schema :old_schema]
+                                                        [:t1.name :old_name]
+                                                        [:t2.schema :new_schema]
+                                                        [:t2.name :new_name]]
+                                               :from   [[(t2/table-name :model/WorkspaceMappingTable) :m]
+                                                        [(t2/table-name :model/Table) :t1]
+                                                        [(t2/table-name :model/Table) :t2]]
+                                               :where  [:and
+                                                        [:= :m.workspace_id (:id ws)]
+                                                        [:= :t1.id :m.upstream_id]
+                                                        [:= :t2.id :m.downstream_id]]})]
+                          [[new_schema new_name]
+                           [old_schema old_name]])
+        results         (for [xf xs
+                              :let [upstream-xf (find-upstream-xf xf (:id ws))]]
+                          (promote-single-transform! xf upstream-xf new->old-s+n))
         {promoted false
          errors   true} (group-by #(contains? % :error) results)]
 

@@ -144,11 +144,14 @@
                    (assoc transform :workspace (get workspaces-by-id (tid->wid (:id transform)))))}))
 
 (api.macros/defendpoint :post "/:id/merge"
-  :- [:map
-      [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
-      [:errors {:optional true} [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]
-      [:workspace [:map [:id ms/PositiveInt] [:name :string]]]
-      [:archived-at :any]]
+  #_#_:- [:or
+          [:map
+           [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
+           [:errors {:optional true} [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]
+           [:workspace [:map [:id ms/PositiveInt] [:name :string]]]
+           [:archived_at [:maybe :any]]]
+      ;; error message from check-404 or check-400
+          :string]
   "Promote workspace transforms back to main Metabase and archive the workspace.
 
   This will:
@@ -165,12 +168,16 @@
                            (api/check-400 (nil? (:archived_at <>)) "Cannot promote an already archived workspace"))
         {:keys [promoted
                 errors]} (ws.promotion/promote-transforms! ws)]
-    {:promoted    (vec promoted)
-     :errors      errors
-     :workspace   {:id id :name (:name ws)}
-     :archived_at (when-not (seq errors)
-                    (t2/update! :model/Workspace :id id {:archived_at (t/offset-date-time)})
-                    (t2/select-one-fn :archived_at [:model/Workspace :archived_at] :id id))}))
+    (u/prog1
+      {:promoted    (vec promoted)
+       :errors      errors
+       :workspace   {:id id :name (:name ws)}
+       :archived_at (when-not (seq errors)
+                      (t2/update! :model/Workspace :id id {:archived_at [:now]})
+                      (t2/select-one-fn :archived_at [:model/Workspace :archived_at] :id id))}
+      (when-not (seq errors)
+        ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
+        (t2/delete! :model/Workspace id)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."

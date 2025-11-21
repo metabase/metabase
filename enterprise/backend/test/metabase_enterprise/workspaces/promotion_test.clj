@@ -9,17 +9,43 @@
 
 (deftest promote-transforms-test
   (mt/with-premium-features #{:workspaces :dependencies}
-    (mt/with-temp [:model/Transform                 x1   {:name        "Transform 1"
-                                                          :description "Original description"}
-                   :model/Transform                 x2   {:name        "Transform 2"
-                                                          :description "Another original"}
+    (mt/with-temp [:model/Table                     t1   {:schema "public", :name "table_1"}
+                   :model/Table                     t2   {:schema "public", :name "table_2"}
+                   :model/Transform x1                   {:name        "Transform 1"
+                                                          :description "Original description"
+                                                          :target      {:type     "table"
+                                                                        :database 1
+                                                                        :schema   "public"
+                                                                        :name     "table_1"}}
+                   :model/Transform x2                   {:name        "Transform 2"
+                                                          :description "Another original"
+                                                          :target      {:type     "table"
+                                                                        :database 1
+                                                                        :schema   "public"
+                                                                        :name     "table_2"}}
                    :model/Workspace                 ws   {:name "Test Workspace"}
-                   :model/Transform                 wsx1 {:name         "Transform 1_DUP"
+                   :model/Table                     wst1 {:schema "isolated__place", :name "public__table_1"}
+                   :model/Table                     wst2 {:schema "isolated__place", :name "public__table_2"}
+                   :model/WorkspaceMappingTable     _    {:upstream_id   (:id t1)
+                                                          :downstream_id (:id wst1)
+                                                          :workspace_id  (:id ws)}
+                   :model/WorkspaceMappingTable     _    {:upstream_id   (:id t2)
+                                                          :downstream_id (:id wst2)
+                                                          :workspace_id  (:id ws)}
+                   :model/Transform                 wsx1 {:name         "Transform 1"
                                                           :description  "Modified description"
-                                                          :workspace_id (:id ws)}
-                   :model/Transform                 wsx2 {:name         "Transform 2_DUP"
+                                                          :workspace_id (:id ws)
+                                                          :target      {:type     "table"
+                                                                        :database 1
+                                                                        :schema   "isolated__place"
+                                                                        :name     "public__table_1"}}
+                   :model/Transform                 wsx2 {:name         "Transform 2"
                                                           :description  "Modified description 2"
-                                                          :workspace_id (:id ws)}
+                                                          :workspace_id (:id ws)
+                                                          :target      {:type     "table"
+                                                                        :database 1
+                                                                        :schema   "isolated__place"
+                                                                        :name     "public__table_2"}}
                    :model/WorkspaceMappingTransform _m1  {:upstream_id   (:id x1)
                                                           :downstream_id (:id wsx1)
                                                           :workspace_id  (:id ws)}
@@ -42,10 +68,19 @@
 
 (deftest promote-transforms-with-error-test
   (mt/with-premium-features #{:workspaces :dependencies}
-    (mt/with-temp [:model/Transform x1                 {:name "Transform 1"}
+    (mt/with-temp [:model/Table     t1                 {:schema "public", :name "table_1"}
+                   :model/Transform x1                 {:name "Transform 1"}
                    :model/Workspace ws                 {:name "Test Workspace"}
-                   :model/Transform wsx1               {:name         "Transform 1_DUP"
-                                                        :workspace_id (:id ws)}
+                   :model/Table     t2                 {:schema "isolated", :name "public__table_1"}
+                   :model/Transform wsx1               {:name         "Transform 1"
+                                                        :workspace_id (:id ws)
+                                                        :target      {:type     "table"
+                                                                      :database 1
+                                                                      :schema   "isolated"
+                                                                      :name     "public__table_1"}}
+                   :model/WorkspaceMappingTable      _ {:upstream_id   (:id t1)
+                                                        :downstream_id (:id t2)
+                                                        :workspace_id  (:id ws)}
                    :model/WorkspaceMappingTransform _m {:upstream_id   (:id x1)
                                                         :downstream_id (:id wsx1)
                                                         :workspace_id  (:id ws)}]

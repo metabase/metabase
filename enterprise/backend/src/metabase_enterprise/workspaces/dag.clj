@@ -155,11 +155,10 @@
   "Fetch tables that depend on the given entities, i.e. the output tables of the transforms."
   [entities]
   (when (seq entities)
-    (let [conditions (mapv (fn [{:keys [id type]}]
-                             [:and
-                              [:= :to_entity_type (type->db-type type)]
-                              [:= :to_entity_id id]])
-                           entities)
+    (let [conditions (for [{:keys [id type]} entities]
+                       [:and
+                        [:= :to_entity_type (type->db-type type)]
+                        [:= :to_entity_id id]])
           rows       (t2/query {:select-distinct [:from_entity_id]
                                 :from            [:dependency]
                                 :where           [:and

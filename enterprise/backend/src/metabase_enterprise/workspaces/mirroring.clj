@@ -26,13 +26,12 @@
                             target    (:target transform)
                             old-s+n   ((juxt :schema :name) target)
                             new-s+n   (table-mapping old-s+n)]
-                        (assert new-s+n "Unable to find isolated table mapping for transform target.")
+                        ;; TODO (Chris 2025-11-20) we can rework things to get rid of this requirement
+                        (assert new-s+n "Unable to find isolated mapping for the target table - are you sure the source table exists?")
                         (assert (= "table" (:type target)) "We only support mirroring transforms that target tables.")
                         (assert (= database-id (:database target)) "Unexpected target database for transform.")
                         (merge transform
-                               ;; TODO (Chris 2025-11-19) shouldn't rename like this - will mess up promotion!
-                               {:name         (str (:name transform) "_DUP")
-                                :workspace_id (:id workspace)
+                               {:workspace_id (:id workspace)
                                 ;; TODO (Chris 2025-11-19) remap source table (when necessary)
                                 #_#_:source {}
                                 :target       {:type     "table"
