@@ -2,7 +2,9 @@
   "`/api/ee/workspace/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.workspaces.cleanup :as ws.cleanup]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.promotion :as ws.promotion]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -56,7 +58,7 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (->> (t2/select :model/Workspace
+  {:items  (->> (t2/select :model/Workspace :archived_at [:is nil]
                            (cond-> {:order-by [[:created_at :desc]]}
                              (request/limit)  (sql.helpers/limit (request/limit))
                              (request/offset) (sql.helpers/offset (request/offset))))
@@ -140,6 +142,34 @@
                            (u/index-by :id (t2/select [:model/Workspace :id :name] :id [:in workspace-ids])))]
     {:transforms (for [transform transforms]
                    (assoc transform :workspace (get workspaces-by-id (tid->wid (:id transform)))))}))
+
+(api.macros/defendpoint :post "/:id/promote"
+  :- [:map
+      [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
+      [:errors {:optional true} [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]
+      [:workspace [:map [:id ms/PositiveInt] [:name :string]]]
+      [:archived-at :any]]
+  "Promote workspace transforms back to main Metabase and archive the workspace.
+
+  This will:
+  1. Update original transforms with workspace versions
+  2. Re-execute transforms in the original schema
+  3. Archive the workspace and clean up isolated resources
+
+  Returns a report of promoted transforms and any errors."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body-params]
+  (let [ws               (u/prog1 (t2/select-one :model/Workspace :id id)
+                           (api/check-404 <>)
+                           (api/check-400 (nil? (:archived_at <>)) "Cannot promote an already archived workspace"))
+        {:keys [promoted
+                errors]} (ws.promotion/promote-transforms! ws)]
+    {:promoted    (vec promoted)
+     :errors      errors
+     :workspace   {:id id :name (:name ws)}
+     :archived_at (when-not errors
+                    (:archived-at (ws.cleanup/archive-workspace! id)))}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."

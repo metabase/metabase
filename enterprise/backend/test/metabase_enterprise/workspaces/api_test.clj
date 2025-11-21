@@ -4,6 +4,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest workspace-endpoints-require-superuser-test
   (mt/with-temp [:model/Workspace workspace {:name "Private Workspace"}]
     (testing "GET /api/ee/workspace requires superuser"
@@ -28,7 +30,12 @@
   (mt/with-temp [:model/Workspace workspace {:name "Delete Workspace"}]
     (testing "DELETE /api/ee/workspace/:id requires superuser"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :delete 403 (str "ee/workspace/" (:id workspace))))))))
+             (mt/user-http-request :rasta :delete 403 (str "ee/workspace/" (:id workspace)))))))
+
+  (mt/with-temp [:model/Workspace workspace {:name "Promote Workspace"}]
+    (testing "POST /api/ee/workspace/:id/promote requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/promote")))))))
 
 (deftest workspace-crud-flow-test
   (mt/with-premium-features [:workspaces :dependencies]
@@ -58,3 +65,15 @@
         #_(testing "workspace can be archived"
             (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
               (is (some? (:archived_at updated)))))))))
+
+(deftest ^:parallel promote-workspace-test
+  (testing "POST /api/ee/workspace/:id/promote requires superuser"
+    (mt/with-temp [:model/Workspace workspace {:name "Promote Test"}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 (str "ee/workspace/" (:id workspace) "/promote"))))))
+
+  (testing "Cannot promote an already archived workspace"
+    (mt/with-temp [:model/Workspace workspace {:name      "Archived Workspace"
+                                               :archived_at (java.time.OffsetDateTime/now)}]
+      (is (= "Cannot promote an already archived workspace"
+             (mt/user-http-request :crowberto :post 400 (str "ee/workspace/" (:id workspace) "/promote")))))))
