@@ -25,11 +25,6 @@ runs:
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
 
-    - name: Fetch CI config
-      shell: bash
-      run: |
-        curl -o ci-test-config.json https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/ci-test-config.json
-
     - name: Get M2 cache key
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
