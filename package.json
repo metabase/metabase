@@ -469,7 +469,7 @@
     "serve-resources": "http-server resources/frontend_client -p 3100 -c-1",
     "storybook": "yarn build:cljs && storybook dev -p 6006",
     "storybook-pure": "storybook dev -p 6006",
-    "storybook-embedding-sdk": "IS_EMBEDDING_SDK=true storybook dev -c enterprise/frontend/src/embedding-sdk-shared/.storybook -p 6006",
+    "storybook-embedding-sdk": "IS_EMBEDDING_SDK=true storybook dev -c frontend/src/embedding-sdk-shared/.storybook -p 6006",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
     "test-cljs": "yarn && shadow-cljs compile test && node target/node-tests.js",
     "test-cypress": "tsx ./e2e/runner/run_cypress_local.ts",

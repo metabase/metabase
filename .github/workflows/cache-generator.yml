@@ -67,17 +67,12 @@ jobs:
       - name: Pre-resolve Clojure dependencies
         run: clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P
 
-      - name: Let Mage install babashka and clojure-tools
-        run: ./bin/mage
-
       - name: Update M2 cache
         uses: ./.github/actions/update-cache
         with:
           path: |
             ~/.m2
             ~/.gitlibs
-            ~/.deps.clj
-            ${{ github.workspace}}/bin/bb
           key: ${{ env.M2_CACHE_KEY }}
 
   generate-frontend-caches:
