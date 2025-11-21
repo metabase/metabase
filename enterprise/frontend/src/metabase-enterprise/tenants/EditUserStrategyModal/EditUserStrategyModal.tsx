@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { permissionApi } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { Modal, Select, Stack, Text } from "metabase/ui";
 
@@ -18,6 +19,8 @@ export const EditUserStrategyModal = ({
   const { isLoading, error, value, updateSetting } =
     useAdminSetting("use-tenants");
 
+  const [addToast] = useToast();
+
   const strategy = value ? "multi-tenant" : "single-tenant";
 
   const data = [
@@ -29,8 +32,18 @@ export const EditUserStrategyModal = ({
     await updateSetting({
       key: "use-tenants",
       value: value === "multi-tenant",
+      toast: false,
     });
+
     await dispatch(permissionApi.util.invalidateTags(["permissions-group"]));
+
+    await addToast({
+      message:
+        value === "multi-tenant"
+          ? // eslint-disable-next-line no-literal-metabase-strings -- used in admin
+            t`You can create tenant collections from the main Metabase navigation`
+          : t`Changes saved`,
+    });
   };
 
   return (
