@@ -374,6 +374,12 @@ export function waitForSyncToFinish({
           table.name === tableName && table.initial_sync_status === "complete",
       );
 
+      cy.log("tables");
+      cy.log(JSON.stringify(body.tables, null, 2));
+      cy.log(
+        `${tableName} table initial_sync_status: ${table?.initial_sync_status}`,
+      );
+
       if (!table) {
         return waitForSyncToFinish({
           iteration: ++iteration,

@@ -41,6 +41,7 @@ export function getDataStudioRoutes(
       <Route path="data-studio" component={DataStudioLayout}>
         <IndexRoute
           onEnter={(_state, replace) => {
+            console.log("getIndexPath", getIndexPath(store.getState()));
             replace(getIndexPath(store.getState()));
           }}
         />
@@ -74,7 +75,9 @@ export function getDataStudioRoutes(
 }
 
 function getIndexPath(state: State) {
+  console.log("getIndexPath", state);
   if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
+    console.log("getIndexPath", Urls.dataStudioData());
     return Urls.dataStudioData();
   }
   if (PLUGIN_TRANSFORMS.canAccessTransforms(state)) {

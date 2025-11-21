@@ -20,6 +20,11 @@ export const canAccessDataModel = (state: State): boolean => {
 export const dataModelPermissionAllowedPathGetter = (
   user?: UserWithFeaturePermissions,
 ): AdminPathKey[] => {
+  console.log(
+    "dataModelPermissionAllowedPathGetter",
+    user,
+    canUserAccessDataModel(user),
+  );
   return canUserAccessDataModel(user) ? ["data-model"] : [];
 };
 
