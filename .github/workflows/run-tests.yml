@@ -12,7 +12,7 @@ on:
 
 jobs:
   files-changed:
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -38,7 +38,7 @@ jobs:
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
@@ -123,7 +123,7 @@ jobs:
       specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
 
   sdk-tests:
-    needs: files-changed
+    needs: [uberjar]
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
 
