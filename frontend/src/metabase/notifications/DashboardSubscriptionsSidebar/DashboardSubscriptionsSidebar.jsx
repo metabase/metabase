@@ -136,7 +136,15 @@ class DashboardSubscriptionsSidebarInner extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { isAdmin } = this.props;
+    const { editingMode } = this.state;
+    const { isAdmin, pulses } = this.props;
+
+    if (editingMode === EDITING_MODES.LIST_PULSES && pulses?.length === 0) {
+      this.setState({
+        editingMode: EDITING_MODES.NEW_PULSE,
+        returnMode: [],
+      });
+    }
 
     if (!isAdmin) {
       this.forwardNonAdmins({ prevProps });
@@ -165,9 +173,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       return;
     }
 
-    const isEditingModeForwardable =
-      editingMode === EDITING_MODES.NEW_PULSE ||
-      (editingMode === EDITING_MODES.LIST_PULSES && newPulses?.length === 0);
+    const isEditingModeForwardable = editingMode === EDITING_MODES.NEW_PULSE;
 
     if (isEditingModeForwardable) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
@@ -337,7 +343,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (editingMode === EDITING_MODES.LIST_PULSES && pulses.length > 0) {
+    if (editingMode === EDITING_MODES.LIST_PULSES) {
       return (
         <PulsesListSidebar
           pulses={pulses}
@@ -437,7 +443,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (editingMode === EDITING_MODES.NEW_PULSE || pulses.length === 0) {
+    if (editingMode === EDITING_MODES.NEW_PULSE) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
       const slackConfigured = formInput?.channels?.slack?.configured || false;
 
