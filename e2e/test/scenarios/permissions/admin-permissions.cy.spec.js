@@ -717,7 +717,7 @@ describe("scenarios > admin > permissions", () => {
         "All Users",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "View",
-        true,
+        false,
       );
 
       cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
@@ -740,7 +740,7 @@ describe("scenarios > admin > permissions", () => {
         "nosql",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "Curate",
-        true,
+        false,
       );
 
       cy.button("Save changes").click();

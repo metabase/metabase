@@ -1,6 +1,7 @@
 import { assocIn, getIn, merge } from "icepick";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import { isBoolean } from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
@@ -450,14 +451,16 @@ const collectionPermissions = handleActions(
           value,
         );
 
-        for (const descendent of getDecendentCollections(collection)) {
-          newPermissionsState = assocIn(
-            newPermissionsState,
-            [groupId, descendent.id],
-            shouldPropagate
-              ? value
-              : getIn(originalPermissionsState, [groupId, descendent.id]),
-          );
+        if (isBoolean(shouldPropagate)) {
+          for (const descendent of getDecendentCollections(collection)) {
+            newPermissionsState = assocIn(
+              newPermissionsState,
+              [groupId, descendent.id],
+              shouldPropagate
+                ? value
+                : getIn(originalPermissionsState, [groupId, descendent.id]),
+            );
+          }
         }
 
         return newPermissionsState;

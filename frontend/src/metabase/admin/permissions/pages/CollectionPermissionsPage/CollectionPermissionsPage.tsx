@@ -63,7 +63,7 @@ type UpdateCollectionPermissionParams = {
   groupId: GroupId;
   collection: Collection;
   value: unknown;
-  shouldPropagate: boolean;
+  shouldPropagate: boolean | null;
   originalPermissionsState: CollectionPermissions;
 };
 
@@ -111,7 +111,7 @@ function CollectionsPermissionsPageView({
       item: { id: GroupId },
       _permission: unknown,
       value: unknown,
-      toggleState: boolean,
+      toggleState: boolean | null,
     ) => {
       updateCollectionPermission({
         groupId: item.id,
@@ -132,6 +132,7 @@ function CollectionsPermissionsPageView({
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}
+      key={collection?.id}
     >
       <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
 

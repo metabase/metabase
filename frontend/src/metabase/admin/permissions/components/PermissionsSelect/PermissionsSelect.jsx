@@ -49,7 +49,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   warning,
   isHighlighted,
 }) {
-  const [toggleState, setToggleState] = useState(false);
+  const [toggleState, setToggleState] = useState(null);
   const selectedOption = options.find((option) => option.value === value);
   const selectableOptions = hasChildren
     ? options
@@ -137,7 +137,11 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {hasChildren && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
-              <Toggle small value={toggleState} onChange={onToggleChange} />
+              <Toggle
+                small
+                value={toggleState || false}
+                onChange={onToggleChange}
+              />
             </ToggleContainer>
           )}
         </Fragment>
