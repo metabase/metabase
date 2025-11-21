@@ -1,7 +1,4 @@
-import { IndexRedirect } from "react-router";
-import { t } from "ttag";
-
-import { Route } from "metabase/hoc/Title";
+import { IndexRedirect, Route } from "react-router";
 
 import AccountApp from "./app/containers/AccountApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
@@ -12,7 +9,7 @@ import UserProfileApp from "./profile/containers/UserProfileApp";
 const getRoutes = (store, IsAuthenticated) => {
   return (
     <Route path="/account" component={IsAuthenticated}>
-      <Route title={t`Account settings`} component={AccountApp}>
+      <Route component={AccountApp}>
         <IndexRedirect to="profile" />
         <Route path="profile" component={UserProfileApp} />
         <Route path="password" component={UserPasswordApp} />

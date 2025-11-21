@@ -15,8 +15,9 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { initializeIframeResizer } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -27,6 +28,7 @@ import {
   getIsAppBarVisible,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import StatusListing from "metabase/status/components/StatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
@@ -94,6 +96,9 @@ function App({
   onError,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
+  const applicationName = useSelector(getApplicationName);
+
+  usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
 
   useEffect(() => {

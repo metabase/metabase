@@ -1,5 +1,4 @@
-import { IndexRedirect, IndexRoute, Redirect } from "react-router";
-import { t } from "ttag";
+import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
 import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
@@ -32,7 +31,6 @@ import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDa
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
@@ -74,14 +72,12 @@ import {
 } from "./route-guards";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
-import { getApplicationName } from "./selectors/whitelabel";
 
 export const getRoutes = (store) => {
-  const applicationName = getApplicationName(store.getState());
   const hasUserSetup = getSetting(store.getState(), "has-user-setup");
 
   return (
-    <Route title={applicationName} component={App}>
+    <Route component={App}>
       {/* SETUP */}
       <Route
         path="/setup"
@@ -118,8 +114,8 @@ export const getRoutes = (store) => {
         <Route path="/auth">
           <IndexRedirect to="/auth/login" />
           <Route component={IsNotAuthenticated}>
-            <Route path="login" title={t`Login`} component={Login} />
-            <Route path="login/:provider" title={t`Login`} component={Login} />
+            <Route path="login" component={Login} />
+            <Route path="login/:provider" component={Login} />
           </Route>
           <Route path="logout" component={Logout} />
           <Route path="forgot_password" component={ForgotPassword} />
@@ -145,22 +141,14 @@ export const getRoutes = (store) => {
             }}
           />
 
-          <Route
-            path="getting-started"
-            title={t`Getting Started`}
-            component={CanAccessOnboarding}
-          >
+          <Route path="getting-started" component={CanAccessOnboarding}>
             <IndexRoute component={Onboarding} />
           </Route>
 
-          <Route path="search" title={t`Search`} component={SearchApp} />
+          <Route path="search" component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
           <Redirect from="archive" to="trash" replace />
-          <Route
-            path="trash"
-            title={t`Trash`}
-            component={TrashCollectionLanding}
-          />
+          <Route path="trash" component={TrashCollectionLanding} />
 
           {PLUGIN_DOCUMENTS.getRoutes()}
 
@@ -211,11 +199,7 @@ export const getRoutes = (store) => {
             })}
           />
 
-          <Route
-            path="dashboard/:slug"
-            title={t`Dashboard`}
-            component={DashboardApp}
-          >
+          <Route path="dashboard/:slug" component={DashboardApp}>
             <ModalRoute
               path="move"
               modal={DashboardMoveModalConnected}
@@ -251,11 +235,7 @@ export const getRoutes = (store) => {
 
           <Route path="/model">
             <IndexRoute component={QueryBuilder} />
-            <Route
-              path="new"
-              title={t`New Model`}
-              component={NewModelOptions}
-            />
+            <Route path="new" component={NewModelOptions} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
@@ -307,7 +287,7 @@ export const getRoutes = (store) => {
           <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
 
           {/* REFERENCE */}
-          <Route path="/reference" title={t`Data Reference`}>
+          <Route path="/reference">
             <IndexRedirect to="/reference/databases" />
             <Route path="segments" component={SegmentListContainer} />
             <Route

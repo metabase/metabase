@@ -943,6 +943,16 @@ export const PLUGIN_REMOTE_SYNC: {
   }),
 };
 
+export const PLUGIN_SUPPORT: {
+  isEnabled: boolean;
+  SupportSettings: ComponentType;
+  GrantAccessModal: ComponentType<{ onClose: VoidFunction }>;
+} = {
+  isEnabled: false,
+  SupportSettings: NotFoundPlaceholder,
+  GrantAccessModal: NotFoundPlaceholder,
+};
+
 export type PythonTransformEditorProps = {
   name?: string;
   source: PythonTransformSourceDraft;
