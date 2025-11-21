@@ -35,7 +35,7 @@ jobs:
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/Jod # 22.x.x
+          node-version-file: ".nvmrc"
       - name: Build e2e matrix
         uses: actions/github-script@v7
         id: matrix
