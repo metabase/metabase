@@ -22,9 +22,12 @@
   [toucan-type name]
   (when (string? name)
     (let [entities (t2/select toucan-type :name name)]
-      (if (= 1 (count entities))
+      (cond
+        (= 1 (count entities))
         (first entities)
-        (throw (ex-info (str "Multiple entities of type " toucan-type " with name '" name "'.")
+
+        (< 1 (count entities))
+        (throw (ex-info (str "Multiple entities of type " toucan-type " with name '" name "' found in App DB.")
                         {:toucan-type toucan-type
                          :name name
                          :entities entities}))))))
