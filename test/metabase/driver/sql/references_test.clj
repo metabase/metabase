@@ -784,7 +784,7 @@ SELECT * FROM active_users"))))
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM products"))))
 
-(deftest ^:parallel multilevel-cte-test
+(deftest ^:parallel dependent-cte-test
   (is (= {:used-fields
           #{{:column "id",
              :alias nil,
