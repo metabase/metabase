@@ -11,7 +11,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
 import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSeenAll";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import { ActionIcon, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -44,6 +44,8 @@ export const CollectionMenu = ({
   const isPersonal = isPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
+  const isSharedTenantCollection =
+    PLUGIN_TENANTS.isTenantCollection(collection);
 
   const canWrite = collection.can_write;
   const canMove =
@@ -77,7 +79,7 @@ export const CollectionMenu = ({
     );
   }
 
-  if (isAdmin && !isPersonal) {
+  if (isAdmin && !isPersonal && !isSharedTenantCollection) {
     editItems.push(
       <Menu.Item
         key="collection-edit"
