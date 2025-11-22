@@ -53,6 +53,7 @@ export function EmbeddingSdkSettings() {
     (isSimpleEmbedFeatureAvailable && isSimpleEmbedEnabled);
 
   const isHosted = useSetting("is-hosted?");
+  const isUsingTenants = useSetting("use-tenants");
 
   const { url: switchMetabaseBinariesUrl } = useDocsUrl(
     "paid-features/activating-the-enterprise-edition",
@@ -252,7 +253,7 @@ export function EmbeddingSdkSettings() {
       )}
 
       <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems()}
+        items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
       />
 
       <UpsellDevInstances location="embedding-page" />

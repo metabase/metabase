@@ -26,6 +26,7 @@ export interface SetupOpts {
   isHosted?: Settings["is-hosted?"];
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  isUsingTenants?: Settings["use-tenants"];
 }
 
 export async function setup({
@@ -35,6 +36,7 @@ export async function setup({
   isHosted = false,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
+  isUsingTenants = false,
 }: SetupOpts = {}) {
   const settings = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
@@ -42,6 +44,7 @@ export async function setup({
     "enable-embedding-simple": isEmbeddingSimpleEnabled,
     "is-hosted?": isHosted,
     "token-features": createMockTokenFeatures(tokenFeatures),
+    "use-tenants": isUsingTenants,
   });
 
   const state = createMockState({
