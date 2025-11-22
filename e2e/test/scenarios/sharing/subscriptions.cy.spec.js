@@ -521,8 +521,10 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openSharingMenu();
       H.sharingMenu()
-        .findByText("Can't send subscriptions")
-        .should("be.visible");
+        .within(() => {
+          cy.findByText("Can't send subscriptions").should("be.visible");
+          cy.findByText("Ask your admin to set up email or Slack").should("be.visible");
+        });
     });
   });
 
