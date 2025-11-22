@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
 import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
@@ -41,8 +42,10 @@ export const ParameterSettings = () => {
     });
 
   const isGuestEmbed = !!settings.isGuestEmbed;
-  const isQuestionOrDashboardEmbed =
-    !!settings.questionId || !!settings.dashboardId;
+  const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
+    experience,
+    settings,
+  );
 
   const uiParameters = useMemo(
     () =>

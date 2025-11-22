@@ -4,6 +4,7 @@ import { useDeepCompareEffect } from "react-use";
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { getSignedToken } from "metabase/public/lib/embed";
 
 const SIGNED_TOKEN_FOR_SNIPPET_EXPIRATION_MINUTES = 10;
@@ -33,9 +34,10 @@ export const useGetGuestEmbedSignedToken = ({
     });
 
   const isGuestEmbed = !!settings.isGuestEmbed;
-  const isQuestionOrDashboard =
-    (experience === "dashboard" && settings.dashboardId) ||
-    (experience === "chart" && settings.questionId);
+  const isQuestionOrDashboard = isQuestionOrDashboardSettings(
+    experience,
+    settings,
+  );
 
   useDeepCompareEffect(() => {
     if (!isGuestEmbed || !isQuestionOrDashboard || !secretKey) {

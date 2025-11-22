@@ -3,6 +3,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import {
   Card,
@@ -47,9 +48,10 @@ const AuthenticationSection = () => {
   } = useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuestEmbed;
-  const isQuestionOrDashboardEmbed =
-    (experience === "dashboard" && settings.dashboardId) ||
-    (experience === "chart" && settings.questionId);
+  const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
+    experience,
+    settings,
+  );
 
   const isJwtEnabled = useSetting("jwt-enabled");
   const isSamlEnabled = useSetting("saml-enabled");

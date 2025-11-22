@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useSetting } from "metabase/common/hooks";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
+import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import {
   clojure,
   node,
@@ -56,9 +57,10 @@ export function useSdkIframeEmbedServerSnippet() {
     useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuestEmbed;
-  const isQuestionOrDashboardEmbed =
-    (experience === "dashboard" && settings.dashboardId) ||
-    (experience === "chart" && settings.questionId);
+  const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
+    experience,
+    settings,
+  );
 
   const siteUrl = useSetting("site-url");
   const secretKey = useSetting("embedding-secret-key");
