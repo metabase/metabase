@@ -427,8 +427,8 @@ describe("scenarios > question > offset", () => {
       const breakoutName = "Created At";
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({
@@ -471,8 +471,8 @@ describe("scenarios > question > offset", () => {
       ];
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       addCustomAggregation({

@@ -7,6 +7,8 @@ import type {
   SearchResultId,
 } from "metabase-types/api";
 
+import type { TablePickerValue } from "../Pickers/TablePicker";
+
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
 export type TypeWithModel<Id, Model extends string> = {
@@ -80,6 +82,8 @@ export type ListProps<
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
   entity?: "collection" | "dashboard";
+  refresh?: () => void;
+  initialValue?: TablePickerValue;
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

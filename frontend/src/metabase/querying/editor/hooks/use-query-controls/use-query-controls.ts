@@ -24,7 +24,7 @@ export function useQueryControls(
   question: Question,
   uiState: QueryEditorUiState,
   setQuestion: (newQuestion: Question) => void,
-  setUiState: (newUiState: QueryEditorUiState) => void,
+  onChangeUiState: (newUiState: QueryEditorUiState) => void,
 ) {
   const selectedText = useMemo(() => {
     const query = question.query();
@@ -34,20 +34,20 @@ export function useQueryControls(
   }, [question, uiState.selectionRange]);
 
   const setSelectionRange = (selectionRange: SelectionRange[]) => {
-    setUiState({ ...uiState, selectionRange });
+    onChangeUiState({ ...uiState, selectionRange });
   };
 
   const setModalSnippet = (modalSnippet: NativeQuerySnippet | null) => {
-    setUiState({ ...uiState, modalSnippet });
+    onChangeUiState({ ...uiState, modalSnippet });
   };
 
   const openSnippetModalWithSelectedText = () => {
-    setUiState({ ...uiState, modalSnippet: { content: selectedText } });
+    onChangeUiState({ ...uiState, modalSnippet: { content: selectedText } });
   };
 
   const openModal = (type: QueryModalType) => {
     if (type === "preview-query") {
-      setUiState({
+      onChangeUiState({
         ...uiState,
         modalType: "preview-query",
       });
@@ -68,12 +68,12 @@ export function useQueryControls(
   };
 
   const convertToNative = (newQuestion: Question) => {
-    setUiState({ ...uiState, sidebarType: null });
+    onChangeUiState({ ...uiState, sidebarType: null });
     setQuestion(newQuestion);
   };
 
   const toggleSidebar = (sidebarType: QueryEditorSidebarType) => {
-    setUiState({
+    onChangeUiState({
       ...uiState,
       sidebarType: uiState.sidebarType === sidebarType ? null : sidebarType,
     });
@@ -92,7 +92,7 @@ export function useQueryControls(
   };
 
   const toggleModal = (modalType: QueryEditorModalType) => {
-    setUiState({
+    onChangeUiState({
       ...uiState,
       modalType: uiState.modalType === modalType ? null : modalType,
     });

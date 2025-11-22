@@ -1,6 +1,9 @@
+import _ from "underscore";
+
+import { TablePicker } from "metabase/common/components/Pickers/TablePicker";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
-import type { CollectionItemListProps } from "../types";
+import type { CollectionItemListProps, CollectionPickerItem } from "../types";
 
 import { CollectionItemList } from "./CollectionItemList";
 import { DashboardItemList } from "./DashboardItemList";
@@ -17,6 +20,7 @@ export const CollectionItemPickerResolver = ({
   shouldDisableItem,
   shouldShowItem,
   entity = "collection",
+  initialValue,
 }: CollectionItemListProps) => {
   if (!query) {
     return (
@@ -57,6 +61,19 @@ export const CollectionItemPickerResolver = ({
         shouldDisableItem={shouldDisableItem}
         shouldShowItem={shouldShowItem}
         options={options}
+      />
+    );
+  }
+
+  if (query?.id === "databases") {
+    return (
+      <TablePicker
+        value={initialValue}
+        onItemSelect={(i) => onClick(i as unknown as CollectionPickerItem)}
+        onPathChange={_.noop}
+        shouldDisableItem={(i) =>
+          shouldDisableItem?.(i as unknown as CollectionPickerItem) || false
+        }
       />
     );
   }

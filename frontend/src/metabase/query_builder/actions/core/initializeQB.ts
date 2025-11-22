@@ -278,7 +278,7 @@ async function handleQBInit(
   if (uiControls.queryBuilderMode === "notebook") {
     const databases = await loadDatabases(dispatch);
     if (!getHasDataAccess(databases)) {
-      dispatch(replace("/unauthorized"));
+      dispatch(replace(Urls.unauthorized()));
       return;
     }
   }

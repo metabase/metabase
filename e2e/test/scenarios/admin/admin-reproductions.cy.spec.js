@@ -108,8 +108,7 @@ describe("issue 41765", { tags: "@external" }, () => {
     H.appBar().findByText("New").click();
     H.popover().findByText("Question").click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText(WRITABLE_DB_DISPLAY_NAME).click();
       cy.findByText(TEST_TABLE_DISPLAY_NAME).click();
     });

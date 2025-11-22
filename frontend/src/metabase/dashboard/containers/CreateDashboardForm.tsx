@@ -125,6 +125,7 @@ export function CreateDashboardForm({
             name="collection_id"
             title={t`Which collection should this go in?`}
             filterPersonalCollections={filterPersonalCollections}
+            entityType="dashboard"
           />
           <FormFooter>
             <FormErrorMessage inline />

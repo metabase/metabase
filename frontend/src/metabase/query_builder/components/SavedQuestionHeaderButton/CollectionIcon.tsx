@@ -15,7 +15,11 @@ export const CollectionIcon = ({
   question: Question;
 }) => {
   if (!collection?.type) {
-    return <PLUGIN_MODERATION.EntityModerationIcon question={question} />;
+    return (
+      <PLUGIN_MODERATION.EntityModerationIcon
+        moderationReviews={question.getModerationReviews()}
+      />
+    );
   }
 
   return (

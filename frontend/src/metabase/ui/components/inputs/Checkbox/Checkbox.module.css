@@ -28,6 +28,13 @@
     }
 
     .input {
+      /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
+      &[data-indeterminate],
+      &[data-indeterminate="true"] {
+        border-color: var(--mb-color-border);
+        background-color: var(--mb-color-background);
+      }
+
       &:after {
         content: "";
         border: rem(1) solid var(--mb-color-border);
@@ -65,8 +72,8 @@
   /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
   &[data-indeterminate],
   &[data-indeterminate="true"] {
-    border-color: var(--mb-color-border);
-    background-color: var(--mb-color-background);
+    border-color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand);
   }
 
   &:checked {

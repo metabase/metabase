@@ -1,0 +1,19 @@
+.scrollContainer {
+  flex: 1;
+  overflow: auto;
+  padding: 0 1.5rem 1rem;
+}
+
+.listContainer {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listItem {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}

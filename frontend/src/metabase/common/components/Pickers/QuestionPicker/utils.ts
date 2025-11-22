@@ -2,6 +2,13 @@ import _ from "underscore";
 
 import type { Card, CardType, CollectionItemModel } from "metabase-types/api";
 
+import {
+  type TablePickerFolderItem,
+  type TablePickerItem,
+  isTablePickerFolder,
+  isTablePickerItem,
+} from "../TablePicker";
+
 import type {
   QuestionPickerItem,
   QuestionPickerValue,
@@ -19,6 +26,16 @@ export const isFolder = (
       _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
         .length > 0)
   );
+};
+
+export const isTablePickerFolderOrQuestionPickerFolder = (
+  item: QuestionPickerItem | TablePickerItem,
+  models: CollectionItemModel[],
+): item is TablePickerFolderItem | QuestionPickerItem => {
+  if (isTablePickerItem(item)) {
+    return isTablePickerFolder(item);
+  }
+  return isFolder(item, models);
 };
 
 export const getQuestionPickerValue = ({

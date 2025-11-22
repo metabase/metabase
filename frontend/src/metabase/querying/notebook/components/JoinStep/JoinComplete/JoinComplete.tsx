@@ -103,7 +103,7 @@ export function JoinComplete({
   return (
     <Flex direction={{ base: "column", md: "row" }} gap="sm">
       <NotebookCell className={S.JoinConditionCell} color={color}>
-        <Flex gap={6}>
+        <Flex gap={6} align="center">
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsTableName}
           </NotebookCellItem>

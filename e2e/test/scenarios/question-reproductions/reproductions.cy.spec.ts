@@ -43,8 +43,8 @@ describe("issue 48754", () => {
       cy.findByText("Category").click();
     });
     H.getNotebookStep("summarize").button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Q1").click();
     });
     H.popover()
@@ -563,8 +563,8 @@ describe("issue 53404", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openNotebook();
     H.getNotebookStep("data").button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders").click();
     });
     H.popover().findByText("ID").click();
@@ -667,8 +667,8 @@ describe("issue 46845", () => {
 
     cy.log("add a self-join");
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.popover().findByText("Product ID").click();
@@ -793,8 +793,8 @@ describe("issue 58829", () => {
     cy.log("verify it can be joined");
     H.openProductsTable({ mode: "notebook" });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("M1").click();
     });
     H.popover().findByText("ID").click();
@@ -906,8 +906,8 @@ describe("issue 54920", () => {
 
     cy.log("create a derived question and verify that it can be run");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Base question").click();
     });
     H.getNotebookStep("filter")
@@ -948,8 +948,8 @@ describe("issue 55631", () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.intercept("POST", "/api/card").as("cardCreate");
@@ -1016,13 +1016,13 @@ describe("issue 39033", () => {
     H.createNativeQuestion(question1Details);
     H.createNativeQuestion(question2Details);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question1Name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question2Name).click();
     });
     H.popover().findByText("PRODUCT_ID").click();
@@ -1061,13 +1061,13 @@ describe("issue 56416", () => {
   it("should be able to use a column from a joined question with a long name (metabase#56416)", () => {
     cy.log("create the joined question");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.getNotebookStep("summarize")
@@ -1090,13 +1090,13 @@ describe("issue 56416", () => {
 
     cy.log("create the main question");
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(joinedQuestionName).click();
     });
     H.popover().findByText("Product ID").click();

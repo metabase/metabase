@@ -124,6 +124,7 @@ function CreateCollectionForm({
             name="parent_id"
             title={t`Collection it's saved in`}
             filterPersonalCollections={filterPersonalCollections}
+            entityType="collection"
           />
           <FormAuthorityLevelField />
           <FormFooter>

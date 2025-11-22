@@ -3,31 +3,39 @@ import * as React from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
+import type { BoxProps } from "metabase/ui";
+
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
 import { getInitialExpandedIds } from "./utils";
 
-interface TreeProps {
-  data: ITreeNodeItem[];
-  selectedId?: ITreeNodeItem["id"];
-  role?: string;
+interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
+  data: ITreeNodeItem<TData>[];
+  selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
-  onSelect?: (item: ITreeNodeItem) => void;
-  rightSection?: (item: ITreeNodeItem) => React.ReactNode;
-  TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
+  initialExpandedIds?: ITreeNodeItem<TData>["id"][];
+  role?: string;
+  onSelect?: (item: ITreeNodeItem<TData>) => void;
+  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
+  TreeNode?: any;
 }
 
-function BaseTree({
+function BaseTree<TData = unknown>({
   data,
   selectedId,
   role = "menu",
   emptyState = null,
+  initialExpandedIds,
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
-}: TreeProps) {
+  ...boxProps
+}: TreeProps<TData>) {
   const [expandedIds, setExpandedIds] = useState(() => {
+    if (initialExpandedIds) {
+      return new Set(initialExpandedIds);
+    }
     return new Set(
       selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
     );
@@ -70,8 +78,8 @@ function BaseTree({
 
   return (
     <TreeNodeList
-      items={data}
       role={role}
+      items={data}
       TreeNode={TreeNode}
       expandedIds={expandedIds}
       selectedId={selectedId}
@@ -79,6 +87,7 @@ function BaseTree({
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
       rightSection={rightSection}
+      {...boxProps}
     />
   );
 }

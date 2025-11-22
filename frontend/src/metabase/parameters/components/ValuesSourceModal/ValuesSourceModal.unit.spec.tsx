@@ -787,7 +787,7 @@ const setup = async ({
       setupTableQueryMetadataEndpoint(
         createMockTable({
           id: `card__${card.id}`,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ),
     );

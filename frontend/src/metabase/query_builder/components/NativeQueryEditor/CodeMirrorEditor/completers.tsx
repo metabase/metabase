@@ -235,7 +235,7 @@ export function useReferencedCardCompletion({
       .map((item) => item.data)
       .filter(isNotNull)
       .flatMap((card) =>
-        card.result_metadata.map((field) => ({
+        (card.result_metadata ?? []).map((field) => ({
           card,
           field,
         })),

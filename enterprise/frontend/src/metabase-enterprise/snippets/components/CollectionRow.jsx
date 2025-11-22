@@ -15,7 +15,11 @@ class CollectionRow extends Component {
   render() {
     const { snippetCollection: collection, setSnippetCollectionId } =
       this.props;
-    const onSelectCollection = () => setSnippetCollectionId(collection.id);
+    const onSelectCollection = () => {
+      if (setSnippetCollectionId) {
+        setSnippetCollectionId(collection.id);
+      }
+    };
 
     return (
       <div
