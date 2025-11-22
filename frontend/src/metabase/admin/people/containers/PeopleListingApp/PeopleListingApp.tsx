@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -6,11 +6,9 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  useListPermissionsGroupsQuery,
-  useListUsersQuery,
-} from "metabase/api";
+import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
@@ -41,6 +39,7 @@ export function PeopleListingApp({
 }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
+  const isUsingTenants = useSetting("use-tenants");
 
   const {
     data: groups = [],
@@ -90,8 +89,16 @@ export function PeopleListingApp({
     }
   }, [hasDeactivatedUsers, updateStatus]);
 
+  const pageTitle = useMemo(() => {
+    if (!isUsingTenants) {
+      return t`People`;
+    }
+
+    return external ? t`External Users` : t`Internal Users`;
+  }, [external, isUsingTenants]);
+
   return (
-    <SettingsPageWrapper title={external ? t`External Users` : t`People`}>
+    <SettingsPageWrapper title={pageTitle}>
       <Stack gap={0}>
         {isAdmin && hasDeactivatedUsers && (
           <Tabs value={status} onChange={handleTabChange} pl="md">
