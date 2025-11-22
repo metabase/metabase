@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -52,8 +53,25 @@
   [filename obj]
   (io/make-parents filename)
   (try
-    (spit filename (yaml/generate-string (serialization-deep-sort obj)
-                                         {:dumper-options {:flow-style :block :split-lines false}}))
+    (let [yaml-str (yaml/generate-string (serialization-deep-sort obj)
+                                         {:dumper-options {:flow-style :block :split-lines false}})]
+      ;; TODO: Write or not to write? Fail or just warn?
+      (spit filename yaml-str)
+      (when (> (count yaml-str) yaml/codepoints-limit)
+        (let [top-3-keys (->> (reduce (fn [acc path]
+                                        (let [v (get-in obj path)]
+                                          (if (string? v)
+                                            (assoc-in acc path (count v))
+                                            acc)))
+                                      {}
+                                      (u/ram-obj-leaf-paths obj))
+                              (sort-by val #(compare %2 %1))
+                              (take 3)
+                              (map key))]
+          ;; TODO: (log/error "Or increase the setting for yaml/codepoints-limit which is not yet implemented")
+          (log/error "Exceeded allowed number of code points during serialization")
+          (log/errorf "Possible top 3 contributors: %s" (pr-str top-3-keys)))
+        (throw (Exception. (format "Number of codepoints %d" (count yaml-str))))))
     (catch Exception e
       (if-not (.canWrite (.getParentFile (io/file filename)))
         (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))
