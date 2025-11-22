@@ -774,7 +774,9 @@ describe("tenant users", () => {
     cy.button("Add members").click();
     cy.wait("@listUsers");
 
-    cy.findByPlaceholderText(/Julie McMemberson/).type("gizmo");
+    cy.findByRole("textbox", { name: /search for a user to add/i }).type(
+      "gizmo",
+    );
 
     H.popover().within(() => {
       cy.log("tenant user should be visible");

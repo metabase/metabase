@@ -89,6 +89,7 @@ export function AddMemberRow({
                 onChange={(e) => setText(e.target.value)}
                 onDone={handleDone}
                 onCancel={onCancel}
+                ariaLabel={t`Search for a user to add`}
               >
                 {Array.from(selectedUsersById.values()).map((user, index) => (
                   <Pill
