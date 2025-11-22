@@ -54,6 +54,8 @@ const SECOND_DOOHICKEY_USER = {
 const TENANTS = [GIZMO_TENANT, DOOHICKEY_TENANT];
 const USERS = [GIZMO_USER, DOOHICKEY_USER, SECOND_DOOHICKEY_USER];
 
+const GIZMO_FULL_NAME = H.getFullName(GIZMO_USER);
+
 describe("Tenants - management OSS", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
@@ -578,7 +580,7 @@ describe("tenant users", () => {
     cy.findByTestId("admin-layout-content").findByText("1 person found");
 
     cy.findAllByRole("row")
-      .contains("tr", "gizmo user")
+      .contains("tr", GIZMO_FULL_NAME)
       .findByRole("button", { name: /ellipsis/ })
       .click();
 
@@ -606,7 +608,7 @@ describe("tenant users", () => {
     );
 
     cy.findAllByRole("row")
-      .contains("tr", "gizmo user")
+      .contains("tr", GIZMO_FULL_NAME)
       .findByRole("link", { name: /refresh/ })
       .realHover();
 
@@ -780,20 +782,20 @@ describe("tenant users", () => {
 
     H.popover().within(() => {
       cy.log("tenant user should be visible");
-      cy.findByText("gizmo user").should("be.visible");
+      cy.findByText(GIZMO_FULL_NAME).should("be.visible");
 
       cy.log("internal user should not be visible");
       cy.findByText("Bobby Tables").should("not.exist");
 
       cy.log("select a tenant user to add");
-      cy.findByText("gizmo user").click();
+      cy.findByText(GIZMO_FULL_NAME).click();
     });
 
     cy.button("Add").click();
 
     cy.log("user should be added to the group");
     cy.findByTestId("admin-content-table")
-      .findByText("gizmo user")
+      .findByText(GIZMO_FULL_NAME)
       .should("be.visible");
   });
 });
