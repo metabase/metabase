@@ -12,18 +12,40 @@
   [{:keys [tenant_id] :as user} existing-tenant user-will-have-tenant?]
   (let [user-exists? (boolean user)
         user-has-tenant? (boolean tenant_id)]
-    (when (or (and user-exists?
-                   (not= user-will-have-tenant? user-has-tenant?))
-              (and user-exists?
-                   (not= tenant_id (u/the-id existing-tenant)))
-              (and existing-tenant
-                   (not (:is_active existing-tenant))))
-      (throw (ex-info "Tenant info mismatch" {:user/tenant-id tenant_id
-                                              :user/tenant-slug (t2/select-one-fn :slug :model/Tenant :id tenant_id)
-                                              :tenant-slug/tenant-id (:id existing-tenant)
-                                              :tenant-slug/slug (:slug existing-tenant)
-                                              :tenant-slug/is-active (:is_active existing-tenant)
-                                              :status-code 403})))))
+    (cond
+      (and user-exists?
+           user-will-have-tenant?
+           (not user-has-tenant?))
+      (throw (ex-info "Cannot add tenant claim to internal user"
+                      {:user/tenant-id tenant_id
+                       :tenant-slug/tenant-id (:id existing-tenant)
+                       :tenant-slug/slug (:slug existing-tenant)
+                       :status-code 403}))
+
+      (and user-exists?
+           (not user-will-have-tenant?)
+           user-has-tenant?)
+      (throw (ex-info "Tenant claim required for external user"
+                      {:user/tenant-id tenant_id
+                       :user/tenant-slug (t2/select-one-fn :slug :model/Tenant :id tenant_id)
+                       :status-code 403}))
+
+      (and user-exists?
+           (not= tenant_id (u/the-id existing-tenant)))
+      (throw (ex-info "Tenant ID mismatch with existing user"
+                      {:user/tenant-id tenant_id
+                       :user/tenant-slug (t2/select-one-fn :slug :model/Tenant :id tenant_id)
+                       :tenant-slug/tenant-id (:id existing-tenant)
+                       :tenant-slug/slug (:slug existing-tenant)
+                       :status-code 403}))
+
+      (and existing-tenant
+           (not (:is_active existing-tenant)))
+      (throw (ex-info "Tenant is not active"
+                      {:tenant-slug/tenant-id (:id existing-tenant)
+                       :tenant-slug/slug (:slug existing-tenant)
+                       :tenant-slug/is-active (:is_active existing-tenant)
+                       :status-code 403})))))
 
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
   [provider {:keys [user tenant-slug]
