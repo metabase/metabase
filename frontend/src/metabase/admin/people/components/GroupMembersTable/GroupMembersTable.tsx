@@ -61,6 +61,7 @@ export function GroupMembersTable({
       >
         {showAddUser && (
           <AddMemberRow
+            group={group}
             members={members}
             onCancel={onAddUserCancel}
             onDone={onAddUserDone}
