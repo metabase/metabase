@@ -752,7 +752,7 @@
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
           (mt/with-temporary-setting-values [use-tenants true]
-            (testing "a new user fails to log in"
+            (testing "a new user fails to log in with correct error message"
               (mt/with-model-cleanup [:model/User]
                 (let [response    (client/client-real-response :get 403 "/auth/sso"
                                                                {:request-options {:redirect-strategy :none}}
@@ -764,8 +764,9 @@
                                                                  :first_name "New"
                                                                  :last_name  "User"}
                                                                 default-jwt-secret))]
-                  (is (not (saml-test/successful-login? response))))))
-            (testing "an existing user also fails to log in"
+                  (is (not (saml-test/successful-login? response)))
+                  (is (str/includes? (:body response) "Tenant is not active")))))
+            (testing "an existing user also fails to log in with correct error message"
               (let [response    (client/client-real-response :get 403 "/auth/sso"
                                                              {:request-options {:redirect-strategy :none}}
                                                              :return_to default-redirect-uri
@@ -776,7 +777,8 @@
                                                                :first_name "Existing"
                                                                :last_name  "User"}
                                                               default-jwt-secret))]
-                (is (not (saml-test/successful-login? response)))))))))))
+                (is (not (saml-test/successful-login? response)))
+                (is (str/includes? (:body response) "Tenant is not active"))))))))))
 
 ;; not yet - we need to figure out what to do about personal collections here first
 #_(deftest existing-users-can-be-updated-with-a-tenant
@@ -820,17 +822,25 @@
                                                       :name "Tenant McTenantson"}
                        :model/Tenant _ {:slug "other"
                                         :name "Other"}
-                       :model/User {email-without-tenant :email} {}
                        :model/User {email-with-tenant :email} {:tenant_id tenant-id}]
-          (testing "tenant -> other tenant fails"
+          (testing "tenant -> other tenant fails with correct error message"
             (let [response (client/client-real-response :get 403 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
                                                         :jwt
                                                         (jwt/sign {:email email-with-tenant :tenant "other"}
                                                                   default-jwt-secret))]
-              (is (not (saml-test/successful-login? response)))))
-          (testing "tenant -> no tenant fails"
+              (is (not (saml-test/successful-login? response)))
+              (is (str/includes? (:body response) "Tenant ID mismatch with existing user")))))))))
+
+(deftest external-user-requires-tenant-claim
+  (testing "External user must include tenant claim in JWT"
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                        :name "Tenant McTenantson"}
+                         :model/User {email-with-tenant :email} {:tenant_id tenant-id}]
             (let [response (client/client-real-response :get 403 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
@@ -838,8 +848,17 @@
                                                         (jwt/sign
                                                          {:email email-with-tenant}
                                                          default-jwt-secret))]
-              (is (not (saml-test/successful-login? response)))))
-          (testing "no tenant -> tenant fails"
+              (is (not (saml-test/successful-login? response)))
+              (is (str/includes? (:body response) "Tenant claim required for external user")))))))))
+
+(deftest internal-user-cannot-have-tenant-claim
+  (testing "Internal user cannot log in with tenant claim in JWT"
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
+                                          :name "Tenant McTenantson"}
+                         :model/User {email-without-tenant :email} {}]
             (let [response (client/client-real-response :get 403 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
@@ -848,7 +867,8 @@
                                                          {:email email-without-tenant
                                                           :tenant "tenant-mctenantson"}
                                                          default-jwt-secret))]
-              (is (not (saml-test/successful-login? response))))))))))
+              (is (not (saml-test/successful-login? response)))
+              (is (str/includes? (:body response) "Cannot add tenant claim to internal user")))))))))
 
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
