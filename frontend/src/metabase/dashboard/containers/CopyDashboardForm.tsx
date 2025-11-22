@@ -133,6 +133,7 @@ function CopyDashboardForm({
           name="collection_id"
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
+          entityType="dashboard"
         />
 
         {!hideShallowCopy && (

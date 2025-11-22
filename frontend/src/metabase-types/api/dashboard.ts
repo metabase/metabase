@@ -4,7 +4,6 @@ import type {
 } from "metabase/public/lib/types";
 import type {
   BaseEntityId,
-  CardCreatorInfo,
   CardDisplayType,
   ClickBehavior,
   Collection,
@@ -19,6 +18,7 @@ import type {
   ParameterValueOrArray,
   Table,
   UserId,
+  UserInfo,
   VirtualCardDisplay,
   VisualizerVizDefinition,
 } from "metabase-types/api";
@@ -48,7 +48,7 @@ export interface Dashboard {
   entity_id: BaseEntityId;
   created_at: string;
   creator_id: UserId;
-  creator?: CardCreatorInfo;
+  creator?: UserInfo;
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;

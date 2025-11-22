@@ -4,6 +4,8 @@ import { Route } from "react-router";
 import { callMockEvent } from "__support__/events";
 import {
   setupCardDataset,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -19,6 +21,7 @@ import {
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { checkNotNull } from "metabase/lib/types";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import SegmentApp from "./SegmentApp";
@@ -43,6 +46,20 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   });
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupSegmentsEndpoints([]);
+  setupCollectionByIdEndpoint({
+    collections: [
+      createMockCollection({ id: "root" }),
+      createMockCollection({ id: 1 }),
+    ],
+  });
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: "root" }),
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: 1 }),
+    collectionItems: [],
+  });
 
   const { history } = renderWithProviders(
     <>

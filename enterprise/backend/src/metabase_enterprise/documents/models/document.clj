@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
@@ -228,3 +229,11 @@
                                                                                  (:attrs %)))
                    :when (contains? model->serdes-model model)]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
+
+(t2/define-before-insert :model/Document [model]
+  (collection/check-allowed-content :model/Document (:collection_id model))
+  model)
+
+(t2/define-before-update :model/Document [model]
+  (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
+  model)

@@ -106,7 +106,7 @@ export function EntryPickerModal({
         displayName: t`Transforms`,
         models: ["transform"],
         folderModels: [],
-        icon: "refresh_downstream",
+        icon: "transform",
         render: ({ onItemSelect }) => (
           <PLUGIN_TRANSFORMS.TransformPicker
             value={value ? getTransformPickerItem(value) : undefined}

@@ -29,7 +29,6 @@ export const PublicComponentStylesWrapper = forwardRef<
       {...props}
       ref={ref}
       dir="ltr"
-      // eslint-disable-next-line react/prop-types -- className is in div props :shrugs:
       className={cx("mb-wrapper", S.publicComponentWrapper, props.className)}
       // Mantine's cssVariablesSelector expects data-mantine-color-scheme to be set on the target element
       data-mantine-color-scheme="light"

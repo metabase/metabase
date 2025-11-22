@@ -99,10 +99,19 @@ describe("issue 24660", () => {
 
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findAllByText(collectionName).first().click();
 
+      cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
+      cy.findByText(questions[ORDERS_COUNT_QUESTION_ID]).should("not.exist");
+      cy.realType("{esc}");
+    });
+
+    cy.findByPlaceholderText("Search for tables and more...").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findAllByText(collectionName).first().click();
       cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
       cy.findByText(questions[ORDERS_COUNT_QUESTION_ID]).should("not.exist");
     });

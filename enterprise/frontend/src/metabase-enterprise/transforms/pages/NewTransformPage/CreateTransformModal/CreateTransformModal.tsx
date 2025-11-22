@@ -15,50 +15,45 @@ import {
   FormProvider,
   FormSubmitButton,
   FormTextInput,
-  FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
+import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import type {
   CreateTransformRequest,
-  SuggestedTransform,
   Transform,
   TransformSource,
 } from "metabase-types/api";
 
 import { trackTransformCreated } from "../../../analytics";
+import type { NewTransformValues } from "../types";
 
 import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
 });
 
-type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
-
 type CreateTransformModalProps = {
   source: TransformSource;
-  suggestedTransform: SuggestedTransform | undefined;
+  defaultValues: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
   source,
-  suggestedTransform,
+  defaultValues,
   onCreate,
   onClose,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
-      <FocusTrap.InitialFocus />
       <CreateTransformForm
         source={source}
-        suggestedTransform={suggestedTransform}
+        defaultValues={defaultValues}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -68,14 +63,14 @@ export function CreateTransformModal({
 
 type CreateTransformFormProps = {
   source: TransformSource;
-  suggestedTransform: SuggestedTransform | undefined;
+  defaultValues: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 function CreateTransformForm({
   source,
-  suggestedTransform,
+  defaultValues,
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
@@ -103,8 +98,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, suggestedTransform),
-    [schemas, suggestedTransform],
+    () => getInitialValues(schemas, defaultValues),
+    [schemas, defaultValues],
   );
 
   if (isLoading || error != null) {
@@ -135,13 +130,7 @@ function CreateTransformForm({
             name="name"
             label={t`Name`}
             placeholder={t`My Great Transform`}
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`This is optional, but helpful`}
-            minRows={4}
-            maxRows={10}
+            data-autofocus
           />
           {supportsSchemas && (
             <SchemaFormSelect
@@ -170,26 +159,23 @@ function CreateTransformForm({
 
 function getInitialValues(
   schemas: string[],
-  suggestedTransform: SuggestedTransform | undefined,
+  defaultValues: Partial<NewTransformValues>,
 ): NewTransformValues {
   return {
     name: "",
-    description: suggestedTransform ? suggestedTransform.description : null,
-    targetName: suggestedTransform ? suggestedTransform.target.name : "",
-    targetSchema: suggestedTransform
-      ? suggestedTransform.target.schema
-      : schemas?.[0] || null,
+    targetName: "",
+    targetSchema: schemas?.[0] || null,
+    ...defaultValues,
   };
 }
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema }: NewTransformValues,
+  { name, targetName, targetSchema }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
   return {
     name: name,
-    description,
     source,
     target: {
       type: "table",

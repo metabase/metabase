@@ -372,7 +372,7 @@
     :always
     (assoc :type (:collection_type collection))
     :always
-    collection/maybe-localize-trash-name))
+    collection/maybe-localize-system-collection-name))
 
 (defn- normalize-result [result]
   (let [instance (to-toucan-instance (t2.realize/realize result))]

@@ -35,6 +35,7 @@ export type QuestionPickerValue = Pick<QuestionPickerItem, "id" | "model">;
 export type QuestionPickerOptions = EntityPickerModalOptions & {
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
+  showLibrary?: boolean;
 };
 
 export type QuestionItemListProps = ListProps<

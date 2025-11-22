@@ -1,7 +1,7 @@
 .dropdown {
   padding: 0.75rem;
   min-width: 11.5rem;
-  overflow: auto;
+  overflow: visible;
   background-color: var(--mb-color-background);
   border-color: var(--mb-color-border);
 }
@@ -19,6 +19,12 @@
 
   &:hover:not([data-disabled="true"]) {
     background-color: var(--mb-color-background-hover);
+  }
+
+  &:focus {
+    outline: none;
+    background-color: var(--mb-color-background-hover);
+    border: none;
   }
 }
 

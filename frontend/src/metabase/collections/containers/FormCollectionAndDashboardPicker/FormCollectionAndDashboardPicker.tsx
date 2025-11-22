@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { useGetCollectionQuery, useLazyGetDashboardQuery } from "metabase/api";
 import {
+  type EntityType,
   canonicalCollectionId,
   isTrashedCollection,
   isValidCollectionId,
@@ -76,6 +77,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  entityType?: EntityType;
   zIndex?: number;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
@@ -91,6 +93,7 @@ export function FormCollectionAndDashboardPicker({
   collectionIdFieldName,
   dashboardIdFieldName,
   dashboardTabIdFieldName,
+  entityType,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -257,6 +260,7 @@ export function FormCollectionAndDashboardPicker({
           onChange={handleChange}
           onClose={handleModalClose}
           options={options}
+          entityType={entityType}
           {...collectionPickerModalProps}
         />
       )}

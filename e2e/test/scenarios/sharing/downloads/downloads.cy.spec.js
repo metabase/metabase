@@ -52,8 +52,8 @@ describe("scenarios > question > download", () => {
     testCases.forEach((fileType) => {
       it(`downloads ${fileType} file`, () => {
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Our analytics").click();
           cy.findByText("Orders, Count").click();
         });
 

@@ -11,13 +11,13 @@ import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
-import { TagList } from "../../../components/TagList";
-import { TimezoneIndicator } from "../../../components/TimezoneIndicator";
 import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 import { hasFilterParams } from "../utils";
 
 import S from "./RunList.module.css";
+import { TagList } from "./TagList";
+import { TimezoneIndicator } from "./TimezoneIndicator";
 
 type RunListProps = {
   runs: TransformRun[];
@@ -33,7 +33,11 @@ export function RunList({ runs, totalCount, params, tags }: RunListProps) {
   if (runs.length === 0) {
     const hasFilters = hasFilterParams(params);
     return (
-      <ListEmptyState label={hasFilters ? t`No runs found` : t`No runs yet`} />
+      <Card p={0} shadow="none" withBorder>
+        <ListEmptyState
+          label={hasFilters ? t`No runs found` : t`No runs yet`}
+        />
+      </Card>
     );
   }
 

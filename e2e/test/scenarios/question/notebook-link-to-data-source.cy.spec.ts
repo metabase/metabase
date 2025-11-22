@@ -52,10 +52,8 @@ describe("scenarios > notebook > link to data source", () => {
 
     cy.log("Normal click on the data source still opens the entity picker");
     H.getNotebookStep("data").findByText("Reviews").click();
-    cy.findByTestId("entity-picker-modal").within(() => {
-      cy.findByText("Pick your starting data").should("be.visible");
-      cy.findByLabelText("Close").click();
-    });
+    H.miniPicker().should("exist");
+    H.miniPicker().findByText("Reviews").click(); // close miniPicker
 
     cy.log("Meta/Ctrl click on the fields picker behaves as a regular click");
     H.getNotebookStep("data").findByTestId("fields-picker").click(clickConfig);
@@ -427,12 +425,11 @@ describe("scenarios > notebook > link to data source", () => {
           "Even if user opens the notebook link directly, they should not see the source question. We open the entity picker instead",
         );
         cy.visit(`/question/${nestedQuestion.id}/notebook`);
-        cy.findByTestId("entity-picker-modal").within(() => {
-          cy.findByText("Pick your starting data").should("be.visible");
-          cy.findByLabelText("Close").click();
-        });
 
-        H.getNotebookStep("data").should("contain", "Pick your starting data");
+        H.getNotebookStep("data")
+          .findByPlaceholderText("Search for tables and more...")
+          .should("exist");
+        H.miniPicker().should("be.visible");
 
         cy.log(
           "The same should be true for a user that additionally doesn't have write query permissions",
@@ -517,8 +514,8 @@ describe("scenarios > notebook > link to data source", () => {
 
         H.openProductsTable({ mode: "notebook" });
         cy.findByTestId("action-buttons").button("Join data").click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("Orders").click();
         });
 

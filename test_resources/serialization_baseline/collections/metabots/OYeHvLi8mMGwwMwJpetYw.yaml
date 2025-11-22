@@ -3,7 +3,9 @@ description: A test metabot
 created_at: '2025-06-09T20:12:07.978442Z'
 entity_id: OYeHvLi8mMGwwMwJpetYw
 updated_at: '2025-06-09T20:12:07.978442Z'
-use_verified_content: false
+serdes/meta:
+- id: OYeHvLi8mMGwwMwJpetYw
+  model: Metabot
 collection_id: null
 prompts:
 - card_id: 4ahdpFn43jybRFVQTRjX_
@@ -17,6 +19,4 @@ prompts:
     model: Metabot
   - id: SNoFh7dZXzjvgeNp5aJJY
     model: MetabotPrompt
-serdes/meta:
-- id: OYeHvLi8mMGwwMwJpetYw
-  model: Metabot
+use_verified_content: false

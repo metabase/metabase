@@ -8,6 +8,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -119,6 +120,7 @@ const setup = async (
   });
   setupDashboardEndpoints(FOO_DASH);
   setupDashboardEndpoints(BAR_DASH);
+  setupLibraryEndpoints();
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
