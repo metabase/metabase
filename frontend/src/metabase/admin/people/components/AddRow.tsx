@@ -53,7 +53,6 @@ export const AddRow = ({
       bg={!isValid ? "transparent" : ""}
       disabled={!isValid}
       onClick={onDone}
-      data-testid="add-member-button"
     >
       {t`Add`}
     </Button>

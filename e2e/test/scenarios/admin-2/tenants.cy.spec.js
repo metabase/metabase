@@ -787,7 +787,7 @@ describe("tenant users", () => {
       cy.findByText("gizmo user").click();
     });
 
-    cy.findByTestId("add-member-button").click();
+    cy.button("Add").click();
 
     cy.log("user should be added to the group");
     cy.findByTestId("admin-content-table")
