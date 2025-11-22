@@ -450,7 +450,7 @@
                                                                                        :alias        "v"
                                                                                        :strategy     :left-join
                                                                                        :condition    [:= $venue_id &v.venues.id]}]})}]
-        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {(mt/id 'venues) :blocked})
+        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {(mt/id :venues) :blocked})
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"You do not have permissions to run this query"

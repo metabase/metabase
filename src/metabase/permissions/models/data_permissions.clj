@@ -257,13 +257,19 @@
                                                       ~perm-value)]
      ~@form))
 
+;; TODO (Cam 2025-11-21) why the hecc does this have an exclamation point
 (defn- get-additional-table-permission! [{:keys [db-id table-id]} perm-type]
   (get-in *additional-table-permissions* [db-id table-id perm-type]))
 
 (mu/defn table-permission-for-groups :- ::permissions.schema/data-permission-value
   "Returns the effective permission value provided by a set of *group-ids*, for a provided permission type, database
   ID, and table ID."
-  [group-ids perm-type database-id table-id]
+  [group-ids   :- [:or
+                   [:set {:min 1} pos-int?]
+                   [:sequential {:min 1} pos-int?]]
+   perm-type   :- :keyword
+   database-id :- ::lib.schema.id/database
+   table-id    :- ::lib.schema.id/table]
   (when (not= :model/Table (model-by-perm-type perm-type))
     (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
                     {perm-type (permissions.schema/data-permissions perm-type)})))
@@ -290,6 +296,47 @@
                            (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
 
+(defn- user-table-symlink-query [user-id table-id]
+  {:pre [(pos-int? user-id) (pos-int? table-id)]}
+  {:with   [[:user_group_ids {:select    [:pg/id]
+                              :from      [[:permissions_group :pg]]
+                              :left-join [[:permissions_group_membership :pgm]
+                                          [:= :pgm/group_id :pg/id]]
+                              :where     [:= :pgm/user_id [:inline user-id]]}]
+            [:user_collections {:select-distinct [:collection_id]
+                                :from            [:permissions]
+                                :where           [:and
+                                                  [:in :group_id {:select [:id]
+                                                                  :from   [:user_group_ids]}]
+                                                  [:= :perm_type [:inline "perms/collection-access"]]
+                                                  [:in :perm_value [[:inline "read"] [:inline "read-and-write"]]]]}]
+
+            [:blocked_table_ids {:select-distinct [:table_id]
+                                 :from            [:data_permissions]
+                                 :where           [:and
+                                                   [:= :perm_type [:inline "perms/view-data"]]
+                                                   [:= :perm_value [:inline "blocked"]]
+                                                   [:in :group_id {:select [:id]
+                                                                   :from   [:user_group_ids]}]]}]]
+   :select [[[:inline true] :has-symlink]]
+   :from   [:table_symlink]
+   :where  [:and
+            [:= :table_id [:inline table-id]]
+            [:in :collection_id {:select [:collection_id]
+                                 :from   [:user_collections]}]
+            [:not-in :table_id {:select [:table_id]
+                                :from   [:blocked_table_ids]}]]})
+
+
+;; TODO -- do we need to do this for [[table-permission-for-groups]] as well?
+(defn- user-table-symlink-permission [perm-type user-id table-id]
+  ;; TODO -- download permissions??
+  (when (and (#{:perms/create-queries :perms/view-data} perm-type)
+             (:has-symlink (t2/query-one (user-table-symlink-query user-id table-id))))
+    (case perm-type
+      :perms/create-queries :query-builder
+      :perms/view-data      :unrestricted)))
+
 (mu/defn table-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
@@ -303,9 +350,12 @@
                            (filter #(or (= (:table_id %) table-id)
                                         (nil? (:table_id %))))
                            (map :perm_value)
-                           (into #{}))]
-      (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
-                                                                                  perm-type)))
+                           (into #{}))
+          table-perm (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                                             perm-type)))]
+      (or (when-not (= table-perm (least-permissive-value perm-type))
+            table-perm)
+          (user-table-symlink-permission perm-type user-id table-id)
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-table? :- :boolean
