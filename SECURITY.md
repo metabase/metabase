@@ -1,10 +1,10 @@
 # Security Policy
 
-Security is very important to us at Metabase.
+Security is essential to us at Metabase.
 
 ## Supported Versions
 
-We typically only support the latest release of Metabase for maintenance updates, but depending on the nature of the security issue we may issue hotfixes for arbitrarily earlier versions of Metabase.
+We typically only support the latest release of Metabase for maintenance updates. Still, depending on the nature of the security issue, we may issue hotfixes for arbitrarily earlier versions of Metabase.
 
 ## Reporting a Vulnerability
 
