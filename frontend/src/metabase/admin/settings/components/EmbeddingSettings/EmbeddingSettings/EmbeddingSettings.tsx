@@ -6,19 +6,17 @@ import {
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
-  type SdkIframeEmbedSetupModalProps,
 } from "metabase/plugins";
-import { setOpenModalWithProps } from "metabase/redux/ui";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { EmbeddingSdkSettings } from "../EmbeddingSdkSettings/EmbeddingSdkSettings";
 import S from "../EmbeddingSettings.module.css";
@@ -42,8 +40,6 @@ function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
 }
 
 function EmbeddingSettingsEE() {
-  const dispatch = useDispatch();
-
   const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
 
   const isHosted = useSetting("is-hosted?");
@@ -68,29 +64,7 @@ function EmbeddingSettingsEE() {
             href: embedJsDocumentationUrl?.url,
           },
         ]}
-        actionButton={
-          <Button
-            variant="brand"
-            size="sm"
-            onClick={() => {
-              const modalProps: Pick<
-                SdkIframeEmbedSetupModalProps,
-                "initialState"
-              > = {
-                initialState: {
-                  isGuestEmbed: true,
-                  useExistingUserSession: true,
-                },
-              };
-
-              dispatch(
-                setOpenModalWithProps({ id: "embed", props: modalProps }),
-              );
-            }}
-          >
-            {t`New embed`}
-          </Button>
-        }
+        actionButton={<NewEmbedButton />}
         testId="sdk-setting-card"
       />
 
