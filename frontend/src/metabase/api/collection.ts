@@ -1,3 +1,5 @@
+import { compact } from "underscore";
+
 import type {
   Collection,
   CreateCollectionRequest,
@@ -101,11 +103,15 @@ export const collectionApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, payload) => {
-        return invalidateTags(error, [
-          listTag("collection"),
-          idTag("collection", payload.id),
-          idTag("collection", payload.parent_id ?? "root"),
-        ]);
+        return invalidateTags(
+          error,
+          compact([
+            listTag("collection"),
+            idTag("collection", payload.id),
+            idTag("collection", payload.parent_id ?? "root"),
+            !payload.archived && listTag("bookmark"),
+          ]),
+        );
       },
     }),
     deleteCollection: builder.mutation<void, DeleteCollectionRequest>({

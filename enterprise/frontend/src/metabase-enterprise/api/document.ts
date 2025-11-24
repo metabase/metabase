@@ -1,3 +1,5 @@
+import { compact } from "underscore";
+
 import type {
   CreateDocumentRequest,
   DeleteDocumentRequest,
@@ -43,8 +45,14 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/document/${document.id}`,
         body: document,
       }),
-      invalidatesTags: (_, error, { id }) =>
-        !error ? [listTag("document"), idTag("document", id)] : [],
+      invalidatesTags: (_, error, doc) =>
+        !error
+          ? compact([
+              listTag("document"),
+              idTag("document", doc.id),
+              !doc.archived && listTag("bookmark"),
+            ])
+          : [],
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({

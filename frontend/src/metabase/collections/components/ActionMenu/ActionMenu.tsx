@@ -3,8 +3,6 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { Api } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
@@ -139,7 +137,6 @@ function ActionMenu({
     const result = await dispatch(
       Entity.actions.update({ id: item.id, archived: false }),
     );
-    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
 
     const entity = Entity.HACK_getObjectFromAction(result);
     const parentCollection = HACK_getParentCollectionFromEntityUpdateAction(

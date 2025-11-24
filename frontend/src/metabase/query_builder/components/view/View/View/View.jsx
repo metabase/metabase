@@ -6,8 +6,6 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Api } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import ExplicitSize from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -275,10 +273,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
 
 const mapDispatchToProps = (dispatch) => ({
   onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
-  onUnarchive: async (question) => {
-    await dispatch(setArchivedQuestion(question, false));
-    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
-  },
+  onUnarchive: (question) => dispatch(setArchivedQuestion(question, false)),
   onMove: (question, newCollection) =>
     dispatch(
       Questions.actions.setCollection({ id: question.id() }, newCollection, {

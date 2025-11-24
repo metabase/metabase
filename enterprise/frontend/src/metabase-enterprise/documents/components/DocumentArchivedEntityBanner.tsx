@@ -1,7 +1,5 @@
 import { t } from "ttag";
 
-import { Api } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,10 +22,9 @@ export const DocumentArchivedEntityBanner = () => {
       canMove={document.can_write}
       canRestore={document.can_restore}
       canDelete={document.can_delete}
-      onUnarchive={async () => {
-        await dispatch(Documents.actions.setArchived(document, false));
-        dispatch(Api.util.invalidateTags([listTag("bookmark")]));
-      }}
+      onUnarchive={() =>
+        dispatch(Documents.actions.setArchived(document, false))
+      }
       onMove={({ id }) =>
         dispatch(Documents.actions.setCollection(document, { id }))
       }

@@ -4,8 +4,6 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { Api } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
@@ -214,10 +212,9 @@ const CollectionContentViewInner = ({
           canMove={collection.can_write}
           canRestore={collection.can_restore}
           canDelete={collection.can_delete}
-          onUnarchive={async () => {
+          onUnarchive={() => {
             const input = { ...actionId, name: collection.name };
-            await dispatch(Collections.actions.setArchived(input, false));
-            dispatch(Api.util.invalidateTags([listTag("bookmark")]));
+            return dispatch(Collections.actions.setArchived(input, false));
           }}
           onMove={({ id }) =>
             dispatch(Collections.actions.setCollection(actionId, { id }))

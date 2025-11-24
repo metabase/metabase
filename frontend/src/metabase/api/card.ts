@@ -1,3 +1,5 @@
+import { compact } from "underscore";
+
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
@@ -157,28 +159,22 @@ export const cardApi = Api.injectEndpoints({
               : ""),
           body,
         }),
-        invalidatesTags: (_, error, payload) => {
-          const tags = [
-            listTag("card"),
-            idTag("card", payload.id),
-            idTag("table", `card__${payload.id}`),
-            listTag("revision"),
-          ];
-
-          if (payload.dashboard_id != null) {
-            tags.push(idTag("dashboard", payload.dashboard_id));
-          }
-
-          if (payload.collection_id != null) {
-            tags.push(idTag("collection", payload.collection_id));
-          }
-
-          if (payload.name || payload.type) {
-            tags.push(listTag("bookmark"));
-          }
-
-          return invalidateTags(error, tags);
-        },
+        invalidatesTags: (_, error, payload) =>
+          invalidateTags(
+            error,
+            compact([
+              listTag("card"),
+              idTag("card", payload.id),
+              idTag("table", `card__${payload.id}`),
+              listTag("revision"),
+              payload.dashboard_id != null &&
+                idTag("dashboard", payload.dashboard_id),
+              payload.collection_id != null &&
+                idTag("collection", payload.collection_id),
+              (payload.name || payload.type || !payload.archived) &&
+                listTag("bookmark"),
+            ]),
+          ),
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: (id) => ({

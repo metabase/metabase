@@ -1,3 +1,5 @@
+import { compact } from "underscore";
+
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema } from "metabase/schema";
@@ -150,13 +152,17 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}`,
           body,
         }),
-        invalidatesTags: (_, error, { id }) =>
-          invalidateTags(error, [
-            listTag("dashboard"),
-            idTag("dashboard", id),
-            tag("parameter-values"),
-            listTag("revision"),
-          ]),
+        invalidatesTags: (_, error, dashboard) =>
+          invalidateTags(
+            error,
+            compact([
+              listTag("dashboard"),
+              idTag("dashboard", dashboard.id),
+              tag("parameter-values"),
+              listTag("revision"),
+              !dashboard.archived && listTag("bookmark"),
+            ]),
+          ),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
         query: (id) => ({
