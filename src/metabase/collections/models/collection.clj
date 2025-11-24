@@ -1453,7 +1453,7 @@
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
 (t2/define-before-insert :model/Collection
-  [{collection-name :name, :keys [location] :as collection}]
+  [{collection-name :name, :keys [location type] :as collection}]
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
@@ -1463,9 +1463,11 @@
                                    (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id))]
     (-> collection
         (assoc :slug (slugify collection-name))
-        (cond-> (and (not (contains? collection :is_remote_synced))
-                     parent-is-remote-synced?)
-          (assoc :is_remote_synced true)))))
+        (cond->
+         (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+         (and (not (contains? collection :is_remote_synced))
+              parent-is-remote-synced?)
+         (assoc :is_remote_synced true)))))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -1615,7 +1617,7 @@
     (apply = (map std-fn namespaces))))
 
 (t2/define-before-update :model/Collection
-  [collection]
+  [{:keys [type] :as collection}]
   (let [collection-before-updates (t2/instance :model/Collection (t2/original collection))
         {collection-name :name
          :as collection-updates}  (or (t2/changes collection) {})]
@@ -1646,6 +1648,7 @@
     ;; slugify the collection name in case it's changed in the output; the results of this will get passed along
     ;; to Toucan's `update!` impl
     (cond-> collection-updates
+      (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
       collection-name (assoc :slug (slugify collection-name)))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------

@@ -3306,3 +3306,18 @@
         (is (= [false false false] (map :can_delete (collection/can-delete [non-archived-collection
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
+
+(deftest insert-sets-remote-sync-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [collection (t2/insert-returning-instance! :model/Collection
+                                                    (merge {:type "remote-synced"}
+                                                           (mt/with-temp-defaults :model/Collection)))]
+      (is (nil? (:type collection)))
+      (is (true? (:is_remote_synced collection))))))
+
+(deftest update-sets-remote-sync-test
+  (mt/with-temp [:model/Collection {id :id} {}]
+    (t2/update! :model/Collection :id id {:type "remote-synced"})
+    (let [collection (t2/select-one :model/Collection id)]
+      (is (nil? (:type collection)))
+      (is (true? (:is_remote_synced collection))))))
