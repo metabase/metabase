@@ -11,6 +11,7 @@ export function mountGuestEmbedQuestion(
 ) {
   cy.intercept("GET", "/api/embed/card/*").as("getCard");
   cy.intercept("POST", "/api/embed/card/*/query").as("cardQuery");
+  cy.intercept("GET", "/api/embed/pivot/card/*/query*").as("getCardPivotQuery");
 
   mountSdkContent(<StaticQuestion {...extraProps} />, {
     sdkProviderProps: { isGuestEmbed: true },
