@@ -70,7 +70,7 @@ export const TenantsListing = ({
             </Flex>
 
             {isAdmin && (
-              <Flex>
+              <Flex gap="sm">
                 <Button
                   variant="filled"
                   onClick={openNewTenantModal}
