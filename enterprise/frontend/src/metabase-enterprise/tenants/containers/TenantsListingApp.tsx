@@ -9,7 +9,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Group, Stack, Tabs, Title } from "metabase/ui";
+import { Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { CreateTenantCollectionButton } from "../components/CreateTenantCollectionButton";
@@ -49,8 +49,8 @@ export const TenantsListingApp = ({
   }, [hasDeactivatedTenants]);
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between">
+    <div>
+      <Group justify="space-between" mb="lg">
         <Title order={1}>{t`Tenants`}</Title>
 
         <CreateTenantCollectionButton />
@@ -81,6 +81,6 @@ export const TenantsListingApp = ({
 
         {children}
       </SettingsSection>
-    </Stack>
+    </div>
   );
 };
