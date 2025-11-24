@@ -11,7 +11,7 @@ import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embeddi
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
+describe("scenarios > embedding-sdk > guest-embedding-error-handling", () => {
   beforeEach(() => {
     signInAsAdminAndSetupGuestEmbedding();
 
@@ -33,8 +33,27 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
     cy.signOut();
   });
 
-  it("should show question content", () => {
+  it("should show JWT token error for invalid token", () => {
+    cy.get("@questionId").then(async () => {
+      mountGuestEmbedQuestion(
+        { token: "foo" },
+        { sdkProviderProps: { isGuestEmbed: true } },
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Passed token is not a valid JWT token.").should(
+          "be.visible",
+        );
+      });
+    });
+  });
+
+  it("should show an error for an unpublished entity", () => {
     cy.get("@questionId").then(async (questionId) => {
+      cy.signInAsAdmin();
+      cy.request("PUT", `/api/card/${questionId}`, { enable_embedding: false });
+      cy.signOut();
+
       const token = await getSignedJwtForResource({
         resourceId: questionId as unknown as number,
         resourceType: "question",
@@ -46,8 +65,9 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
       );
 
       getSdkRoot().within(() => {
-        cy.findByText("Product ID").should("be.visible");
-        cy.findByText("Max of Quantity").should("be.visible");
+        cy.findByText("Embedding is not enabled for this object.").should(
+          "be.visible",
+        );
       });
     });
   });
