@@ -1,0 +1,136 @@
+info:
+  name: Metabase Presto JDBC Driver
+  version: 1.0.0-350-SNAPSHOT
+  description: Allows Metabase to connect to Presto databases using the Presto JDBC driver
+driver:
+  name: presto-jdbc
+  display-name: Presto
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - merge:
+      - host
+      - required: true
+    - merge:
+        - port
+        - placeholder: 8080
+    - merge:
+        - dbname
+        - name: catalog
+          placeholder: european_birds
+          display-name: Catalog
+          helper-text: Presto Catalogs contain schemas and reference data sources via a connector.
+          required: false
+    - name: schema
+      display-name: Schema (optional)
+      helper-text: Only add tables to Metabase that come from a specific schema.
+      placeholder: just_crows
+      required: false
+    - merge:
+        - user
+        - required: false
+    - merge:
+        - password
+        - required: false
+    - cloud-ip-address-info
+    - ssl
+    - name: ssl-use-keystore
+      display-name: Use SSL server certificate?
+      type: boolean
+      visible-if:
+        ssl: true
+    - name: ssl-keystore
+      display-name: Keystore
+      type: secret
+      secret-kind: keystore
+      placeholder: /path/to/keystore.jks
+      visible-if:
+        ssl-use-keystore: true
+    - name: ssl-keystore-password
+      display-name: Keystore password
+      type: secret
+      secret-kind: password
+      required: false
+      visible-if:
+        ssl-use-keystore: true
+    - name: ssl-use-truststore
+      display-name: Use SSL truststore?
+      type: boolean
+      visible-if:
+        ssl: true
+    - name: ssl-truststore
+      display-name: Truststore
+      type: secret
+      secret-kind: keystore
+      placeholder: /path/to/truststore.jks
+      visible-if:
+        ssl-use-truststore: true
+    - name: ssl-truststore-password
+      display-name: Truststore password
+      type: secret
+      secret-kind: password
+      required: false
+      visible-if:
+        ssl-use-truststore: true
+    - advanced-options-start
+    - name: kerberos
+      type: boolean
+      display-name: Authenticate with Kerberos
+      default: false
+      visible-if:
+        advanced-options: true
+    - name: kerberos-principal
+      display-name: Kerberos principal
+      placeholder: service/instance@REALM
+      required: false
+      visible-if:
+        kerberos: true
+    - name: kerberos-remote-service-name
+      display-name: Kerberos coordinator service
+      placeholder: presto
+      required: false
+      visible-if:
+        kerberos: true
+    - name: kerberos-use-canonical-hostname
+      type: boolean
+      display-name: Use canonical hostname
+      default: false
+      required: false
+      visible-if:
+        kerberos: true
+    - name: kerberos-credential-cache-path
+      display-name: Kerberos credential cache file
+      placeholder: /tmp/kerberos-credential-cache
+      required: false
+      visible-if:
+        kerberos: true
+    - name: kerberos-keytab-path
+      display-name: Kerberos keytab file
+      placeholder: /path/to/kerberos.keytab
+      required: false
+      visible-if:
+        kerberos: true
+    - name: kerberos-config-path
+      display-name: Kerberos configuration file
+      placeholder: /etc/krb5.conf
+      required: false
+      visible-if:
+        kerberos: true
+    - name: kerberos-service-principal-pattern
+      display-name: Presto coordinator Kerberos service principal pattern
+      placeholder: ${SERVICE}@${HOST}. ${SERVICE}
+      required: false
+      visible-if:
+        kerberos: true
+    - name: additional-options
+      display-name: Additional JDBC options
+      placeholder: SSLKeyStorePath=/path/to/keystore.jks&SSLKeyStorePassword=password
+      required: false
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.presto-jdbc
+  - step: register-jdbc-driver
+    class: com.facebook.presto.jdbc.PrestoDriver
