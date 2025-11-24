@@ -6,6 +6,7 @@ export default defineConfig({
   output: {
     path: "frontend/src/metabase-types/openapi",
     clean: false,
+    format: "prettier",
   },
   parser: {
     filters: {
