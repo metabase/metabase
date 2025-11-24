@@ -2,10 +2,6 @@ name: Embedding SDK Component Tests
 
 on:
   workflow_call:
-    inputs:
-      cached-embedding-sdk-dist-artifact-name:
-        required: true
-        type: string
 
 jobs:
   sdk-component-tests:
@@ -44,7 +40,7 @@ jobs:
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.cached-embedding-sdk-dist-artifact-name }}
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Prepare front-end environment
@@ -192,7 +188,7 @@ jobs:
       - name: Retrieve Embedding SDK dist artifact built from the current commit N
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.cached-embedding-sdk-dist-artifact-name }}
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Prepare Cypress environment
