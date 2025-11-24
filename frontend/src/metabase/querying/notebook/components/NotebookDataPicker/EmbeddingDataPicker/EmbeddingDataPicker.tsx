@@ -131,7 +131,9 @@ export function EmbeddingDataPicker({
           table={table}
           query={query}
           stageIndex={stageIndex}
-          setIsOpened={() => {}}
+          setIsOpened={() => {
+            /* intentionally empty */
+          }}
           placeholder={placeholder}
           isDisabled={isDisabled}
         />

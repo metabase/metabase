@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { METAKEY } from "metabase/lib/browser";
+import { useSelector } from "metabase/lib/redux";
+import { getIsEmbedding } from "metabase/selectors/embed";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -28,7 +30,7 @@ export const DataStep = ({
   const table = tableId
     ? (Lib.tableOrCardMetadata(query, tableId) ?? undefined)
     : undefined;
-  const [isOpened, setIsOpened] = useState(!table);
+  const [isOpened, setIsOpened] = useState(() => !table);
   const isMetric = question.type() === "metric";
 
   const isRaw = useMemo(() => {
@@ -39,6 +41,7 @@ export const DataStep = ({
   }, [query, stageIndex]);
 
   const canSelectTableColumns = table && isRaw && !readOnly;
+  const isEmbedding = useSelector(getIsEmbedding);
 
   const handleTableChange = async (
     table: Lib.TableMetadata | Lib.CardMetadata,
@@ -55,7 +58,7 @@ export const DataStep = ({
 
   return (
     <NotebookCell color={color}>
-      {isOpened || !table ? (
+      {isOpened || !table || isEmbedding ? (
         <NotebookDataPicker
           query={query}
           stageIndex={stageIndex}

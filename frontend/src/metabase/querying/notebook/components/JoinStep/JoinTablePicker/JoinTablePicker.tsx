@@ -4,6 +4,8 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { METAKEY } from "metabase/lib/browser";
+import { useSelector } from "metabase/lib/redux";
+import { getIsEmbedding } from "metabase/selectors/embed";
 import { Box, Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -34,9 +36,11 @@ export function JoinTablePicker({
   onChange,
 }: JoinTablePickerProps) {
   const [isOpened, setIsOpened] = useState(!table);
+  const isEmbedding = useSelector(getIsEmbedding);
+
   return (
     <Box aria-label={t`Right table`}>
-      {isOpened || !table ? (
+      {isOpened || !table || isEmbedding ? (
         <NotebookDataPicker
           title={t`Pick data to join`}
           query={query}
