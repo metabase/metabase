@@ -31,6 +31,17 @@ type MergeVisualizerSeries = {
   dataSources: VisualizerDataSource[];
 };
 
+function zipRows(rows: RowValues[]): RowValues[] {
+  if (rows.length === 0) {
+    return [];
+  }
+  //_.zip can return undefined, which is not a valid RowValue
+  const maxLength = _.max(rows.map((row) => row.length));
+  return _.range(maxLength).map((index) =>
+    rows.map((row) => row[index] ?? null),
+  );
+}
+
 /**
  * Merges data from multiple datasets into a single dataset.
  *
@@ -79,7 +90,7 @@ export function mergeVisualizerData({
 
   return {
     cols: columns,
-    rows: _.zip(...unzippedRows),
+    rows: zipRows(unzippedRows),
     results_metadata: { columns },
   };
 }
