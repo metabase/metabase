@@ -2,7 +2,6 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useCreateTableSymlinkMutation } from "metabase/api";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
@@ -12,34 +11,35 @@ import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
+import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import { getPublishSeeItLink } from "../utils";
 
 interface Props {
-  databaseIds?: DatabaseId[];
-  schemaIds?: SchemaId[];
-  tableIds?: TableId[];
+  tables?: Set<TableId>;
+  schemas?: Set<SchemaId>;
+  databases?: Set<DatabaseId>;
   isOpen: boolean;
   onClose?: () => void;
   onSuccess?: () => void;
 }
 
-export function PublishModelsModal({
-  databaseIds = [],
-  schemaIds = [],
-  tableIds = [],
+export function PublishTablesModal({
+  tables = new Set(),
+  schemas = new Set(),
+  databases = new Set(),
   isOpen,
   onClose,
   onSuccess,
 }: Props) {
   const dispatch = useDispatch();
-  const [seenPublishModelsInfo, { ack: ackSeenPublishModelsInfo }] =
-    useUserAcknowledgement("seen-publish-models-info");
+  const [seenPublishTablesInfo, { ack: ackSeenPublishTablesInfo }] =
+    useUserAcknowledgement("seen-publish-tables-info");
   const [showPublishInfo, setShowPublishInfo] = useState(
-    !seenPublishModelsInfo,
+    !seenPublishTablesInfo,
   );
-  const [createTableSymlink] = useCreateTableSymlinkMutation();
+  const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const defaultPublishCollection =
@@ -56,15 +56,15 @@ export function PublishModelsModal({
     const collectionId =
       collection.id === "root" ? null : Number(collection.id);
 
-    const { error, data } = await createTableSymlink({
-      collection_id: collectionId,
-      database_ids: databaseIds,
-      schema_ids: schemaIds,
-      table_ids: tableIds,
+    const { error, data } = await publishTables({
+      table_ids: Array.from(tables),
+      schema_ids: Array.from(schemas),
+      database_ids: Array.from(databases),
+      target_collection_id: collectionId,
     });
 
     if (error) {
-      sendErrorToast(t`Failed to publish models`);
+      sendErrorToast(t`Failed to publish tables`);
     } else if (data) {
       sendSuccessToast(
         t`Published`,
@@ -79,7 +79,7 @@ export function PublishModelsModal({
   };
 
   const handleClose = () => {
-    setShowPublishInfo(!seenPublishModelsInfo);
+    setShowPublishInfo(!seenPublishTablesInfo);
     onClose?.();
   };
 
@@ -87,13 +87,13 @@ export function PublishModelsModal({
     return null;
   }
 
-  if (showPublishInfo && !seenPublishModelsInfo) {
+  if (showPublishInfo && !seenPublishTablesInfo) {
     return (
-      <AcknowledgePublishModelsModal
+      <AcknowledgePublishTablesModal
         isOpen={true}
         handleSubmit={({ acknowledged }) => {
           if (acknowledged) {
-            ackSeenPublishModelsInfo();
+            ackSeenPublishTablesInfo();
           }
           setShowPublishInfo(false);
         }}
@@ -128,7 +128,7 @@ export function PublishModelsModal({
   );
 }
 
-function AcknowledgePublishModelsModal({
+function AcknowledgePublishTablesModal({
   isOpen,
   handleSubmit,
   handleClose,
@@ -148,7 +148,7 @@ function AcknowledgePublishModelsModal({
       onClose={() => handleClose()}
     >
       <Text pt="sm">
-        {t`Publishing a table means we'll create a model based on it and save it in the collection you choose so that it’s easy for your end users to find it.`}
+        {t`Publishing a table means we'll save it in the collection you choose so that it’s easy for your end users to find it.`}
       </Text>
 
       <Group pt="xl" justify="space-between">

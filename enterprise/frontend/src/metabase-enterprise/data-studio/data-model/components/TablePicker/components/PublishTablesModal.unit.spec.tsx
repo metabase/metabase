@@ -16,10 +16,10 @@ import {
   waitFor,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { PublishModelsResponse } from "metabase-types/api";
+import type { PublishTablesResponse } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 
-import { PublishModelsModal } from "./PublishModelsModal";
+import { PublishTablesModal } from "./PublishTablesModal";
 
 function setup(
   args: {
@@ -28,7 +28,7 @@ function setup(
     schemas?: Set<string>;
     databases?: Set<number>;
     seenPublishModelsInfo?: boolean;
-    publishResponse?: PublishModelsResponse;
+    publishResponse?: PublishTablesResponse;
     publishError?: boolean;
   } = {},
 ) {
@@ -91,7 +91,7 @@ function setup(
 
   renderWithProviders(
     <>
-      <PublishModelsModal
+      <PublishTablesModal
         isOpen={isOpen}
         tables={tables}
         schemas={schemas}
@@ -118,7 +118,7 @@ function getCheckbox() {
   });
 }
 
-describe("PublishModelsModal", () => {
+describe("PublishTablesModal", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -173,7 +173,7 @@ describe("PublishModelsModal", () => {
   });
 
   it("handles success flow correctly", async () => {
-    const publishResponse: PublishModelsResponse = {
+    const publishResponse: PublishTablesResponse = {
       created_count: 1,
       models: [createMockCard({ id: 1 })],
       target_collection: createMockCollection({ id: 1 }),
@@ -274,7 +274,7 @@ describe("PublishModelsModal", () => {
   });
 
   it("handles root collection selection correctly", async () => {
-    const publishResponse: PublishModelsResponse = {
+    const publishResponse: PublishTablesResponse = {
       created_count: 1,
       models: [createMockCard({ id: 1 })],
       target_collection: createMockCollection({ id: "root" }),

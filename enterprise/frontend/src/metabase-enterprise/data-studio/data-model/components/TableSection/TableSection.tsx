@@ -35,7 +35,7 @@ import type {
   TableSymlink,
 } from "metabase-types/api";
 
-import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
+import { PublishTablesModal } from "../TablePicker/components/PublishTablesModal";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableFieldList } from "./TableFieldList";
@@ -305,7 +305,7 @@ const TableSectionBase = ({
         </Stack>
       </Box>
 
-      <PublishModelsModal
+      <PublishTablesModal
         tableIds={[table.id]}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}

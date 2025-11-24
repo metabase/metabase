@@ -211,16 +211,15 @@ export interface GetTableDataRequest {
   tableId: TableId;
 }
 
-export interface PublishModelsRequest {
+export interface PublishTablesRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
   target_collection_id: number | "library" | null;
 }
 
-export interface PublishModelsResponse {
-  created_count: number;
-  models: Card[];
+export interface PublishTablesResponse {
+  tables: Table[];
   target_collection: Collection | null;
 }
 

@@ -22,7 +22,7 @@ import type { ChangeOptions, FilterState, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 
 import { FilterPopover } from "./FilterPopover";
-import { PublishModelsModal } from "./PublishModelsModal";
+import { PublishTablesModal } from "./PublishTablesModal";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
 
@@ -55,7 +55,8 @@ export function TablePicker({
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
 
-  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
+  const [isPublishTablesModalOpened, setIsPublishTablesModalOpened] =
+    useState(false);
   const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
     null,
   );
@@ -161,12 +162,12 @@ export function TablePicker({
         )}
       </Box>
 
-      <PublishModelsModal
-        databaseIds={Array.from(selectedDatabases)}
-        schemaIds={Array.from(selectedSchemas)}
-        tableIds={Array.from(selectedTables)}
-        isOpen={isCreateModelsModalOpen}
-        onClose={() => setIsCreateModelsModalOpen(false)}
+      <PublishTablesModal
+        tables={selectedTables}
+        schemas={selectedSchemas}
+        databases={selectedDatabases}
+        isOpen={isPublishTablesModalOpened}
+        onClose={() => setIsPublishTablesModalOpened(false)}
         onSuccess={handlePublishSuccess}
       />
     </Stack>
