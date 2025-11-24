@@ -18,7 +18,12 @@ import type { TablePickerValueItem } from "../TablePicker";
 export type QuestionPickerModel =
   | Extract<
       CollectionPickerItem["model"],
-      "card" | "dataset" | "metric" | "collection" | "dashboard"
+      | "card"
+      | "dataset"
+      | "metric"
+      | "collection"
+      | "dashboard"
+      | "table-symlink"
     >
   | "table";
 export type QuestionPickerValueModel = Extract<

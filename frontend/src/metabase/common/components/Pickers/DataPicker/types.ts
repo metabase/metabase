@@ -3,6 +3,8 @@ import type {
   Collection,
   DashboardId,
   DatabaseId,
+  TableId,
+  TableSymlinkId,
 } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "../../EntityPicker";
@@ -47,6 +49,14 @@ export type MetricItem = {
   database_id: DatabaseId;
 };
 
+export type TableSymlinkItem = {
+  id: TableSymlinkId;
+  name: string;
+  model: "table-symlink";
+  table_id: TableId;
+  database_id: DatabaseId;
+};
+
 export type DataPickerValue =
   | TablePickerValue
   | QuestionItem
@@ -63,7 +73,8 @@ export type DataPickerValueItem =
   | TableItem
   | QuestionItem
   | ModelItem
-  | MetricItem;
+  | MetricItem
+  | TableSymlinkItem;
 
 export type DataPickerItem = DataPickerFolderItem | DataPickerValueItem;
 

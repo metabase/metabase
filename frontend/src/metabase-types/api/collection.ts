@@ -128,6 +128,7 @@ export interface CollectionItem {
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
+  table_id?: TableId;
   moderated_status?: string;
   type?: CollectionType | CardType;
   here?: CollectionItemModel[];

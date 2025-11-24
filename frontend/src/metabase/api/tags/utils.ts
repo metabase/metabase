@@ -591,7 +591,7 @@ export function provideTableSymlinkTags(
   symlink: TableSymlink,
 ): TagDescription<TagType>[] {
   return [
-    idTag("table-symlink", `${symlink.table_id}-${symlink.collection_id}`),
+    idTag("table-symlink", symlink.id),
     ...(symlink.table ? provideTableTags(symlink.table) : []),
     ...(symlink.collection ? provideCollectionTags(symlink.collection) : []),
   ];

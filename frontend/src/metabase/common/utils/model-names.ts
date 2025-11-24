@@ -44,6 +44,9 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<ModelNames, string> = {
   get user() {
     return t`User`;
   },
+  get "table-symlink"() {
+    return t`Table`;
+  },
 };
 
 export const getTranslatedEntityName = (type: ModelNames) =>

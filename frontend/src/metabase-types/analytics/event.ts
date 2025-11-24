@@ -95,7 +95,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "dataset"
     | "indexed-entity"
     | "snippet"
-    | "document";
+    | "document"
+    | "table-symlink";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -454,6 +455,12 @@ export type ClickActionPerformedEvent = ValidateEvent<{
   triggered_from: ClickActionSection;
 }>;
 
+export type BookmarkTableSymlinkEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "table-symlink";
+  triggered_from: "collection_list";
+}>;
+
 export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
   event: "remote_sync_branch_switched";
   triggered_from: "sidebar" | "admin-settings";
@@ -500,7 +507,8 @@ export type BookmarkEvent =
   | BookmarkMetricEvent
   | BookmarkDashboardEvent
   | BookmarkCollectionEvent
-  | BookmarkDocumentEvent;
+  | BookmarkDocumentEvent
+  | BookmarkTableSymlinkEvent;
 
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent

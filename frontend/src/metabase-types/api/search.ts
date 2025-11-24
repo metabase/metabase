@@ -25,7 +25,11 @@ const ENABLED_SEARCH_MODELS = [
   "transform",
 ] as const;
 
-export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
+export const SEARCH_MODELS = [
+  ...ENABLED_SEARCH_MODELS,
+  "segment",
+  "table-symlink",
+] as const;
 
 export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 

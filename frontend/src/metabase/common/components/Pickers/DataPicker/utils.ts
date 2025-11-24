@@ -1,5 +1,6 @@
 import { isNullOrUndefined } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CollectionItem,
@@ -7,6 +8,7 @@ import type {
   DatabaseId,
   RecentItem,
   Table,
+  TableId,
 } from "metabase-types/api";
 
 import type { QuestionPickerItem } from "../QuestionPicker";
@@ -89,13 +91,30 @@ export const isTableItem = (
 export const isValueItem = (
   item: DataPickerItem,
 ): item is DataPickerValueItem => {
-  return ["table", "card", "dataset", "metric"].includes(item.model);
+  return ["table", "table-symlink", "card", "dataset", "metric"].includes(
+    item.model,
+  );
 };
 
 export const isFolderItem = (
   item: DataPickerItem,
 ): item is DataPickerFolderItem => {
   return ["collection", "database", "schema"].includes(item.model);
+};
+
+export const getItemTableId = (item: DataPickerValueItem): TableId => {
+  switch (item.model) {
+    case "table":
+      return item.id;
+    case "table-symlink":
+      return item.table_id;
+    case "card":
+    case "dataset":
+    case "metric":
+      return getQuestionVirtualTableId(item.id);
+    default:
+      throw new TypeError("Unsupported model");
+  }
 };
 
 type OmniPickerModel = CollectionItemModel | TablePickerItem["model"];

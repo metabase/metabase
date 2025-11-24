@@ -3,7 +3,6 @@ import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { Button, Checkbox, Icon, Popover } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   DatabaseId,
   RecentContexts,
@@ -31,6 +30,7 @@ import type {
 import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
+  getItemTableId,
   getRecentItemDatabaseId,
   isTableItem,
   isValueItem,
@@ -60,6 +60,7 @@ const QUESTION_PICKER_MODELS: QuestionPickerModel[] = [
   "metric",
   "dashboard",
   "table", // yes, tables are in the question picker now, I'm sorry
+  "table-symlink",
 ];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
@@ -169,9 +170,7 @@ export const DataPickerModal = ({
         return;
       }
 
-      const id =
-        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
-      onChange(id);
+      onChange(getItemTableId(item));
       tryLogRecentItem(item);
       onClose();
     },
@@ -222,6 +221,7 @@ export const DataPickerModal = ({
           "dataset" as const,
           "metric" as const,
           "table" as const,
+          "table-symlink" as const,
         ],
         folderModels: ["collection", "dashboard", "schema", "database"],
         icon: "folder",
