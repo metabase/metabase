@@ -1557,6 +1557,7 @@
            models
            parameters
            premium-features
+           query-permissions
            query-processor
            request
            sync

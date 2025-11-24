@@ -2,10 +2,12 @@
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.warehouse-schema-rest.api.field]
-   [metabase.warehouse-schema-rest.api.table]))
+   [metabase.warehouse-schema-rest.api.table]
+   [metabase.warehouse-schema-rest.api.table-symlink]))
 
 (comment metabase.warehouse-schema-rest.api.field/keep-me
-         metabase.warehouse-schema-rest.api.table/keep-me)
+         metabase.warehouse-schema-rest.api.table/keep-me
+         metabase.warehouse-schema-rest.api.table-symlink/keep-me)
 
 (def ^{:arglists '([request respond raise])} field-routes
   "`/api/field` routes."
@@ -14,3 +16,7 @@
 (def ^{:arglists '([request respond raise])} table-routes
   "`/api/table` routes."
   (api.macros/ns-handler 'metabase.warehouse-schema-rest.api.table))
+
+(def ^{:arglists '([request respond raise])} table-symlink-routes
+  "`/api/table-symlink` routes."
+  (api.macros/ns-handler 'metabase.warehouse-schema-rest.api.table-symlink))
