@@ -40,9 +40,7 @@ const getDefaultPluginCaching = () => ({
   GranularControlsExplanation: PluginPlaceholder as any,
   SidebarCacheSection:
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
-  SidebarCacheForm: PluginPlaceholder as ComponentType<
-    SidebarCacheFormProps & { onBack: () => void }
-  >,
+  SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
