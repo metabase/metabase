@@ -38,6 +38,16 @@ export interface SdkAuthState {
   session?: MetabaseEmbeddingSessionToken | null;
 
   /**
+   * The current user data from GET /api/user/current
+   */
+  user?: any | null;
+
+  /**
+   * Site settings from GET /api/session/properties
+   */
+  siteSettings?: any | null;
+
+  /**
    * Error object if auth failed
    */
   error?: Error;
