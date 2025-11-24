@@ -896,11 +896,11 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-18T12:31:54
       author: johnswanson
-      comment: Add All External Users group
+      comment: External Users groups
       rollback:
         - sql:
             sql: >-
-              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
+              DELETE FROM permissions_group WHERE magic_group_type IN ('all-external-users', 'read-external-users', 'write-external-users');
       changes:
         - sql:
             sql: >-
@@ -1144,6 +1144,20 @@ databaseChangeLog:
               WHERE object = '/collection/namespace/shared-tenant-collection/root/read/'
                 AND group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-external-users');
 
+  - changeSet:
+      id: v58.2025-12-01T05:21:37
+      author: johnswanson
+      comment: Add a tenant_collection_id to tenants
+      changes:
+        - addColumn:
+            tableName: tenant
+            columns:
+              - column:
+                  name: tenant_collection_id
+                  type: int
+                  remarks: The ID of the collection
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

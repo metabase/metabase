@@ -246,7 +246,7 @@
                                           [:id :asc]))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
-             (t2/hydrate :personal_collection_id)
+             (t2/hydrate :personal_collection_id :tenant_collection_id)
 
              (or api/*is-superuser?*
                  api/*is-group-manager?*)
@@ -420,7 +420,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions

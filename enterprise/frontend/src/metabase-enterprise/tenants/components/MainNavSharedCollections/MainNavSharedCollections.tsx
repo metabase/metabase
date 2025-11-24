@@ -12,12 +12,16 @@ import type { CreateCollectionProperties } from "metabase/collections/components
 import { Tree } from "metabase/common/components/tree";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { tenantSpecificCollections } from "metabase/lib/urls";
 import {
+  PaddedSidebarLink,
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { getSetting } from "metabase/selectors/settings";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
@@ -27,6 +31,8 @@ export const MainNavSharedCollections = () => {
   const isTenantsEnabled = useSelector((state) =>
     getSetting(state, "use-tenants"),
   );
+  const isAdmin = useSelector(getUserIsAdmin);
+  const currentUser = useSelector(getUser);
 
   const { value: isTenantCollectionsRemoteSyncEnabled } = useAdminSetting(
     "tenant-collections-remote-sync-enabled",
@@ -109,8 +115,22 @@ export const MainNavSharedCollections = () => {
     return null;
   }
 
+  const userTenantCollectionId = currentUser?.tenant_collection_id;
+
   return (
     <>
+      {userTenantCollectionId && (
+        <SidebarSection>
+          <SidebarHeading>{t`My tenant collection`}</SidebarHeading>
+          <PaddedSidebarLink
+            icon="folder"
+            url={Urls.collection({id: userTenantCollectionId})}
+          >
+            {t`My Tenant Collection`}
+          </PaddedSidebarLink>
+        </SidebarSection>
+      )}
+
       <SidebarSection>
         <Flex align="center" justify="space-between">
           <SidebarHeading>{t`Tenant collections`}</SidebarHeading>
@@ -129,6 +149,14 @@ export const MainNavSharedCollections = () => {
             showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
           }
         />
+        {isAdmin && (
+          <PaddedSidebarLink
+            icon="folder"
+            url={tenantSpecificCollections()}
+          >
+            {t`Tenant-Specific Collections`}
+          </PaddedSidebarLink>
+        )}
       </SidebarSection>
       <Modal
         opened={modalOpen}

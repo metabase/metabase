@@ -102,7 +102,8 @@
   collection-readwrite-path
   collection-path?]
  [metabase.permissions.user
-  user-permissions-set]
+  user-permissions-set
+  user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

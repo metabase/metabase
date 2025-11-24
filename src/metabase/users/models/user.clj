@@ -414,6 +414,23 @@
     (for [user users]
       (assoc user :is_installer (= (:id user) 1)))))
 
+(mi/define-batched-hydration-method add-tenant-collection-id
+  :tenant_collection_id
+  "Efficiently hydrate the `:tenant_collection_id` property of a sequence of Users. (This is the ID of their Tenant's
+  Collection, if they belong to a tenant.)"
+  [users]
+  (when (seq users)
+    ;; efficiently create a map of tenant ID -> tenant collection ID
+    (let [users-with-tenant-ids (filter :tenant_id users)
+          tenant-ids            (set (map :tenant_id users-with-tenant-ids))
+          tenant-id->collection-id (when (seq tenant-ids)
+                                     (t2/select-pk->fn :tenant_collection_id :model/Tenant
+                                                       :id [:in tenant-ids]))]
+      ;; now for each User, try to find the corresponding tenant collection ID
+      (for [user users]
+        (assoc user :tenant_collection_id (when-let [tenant-id (:tenant_id user)]
+                                            (get tenant-id->collection-id tenant-id)))))))
+
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (declare form-password-reset-url)

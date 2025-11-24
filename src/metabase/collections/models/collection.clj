@@ -96,7 +96,7 @@
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
 
-(mu/defn tenant-collection?
+(mu/defn is-shared-tenant-collection?
   "Whether or not a collection is a tenant collection."
   [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
   (= (some-> namespace name)
@@ -378,7 +378,7 @@
   Collection."
   [{:keys [location], owner-id :personal_owner_id, collection-namespace :namespace, :as collection}]
   {:pre [(contains? collection :namespace)]}
-  (when (and namespace (tenant-collection? collection) (not (perms/use-tenants)))
+  (when (and namespace (is-shared-tenant-collection? collection) (not (perms/use-tenants)))
     (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)})))
   (when location
     (when-let [parent-id (location-path->parent-id location)]
@@ -610,11 +610,11 @@
                                               (or (get user-id->collection-id (u/the-id user))
                                                   (user->personal-collection-id (u/the-id user)))))))))
 
-(mi/define-simple-hydration-method hydrate-tenant-collection?
-  :is_tenant_collection
-  "Hydrate the `is_tenant_collection` property of collections - whether or not they're a tenant coll."
+(mi/define-simple-hydration-method is-shared-tenant-collection
+  :is_shared_tenant_collection
+  "Hydrate the `is_shared_tenant_collection` property of collections - whether or not they're a tenant coll."
   [collection]
-  (tenant-collection? collection))
+  (is-shared-tenant-collection? collection))
 
 (mi/define-batched-hydration-method collection-is-personal
   :is_personal
@@ -777,8 +777,12 @@
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
                                             {:select visible-union-columns
+                                             :from   [[:collection :c]]
+                                             :where  [:in :id [:inline personal-collection-and-descendant-ids]]})
+                                          (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
+                                            {:select visible-union-columns
                                              :from [[:collection :c]]
-                                             :where [:in :id [:inline personal-collection-and-descendant-ids]]})])}
+                                             :where [:in :id [:inline tenant-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
@@ -1416,6 +1420,8 @@
    (perms/set-has-full-permissions-for-set?
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
+  (api/check-400
+   (not= (:type collection) "tenant-specific"))
   (t2/with-transaction [_conn]
     (let [archive-operation-id (str (random-uuid))
           affected-collection-ids (cons (u/the-id collection)
@@ -1625,20 +1631,24 @@
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
-(mu/defn- check-changes-allowed-for-personal-collection
-  "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
-  have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
+(mu/defn- check-changes-allowed-for-protected-collection
+  "If we're trying to UPDATE a Personal Collection or Dedicated Tenant Collection, make sure the proposed changes are
+  allowed. Personal Collections and DTCs have lots of restrictions -- you can't archive them, for example, nor can you
+  transfer them to other Users."
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot
    collection-updates :- :map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
-                      :authority_level (tru "You are not allowed to change the authority level of a Personal Collection.")
+  (let [ctype        (if (:personal_collection_id collection-before-updates)
+                       "Personal Collection"
+                       "Dedicated Tenant Collection")
+        unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a {0}." ctype)
+                      :authority_level   (tru "You are not allowed to change the authority level of a {0}." ctype)
                       ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
                       ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
                       ;; doesn't hurt to check here too.
-                      :location (tru "You are not allowed to move a Personal Collection.")
-                      :archived (tru "You cannot archive a Personal Collection.")}]
+                      :location          (tru "You are not allowed to move a {0}." ctype)
+                      :archived          (tru "You cannot archive a {0}." ctype)}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]
                                       (api/column-will-change? k collection-before-updates collection-updates)))
@@ -1731,8 +1741,9 @@
      [400 "You cannot modify the Trash Collection."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
-    (when (:personal_owner_id collection-before-updates)
-      (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
+    (when (or (:personal_owner_id collection-before-updates)
+              (= (:type collection-before-updates) "tenant-specific-collection"))
+      (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
     ;; (3) make sure Collection namespace is valid
@@ -1985,7 +1996,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics :shared-tenant-collection})
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see

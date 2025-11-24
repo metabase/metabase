@@ -21,6 +21,7 @@ const getDefaultPluginTenants = () => ({
   MainNavSharedCollections: PluginPlaceholder,
   TenantCollectionItemList: (_props: CollectionItemListProps) =>
     null as React.ReactElement | null,
+  TenantCollectionList: PluginPlaceholder,
 });
 
 export const PLUGIN_TENANTS: {

@@ -66,6 +66,7 @@ export interface User extends BaseUser {
   has_question_and_dashboard: boolean;
   can_write_any_collection: boolean;
   personal_collection_id: CollectionId;
+  tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
     dashboard_id: DashboardId;

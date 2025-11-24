@@ -38,6 +38,12 @@ export function isRootPersonalCollection(
   return typeof collection.personal_owner_id === "number";
 }
 
+export function isDedicatedTenantCollectionRoot(
+  collection: Partial<Collection> | CollectionItem,
+): boolean {
+  return collection.type === "tenant-specific-root-collection";
+}
+
 export function isPersonalCollection(
   collection: Pick<Collection, "is_personal">,
 ) {
@@ -221,7 +227,7 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
-    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !(isItemCollection(item) && (isRootPersonalCollection(item) || isDedicatedTenantCollectionRoot(item))) &&
     !isLibraryCollection(item as Pick<Collection, "type">) &&
     item.model !== "table" &&
     !item.archived
