@@ -652,18 +652,14 @@
            [:= :id (collection/trash-collection-id)]]
           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
         (when collection-type
-<<<<<<< HEAD
-          [:= :type collection-type])
+          (if (= collection-type "remote-synced")
+            [:= :is_remote_synced true]
+            [:= :type collection-type]))
         (when-not include-library?
           [:or [:= nil :type]
            [:not [:in :type [collection/library-collection-type
                              collection/library-metrics-collection-type
                              collection/library-models-collection-type]]]])
-=======
-          (if (= collection-type "remote-synced")
-            [:= :is_remote_synced true]
-            [:= :type collection-type]))
->>>>>>> origin/master
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
