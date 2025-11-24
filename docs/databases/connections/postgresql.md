@@ -77,6 +77,35 @@ To use Oauth as a provider, you'll need to input your:
 - Auth token URL
 - Auth token request headers (a JSON map)
 
+#### IAM Authentication
+
+To connect to [Amazon Relational Database Service (RDS)](https://docs.aws.amazon.com/rds/) instances using IAM authentication, you'll need to:
+
+1. **Configure AWS credentials**: Authentication credentials must be available via one of the methods supported by the [AWS SDK credentials chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html), typically either:
+   - Environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`).
+   - AWS credentials file (`.aws/credentials` - automatically available if running in [Elastic Container Service (ECS)](https://docs.aws.amazon.com/ecs/).
+
+2. **Set up IAM policy**: Add a policy with the `rds-db:connect` action. The policy resource must specify the ARN of your database user in the format:
+
+   ```
+   arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
+   ```
+
+   See [Creating IAM policy for IAM database access](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html).
+
+3. **Create database user**: Create the database user with IAM authentication enabled:
+
+   ```sql
+   CREATE USER your_username;
+   GRANT rds_iam TO your_username;
+   ```
+
+   The database username must match exactly (case-sensitive) with the `db-user-name` portion of your IAM policy [Amazon Resource Name (ARN)](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html). See [Setting up for IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html).
+
+4. **Enable IAM authentication**: [Enable IAM authentication on your RDS instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.Enabling.html).
+
+5. **Configure SSL**: Use a [secure connection (SSL)](#use-a-secure-connection-ssl). Set the SSL Mode to **require**.
+
 ### Schemas
 
 You can specify which schemas you want to sync and scan. Options are:
