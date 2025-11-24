@@ -93,7 +93,7 @@
   ;; Match items directly in the collection OR in descendant collections
   [:or
    [:= k v]
-   [:like :collection.location (str (collection/location-path v) "%")]])
+   [:like :collection.location (str "%" (collection/location-path v) "%")]])
 
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
