@@ -20,7 +20,7 @@ import type { UpdateTargetId } from "../types";
 import { Panel, RoundedBox } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 
-export const StrategyEditorForDatabases = () => {
+export const StrategyEditorForDatabases: React.FC = () => {
   const { canOverrideRootStrategy } = PLUGIN_CACHING;
 
   const [
