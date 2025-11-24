@@ -31,10 +31,16 @@ export const EditUserStrategyModal = ({
   }, [initialStrategy]);
 
   const handleApply = async () => {
-    await updateSetting({
+    const response = await updateSetting({
       key: "use-tenants",
       value: selectedStrategy === "multi-tenant",
     });
+
+    // Revert selection to initial value if update fails
+    if (response.error) {
+      setSelectedStrategy(initialStrategy);
+      return;
+    }
 
     dispatch(permissionApi.util.invalidateTags(["permissions-group"]));
     onClose();

@@ -97,14 +97,14 @@ describe("EditUserStrategyModal", () => {
     expect(puts[0].body).toEqual({ value: true });
   });
 
-  it("should handle failing to update", async () => {
-    await setup({
-      setupEndpoints: () => {
-        fetchMock.put("path:/api/setting/use-tenants", 500, {
-          overwriteRoutes: true,
-        });
-      },
-    });
+  it("reverts the selected user strategy if the setting update fails", async () => {
+    fetchMock.put(
+      "path:/api/setting/use-tenants",
+      { throws: new Error("Internal server error") },
+      { overwriteRoutes: true },
+    );
+
+    await setup();
 
     expect(
       await screen.findByRole("radio", {
@@ -123,9 +123,12 @@ describe("EditUserStrategyModal", () => {
 
     await waitFor(() => findRequests("PUT"));
 
-    // Selection should remain as multi-tenant in the UI even though the API call failed
+    // Revert to single tenant as the API call failed
     expect(
-      screen.getByRole("radio", { name: /Multi tenant/, checked: true }),
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
     ).toBeInTheDocument();
   });
 
