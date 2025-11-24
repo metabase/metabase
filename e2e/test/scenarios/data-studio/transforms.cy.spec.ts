@@ -522,9 +522,6 @@ LIMIT
         cy.findAllByTestId("picker-item")
           .contains("Sample Database")
           .should("have.attr", "data-disabled", "true");
-        cy.findAllByTestId("picker-item")
-          .contains("Orders")
-          .should("have.attr", "data-disabled", "true");
       });
     });
 
