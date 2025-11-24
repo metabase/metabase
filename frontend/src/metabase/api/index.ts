@@ -33,6 +33,7 @@ export * from "./slack";
 export * from "./snippet";
 export * from "./subscription";
 export * from "./table";
+export * from "./table-symlink";
 export * from "./task";
 export * from "./timeline";
 export * from "./timeline-event";

@@ -18,7 +18,7 @@
    [:created_at    ::lib.schema.literal/string.datetime]])
 
 (defn- check-table-query-permissions [table-id]
-  (let [database-id (api/check-404 (t2/select-one-fn :database_id :model/Table :id table-id))]
+  (let [database-id (api/check-404 (t2/select-one-fn :db_id :model/Table :id table-id))]
     (when-not (query-perms/can-query-table? database-id table-id)
       (throw (ex-info (i18n/tru "You must have data permissions to create a symlink for Table {0}."
                                 (pr-str (t2/select-one-fn :name :model/Table :id table-id)))

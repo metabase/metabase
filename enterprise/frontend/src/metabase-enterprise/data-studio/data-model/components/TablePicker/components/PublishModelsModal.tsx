@@ -2,6 +2,7 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useCreateTableSymlinkMutation } from "metabase/api";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
@@ -11,7 +12,6 @@ import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
-import { usePublishModelsMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import { getPublishSeeItLink } from "../utils";
@@ -27,8 +27,6 @@ interface Props {
 
 export function PublishModelsModal({
   tables = new Set(),
-  schemas = new Set(),
-  databases = new Set(),
   isOpen,
   onClose,
   onSuccess,
@@ -39,7 +37,7 @@ export function PublishModelsModal({
   const [showPublishInfo, setShowPublishInfo] = useState(
     !seenPublishModelsInfo,
   );
-  const [publishModels] = usePublishModelsMutation();
+  const [createTableSymlink] = useCreateTableSymlinkMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const defaultPublishCollection =
@@ -56,11 +54,9 @@ export function PublishModelsModal({
     const collectionId =
       collection.id === "root" ? null : Number(collection.id);
 
-    const { error, data } = await publishModels({
-      table_ids: Array.from(tables),
-      schema_ids: Array.from(schemas),
-      database_ids: Array.from(databases),
-      target_collection_id: collectionId,
+    const { error, data } = await createTableSymlink({
+      table_id: Array.from(tables)[0],
+      collection_id: collectionId,
     });
 
     if (error) {

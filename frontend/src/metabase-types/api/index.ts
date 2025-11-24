@@ -52,6 +52,7 @@ export * from "./store";
 export * from "./subscription";
 export * from "./support-access-grants";
 export * from "./table";
+export * from "./table-symlink";
 export * from "./task";
 export * from "./timeline";
 export * from "./transform";
