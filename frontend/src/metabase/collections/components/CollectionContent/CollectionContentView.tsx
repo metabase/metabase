@@ -4,6 +4,8 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { trackCollectionBookmarked } from "metabase/collections/analytics";
@@ -29,7 +31,6 @@ import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/util
 import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
@@ -171,12 +172,12 @@ const CollectionContentViewInner = ({
   };
 
   const handleCreateBookmark = () => {
-    createBookmark(collectionId.toString(), "collection");
+    createBookmark({ id: collectionId.toString(), type: "collection" });
     trackCollectionBookmarked();
   };
 
   const handleDeleteBookmark = () => {
-    deleteBookmark(collectionId.toString(), "collection");
+    deleteBookmark({ id: collectionId.toString(), type: "collection" });
   };
 
   const canCreateUpload =
@@ -216,7 +217,7 @@ const CollectionContentViewInner = ({
           onUnarchive={async () => {
             const input = { ...actionId, name: collection.name };
             await dispatch(Collections.actions.setArchived(input, false));
-            await dispatch(Bookmarks.actions.invalidateLists());
+            dispatch(Api.util.invalidateTags([listTag("bookmark")]));
           }}
           onMove={({ id }) =>
             dispatch(Collections.actions.setCollection(actionId, { id }))

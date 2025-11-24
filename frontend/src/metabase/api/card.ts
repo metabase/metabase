@@ -173,6 +173,10 @@ export const cardApi = Api.injectEndpoints({
             tags.push(idTag("collection", payload.collection_id));
           }
 
+          if (payload.name || payload.type) {
+            tags.push(listTag("bookmark"));
+          }
+
           return invalidateTags(error, tags);
         },
       }),

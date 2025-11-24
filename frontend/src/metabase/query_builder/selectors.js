@@ -108,8 +108,8 @@ export const getSelectedTimelineEventIds = (state) =>
 
 const getRawQueryResults = (state) => state.qb.queryResults;
 
-export const getIsBookmarked = (state, props) =>
-  props.bookmarks.some(
+export const getIsBookmarked = (state, bookmarks) =>
+  bookmarks.some(
     (bookmark) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );

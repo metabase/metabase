@@ -53,8 +53,14 @@ export type OnToggleBookmark = () => void | null;
 export type OnDrop = () => void;
 export type OnToggleSelected = () => void | null;
 export type OnToggleSelectedWithItem = (item: CollectionItem) => void;
-export type CreateBookmark = (id: BookmarkId, collection: BookmarkType) => void;
-export type DeleteBookmark = (id: BookmarkId, type: BookmarkType) => void;
+export type CreateBookmark = (bookmark: {
+  id: BookmarkId;
+  type: BookmarkType;
+}) => void;
+export type DeleteBookmark = (bookmark: {
+  id: BookmarkId;
+  type: BookmarkType;
+}) => void;
 export type OnFileUpload = (props: CollectionOrTableIdProps) => void;
 export type UploadFile = (
   props: { file: File } & CollectionOrTableIdProps,

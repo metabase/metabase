@@ -1,5 +1,6 @@
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { useDashboardContext } from "metabase/dashboard/context";
-import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 
@@ -14,8 +15,8 @@ export const DashboardArchivedEntityBanner = () => {
   } = useDashboardContext();
 
   const dispatch = useDispatch();
-  const invalidateBookmarks = async () =>
-    await dispatch(Bookmarks.actions.invalidateLists());
+  const invalidateBookmarks = () =>
+    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
 
   if (!dashboard) {
     return null;
@@ -35,7 +36,7 @@ export const DashboardArchivedEntityBanner = () => {
       canDelete={canDelete}
       onUnarchive={async () => {
         await setArchivedDashboard(false);
-        await invalidateBookmarks();
+        invalidateBookmarks();
       }}
       onMove={({ id }) => moveDashboardToCollection({ id })}
       onDeletePermanently={() => {

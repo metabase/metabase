@@ -3,6 +3,8 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
@@ -21,7 +23,6 @@ import {
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
@@ -121,7 +122,10 @@ function ActionMenu({
       if (!isBookmarked) {
         trackCollectionItemBookmarked(item);
       }
-      toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
+      toggleBookmark?.({
+        id: item.id.toString(),
+        type: normalizeItemModel(item),
+      });
     };
     return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
@@ -135,7 +139,7 @@ function ActionMenu({
     const result = await dispatch(
       Entity.actions.update({ id: item.id, archived: false }),
     );
-    await dispatch(BookmarkEntity.actions.invalidateLists());
+    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
 
     const entity = Entity.HACK_getObjectFromAction(result);
     const parentCollection = HACK_getParentCollectionFromEntityUpdateAction(

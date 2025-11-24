@@ -6,13 +6,14 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { deletePermanently } from "metabase/archive/actions";
 import ExplicitSize from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/common/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import {
@@ -276,7 +277,7 @@ const mapDispatchToProps = (dispatch) => ({
   onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
   onUnarchive: async (question) => {
     await dispatch(setArchivedQuestion(question, false));
-    await dispatch(Bookmarks.actions.invalidateLists());
+    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
   },
   onMove: (question, newCollection) =>
     dispatch(

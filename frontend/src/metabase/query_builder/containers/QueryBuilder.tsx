@@ -8,13 +8,18 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+  useListBookmarksQuery,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
-import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -29,7 +34,6 @@ import {
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import type {
-  BookmarkId,
   Bookmark as BookmarkType,
   Card,
   Series,
@@ -119,7 +123,7 @@ type EntityListLoaderMergedProps = {
 } & BookmarkListLoaderOutput &
   TimelineListLoaderOutput;
 
-const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
+const mapStateToProps = (state: State) => {
   return {
     user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
@@ -157,7 +161,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
-    isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
@@ -203,10 +206,6 @@ const mapDispatchToProps = {
   ...actions,
   closeNavbar,
   onChangeLocation: push,
-  createBookmark: (id: BookmarkId) =>
-    Bookmark.actions.create({ id, type: "card" }),
-  deleteBookmark: (id: BookmarkId) =>
-    Bookmark.actions.delete({ id, type: "card" }),
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -235,9 +234,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setUIControls,
     runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
-    isBookmarked,
-    createBookmark,
-    deleteBookmark,
     allLoaded,
     showTimelinesForCollection,
     card,
@@ -301,16 +297,26 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     [setUIControls],
   );
 
+  const bookmarksQuery = useListBookmarksQuery();
+  const bookmarks = useMemo(() => {
+    return bookmarksQuery.data ?? [];
+  }, [bookmarksQuery.data]);
+  const isBookmarked = useSelector((state) =>
+    getIsBookmarked(state, bookmarks),
+  );
+
+  const [createBookmark] = useCreateBookmarkMutation();
+  const [deleteBookmark] = useDeleteBookmarkMutation();
+
   const onClickBookmark = () => {
     const { card } = props;
-
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
     if (!isBookmarked) {
       trackCardBookmarkAdded(card);
     }
 
-    toggleBookmark(card.id);
+    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    toggleBookmark({ id: card.id, type: "card" });
   };
 
   /**
@@ -452,34 +458,40 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   return (
-    <>
-      <View
-        {...props}
-        modal={uiControls.modal}
-        recentlySaved={uiControls.recentlySaved}
-        onOpenModal={openModal}
-        onCloseModal={closeModal}
-        onSave={handleSave}
-        onCreate={handleCreate}
-        handleResize={forceUpdateDebounced}
-        toggleBookmark={onClickBookmark}
-        onDismissToast={onDismissToast}
-        onConfirmToast={onConfirmToast}
-        isShowingToaster={isShowingToaster}
-        onVisualizationRendered={handleVisualizationRendered}
-      />
+    <LoadingAndErrorWrapper
+      loading={bookmarksQuery.isLoading}
+      error={bookmarksQuery.error}
+      noWrapper
+    >
+      <>
+        <View
+          {...props}
+          modal={uiControls.modal}
+          recentlySaved={uiControls.recentlySaved}
+          onOpenModal={openModal}
+          onCloseModal={closeModal}
+          onSave={handleSave}
+          onCreate={handleCreate}
+          handleResize={forceUpdateDebounced}
+          isBookmarked={isBookmarked}
+          toggleBookmark={onClickBookmark}
+          onDismissToast={onDismissToast}
+          onConfirmToast={onConfirmToast}
+          isShowingToaster={isShowingToaster}
+          onVisualizationRendered={handleVisualizationRendered}
+        />
 
-      <LeaveRouteConfirmModal
-        isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
-        isLocationAllowed={isLocationAllowed}
-        route={route}
-      />
-    </>
+        <LeaveRouteConfirmModal
+          isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
+          isLocationAllowed={isLocationAllowed}
+          route={route}
+        />
+      </>
+    </LoadingAndErrorWrapper>
   );
 }
 
 export const QueryBuilder = _.compose(
-  Bookmark.loadList(),
   Timelines.loadList(timelineProps),
   connector,
   title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({

@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   Bookmark,
   CreateBookmarkRequest,
@@ -54,6 +56,24 @@ export const bookmarkApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("bookmark")]),
+      async onQueryStarted(patch, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          bookmarkApi.util.updateQueryData(
+            "listBookmarks",
+            undefined,
+            (draft) => {
+              const orderings = patch.orderings.map((o) => o.item_id);
+              const orderMap = _.object(orderings, _.range(orderings.length));
+              draft.sort((a, b) => {
+                const indexA = orderMap[a.item_id] ?? Infinity;
+                const indexB = orderMap[b.item_id] ?? Infinity;
+                return indexA - indexB;
+              });
+            },
+          ),
+        );
+        queryFulfilled.catch(() => patchResult.undo());
+      },
     }),
   }),
 });
