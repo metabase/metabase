@@ -14,7 +14,7 @@ export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
 };
 
 export const REMOTE_SYNC_COLLECTION: CollectionInstanceAnaltyicsConfig = {
-  type: "remote-synced",
+  type: null,
   icon: "synced_collection",
 };
 
@@ -53,7 +53,6 @@ export const COLLECTION_TYPES: Record<
   [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
   [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
   [String(INSTANCE_ANALYTICS_COLLECTION.type)]: INSTANCE_ANALYTICS_COLLECTION,
-  [String(REMOTE_SYNC_COLLECTION.type)]: REMOTE_SYNC_COLLECTION,
 };
 
 export const CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
