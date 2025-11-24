@@ -427,7 +427,7 @@ databaseChangeLog:
         - addColumn:
             tableName: core_session
             columns:
-               - column:
+              - column:
                   name: expires_at
                   type: ${timestamp_type}
                   remarks: Timestamp when this session expires (from auth_identity or calculated)
@@ -692,7 +692,48 @@ databaseChangeLog:
         - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
 
   - changeSet:
-      id: v58.2025-11-12T11:57:00
+      id: v58.2025-11-19T00:00:00
+      author: edpaget
+      comment: Add is_remote_synced boolean column to collection table
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_remote_synced
+                  type: ${boolean.type}
+                  remarks: Indicates if this collection is synced from a remote source
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: collection
+            columnName: is_remote_synced
+
+  - changeSet:
+      id: v58.2025-11-19T00:00:01
+      author: edpaget
+      comment: Migrate existing remote-synced collections to use is_remote_synced column
+      changes:
+        - sql:
+            sql: UPDATE collection SET is_remote_synced = true WHERE type = 'remote-synced'
+      rollback:
+        - sql:
+            sql: UPDATE collection SET is_remote_synced = false WHERE type = 'remote-synced'
+
+  - changeSet:
+      id: v58.2025-11-19T00:00:02
+      author: edpaget
+      comment: Clear remote-synced type value (replaced by is_remote_synced column)
+      changes:
+        - sql:
+            sql: UPDATE collection SET type = NULL WHERE type = 'remote-synced'
+      rollback:
+        - sql:
+            sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
+  - changeSet:
+      id: v58.2025-11-20T11:57:00
       author: wotbrew
       comment: Add data_source column to metabase_table
       changes:
@@ -707,7 +748,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v58.2025-11-12T11:57:02
+      id: v58.2025-11-20T11:57:02
       author: wotbrew
       comment: Add data_layer column to metabase_table
       changes:
@@ -722,7 +763,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v58.2025-11-12T11:57:03
+      id: v58.2025-11-20T11:57:03
       author: wotbrew
       comment: Add owner_email column to metabase_table
       changes:
@@ -737,7 +778,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v58.2025-11-12T11:57:04
+      id: v58.2025-11-20T11:57:04
       author: wotbrew
       comment: Add owner_user_id column to metabase_table
       changes:
@@ -752,7 +793,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v58.2025-11-13T10:00:00
+      id: v58.2025-11-21T10:00:00
       author: qnkhuat
       comment: Backfill data_layer from visibility_type
       changes:

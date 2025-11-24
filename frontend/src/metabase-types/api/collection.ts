@@ -76,6 +76,7 @@ export interface Collection {
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  is_remote_synced?: boolean;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;

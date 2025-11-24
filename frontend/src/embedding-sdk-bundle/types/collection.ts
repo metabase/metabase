@@ -38,6 +38,7 @@ export type MetabaseCollectionItem = {
     | "question"
     | "metric"
     | null;
+  is_remote_synced?: boolean;
   "last-edit-info"?: {
     email: string;
     first_name: string | null;
