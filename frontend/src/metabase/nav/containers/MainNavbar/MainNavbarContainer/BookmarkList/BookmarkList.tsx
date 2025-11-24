@@ -69,8 +69,13 @@ const BookmarkItem = ({
 }: BookmarkItemProps) => {
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
+
+  const bookmarkModel =
+    bookmark.type === "card" && bookmark.card_type === "model"
+      ? "dataset"
+      : bookmark.type;
   const icon = getIcon({
-    model: bookmark.card_type === "model" ? "dataset" : bookmark.type,
+    model: bookmarkModel,
     display: bookmark.display,
   });
 
