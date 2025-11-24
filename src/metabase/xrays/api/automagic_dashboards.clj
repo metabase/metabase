@@ -44,7 +44,7 @@
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
    [:fn
-    {:api/regex #"[A-Z][A-Za-z]+"}
+    {:api/regex #"[A-Za-z]+"}
     (fn [dashboard-template]
       (some (fn [toplevel]
               (some (comp automagic-dashboards.dashboard-templates/get-dashboard-template

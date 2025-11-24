@@ -29,7 +29,7 @@
 
 (def EncodedToken
   "Malli schema for a JWT token"
-  [:string {:api/regex #"^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$"}])
+  [:string {:api/regex #"[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*"}])
 
 (def SearchParams
   "Malli schema for route params of search paths"
