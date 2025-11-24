@@ -27,14 +27,20 @@ export const TenantsListingApp = ({
   const [searchInputValue, setSearchInputValue] = useState("");
   const [status, setStatus] = useState<ActiveStatus>(ACTIVE_STATUS.active);
 
-  const { isLoading, error, data } = useListTenantsQuery({ status });
-  const tenants = useMemo(() => data?.data ?? [], [data]);
+  const { isLoading, error, data } = useListTenantsQuery({ status: "all" });
 
-  const { data: deactivatedTenantsData } = useListTenantsQuery({
-    status: "deactivated",
-  });
-  const hasDeactivatedTenants =
-    deactivatedTenantsData && deactivatedTenantsData.data.length > 0;
+  const tenants = useMemo(
+    () =>
+      data?.data.filter((tenant) =>
+        status === ACTIVE_STATUS.active ? tenant.is_active : !tenant.is_active,
+      ) ?? [],
+    [data?.data, status],
+  );
+
+  const hasDeactivatedTenants = useMemo(
+    () => data?.data.some((tenant) => !tenant.is_active),
+    [data?.data],
+  );
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
