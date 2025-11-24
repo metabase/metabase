@@ -6,10 +6,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  useListPermissionsGroupsQuery,
-  useListUsersQuery,
-} from "metabase/api";
+import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -117,11 +114,13 @@ export function PeopleListingApp({
                 mb="xl"
                 wrap="wrap"
               >
-                <SearchFilter
-                  value={searchInputValue}
-                  onChange={updateSearchInputValue}
-                  placeholder={t`Find someone`}
-                />
+                <Flex flex="1">
+                  <SearchFilter
+                    value={searchInputValue}
+                    onChange={updateSearchInputValue}
+                    placeholder={t`Find someone`}
+                  />
+                </Flex>
 
                 {buttonText && (
                   <Flex gap="sm">
