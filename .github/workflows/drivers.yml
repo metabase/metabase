@@ -85,6 +85,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Athena driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
@@ -92,7 +93,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -127,7 +128,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -174,7 +175,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -203,6 +204,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
@@ -210,7 +212,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -239,6 +241,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid JDBC driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-jdbc-ee'
@@ -246,7 +249,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -275,6 +278,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
@@ -282,7 +286,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -312,6 +316,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver with multi-catalog
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
@@ -319,7 +324,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -346,7 +351,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -451,7 +456,7 @@ jobs:
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -501,7 +506,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -558,6 +563,7 @@ jobs:
           curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
           -o ./test_resources/ssl/mongo/metaca.crt
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
@@ -566,7 +572,7 @@ jobs:
             :only-tags [:mb/driver-tests]
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -593,6 +599,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test MongoDB driver (Sharded cluster)
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
@@ -600,7 +607,7 @@ jobs:
           :only metabase.driver.mongo.sharded-cluster-test
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -665,6 +672,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.version.name }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
@@ -672,7 +680,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -754,7 +762,7 @@ jobs:
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -816,6 +824,7 @@ jobs:
         -file /tmp/presto-ssl-ca.der
         -trustcacerts
     - name: Test Presto JDBC driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
@@ -823,7 +832,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -873,7 +882,7 @@ jobs:
           ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: ${{ !matrix.job.skip && !cancelled() }}
+      if: ${{ !matrix.job.skip && !cancelled() && steps.test-driver.outputs.quarantine-skipped != 'true' }}
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -884,8 +893,9 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-snowflake-ee:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -917,7 +927,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -944,6 +954,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Spark driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
@@ -951,7 +962,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -973,6 +984,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test SQLite driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
@@ -980,7 +992,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1031,7 +1043,7 @@ jobs:
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
