@@ -546,8 +546,8 @@
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                  "\"email_verified\":\"true\","
-                                                 "\"first_name\":\"test\","
-                                                 "\"last_name\":\"user\","
+                                                 "\"given_name\":\"test\","
+                                                 "\"family_name\":\"user\","
                                                  "\"email\":\"test@metabase.com\"}")})]
             (testing "Test that 'remember me' checkbox sets expiration on session"
               (let [response (mt/client-real-response :post 200 "session/google_auth" {:token "foo" :remember true})]
@@ -559,17 +559,23 @@
   (testing "POST /google_auth"
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
-        (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active true}]
+        (mt/with-temp [:model/User {user-id :id} {:email "test@metabase.com"
+                                                  :is_active true
+                                                  :first_name "last"
+                                                  :last_name "luser"}]
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                  "\"email_verified\":\"true\","
-                                                 "\"first_name\":\"test\","
-                                                 "\"last_name\":\"user\","
+                                                 "\"given_name\":\"test\","
+                                                 "\"family_name\":\"user\","
                                                  "\"email\":\"test@metabase.com\"}")})]
             (testing "with throttling enabled"
               (is (malli= SessionResponse
-                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))
+                          (mt/client :post 200 "session/google_auth" {:token "foo"})))
+              (is (=? {:first_name "test"
+                       :last_name "user"}
+                      (t2/select-one :model/User user-id))))
             (testing "with throttling disabled"
               (with-redefs [api.session/throttling-disabled? true]
                 (is (malli= SessionResponse
@@ -580,8 +586,8 @@
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                  "\"email_verified\":\"true\","
-                                                 "\"first_name\":\"test\","
-                                                 "\"last_name\":\"user\","
+                                                 "\"given_name\":\"test\","
+                                                 "\"family_name\":\"user\","
                                                  "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:_error "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
