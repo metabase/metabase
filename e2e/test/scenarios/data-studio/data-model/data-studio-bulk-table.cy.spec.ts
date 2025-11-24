@@ -236,6 +236,7 @@ describe("bulk table operations", () => {
     TablePicker.getSchema("Schema A").click();
     TablePicker.getSchema("Schema B").click();
 
+    cy.findByTestId("loading-placeholder").should("not.exist");
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
       .each((table) => {
