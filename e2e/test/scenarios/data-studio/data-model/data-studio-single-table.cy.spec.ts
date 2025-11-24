@@ -97,13 +97,15 @@ describe("Table editing", () => {
       });
       cy.findByRole("button", { name: /Publish here/ }).click();
 
-      cy.wait<PublishModelResponse>("@publishModel").then(({ response }) => {
-        const modelId = response?.body.models[0].id ?? 0;
+      cy.wait<PublishModelResponse>("@publishModel").then(() => {
         H.undoToast().within(() => {
           cy.findByText("Published").should("be.visible");
           cy.findByRole("button", { name: /See it/ }).click();
         });
-        cy.url().should("include", `/data-studio/modeling/models/${modelId}`);
+        cy.findByTestId("head-crumbs-container").within(() => {
+          cy.findByText("Our analytics").should("be.visible");
+          cy.findByText("Model based on ORDERS").should("be.visible");
+        });
       });
 
       // Should not show info modal again

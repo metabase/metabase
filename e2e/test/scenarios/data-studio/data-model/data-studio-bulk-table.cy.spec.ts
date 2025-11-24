@@ -130,7 +130,9 @@ describe("bulk table operations", () => {
       cy.findByRole("button", { name: /See it/ }).click();
     });
 
-    cy.url().should("include", "/data-studio/modeling/collections/root");
+    cy.findByTestId("collection-caption").within(() => {
+      cy.findByText("Our analytics").should("be.visible");
+    });
   });
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
