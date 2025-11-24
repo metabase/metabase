@@ -436,9 +436,11 @@
 
 (defmethod collection-children-query :table-symlink
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [[:table_id :id] [(h2x/literal "table-symlink") :model] :collection_id :table_id]
-   :from   [[:table_symlink :symlink]]
-   :where  [:= :collection_id (:id collection)]})
+  {:select    [[:s.table_id :id] [(h2x/literal "table-symlink") :model] :s.collection_id :s.table_id [:t.db_id :database_id]
+               [:t.display_name :name]]
+   :from      [[:table_symlink :s]]
+   :left-join [[:metabase_table :t] [:= :s.table_id :t.id]]
+   :where     [:= :collection_id (:id collection)]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
