@@ -37,15 +37,7 @@ export function useSdkUsageProblem({
   const isEnabled =
     useSetting(EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey) ?? true;
 
-  const hasTokenFeature = useSdkSelector((state) => {
-    // We also assume that the feature is enabled if the token-features are missing.
-    // Same reason as above.
-    if (!state.settings.values?.["token-features"]) {
-      return true;
-    }
-
-    return getHasTokenFeature(state);
-  });
+  const hasTokenFeature = useSdkSelector(getHasTokenFeature);
 
   const isDevelopmentMode = useSdkSelector((state) => {
     // Assume that we are not in development mode until the setting is loaded
