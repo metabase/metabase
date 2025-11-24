@@ -781,6 +781,56 @@
                       (map :name)
                       set))))))))
 
+(deftest collection-items-table-symlink-test
+  (testing "GET /api/collection/:id/items"
+    (testing "table-symlink items appear in collection items"
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       _ {:collection_id (u/the-id collection)
+                                          :name          "a-card"}
+                     :model/TableSymlink _ {:collection_id (u/the-id collection)
+                                            :table_id      (mt/id :venues)}]
+        (let [items    (:data (mt/user-http-request :crowberto :get 200
+                                                    (str "collection/" (u/the-id collection) "/items")))
+              symlinks (filter #(= "table-symlink" (:model %)) items)]
+          (is (=? [{:id          (mt/id :venues)
+                    :table_id    (mt/id :venues)
+                    :name        "Venues"
+                    :model       "table-symlink"
+                    :database_id (mt/id)
+                    :archived    false}]
+                  symlinks)))))
+    (testing "table-symlinks don't appear when archived=true"
+      (mt/with-temp [:model/Collection collection {}
+                     :model/TableSymlink _ {:collection_id (u/the-id collection)
+                                            :table_id      (mt/id :venues)}]
+        (let [items (mt/user-http-request :crowberto :get 200
+                                          (str "collection/" (u/the-id collection) "/items")
+                                          :archived true)]
+          (is (empty? (filter #(= "table-symlink" (:model %)) (:data items)))))))
+    (testing "table-symlinks don't appear when pinned_state=is_pinned"
+      (mt/with-temp [:model/Collection collection {}
+                     :model/TableSymlink _ {:collection_id (u/the-id collection)
+                                            :table_id      (mt/id :venues)}]
+        (let [items (mt/user-http-request :crowberto :get 200
+                                          (str "collection/" (u/the-id collection) "/items")
+                                          :pinned_state "is_pinned")]
+          (is (empty? (filter #(= "table-symlink" (:model %)) (:data items)))))))
+    (testing "table-symlinks appear when pinned_state=is_not_pinned"
+      (mt/with-temp [:model/Collection collection {}
+                     :model/TableSymlink _ {:collection_id (u/the-id collection)
+                                            :table_id      (mt/id :venues)}]
+        (let [items (mt/user-http-request :crowberto :get 200
+                                          (str "collection/" (u/the-id collection) "/items")
+                                          :pinned_state "is_not_pinned")]
+          (is (= 1 (count (filter #(= "table-symlink" (:model %)) (:data items))))))))))
+
+(deftest root-items-table-symlink-test
+  (testing "GET /api/collection/root/items"
+    (testing "requesting table-symlink model works but returns none (table-symlinks require a collection_id)"
+      (let [items (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                        :models "table-symlink")]
+        (is (empty? (:data items)))))))
+
 (deftest collection-items-children-test
   (testing "GET /api/collection/:id/items"
     (testing "check that you get to see the children as appropriate"
