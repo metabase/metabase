@@ -1,11 +1,11 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createAction, createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
-import { createAction, createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { getTokenFeature } from "metabase/setup/selectors";
@@ -138,7 +138,7 @@ const getDownloadedResourceType = ({
 };
 
 export const DOWNLOAD_TO_IMAGE = "metabase/downloads/DOWNLOAD_TO_IMAGE";
-export const downloadToImage = createAction(DOWNLOAD_TO_IMAGE);
+export const downloadToImage = createAction<boolean>(DOWNLOAD_TO_IMAGE);
 
 export const downloadQueryResults = createAsyncThunk(
   "metabase/downloads/downloadQueryResults",
@@ -598,7 +598,7 @@ const downloads = createSlice({
         }
       });
 
-    builder.addCase(DOWNLOAD_TO_IMAGE, (state, action) => {
+    builder.addCase(downloadToImage, (state, action) => {
       state.isDownloadingToImage = action.payload;
     });
   },
