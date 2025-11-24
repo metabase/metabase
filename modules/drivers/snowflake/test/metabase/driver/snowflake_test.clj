@@ -265,7 +265,7 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
-(deftest additional-options-test
+(deftest ^:sequential additional-options-test
   (mt/test-driver
     :snowflake
     (let [existing-details (dissoc (:details (mt/db)) :password)]
@@ -1321,13 +1321,13 @@
 
 (deftest snowflake-string-filter-tests
   (mt/test-driver :snowflake
-    (let [metadata-provider (mt/metadata-provider)
-          products (lib.metadata/table metadata-provider (mt/id :products))
-          products-category (lib.metadata/field metadata-provider (mt/id :products :category))
-          products-name (lib.metadata/field metadata-provider (mt/id :products :title))
-          products-id (lib.metadata/field metadata-provider (mt/id :products :id))
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          products-category (lib.metadata/field mp (mt/id :products :category))
+          products-name (lib.metadata/field mp (mt/id :products :title))
+          products-id (lib.metadata/field mp (mt/id :products :id))
           filter-query (fn [filter]
-                         (-> (lib/query metadata-provider products)
+                         (-> (lib/query mp products)
                              (lib/filter filter)
                              (lib/order-by products-id :asc)
                              (lib/limit 3)
@@ -1399,5 +1399,25 @@
                                                  []]]]
         (testing msg
           (let [result (qp/process-query (filter-query filter))]
-            (is (= exp-rows (mt/rows result)))
-            (is (str/includes? (-> result :data :native_form :query) exp-filter))))))))
+            (is (str/includes? (-> result :data :native_form :query) exp-filter))
+            (is (= exp-rows (mt/rows result)))))))))
+
+(deftest snowflake-collate-comparison-test
+  (mt/test-driver :snowflake
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          collation-query (fn [collation]
+                            (let [query (-> (lib/query mp products)
+                                            (lib/expression "contains_result" (lib/contains (lib/collate "café" collation) "CAFE"))
+                                            (lib/limit 1))
+                                  contains-expr (lib/expression-ref query "contains_result")]
+                              (lib/with-fields query [contains-expr])))]
+      (doseq [[collation exp-filter exp-rows] [["en-ci-ai"
+                                                "CONTAINS(COLLATE('café', 'en-ci-ai'), 'CAFE')"
+                                                [[true]]]
+                                               ["en-ci"
+                                                "CONTAINS(COLLATE('café', 'en-ci'), 'CAFE')"
+                                                [[false]]]]]
+        (let [result (qp/process-query (collation-query collation))]
+          (is (str/includes? (-> result :data :native_form :query) exp-filter))
+          (is (= exp-rows (mt/rows result))))))))

@@ -87,6 +87,7 @@
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
+    :model/SupportAccessGrantLog
     :model/TaskHistory
     :model/Tenant
     :model/TimelineEvent

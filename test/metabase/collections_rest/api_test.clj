@@ -73,7 +73,7 @@
                  :name                "Our analytics"
                  :authority_level     nil
                  :is_personal         false
-                 :is_remote_synced    false
+                 :is_remote_synced    nil
                  :id                  "root"
                  :can_restore         false
                  :can_delete          false}
@@ -2266,9 +2266,9 @@
       (testing "collection_type=remote-synced returns only remote-synced collections"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection"}
                        :model/Collection _ {:name "Remote Synced Collection"
-                                            :type "remote-synced"}
+                                            :is_remote_synced true}
                        :model/Collection _ {:name "Another Remote Collection"
-                                            :type "remote-synced"}
+                                            :is_remote_synced true}
                        :model/Collection _ {:name "Second Normal Collection"}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                                :collection_type "remote-synced")
@@ -2281,15 +2281,14 @@
             (testing "should not include normal collections"
               (is (not (contains? collection-names "Normal Collection")))
               (is (not (contains? collection-names "Second Normal Collection"))))
-            (testing "should include type field in response"
+            (testing "should include is_remote_synced field in response"
               (doseq [coll collections]
-                (is (= "remote-synced" (:type coll))
-                    (str "Collection " (:name coll) " should have type=remote-synced")))))))
-
+                (is (true? (:is_remote_synced coll))
+                    (str "Collection " (:name coll) " should have is_remote_synced=true")))))))
       (testing "without collection_type parameter, all collections are returned"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection Test"}
                        :model/Collection _ {:name "Remote Synced Collection Test"
-                                            :type "remote-synced"}]
+                                            :is_remote_synced true}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items")
                 collection-names (->> (:data response)
                                       (filter #(= (:model %) "collection"))

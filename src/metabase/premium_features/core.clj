@@ -75,6 +75,7 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-support-users?
   enable-transforms?
   enable-python-transforms?
   enable-upload-management?

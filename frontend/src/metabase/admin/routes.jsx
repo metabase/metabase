@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Redirect } from "react-router";
+import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -40,7 +40,6 @@ import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
 import {
   PLUGIN_ADMIN_SETTINGS,
@@ -50,8 +49,9 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
-  PLUGIN_TRANSFORMS,
+  PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
+  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -68,7 +68,7 @@ import {
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route path="/admin" component={CanAccessSettings}>
-    <Route title={t`Admin`} component={AdminApp}>
+    <Route component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />
       <Route
         path="databases"
@@ -264,7 +264,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           >
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
           </Route>
-          <Route path="help" component={Help} />
+          <Route path="help" component={Help}>
+            {PLUGIN_SUPPORT.isEnabled && (
+              <ModalRoute
+                modal={PLUGIN_SUPPORT.GrantAccessModal}
+                path="grant-access"
+              />
+            )}
+          </Route>
           <Route path="tasks" component={TasksApp}>
             <ModalRoute
               path=":taskId"

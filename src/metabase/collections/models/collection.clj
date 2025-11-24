@@ -64,14 +64,6 @@
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
 
-(def ^:constant remote-synced-collection-type
-  "The value of the `:type` field for remote-synced collections."
-  "remote-synced")
-
-(def ^:constant library-entity-id
-  "The remote-synced collection's entity ID"
-  "librarylibrarylibrary")
-
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
@@ -132,17 +124,15 @@
 (defn remote-synced-collection?
   "Is this a remote-synced collection?"
   [collection-or-id]
-  (let [type (:type collection-or-id ::not-found)]
-    (if (identical? type ::not-found)
-      ;; If no :type field, it's probably an ID - fetch from DB
-      (some->> collection-or-id u/the-id (t2/select-one-fn :type :model/Collection :id) (= remote-synced-collection-type))
-      ;; If :type field exists, compare directly
-      (= type remote-synced-collection-type))))
+  (cond
+    (nil? collection-or-id) false ;; the root collection is never remote-synced
+    (map? collection-or-id) (:is_remote_synced collection-or-id)
+    :else (t2/select-one-fn :is_remote_synced :model/Collection :id (u/the-id collection-or-id))))
 
 (defn remote-synced-collection
   "Get the remote-synced collection, if it exists."
   []
-  (t2/select-one :model/Collection :type remote-synced-collection-type :location "/"))
+  (t2/select-one :model/Collection :is_remote_synced true :location "/"))
 
 (defn create-remote-synced-collection!
   "Create the remote-synced-collection"
@@ -150,7 +140,7 @@
   (when-not (nil? (remote-synced-collection))
     (throw (ex-info "Remote-synced collection already exists" {})))
   (t2/insert-returning-instance! :model/Collection {:name     "Synced Collection"
-                                                    :type     remote-synced-collection-type
+                                                    :is_remote_synced true
                                                     :location "/"}))
 
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
@@ -159,7 +149,7 @@
   "Marks any remote-synced-collection as non-remote-synced"
   []
   (binding [*clearing-remote-sync* true]
-    (t2/update! :model/Collection :type remote-synced-collection-type {:type nil})))
+    (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false})))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -330,6 +320,8 @@
   Collection."
   [{:keys [location], owner-id :personal_owner_id, collection-namespace :namespace, :as collection}]
   {:pre [(contains? collection :namespace)]}
+  (when (and namespace (is-tenant-collection? collection) (not (perms/use-tenants)))
+    (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)})))
   (when location
     (when-let [parent-id (location-path->parent-id location)]
       (let [parent-namespace (t2/select-one-fn :namespace :model/Collection :id parent-id)]
@@ -345,14 +337,12 @@
   "Check that if this Collection is remote-synced, its parent is either remote-synced or the root collection.
 
   If a collection's parent is remote-synced, it must also be remote-synced."
-  [{:keys [location type]}]
+  [{:keys [location is_remote_synced]}]
   (when-let [parent-id (and location (location-path->parent-id location))]
-    (let [parent-type (t2/select-one-fn :type :model/Collection :id parent-id)]
-      (when (and (or
-                  (= parent-type remote-synced-collection-type)
-                  (= type remote-synced-collection-type))
-                 (not= parent-type type remote-synced-collection-type))
-        (let [msg (if (= type remote-synced-collection-type)
+    (let [parent-is-remote-synced? (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id)]
+      (when (and (or parent-is-remote-synced? is_remote_synced)
+                 (not= parent-is-remote-synced? is_remote_synced))
+        (let [msg (if is_remote_synced
                     (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
@@ -1131,7 +1121,7 @@
                                                                                  [:= :c.id :collection_id]
                                                                                  [:or [:= :c.id root-collection-id]
                                                                                   [:like :c.location (str "/" root-collection-id "/%")]]
-                                                                                 [:= :c.type [:inline remote-synced-collection-type]]]]})))))
+                                                                                 [:= :c.is_remote_synced true]]]})))))
     #{}))
 
 (defn check-non-remote-synced-dependencies
@@ -1185,11 +1175,11 @@
    (and (not (nil? new-collection-id))
         (when-let [new-parent-location (t2/select-one-fn :location :model/Collection
                                                          {:where [:and [:= :id new-collection-id]
-                                                                  [:= :type remote-synced-collection-type]]})]
+                                                                  [:= :is_remote_synced true]]})]
           (or (nil? old-collection-id)
               (if-let [old-parent-location (t2/select-one-fn :location :model/Collection
                                                              {:where [:and [:= :id old-collection-id]
-                                                                      [:= :type remote-synced-collection-type]]})]
+                                                                      [:= :is_remote_synced true]]})]
                 (locations-do-not-share-top-level-parent old-parent-location
                                                          old-collection-id
                                                          new-parent-location
@@ -1212,11 +1202,11 @@
    (and (not (nil? old-collection-id))
         (when-let [old-parent-location (t2/select-one-fn :location [:model/Collection :location]
                                                          {:where [:and [:= :id old-collection-id]
-                                                                  [:= :type remote-synced-collection-type]]})]
+                                                                  [:= :is_remote_synced true]]})]
           (or (nil? new-collection-id)
               (if-let [new-parent-location (t2/select-one-fn :location [:model/Collection :location]
                                                              {:where [:and [:= :id new-collection-id]
-                                                                      [:= :type remote-synced-collection-type]]})]
+                                                                      [:= :is_remote_synced true]]})]
                 (locations-do-not-share-top-level-parent old-parent-location
                                                          old-collection-id
                                                          new-parent-location
@@ -1250,7 +1240,7 @@
   [_model k items]
   (mi/instances-with-hydrated-data items k
                                    #(into {}
-                                          (map (juxt :id (fn [{:keys [type]}] (= type "remote-synced")))
+                                          (map (juxt :id :is_remote_synced)
                                                items))
                                    :id
                                    {:default false}))
@@ -1379,7 +1369,7 @@
                            :archived_directly false}
                     {:archived true})))
     (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
-      (when (= remote-synced-collection-type (:type updated-collection))
+      (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents (parent-id* updated-collection) updated-collection)))))
 
 (mu/defn unarchive-collection!
@@ -1400,7 +1390,7 @@
         new-parent              (if new-parent-id
                                   (t2/select-one :model/Collection :id new-parent-id)
                                   root-collection)
-        new-parent-type         (:type new-parent)
+        new-parent-is-remote-synced? (:is_remote_synced new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
         new-children-location   (children-location (assoc collection :location new-location))
@@ -1414,15 +1404,14 @@
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
                   {:location             new-location
-                   :type                 (if (= new-parent-type "remote-synced")
-                                           "remote-synced"
-                                           :type)
+                   :is_remote_synced (boolean new-parent-is-remote-synced?)
                    :archive_operation_id nil
                    :archived_directly    nil
                    :archived             false})
       (t2/query-one
        {:update :collection
         :set    {:location             [:replace :location orig-children-location new-children-location]
+                 :is_remote_synced (boolean new-parent-is-remote-synced?)
                  :archive_operation_id nil
                  :archived_directly    nil
                  :archived             false}
@@ -1437,7 +1426,7 @@
         (t2/update! model {:collection_id     [:in affected-collection-ids]
                            :archived_directly false}
                     {:archived false}))
-      (when (= remote-synced-collection-type (:type collection))
+      (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 
 (mu/defn archive-or-unarchive-collection!
@@ -1459,7 +1448,7 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
-        will-be-in-remote-synced? (= remote-synced-collection-type (t2/select-one-fn :type :model/Collection :id (parent-id* {:location new-location})))]
+        will-be-in-remote-synced? (t2/select-one-fn :is_remote_synced :model/Collection :id (parent-id* {:location new-location}))]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
@@ -1470,13 +1459,13 @@
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  (cond-> {:location new-location :type nil}
-                    will-be-in-remote-synced? (assoc :type remote-synced-collection-type)))
+                  {:location new-location
+                   :is_remote_synced (boolean will-be-in-remote-synced?)})
       ;; we need to update all the descendant collections as well...
       (u/prog1 (t2/query-one
                 {:update :collection
-                 :set (cond-> {:location [:replace :location orig-children-location new-children-location] :type nil}
-                        will-be-in-remote-synced? (assoc :type remote-synced-collection-type))
+                 :set {:location [:replace :location orig-children-location new-children-location]
+                       :is_remote_synced (boolean will-be-in-remote-synced?)}
                  :where [:like :location (str orig-children-location "%")]})
         (when into-remote-synced?
           (check-non-remote-synced-dependencies collection))
@@ -1495,20 +1484,22 @@
       (when (= :api-key (t2/select-one-fn :type :model/User user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
-(defn- assert-type-ok [collection]
-  (when (and (:type collection)
-             (is-tenant-collection? collection)
-             (not (perms/use-tenants)))
-    (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)}))))
-
 (t2/define-before-insert :model/Collection
   [{collection-name :name, :as collection}]
-  (assert-type-ok collection)
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-remote-synced-parent collection)
-  (assoc collection :slug (slugify collection-name)))
+  ;; Inherit is_remote_synced from parent if not explicitly set
+  (let [parent-is-remote-synced? (when-let [parent-id (and location (location-path->parent-id location))]
+                                   (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id))]
+    (-> collection
+        (assoc :slug (slugify collection-name))
+        (cond->
+         (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+         (and (not (contains? collection :is_remote_synced))
+              parent-is-remote-synced?)
+         (assoc :is_remote_synced true)))))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -1658,7 +1649,7 @@
     (apply = (map std-fn namespaces))))
 
 (t2/define-before-update :model/Collection
-  [collection]
+  [{:keys [type] :as collection}]
   (let [collection-before-updates (t2/instance :model/Collection (t2/original collection))
         {collection-name :name
          :as collection-updates}  (or (t2/changes collection) {})]
@@ -1689,6 +1680,7 @@
     ;; slugify the collection name in case it's changed in the output; the results of this will get passed along
     ;; to Toucan's `update!` impl
     (cond-> collection-updates
+      (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
       collection-name (assoc :slug (slugify collection-name)))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
@@ -1858,6 +1850,7 @@
           :authority_level
           :description
           :entity_id
+          :is_remote_synced
           :is_sample
           :name
           :namespace
