@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import type { EmbeddingSettingKey } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
+import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellBanner } from "metabase/admin/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
@@ -51,6 +52,7 @@ export function SharedCombinedEmbeddingSettings({
         title={t`Enable unauthenticated embeds`}
         description={t`A secure way to embed charts and dashboards when you don’t want to offer ad-hoc querying or chart drill-through.`}
         settingKey="enable-embedding-static"
+        actionButton={<NewEmbedButton />}
         dependentSettingKeys={dependentSettingKeys}
       />
 
