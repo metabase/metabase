@@ -1292,7 +1292,7 @@
                        (vec (for [entity ser]
                               (merge entity (get changes (:entity_id entity))))))
         logs-extract (fn [re logs]
-                       (keep #(rest (re-find re %))
+                       (keep #(not-empty (rest (re-find re %)))
                              (map :message logs)))]
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Collection coll {:name "coll"}
