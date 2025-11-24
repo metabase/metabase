@@ -122,8 +122,11 @@
   "Return a sequence of [[java.net.URL]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
   []
   ;; only include plugin manifests if they're on the system classpath.
-  (enumeration-seq (.. (Thread/currentThread)
-                       getContextClassLoader (getResources "metabase-plugin.yaml"))))
+  (if (u.files/running-from-jar?)
+    (u.files/find-in-current-jar "glob:/metabase/*/metabase-plugin.yaml")
+    (enumeration-seq (.. (Thread/currentThread)
+                         getContextClassLoader
+                         (getResources "metabase-plugin.yaml")))))
 
 (defn- load-local-plugin-manifests!
   "Load local plugin manifest files when not running in a production mode, to simulate what would happen when loading those
