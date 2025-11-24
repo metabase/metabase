@@ -60,10 +60,14 @@ function RootItemList() {
     return <MiniPickerListLoader />;
   }
 
+  const enabledDatabases = (databases?.data ?? []).filter(
+    (db) => !isHidden({ model: "database", ...db }),
+  );
+
   if (!enableNestedQueries) {
     return (
       <ItemList>
-        {databases?.data?.map((db) => (
+        {enabledDatabases.map((db) => (
           <MiniPickerItem
             key={db.id}
             name={db.name}
@@ -93,7 +97,7 @@ function RootItemList() {
 
   return (
     <ItemList>
-      {databases?.data?.map((db) => (
+      {enabledDatabases.map((db) => (
         <MiniPickerItem
           key={db.id}
           name={db.name}
@@ -272,7 +276,8 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 }
 
 function SearchItemList({ query }: { query: string }) {
-  const { onChange, models, libraryCollection } = useMiniPickerContext();
+  const { onChange, models, libraryCollection, isHidden } =
+    useMiniPickerContext();
 
   const { data: searchResponse, isLoading } = useSearchQuery({
     q: query,
@@ -281,19 +286,19 @@ function SearchItemList({ query }: { query: string }) {
     ...(libraryCollection ? { collection: libraryCollection.id } : {}),
   });
 
-  const searchResults = searchResponse?.data as
-    | MiniPickerPickableItem[]
-    | undefined;
+  const searchResults: MiniPickerPickableItem[] = (
+    searchResponse?.data ?? []
+  ).filter((i) => !isHidden(i));
 
   return (
     <ItemList>
       <Box>
         {isLoading && <MiniPickerListLoader />}
-        {!isLoading && searchResults?.length === 0 && (
+        {!isLoading && searchResults.length === 0 && (
           <Text px="md" py="sm" c="text-medium">{t`No search results`}</Text>
         )}
       </Box>
-      {searchResults?.map((item) => {
+      {searchResults.map((item) => {
         return (
           <MiniPickerItem
             key={`${item.model}-${item.id}`}

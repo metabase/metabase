@@ -177,11 +177,14 @@ function ModernDataPicker({
   const shouldHide = useMemo(() => {
     if (!canChangeDatabase) {
       const shouldShow = createShouldShowItem(modelList, databaseId);
-      return (item: MiniPickerItem | unknown) =>
-        !shouldShow(item as DataPickerItem);
+      return (item: MiniPickerItem | unknown): item is MiniPickerPickableItem =>
+        Boolean(
+          !shouldShow(item as DataPickerItem) ||
+            shouldDisableItem?.(item as DataPickerItem),
+        );
     }
     return undefined;
-  }, [databaseId, canChangeDatabase, modelList]);
+  }, [databaseId, canChangeDatabase, modelList, shouldDisableItem]);
 
   return (
     <>
