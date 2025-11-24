@@ -5,7 +5,7 @@ import _ from "underscore";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAction, createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { getTokenFeature } from "metabase/setup/selectors";
@@ -137,6 +137,9 @@ const getDownloadedResourceType = ({
   };
 };
 
+export const DOWNLOAD_TO_IMAGE = "metabase/downloads/DOWNLOAD_TO_IMAGE";
+export const downloadToImage = createAction(DOWNLOAD_TO_IMAGE);
+
 export const downloadQueryResults = createAsyncThunk(
   "metabase/downloads/downloadQueryResults",
   async (opts: DownloadQueryResultsOpts, { dispatch, getState }) => {
@@ -148,9 +151,15 @@ export const downloadQueryResults = createAsyncThunk(
     });
 
     if (opts.type === Urls.exportFormatPng) {
+      dispatch(downloadToImage(true));
+
       const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
       const includeBranding = !isWhitelabeled;
-      downloadChart({ opts, includeBranding });
+      try {
+        await downloadChart({ opts, includeBranding });
+      } finally {
+        dispatch(downloadToImage(false));
+      }
     } else {
       dispatch(downloadDataset({ opts, id: Date.now() }));
     }
@@ -537,11 +546,19 @@ export const getChartFileName = (question: Question, branded: boolean) => {
   return branded ? `Metabase-${fileName}` : fileName;
 };
 
-export const getDownloads = (state: State) => state.downloads;
+export const getDownloads = (state: State) => state.downloads.datasetRequests;
 export const hasActiveDownloads = (state: State) =>
-  state.downloads.some((download) => download.status === "in-progress");
+  state.downloads.datasetRequests.some(
+    (download) => download.status === "in-progress",
+  );
 
-const initialState: DownloadsState = [];
+export const getIsDownloadingToImage = (state: State) =>
+  state.downloads.isDownloadingToImage;
+
+const initialState: DownloadsState = {
+  isDownloadingToImage: false,
+  datasetRequests: [],
+};
 
 const downloads = createSlice({
   name: "metabase/downloads",
@@ -555,27 +572,35 @@ const downloads = createSlice({
         const title = t`Results for ${
           action.meta.arg.opts.question.card().name
         }`;
-        state.push({
+        state.datasetRequests.push({
           id: action.meta.arg.id,
           title,
           status: "in-progress",
         });
       })
       .addCase(downloadDataset.fulfilled, (state, action) => {
-        const download = state.find((item) => item.id === action.meta.arg.id);
+        const download = state.datasetRequests.find(
+          (item) => item.id === action.meta.arg.id,
+        );
         if (download) {
           download.status = "complete";
           download.title = action.payload.name;
         }
       })
       .addCase(downloadDataset.rejected, (state, action) => {
-        const download = state.find((item) => item.id === action.meta.arg.id);
+        const download = state.datasetRequests.find(
+          (item) => item.id === action.meta.arg.id,
+        );
         if (download) {
           download.status = "error";
           download.error =
             action.error.message ?? t`Could not download the file`;
         }
       });
+
+    builder.addCase(DOWNLOAD_TO_IMAGE, (state, action) => {
+      state.isDownloadingToImage = action.payload;
+    });
   },
 });
 
