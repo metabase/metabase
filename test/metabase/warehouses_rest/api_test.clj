@@ -1827,6 +1827,7 @@
                    :db_id            (mt/id)
                    :entity_id        nil
                    :metrics          nil
+                   :segments         nil
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
@@ -1855,6 +1856,7 @@
                             :entity_id        nil
                             :display_name     "Card 2"
                             :metrics          nil
+                            :segments         nil
                             :moderated_status nil
                             :schema           (schema.table/root-collection-schema-name)
                             :description      nil
@@ -1925,6 +1927,7 @@
                             :entity_id        nil
                             :display_name     "Card 2"
                             :metrics          nil
+                            :segments         nil
                             :moderated_status nil
                             :schema           (schema.table/root-collection-schema-name)
                             :description      nil

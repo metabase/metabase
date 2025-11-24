@@ -656,17 +656,21 @@
 
 (mr/def ::segment
   "More or less the same as a [[metabase.segments.models.segment]], but with kebab-case keys."
-  [:map
-   {:error/message "Valid Segment metadata"
-    :decode/mock   mock-segment}
-   [:lib/type   [:= :metadata/segment]]
-   [:id         ::lib.schema.id/segment]
-   [:name       ::lib.schema.common/non-blank-string]
-   [:table-id   ::lib.schema.id/table]
-   ;; the MBQL snippet defining this Segment; this may still be in legacy
-   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
-   [:definition [:maybe :map]]
-   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+  [:and
+   [:map
+    {:error/message "Valid Segment metadata"
+     :decode/mock   mock-segment}
+    [:lib/type   [:= :metadata/segment]]
+    [:id         ::lib.schema.id/segment]
+    [:name       ::lib.schema.common/non-blank-string]
+    [:table-id   {:optional true} ::lib.schema.id/table]
+    [:card-id    {:optional true} ::lib.schema.id/card]
+    ;; the MBQL snippet defining this Segment; this may still be in legacy
+    ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
+    [:definition [:maybe :map]]
+    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+   [:fn {:error/message "A segment must have exactly one of :table-id or :card-id"}
+    #(not= (nil? (:table-id %)) (nil? (:card-id %)))]])
 
 (mr/def ::metric
   "A V2 Metric! This a special subtype of a Card. Not convinced we really need this as opposed to just using `::card` --

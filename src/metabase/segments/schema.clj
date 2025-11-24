@@ -9,7 +9,7 @@
    ::lib.schema/stage.mbql
    [:fn
     {:error/message "A segment stage must have exactly one of :source-table or :source-card"}
-    #(= (count (select-keys % [:source-table :source-card])) 1)]
+    #(not= (nil? (:source-table %)) (nil? (:source-card %)))]
    [:fn
     {:error/message "A segment stage must have filters"}
     #(contains? % :filters)]

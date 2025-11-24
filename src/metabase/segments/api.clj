@@ -1,6 +1,7 @@
 (ns metabase.segments.api
   "/api/segment endpoints."
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -9,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -19,20 +21,27 @@
   "Create a new `Segment`."
   [_route-params
    _query-params
-   {:keys [name description table_id definition], :as body} :- [:map
-                                                                [:name        ms/NonBlankString]
-                                                                [:table_id    ms/PositiveInt]
-                                                                [:definition  ms/Map]
-                                                                [:description {:optional true} [:maybe :string]]]]
+   {:keys [name description table_id card_id definition], :as body}
+   :- [:and
+       [:map
+        [:name        ms/NonBlankString]
+        [:table_id    {:optional true} [:maybe ms/PositiveInt]]
+        [:card_id     {:optional true} [:maybe ms/PositiveInt]]
+        [:definition  ms/Map]
+        [:description {:optional true} [:maybe :string]]]
+       [:fn {:error/message "Must provide exactly one of :table_id or :card_id"}
+        (fn [{:keys [table_id card_id]}]
+          (not= (nil? table_id) (nil? card_id)))]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check :model/Segment body)
   (let [segment (api/check-500
                  (first (t2/insert-returning-instances! :model/Segment
-                                                        :table_id    table_id
-                                                        :creator_id  api/*current-user-id*
-                                                        :name        name
-                                                        :description description
-                                                        :definition  definition)))]
+                                                        (-> {:creator_id  api/*current-user-id*
+                                                             :name        name
+                                                             :description description
+                                                             :definition  definition}
+                                                            (m/assoc-some :table_id table_id)
+                                                            (m/assoc-some :card_id card_id)))))]
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 
@@ -62,9 +71,11 @@
                                        :present #{:description :caveats :points_of_interest}
                                        :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (when-let [def (:definition clean-body)]
-                     (cond->> def
-                       (not= :mbql-version/mbql5 (lib/normalized-mbql-version def))
-                       (mbql.normalize/normalize ::mbql.s/MBQLQuery)))
+                     (u/prog1 (cond->> def
+                                (not= :mbql-version/mbql5 (lib/normalized-mbql-version def))
+                                (mbql.normalize/normalize ::mbql.s/MBQLQuery))
+                       (api/check-400 (lib/normalized-mbql-version <>)
+                                      (tru "Segment definition must be an MBQL query"))))
         new-body   (merge
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))

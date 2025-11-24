@@ -68,3 +68,18 @@
         query-without-feature (assoc query :lib/metadata provider-without-feature)]
     (is (lib.metadata/database-supports? query-with-feature ::special-feature))
     (is (not (lib.metadata/database-supports? query-without-feature ::special-feature)))))
+
+(deftest ^:parallel metadatas-for-card-segments-test
+  (testing "metadatas-for-card should support :metadata/segment"
+    (let [card-id 1
+          card-segment {:lib/type    :metadata/segment
+                        :id          200
+                        :name        "Expensive Products"
+                        :card-id     card-id
+                        :definition  {}
+                        :description "Products with price > 50"}
+          metadata-provider (lib.tu/mock-metadata-provider
+                             meta/metadata-provider
+                             {:segments [card-segment]})]
+      (is (= [card-segment]
+             (lib.metadata/metadatas-for-card metadata-provider :metadata/segment card-id))))))

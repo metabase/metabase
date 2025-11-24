@@ -37,26 +37,30 @@
   - MBQL 5 full queries (passed through)
   - MBQL 4 full queries (from serialization - converted to MBQL 5)
   - MBQL 4 fragments (for backward compat during migration - wrapped then converted)
-  Empty seqs are normalized to `{}`."
-  [definition table-id database-id]
-  (if (seq definition)
-    (u/prog1 (-> (case (lib/normalized-mbql-version definition)
-                   (:mbql-version/mbql5 :mbql-version/legacy)
-                   definition
-                   ;; default MBQL4 fragment
-                   (let [definition
-                         (if (:aggregation definition)
-                           (do
-                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
-                                       {:segment-definition definition})
-                             (dissoc definition :aggregation))
-                           definition)]
-                     {:database database-id
-                      :type :query
-                      :query (merge {:source-table table-id} definition)}))
-                 lib-be/normalize-query)
-      (validate-mbql5-definition <>))
-    {}))
+  Empty seqs are normalized to `{}`.
+
+  Single arity version is for full queries only."
+  ([definition]
+   (normalize-segment-definition definition nil nil))
+  ([definition table-id database-id]
+   (if (seq definition)
+     (u/prog1 (-> (case (lib/normalized-mbql-version definition)
+                    (:mbql-version/mbql5 :mbql-version/legacy)
+                    definition
+                    ;; default MBQL4 fragment
+                    (let [definition
+                          (if (:aggregation definition)
+                            (do
+                              (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
+                                        {:segment-definition definition})
+                              (dissoc definition :aggregation))
+                            definition)]
+                      {:database database-id
+                       :type     :query
+                       :query    (merge {:source-table table-id} definition)}))
+                  lib-be/normalize-query)
+       (validate-mbql5-definition <>))
+     {})))
 
 (def ^:private transform-segment-definition
   "Transform for segment definitions. Only handles JSON serialization/deserialization.
@@ -76,26 +80,55 @@
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
-     (perms/user-has-permission-for-table?
-      api/*current-user-id*
-      :perms/manage-table-metadata
-      :yes
-      (:db_id table)
-      (u/the-id table))))
+   (if-let [card-id (:card_id instance)]
+     (if-let [card (:card instance)]
+       (mi/can-read? card)
+       (mi/can-read? :model/Card card-id))
+     (let [table (or (:table instance)
+                     (:table (t2/hydrate instance :table)))]
+       (perms/user-has-permission-for-table?
+        api/*current-user-id*
+        :perms/manage-table-metadata
+        :yes
+        (:db_id table)
+        (u/the-id table)))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
 (t2/define-before-update :model/Segment [segment]
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes segment) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+  (let [changes (t2/changes segment)]
+    (when (contains? changes :creator_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+    (when (contains? changes :table_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the table_id of a Segment."))))
+    (when (contains? changes :card_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the card_id of a Segment."))))
+    (when (contains? changes :definition)
+      (let [new-definition (:definition changes)
+            existing-table-id (:table_id segment)
+            existing-card-id (:card_id segment)]
+        (when (seq new-definition)
+          (when-not (lib/normalized-mbql-version new-definition)
+            (throw (UnsupportedOperationException. (tru "Segment definition must be an MBQL query"))))
+          ;; Normalize and extract source
+          (let [normalized-def (lib-be/normalize-query new-definition)
+                new-source-table-id (lib/source-table-id normalized-def)
+                new-source-card-id (lib/source-card-id normalized-def)]
+            (when (or (and existing-table-id (not= existing-table-id new-source-table-id))
+                      (and existing-card-id (not= existing-card-id new-source-card-id))
+                      (and existing-table-id new-source-card-id)
+                      (and existing-card-id new-source-table-id))
+              (throw (UnsupportedOperationException. (tru "You cannot change the source table/model of a Segment.")))))))))
   segment)
 
 (defn- migrated-segment-definition
-  [{:keys [definition], table-id :table_id}]
-  (let [database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-    (normalize-segment-definition definition table-id database-id)))
+  [{:keys [definition table_id card_id]}]
+  (if card_id
+    ;; Card-based segment: definition is always MBQL5, just validate
+    (normalize-segment-definition definition)
+    ;; Table-based segment: may need MBQL4→MBQL5 conversion
+    (let [database-id (t2/select-one-fn :db_id :model/Table :id table_id)]
+      (normalize-segment-definition definition table_id database-id))))
 
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
@@ -104,9 +137,15 @@
 
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
-  (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
-    (mi/perms-objects-set table read-or-write)))
+  (if-let [card-id (:card_id segment)]
+    ;; Card-based segment: delegate to card permissions
+    (let [card (or (:card segment)
+                   (t2/select-one :model/Card :id card-id))]
+      (mi/perms-objects-set card read-or-write))
+    ;; Table-based segment: delegate to table permissions (existing behavior)
+    (let [table (or (:table segment)
+                    (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+      (mi/perms-objects-set table read-or-write))))
 
 (defn- maybe-migrated-segment-definition
   [segment]
@@ -159,6 +198,7 @@
    :skip []
    :transform {:created_at (serdes/date)
                :table_id (serdes/fk :model/Table)
+               :card_id (serdes/fk :model/Card)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
 

@@ -46,11 +46,13 @@ export const Formula = ({
     <Transition mounted={isExpanded} duration={300} transition={TRANSITION}>
       {(styles) => (
         <div className={S.formulaDefinition} style={styles}>
-          <QueryDefinition
-            className={S.formulaDefinitionInner}
-            definition={entity.definition}
-            tableId={entity.table_id}
-          />
+          {entity.table_id && (
+            <QueryDefinition
+              className={S.formulaDefinitionInner}
+              definition={entity.definition}
+              tableId={entity.table_id}
+            />
+          )}
         </div>
       )}
     </Transition>

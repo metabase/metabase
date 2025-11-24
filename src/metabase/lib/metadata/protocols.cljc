@@ -37,10 +37,10 @@
       (or (not (:table-id spec))
           (#{:metadata/column :metadata/metric :metadata/segment} (:lib/type spec))))]
    [:fn
-    {:error/message ":card-id is currently only supported for Metrics."}
+    {:error/message ":card-id is currently only supported for Metrics and Segments."}
     (fn [spec]
       (or (not (:card-id spec))
-          (#{:metadata/metric} (:lib/type spec))))]
+          (#{:metadata/metric :metadata/segment} (:lib/type spec))))]
    [:fn
     {:error/message "All metadata types except for :metadata/table and :metadata/transform must include at least one filter"}
     (some-fn :id :name :table-id :card-id #(= (:lib/type %) :metadata/table) #(= (:lib/type %) :metadata/transform))]])
@@ -212,8 +212,8 @@
   (metadatas metadata-provider {:lib/type metadata-type, :table-id table-id}))
 
 (mu/defn metadatas-for-card :- [:maybe [:sequential ::metadata]]
-  "Return active (non-archived) metadatas associated with a particular Card, currently only Metrics, so
-  `metadata-type` must be `:metadata/metric`."
+  "Return active (non-archived) metadatas associated with a particular Card, currently only Metrics and Segments, so
+  `metadata-type` must be `:metadata/metric` or `:metadata/segment`."
   [metadata-provider :- ::metadata-provider
    metadata-type     :- [:enum :metadata/column :metadata/metric :metadata/segment]
    card-id           :- ::lib.schema.id/card]

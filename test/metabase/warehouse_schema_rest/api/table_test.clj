@@ -862,7 +862,7 @@
                     (mt/user-http-request :crowberto :get 200
                                           (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
 
-(deftest include-metrics-for-card-test
+(deftest include-metrics-and-segments-for-card-test
   (testing "GET /api/table/:id/query_metadata"
     (mt/with-temp [:model/Card model {:name          "Venues model"
                                       :database_id   (mt/id)
@@ -872,15 +872,22 @@
             metric-query          {:database (mt/id)
                                    :type     "query"
                                    :query    {:source-table card-virtual-table-id
-                                              :aggregation  [["count"]]}}]
-        (mt/with-temp [:model/Collection coll   {:name "My Collection"}
-                       :model/Card       metric {:name          "Venues metric"
-                                                 :database_id   (mt/id)
-                                                 :collection_id (:id coll)
-                                                 :type          :metric
-                                                 :dataset_query metric-query}]
+                                              :aggregation  [["count"]]}}
+            segment-definition    (mt/mbql-query nil
+                                    {:source-table (str "card__" (:id model))
+                                     :filter       [:> [:field "PRICE" {:base-type :type/Integer}] 2]})]
+        (mt/with-temp [:model/Collection coll    {:name "My Collection"}
+                       :model/Card       metric  {:name          "Venues metric"
+                                                  :database_id   (mt/id)
+                                                  :collection_id (:id coll)
+                                                  :type          :metric
+                                                  :dataset_query metric-query}
+                       :model/Segment    segment {:name       "Expensive Venues"
+                                                  :table_id   nil
+                                                  :card_id    (:id model)
+                                                  :definition segment-definition}]
           (perms/revoke-collection-permissions! (perms-group/all-users) (:id coll))
-          (testing "Test metrics being included with cards"
+          (testing "Test metrics and segments being included with cards"
             (is (=? {:display_name "Venues model"
                      :db_id        (mt/id)
                      :id           card-virtual-table-id
@@ -894,7 +901,10 @@
                                                       :lib/type "mbql/query"
                                                       :stages   [{:source-card (:id model)
                                                                   :aggregation [["count" {}]]}]}
-                                     :id             (:id metric)}]}
+                                     :id             (:id metric)}]
+                     :segments     [{:card_id (:id model)
+                                     :name    "Expensive Venues"
+                                     :id      (:id segment)}]}
                     (mt/user-http-request :crowberto :get 200
                                           (format "table/card__%d/query_metadata" (u/the-id model))))))
           (testing "Test metrics not being included with cards from inaccessible collections"
@@ -902,7 +912,10 @@
                      :db_id        (mt/id)
                      :id           card-virtual-table-id
                      :type         "model"
-                     :metrics      nil}
+                     :metrics      nil
+                     :segments     [{:card_id (:id model)
+                                     :name    "Expensive Venues"
+                                     :id      (:id segment)}]}
                     (mt/user-http-request :lucky :get 200
                                           (format "table/card__%d/query_metadata" (u/the-id model)))))))))))
 

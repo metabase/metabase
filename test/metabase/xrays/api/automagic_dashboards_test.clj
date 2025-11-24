@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -128,13 +130,41 @@
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
       (is (some? (api-call! "segment/%s/rule/example/indepth" [segment-id]))))))
 
-(deftest field-xray-test
-  (testing "GET /api/automagic-dashboards/field/:id"
-    (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
-
 (defn- revoke-collection-permissions!
   [collection-id]
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
+
+(deftest model-based-segment-xray-test
+  (testing "X-ray of a model-based segment"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (doseq [test-fn
+              [(fn [collection-id segment-id]
+                 (testing "GET /api/automagic-dashboards/segment/:id"
+                   (is (some? (api-call! "segment/%s" [segment-id] #(revoke-collection-permissions! collection-id))))))
+
+               (fn [collection-id segment-id]
+                 (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
+                   (is (some? (api-call! "segment/%s/rule/example/indepth" [segment-id] #(revoke-collection-permissions! collection-id))))))]]
+        (mt/with-temp [:model/Collection {collection-id :id} {}
+                       :model/Card model {:type :model
+                                          :table_id (mt/id :venues)
+                                          :database_id (mt/id)
+                                          :collection_id collection-id
+                                          :dataset_query (mt/mbql-query venues)}
+                       :model/Segment {segment-id :id} (let [metadata-provider (mt/metadata-provider)
+                                                             model-card (lib.metadata/card metadata-provider (:id model))
+                                                             venues-price-field (lib.metadata/field metadata-provider (mt/id :venues :price))
+                                                             query (lib/filter (lib/query metadata-provider model-card)
+                                                                               (lib/> venues-price-field 10))]
+                                                         {:card_id (:id model)
+                                                          :table_id   nil
+                                                          :definition query})]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (test-fn collection-id segment-id))))))
+
+(deftest field-xray-test
+  (testing "GET /api/automagic-dashboards/field/:id"
+    (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
 
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
