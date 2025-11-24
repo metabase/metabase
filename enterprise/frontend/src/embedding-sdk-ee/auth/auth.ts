@@ -32,8 +32,9 @@ import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage"
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
@@ -101,11 +102,57 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     }
   }
 
-  // Fetch user and site settings
-  const [user, siteSettings] = await Promise.all([
-    dispatch(refreshCurrentUser()),
-    dispatch(refreshSiteSettings()),
-  ]);
+  // Fetch user and site settings (or use cached from package)
+  // IMPORTANT: Read auth state AFTER getOrRefreshSession completes
+  // (in case we waited for package auth to finish)
+  let user, siteSettings;
+
+  const authState = readAuthState();
+  console.log("[bundle] Auth state after getOrRefreshSession:", {
+    status: authState.status,
+    hasUser: !!authState.user,
+    hasSiteSettings: !!authState.siteSettings,
+  });
+  const hasPackagePrefetch =
+    authState.status === "completed" &&
+    authState.user &&
+    authState.siteSettings;
+
+  if (hasPackagePrefetch) {
+    console.log(
+      "[bundle] Using prefetched user and site settings from package",
+    );
+    // Use cached data instead of making requests
+    // Dispatch fulfilled actions to populate Redux store
+    user = await dispatch(
+      refreshCurrentUser.fulfilled(
+        authState.user,
+        "",
+        undefined,
+        undefined as any,
+      ),
+    );
+
+    // For settings, we need to dispatch loadSettings to properly populate
+    // the Redux store AND window.MetabaseBootstrap
+    dispatch(loadSettings(authState.siteSettings));
+    MetabaseSettings.setAll(authState.siteSettings);
+
+    // Create a fake fulfilled action result for consistency
+    siteSettings = {
+      payload: authState.siteSettings,
+      type: refreshSiteSettings.fulfilled.type,
+      meta: {} as any,
+    };
+  } else {
+    console.log(
+      "[bundle] Fetching user and site settings (no prefetch available)",
+    );
+    [user, siteSettings] = await Promise.all([
+      dispatch(refreshCurrentUser()),
+      dispatch(refreshSiteSettings()),
+    ]);
+  }
 
   if (!user.payload) {
     if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {

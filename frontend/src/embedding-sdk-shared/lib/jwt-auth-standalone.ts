@@ -61,6 +61,53 @@ function getSdkRequestHeaders(hash?: string): Record<string, string> {
 }
 
 /**
+ * Fetch current user from Metabase API
+ */
+async function fetchCurrentUser(
+  metabaseInstanceUrl: string,
+  sessionToken: string,
+): Promise<any> {
+  const response = await fetch(`${metabaseInstanceUrl}/api/user/current`, {
+    headers: {
+      ...getSdkRequestHeaders(),
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Session": sessionToken,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch user: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch site settings from Metabase API
+ */
+async function fetchSiteSettings(
+  metabaseInstanceUrl: string,
+  sessionToken: string,
+): Promise<any> {
+  const response = await fetch(
+    `${metabaseInstanceUrl}/api/session/properties`,
+    {
+      headers: {
+        ...getSdkRequestHeaders(),
+        // eslint-disable-next-line no-literal-metabase-strings -- header name
+        "X-Metabase-Session": sessionToken,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch site settings: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
  * Performs the complete JWT authentication flow without Redux.
  * Stores results in window.METABASE_EMBEDDING_SDK_AUTH_STATE for the bundle to consume.
  *
@@ -135,9 +182,20 @@ export async function performJwtAuthFlow(
     );
 
     console.log("[package] JWT auth completed successfully");
+
+    // Step 4: Prefetch user and site settings with the session token
+    console.log("[package] Prefetching user and site settings");
+    const [user, siteSettings] = await Promise.all([
+      fetchCurrentUser(metabaseInstanceUrl, session.id),
+      fetchSiteSettings(metabaseInstanceUrl, session.id),
+    ]);
+
+    console.log("[package] Prefetch completed, storing all results");
     updateAuthState({
       status: "completed",
       session,
+      user,
+      siteSettings,
     });
   } catch (error) {
     console.error("[package] JWT auth failed:", error);
