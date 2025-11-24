@@ -236,9 +236,9 @@ export function TableAttributesEditBulk() {
       </Stack>
 
       <PublishModelsModal
-        tables={selectedTables}
-        schemas={selectedSchemas}
-        databases={selectedDatabases}
+        databaseIds={Array.from(selectedDatabases)}
+        schemaIds={Array.from(selectedSchemas)}
+        tableIds={Array.from(selectedTables)}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
       />

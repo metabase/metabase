@@ -17,16 +17,18 @@ import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { getPublishSeeItLink } from "../utils";
 
 interface Props {
-  tables?: Set<TableId>;
-  schemas?: Set<SchemaId>;
-  databases?: Set<DatabaseId>;
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
   isOpen: boolean;
   onClose?: () => void;
   onSuccess?: () => void;
 }
 
 export function PublishModelsModal({
-  tables = new Set(),
+  databaseIds = [],
+  schemaIds = [],
+  tableIds = [],
   isOpen,
   onClose,
   onSuccess,
@@ -55,8 +57,10 @@ export function PublishModelsModal({
       collection.id === "root" ? null : Number(collection.id);
 
     const { error, data } = await createTableSymlink({
-      table_id: Array.from(tables)[0],
       collection_id: collectionId,
+      database_ids: databaseIds,
+      schema_ids: schemaIds,
+      table_ids: tableIds,
     });
 
     if (error) {

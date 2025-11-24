@@ -1,6 +1,6 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
-import type { Table, TableId } from "./table";
+import type { SchemaId, Table, TableId } from "./table";
 
 export type TableSymlinkId = number;
 
@@ -28,6 +28,8 @@ export type ListTableSymlinksRequest = {
 };
 
 export type CreateTableSymlinkRequest = {
-  table_id: TableId;
   collection_id: CollectionId | null;
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
 };
