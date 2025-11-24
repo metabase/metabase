@@ -124,7 +124,7 @@
    :published_table_id     id})
 
 (api.macros/defendpoint :post "/publish-table"
-  "Create a symlink for each of selected tables"
+  "Create a model for each of selected tables"
   [_route-params
    _query-params
    {:keys [target_collection_id]
