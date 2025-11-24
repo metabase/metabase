@@ -21,7 +21,6 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
-import { canAccessDataStudio } from "./utils";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -30,14 +29,7 @@ export function getDataStudioRoutes(
   CanAccessTransforms: ComponentType,
 ) {
   return (
-    <Route
-      component={CanAccessDataStudio}
-      onEnter={(_state, replace) => {
-        if (!canAccessDataStudio(store.getState())) {
-          replace(Urls.unauthorized());
-        }
-      }}
-    >
+    <Route component={CanAccessDataStudio}>
       <Route path="data-studio" component={DataStudioLayout}>
         <IndexRoute
           onEnter={(_state, replace) => {
