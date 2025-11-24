@@ -1,13 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import {
-  createDashboard,
   createQuestion,
+  createQuestionAndDashboard,
   getSignedJwtForResource,
-  getTextCardDetails,
 } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
@@ -19,7 +14,7 @@ import type { Card } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 2000;
+const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 1000;
 
 describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
   describe("question", () => {
@@ -110,39 +105,69 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
   });
 
   describe("dashboard", () => {
-    beforeEach(() => {
+    const setup = ({ display }: { display?: Card["display"] } = {}) => {
       signInAsAdminAndSetupGuestEmbedding({
         token: "starter",
       });
 
-      const textCard = getTextCardDetails({ col: 16, text: "Test text card" });
-      const questionCard = {
-        id: ORDERS_DASHBOARD_DASHCARD_ID,
-        card_id: ORDERS_QUESTION_ID,
-        row: 0,
-        col: 0,
-        size_x: 16,
-        size_y: 8,
-        visualization_settings: {
-          "card.title": "Test question card",
+      createQuestionAndDashboard({
+        questionDetails: {
+          name: "Sample Question",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ["field", ORDERS.QUANTITY, null],
+            ],
+          },
+          display,
         },
-      };
-
-      createDashboard({
-        name: "Embedding SDK Test Dashboard",
-        dashcards: [questionCard, textCard],
-        enable_embedding: true,
-        embedding_type: "guest-embed",
-      }).then(({ body: dashboard }) => {
-        cy.wrap(dashboard.id).as("dashboardId");
+        dashboardDetails: {
+          name: "Embedding SDK Test Dashboard",
+          enable_embedding: true,
+          embedding_type: "guest-embed",
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        cy.wrap(dashboard_id).as("dashboardId");
       });
 
       cy.signOut();
-    });
+    };
 
     it("should show dashboard content for unauthorized user", () => {
       cy.intercept("/api/user/*").as("internalApiRequest");
       cy.intercept("/api/dashboard/*").as("internalApiRequest");
+
+      setup();
+
+      cy.get("@dashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+        });
+
+        mountGuestEmbedDashboard({ token });
+
+        getSdkRoot().within(() => {
+          cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
+          cy.findByText("Sample Question").should("be.visible");
+        });
+
+        // Wait for requests
+        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
+
+        cy.get("@internalApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length(0);
+        });
+      });
+    });
+
+    it("should show dashboard content with a pivot card for unauthorized user", () => {
+      cy.intercept("/api/user/*").as("internalApiRequest");
+      cy.intercept("/api/dashboard/*").as("internalApiRequest");
+
+      setup({ display: "pivot" });
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
