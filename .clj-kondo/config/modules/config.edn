@@ -1554,6 +1554,7 @@
            lib
            models
            parameters
+           permissions
            query-processor
            request
            sync
