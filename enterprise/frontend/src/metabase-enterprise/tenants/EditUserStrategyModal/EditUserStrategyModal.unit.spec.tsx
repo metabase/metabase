@@ -74,42 +74,20 @@ describe("EditUserStrategyModal", () => {
   it("should allow changing selection and applying the change", async () => {
     await setup();
 
-    const singleTenantCard = await screen.findByRole("radio", {
-      name: /Single tenant/,
-      checked: true,
-    });
-    expect(singleTenantCard).toBeInTheDocument();
-
-    const multiTenantCard = screen.getByRole("radio", {
+    const multiTenantCard = await screen.findByRole("radio", {
       name: /Multi tenant/,
       checked: false,
     });
     expect(multiTenantCard).toBeInTheDocument();
-
-    // Click the multi-tenant card
     await userEvent.click(multiTenantCard);
 
-    // Verify the selection changed locally
     expect(
-      screen.getByRole("radio", {
-        name: /Multi tenant/,
-        checked: true,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("radio", {
-        name: /Single tenant/,
-        checked: false,
-      }),
+      screen.getByRole("radio", { name: /Multi tenant/, checked: true }),
     ).toBeInTheDocument();
 
-    setupPropertiesEndpoints(createMockSettings({ "use-tenants": true }));
-
-    // Click the Apply button
-    const applyButton = screen.getByRole("button", { name: /apply/i });
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
     await userEvent.click(applyButton);
 
-    // Verify the API call was made
     await waitFor(async () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
@@ -117,28 +95,6 @@ describe("EditUserStrategyModal", () => {
 
     const puts = await findRequests("PUT");
     expect(puts[0].body).toEqual({ value: true });
-  });
-
-  it("should disable Apply button when selection hasn't changed", async () => {
-    await setup();
-
-    await screen.findByRole("radio", { name: /Single tenant/ });
-
-    const applyButton = screen.getByRole("button", { name: /Apply/ });
-    expect(applyButton).toBeDisabled();
-  });
-
-  it("should enable Apply button when selection changes", async () => {
-    await setup();
-
-    const multiTenantCard = await screen.findByRole("radio", {
-      name: /Multi tenant/,
-    });
-
-    await userEvent.click(multiTenantCard);
-
-    const applyButton = screen.getByRole("button", { name: /Apply/ });
-    expect(applyButton).toBeEnabled();
   });
 
   it("should handle failing to update", async () => {
@@ -169,10 +125,27 @@ describe("EditUserStrategyModal", () => {
 
     // Selection should remain as multi-tenant in the UI even though the API call failed
     expect(
-      screen.getByRole("radio", {
-        name: /Multi tenant/,
+      screen.getByRole("radio", { name: /Multi tenant/, checked: true }),
+    ).toBeInTheDocument();
+  });
+
+  it("should disable the apply button when the user strategy has not changed", async () => {
+    await setup();
+
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
         checked: true,
       }),
     ).toBeInTheDocument();
+
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
+    expect(applyButton).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Multi tenant/ }));
+    expect(applyButton).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Single tenant/ }));
+    expect(applyButton).toBeDisabled();
   });
 });
