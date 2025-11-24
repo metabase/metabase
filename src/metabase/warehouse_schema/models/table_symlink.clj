@@ -7,4 +7,4 @@
 
 (methodical/defmethod t2/table-name :model/TableSymlink [_model] :table_symlink)
 
-(methodical/defmethod t2/primary-keys :model/TableSymlink [_model] [:table_id :collection_id])
+(methodical/defmethod t2/primary-keys :model/TableSymlink [_model] [:id])
