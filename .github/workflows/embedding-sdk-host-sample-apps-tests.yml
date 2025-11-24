@@ -2,10 +2,6 @@ name: "[NOT REQUIRED] SDK Compatibility tests"
 
 on:
   workflow_call:
-    inputs:
-      cached-embedding-sdk-dist-artifact-name:
-        required: true
-        type: string
 
 jobs:
   get-sample-apps-data:
