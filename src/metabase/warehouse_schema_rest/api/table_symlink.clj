@@ -27,6 +27,14 @@
                        :table-id           table-id
                        :actual-permissions @api/*current-user-permissions-set*})))))
 
+(api.macros/defendpoint :get "/"
+  "Returns a list of table symlinks."
+  [_route-params
+   {table-id :table_id} :- [:map
+                            [:table_id ::lib.schema.id/table]]]
+  (-> (t2/select :model/TableSymlink :table_id table-id)
+      (t2/hydrate :collection)))
+
 (api.macros/defendpoint :post "/" :- ::table-symlink
   "Create a new Table Symlink (add a Table to a Collection). Only one symlink per Table + Collection is allowed.
 

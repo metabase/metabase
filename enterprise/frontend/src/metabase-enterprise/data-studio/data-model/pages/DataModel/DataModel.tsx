@@ -7,6 +7,7 @@ import _ from "underscore";
 import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
+  useListTableSymlinksQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -62,8 +63,11 @@ function DataModelContent({ params }: Props) {
     schemaName,
     tableId: queryTableId,
   } = parseRouteParams(params);
-  const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+  const {
+    data: databasesData,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -82,9 +86,14 @@ function DataModelContent({ params }: Props) {
 
   const {
     data: table,
-    error,
+    error: tableErrror,
     isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
+  const {
+    data: symlinks,
+    error: symlinksError,
+    isLoading: isLoadingSymlinks,
+  } = useListTableSymlinksQuery({ table_id: metadataTableId });
   const fieldsByName = useMemo(() => {
     return _.indexBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
@@ -92,7 +101,8 @@ function DataModelContent({ params }: Props) {
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading = isLoadingTables || isLoadingDatabases || isLoadingSymlinks;
+  const error = databasesError ?? tableErrror ?? symlinksError;
 
   useWindowEvent(
     "keydown",
@@ -202,6 +212,7 @@ function DataModelContent({ params }: Props) {
                    */
                   key={table.id}
                   table={table}
+                  symlinks={symlinks}
                   activeFieldId={fieldId}
                   onSyncOptionsClick={openSyncModal}
                 />

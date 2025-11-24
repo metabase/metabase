@@ -1,5 +1,6 @@
 import type {
   CreateTableSymlinkRequest,
+  ListTableSymlinksRequest,
   TableSymlink,
 } from "metabase-types/api";
 
@@ -7,6 +8,13 @@ import { Api } from "./api";
 
 export const tableSymlinkApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    listTableSymlinks: builder.query<TableSymlink[], ListTableSymlinksRequest>({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/table-symlink",
+        params,
+      }),
+    }),
     createTableSymlink: builder.mutation<
       TableSymlink,
       CreateTableSymlinkRequest
@@ -20,4 +28,5 @@ export const tableSymlinkApi = Api.injectEndpoints({
   }),
 });
 
-export const { useCreateTableSymlinkMutation } = tableSymlinkApi;
+export const { useListTableSymlinksQuery, useCreateTableSymlinkMutation } =
+  tableSymlinkApi;

@@ -28,26 +28,33 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import type {
+  FieldId,
+  Table,
+  TableFieldOrder,
+  TableSymlink,
+} from "metabase-types/api";
 
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableFieldList } from "./TableFieldList";
 import { TableMetadata } from "./TableMetadata";
-import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 import { TableSortableFieldList } from "./TableSortableFieldList";
+import { TableSymlinks } from "./TableSymlinks";
 
 interface Props {
   table: Table;
+  symlinks: TableSymlink[];
   activeFieldId?: FieldId;
   onSyncOptionsClick: () => void;
 }
 
 const TableSectionBase = ({
   table,
+  symlinks,
   activeFieldId,
   onSyncOptionsClick,
 }: Props) => {
@@ -223,9 +230,7 @@ const TableSectionBase = ({
         </TableSectionGroup>
       </Box>
 
-      {table.published_models != null && table.published_models.length > 0 && (
-        <TableModels table={table} />
-      )}
+      {symlinks.length > 0 && <TableSymlinks symlinks={symlinks} />}
 
       <Box px="lg">
         <Stack gap={12}>
