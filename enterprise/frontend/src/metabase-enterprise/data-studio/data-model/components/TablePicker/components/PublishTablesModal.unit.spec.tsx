@@ -17,7 +17,10 @@ import {
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { PublishTablesResponse } from "metabase-types/api";
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import { PublishTablesModal } from "./PublishTablesModal";
 
@@ -27,7 +30,7 @@ function setup(
     tables?: Set<number | string>;
     schemas?: Set<string>;
     databases?: Set<number>;
-    seenPublishModelsInfo?: boolean;
+    seenPublishTablesInfo?: boolean;
     publishResponse?: PublishTablesResponse;
     publishError?: boolean;
   } = {},
@@ -37,7 +40,7 @@ function setup(
     tables = new Set([1]),
     schemas = new Set<string>(),
     databases = new Set<number>(),
-    seenPublishModelsInfo = true,
+    seenPublishTablesInfo = true,
     publishResponse,
     publishError = false,
   } = args;
@@ -46,8 +49,8 @@ function setup(
   const onSuccess = jest.fn();
 
   setupUserAcknowledgementEndpoints({
-    key: "seen-publish-models-info",
-    value: seenPublishModelsInfo,
+    key: "seen-publish-tables-info",
+    value: seenPublishTablesInfo,
   });
   setupRecentViewsEndpoints([]);
   const testCollection = createMockCollection({
@@ -68,21 +71,21 @@ function setup(
     collectionItems: [],
   });
 
-  // Setup publish models API endpoint
+  // Setup publish tables API endpoint
   if (publishError) {
-    fetchMock.post("path:/api/ee/data-studio/table/publish-model", {
+    fetchMock.post("path:/api/ee/data-studio/table/publish-table", {
       status: 500,
       body: { message: "Failed to publish" },
     });
   } else if (publishResponse) {
     fetchMock.post(
-      "path:/api/ee/data-studio/table/publish-model",
+      "path:/api/ee/data-studio/table/publish-table",
       publishResponse,
     );
   } else {
-    fetchMock.post("path:/api/ee/data-studio/table/publish-model", {
+    fetchMock.post("path:/api/ee/data-studio/table/publish-table", {
       created_count: 1,
-      models: [createMockCard({ id: 1 })],
+      tables: [createMockTable({ id: 1 })],
       target_collection: testCollection,
     });
   }
@@ -134,8 +137,8 @@ describe("PublishTablesModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders collection picker when user has seen publish models info", async () => {
-    setup({ seenPublishModelsInfo: true });
+  it("renders collection picker when user has seen publish tables info", async () => {
+    setup({ seenPublishTablesInfo: true });
 
     await waitFor(() => {
       expect(
@@ -145,7 +148,7 @@ describe("PublishTablesModal", () => {
   });
 
   it("calls onClose when closing info modal", async () => {
-    const { onClose } = setup({ seenPublishModelsInfo: false });
+    const { onClose } = setup({ seenPublishTablesInfo: false });
 
     const closeButton = screen.getByRole("button", { name: /close/i });
     await userEvent.click(closeButton);
@@ -156,7 +159,7 @@ describe("PublishTablesModal", () => {
   });
 
   it("calls onClose when closing collection picker", async () => {
-    const { onClose } = setup({ seenPublishModelsInfo: true });
+    const { onClose } = setup({ seenPublishTablesInfo: true });
 
     await waitFor(() => {
       expect(
@@ -175,12 +178,12 @@ describe("PublishTablesModal", () => {
   it("handles success flow correctly", async () => {
     const publishResponse: PublishTablesResponse = {
       created_count: 1,
-      models: [createMockCard({ id: 1 })],
+      tables: [createMockTable({ id: 1 })],
       target_collection: createMockCollection({ id: 1 }),
     };
 
     const { onSuccess } = setup({
-      seenPublishModelsInfo: false,
+      seenPublishTablesInfo: false,
       tables: new Set([1, 2]),
       schemas: new Set<string>(["10"]),
       databases: new Set([100]),
@@ -196,7 +199,7 @@ describe("PublishTablesModal", () => {
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
-          "path:/api/user-key-value/namespace/user_acknowledgement/key/seen-publish-models-info",
+          "path:/api/user-key-value/namespace/user_acknowledgement/key/seen-publish-tables-info",
           { method: "PUT" },
         ),
       ).toBe(true);
@@ -220,13 +223,13 @@ describe("PublishTablesModal", () => {
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
-          "path:/api/ee/data-studio/table/publish-model",
+          "path:/api/ee/data-studio/table/publish-table",
         ),
       ).toBe(true);
     });
 
     const lastCall = fetchMock.callHistory.lastCall(
-      "path:/api/ee/data-studio/table/publish-model",
+      "path:/api/ee/data-studio/table/publish-table",
     );
     expect(lastCall).toBeTruthy();
     const body = lastCall?.options?.body;
@@ -248,9 +251,9 @@ describe("PublishTablesModal", () => {
     });
   });
 
-  it("shows error toast when publishModels API fails", async () => {
+  it("shows error toast when publishTables API fails", async () => {
     setup({
-      seenPublishModelsInfo: true,
+      seenPublishTablesInfo: true,
       publishError: true,
     });
 
@@ -269,19 +272,19 @@ describe("PublishTablesModal", () => {
     await userEvent.click(publishButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/Failed to publish models/i)).toBeInTheDocument();
+      expect(screen.getByText(/Failed to publish tables/i)).toBeInTheDocument();
     });
   });
 
   it("handles root collection selection correctly", async () => {
     const publishResponse: PublishTablesResponse = {
       created_count: 1,
-      models: [createMockCard({ id: 1 })],
+      tables: [createMockTable({ id: 1 })],
       target_collection: createMockCollection({ id: "root" }),
     };
 
     setup({
-      seenPublishModelsInfo: true,
+      seenPublishTablesInfo: true,
       publishResponse,
     });
 
@@ -302,13 +305,13 @@ describe("PublishTablesModal", () => {
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
-          "path:/api/ee/data-studio/table/publish-model",
+          "path:/api/ee/data-studio/table/publish-table",
         ),
       ).toBe(true);
     });
 
     const lastCall = fetchMock.callHistory.lastCall(
-      "path:/api/ee/data-studio/table/publish-model",
+      "path:/api/ee/data-studio/table/publish-table",
     );
     expect(lastCall).toBeTruthy();
     const body = lastCall?.options?.body;

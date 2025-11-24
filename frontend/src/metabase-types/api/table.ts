@@ -219,6 +219,7 @@ export interface PublishTablesRequest {
 }
 
 export interface PublishTablesResponse {
+  created_count: number;
   tables: Table[];
   target_collection: Collection | null;
 }

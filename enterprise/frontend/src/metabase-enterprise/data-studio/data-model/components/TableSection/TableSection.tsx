@@ -306,7 +306,7 @@ const TableSectionBase = ({
       </Box>
 
       <PublishTablesModal
-        tableIds={[table.id]}
+        tables={new Set([table.id])}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
       />
