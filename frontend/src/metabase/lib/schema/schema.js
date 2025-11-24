@@ -1,15 +1,18 @@
 import { PLUGIN_ENTITIES } from "metabase/plugins";
 
-// backend returns model = "card" instead of "question"
 export const entityTypeForModel = (model) => {
-  if (model === "card" || model === "dataset" || model === "metric") {
-    return "questions";
+  switch (model) {
+    case "card":
+    case "dataset":
+    case "metric":
+      return "questions";
+    case "indexed-entity":
+      return "indexedEntities";
+    case "table-symlink":
+      return "tableSymlinks";
+    default:
+      return `${model}s`;
   }
-  if (model === "indexed-entity") {
-    // handle non-standard plural 🙃
-    return "indexedEntities";
-  }
-  return `${model}s`;
 };
 
 export const entityTypeForObject = (object) =>

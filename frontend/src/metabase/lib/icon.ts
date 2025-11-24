@@ -50,6 +50,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   timeline: "calendar",
   transform: "transform",
   user: "person",
+  "table-symlink": "table",
 };
 
 export type IconData = {

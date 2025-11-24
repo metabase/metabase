@@ -5,7 +5,7 @@ export { default as dashboards } from "./dashboards";
 export { default as pulses } from "./pulses";
 export { default as questions } from "./questions";
 export { IndexedEntities as indexedEntities } from "./indexed-entities";
-
+export { TableSymlinks as tableSymlinks } from "./table-symlinks";
 export { default as timelines } from "./timelines";
 export { default as timelineEvents } from "./timeline-events";
 

@@ -17,6 +17,7 @@ export const TransformSchema = new schema.Entity("transforms");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
+export const TableSymlinkSchema = new schema.Entity("tableSymlinks");
 
 export const DatabaseSchema = new schema.Entity("databases");
 export const SchemaSchema = new schema.Entity("schemas");
@@ -119,6 +120,11 @@ TimelineSchema.define({
 
 CacheConfigSchema.define({});
 
+TableSymlinkSchema.define({
+  table: TableSchema,
+  collection: CollectionSchema,
+});
+
 export const ENTITIES_SCHEMA_MAP = {
   actions: ActionSchema,
   questions: QuestionSchema,
@@ -132,6 +138,7 @@ export const ENTITIES_SCHEMA_MAP = {
   snippets: SnippetSchema,
   snippetCollections: SnippetCollectionSchema,
   documents: DocumentSchema,
+  tableSymlink: TableSymlinkSchema,
 };
 
 export const ObjectUnionSchema = new schema.Union(

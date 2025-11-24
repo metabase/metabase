@@ -60,6 +60,7 @@ export const TAG_TYPE_MAPPING = {
   document: "document",
   "indexed-entity": "indexed-entity",
   table: "table",
+  "table-symlink": "table-symlink",
   dataset: "card",
   action: "action",
   segment: "segment",

@@ -10,6 +10,14 @@ export type TableSymlink = {
   collection?: Collection | null;
 };
 
+export type NormalizedTableSymlink = Omit<
+  TableSymlink,
+  "table" | "collection"
+> & {
+  table?: TableId | null;
+  collection?: CollectionId | null;
+};
+
 export type ListTableSymlinksRequest = {
   table_id: TableId;
 };
