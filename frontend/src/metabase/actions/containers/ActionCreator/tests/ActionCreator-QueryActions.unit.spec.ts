@@ -103,7 +103,7 @@ describe("ActionCreator > Query Actions", () => {
       it("should preselect model", async () => {
         const MODEL_NAME = "Awesome Model";
         const model = createMockCard({
-          type: "model",
+          type: "card-type/model",
           can_write: true,
           name: MODEL_NAME,
         });

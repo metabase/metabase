@@ -95,7 +95,7 @@ describe(
               query: {
                 "source-table": tableId,
               },
-              type: "question",
+              type: "card-type/question",
             },
             {
               wrapId: true,

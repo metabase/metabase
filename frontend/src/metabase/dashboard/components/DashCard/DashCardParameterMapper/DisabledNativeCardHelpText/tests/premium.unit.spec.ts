@@ -35,14 +35,14 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE with token)",
   });
 
   it("should show a model help link when `show-metabase-links: true`", () => {
-    setup({ cardType: "model", showMetabaseLinks: true });
+    setup({ cardType: "card-type/model", showMetabaseLinks: true });
 
     expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
     expect(screen.getByText("Learn more")).toBeInTheDocument();
   });
 
   it("should not show a model help link when `show-metabase-links: false`", () => {
-    setup({ cardType: "model", showMetabaseLinks: false });
+    setup({ cardType: "card-type/model", showMetabaseLinks: false });
 
     expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
     expect(screen.queryByText("Learn more")).not.toBeInTheDocument();

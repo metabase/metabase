@@ -55,7 +55,7 @@ export function BrowseMetrics() {
 
   const newMetricLink = Urls.newQuestion({
     mode: "query",
-    cardType: "metric",
+    cardType: "card-type/metric",
   });
 
   const databases = data?.data ?? [];

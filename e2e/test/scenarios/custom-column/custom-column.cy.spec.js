@@ -1582,7 +1582,7 @@ describe("scenarios > question > custom column > path", () => {
           ],
         },
       },
-      type: "model",
+      type: "card-type/model",
     };
 
     H.createQuestion(questionDetails, {
@@ -2131,7 +2131,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       }).then((res) => {
         H.visitQuestionAdhoc(
           {
-            type: "question",
+            type: "card-type/question",
             dataset_query: {
               type: "query",
               database: SAMPLE_DB_ID,

@@ -101,7 +101,7 @@ export const useCommandPaletteBasicActions = ({
               Urls.newQuestion({
                 mode: "notebook",
                 creationType: "custom_question",
-                cardType: "question",
+                cardType: "card-type/question",
                 collectionId,
               }),
             ),
@@ -123,7 +123,7 @@ export const useCommandPaletteBasicActions = ({
               Urls.newQuestion({
                 DEPRECATED_RAW_MBQL_type: "native",
                 creationType: "native_question",
-                cardType: "question",
+                cardType: "card-type/question",
               }),
             ),
           );
@@ -187,7 +187,7 @@ export const useCommandPaletteBasicActions = ({
             push(
               Urls.newQuestion({
                 mode: "query",
-                cardType: "metric",
+                cardType: "card-type/metric",
                 collectionId,
               }),
             ),

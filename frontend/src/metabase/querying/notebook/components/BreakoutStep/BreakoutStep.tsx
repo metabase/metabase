@@ -16,7 +16,7 @@ export function BreakoutStep({
   updateQuery,
 }: NotebookStepProps) {
   const { question, stageIndex } = step;
-  const isMetric = question.type() === "metric";
+  const isMetric = question.type() === "card-type/metric";
 
   const breakouts = useMemo(
     () => Lib.breakouts(query, stageIndex),

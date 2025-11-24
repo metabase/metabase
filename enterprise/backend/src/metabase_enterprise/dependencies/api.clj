@@ -13,6 +13,7 @@
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
@@ -370,8 +371,7 @@
    [:id ms/PositiveInt]
    [:type (ms/enum-decode-keyword (vec (keys entity-model)))]
    [:dependent_type (ms/enum-decode-keyword (vec (keys entity-model)))]
-   [:dependent_card_type {:optional true} (ms/enum-decode-keyword
-                                           [:question :model :metric])]
+   [:dependent_card_type {:optional true} [:ref ::lib.schema.metadata/card.type]]
    [:archived {:optional true} :boolean]])
 
 (api.macros/defendpoint :get "/graph/dependents"

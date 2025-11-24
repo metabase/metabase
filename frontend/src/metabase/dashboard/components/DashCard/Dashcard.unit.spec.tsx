@@ -315,7 +315,7 @@ describe("DashCard", () => {
           ],
           card: createMockCard({
             name: "Hello I'm a card",
-            type: "question",
+            type: "card-type/question",
             id: 49,
           }),
           visualization_settings: {

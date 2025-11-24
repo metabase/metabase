@@ -41,7 +41,7 @@ describe("issue 19180", () => {
 
   it("shouldn't drop native model query results after leaving the query editor", () => {
     H.createNativeQuestion(QUESTION).then(({ body: { id: QUESTION_ID } }) => {
-      cy.request("PUT", `/api/card/${QUESTION_ID}`, { type: "model" }).then(
+      cy.request("PUT", `/api/card/${QUESTION_ID}`, { type: "card-type/model" }).then(
         () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");
@@ -209,7 +209,7 @@ describe("issue 20042", () => {
 
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       name: "Orders Model",
-      type: "model",
+      type: "card-type/model",
     });
 
     cy.signIn("nodata");
@@ -236,7 +236,7 @@ describe("issue 20045", () => {
 
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       name: "Orders Model",
-      type: "model",
+      type: "card-type/model",
     });
   });
 
@@ -270,7 +270,7 @@ describe("issue 20517", () => {
       "source-table": ORDERS_ID,
       limit: 5,
     },
-    type: "model",
+    type: "card-type/model",
   };
 
   beforeEach(() => {
@@ -309,7 +309,7 @@ describe("issue 20624", { tags: "@skip" }, () => {
 
   const questionDetails = {
     name: "20624",
-    type: "model",
+    type: "card-type/model",
     native: { query: "select * from PRODUCTS limit 2" },
     visualization_settings: {
       column_settings: { '["name","TITLE"]': { column_title: renamedColumn } },
@@ -408,7 +408,7 @@ describe("issue 22517", () => {
       {
         name: "22517",
         native: { query: "select * from orders" },
-        type: "model",
+        type: "card-type/model",
       },
       { visitQuestion: true },
     );
@@ -467,7 +467,7 @@ describe("issue 22518", () => {
         native: {
           query: "select 1 id, 'a' foo",
         },
-        type: "model",
+        type: "card-type/model",
       },
       { visitQuestion: true },
     );
@@ -557,7 +557,7 @@ describe("filtering based on the remapped column name should result in a correct
       H.visitQuestion(id);
 
       // Turn the question into a model
-      cy.request("PUT", `/api/card/${id}`, { type: "model" });
+      cy.request("PUT", `/api/card/${id}`, { type: "card-type/model" });
 
       // Let's go straight to the model metadata editor
       cy.visit(`/model/${id}/columns`);
@@ -633,7 +633,7 @@ describe("issue 23024", () => {
           query: `select *
                   from products limit 5`,
         },
-        type: "model",
+        type: "card-type/model",
       },
       { wrapId: true, idAlias: "modelId" },
     );
@@ -682,7 +682,7 @@ describe("issue 23421", () => {
       "table.pivot_column": "orphaned1",
       "table.cell_column": "orphaned2",
     },
-    type: "model",
+    type: "card-type/model",
   };
 
   const hiddenColumnsModelDetails = {
@@ -708,7 +708,7 @@ describe("issue 23421", () => {
       "table.pivot_column": "orphaned1",
       "table.cell_column": "orphaned2",
     },
-    type: "model",
+    type: "card-type/model",
   };
 
   beforeEach(() => {
@@ -792,7 +792,7 @@ describe("issue 25537", () => {
   const questionDetails = {
     name: "Orders model",
     query: { "source-table": ORDERS_ID },
-    type: "model",
+    type: "card-type/model",
   };
   const setLocale = (locale) => {
     cy.request("GET", "/api/user/current").then(({ body: { id: user_id } }) => {
@@ -823,7 +823,7 @@ describe("issue 26091", () => {
   const modelDetails = {
     name: "Old model",
     query: { "source-table": PRODUCTS_ID },
-    type: "model",
+    type: "card-type/model",
   };
 
   const startNewQuestion = () => {
@@ -881,7 +881,7 @@ describe("issue 28193", () => {
     cy.signInAsAdmin();
 
     // Turn the question into a model
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
   });
 
   it("should be able to use custom column in a model query (metabase#28193)", () => {
@@ -975,7 +975,7 @@ describe("issue 29378", () => {
   });
 
   it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     H.createAction(ACTION_DETAILS);
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
@@ -1020,7 +1020,7 @@ function selectModelColumn(column) {
 describe("issue 29517 - nested question based on native model with remapped values", () => {
   const questionDetails = {
     name: "29517",
-    type: "model",
+    type: "card-type/model",
     native: {
       query:
         'Select Orders."ID" AS "ID",\nOrders."CREATED_AT" AS "CREATED_AT"\nFrom Orders',
@@ -1126,7 +1126,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 describe("issue 53556 - nested question based on native model with remapped values", () => {
   const questionDetails = {
     name: "53556",
-    type: "model",
+    type: "card-type/model",
     native: {
       query:
         "Select " +
@@ -1322,7 +1322,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
 describe("issue 52465 - model with linked columns can still be aggregated", () => {
   const questionDetails = {
     name: "52465",
-    type: "model",
+    type: "card-type/model",
     native: {
       query: `
 SELECT
@@ -1378,7 +1378,7 @@ FROM
 describe("issue 53604 - nested native question with multiple breakouts on same column", () => {
   const questionDetails = {
     name: "53604 base",
-    type: "question",
+    type: "card-type/question",
     native: {
       query: "select ID, CREATED_AT from ORDERS",
       "template-tags": {},
@@ -1395,7 +1395,7 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
       }
       H.createQuestion(
         {
-          type: "question",
+          type: "card-type/question",
           name: "53604",
           query: {
             "source-table": `card__${id}`,
@@ -1464,7 +1464,7 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
 describe("issue 54108 - nested question broken out by day", () => {
   const questionDetails = {
     name: "54108 base",
-    type: "question",
+    type: "card-type/question",
     native: {
       query: "select ID, CREATED_AT from ORDERS",
       "template-tags": {},
@@ -1478,7 +1478,7 @@ describe("issue 54108 - nested question broken out by day", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.createQuestion(
         {
-          type: "question",
+          type: "card-type/question",
           name: "54108",
           query: {
             "source-table": `card__${id}`,
@@ -1531,7 +1531,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
       },
       limit: 2,
     },
-    type: "model",
+    type: "card-type/model",
   };
   const removeExpression = (name) => {
     H.getNotebookStep("expression")
@@ -1598,7 +1598,7 @@ describe("issue 31309", () => {
         name: "model",
         query: TEST_QUERY,
         database: SAMPLE_DB_ID,
-        type: "model",
+        type: "card-type/model",
       },
       {
         visitQuestion: true,
@@ -1653,7 +1653,7 @@ describe("issue 31663", () => {
     H.createQuestion(
       {
         name: "Products Model",
-        type: "model",
+        type: "card-type/model",
         query: { "source-table": PRODUCTS_ID },
       },
       { visitQuestion: true },
@@ -1695,7 +1695,7 @@ describe("issue 31905", () => {
     H.createQuestion(
       {
         name: "Orders Model",
-        type: "model",
+        type: "card-type/model",
         query: { "source-table": ORDERS_ID, limit: 2 },
       },
       { visitQuestion: true },
@@ -1760,7 +1760,7 @@ describe("issue 32483", () => {
 
     cy.get("@questionId").then((questionId) => {
       const modelDetails = {
-        type: "model",
+        type: "card-type/model",
         name: "Orders + People Question Model",
         query: {
           "source-table": ORDERS_ID,
@@ -1875,7 +1875,7 @@ describe("issue 32963", () => {
     H.createQuestion(
       {
         name: "Orders Model",
-        type: "model",
+        type: "card-type/model",
         query: { "source-table": ORDERS_ID },
       },
       { visitQuestion: true },
@@ -1916,7 +1916,7 @@ describe("issues 35039 and 37009", () => {
 
   const cardDetails = {
     name: "35039",
-    type: "model",
+    type: "card-type/model",
     native: { query },
     visualization_settings: {},
   };
@@ -2040,13 +2040,13 @@ describe("issue 40252", () => {
   const modelA = {
     name: "Model A",
     native: { query: "select 1 as a1, 2 as a2" },
-    type: "model",
+    type: "card-type/model",
   };
 
   const modelB = {
     name: "Model B",
     native: { query: "select 1 as b1, 2 as b2" },
-    type: "model",
+    type: "card-type/model",
   };
 
   beforeEach(() => {
@@ -2062,7 +2062,7 @@ describe("issue 40252", () => {
       cy.get("@modelB").then((modelBId) => {
         const questionDetails = {
           name: "40252",
-          type: "model",
+          type: "card-type/model",
           query: {
             joins: [
               {
@@ -2130,7 +2130,7 @@ describe("issue 42355", () => {
 
   it("should allow overriding database fields for models with manually ordered columns (metabase#42355)", () => {
     H.createNativeQuestion({
-      type: "model",
+      type: "card-type/model",
       native: { query: "SELECT ID, PRODUCT_ID FROM ORDERS" },
       visualization_settings: {
         "table.columns": [
@@ -2228,7 +2228,7 @@ describe("cumulative count - issue 33330", () => {
 describe("issue 45926", () => {
   const questionDetails = {
     name: "33330",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
     },

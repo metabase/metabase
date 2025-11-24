@@ -165,9 +165,10 @@
 
 (def ^:private card-type->rv-model
   "Mapping from report_card.type to rv-model keyword."
-  {"model"    :dataset
-   "question" :card
-   "metric"   :metric})
+  {"model"         :dataset
+   "question"      :card
+   "table-symlink" :card ; TODO (Cam 2025-11-20) not sure if this makes sense or if it should be mapped to `:table`
+   "metric"        :metric})
 
 (def ^:private rv-model->card-type
   "Mapping from rv-model keyword to report_card.type string."

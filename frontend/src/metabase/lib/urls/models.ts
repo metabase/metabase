@@ -27,7 +27,7 @@ export function metric(
 }
 
 export function modelDetail(card: CardOrSearchResult, tab = "") {
-  const baseUrl = `${model({ ...card, type: "model" })}/detail`;
+  const baseUrl = `${model({ ...card, type: "card-type/model" })}/detail`;
   return tab ? `${baseUrl}/${tab}` : baseUrl;
 }
 

@@ -400,7 +400,7 @@ describe("scenarios > dashboard", () => {
         H.createQuestionAndDashboard({
           questionDetails: {
             name: "orders",
-            type: "model",
+            type: "card-type/model",
             query: {
               "source-table": ORDERS_ID,
             },
@@ -425,7 +425,7 @@ describe("scenarios > dashboard", () => {
         H.createQuestionAndDashboard({
           questionDetails: {
             name: "orders",
-            type: "metric",
+            type: "card-type/metric",
             query: {
               "source-table": ORDERS_ID,
               aggregation: [["count"]],

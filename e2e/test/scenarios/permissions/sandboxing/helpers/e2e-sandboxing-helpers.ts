@@ -79,7 +79,7 @@ export const modelCustomView: StructuredQuestionDetails = {
     ...baseQuery,
     filter: gizmoFilter,
   },
-  type: "model",
+  type: "card-type/model",
 };
 
 const customViews = [questionCustomView, modelCustomView];
@@ -92,7 +92,7 @@ const savedQuestion: StructuredQuestionDetails = {
 const model: StructuredQuestionDetails = {
   name: "Model showing all products",
   query: baseQuery,
-  type: "model",
+  type: "card-type/model",
 };
 
 const ordersJoinedToProducts: StructuredQuestionDetails = {
@@ -248,7 +248,7 @@ export const createSandboxingDashboardAndQuestions = () => {
             cy.request("POST", "/api/card", {
               ...body,
               name: "Model with custom columns",
-              type: "model",
+              type: "card-type/model",
             }).then(({ body }) => {
               H.addQuestionToDashboard({
                 cardId: body.id,

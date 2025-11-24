@@ -91,7 +91,7 @@ export const Onboarding = () => {
     mode: "notebook",
     creationType: "custom_question",
     collectionId: "root",
-    cardType: "question",
+    cardType: "card-type/question",
   });
 
   const lastUsedDatabaseId = useSelector((state) =>
@@ -102,7 +102,7 @@ export const Onboarding = () => {
     DEPRECATED_RAW_MBQL_type: "native",
     creationType: "native_question",
     collectionId: "root",
-    cardType: "question",
+    cardType: "card-type/question",
     DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
   });
 

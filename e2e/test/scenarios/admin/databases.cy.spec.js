@@ -807,7 +807,7 @@ describe("scenarios > admin > databases > sample database", () => {
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     // model
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "card-type/model" });
     // Create a segment through API
     H.createSegment({
       name: "Small orders",
@@ -824,7 +824,7 @@ describe("scenarios > admin > databases > sample database", () => {
     H.createQuestion({
       name: "Revenue",
       description: "Sum of orders subtotal",
-      type: "metric",
+      type: "card-type/metric",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],

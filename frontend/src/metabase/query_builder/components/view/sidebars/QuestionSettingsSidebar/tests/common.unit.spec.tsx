@@ -10,18 +10,18 @@ describe("QuestionSettingsSidebar", () => {
   });
 
   it("should show a model title for models", () => {
-    setup({ card: createMockCard({ type: "model" }) });
+    setup({ card: createMockCard({ type: "card-type/model" }) });
     expect(screen.getByText("Model settings")).toBeInTheDocument();
   });
 
   it("should show a metrics title for metrics", () => {
-    setup({ card: createMockCard({ type: "metric" }) });
+    setup({ card: createMockCard({ type: "card-type/metric" }) });
     expect(screen.getByText("Metric settings")).toBeInTheDocument();
   });
 
   describe("caching", () => {
     const model = createMockCard({
-      type: "model",
+      type: "card-type/model",
       description: "abc",
       persisted: true,
     });

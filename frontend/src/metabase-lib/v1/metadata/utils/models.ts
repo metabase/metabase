@@ -108,7 +108,7 @@ export function isAdHocModelOrMetricQuestion(
     question &&
     originalQuestion &&
     question.id() === originalQuestion.id() &&
-    (question.type() !== "question" || originalQuestion.type() !== "question")
+    (question.type() !== "card-type/question" || originalQuestion.type() !== "card-type/question")
   ) {
     return Lib.areLegacyQueriesEqual(
       question.datasetQuery(),

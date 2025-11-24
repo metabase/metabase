@@ -29,7 +29,7 @@ export const getNewQuestionUrl = ({
   return Urls.newQuestion({
     ...newQuestionParams,
     collectionId: dashboard?.collection_id || undefined,
-    cardType: "question",
+    cardType: "card-type/question",
     dashboardId: dashboard?.id,
   });
 };

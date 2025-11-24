@@ -150,7 +150,7 @@ describe("issue 34414", () => {
   const INVOICE_MODEL_DETAILS = {
     name: "Invoices Model",
     query: { "source-table": INVOICES_ID },
-    type: "model",
+    type: "card-type/model",
   };
 
   beforeEach(() => {
@@ -321,7 +321,7 @@ describe("issue 39102", () => {
       filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1000],
       aggregation: ["count"],
     },
-    type: "question",
+    type: "card-type/question",
   };
 
   beforeEach(() => {
@@ -690,7 +690,7 @@ describe("issue 42957", () => {
   it("does not show collections that contain models from different tabs (metabase#42957)", () => {
     H.createQuestion({
       name: "Model",
-      type: "model",
+      type: "card-type/model",
       query: {
         "source-table": ORDERS_ID,
       },
@@ -705,7 +705,7 @@ describe("issue 42957", () => {
     cy.get("@collectionId").then((collectionId) => {
       H.createQuestion({
         name: "Question",
-        type: "question",
+        type: "card-type/question",
         query: {
           "source-table": ORDERS_ID,
         },
@@ -1744,7 +1744,7 @@ describe("issue 45063", () => {
   function createGuiModel({ sourceTableId }) {
     const mbqlModelDetails = {
       name: "Model",
-      type: "model",
+      type: "card-type/model",
       query: {
         "source-table": sourceTableId,
       },
@@ -1760,7 +1760,7 @@ describe("issue 45063", () => {
   }) {
     const nativeModelDetails = {
       name: "Native Model",
-      type: "model",
+      type: "card-type/model",
       native: {
         query: `SELECT * FROM ${tableName}`,
       },
@@ -2581,7 +2581,7 @@ describe("issue 32499", () => {
     H.createQuestion(
       {
         name: "Model",
-        type: "model",
+        type: "card-type/model",
         query: {
           "source-table": ORDERS_ID,
           fields: [
@@ -2755,7 +2755,7 @@ describe("issue 51856", () => {
 
   const q1Details = {
     name: "Issue 51856 Q1",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": ORDERS_ID,
       joins: [
@@ -2858,7 +2858,7 @@ describe("issue 33972", () => {
 
   const queryDetails = {
     name: "Issue 33972",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": ORDERS_ID,
       fields: [
@@ -3072,7 +3072,7 @@ describe("Issue 48771", () => {
 
     H.createNativeQuestion({
       name: MODEL_NAME,
-      type: "model",
+      type: "card-type/model",
       native: {
         database: SAMPLE_DB_ID,
         query: "SELECT 1 AS ID",
@@ -3080,7 +3080,7 @@ describe("Issue 48771", () => {
     }).then(({ body: model }) => {
       H.createQuestion(
         {
-          type: "question",
+          type: "card-type/question",
           query: {
             filter: [
               ">=",

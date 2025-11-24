@@ -17,7 +17,7 @@ export function suggestMetrics({ expressionMode, query, stageIndex }: Options) {
   const metrics = Lib.availableMetrics(query, stageIndex)?.map((metric) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
     return {
-      type: "metric",
+      type: "card-type/metric",
       displayLabel: displayInfo.longDisplayName,
       label: formatIdentifier(displayInfo.longDisplayName),
       icon: "metric" as const,

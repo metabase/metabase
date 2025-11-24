@@ -160,7 +160,7 @@ export function QueryModals({
       },
     ) => {
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
-      const isModel = newQuestion.type() === "model";
+      const isModel = newQuestion.type() === "card-type/model";
 
       if (isDashboardQuestion) {
         navigateToDashboardQuestionDashboard(

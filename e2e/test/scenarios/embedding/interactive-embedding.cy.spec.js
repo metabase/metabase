@@ -328,7 +328,7 @@ describe("scenarios > embedding > full app", () => {
   describe("notebook simple data picker", () => {
     const ordersCardDetails = {
       name: "Card",
-      type: "question",
+      type: "card-type/question",
       query: {
         "source-table": ORDERS_ID,
       },
@@ -649,7 +649,7 @@ describe("scenarios > embedding > full app", () => {
       it("should select a data source in the root collection", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: null,
         };
         H.createQuestion(cardDetails);
@@ -795,7 +795,7 @@ describe("scenarios > embedding > full app", () => {
   describe("notebook multi-stage data picker", () => {
     const ordersCardDetails = {
       name: "Card",
-      type: "question",
+      type: "card-type/question",
       query: {
         "source-table": ORDERS_ID,
       },
@@ -803,7 +803,7 @@ describe("scenarios > embedding > full app", () => {
 
     const ordersCountCardDetails = {
       name: "Card",
-      type: "question",
+      type: "card-type/question",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
@@ -1076,7 +1076,7 @@ describe("scenarios > embedding > full app", () => {
       it("should be able to join a model when the data source is a table", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: FIRST_COLLECTION_ID,
         };
         H.createQuestion(cardDetails);
@@ -1088,7 +1088,7 @@ describe("scenarios > embedding > full app", () => {
         goBackToBucketStep();
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardtype: "card-type/model",
           collectionNames: ["First collection"],
         });
         clickOnJoinDataSource(cardDetails.name);
@@ -1125,14 +1125,14 @@ describe("scenarios > embedding > full app", () => {
       it("should select a data source in the root collection", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: null,
         };
         H.createQuestion(cardDetails);
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: [],
         });
         clickOnDataSource(ordersCardDetails.name);
@@ -1145,14 +1145,14 @@ describe("scenarios > embedding > full app", () => {
       it("should select a data source in a regular collection", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: FIRST_COLLECTION_ID,
         };
         H.createQuestion(cardDetails);
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: ["First collection"],
         });
         clickOnDataSource(ordersCardDetails.name);
@@ -1165,14 +1165,14 @@ describe("scenarios > embedding > full app", () => {
       it("should select a data source in a nested collection", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: SECOND_COLLECTION_ID,
         };
         H.createQuestion(cardDetails);
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: ["First collection", "Second collection"],
         });
         clickOnDataSource(ordersCardDetails.name);
@@ -1185,14 +1185,14 @@ describe("scenarios > embedding > full app", () => {
       it("should select a data source in a personal collection", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: NORMAL_PERSONAL_COLLECTION_ID,
         };
         H.createQuestion(cardDetails);
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: ["Your personal collection"],
         });
         clickOnDataSource(ordersCardDetails.name);
@@ -1206,14 +1206,14 @@ describe("scenarios > embedding > full app", () => {
         cy.signInAsAdmin();
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: NORMAL_PERSONAL_COLLECTION_ID,
         };
         H.createQuestion(cardDetails);
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: [
             "All personal collections",
             "Robert Tableton's Personal Collection",
@@ -1229,7 +1229,7 @@ describe("scenarios > embedding > full app", () => {
       it("should select a data source when there is no access to the root collection", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: FIRST_COLLECTION_ID,
         };
 
@@ -1244,7 +1244,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: ["First collection"],
         });
         clickOnDataSource(ordersCardDetails.name);
@@ -1257,7 +1257,7 @@ describe("scenarios > embedding > full app", () => {
       it("should select a data source when there is no access to the immediate parent collection", () => {
         const cardDetails = {
           ...ordersCardDetails,
-          type: "model",
+          type: "card-type/model",
           collection_id: THIRD_COLLECTION_ID,
         };
 
@@ -1274,7 +1274,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: cardDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: ["Third collection"],
         });
         clickOnDataSource(ordersCardDetails.name);
@@ -1290,7 +1290,7 @@ describe("scenarios > embedding > full app", () => {
         const ordersCountModelDetails = {
           ...ordersCountCardDetails,
           name: "Orders Count Model",
-          type: "model",
+          type: "card-type/model",
           collection_id: null,
         };
         H.createQuestion(ordersCountModelDetails);
@@ -1298,7 +1298,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: [],
         });
 
@@ -1306,7 +1306,7 @@ describe("scenarios > embedding > full app", () => {
         goBackToBucketStep("from-model");
         selectCard({
           cardName: ordersCountModelDetails.name,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: [],
         });
 
@@ -1328,7 +1328,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
-          cardType: "model",
+          cardType: "card-type/model",
           collectionNames: [],
         });
 
@@ -1351,7 +1351,7 @@ describe("scenarios > embedding > full app", () => {
       beforeEach(() => {
         const cardDetails = {
           ...ordersCountCardDetails,
-          type: "metric",
+          type: "card-type/metric",
           collection_id: null,
         };
         H.createQuestion(cardDetails);

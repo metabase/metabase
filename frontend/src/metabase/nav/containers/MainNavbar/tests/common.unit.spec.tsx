@@ -343,7 +343,7 @@ describe("nav > containers > MainNavbar", () => {
     it("should highlight model's collection when on model detail page", async () => {
       const model = createMockCard({
         collection_id: TEST_COLLECTION.id as number,
-        type: "model",
+        type: "card-type/model",
       });
       await setup({
         route: "/model/:slug/detail",

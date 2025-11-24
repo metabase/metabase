@@ -43,7 +43,7 @@ describe("QuestionSettingsSidebar", () => {
 
   describe("model caching", () => {
     const model = createMockCard({
-      type: "model",
+      type: "card-type/model",
       persisted: true,
       description: "abc",
     });

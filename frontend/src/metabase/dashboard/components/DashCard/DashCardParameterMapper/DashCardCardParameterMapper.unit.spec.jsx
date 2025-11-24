@@ -341,7 +341,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should render an error state when mapping to a native model", () => {
     const card = createMockCard({
-      type: "model",
+      type: "card-type/model",
       dataset_query: createMockNativeDatasetQuery({
         native: {
           query: "SELECT * FROM ORDERS",

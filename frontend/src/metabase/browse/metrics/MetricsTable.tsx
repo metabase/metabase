@@ -189,7 +189,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       }
 
       const { id, name } = metric;
-      const url = Urls.metric({ id, name, type: "metric" });
+      const url = Urls.metric({ id, name, type: "card-type/metric" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       // TODO: metabase/metabse#47713
@@ -242,7 +242,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
       <MaybeItemLink
         to={
           metric
-            ? Urls.metric({ id: metric.id, name: metric.name, type: "metric" })
+            ? Urls.metric({ id: metric.id, name: metric.name, type: "card-type/metric" })
             : undefined
         }
         style={{

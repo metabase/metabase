@@ -114,7 +114,7 @@ describe("collection permissions", () => {
                   cy.skipOn(user === "nodata");
                   H.createNativeQuestion({
                     name: "Model",
-                    type: "model",
+                    type: "card-type/model",
                     native: {
                       query: "SELECT 1",
                     },

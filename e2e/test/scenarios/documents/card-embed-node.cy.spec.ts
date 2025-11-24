@@ -652,7 +652,7 @@ function assertFlexContainerCardsOrder(expectedCardTitles: string[]) {
 
 function addNewStandaloneCard(
   cardName: string,
-  cardType: "question" | "model",
+  cardType: "card-type/question" | "card-type/model",
 ) {
   cy.get(".node-paragraph.is-empty").click();
   H.addToDocument("/", false);

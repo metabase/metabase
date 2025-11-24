@@ -387,13 +387,13 @@ describe("useCardTagCompletion", () => {
     {
       id: 51,
       name: "Foo Bar",
-      type: "question",
+      type: "card-type/question",
       collection_name: "Custom collection",
     },
     {
       id: 42,
       name: "Bar Baz",
-      type: "metric",
+      type: "card-type/metric",
       collection_name: "Custom collection",
     },
   ];

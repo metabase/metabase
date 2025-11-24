@@ -182,7 +182,7 @@ export function getModerationTimelineEvents(
 }
 
 export const getQuestionIcon = (card: any) => {
-  return (card.model === "dataset" || card.type === "model") &&
+  return (card.model === "dataset" || card.type === "card-type/model") &&
     card.moderated_status === "verified"
     ? { icon: "model_with_badge" as IconName, tooltip: "Verified model" }
     : null;

@@ -27,7 +27,7 @@ function getSeries(): Series {
           "graph.show_stack_values": "series",
           series_settings: {},
         },
-        type: "question",
+        type: "card-type/question",
       },
       data: {
         rows: [

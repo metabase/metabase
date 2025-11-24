@@ -702,7 +702,7 @@ describe("issue 46845", () => {
     H.createNativeQuestion(
       {
         name: "Model",
-        type: "model",
+        type: "card-type/model",
         native: {
           query:
             "SELECT 1 AS PK, 5 AS FK1, 9 AS FK2 " +
@@ -776,7 +776,7 @@ describe("issue 58829", () => {
     H.createNativeQuestion(
       {
         name: "M1",
-        type: "model",
+        type: "card-type/model",
         native: {
           query: "SELECT 1 AS ID, 2 AS _USER_ID",
         },
@@ -1246,7 +1246,7 @@ UNION ALL
 SELECT 2 AS ID, 3 AS USER_ID
 `,
         },
-        type: "model",
+        type: "card-type/model",
       },
       {},
     ).then(async ({ body: model }) => {

@@ -25,7 +25,7 @@ export const useCreateQuestion = ({
   return useCallback(
     async (newQuestion: Question, options?: OnCreateOptions) => {
       const shouldBePinned =
-        newQuestion.type() === "model" || newQuestion.type() === "metric";
+        newQuestion.type() === "card-type/model" || newQuestion.type() === "card-type/metric";
       const createdQuestion = await dispatch(
         apiCreateQuestion(newQuestion.setPinned(shouldBePinned), options),
       );

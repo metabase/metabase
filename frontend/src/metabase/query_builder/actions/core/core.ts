@@ -184,7 +184,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(setCardAndRun({ ...cardAfterClick, type: "question" }));
+          dispatch(setCardAndRun({ ...cardAfterClick, type: "card-type/question" }));
         }
 
         if (objectId !== undefined) {
@@ -226,7 +226,7 @@ export const apiCreateQuestion = (
     // Saving models with list view setting as a question in not allowed for now,
     // so we change it back to table.
     if (
-      question.type() === "question" &&
+      question.type() === "card-type/question" &&
       submittableQuestion.display() === "list"
     ) {
       submittableQuestion = submittableQuestion.setDisplay("table");
@@ -259,8 +259,8 @@ export const apiCreateQuestion = (
       getMetadata(getState()),
     );
 
-    const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
+    const isModel = question.type() === "card-type/model";
+    const isMetric = question.type() === "card-type/metric";
     if (isModel || isMetric) {
       // composeQuestionAdhoc() returns a question with a 'table' display by default
       const composedQuestion =
@@ -286,8 +286,8 @@ export const apiUpdateQuestion = (
     question = question || getQuestion(getState());
 
     const isResultDirty = getIsResultDirty(getState());
-    const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
+    const isModel = question.type() === "card-type/model";
+    const isMetric = question.type() === "card-type/metric";
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 

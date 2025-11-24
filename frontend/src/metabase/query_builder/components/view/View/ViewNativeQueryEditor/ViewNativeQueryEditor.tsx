@@ -94,7 +94,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   // This check makes it hide the editor in this particular case
   // More details: https://github.com/metabase/metabase/pull/20161
   const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (question.type() === "model" && !isEditable) {
+  if (question.type() === "card-type/model" && !isEditable) {
     return null;
   }
 

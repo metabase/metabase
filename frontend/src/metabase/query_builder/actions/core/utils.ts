@@ -54,8 +54,8 @@ export function getAdHocQuestionWithVizSettings(options: {
 
     // When the dataset query changes, we should change the question type,
     // to start building a new ad-hoc question based on a dataset
-    if (question.type() === "model" || question.type() === "metric") {
-      question = question.setType("question");
+    if (question.type() === "card-type/model" || question.type() === "card-type/metric") {
+      question = question.setType("card-type/question");
       onCloseQuestionInfo?.();
     }
   }

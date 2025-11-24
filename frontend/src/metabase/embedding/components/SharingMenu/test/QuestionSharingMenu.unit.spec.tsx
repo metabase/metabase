@@ -7,7 +7,7 @@ import { openMenu, setupQuestionSharingMenu } from "./setup";
 describe("QuestionSharingMenu", () => {
   it("should not render anything if the question is a model", async () => {
     setupQuestionSharingMenu({
-      question: { type: "model" },
+      question: { type: "card-type/model" },
     });
     expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
   });

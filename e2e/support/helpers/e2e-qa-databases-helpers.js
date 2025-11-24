@@ -335,7 +335,7 @@ export const createModelFromTableName = ({
         query: {
           "source-table": tableId,
         },
-        type: "model",
+        type: "card-type/model",
       },
       {
         wrapId: true,

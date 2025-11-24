@@ -610,7 +610,7 @@ function createTableBasedQuestion({
 }) {
   return createTableBasedCard({
     name,
-    type: "question",
+    type: "card-type/question",
     tableId,
     collectionId: collectionId,
     dashboardId,
@@ -628,7 +628,7 @@ function createTableBasedModel({
 }) {
   return createTableBasedCard({
     name,
-    type: "model",
+    type: "card-type/model",
     tableId,
     collectionId,
   });
@@ -656,7 +656,7 @@ function createCardBasedCard({
 function createCardBasedQuestion({ cardId }: { cardId: CardId }) {
   return createCardBasedCard({
     name: CARD_BASED_QUESTION_NAME,
-    type: "question",
+    type: "card-type/question",
     cardId,
   });
 }
@@ -664,7 +664,7 @@ function createCardBasedQuestion({ cardId }: { cardId: CardId }) {
 function createCardBasedModel({ cardId }: { cardId: CardId }) {
   return createCardBasedCard({
     name: CARD_BASED_MODEL_NAME,
-    type: "model",
+    type: "card-type/model",
     cardId,
   });
 }
@@ -700,7 +700,7 @@ function createMetricBasedQuestion({
 }) {
   return createMetricBasedCard({
     name: METRIC_BASED_QUESTION_NAME,
-    type: "question",
+    type: "card-type/question",
     tableId,
     metricId,
   });
@@ -715,7 +715,7 @@ function createMetricBasedModel({
 }) {
   return createMetricBasedCard({
     name: METRIC_BASED_MODEL_NAME,
-    type: "model",
+    type: "card-type/model",
     tableId,
     metricId,
   });
@@ -765,7 +765,7 @@ function createSnippetBasedQuestion({
 }) {
   return createSnippetBasedCard({
     name: SNIPPET_BASED_QUESTION_NAME,
-    type: "question",
+    type: "card-type/question",
     tableName,
     snippetId,
     snippetName,
@@ -783,7 +783,7 @@ function createSnippetBasedModel({
 }) {
   return createSnippetBasedCard({
     name: SNIPPET_BASED_MODEL_NAME,
-    type: "model",
+    type: "card-type/model",
     tableName,
     snippetId,
     snippetName,
@@ -793,7 +793,7 @@ function createSnippetBasedModel({
 function createTableBasedMetric({ tableId }: { tableId: TableId }) {
   return H.createQuestion({
     name: TABLE_BASED_METRIC_NAME,
-    type: "metric",
+    type: "card-type/metric",
     database: WRITABLE_DB_ID,
     query: {
       "source-table": tableId,
@@ -805,7 +805,7 @@ function createTableBasedMetric({ tableId }: { tableId: TableId }) {
 function createCardBasedMetric({ cardId }: { cardId: CardId }) {
   return H.createQuestion({
     name: CARD_BASED_METRIC_NAME,
-    type: "metric",
+    type: "card-type/metric",
     database: WRITABLE_DB_ID,
     query: {
       "source-table": `card__${cardId}`,
@@ -823,7 +823,7 @@ function createMetricBasedMetric({
 }) {
   return H.createQuestion({
     name: METRIC_BASED_METRIC_NAME,
-    type: "metric",
+    type: "card-type/metric",
     database: WRITABLE_DB_ID,
     query: {
       "source-table": tableId,

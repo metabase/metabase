@@ -450,7 +450,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
-      type: "model",
+      type: "card-type/model",
       display: "table",
     });
 
@@ -458,7 +458,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       {
         name: "Orders model",
         query: { "source-table": ORDERS_ID },
-        type: "model",
+        type: "card-type/model",
         display: "table",
       },
       { visitQuestion: true },
@@ -739,7 +739,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
         },
-        type: "metric",
+        type: "card-type/metric",
         name: "Revenue",
       },
       {
@@ -777,7 +777,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         {
           name: "Revenue",
           description: "Sum of orders subtotal",
-          type: "metric",
+          type: "card-type/metric",
           query: {
             "source-table": ORDERS_ID,
             aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],

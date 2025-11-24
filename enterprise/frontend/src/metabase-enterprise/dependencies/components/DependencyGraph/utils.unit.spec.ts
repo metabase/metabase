@@ -23,7 +23,7 @@ describe("getNodeIcon", () => {
     {
       node: createMockCardDependencyNode({
         data: createMockCardDependencyNodeData({
-          type: "question",
+          type: "card-type/question",
           display: "pie",
         }),
       }),
@@ -32,7 +32,7 @@ describe("getNodeIcon", () => {
     {
       node: createMockCardDependencyNode({
         data: createMockCardDependencyNodeData({
-          type: "model",
+          type: "card-type/model",
           display: "table",
         }),
       }),
@@ -41,7 +41,7 @@ describe("getNodeIcon", () => {
     {
       node: createMockCardDependencyNode({
         data: createMockCardDependencyNodeData({
-          type: "metric",
+          type: "card-type/metric",
           display: "scalar",
         }),
       }),
@@ -73,7 +73,7 @@ describe("getNodeLink", () => {
       node: createMockCardDependencyNode({
         id: 1,
         data: createMockCardDependencyNodeData({
-          type: "question",
+          type: "card-type/question",
           name: "My question",
         }),
       }),
@@ -86,7 +86,7 @@ describe("getNodeLink", () => {
       node: createMockCardDependencyNode({
         id: 1,
         data: createMockCardDependencyNodeData({
-          type: "model",
+          type: "card-type/model",
           name: "My model",
         }),
       }),
@@ -99,7 +99,7 @@ describe("getNodeLink", () => {
       node: createMockCardDependencyNode({
         id: 1,
         data: createMockCardDependencyNodeData({
-          type: "metric",
+          type: "card-type/metric",
           name: "My metric",
         }),
       }),

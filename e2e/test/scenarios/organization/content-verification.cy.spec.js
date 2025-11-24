@@ -41,7 +41,7 @@ describe("scenarios > premium > content verification", () => {
 
       cy.log("Turn the question into a model and try again");
       cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
-        type: "model",
+        type: "card-type/model",
       });
 
       cy.intercept("POST", "/api/dataset").as("dataset");

@@ -2535,7 +2535,7 @@ describe("issue 38245", () => {
 describe("issue 43154", () => {
   const modelDetails = {
     name: "Model",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
       joins: [
@@ -2559,7 +2559,7 @@ describe("issue 43154", () => {
 
   const questionDetails = (modelId) => ({
     name: "Question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": `card__${modelId}`,
     },
@@ -2567,7 +2567,7 @@ describe("issue 43154", () => {
 
   const questionWithAggregationDetails = (modelId) => ({
     name: "Question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": `card__${modelId}`,
       aggregation: [["count"]],
@@ -2613,7 +2613,7 @@ describe("issue 43154", () => {
 describe("issue 42829", () => {
   const modelDetails = {
     name: "SQL model",
-    type: "model",
+    type: "card-type/model",
     native: {
       query: "SELECT * FROM PEOPLE",
     },
@@ -2627,7 +2627,7 @@ describe("issue 42829", () => {
 
   const getQuestionDetails = (modelId) => ({
     name: "SQL model-based question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": `card__${modelId}`,
       aggregation: [
@@ -2733,7 +2733,7 @@ describe("issue 42829", () => {
 describe("issue 43799", () => {
   const modelDetails = {
     name: "43799",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
       joins: [
@@ -2837,13 +2837,13 @@ describe("issue 43799", () => {
 describe("issue 44288", () => {
   const questionDetails = {
     name: "SQL question",
-    type: "question",
+    type: "card-type/question",
     query: { "source-table": PRODUCTS_ID, limit: 10 },
   };
 
   const modelDetails = {
     name: "SQL model",
-    type: "model",
+    type: "card-type/model",
     native: { query: "SELECT * FROM PRODUCTS LIMIT 10" },
   };
 
@@ -3098,7 +3098,7 @@ describe("issue 44231", () => {
   function getFkCardDetails(type) {
     return {
       name: "Orders",
-      type: "model",
+      type: "card-type/model",
       query: { "source-table": ORDERS_ID },
     };
   }
@@ -3210,7 +3210,7 @@ describe("issue 44231", () => {
 describe("44047", () => {
   const questionDetails = {
     name: "Question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": REVIEWS_ID,
       limit: 100,
@@ -3219,7 +3219,7 @@ describe("44047", () => {
 
   const modelDetails = {
     name: "Model",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": REVIEWS_ID,
       limit: 100,
@@ -3228,7 +3228,7 @@ describe("44047", () => {
 
   const sourceQuestionDetails = {
     name: "Source question",
-    type: "question",
+    type: "card-type/question",
     query: {
       "source-table": REVIEWS_ID,
       fields: [
@@ -3669,7 +3669,7 @@ describe("issue 34955", () => {
 describe("issue 35852", () => {
   const model = {
     name: "35852 - sql",
-    type: "model",
+    type: "card-type/model",
     native: {
       query: "SELECT * FROM PRODUCTS LIMIT 10",
     },
@@ -3963,7 +3963,7 @@ describe("issue 48524", () => {
 describe("issue 32573", () => {
   const modelDetails = {
     name: "M1",
-    type: "model",
+    type: "card-type/model",
     query: {
       "source-table": ORDERS_ID,
       fields: [["field", ORDERS.TAX, null]],
@@ -3986,7 +3986,7 @@ describe("issue 32573", () => {
   function getQuestionDetails(modelId) {
     return {
       name: "Q1",
-      type: "question",
+      type: "card-type/question",
       query: {
         "source-table": `card__${modelId}`,
       },
@@ -5105,7 +5105,7 @@ describe("Issue 60987", () => {
 
     H.createQuestionAndDashboard({
       questionDetails: {
-        type: "question",
+        type: "card-type/question",
         query: {
           "source-table": ORDERS_ID,
           joins: [
@@ -5157,7 +5157,7 @@ describe("Issue 60987", () => {
 
     H.createQuestionAndDashboard({
       questionDetails: {
-        type: "question",
+        type: "card-type/question",
         query: {
           "source-table": ORDERS_ID,
           joins: [
@@ -5214,7 +5214,7 @@ describe("Issue 46767", () => {
 
     H.createQuestionAndDashboard({
       questionDetails: {
-        type: "question",
+        type: "card-type/question",
         query: {
           "source-table": ORDERS_ID,
           joins: [

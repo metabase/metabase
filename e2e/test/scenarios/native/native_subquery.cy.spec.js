@@ -20,7 +20,7 @@ describe("scenarios > question > native subquery", () => {
         native: {
           query: "SELECT id AS another_unique_column_name FROM PEOPLE",
         },
-        type: "model",
+        type: "card-type/model",
       }).then(({ body: { id: questionId2 } }) => {
         const tagName1 = `#${questionId1}-a-people-question`;
         const queryText = `{{${tagName1}}}`;
@@ -61,7 +61,7 @@ describe("scenarios > question > native subquery", () => {
         native: {
           query: "SELECT id FROM PEOPLE",
         },
-        type: "model",
+        type: "card-type/model",
         collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body: { id: questionId2 } }) => {
         // Move question 2 to personal collection

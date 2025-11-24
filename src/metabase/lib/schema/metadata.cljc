@@ -536,7 +536,16 @@
 
 (def card-types
   "Valid Card `:type`s."
-  #{:question :model :metric})
+  #{:card-type/question
+    :card-type/model
+    :card-type/metric
+    #_:card-type/table-symlink})
+
+(defn- normalize-card-type [k]
+  (when-let [k (lib.schema.common/normalize-keyword k)]
+    (if (qualified-keyword? k)
+      k
+      (keyword "card-type" (name k)))))
 
 (mr/def ::card.type
   "All acceptable card types.
@@ -549,8 +558,8 @@
   gradually."
   (into [:enum
          (merge
-          {:decode/json      lib.schema.common/normalize-keyword
-           :decode/normalize lib.schema.common/normalize-keyword}
+          {:decode/json      normalize-card-type
+           :decode/normalize normalize-card-type}
           #?(:clj
              {:api/regex (u.regex/re-or (map name card-types))}))]
         card-types))
@@ -559,8 +568,14 @@
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a
   separate table in the app DB, but now that they're a subtype of Card it's probably not important anymore, we can
   probably just use `:metadata/card` here."
-  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
-   :metadata/segment :metadata/native-query-snippet])
+  [:enum
+   :metadata/database
+   :metadata/table
+   :metadata/column
+   :metadata/card
+   :metadata/metric
+   :metadata/segment
+   :metadata/native-query-snippet])
 
 (mr/def ::lib-or-legacy-column
   "Schema for the maps in card `:result-metadata` and similar. These can be either

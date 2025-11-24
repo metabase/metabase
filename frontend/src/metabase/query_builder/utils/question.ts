@@ -46,7 +46,7 @@ export const isSavedQuestionChanged = (
   return (
     isSavedQuestion &&
     hasUnsavedChanges &&
-    originalQuestion.type() === "question"
+    originalQuestion.type() === "card-type/question"
   );
 };
 

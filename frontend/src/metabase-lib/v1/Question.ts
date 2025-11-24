@@ -237,7 +237,7 @@ class Question {
   }
 
   type(): CardType {
-    return this._card?.type ?? "question";
+    return this._card?.type ?? "card-type/question";
   }
 
   setType(type: CardType) {

@@ -49,9 +49,9 @@ function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
     <ToastRoot>
       <StyledIcon name="collection" />
       {match(type)
-        .with("question", () => jt`Question moved to ${link}`)
-        .with("model", () => jt`Model moved to ${link}`)
-        .with("metric", () => jt`Metric moved to ${link}`)
+        .with("card-type/question", () => jt`Question moved to ${link}`)
+        .with("card-type/model", () => jt`Model moved to ${link}`)
+        .with("card-type/metric", () => jt`Metric moved to ${link}`)
         .exhaustive()}
     </ToastRoot>
   );

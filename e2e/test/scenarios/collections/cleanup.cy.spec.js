@@ -418,7 +418,7 @@ const bulkCreateQuestions = (amount, options, results = []) => {
   return H.createQuestion({
     name: `Bulk question ${amount}`,
     query: { "source-table": STATIC_ORDERS_ID },
-    type: "model",
+    type: "card-type/model",
     ...options,
   }).then((req) => {
     results.push(req.body);

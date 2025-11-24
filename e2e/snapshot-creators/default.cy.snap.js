@@ -279,7 +279,7 @@ describe("snapshots", () => {
     createQuestion({
       name: "Orders Model",
       query: { "source-table": ORDERS_ID },
-      type: "model",
+      type: "card-type/model",
     });
   }
 

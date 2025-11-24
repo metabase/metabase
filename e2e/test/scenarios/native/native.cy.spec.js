@@ -11,7 +11,7 @@ const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
-  type: "metric",
+  type: "card-type/metric",
   description: "A metric",
   query: {
     "source-table": ORDERS_ID,
@@ -892,7 +892,7 @@ describe("scenarios > native question > data reference sidebar", () => {
         name: "Native Products Model",
         description: "A model of the Products table",
         native: { query: "select id as renamed_id from products" },
-        type: "model",
+        type: "card-type/model",
       },
       { visitQuestion: true },
     );

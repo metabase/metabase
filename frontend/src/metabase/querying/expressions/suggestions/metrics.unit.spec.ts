@@ -18,7 +18,7 @@ describe("suggestMetrics", () => {
 
     const METRIC_FOO = createMockCard({
       name: "FOO",
-      type: "metric",
+      type: "card-type/metric",
       table_id: TABLE_ID,
       dataset_query: createMockStructuredDatasetQuery({
         database: DATABASE_ID,
@@ -136,7 +136,7 @@ describe("suggestMetrics", () => {
             icon: "metric",
             label: "[FOO]",
             matches: [[0, 1]],
-            type: "metric",
+            type: "card-type/metric",
           },
         ],
       });

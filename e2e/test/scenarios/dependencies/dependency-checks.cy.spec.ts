@@ -344,7 +344,7 @@ function createMbqlQuestionWithDependentMbqlQuestions() {
 function createSqlModelWithDependentSqlQuestions() {
   H.createNativeQuestion({
     name: "Base model",
-    type: "model",
+    type: "card-type/model",
     native: {
       query: "SELECT ID, TITLE, CATEGORY FROM PRODUCTS",
       "template-tags": {},
@@ -394,7 +394,7 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
       H.getFieldId({ tableId, name: "score" }).then((fieldId) => {
         H.createQuestion({
           name: "Base metric",
-          type: "metric",
+          type: "card-type/metric",
           database: WRITABLE_DB_ID,
           query: {
             "source-table": tableId,

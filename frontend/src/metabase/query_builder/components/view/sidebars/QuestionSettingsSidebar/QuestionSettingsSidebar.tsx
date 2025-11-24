@@ -15,8 +15,8 @@ import { ModelCacheManagementSection } from "../ModelCacheManagementSection";
 
 const getTitle = (question: Question) => {
   return match(question.type())
-    .with("model", () => t`Model settings`)
-    .with("metric", () => t`Metric settings`)
+    .with("card-type/model", () => t`Model settings`)
+    .with("card-type/metric", () => t`Metric settings`)
     .otherwise(() => t`Question settings`);
 };
 
@@ -52,7 +52,7 @@ export const QuestionSettingsSidebar = ({
         isOpen={isOpen}
         data-testid="question-settings-sidebar"
       >
-        {question.type() === "model" && (
+        {question.type() === "card-type/model" && (
           <SidesheetCard title={t`Caching`}>
             <ModelCacheManagementSection model={question} />
           </SidesheetCard>
@@ -96,7 +96,7 @@ export const shouldShowQuestionSettingsSidebar = (question: Question) => {
     PLUGIN_CACHING.hasQuestionCacheSection(question);
 
   const isCacheableModel =
-    question.type() === "model" &&
+    question.type() === "card-type/model" &&
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
     question.canWrite() &&
     !question.isArchived();

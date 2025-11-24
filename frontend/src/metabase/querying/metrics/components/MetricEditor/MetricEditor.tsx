@@ -49,7 +49,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
     ref,
   ) {
     const [modalType, setModalType] = useState<MetricModalType>();
-    const isRunnable = Lib.canRun(question.query(), "metric");
+    const isRunnable = Lib.canRun(question.query(), "card-type/metric");
     const {
       checkData,
       isConfirmationShown,

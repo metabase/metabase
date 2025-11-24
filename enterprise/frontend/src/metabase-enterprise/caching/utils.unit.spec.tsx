@@ -26,12 +26,12 @@ describe("hasQuestionCacheSection", () => {
   }
 
   it("should not have the cache section for models", () => {
-    const question = setup({ type: "model" });
+    const question = setup({ type: "card-type/model" });
     expect(hasQuestionCacheSection(question)).toBe(false);
   });
 
   it("should have the cache section for metrics", () => {
-    const question = setup({ type: "metric" });
+    const question = setup({ type: "card-type/metric" });
     expect(hasQuestionCacheSection(question)).toBe(true);
   });
 

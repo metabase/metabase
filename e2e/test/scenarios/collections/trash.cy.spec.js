@@ -19,7 +19,7 @@ describe("scenarios > collections > trash", () => {
     createCollection({ name: "Collection A" }, true);
     createNativeQuestion(
       {
-        type: "model",
+        type: "card-type/model",
         name: "Model A",
         native: { query: "select * from products limit 5" },
       },

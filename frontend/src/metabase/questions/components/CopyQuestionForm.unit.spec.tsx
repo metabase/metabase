@@ -97,7 +97,7 @@ describe("CopyQuestionForm", () => {
   });
 
   it("should not show the dashboard tab input for models other than question", async () => {
-    setup({ model: "model" });
+    setup({ model: "card-type/model" });
     expect(
       await screen.findByText(/Where do you want to save this/),
     ).toBeInTheDocument();

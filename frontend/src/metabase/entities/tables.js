@@ -281,7 +281,7 @@ const Tables = createEntity({
       if (state[virtualTableId]) {
         const virtualTable = state[virtualTableId];
         const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
-          isDatasets: card.type === "model",
+          isDatasets: card.type === "card-type/model",
         });
         const virtualSchemaName = getCollectionVirtualSchemaName(
           card.collection,

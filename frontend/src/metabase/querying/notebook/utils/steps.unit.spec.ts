@@ -64,7 +64,7 @@ const getMetricStepsForMBQLQuery = (query: StructuredQueryObject) => {
   const question = Question.create({
     metadata,
     dataset_query: { database: database.id, type: "query", query },
-    cardType: "metric",
+    cardType: "card-type/metric",
   });
   return getQuestionSteps(question, metadata, {});
 };

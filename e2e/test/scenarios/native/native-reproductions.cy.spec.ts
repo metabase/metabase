@@ -164,7 +164,7 @@ describe("issue 49454", () => {
 
     H.createQuestion({
       name: "Test Metric 49454",
-      type: "metric",
+      type: "card-type/metric",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
@@ -172,7 +172,7 @@ describe("issue 49454", () => {
     });
     H.createQuestion({
       name: "Test Question 49454",
-      type: "question",
+      type: "card-type/question",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

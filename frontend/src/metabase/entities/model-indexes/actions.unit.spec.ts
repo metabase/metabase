@@ -20,7 +20,7 @@ const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
 
 const createModelWithResultMetadata = (fields: Field[]) => {
   return new Question(
-    createMockCard({ result_metadata: fields, type: "model" }),
+    createMockCard({ result_metadata: fields, type: "card-type/model" }),
   );
 };
 

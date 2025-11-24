@@ -55,7 +55,7 @@ export function createMockCardDependencyNodeData(
   return {
     name: "Card",
     description: null,
-    type: "question",
+    type: "card-type/question",
     display: "table",
     dashboard_id: 1,
     collection_id: null,

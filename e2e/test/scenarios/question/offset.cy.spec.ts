@@ -1247,7 +1247,7 @@ describe("scenarios > question > offset", () => {
     const metricName = "Count of orders";
     const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
       name: metricName,
-      type: "metric",
+      type: "card-type/metric",
       description: "A metric",
       query: {
         "source-table": ORDERS_ID,

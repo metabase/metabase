@@ -21,7 +21,7 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE without token
   it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
     "should show a model help link and ignore the setting `show-metabase-links`: %s",
     ({ showMetabaseLinks }) => {
-      setup({ cardType: "model", showMetabaseLinks });
+      setup({ cardType: "card-type/model", showMetabaseLinks });
       expect(
         screen.getByRole("link", { name: "Learn more" }),
       ).toBeInTheDocument();

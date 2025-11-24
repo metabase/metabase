@@ -40,7 +40,7 @@ async function setup({
     ...question.card(),
     id: 1,
     name: "Order model",
-    type: "model",
+    type: "card-type/model",
     can_manage_db: canManageDB,
   });
 

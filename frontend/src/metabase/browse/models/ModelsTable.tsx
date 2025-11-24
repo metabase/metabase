@@ -173,7 +173,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       }
 
       const { id, name } = model;
-      const url = Urls.model({ id, name, type: "model" });
+      const url = Urls.model({ id, name, type: "card-type/model" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       trackModelClick(model.id);
@@ -208,7 +208,7 @@ function NameCell({ model }: { model?: ModelResult }) {
       <MaybeItemLink
         to={
           model
-            ? Urls.model({ id: model.id, name: model.name, type: "model" })
+            ? Urls.model({ id: model.id, name: model.name, type: "card-type/model" })
             : undefined
         }
         style={{

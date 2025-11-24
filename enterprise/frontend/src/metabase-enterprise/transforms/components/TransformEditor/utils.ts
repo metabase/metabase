@@ -26,7 +26,7 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
     }
   }
 
-  return { isValid: Lib.canSave(query, "question") };
+  return { isValid: Lib.canSave(query, "card-type/question") };
 }
 
 export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {

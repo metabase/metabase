@@ -101,8 +101,8 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
-  const isModel = question.type() === "model";
-  const isMetric = question.type() === "metric";
+  const isModel = question.type() === "card-type/model";
+  const isMetric = question.type() === "card-type/metric";
 
   if ((isModel || isMetric) && queryBuilderMode === "dataset") {
     return (

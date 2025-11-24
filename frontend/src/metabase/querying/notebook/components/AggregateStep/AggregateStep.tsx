@@ -16,7 +16,7 @@ export function AggregateStep({
   updateQuery,
 }: NotebookStepProps) {
   const { question, stageIndex } = step;
-  const isMetric = question.type() === "metric";
+  const isMetric = question.type() === "card-type/metric";
 
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);

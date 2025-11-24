@@ -50,7 +50,7 @@ const NewItemMenuView = ({
             mode: "notebook",
             creationType: "custom_question",
             collectionId,
-            cardType: "question",
+            cardType: "card-type/question",
           })}
           leftSection={<Icon name="insight" />}
         >
@@ -68,7 +68,7 @@ const NewItemMenuView = ({
             DEPRECATED_RAW_MBQL_type: "native",
             creationType: "native_question",
             collectionId,
-            cardType: "question",
+            cardType: "card-type/question",
             DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
           })}
           leftSection={<Icon name="sql" />}

@@ -706,7 +706,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     it("no primary keys (WRK-900)", () => {
       H.createQuestion(
         {
-          type: "model",
+          type: "card-type/model",
           query: {
             "source-table": PEOPLE_ID,
             fields: [
@@ -734,7 +734,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     it("1 primary key", () => {
       H.grantClipboardPermissions();
       H.createQuestion({
-        type: "model",
+        type: "card-type/model",
         name: "model",
         query: {
           "source-table": PEOPLE_ID,
@@ -770,7 +770,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     it("2 primary keys", () => {
       H.createQuestion(
         {
-          type: "model",
+          type: "card-type/model",
           query: {
             "source-table": PEOPLE_ID,
             fields: [

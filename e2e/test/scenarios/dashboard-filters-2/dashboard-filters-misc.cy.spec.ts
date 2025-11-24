@@ -147,7 +147,7 @@ describe("pivot tables", () => {
 
     cy.then(function () {
       H.createQuestion({
-        type: "question",
+        type: "card-type/question",
         query: createPivotableQuery(this.baseQuestion),
         name: "Question - pivot viz",
         display: "pivot",

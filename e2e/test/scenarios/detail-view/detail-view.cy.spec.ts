@@ -351,7 +351,7 @@ describe("detail view", () => {
 
 function createOrdersJoinProductsModel() {
   return H.createQuestion({
-    type: "model",
+    type: "card-type/model",
     name: "My model",
     query: {
       "source-table": ORDERS_ID,

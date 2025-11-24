@@ -31,7 +31,7 @@ export const TablesLinkedToQuestion = () => {
     <Stack gap="sm">
       {!filtered.length && (
         <Text lh={1} color="text-medium">
-          {question.type() === "model"
+          {question.type() === "card-type/model"
             ? t`This model is not linked to any tables.`
             : t`This question is not linked to any tables.`}
         </Text>

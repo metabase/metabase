@@ -217,10 +217,12 @@
   "Given a query, returns whether it is considered editable.
 
   There's no editable flag! Instead, a query is **not** editable if:
+
   - Database is missing from the metadata (no permissions at all);
   - Database is present but it doesn't have native write permissions;
   - Database is present but tables (at least the `:source-table`) are missing (missing table permissions); or
   - Similarly, the card specified by `:source-card` is missing from the metadata.
+
   If metadata for the `:source-table` or `:source-card` can be found, then the query is editable.
   The above conditions must hold for every joined source too."
   [query :- ::lib.schema/query]

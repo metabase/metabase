@@ -203,7 +203,7 @@ export function getRowUrl(
     return undefined;
   }
 
-  if (question.type() === "model") {
+  if (question.type() === "card-type/model") {
     return `/model/${question.slug()}/detail/${rowId}`;
   }
 

@@ -94,7 +94,7 @@ export const MODEL_BASED_MODEL_INDEX = 3;
 
 export function createBaseQuestions() {
   H.createQuestion({
-    type: "question",
+    type: "card-type/question",
     name: "Q0 Orders",
     description: "Question based on a database table",
     query: {
@@ -104,7 +104,7 @@ export function createBaseQuestions() {
 
   cy.then(function () {
     H.createQuestion({
-      type: "question",
+      type: "card-type/question",
       name: "Base Orders Question",
       query: {
         "source-table": `card__${this.ordersQuestion.id}`,
@@ -112,7 +112,7 @@ export function createBaseQuestions() {
     }).then((response) => cy.wrap(response.body).as("baseQuestion"));
 
     H.createQuestion({
-      type: "model",
+      type: "card-type/model",
       name: "Base Orders Model",
       query: {
         "source-table": `card__${this.ordersQuestion.id}`,
@@ -329,25 +329,25 @@ export function createAndVisitDashboardWithCardMatrix(
 ) {
   cy.then(function () {
     H.createQuestion({
-      type: "question",
+      type: "card-type/question",
       query: createQuery(this.baseQuestion),
       name: "Question-based Question",
     }).then((response) => cy.wrap(response.body).as("qbq"));
 
     H.createQuestion({
-      type: "question",
+      type: "card-type/question",
       query: createQuery(this.baseModel),
       name: "Model-based Question",
     }).then((response) => cy.wrap(response.body).as("mbq"));
 
     H.createQuestion({
-      type: "model",
+      type: "card-type/model",
       name: "Question-based Model",
       query: createQuery(this.baseQuestion),
     }).then((response) => cy.wrap(response.body).as("qbm"));
 
     H.createQuestion({
-      type: "model",
+      type: "card-type/model",
       name: "Model-based Model",
       query: createQuery(this.baseModel),
     }).then((response) => cy.wrap(response.body).as("mbm"));

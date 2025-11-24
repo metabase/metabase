@@ -63,7 +63,7 @@ export function startNewMetric() {
 }
 
 /**
- * @param {("question" | "model")} type
+ * @param {("card-type/question" | "card-type/model")} type
  * @param {Object} [config]
  * @param {("number" | null)} [config.database]
  * @param {string} [config.query]
@@ -108,7 +108,7 @@ function newNativeCardHash(
  * @param {string} [config.display]
  */
 export function startNewNativeQuestion(config) {
-  const hash = newNativeCardHash("question", config);
+  const hash = newNativeCardHash("card-type/question", config);
   cy.visit("/question#" + hash);
 }
 

@@ -119,7 +119,7 @@ async function setup({
   shouldStartAdHocQuestion,
 }: SetupOpts) {
   const isSavedCard = "id" in card;
-  const isModel = (card as Card).type === "model";
+  const isModel = (card as Card).type === "card-type/model";
 
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
@@ -677,7 +677,7 @@ describe("QB Actions > updateQuestion", () => {
         ...opts,
         card: cardWithTags,
         originalCard,
-        queryBuilderMode: (card as Card).type === "model" ? "dataset" : "view",
+        queryBuilderMode: (card as Card).type === "card-type/model" ? "dataset" : "view",
       });
 
       return {

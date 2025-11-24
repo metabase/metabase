@@ -18,6 +18,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -435,7 +436,9 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
+(mu/defn- card-query [card-type :- ::lib.schema.metadata/card.type
+                      collection
+                      {:keys [archived? pinned-state show-dashboard-questions?]}]
   (-> {:select    (cond->
                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                     :dashboard_id
@@ -478,14 +481,11 @@
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
                    [:= :archived (boolean archived?)]
-                   (case card-type
-                     :model
-                     [:= :c.type (h2x/literal "model")]
-
-                     :metric
-                     [:= :c.type (h2x/literal "metric")]
-
-                     [:= :c.type (h2x/literal "question")])]}
+                   [:= :c.type (h2x/literal (case card-type
+                                              :model         "model"
+                                              :metric        "metric"
+                                              :table-symlink "table-symlink"
+                                              #_else         "question"))]]}
       (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))

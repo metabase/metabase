@@ -131,7 +131,7 @@ const STEPS: NotebookStepDef[] = [
         return Lib.removeClause(query, stageIndex, clause);
       }, query);
     },
-    canRevert: (type) => type !== "metric",
+    canRevert: (type) => type !== "card-type/metric",
   },
   {
     type: "sort",
@@ -206,7 +206,7 @@ export function getQuestionSteps(
   const database = metadata.database(Lib.databaseID(query));
   const allowsNesting =
     Boolean(database?.hasFeature("nested-queries")) &&
-    question.type() !== "metric";
+    question.type() !== "card-type/metric";
   const hasBreakouts = Lib.breakouts(query, -1).length > 0;
   const hasAggregations = Lib.aggregations(query, -1).length > 0;
 

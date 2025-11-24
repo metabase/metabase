@@ -6,7 +6,7 @@ import { setup } from "./setup";
 describe("DashCardParameterMapper > DisabledNativeCardHelpText (OSS)", () => {
   it("should show a help message for native models", () => {
     setup({
-      cardType: "model",
+      cardType: "card-type/model",
     });
 
     expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("DashCardParameterMapper > DisabledNativeCardHelpText (OSS)", () => {
   it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
     "should show a model help link and ignore the setting `show-metabase-links`: %s",
     ({ showMetabaseLinks }) => {
-      setup({ cardType: "model", showMetabaseLinks });
+      setup({ cardType: "card-type/model", showMetabaseLinks });
       expect(
         screen.getByRole("link", { name: "Learn more" }),
       ).toBeInTheDocument();

@@ -209,7 +209,7 @@ describe("SaveQuestionContext", () => {
             createMockCard({
               collection_id: 11,
               collection: createMockCollection({ id: 11 }),
-              type: "model",
+              type: "card-type/model",
             }),
           ),
         });
