@@ -641,7 +641,7 @@ function getPublishedDisplay(item: FlatItem): React.ReactNode {
     return null;
   }
 
-  return item.table.published_as_model ? (
+  return item.table.published_as_symlink ? (
     <Icon name="verified_round" aria-label={t`Published`} />
   ) : null;
 }
