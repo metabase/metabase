@@ -36,6 +36,7 @@ import type {
   SearchResult,
   Segment,
   Table,
+  TableSymlink,
   Task,
   Timeline,
   TimelineEvent,
@@ -583,6 +584,25 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
+  ];
+}
+
+export function provideTableSymlinkTags(
+  symlink: TableSymlink,
+): TagDescription<TagType>[] {
+  return [
+    idTag("table-symlink", `${symlink.table_id}-${symlink.collection_id}`),
+    ...(symlink.table ? provideTableTags(symlink.table) : []),
+    ...(symlink.collection ? provideCollectionTags(symlink.collection) : []),
+  ];
+}
+
+export function provideTableSymlinkListTags(
+  symlinks: TableSymlink[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("table-symlink"),
+    ...symlinks.flatMap(provideTableSymlinkTags),
   ];
 }
 

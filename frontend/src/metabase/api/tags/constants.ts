@@ -36,6 +36,7 @@ export const TAG_TYPES = [
   "subscription-channel",
   "transform",
   "table",
+  "table-symlink",
   "task",
   "timeline",
   "timeline-event",

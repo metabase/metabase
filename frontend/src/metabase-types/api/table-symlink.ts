@@ -1,11 +1,12 @@
 import type { Collection, CollectionId } from "./collection";
-import type { TableId } from "./table";
+import type { Table, TableId } from "./table";
 
 export type TableSymlink = {
   table_id: TableId;
   collection_id: CollectionId | null;
 
   // hydrated
+  table?: Table | null;
   collection?: Collection | null;
 };
 
