@@ -5,8 +5,9 @@
  */
 
 import { createEntity } from "metabase/lib/entities";
-import { indexedEntity as indexedEntityUrl } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { TableSymlinkSchema } from "metabase/schema";
+import type { TableSymlink } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -16,7 +17,8 @@ export const TableSymlinks = createEntity({
   nameOne: "tableSymlink",
   schema: TableSymlinkSchema,
   objectSelectors: {
-    getUrl: indexedEntityUrl,
-    getIcon: () => ({ name: "index" }),
+    getUrl: ({ table }: TableSymlink) =>
+      table ? Urls.queryBuilderTable(table.id, table.db_id) : "",
+    getIcon: () => ({ name: "table" }),
   },
 });
