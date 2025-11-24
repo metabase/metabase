@@ -21,7 +21,7 @@ const RouterContextProviderBase = ({
 const RouterContextProvider = withRouter(RouterContextProviderBase);
 
 type RouterProviderProps = {
-  history: History;
+  history?: History | undefined;
 };
 
 /**

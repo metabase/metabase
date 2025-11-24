@@ -14,7 +14,7 @@ import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Route, Router, useRouterHistory } from "react-router";
+import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
@@ -24,6 +24,7 @@ import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import { RouterProvider } from "metabase/router";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
@@ -278,7 +279,7 @@ function MaybeRouter({
     return children;
   }
 
-  return <Router history={history}>{children}</Router>;
+  return <RouterProvider history={history}>{children}</RouterProvider>;
 }
 
 function MaybeKBar({

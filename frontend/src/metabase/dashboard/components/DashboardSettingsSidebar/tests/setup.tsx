@@ -63,7 +63,7 @@ export async function setup({
     <MockDashboardContext dashboard={dashboard} closeSidebar={onClose}>
       <DashboardSettingsSidebar />
     </MockDashboardContext>,
-    { storeInitialState: state },
+    { storeInitialState: state, withRouter: true },
   );
   await waitForLoaderToBeRemoved();
 
