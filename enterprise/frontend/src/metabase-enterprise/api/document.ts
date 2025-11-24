@@ -18,7 +18,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/document/${id}`,
       }),
-      providesTags: (result, error, { id }) =>
+      providesTags: (_, error, { id }) =>
         !error ? [idTag("document", id)] : [],
     }),
     createDocument: builder.mutation<Document, CreateDocumentRequest>({
@@ -45,12 +45,12 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/document/${document.id}`,
         body: document,
       }),
-      invalidatesTags: (_, error, doc) =>
+      invalidatesTags: (_, error, patch) =>
         !error
           ? compact([
               listTag("document"),
-              idTag("document", doc.id),
-              !doc.archived && listTag("bookmark"),
+              idTag("document", patch.id),
+              ("name" in patch || "archived" in patch) && listTag("bookmark"),
             ])
           : [],
     }),

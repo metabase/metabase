@@ -159,19 +159,19 @@ export const cardApi = Api.injectEndpoints({
               : ""),
           body,
         }),
-        invalidatesTags: (_, error, payload) =>
+        invalidatesTags: (_, error, patch) =>
           invalidateTags(
             error,
             compact([
               listTag("card"),
-              idTag("card", payload.id),
-              idTag("table", `card__${payload.id}`),
+              idTag("card", patch.id),
+              idTag("table", `card__${patch.id}`),
               listTag("revision"),
-              payload.dashboard_id != null &&
-                idTag("dashboard", payload.dashboard_id),
-              payload.collection_id != null &&
-                idTag("collection", payload.collection_id),
-              (payload.name || payload.type || !payload.archived) &&
+              patch.dashboard_id != null &&
+                idTag("dashboard", patch.dashboard_id),
+              patch.collection_id != null &&
+                idTag("collection", patch.collection_id),
+              ("name" in patch || "type" in patch || "archived" in patch) &&
                 listTag("bookmark"),
             ]),
           ),

@@ -152,15 +152,15 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}`,
           body,
         }),
-        invalidatesTags: (_, error, dashboard) =>
+        invalidatesTags: (_, error, patch) =>
           invalidateTags(
             error,
             compact([
               listTag("dashboard"),
-              idTag("dashboard", dashboard.id),
+              idTag("dashboard", patch.id),
               tag("parameter-values"),
               listTag("revision"),
-              !dashboard.archived && listTag("bookmark"),
+              ("name" in patch || "archived" in patch) && listTag("bookmark"),
             ]),
           ),
       }),

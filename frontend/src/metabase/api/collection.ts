@@ -66,7 +66,7 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/items`,
         params,
       }),
-      providesTags: (response, error, { models, id }) => [
+      providesTags: (response, _, { models, id }) => [
         ...provideCollectionItemListTags(response?.data ?? [], models),
         { type: "collection", id: `${id}-items` },
       ],
@@ -102,14 +102,17 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, payload) => {
+      invalidatesTags: (_, error, patch) => {
         return invalidateTags(
           error,
           compact([
             listTag("collection"),
-            idTag("collection", payload.id),
-            idTag("collection", payload.parent_id ?? "root"),
-            !payload.archived && listTag("bookmark"),
+            idTag("collection", patch.id),
+            idTag("collection", patch.parent_id ?? "root"),
+            ("name" in patch ||
+              "authority_level" in patch ||
+              "archived" in patch) &&
+              listTag("bookmark"),
           ]),
         );
       },
