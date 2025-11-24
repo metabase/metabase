@@ -6,8 +6,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.settings.core :as setting]
-   [metabase.tenants.core :as tenants]
    [toucan2.core :as t2]))
 
 (defenterprise login-attributes
@@ -58,10 +56,11 @@
 (defenterprise validate-new-tenant-collection!
   "Throws API exceptions if the passed collection is an invalid tenant collection."
   :feature :tenants
-  [{ttype :type :as _new-coll}]
-  (when (collection/is-tenant-collection-type? ttype)
+  [collection]
+  (when (collection/is-tenant-collection? collection)
     ;; make sure tenants is enabled
     (api/check-400 (perms/use-tenants))
 
     ;; check perms - user has the application permission to create shared tenant collections
-    (api/check-403 (perms/check-has-application-permission :create-tenant-collections))))
+    (api/check-403 (perms/check-has-application-permission :create-tenant-collections)))
+  collection)

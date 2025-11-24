@@ -1,4 +1,12 @@
-import { getCollectionIdPath } from "./utils";
+import {
+  SHARED_TENANT_NAMESPACE,
+  getCollectionIdPath,
+  getDisabledReasonForSavingModel,
+  getNamespaceForItem,
+  getStateFromIdPath,
+  isNamespaceRoot,
+  shouldDisableItemForSavingModel,
+} from "./utils";
 
 describe("getCollectionIdPath", () => {
   it("should handle the current user's personal collection", () => {
@@ -162,14 +170,14 @@ describe("getCollectionIdPath", () => {
     expect(path).toEqual(["root", 6, 7, 8, -9]);
   });
 
-  it("should detect tenant collections", () => {
+  it("should detect tenant collections via namespace", () => {
     const path = getCollectionIdPath(
       {
         id: 9,
         location: "/4/5/6/7/8/",
         effective_location: "/6/7/8/",
         model: "collection",
-        type: "shared-tenant-collection",
+        namespace: "shared-tenant-collection",
       },
       1337,
     );
@@ -177,7 +185,22 @@ describe("getCollectionIdPath", () => {
     expect(path).toEqual(["tenant", 6, 7, 8, 9]);
   });
 
-  it("should detect tenant collection items - collections", () => {
+  it("should detect tenant collection items via collection_namespace", () => {
+    const path = getCollectionIdPath(
+      {
+        id: 9,
+        location: "/4/5/6/7/8/",
+        effective_location: "/6/7/8/",
+        model: "collection",
+        collection_namespace: "shared-tenant-collection",
+      },
+      1337,
+    );
+
+    expect(path).toEqual(["tenant", 6, 7, 8, 9]);
+  });
+
+  it("should detect tenant collection items - collections (legacy boolean)", () => {
     const path = getCollectionIdPath(
       {
         id: 9,
@@ -192,7 +215,7 @@ describe("getCollectionIdPath", () => {
     expect(path).toEqual(["tenant", 6, 7, 8, 9]);
   });
 
-  it("should detect tenant collection items - dashboards", () => {
+  it("should detect tenant collection items - dashboards (legacy boolean)", () => {
     const path = getCollectionIdPath(
       {
         id: 9,
@@ -205,5 +228,269 @@ describe("getCollectionIdPath", () => {
     );
 
     expect(path).toEqual(["tenant", 6, 7, 8, 9]);
+  });
+});
+
+describe("getStateFromIdPath", () => {
+  it("should propagate namespace through state path", () => {
+    const statePath = getStateFromIdPath({
+      idPath: ["root", 1, 2],
+      namespace: "snippets",
+      models: ["collection"],
+    });
+
+    // First item has no query
+    expect(statePath[0].selectedItem?.namespace).toBe("snippets");
+
+    // Subsequent items should have the namespace in their queries
+    expect(statePath[1].query?.namespace).toBe("snippets");
+    expect(statePath[2].query?.namespace).toBe("snippets");
+  });
+
+  it("should use shared-tenant-collection namespace for tenant paths", () => {
+    const statePath = getStateFromIdPath({
+      idPath: ["tenant", 1, 2],
+      models: ["collection"],
+    });
+
+    // Should automatically use shared-tenant-collection namespace
+    expect(statePath[0].selectedItem?.namespace).toBe(
+      "shared-tenant-collection",
+    );
+    expect(statePath[1].query?.namespace).toBe("shared-tenant-collection");
+    expect(statePath[2].query?.namespace).toBe("shared-tenant-collection");
+  });
+
+  it("should propagate namespace to selected items", () => {
+    const statePath = getStateFromIdPath({
+      idPath: ["tenant", 1],
+      models: ["collection"],
+    });
+
+    // Selected items should have namespace
+    expect(statePath[0].selectedItem?.namespace).toBe(
+      "shared-tenant-collection",
+    );
+    expect(statePath[1].selectedItem?.namespace).toBe(
+      "shared-tenant-collection",
+    );
+  });
+
+  it("should handle root paths without explicit namespace", () => {
+    const statePath = getStateFromIdPath({
+      idPath: ["root", 1],
+      models: ["collection"],
+    });
+
+    // Should have undefined namespace for root
+    expect(statePath[0].selectedItem?.namespace).toBeUndefined();
+    expect(statePath[1].query?.namespace).toBeUndefined();
+  });
+});
+
+describe("isNamespaceRoot", () => {
+  it("should return true for tenant root", () => {
+    const item = {
+      id: "tenant",
+      name: "Tenant Collections",
+      model: "collection" as const,
+      namespace: "shared-tenant-collection",
+    };
+
+    expect(isNamespaceRoot(item)).toBe(true);
+  });
+
+  it("should return false for regular collections", () => {
+    const item = {
+      id: 1,
+      name: "My Collection",
+      model: "collection" as const,
+      location: "/",
+    };
+
+    expect(isNamespaceRoot(item)).toBe(false);
+  });
+
+  it("should return false for root collection", () => {
+    const item = {
+      id: "root",
+      name: "Our Analytics",
+      model: "collection" as const,
+      location: "/",
+    };
+
+    expect(isNamespaceRoot(item)).toBe(false);
+  });
+
+  it("should return false for tenant sub-collections", () => {
+    const item = {
+      id: 123,
+      name: "Tenant Sub-Collection",
+      model: "collection" as const,
+      namespace: "shared-tenant-collection",
+      location: "/tenant/",
+    };
+
+    expect(isNamespaceRoot(item)).toBe(false);
+  });
+});
+
+describe("shouldDisableItemForSavingModel", () => {
+  const tenantRoot = {
+    id: "tenant",
+    name: "Tenant Collections",
+    model: "collection" as const,
+    namespace: "shared-tenant-collection",
+  };
+
+  const regularCollection = {
+    id: 1,
+    name: "My Collection",
+    model: "collection" as const,
+    location: "/",
+  };
+
+  const tenantSubCollection = {
+    id: 123,
+    name: "Tenant Sub-Collection",
+    model: "collection" as const,
+    namespace: "shared-tenant-collection",
+    location: "/tenant/",
+  };
+
+  it("should return true for tenant root when saving a dashboard", () => {
+    expect(shouldDisableItemForSavingModel(tenantRoot, "dashboard")).toBe(true);
+  });
+
+  it("should return true for tenant root when saving a question", () => {
+    expect(shouldDisableItemForSavingModel(tenantRoot, "question")).toBe(true);
+  });
+
+  it("should return true for tenant root when saving a model", () => {
+    expect(shouldDisableItemForSavingModel(tenantRoot, "model")).toBe(true);
+  });
+
+  it("should return false for tenant root when saving a collection", () => {
+    expect(shouldDisableItemForSavingModel(tenantRoot, "collection")).toBe(
+      false,
+    );
+  });
+
+  it("should return false for regular collections when saving any item type", () => {
+    expect(
+      shouldDisableItemForSavingModel(regularCollection, "dashboard"),
+    ).toBe(false);
+    expect(shouldDisableItemForSavingModel(regularCollection, "question")).toBe(
+      false,
+    );
+    expect(
+      shouldDisableItemForSavingModel(regularCollection, "collection"),
+    ).toBe(false);
+  });
+
+  it("should return false for tenant sub-collections when saving any item type", () => {
+    expect(
+      shouldDisableItemForSavingModel(tenantSubCollection, "dashboard"),
+    ).toBe(false);
+    expect(
+      shouldDisableItemForSavingModel(tenantSubCollection, "question"),
+    ).toBe(false);
+  });
+
+  it("should return false when savingModel is not specified", () => {
+    expect(shouldDisableItemForSavingModel(tenantRoot, undefined)).toBe(false);
+    expect(shouldDisableItemForSavingModel(regularCollection, undefined)).toBe(
+      false,
+    );
+  });
+});
+
+describe("getDisabledReasonForSavingModel", () => {
+  const tenantRoot = {
+    id: "tenant",
+    name: "Tenant Collections",
+    model: "collection" as const,
+    namespace: "shared-tenant-collection",
+  };
+
+  const regularCollection = {
+    id: 1,
+    name: "My Collection",
+    model: "collection" as const,
+    location: "/",
+  };
+
+  it("should return reason for disabled tenant root", () => {
+    const reason = getDisabledReasonForSavingModel(tenantRoot, "dashboard");
+
+    expect(reason).toBeDefined();
+    expect(reason).toContain("tenant root collection");
+  });
+
+  it("should return undefined for enabled items", () => {
+    expect(
+      getDisabledReasonForSavingModel(regularCollection, "dashboard"),
+    ).toBeUndefined();
+    expect(
+      getDisabledReasonForSavingModel(tenantRoot, "collection"),
+    ).toBeUndefined();
+    expect(
+      getDisabledReasonForSavingModel(tenantRoot, undefined),
+    ).toBeUndefined();
+  });
+});
+
+describe("getNamespaceForItem", () => {
+  it("should return shared tenant namespace for tenant root", () => {
+    const item = {
+      id: "tenant",
+      namespace: "shared-tenant-collection",
+    };
+
+    expect(getNamespaceForItem(item)).toBe(SHARED_TENANT_NAMESPACE);
+  });
+
+  it("should return the item namespace for regular collections with namespace", () => {
+    const item = {
+      id: 123,
+      namespace: "shared-tenant-collection",
+    };
+
+    expect(getNamespaceForItem(item)).toBe("shared-tenant-collection");
+  });
+
+  it("should return the item namespace for snippet collections", () => {
+    const item = {
+      id: 456,
+      namespace: "snippets",
+    };
+
+    expect(getNamespaceForItem(item)).toBe("snippets");
+  });
+
+  it("should return undefined for regular collections without namespace", () => {
+    const item = {
+      id: 789,
+      namespace: undefined,
+    };
+
+    expect(getNamespaceForItem(item)).toBeUndefined();
+  });
+
+  it("should return undefined for null item", () => {
+    expect(getNamespaceForItem(null)).toBeUndefined();
+  });
+
+  it("should return undefined for undefined item", () => {
+    expect(getNamespaceForItem(undefined)).toBeUndefined();
+  });
+
+  it("should return undefined for root collection", () => {
+    const item = {
+      id: "root",
+      namespace: undefined,
+    };
+
+    expect(getNamespaceForItem(item)).toBeUndefined();
   });
 });

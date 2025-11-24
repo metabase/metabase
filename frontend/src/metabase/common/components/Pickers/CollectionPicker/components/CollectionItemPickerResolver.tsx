@@ -53,6 +53,8 @@ export const CollectionItemPickerResolver = ({
     );
   }
 
+  // Route to tenant collection list only for the root tenant collection
+  // (not for subcollections within the tenant namespace)
   if (query.id === "tenant") {
     return (
       <PLUGIN_TENANTS.TenantCollectionItemList

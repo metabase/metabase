@@ -29,7 +29,7 @@ interface NewCollectionDialogProps {
   onClose: () => void;
   parentCollectionId: CollectionId | null;
   onNewCollection: (item: CollectionPickerItem) => void;
-  namespace?: "snippets";
+  namespace?: string;
 }
 
 export const NewCollectionDialog = ({
@@ -42,9 +42,14 @@ export const NewCollectionDialog = ({
   const [createCollection] = useCreateCollectionMutation();
 
   const onCreateNewCollection = async ({ name }: { name: string }) => {
+    // Virtual collection IDs like "root" and "tenant" should be converted to null
+    // These represent namespace roots which have no parent
+    const isVirtualRoot =
+      parentCollectionId === "root" || parentCollectionId === "tenant";
+
     const newCollection = await createCollection({
       name,
-      parent_id: parentCollectionId === "root" ? null : parentCollectionId,
+      parent_id: isVirtualRoot ? null : parentCollectionId,
       namespace,
     }).unwrap();
 

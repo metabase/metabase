@@ -79,6 +79,7 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  namespace?: string;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -128,6 +129,7 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
+  collection_namespace?: string; // namespace of the parent collection
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
@@ -184,7 +186,7 @@ export type ListCollectionItemsRequest = {
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  namespace?: "snippets";
+  namespace?: string;
   collection_type?: CollectionType;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
@@ -210,7 +212,7 @@ export interface CreateCollectionRequest {
   parent_id?: CollectionId | null;
   namespace?: string;
   authority_level?: CollectionAuthorityLevel;
-  type?: "shared-tenant-collection";
+  is_shared_tenant_collection?: boolean;
 }
 
 export interface ListCollectionsRequest {

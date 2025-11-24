@@ -77,5 +77,5 @@
 (defenterprise user->tenant
   "Get the tenant for a user"
   metabase-enterprise.tenants.core
-  [user]
+  [_user]
   nil)

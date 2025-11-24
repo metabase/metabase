@@ -56,3 +56,43 @@
                               (perms/add-user-to-group! normal-user tenant-group))))
       (testing "can be added to a normal group"
         (perms/add-user-to-group! normal-user normal-group)))))
+
+(deftest tenant-users-cannot-be-group-managers-test
+  (testing "External/tenant users cannot be made group managers"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test"}
+                       :model/User {external-user-id :id} {:tenant_id tenant-id}
+                       :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
+                                                                      :is_tenant_group true}
+                       :model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"
+                                                                      :is_tenant_group false}]
+
+          (testing "cannot make external user group manager of tenant group"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"External users cannot be made group managers"
+                 (perms/add-users-to-groups! [{:user external-user-id
+                                               :group tenant-group-id
+                                               :is-group-manager? true}]))))
+
+          (testing "cannot make external user group manager of normal group"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"External users cannot be made group managers"
+                 (perms/add-users-to-groups! [{:user external-user-id
+                                               :group normal-group-id
+                                               :is-group-manager? true}]))))
+
+          (testing "external user can be regular member of tenant group"
+            (is (nil? (perms/add-users-to-groups! [{:user external-user-id
+                                                    :group tenant-group-id
+                                                    :is-group-manager? false}]))))
+
+          (testing "external user cannot be member of normal group at all"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Cannot add non-tenant user to tenant-group or vice versa"
+                 (perms/add-users-to-groups! [{:user external-user-id
+                                               :group normal-group-id
+                                               :is-group-manager? false}])))))))))

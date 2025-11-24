@@ -5,8 +5,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections-rest.api :as api.collection]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -105,26 +103,6 @@
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
   (present-tenant (t2/select-one :model/Tenant :id id)))
-
-(api.macros/defendpoint :get "/collection/root/items"
-  "Get collections, analogous to `/api/collection/root/items` but for tenant collections"
-  [_route-params
-   {:keys [archived sort_column sort_direction official_collections_first]}
-   :- [:map
-       [:archived {:default false} [:maybe ms/BooleanValue]]
-       [:sort_column {:default :name} [:enum :name :last_edited_at :last_edited_by :model]]
-       [:sort_direction {:default :asc} [:enum :asc :desc]]
-       [:official_collections_first {:default true} [:maybe ms/BooleanValue]]]]
-  (api.collection/collection-children
-   collection/root-collection
-   {:archived? (boolean archived)
-    :models #{:collection}
-    :pinned-state :all
-    :show-dashboard-questions? false
-    :include-tenant-collections? true
-    :sort-info {:sort-column sort_column
-                :sort-direction sort_direction
-                :official-collections-first? official_collections_first}}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenant` routes"

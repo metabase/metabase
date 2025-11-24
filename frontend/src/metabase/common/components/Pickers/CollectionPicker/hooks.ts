@@ -146,6 +146,7 @@ export const useRootCollectionPickerItems = (
       collectionItems.push({
         name: t`Tenant Collections`,
         id: "tenant",
+        namespace: "shared-tenant-collection",
         here: ["collection", "card", "dashboard"],
         description: null,
         can_write: true,

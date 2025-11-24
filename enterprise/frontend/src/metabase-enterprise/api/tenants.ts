@@ -1,3 +1,4 @@
+import { provideCollectionItemListTags } from "metabase/api/tags";
 import type {
   CreateTenantInput,
   ListCollectionItemsRequest,
@@ -8,7 +9,6 @@ import type {
 
 import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
-import { provideCollectionItemListTags } from "metabase/api/tags";
 
 export const tenantsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -58,8 +58,8 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ id: _id, ...params }) => ({
         method: "GET",
-        url: `/api/ee/tenant/collection/root/items`,
-        params,
+        url: `/api/collection/root/items`,
+        params: { ...params, namespace: "shared-tenant-collection" },
       }),
       providesTags: (response, _error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),

@@ -214,7 +214,7 @@ export const setup = ({
     allTenantCollections.forEach((collection) => {
       fetchMock.get(`path:/api/collection/${collection.id}`, {
         ...collection,
-        type: "shared-tenant-collection",
+        namespace: "shared-tenant-collection",
       });
     });
   }

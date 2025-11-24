@@ -4,7 +4,10 @@ import { t } from "ttag";
 
 import Radio from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_PERMISSIONS_TABS,
+  PLUGIN_APPLICATION_PERMISSIONS,
+} from "metabase/plugins";
 
 const propTypes = {
   tab: PropTypes.oneOf(["data", "collections"]).isRequired,
@@ -19,6 +22,7 @@ export const PermissionsTabs = ({ tab, onChangeTab }) => (
       options={[
         { name: t`Data`, value: `data` },
         { name: t`Collections`, value: `collections` },
+        ...PLUGIN_ADMIN_PERMISSIONS_TABS.tabs,
         ...PLUGIN_APPLICATION_PERMISSIONS.tabs,
       ]}
       onOptionClick={onChangeTab}

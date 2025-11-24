@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]

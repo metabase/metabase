@@ -123,6 +123,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 (defsetting saml-attribute-tenant
   (deferred-tru "SAML attribute for the user''s tenant slug")
   :encryption :when-encryption-key-set
+  :export?    false
   :feature    :sso-saml
   :audit      :getter)
 

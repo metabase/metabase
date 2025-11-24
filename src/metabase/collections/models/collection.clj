@@ -92,22 +92,21 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
-(mu/defn is-tenant-collection-type?
-  "Whether or not the passed `type` is a tenant collection type."
-  [ttype :- [:maybe :string]]
-  (= ttype "shared-tenant-collection"))
+(def shared-tenant-ns
+  "Namespace for shared tenant collections"
+  :shared-tenant-collection)
 
 (mu/defn is-tenant-collection?
-  "Whether or not a collection is a tenant collection. Placeholder for now."
-  [{:keys [type]} :- [:or RootCollection [:map [:type [:maybe string?]]]]]
-  (is-tenant-collection-type? type))
+  "Whether or not a collection is a tenant collection."
+  [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
+  (= (some-> namespace name)
+     (name shared-tenant-ns)))
 
 (defn tenant-collection-where-clause
-  "Returns a clause that will be true if this is a tenant collection, false otherwise."
-  [& [type-column]]
-  [:case
-   [:= (or type-column :type) nil] false
-   :else [:= (or type-column :type) [:inline "shared-tenant-collection"]]])
+  "Returns a HoneySQL clause that will be true if this is a tenant collection, false otherwise."
+  [& [column-name]]
+  [:and [:not= (or column-name :namespace) nil]
+   [:= (or column-name :namespace) (name shared-tenant-ns)]])
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -719,6 +718,15 @@
     ;; we're not looking for a particular `archive_operation_id`
     (not (:archive-operation-id visibility-config)))))
 
+(def ^:private visible-union-columns
+  [:c.id
+   :c.location
+   :c.archived
+   :c.archive_operation_id
+   :c.archived_directly
+   :c.type
+   :c.namespace])
+
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
   ([visibility-config :- CollectionVisibilityConfig]
@@ -747,7 +755,7 @@
     ;; c) their personal collection and its descendants
     :from [(if is-superuser?
              [:collection :c]
-             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
+             [{:union-all (keep identity [{:select visible-union-columns
                                            :from   [[:collection :c]]
                                            :where [:exists {:select [1]
                                                             :from [[:permissions :p]]
@@ -760,19 +768,19 @@
                                                                      [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                      (when (= :read (:permission-level visibility-config))
                                                                        [:= :p.perm_value (h2x/literal "read")])]]}]}
-                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
+                                          {:select visible-union-columns
                                            :from   [[:collection :c]]
                                            :where  [:= :type (h2x/literal trash-collection-type)]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
+                                            {:select visible-union-columns
                                              :from   [[:collection :c]]
                                              :where  [:in :id [:inline personal-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
             (when-not (perms/use-tenants)
-              [:not (tenant-collection-where-clause :c.type)])
+              [:not (tenant-collection-where-clause :c.namespace)])
 
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
@@ -1313,6 +1321,19 @@
                                    :id
                                    {:default false}))
 
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :collection_namespace]
+  "Batch hydration for whether an item is remote synced"
+  [model k items]
+  (mi/instances-with-hydrated-data items k
+                                   #(into {}
+                                          (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
+                                                            {:where [:in (keyword (str (name (t2/table-name model)) ".id"))
+                                                                     (map :id items)]
+                                                             :join [[:collection :c]
+                                                                    [:= :collection_id :c.id]]}))
+                                   :id
+                                   {:default nil}))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1559,7 +1580,7 @@
     (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)}))))
 
 (t2/define-before-insert :model/Collection
-  [{collection-name :name, :keys [location type] :as collection}]
+  [{collection-name :name :keys [location type] :as collection}]
   (assert-type-ok collection)
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
@@ -1621,10 +1642,26 @@
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
 
+(defn- set-tenant-collection-permissions!
+  "When creating a new Shared Tenant Collection, if its parent collection is not also a Shared Tenant Collection, we
+  should apply the default Shared Tenant Collection permissions which are :read for all user groups. If a Shared Tenant
+  Collection is a descendant of another Shared Tenant Collection we should apply the standard [[copy-parent-permissions!]]
+  defaults."
+  [collection]
+  (if (is-tenant-collection? (parent collection))
+    (copy-parent-permissions! collection)
+    ;; TODO(edpaget - 2025-11-17): this is potentially inserting a lot of rows but since the impl of
+    ;; [[copy-collection-permissions!]] doesn't do any batching this seems acceptable
+    (t2/insert! :model/Permissions
+                (for [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
+                  {:group_id group-id :object (perms/collection-read-path collection)}))))
+
 (t2/define-after-insert :model/Collection
   [collection]
-  (u/prog1 collection
-    (copy-parent-permissions! (t2.realize/realize collection))))
+  (u/prog1 (t2.realize/realize collection)
+    (if (is-tenant-collection? <>)
+      (set-tenant-collection-permissions! <>)
+      (copy-parent-permissions! <>))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
@@ -1987,7 +2024,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics})
+  #{nil :analytics :shared-tenant-collections})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
