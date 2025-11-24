@@ -29,7 +29,7 @@ const { H } = cy;
             .and("be.enabled")
             .click();
 
-          H.getEmbedModalContent().should("be.visible");
+          H.embedModalContent().should("be.visible");
         });
       });
 
@@ -61,7 +61,7 @@ const { H } = cy;
             });
 
             H.openSharingMenu("Embed");
-            H.getEmbedModalContent().should("be.visible");
+            H.embedModalContent().should("be.visible");
           });
 
           it(`should let the user create a public link for ${resource}`, () => {
@@ -175,7 +175,7 @@ describe("Embed JS modal display", () => {
 
       H.openSharingMenu("Embed");
 
-      H.getEmbedModalEmbeddingControlCard().within(() => {
+      H.embedModalEmbeddingControlCard().within(() => {
         cy.findByText(/Embedded Analytics JS/).should("be.visible");
       });
     });
@@ -196,7 +196,7 @@ describe("Embed JS modal display", () => {
 
           H.openSharingMenu("Embed");
 
-          H.getEmbedModalEmbeddingControlCard().within(() => {
+          H.embedModalEmbeddingControlCard().within(() => {
             cy.findByText(/guest embeds/).should("be.visible");
           });
         });

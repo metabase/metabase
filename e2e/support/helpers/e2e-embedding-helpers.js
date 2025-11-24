@@ -2,9 +2,9 @@ import * as jose from "jose";
 
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import {
+  embedModalContent,
   embedModalEnableEmbedding,
-  getEmbedModalContent,
-  getLegacyStaticEmbeddingButton,
+  legacyStaticEmbeddingButton,
 } from "e2e/support/helpers/e2e-embedding-iframe-sdk-setup-helpers";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
@@ -220,7 +220,7 @@ export function openLegacyStaticEmbeddingModal({
 
   openSharingMenu("Embed");
 
-  getEmbedModalContent().should("exist");
+  embedModalContent().should("exist");
 
   cy.get("body").then(($body) => {
     const isEmbeddingDisabled =
@@ -230,8 +230,8 @@ export function openLegacyStaticEmbeddingModal({
       embedModalEnableEmbedding();
     }
 
-    getEmbedModalContent().within(() => {
-      getLegacyStaticEmbeddingButton().click();
+    embedModalContent().within(() => {
+      legacyStaticEmbeddingButton().click();
     });
 
     modal().within(() => {
