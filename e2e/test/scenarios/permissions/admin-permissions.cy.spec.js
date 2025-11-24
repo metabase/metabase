@@ -200,6 +200,53 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
   });
 
+  it("don't propagate permissions after turning off 'Also change sub-collections' toggle (#30494)", () => {
+    cy.visit("/admin/permissions/collections");
+
+    const collections = ["Our analytics", "First collection"];
+    H.assertSidebarItems(collections);
+
+    H.selectSidebarItem("First collection");
+    H.assertSidebarItems([...collections, "Second collection"]);
+
+    H.selectSidebarItem("Second collection");
+
+    H.assertPermissionTable([
+      ["Administrators", "Curate"],
+      ["All Users", "No access"],
+      ["collection", "Curate"],
+      ["data", "No access"],
+      ["nosql", "No access"],
+      ["readonly", "View"],
+    ]);
+
+    H.modifyPermission(
+      "All Users",
+      COLLECTION_ACCESS_PERMISSION_INDEX,
+      "View",
+      true, // Turn 'Also change sub-collections' toggle on
+    );
+
+    H.modifyPermission(
+      "All Users",
+      COLLECTION_ACCESS_PERMISSION_INDEX,
+      null,
+      false, // Turn 'Also change sub-collections' toggle off
+    );
+
+    // Navigate to children
+    H.selectSidebarItem("Third collection");
+
+    H.assertPermissionTable([
+      ["Administrators", "Curate"],
+      ["All Users", "No access"], // Check permission hasn't been propagated
+      ["collection", "Curate"],
+      ["data", "No access"],
+      ["nosql", "No access"],
+      ["readonly", "View"],
+    ]);
+  });
+
   it("show selected option for the collection with children", () => {
     cy.visit("/admin/permissions/collections");
 
@@ -670,7 +717,7 @@ describe("scenarios > admin > permissions", () => {
         "All Users",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "View",
-        false,
+        true,
       );
 
       cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
@@ -693,7 +740,7 @@ describe("scenarios > admin > permissions", () => {
         "nosql",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "Curate",
-        false,
+        true,
       );
 
       cy.button("Save changes").click();
