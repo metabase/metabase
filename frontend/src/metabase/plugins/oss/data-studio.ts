@@ -4,17 +4,20 @@ import type { ComponentType, ReactNode } from "react";
 import type { MiniPickerCollectionItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  Collection,
   CollectionItem,
   CollectionItemModel,
   CollectionType,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import type {
-  DataStudioToolbarButtonProps,
-  NavbarLibrarySectionProps,
-} from "..";
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+
+export type NavbarLibrarySectionProps = {
+  collections: Collection[];
+  selectedId?: string | number;
+  onItemSelect: () => void;
+};
 
 export type LibraryCollectionType = "root" | "models" | "metrics";
 
