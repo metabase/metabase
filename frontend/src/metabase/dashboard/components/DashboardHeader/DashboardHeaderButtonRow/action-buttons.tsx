@@ -132,7 +132,7 @@ export const dashboardActionButtons: Record<
   },
   // Modular embedding
   [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS]: {
-    enabled: () => true,
+    enabled: ({ withSubscriptions }) => withSubscriptions,
     component: () => <DashboardSubscriptionsButton />,
   },
 };

@@ -34,7 +34,10 @@ export type DashboardActionButton = {
     props: HeaderButtonProps &
       Pick<
         DashboardContextReturned,
-        "downloadsEnabled" | "isFullscreen" | "onFullscreenChange"
+        | "downloadsEnabled"
+        | "isFullscreen"
+        | "onFullscreenChange"
+        | "withSubscriptions"
       >,
   ) => boolean;
 };

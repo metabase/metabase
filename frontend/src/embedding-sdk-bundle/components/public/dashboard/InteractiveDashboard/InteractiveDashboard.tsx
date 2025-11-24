@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import _ from "underscore";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
@@ -13,7 +12,6 @@ import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/Em
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
-import { concatActionIf } from "../actionButtonUtils";
 
 import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
 
@@ -45,15 +43,10 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled, withSubscriptions }) => {
-        return _.compose(
-          concatActionIf(downloadsEnabled.pdf, DASHBOARD_ACTION.DOWNLOAD_PDF),
-          concatActionIf(
-            withSubscriptions,
-            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
-          ),
-        )([]);
-      }}
+      dashboardActions={[
+        DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+        DASHBOARD_ACTION.DOWNLOAD_PDF,
+      ]}
       dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&
         isQuestionCard(dashcard.card) &&

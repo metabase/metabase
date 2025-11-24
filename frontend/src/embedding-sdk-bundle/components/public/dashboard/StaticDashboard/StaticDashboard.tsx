@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
@@ -8,7 +6,6 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
-import { concatActionIf } from "../actionButtonUtils";
 
 import { staticDashboardSchema } from "./StaticDashboard.schema";
 
@@ -35,15 +32,10 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled, withSubscriptions }) => {
-        return _.compose(
-          concatActionIf(downloadsEnabled.pdf, DASHBOARD_ACTION.DOWNLOAD_PDF),
-          concatActionIf(
-            withSubscriptions,
-            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
-          ),
-        )([]);
-      }}
+      dashboardActions={[
+        DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+        DASHBOARD_ACTION.DOWNLOAD_PDF,
+      ]}
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>
         props.withDownloads &&
