@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.import
   "Import functionality for Metabase entities from human-readable representations"
   (:require
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.core :as v0-core]
    [representations.read :as rep-read]))
 
@@ -33,7 +34,7 @@
 
 ;; Collections
 
-(defn collection-representations
+(defn- collection-representations
   "Extract all representations from a collection YAML, including the collection itself,
    its databases, and recursively all child collections."
   [collection-yaml]
@@ -42,3 +43,31 @@
    (:databases collection-yaml)
    ;; recursive call
    (mapcat collection-representations (:children collection-yaml))))
+
+(defn- persist-collection-tree
+  "Persist the collection down through a nested collection tree."
+  ([collection-yaml]
+   (persist-collection-tree collection-yaml nil))
+  ([collection-yaml parent-ref]
+   (let [this-ref (str "ref:" (:name collection-yaml))]
+     (-> collection-yaml
+         (assoc :collection parent-ref)
+         (update :children (fn [children]
+                             (mapv #(persist-collection-tree % this-ref) children)))))))
+
+(defn prepare-collection-tree-for-import
+  "Prepare a collection tree (as outputted from [[export/export-entire-collection]] for [[insert-all!]]."
+  [collection-yaml]
+  (-> collection-yaml
+      persist-collection-tree
+      collection-representations))
+
+(defn insert-all!
+  "Insert a collection of representations."
+  [representations]
+  (loop [representations (v0-common/order-representations representations)
+         index {}]
+    (when (seq representations)
+      (let [rep (first representations)
+            instance (insert! rep (v0-common/map-entity-index index))]
+        (recur (rest representations) (assoc index (:name rep) instance))))))

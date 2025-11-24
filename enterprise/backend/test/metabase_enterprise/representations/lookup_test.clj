@@ -36,16 +36,6 @@
     (let [entity-id (:entity_id entity)]
       (is (= (:id entity) (:id (lookup/lookup-by-entity-id model entity-id)))))))
 
-;; Wat?
-#_(deftest lookup-by-entity-id-long-test
-    (testing "lookup-by-entity-id handles long entity-id gracefully (returns nil)"
-      (doseq [model [:model/Card
-                     :model/Transform
-                     :model/Collection
-                     :model/NativeQuerySnippet]]
-        (let [entity-id (rand-int 1000)]
-          (is (nil? (lookup/lookup-by-entity-id model entity-id)))))))
-
 (deftest lookup-by-name-test
   (doseq [model [:model/Card
                  :model/Transform

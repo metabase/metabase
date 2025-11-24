@@ -45,12 +45,12 @@
       (let [rep (rep-yaml/from-file filename)
             ref-index (-> {(v0-common/unref (:database rep))
                            (t2/select-one :model/Database (mt/id))}
-                          (v0-common/map-entity-index))]
-        (let [instance (rep/insert! rep ref-index)]
-          (try
-            (is instance)
-            (finally
-              (t2/delete! :model/Card (:id instance)))))))))
+                          (v0-common/map-entity-index))
+            instance (rep/insert! rep ref-index)]
+        (try
+          (is instance)
+          (finally
+            (t2/delete! :model/Card (:id instance))))))))
 
 (deftest representation-type-test
   (doseq [entity (t2/select :model/Card :type :metric)]

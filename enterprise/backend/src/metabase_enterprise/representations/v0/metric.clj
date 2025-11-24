@@ -2,17 +2,12 @@
   (:require
    [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.lookup :as lookup]
-   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
-   [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [representations.schema.v0.column :as rep-v0-column]
-   [toucan2.core :as t2]))
+   [representations.schema.v0.column :as rep-v0-column]))
 
 (def toucan-model
   "The toucan model keyword associated with metric representations"
@@ -21,13 +16,12 @@
 (defn yaml->toucan
   "Convert a v0 metric representation to Toucan-compatible data."
   [{metric-name :display_name
-    :keys [name description database collection columns] :as representation}
+    :keys [name description database columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
-        ;; TODO: once we've cleaned up mbql stuff, this explicit lookup should be superfluous.
-        ;; Just pull it off of the dataset-query
-        dataset-query (-> (assoc representation :database database-id)
-                          (v0-mbql/import-dataset-query ref-index))]
+        dataset-query (v0-mbql/import-dataset-query representation ref-index)
+        collection-id (when (:collection representation)
+                        (v0-common/lookup-id ref-index (:collection representation)))]
     (-> {;; Core fields
          :name (or metric-name name)
          :description description
@@ -36,7 +30,7 @@
          :query_type (if (lib/native-only-query? dataset-query) :native :query)
          :type :metric
          :result_metadata columns
-         :collection_id (v0-common/find-collection-id collection)}
+         :collection_id collection-id}
         u/remove-nils)))
 
 ;;; -- Export --

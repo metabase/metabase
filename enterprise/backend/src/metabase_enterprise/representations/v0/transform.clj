@@ -2,12 +2,10 @@
   "The v0 transform representation namespace."
   (:require
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [representations.read :as rep-read]
    [toucan2.core :as t2]))
 
@@ -20,18 +18,10 @@
 
 (defn yaml->toucan
   "Convert a v0 transform representation to Toucan-compatible data."
-  [{:keys [database] :as representation}
+  [representation
    ref-index]
-  (let [database-id (-> ref-index
-                        (v0-common/lookup-entity database)
-                        (v0-common/ensure-correct-type :database)
-                        (or (lookup/lookup-by-name :model/Database database))
-                        (or (lookup/lookup-by-id :model/Database database))
-                        :id
-                        (v0-common/ensure-not-nil))
-        query (v0-mbql/import-dataset-query representation ref-index)]
-    (-> {:database database-id
-         :name (or (:display_name representation)
+  (let [query (v0-mbql/import-dataset-query representation ref-index)]
+    (-> {:name (or (:display_name representation)
                    (:name representation))
          :description (:description representation)
          :source {:type "query"

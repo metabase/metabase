@@ -6,7 +6,6 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

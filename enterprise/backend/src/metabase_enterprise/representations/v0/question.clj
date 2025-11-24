@@ -2,14 +2,11 @@
   (:require
    [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.lookup :as lookup]
-   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.lib.core :as lib]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (def toucan-model
   "The toucan model keyword associated with question representations"
@@ -19,13 +16,16 @@
   "Convert a v0 question representation to Toucan-compatible data."
   [representation ref-index]
   (let [database-id (lookup/lookup-database-id ref-index (:database representation))
-        query (v0-mbql/import-dataset-query representation ref-index)]
+        query (v0-mbql/import-dataset-query representation ref-index)
+        collection-id (when (:collection representation)
+                        (v0-common/lookup-id ref-index (:collection representation)))]
     (-> {:name (or (:display_name representation)
                    (:name representation))
          :description (:description representation)
          :display (:display representation)
          :dataset_query query
          :database_id database-id
+         :collection_id collection-id
          :query_type (if (lib/native-only-query? query) :native :query)
          :type :question}
         u/remove-nils)))

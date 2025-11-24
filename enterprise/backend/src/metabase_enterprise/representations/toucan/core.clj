@@ -12,24 +12,21 @@
 (defn- with-question-defaults
   [question-entity]
   (->> question-entity
-       (merge {:description ""
-               :visualization_settings {}
+       (merge {:visualization_settings {}
                :display :table
                :creator_id (or api/*current-user-id* config/internal-mb-user-id)})))
 
 (defn- with-model-defaults
   [model-entity]
   (->> model-entity
-       (merge {:description ""
-               :visualization_settings {}
+       (merge {:visualization_settings {}
                :display :table
                :creator_id (or api/*current-user-id* config/internal-mb-user-id)})))
 
 (defn- with-metric-defaults
   [metric-entity]
   (->> metric-entity
-       (merge {:description ""
-               :visualization_settings {}
+       (merge {:visualization_settings {}
                :display :table
                :creator_id (or api/*current-user-id* config/internal-mb-user-id)})))
 

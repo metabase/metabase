@@ -1,12 +1,9 @@
 (ns metabase-enterprise.representations.v0.document
   (:require
    [clojure.walk :as walk]
-   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]))
 
 ;;; ------------------------------------ Main Schema ------------------------------------
 

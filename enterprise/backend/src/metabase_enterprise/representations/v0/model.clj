@@ -2,17 +2,12 @@
   (:require
    [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.lookup :as lookup]
-   [metabase-enterprise.representations.toucan.core :as rep-t2]
    [metabase-enterprise.representations.v0.card]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
-   [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (def ^:private user-editable-settings
   [:column_title :text_align :text_wrapping :view_as :link_text :link_url
@@ -24,10 +19,12 @@
 (defn- columns->result-metadata
   "Merge required inferred-metadata into the yml column metadata for user-defined fields."
   [user-metadata inferred-metadata]
-  (mapv (fn [user-column inferred]
-          (assoc user-column :base-type (:base-type inferred)))
-        user-metadata
-        inferred-metadata))
+  (let [name->base-type (into {} (for [md inferred-metadata]
+                                   [(:lib/original-name md)
+                                    (:base-type md)]))]
+    (mapv (fn [user-column]
+            (assoc user-column :base_type (get name->base-type (:name user-column))))
+          user-metadata)))
 
 (def toucan-model
   "The toucan model keyword associated with model representations"
@@ -36,7 +33,7 @@
 (defn yaml->toucan
   "Convert a v0 model representation to Toucan-compatible data."
   [{model-name :display_name
-    :keys [_type name description database collection columns] :as representation}
+    :keys [_type name description database columns] :as representation}
    ref-index]
   (let [database-id (lookup/lookup-database-id ref-index database)
         dataset-query (-> (assoc representation :database database-id)
@@ -44,16 +41,18 @@
         metadata-provider (lib-be/application-database-metadata-provider database-id)
         normalized-query (lib-be/normalize-query dataset-query)
         mlv2-query (lib/query metadata-provider normalized-query)
-        inferred-metadata (lib/returned-columns mlv2-query)]
+        inferred-metadata (lib/returned-columns mlv2-query)
+        collection-id (when (:collection representation)
+                        (v0-common/lookup-id ref-index (:collection representation)))]
     (-> {:name (or model-name name)
          :description description
          :dataset_query dataset-query
          :database_id database-id
          :query_type (if (lib/native-only-query? dataset-query) :native :query)
          :type :model
+         :collection_id collection-id
          :result_metadata (when columns
-                            (columns->result-metadata columns inferred-metadata))
-         :collection_id (v0-common/find-collection-id collection)}
+                            (columns->result-metadata columns inferred-metadata))}
         u/remove-nils)))
 
 ;;; -- Export --
@@ -72,8 +71,11 @@
   [result-column-metadata]
   (let [base {:name (:name result-column-metadata)}
         editable (not-empty
-                  (select-keys result-column-metadata [:display_name :description :semantic_type
-                                                       :visibility_type :fk_target_field_id]))
+                  (select-keys result-column-metadata [:display_name
+                                                       :description
+                                                       :semantic_type
+                                                       :visibility_type
+                                                       :fk_target_field_id]))
         settings (extract-user-editable-settings (:settings result-column-metadata))]
     (cond-> base
       editable (merge editable)
@@ -92,5 +94,5 @@
           :display_name (:name card)
           :description (:description card)})
         (merge (v0-mbql/export-dataset-query (:dataset_query card)))
-        (assoc :columns columns)
+        (assoc :columns columns) ;; put columns last
         u/remove-nils)))

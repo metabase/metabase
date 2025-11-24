@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.yaml
   "Centralized YAML utilities for representations with consistent formatting options."
   (:require
+   [clojure.walk :as walk]
    [metabase.util.yaml :as yaml]))
 
 (def ^:private yaml-options
@@ -19,7 +20,12 @@
 (defn parse-string
   "Parse YAML string to EDN data."
   [s]
-  (yaml/parse-string s))
+  (->> s
+       yaml/parse-string
+       (walk/postwalk (fn [node]
+                        (if (map? node)
+                          (into {} node)
+                          node)))))
 
 (defn from-file
   "Read and parse YAML file to EDN data."

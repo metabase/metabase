@@ -1,11 +1,9 @@
 (ns metabase-enterprise.representations.v0.collection
   (:require
-   [metabase-enterprise.representations.toucan.core :as rep-t2]
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections-rest.api :as coll.api]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (def toucan-model
   "The toucan model keyword associated with collection representations"
@@ -37,39 +35,24 @@
   "Convert a v0 collection representation to Toucan-compatible data."
   [{collection-name :display_name
     :keys [name description collection] :as _representation}
-   _ref-index]
-  (let [parent-id (when collection
-                    (if (number? collection)
-                      collection
-                      (:id collection)))
-        location (if parent-id
-                   (str "/" parent-id "/")
+   ref-index]
+  (let [parent (when collection
+                 (v0-common/lookup-entity ref-index collection))
+        location (if parent
+                   (str (:location parent) (:id parent) "/")
                    "/")]
     (u/remove-nils
      {:name (or collection-name name)
       :description description
       :location location})))
 
-(defn- insert-collection!
-  [new-collection]
-  (log/debug "Creating new collection" (:name new-collection))
-  (t2/insert-returning-instance! :model/Collection new-collection))
-
-(defn- archive-and-persist!
-  [existing-collection new-collection]
-  (let [collection-name (:name existing-collection)
-        archived-name (str collection-name " (archived)")]
-    (log/info "Renaming existing collection" collection-name "to" archived-name)
-    (t2/update! :model/Collection (:id existing-collection) {:name archived-name})
-    (insert-collection! new-collection)))
-
 (defn export-collection
   "Export a Collection Toucan entity to a v0 collection representation."
   [t2-collection]
-  (-> {:type :collection
-       :version :v0
-       :name (format "%s-%s" "collection" (:id t2-collection))
-       :display_name (:name t2-collection)
-       :description (:description t2-collection)
-       :children (children t2-collection)} ;; todo: where's the other collection exporter?
+  (-> (ordered-map
+       {:name (v0-common/unref (v0-common/->ref (:id t2-collection) :collection))
+        :type :collection
+        :version :v0
+        :display_name (:name t2-collection)
+        :description (:description t2-collection)})
       u/remove-nils))

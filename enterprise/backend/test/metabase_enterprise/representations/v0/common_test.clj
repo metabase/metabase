@@ -19,7 +19,7 @@
     (let [ur (v0-common/unref ref)
           [type id] (str/split ur #"-")
           id (Long/parseLong id)]
-      (t2/select-one (v0/toucan-model type) :id id))))
+      (t2/select-one (v0/toucan-model (keyword type)) :id id))))
 
 (deftest map-entity-index-lookup-success-test
   (testing "MapEntityIndex successfully looks up entity by ref"

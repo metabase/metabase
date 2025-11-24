@@ -1,11 +1,13 @@
 (ns metabase-enterprise.representations.v0.mbql
   "MBQL transformations for import/export of representations."
   (:require
+   [clojure.walk :as walk]
    [metabase-enterprise.representations.lookup :as lookup]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.query :as lib.query]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -61,17 +63,30 @@
 
 (def ^:private import-visitor (->V0ImportVisitor))
 
+(defn- normalize-field-references [query]
+  (walk/postwalk (fn [node]
+                   (if (and (vector? node)
+                            (= "field" (first node)))
+                     (update node 0 keyword)
+                     node))
+                 query))
+
 (defn import-dataset-query
   "Returns Metabase's dataset_query format, given a representation.
    Converts representation format to Metabase's internal dataset_query structure."
   [{:keys [query database]} ref-index]
   (let [db-id (lookup/lookup-database-id ref-index database)
         mp (lib-be/application-database-metadata-provider db-id)
+        ;; normalize and import-walk have trouble with fields as we use them with strings and our own version of the
+        ;; field-ref, so manually convert "field" to :field
+        query (normalize-field-references query)
         query' (if (string? query)
                  (lib/native-query mp query)
                  (mu/disable-enforcement
-                   (lib.query/query-with-stages mp query)))]
-    (lib/import-walk query' import-visitor ref-index)))
+                   (lib.normalize/normalize
+                    (lib.query/query-with-stages mp query))))]
+    (mu/disable-enforcement
+      (lib/import-walk query' import-visitor ref-index))))
 
 ;; ============================================================================
 ;; Export: Convert Metabase IDs to representation refs
