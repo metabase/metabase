@@ -13,7 +13,7 @@ export const SearchFilter = ({
 }: SearchFilterProps) => {
   return (
     <TextInput
-      miw="14rem"
+      w="100%"
       fz="sm"
       type="text"
       placeholder={placeholder}
