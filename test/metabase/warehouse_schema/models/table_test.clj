@@ -394,28 +394,28 @@
         (is (some? (t2/update! :model/Table table-id {:data_source nil})))
         (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
 
-(deftest published-as-model-test
-  (testing "hydrating :published_as_model"
-    (mt/with-temp [:model/Table {t1 :id :as table1} {}
-                   :model/Table {t2 :id :as table2} {}
-                   :model/Card  {_c1 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c2 :id} {:type :model :published_table_id t1 :archived true}
-                   :model/Card  {_c3 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c4 :id} {:type :model :published_table_id t2 :archived_directly true}
-                   :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
+(deftest published-as-symlink-test
+  (testing "hydrating :published_as_symlink"
+    (mt/with-temp [:model/Table        {t1 :id :as table1} {}
+                   :model/Table        {t2 :id :as table2} {}
+                   :model/Collection   {coll1 :id} {}
+                   :model/Collection   {coll2 :id} {}
+                   :model/TableSymlink _ {:table_id t1 :collection_id coll1}
+                   :model/TableSymlink _ {:table_id t1 :collection_id coll2}]
+      ;; t1 has 2 symlinks (in different collections), t2 has 0
       (is (= {t1 true, t2 false}
-             (->> (t2/hydrate [table1 table2] :published_as_model)
-                  (u/index-by :id :published_as_model)))))))
+             (->> (t2/hydrate [table1 table2] :published_as_symlink)
+                  (u/index-by :id :published_as_symlink)))))))
 
-(deftest published-models-test
-  (testing "hydrating :published_models"
-    (mt/with-temp [:model/Table {t1 :id :as table1} {}
-                   :model/Table {t2 :id :as table2} {}
-                   :model/Card  {c1 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c2 :id} {:type :model :published_table_id t1 :archived true}
-                   :model/Card  {c3 :id} {:type :model :published_table_id t1}
-                   :model/Card  {_c4 :id} {:type :model :published_table_id t2 :archived_directly true}
-                   :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
-      (is (= {t1 [c1 c3], t2 []}
-             (->> (t2/hydrate [table1 table2] :published_models)
-                  (u/index-by :id (comp (partial mapv :id) :published_models))))))))
+(deftest published-symlinks-test
+  (testing "hydrating :published_symlinks"
+    (mt/with-temp [:model/Table        {t1 :id :as table1} {}
+                   :model/Table        {t2 :id :as table2} {}
+                   :model/Collection   {coll1 :id} {}
+                   :model/Collection   {coll2 :id} {}
+                   :model/TableSymlink {s1 :id} {:table_id t1 :collection_id coll1}
+                   :model/TableSymlink {s2 :id} {:table_id t1 :collection_id coll2}]
+      ;; t1 has 2 symlinks, t2 has 0
+      (is (= {t1 #{s1 s2}, t2 #{}}
+             (->> (t2/hydrate [table1 table2] :published_symlinks)
+                  (u/index-by :id (comp set (partial mapv :id) :published_symlinks))))))))

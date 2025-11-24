@@ -424,33 +424,27 @@
   [tables]
   (with-fields tables))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :published_as_model]
+(methodical/defmethod t2/batched-hydrate [:model/Table :published_as_symlink]
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
    (fn []
-     (let [table-ids          (map :id tables)
-           published-as-model (t2/select-fn-set :published_table_id [:model/Card :published_table_id]
-                                                :published_table_id [:in table-ids]
-                                                :type               :model
-                                                :archived           false
-                                                :archived_directly  false)]
-       (u/index-by identity #(contains? published-as-model %) table-ids)))
+     (let [table-ids            (map :id tables)
+           published-as-symlink (t2/select-fn-set :table_id :model/TableSymlink
+                                                  :table_id [:in table-ids])]
+       (u/index-by identity #(contains? published-as-symlink %) table-ids)))
    :id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :published_models]
+(methodical/defmethod t2/batched-hydrate [:model/Table :published_symlinks]
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
    (fn []
      (let [table-ids (map :id tables)
-           models    (t2/select :model/Card
-                                :published_table_id [:in table-ids]
-                                :type               :model
-                                :archived           false
-                                :archived_directly  false)]
-       (group-by :published_table_id models)))
+           symlinks  (t2/select :model/TableSymlink
+                                :table_id [:in table-ids])]
+       (group-by :table_id symlinks)))
    :id
    {:default nil}))
 

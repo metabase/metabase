@@ -3,7 +3,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(derive :model/TableSymlink :metadata/model)
+(derive :model/TableSymlink :metabase/model)
 
 (methodical/defmethod t2/table-name :model/TableSymlink [_model] :table_symlink)
 

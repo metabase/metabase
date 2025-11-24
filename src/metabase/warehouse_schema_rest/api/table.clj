@@ -91,7 +91,7 @@
                                                   [:= :d.to_entity_id :metabase_table.id]
                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
-        hydrations (cond-> [:db :published_as_model]
+        hydrations (cond-> [:db :published_as_symlink]
                      (premium-features/has-feature? :transforms) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)

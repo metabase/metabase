@@ -10,10 +10,6 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
@@ -24,8 +20,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,21 +105,8 @@
       (maybe-sync-unhidden-tables! existing-tables set-map))
     {}))
 
-(defn- table->published-model
-  [{:keys [id name db_id] :as _table} creator-id collection-id]
-  {:name                   (format "Model based on %s" name)
-   :description            (format "Base model for table %s " name)
-   :dataset_query          (let [mp (lib-be/application-database-metadata-provider db_id)]
-                             (lib/query mp (lib.metadata/table mp id)))
-   :type                   :model
-   :display                :table
-   :visualization_settings {}
-   :creator_id             creator-id
-   :collection_id          collection-id
-   :published_table_id     id})
-
 (api.macros/defendpoint :post "/publish-table"
-  "Create a model for each of selected tables"
+  "Create a table symlink for each of selected tables"
   [_route-params
    _query-params
    {:keys [target_collection_id]
@@ -132,25 +114,21 @@
    :- [:merge
        ::table-selectors
        [:map
-        [:target_collection_id [:maybe [:or pos-int? [:= "library"]]]]]]]
+        [:target_collection_id [:or pos-int? [:= "library"]]]]]]
   (api/check-superuser)
-  (let [target-collection (cond
-                            (= "library" target_collection_id) (api/check-403 (collections/remote-synced-collection))
-                            (nil? target_collection_id) nil
-                            :else (api/check-404 (t2/select-one :model/Collection target_collection_id)))
+  (let [target-collection (if (= "library" target_collection_id)
+                            (api/check-403 (collections/remote-synced-collection))
+                            (api/check-404 (t2/select-one :model/Collection target_collection_id)))
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        created-models    (t2/with-transaction [_conn]
-                            (into []
-                                  (comp
-                                   (map t2.realize/realize)
-                                   (partition-all 20)
-                                   (mapcat (fn [batch]
-                                             (mapv (fn [table]
-                                                     (queries/create-card! (table->published-model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
-                                                   batch))))
-                                  (t2/reducible-select :model/Table :active true {:where where})))]
-    {:created_count     (count created-models)
-     :models            created-models
+        tables            (t2/select :model/Table :active true {:where where})
+        collection-id     (:id target-collection)
+        creator-id        api/*current-user-id*]
+    (when (seq tables)
+      (t2/insert! :model/TableSymlink
+                  [:table_id :collection_id :creator_id]
+                  (map (fn [table] [(:id table) collection-id creator-id]) tables)))
+    {:created_count     (count tables)
+     :tables            (t2/hydrate tables :published_symlinks)
      :target_collection target-collection}))
 
 (defn- sync-schema-async!
