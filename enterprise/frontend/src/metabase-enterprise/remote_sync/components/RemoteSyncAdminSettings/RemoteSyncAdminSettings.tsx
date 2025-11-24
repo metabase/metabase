@@ -304,6 +304,7 @@ export const RemoteSyncAdminSettings = () => {
                       </Button>
                     )}
                     <FormSubmitButton
+                      data-testid="remote-sync-submit-button"
                       label={
                         isRemoteSyncEnabled
                           ? t`Save changes`
