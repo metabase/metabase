@@ -14,7 +14,7 @@
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
-   (java.nio.file Files Path)))
+   (java.nio.file Files FileVisitOption Path Paths)))
 
 (set! *warn-on-reflection* true)
 
@@ -124,9 +124,17 @@
   ;; only include plugin manifests if they're on the system classpath.
   (if (u.files/running-from-jar?)
     (u.files/find-in-current-jar "glob:/metabase/*/metabase-plugin.yaml")
-    (enumeration-seq (.. (Thread/currentThread)
-                         getContextClassLoader
-                         (getResources "metabase-plugin.yaml")))))
+    (let [matcher (.getPathMatcher (java.nio.file.FileSystems/getDefault) "glob:**/metabase/*/metabase-plugin.yaml")]
+      (for [^File f (classpath/system-classpath)
+            :when (.isDirectory f)
+            founds [(-> (.toURI f)
+                        (Paths/get)
+                        (Files/find 3
+                                    (fn [path _attr] (.matches matcher path))
+                                    (make-array FileVisitOption 0))
+                        (.collect (java.util.stream.Collectors/toList)))]
+            f founds]
+        f))))
 
 (defn- load-local-plugin-manifests!
   "Load local plugin manifest files when not running in a production mode, to simulate what would happen when loading those
