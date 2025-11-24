@@ -311,7 +311,6 @@ export const getCollectionsPermissionEditor = createSelector(
             : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
         const disabled =
-          (isTenantCollection && !isTenantGroup) ||
           (!isTenantCollection && isTenantGroup) ||
           isAdmin;
 

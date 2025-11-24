@@ -80,6 +80,11 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   entityType?: EntityType;
   zIndex?: number;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
+  /**
+   * The type of item being saved. When set to a non-collection model,
+   * namespace root collections (like tenant root) will be disabled.
+   */
+  savingModel?: "collection" | "dashboard" | "question" | "model";
 }
 
 export function FormCollectionAndDashboardPicker({
@@ -94,6 +99,7 @@ export function FormCollectionAndDashboardPicker({
   dashboardIdFieldName,
   dashboardTabIdFieldName,
   entityType,
+  savingModel,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -168,8 +174,9 @@ export function FormCollectionAndDashboardPicker({
         item === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
+      savingModel,
     }),
-    [filterPersonalCollections, type, showCreateNewCollectionOption],
+    [filterPersonalCollections, type, showCreateNewCollectionOption, savingModel],
   );
 
   const [fetchDashboard] = useLazyGetDashboardQuery();

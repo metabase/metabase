@@ -35,6 +35,11 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
+  /**
+   * The type of item being saved. When set to a non-collection model,
+   * namespace root collections (like tenant root) will be disabled.
+   */
+  savingModel?: "collection" | "dashboard" | "question" | "model";
 }
 
 function ItemName({
@@ -61,6 +66,7 @@ function FormCollectionPicker({
   filterPersonalCollections,
   entityType,
   collectionPickerModalProps,
+  savingModel,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -107,8 +113,9 @@ function FormCollectionPicker({
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
       hasRecents: type !== "snippet-collections",
+      savingModel,
     }),
-    [filterPersonalCollections, type, showCreateNewCollectionOption],
+    [filterPersonalCollections, type, showCreateNewCollectionOption, savingModel],
   );
 
   const handleChange = useCallback(
