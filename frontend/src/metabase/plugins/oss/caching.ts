@@ -26,6 +26,9 @@ export type SidebarCacheSectionProps = {
 export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
+  isOpen: boolean;
+  withOverlay: boolean;
+  withTransparentOverlay: boolean;
   onClose: () => void;
   onBack: () => void;
 } & StackProps;

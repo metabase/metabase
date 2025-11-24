@@ -17,7 +17,10 @@ import { getItemId, getItemName } from "./utils";
 export const SidebarCacheForm = ({
   item,
   model,
+  isOpen,
   onClose,
+  withOverlay,
+  withTransparentOverlay,
   onBack,
   ...stackProps
 }: SidebarCacheFormProps) => {
@@ -51,12 +54,12 @@ export const SidebarCacheForm = ({
 
   return (
     <SidesheetSubPage
-      isOpen
       title={t`Caching settings`}
-      onBack={() => guardAction(onBack)}
+      isOpen={isOpen}
       onClose={() => guardAction(onClose)}
-      withOverlay={true}
-      withTransparentOverlay={true}
+      withOverlay={withOverlay}
+      withTransparentOverlay={withTransparentOverlay}
+      onBack={() => guardAction(onBack)}
     >
       <Stack
         align="space-between"

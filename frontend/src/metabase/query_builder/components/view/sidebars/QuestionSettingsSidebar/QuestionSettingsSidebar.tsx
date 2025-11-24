@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { useMount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import {
+  Sidesheet,
+  SidesheetCard,
+  useStackedSidesheets,
+} from "metabase/common/components/Sidesheet";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { onCloseQuestionSettings } from "metabase/query_builder/actions";
@@ -32,23 +34,18 @@ export const QuestionSettingsSidebar = ({
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionSettings());
 
-  const [page, setPage] = useState<"default" | "caching">("default");
-  const [isOpen, setIsOpen] = useState(false);
-
-  useMount(() => {
-    // this component is not rendered until it is "open"
-    // but we want to set isOpen after it mounts to get
-    // pretty animations
-    setIsOpen(true);
-  });
+  const { getModalProps, currentSidesheet, closeSidesheet, openSidesheet } =
+    useStackedSidesheets({
+      sidesheets: ["default", "caching"],
+      defaultOpened: "default",
+      withOverlay: true,
+    });
 
   return (
     <>
       <Sidesheet
         title={getTitle(question)}
-        onClose={handleClose}
-        isOpen={isOpen}
-        closeOnEscape={page === "default"}
+        {...getModalProps("default", { onClose: handleClose })}
         data-testid="question-settings-sidebar"
       >
         {question.type() === "model" && (
@@ -63,19 +60,19 @@ export const QuestionSettingsSidebar = ({
               <PLUGIN_CACHING.SidebarCacheSection
                 model="question"
                 item={question}
-                setPage={setPage}
-                key={page}
+                setPage={() => openSidesheet("caching")}
+                key={currentSidesheet}
               />
             </Stack>
           </SidesheetCard>
         )}
       </Sidesheet>
-      {page === "caching" && (
+      {currentSidesheet === "caching" && (
         <PLUGIN_CACHING.SidebarCacheForm
           item={question}
           model="question"
-          onBack={() => setPage("default")}
-          onClose={handleClose}
+          {...getModalProps("caching", { onClose: handleClose })}
+          onBack={() => closeSidesheet("caching")}
           pt="md"
         />
       )}
