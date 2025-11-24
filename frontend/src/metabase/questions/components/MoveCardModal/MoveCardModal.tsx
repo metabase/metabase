@@ -260,6 +260,9 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
     }
   };
 
+  // Determine the savingModel based on question type
+  const savingModel = question.type() === "model" ? "model" : "question";
+
   return (
     <MoveModal
       title={t`Where do you want to save this?`}
@@ -269,6 +272,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       canMoveToDashboard={card.type === "question"}
       entityType={getEntityTypeFromCardType(card.type)}
       recentAndSearchFilter={recentAndSearchFilter}
+      savingModel={savingModel}
     />
   );
 };

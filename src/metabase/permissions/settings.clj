@@ -57,7 +57,7 @@
   (deferred-tru
    "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
   :type :boolean
-  :visibility :admin
+  :visibility :authenticated
   :export? false
   :default false
   :feature :tenants)

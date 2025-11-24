@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -86,8 +86,29 @@ export function PermissionsPageLayout({
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
-  const navigateToTab = (tab: PermissionsPageTab) =>
-    dispatch(push(`/admin/permissions/${tab}`));
+  const [pendingTabNavigation, setPendingTabNavigation] = useState<
+    string | null
+  >(null);
+
+  const navigateToTab = (newTab: string) => {
+    if (isDirty) {
+      setPendingTabNavigation(newTab);
+    } else {
+      dispatch(push(`/admin/permissions/${newTab}`));
+    }
+  };
+
+  const handleConfirmTabChange = () => {
+    if (pendingTabNavigation) {
+      dispatch(push(`/admin/permissions/${pendingTabNavigation}`));
+      setPendingTabNavigation(null);
+    }
+  };
+
+  const handleCancelTabChange = () => {
+    setPendingTabNavigation(null);
+  };
+
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
   };
@@ -124,6 +145,16 @@ export function PermissionsPageLayout({
           confirmButtonText={t`OK`}
           confirmButtonProps={{ variant: "outline" }}
           closeButtonText={null}
+        />
+
+        <ConfirmModal
+          opened={pendingTabNavigation != null}
+          onClose={handleCancelTabChange}
+          onConfirm={handleConfirmTabChange}
+          title={t`Discard unsaved changes?`}
+          message={t`You have unsaved permission changes. Switching tabs will discard these changes.`}
+          confirmButtonText={t`Discard`}
+          closeButtonText={t`Cancel`}
         />
 
         <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />

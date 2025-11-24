@@ -1526,7 +1526,7 @@
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" or :analytics namespace."
+             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collections or :analytics namespace."
              (collection/check-collection-namespace :model/Card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
@@ -3356,3 +3356,183 @@
     (let [collection (t2/select-one :model/Collection id)]
       (is (nil? (:type collection)))
       (is (true? (:is_remote_synced collection))))))
+
+(deftest set-tenant-collection-permissions-root-parent-test
+  (testing "When creating a new Shared Tenant Collection at root level"
+    (testing "should apply default read permissions for all non-admin user groups"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/PermissionsGroup {group-1-id :id} {:name "Group 1"}
+                         :model/PermissionsGroup {group-2-id :id} {:name "Group 2"}
+                         :model/Collection coll {:name "Tenant Collection"
+                                                 :namespace collection/shared-tenant-ns
+                                                 :location "/"}]
+            (let [group-1-perms (t2/select-one :model/Permissions
+                                               :group_id group-1-id
+                                               :object (perms/collection-read-path coll))
+                  group-2-perms (t2/select-one :model/Permissions
+                                               :group_id group-2-id
+                                               :object (perms/collection-read-path coll))]
+              (is (some? group-1-perms)
+                  "Group 1 should have read permissions")
+              (is (some? group-2-perms)
+                  "Group 2 should have read permissions")
+              (is (not (t2/exists? :model/Permissions
+                                   :group_id group-1-id
+                                   :object (perms/collection-readwrite-path coll)))
+                  "Group 1 should not have write permissions")
+              (is (not (t2/exists? :model/Permissions
+                                   :group_id group-2-id
+                                   :object (perms/collection-readwrite-path coll)))
+                  "Group 2 should not have write permissions"))))))))
+
+(deftest set-tenant-collection-permissions-admin-group-excluded-test
+  (testing "Admin group should not receive auto-granted read permissions"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection coll {:name "Tenant Collection"
+                                               :namespace collection/shared-tenant-ns
+                                               :location "/"}]
+          (let [admin-group-id (:id (perms/admin-group))]
+            (is (not (t2/exists? :model/Permissions
+                                 :group_id admin-group-id
+                                 :object (perms/collection-read-path coll)))
+                "Admin group should not get explicit read permissions (they have implicit access)")))))))
+
+(deftest set-tenant-collection-permissions-nested-in-tenant-test
+  (testing "When creating a Shared Tenant Collection nested in another Shared Tenant Collection"
+    (testing "should copy parent permissions (standard behavior)"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
+                         :model/Collection parent {:name "Parent Tenant Collection"
+                                                   :namespace collection/shared-tenant-ns
+                                                   :location "/"}]
+            (perms/grant-collection-readwrite-permissions! group-id parent)
+            (mt/with-temp [:model/Collection child {:name "Child Tenant Collection"
+                                                    :namespace collection/shared-tenant-ns
+                                                    :location (collection/children-location parent)}]
+              (is (t2/exists? :model/Permissions
+                              :group_id group-id
+                              :object (perms/collection-readwrite-path child))
+                  "Child should inherit write permissions from parent tenant collection"))))))))
+
+(deftest set-tenant-collection-permissions-multiple-groups-test
+  (testing "Multiple groups should all receive read permissions"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup {group-1-id :id} {:name "Group 1"}
+                       :model/PermissionsGroup {group-2-id :id} {:name "Group 2"}
+                       :model/PermissionsGroup {group-3-id :id} {:name "Group 3"}
+                       :model/Collection coll {:name "Tenant Collection"
+                                               :namespace collection/shared-tenant-ns
+                                               :location "/"}]
+          (let [groups-with-read-perms (t2/select-fn-set :group_id :model/Permissions
+                                                         :object (perms/collection-read-path coll))
+                admin-group-id (:id (perms/admin-group))]
+            (is (contains? groups-with-read-perms group-1-id)
+                "Group 1 should have read permissions")
+            (is (contains? groups-with-read-perms group-2-id)
+                "Group 2 should have read permissions")
+            (is (contains? groups-with-read-perms group-3-id)
+                "Group 3 should have read permissions")
+            (is (not (contains? groups-with-read-perms admin-group-id))
+                "Admin group should not have explicit read permissions")))))))
+
+(deftest set-tenant-collection-permissions-parent-helper-test
+  (testing "The parent function should correctly identify parent collections"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {parent-id :id :as parent} {:name "Parent"
+                                                                     :namespace collection/shared-tenant-ns
+                                                                     :location "/"}
+                       :model/Collection child {:name "Child"
+                                                :namespace collection/shared-tenant-ns
+                                                :location (collection/children-location parent)}]
+          (let [child-parent (#'collection/parent child)]
+            (is (= parent-id (:id child-parent))
+                "Parent function should return the correct parent collection")
+            (is (collection/is-tenant-collection? child-parent)
+                "Parent should be identified as tenant collection")))))))
+
+(deftest set-tenant-collection-permissions-is-tenant-check-test
+  (testing "The is-tenant-collection? predicate"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection tenant-coll {:namespace collection/shared-tenant-ns}
+                       :model/Collection regular-coll {:type nil}
+                       :model/Collection remote-coll {:type "remote-synced"}]
+          (is (collection/is-tenant-collection? tenant-coll)
+              "Should identify shared-tenant-collection as tenant collection")
+          (is (not (collection/is-tenant-collection? regular-coll))
+              "Should not identify regular collection as tenant collection")
+          (is (not (collection/is-tenant-collection? remote-coll))
+              "Should not identify remote-synced collection as tenant collection"))))))
+
+(deftest after-insert-routes-to-correct-permissions-logic-test
+  (testing "The after-insert hook should route to the correct permissions logic"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (testing "for tenant collections"
+          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
+                         :model/Collection coll {:name "Tenant Collection"
+                                                 :namespace collection/shared-tenant-ns
+                                                 :location "/"}]
+            (is (t2/exists? :model/Permissions
+                            :group_id group-id
+                            :object (perms/collection-read-path coll))
+                "Tenant collection should trigger set-tenant-collection-permissions!")))
+        (testing "for regular collections"
+          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
+                         :model/Collection coll {:name "Regular Collection"
+                                                 :location "/"}]
+            (is (not (t2/exists? :model/Permissions
+                                 :group_id group-id
+                                 :object (perms/collection-read-path coll)))
+                "Regular collection should use copy-parent-permissions! (no auto-perms)")))))))
+
+(deftest set-tenant-collection-permissions-deeply-nested-test
+  (testing "Deeply nested tenant collections should handle permissions correctly"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
+                       :model/Collection level-1 {:name "Level 1 Tenant"
+                                                  :namespace collection/shared-tenant-ns
+                                                  :location "/"}
+                       :model/Collection level-2 {:name "Level 2 Tenant"
+                                                  :namespace collection/shared-tenant-ns
+                                                  :location (collection/children-location level-1)}
+                       :model/Collection level-3 {:name "Level 3 Tenant"
+                                                  :namespace collection/shared-tenant-ns
+                                                  :location (collection/children-location level-2)}]
+          (is (t2/exists? :model/Permissions
+                          :group_id group-id
+                          :object (perms/collection-read-path level-1))
+              "Level 1 should have default read permissions")
+          (is (t2/exists? :model/Permissions
+                          :group_id group-id
+                          :object (perms/collection-read-path level-2))
+              "Level 2 should copy read permissions from Level 1")
+          (is (t2/exists? :model/Permissions
+                          :group_id group-id
+                          :object (perms/collection-read-path level-3))
+              "Level 3 should copy read permissions from Level 2"))))))
+
+(deftest set-tenant-collection-permissions-no-permission-escalation-test
+  (testing "Creating a tenant collection should not escalate permissions beyond read"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
+                       :model/Collection coll {:name "Tenant Collection"
+                                               :namespace collection/shared-tenant-ns
+                                               :location "/"}]
+          (let [read-perms (t2/exists? :model/Permissions
+                                       :group_id group-id
+                                       :object (perms/collection-read-path coll))
+                write-perms (t2/exists? :model/Permissions
+                                        :group_id group-id
+                                        :object (perms/collection-readwrite-path coll))]
+            (is read-perms
+                "Should have read permissions")
+            (is (not write-perms)
+                "Should NOT have write permissions (no escalation)")))))))

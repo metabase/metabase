@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type {
@@ -11,8 +13,36 @@ import type { PickerState } from "../EntityPicker";
 
 import type {
   CollectionPickerItem,
+  CollectionPickerOptions,
   CollectionPickerStatePath,
 } from "./CollectionPicker";
+
+export const SHARED_TENANT_NAMESPACE = "shared-tenant-collection";
+
+const isTenantNamespace = (namespace?: string): boolean => {
+  return namespace === SHARED_TENANT_NAMESPACE;
+};
+
+/**
+ * Gets the namespace for a collection item.
+ * For namespace roots (like "tenant"), returns the corresponding namespace.
+ * For regular collections, returns their namespace property.
+ */
+export const getNamespaceForItem = (
+  item: Pick<CollectionPickerItem, "id" | "namespace"> | null | undefined,
+): string | undefined => {
+  if (!item) {
+    return undefined;
+  }
+
+  // If the item is the tenant root, return the shared tenant namespace
+  if (item.id === "tenant") {
+    return SHARED_TENANT_NAMESPACE;
+  }
+
+  // Otherwise return the item's namespace
+  return item.namespace;
+};
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -25,6 +55,8 @@ export const getCollectionIdPath = (
     | "is_tenant_collection"
     | "is_tenant_dashboard"
     | "type"
+    | "namespace"
+    | "collection_namespace"
   > & {
     type?: Collection["type"];
   },
@@ -68,17 +100,20 @@ export const getCollectionIdPath = (
 
   const id = collection.model === "collection" ? collection.id : -collection.id;
 
+  // Check for tenant collection using namespace first, then fall back to boolean flags
+  const isTenantCollection =
+    isTenantNamespace(collection.namespace) ||
+    isTenantNamespace(collection.collection_namespace) ||
+    collection.is_tenant_collection ||
+    collection.is_tenant_dashboard;
+
   if (isInUserPersonalCollection) {
     return [...pathFromRoot, id];
   } else if (isInSemanticLayerCollection) {
     return [...pathFromRoot, id];
   } else if (collection.is_personal) {
     return ["personal", ...pathFromRoot, id];
-  } else if (
-    collection.is_tenant_collection ||
-    collection.is_tenant_dashboard ||
-    collection.type === "shared-tenant-collection"
-  ) {
+  } else if (isTenantCollection) {
     return ["tenant", ...pathFromRoot, id];
   } else {
     return ["root", ...pathFromRoot, id];
@@ -91,9 +126,14 @@ export const getStateFromIdPath = ({
   models,
 }: {
   idPath: CollectionId[];
-  namespace?: "snippets";
+  namespace?: string;
   models: CollectionItemModel[];
 }): CollectionPickerStatePath => {
+  // Determine the effective namespace based on the path
+  // If the path starts with "tenant", use the shared tenant namespace
+  const effectiveNamespace =
+    idPath[0] === "tenant" ? SHARED_TENANT_NAMESPACE : namespace;
+
   const statePath: PickerState<
     CollectionPickerItem,
     ListCollectionItemsRequest
@@ -105,6 +145,7 @@ export const getStateFromIdPath = ({
         id: idPath[0],
         here: ["collection"],
         below: ["collection"],
+        namespace: effectiveNamespace,
       },
     },
   ];
@@ -120,7 +161,7 @@ export const getStateFromIdPath = ({
       query: {
         id: entityId,
         models: ["collection", ...models],
-        namespace,
+        namespace: effectiveNamespace,
         ...extra,
       },
       entity: entityModel,
@@ -131,6 +172,7 @@ export const getStateFromIdPath = ({
             id: nextLevelId,
             here: ["collection"],
             below: ["collection"],
+            namespace: effectiveNamespace,
           }
         : null,
     });
@@ -158,4 +200,59 @@ const resolveEntityId = (
       model: isDashboard ? "dashboard" : "collection",
     };
   }
+};
+
+/**
+ * Checks if a collection item is a namespace root (like tenant root).
+ * Namespace roots should only contain sub-collections, not actual content.
+ */
+export const isNamespaceRoot = (item: CollectionPickerItem): boolean => {
+  // The tenant root has id "tenant" and namespace "shared-tenant-collection"
+  if (item.id === "tenant") {
+    return true;
+  }
+
+  // Future namespace roots could be detected by having a namespace but being
+  // at the root level (no location or location is "/")
+  return false;
+};
+
+/**
+ * Checks if an item should be disabled based on the savingModel option.
+ * Namespace roots are disabled when saving non-collection items.
+ */
+export const shouldDisableItemForSavingModel = (
+  item: CollectionPickerItem,
+  savingModel?: CollectionPickerOptions["savingModel"],
+): boolean => {
+  // If no savingModel specified, don't disable anything
+  if (!savingModel) {
+    return false;
+  }
+
+  // Collections can be saved anywhere
+  if (savingModel === "collection") {
+    return false;
+  }
+
+  // For other item types, disable namespace roots
+  return isNamespaceRoot(item);
+};
+
+/**
+ * Returns the reason why an item is disabled, for use in tooltips.
+ */
+export const getDisabledReasonForSavingModel = (
+  item: CollectionPickerItem,
+  savingModel?: CollectionPickerOptions["savingModel"],
+): string | undefined => {
+  if (!shouldDisableItemForSavingModel(item, savingModel)) {
+    return undefined;
+  }
+
+  if (item.id === "tenant") {
+    return t`Items cannot be saved directly to the tenant root collection. Please select a sub-collection.`;
+  }
+
+  return t`Items cannot be saved to this collection.`;
 };
