@@ -250,7 +250,8 @@
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
-    "timeline"})
+    "timeline"
+    "table-symlink"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -432,6 +433,12 @@
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
             [:= :archived (boolean archived?)]]})
+
+(defmethod collection-children-query :table-symlink
+  [_ collection {:keys [archived? pinned-state]}]
+  {:select [[:table_id :id] [(h2x/literal "table-symlink") :model] :collection_id :table_id]
+   :from   [[:table_symlink :symlink]]
+   :where  [:= :collection_id (:id collection)]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -789,7 +796,8 @@
     :document   :model/Document
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
-    :timeline   :model/Timeline))
+    :timeline   :model/Timeline
+    :table-symlink :model/TableSymlink))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -975,7 +983,8 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline
+                                             :table-symlink]
                                       (premium-features/enable-documents?) (conj :document))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
