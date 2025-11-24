@@ -86,8 +86,9 @@ export function PeopleListingApp({
 
   return (
     <div>
-      <Group justify="space-between" mb="lg">
+      <Group justify="space-between" w="100%" mb="lg">
         <Title order={1}>{external ? t`External Users` : t`People`}</Title>
+
         {!external && <PLUGIN_TENANTS.EditUserStrategySettingsButton />}
       </Group>
 
@@ -108,13 +109,7 @@ export function PeopleListingApp({
           loading={isLoading || !currentUser}
         >
           <div data-testid="admin-panel">
-            <Flex
-              align="center"
-              gap="xl"
-              justify="space-between"
-              mb="xl"
-              wrap="wrap"
-            >
+            <Group w="100%" justify="space-between" mb="lg" gap="md">
               <Flex flex="1">
                 <SearchFilter
                   value={searchInputValue}
@@ -130,7 +125,7 @@ export function PeopleListingApp({
                   </Link>
                 </Box>
               )}
-            </Flex>
+            </Group>
 
             {currentUser && (
               <PeopleList

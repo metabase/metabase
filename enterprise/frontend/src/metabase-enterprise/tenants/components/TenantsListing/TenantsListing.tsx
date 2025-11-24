@@ -8,7 +8,6 @@ import {
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import UserAvatar from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
@@ -57,73 +56,70 @@ export const TenantsListing = ({
   }, [searchInputValue, tenants]);
 
   return (
-    <>
-      <AdminPaneLayout
-        headerContent={
-          <Group w="100%" justify="space-between">
-            <Flex flex="1">
-              <SearchFilter
-                value={searchInputValue}
-                onChange={setSearchInputValue}
-                placeholder={t`Find a tenant`}
-              />
-            </Flex>
+    <div>
+      <Group w="100%" justify="space-between" mb="lg" gap="md">
+        <Flex flex="1">
+          <SearchFilter
+            value={searchInputValue}
+            onChange={setSearchInputValue}
+            placeholder={t`Find a tenant`}
+          />
+        </Flex>
 
-            {isAdmin && (
-              <Flex gap="sm">
-                <Button
-                  variant="filled"
-                  onClick={openNewTenantModal}
-                >{t`New tenant`}</Button>
+        {isAdmin && (
+          <Flex gap="sm">
+            <Button
+              variant="filled"
+              onClick={openNewTenantModal}
+            >{t`New tenant`}</Button>
+          </Flex>
+        )}
+      </Group>
+
+      <AdminContentTable columnTitles={[t`Tenant`, t`Slug`, t`Users`]}>
+        {filteredTenants.map((tenant) => (
+          <tr key={tenant.id}>
+            <td>
+              <Flex
+                component={ForwardRefLink}
+                align="center"
+                to={Urls.editTenant(tenant.id)}
+                className={CS.link}
+                gap="md"
+              >
+                <UserAvatar
+                  user={{ first_name: tenant.name }}
+                  bg={tenantIdToColor(tenant.id)}
+                />
+                <Box component="span" fw={700} c="brand">
+                  {tenant.name}
+                </Box>
               </Flex>
-            )}
-          </Group>
-        }
-      >
-        <AdminContentTable columnTitles={[t`Tenant`, t`Slug`, t`Users`]}>
-          {filteredTenants.map((tenant) => (
-            <tr key={tenant.id}>
-              <td>
-                <Flex
-                  component={ForwardRefLink}
-                  align="center"
-                  to={Urls.editTenant(tenant.id)}
-                  className={CS.link}
-                  gap="md"
-                >
-                  <UserAvatar
-                    user={{ first_name: tenant.name }}
-                    bg={tenantIdToColor(tenant.id)}
-                  />
-                  <Box component="span" fw={700} c="brand">
-                    {tenant.name}
-                  </Box>
-                </Flex>
-              </td>
-              <td>{tenant.slug}</td>
-              <td>{tenant.member_count || 0}</td>
-              <Box component="td" ta="end">
-                <ActionsPopover tenant={tenant} />
-              </Box>
-            </tr>
-          ))}
-        </AdminContentTable>
+            </td>
+            <td>{tenant.slug}</td>
+            <td>{tenant.member_count || 0}</td>
+            <Box component="td" ta="end">
+              <ActionsPopover tenant={tenant} />
+            </Box>
+          </tr>
+        ))}
+      </AdminContentTable>
 
-        {((tenants.length !== 0 && filteredTenants.length === 0) ||
-          (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
-          <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
-            {t`No matching tenants found.`}
-          </Text>
-        )}
+      {((tenants.length !== 0 && filteredTenants.length === 0) ||
+        (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
+          {t`No matching tenants found.`}
+        </Text>
+      )}
 
-        {tenants.length === 0 && status === ACTIVE_STATUS.active && (
-          <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
-            {t`Add your first tenant to get started.`}
-          </Text>
-        )}
-      </AdminPaneLayout>
+      {tenants.length === 0 && status === ACTIVE_STATUS.active && (
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-light">
+          {t`Add your first tenant to get started.`}
+        </Text>
+      )}
+
       {children}
-    </>
+    </div>
   );
 };
 
