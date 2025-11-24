@@ -33,10 +33,10 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
     isEditing
       ? DASHBOARD_EDITING_ACTIONS
       : _.compose(
-          concatActionIf(DASHBOARD_ACTION.DOWNLOAD_PDF, downloadsEnabled.pdf),
+          concatActionIf(downloadsEnabled.pdf, DASHBOARD_ACTION.DOWNLOAD_PDF),
           concatActionIf(
-            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
             withSubscriptions,
+            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
           ),
         )([DASHBOARD_ACTION.EDIT_DASHBOARD]);
 

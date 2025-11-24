@@ -47,10 +47,10 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
       getClickActionMode={getClickActionMode}
       dashboardActions={({ downloadsEnabled, withSubscriptions }) => {
         return _.compose(
-          concatActionIf(DASHBOARD_ACTION.DOWNLOAD_PDF, downloadsEnabled.pdf),
+          concatActionIf(downloadsEnabled.pdf, DASHBOARD_ACTION.DOWNLOAD_PDF),
           concatActionIf(
-            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
             withSubscriptions,
+            DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
           ),
         )([]);
       }}
