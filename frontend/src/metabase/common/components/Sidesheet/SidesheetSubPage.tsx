@@ -18,6 +18,8 @@ interface SidesheetSubPageProps {
   size?: SidesheetSize;
   /** Whether to show a translucent backdrop */
   withOverlay?: boolean;
+  /** Invisible overlay to prevent double darkening while preserving click-outside handling */
+  withTransparentOverlay?: boolean;
 }
 
 export const SidesheetSubPageTitle = ({
@@ -42,6 +44,7 @@ export const SidesheetSubPage = ({
   isOpen,
   size,
   withOverlay = false,
+  withTransparentOverlay = false,
 }: SidesheetSubPageProps) => (
   <Sidesheet
     isOpen={isOpen}
@@ -49,6 +52,7 @@ export const SidesheetSubPage = ({
     onClose={onClose}
     size={size}
     withOverlay={withOverlay}
+    withTransparentOverlay={withTransparentOverlay}
   >
     {children}
   </Sidesheet>

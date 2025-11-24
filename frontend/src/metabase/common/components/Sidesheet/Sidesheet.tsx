@@ -20,6 +20,9 @@ interface SidesheetProps {
   /** use this if you want to enable interior scrolling of tab panels */
   removeBodyPadding?: boolean;
   withOverlay?: boolean;
+  /** Invisible overlay to prevent double darkening while preserving click-outside handling */
+  withTransparentOverlay?: boolean;
+  closeOnEscape?: boolean;
 }
 
 const sizes: Record<SidesheetSize, string> = {
@@ -39,6 +42,8 @@ export function Sidesheet({
   children,
   removeBodyPadding,
   withOverlay = true,
+  withTransparentOverlay = false,
+  closeOnEscape = true,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
   return (
@@ -46,9 +51,15 @@ export function Sidesheet({
       variant="sidesheet"
       opened={isOpen}
       onClose={onClose}
+      closeOnEscape={closeOnEscape}
       h="100dvh"
     >
-      {withOverlay && <Modal.Overlay data-testid="modal-overlay" />}
+      {withOverlay && (
+        <Modal.Overlay
+          bg={withTransparentOverlay ? "transparent" : undefined}
+          data-testid="modal-overlay"
+        />
+      )}
       <Modal.Content
         transitionProps={{ duration: 0 }}
         px="none"

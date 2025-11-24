@@ -27,6 +27,7 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
+  onBack: () => void;
 } & StackProps;
 
 export type PreemptiveCachingSwitchProps = {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -33,6 +33,8 @@ export const QuestionSettingsSidebar = ({
   const handleClose = () => dispatch(onCloseQuestionSettings());
 
   const [page, setPage] = useState<"default" | "caching">("default");
+  const whetherToCloseOnEscape = page === "default";
+
   const [isOpen, setIsOpen] = useState(false);
 
   useMount(() => {
@@ -42,14 +44,13 @@ export const QuestionSettingsSidebar = ({
     setIsOpen(true);
   });
 
-  const title = useMemo(() => getTitle(question), [question]);
-
   return (
     <>
       <Sidesheet
-        title={title}
+        title={getTitle(question)}
         onClose={handleClose}
         isOpen={isOpen}
+        closeOnEscape={whetherToCloseOnEscape}
         data-testid="question-settings-sidebar"
       >
         {question.type() === "model" && (

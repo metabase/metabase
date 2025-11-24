@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,13 +14,13 @@ import type { CacheStrategy } from "metabase-types/api";
 
 import { getItemId, getItemName } from "./utils";
 
-const SidebarCacheForm_Base = ({
+export const SidebarCacheForm = ({
   item,
   model,
   onClose,
   onBack,
   ...stackProps
-}: SidebarCacheFormProps & { onBack: () => void }) => {
+}: SidebarCacheFormProps) => {
   const configurableModels = useMemo(() => [model], [model]);
   const id: number = getItemId(model, item);
   const { configs, setConfigs, loading, error } = useCacheConfigs({
@@ -45,12 +44,8 @@ const SidebarCacheForm_Base = ({
     [saveStrategy, onBack],
   );
 
-  const {
-    askBeforeDiscardingChanges,
-    confirmationModal,
-    isStrategyFormDirty,
-    setIsStrategyFormDirty,
-  } = useConfirmIfFormIsDirty();
+  const { confirmationModal, setIsStrategyFormDirty, guardAction } =
+    useConfirmIfFormIsDirty();
 
   const headingId = `${model}-sidebar-caching-settings-heading`;
 
@@ -58,12 +53,10 @@ const SidebarCacheForm_Base = ({
     <SidesheetSubPage
       isOpen
       title={t`Caching settings`}
-      onBack={() =>
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
-      }
-      onClose={() => {
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose();
-      }}
+      onBack={() => guardAction(onBack)}
+      onClose={() => guardAction(onClose)}
+      withOverlay={true}
+      withTransparentOverlay={true}
     >
       <Stack
         align="space-between"
@@ -92,5 +85,3 @@ const SidebarCacheForm_Base = ({
     </SidesheetSubPage>
   );
 };
-
-export const SidebarCacheForm = withRouter(SidebarCacheForm_Base);
