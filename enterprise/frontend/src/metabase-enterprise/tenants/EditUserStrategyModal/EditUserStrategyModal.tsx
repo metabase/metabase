@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
@@ -22,7 +22,13 @@ export const EditUserStrategyModal = ({
     useAdminSetting("use-tenants");
 
   const initialStrategy = value ? "multi-tenant" : "single-tenant";
+
+  // Needed to disable the apply button when the strategy does not change
   const [selectedStrategy, setSelectedStrategy] = useState(initialStrategy);
+
+  useEffect(() => {
+    setSelectedStrategy(initialStrategy);
+  }, [initialStrategy]);
 
   const handleApply = async () => {
     await updateSetting({

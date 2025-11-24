@@ -46,43 +46,99 @@ describe("EditUserStrategyModal", () => {
   it("should handle loading state", async () => {
     await setup();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
-    await screen.findByLabelText("User strategy");
+    await screen.findByText("User strategy");
   });
 
-  it("should correctly set to single-tenancy if use-tenants setting is false", async () => {
+  it("should correctly display single-tenancy as selected if use-tenants setting is false", async () => {
     await setup();
 
-    const select = await userStrategySelect();
-    expect(select).toBeInTheDocument();
-    expect(select).toHaveValue("Single tenant");
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
   });
 
-  it("should correctly set to multi-tenancy if use-tenants setting is true", async () => {
+  it("should correctly display multi-tenancy as selected if use-tenants setting is true", async () => {
     await setup({ useTenants: true });
 
-    const select = await userStrategySelect();
-    expect(select).toBeInTheDocument();
-    expect(select).toHaveValue("Multi tenant");
+    expect(
+      await screen.findByRole("radio", {
+        name: /Multi tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
   });
 
-  it("should correctly update user strategy", async () => {
+  it("should allow changing selection and applying the change", async () => {
     await setup();
 
-    const select1 = await userStrategySelect();
-    expect(select1).toBeInTheDocument();
-    expect(select1).toHaveValue("Single tenant");
+    const singleTenantCard = await screen.findByRole("radio", {
+      name: /Single tenant/,
+      checked: true,
+    });
+    expect(singleTenantCard).toBeInTheDocument();
 
-    await userEvent.click(select1);
+    const multiTenantCard = screen.getByRole("radio", {
+      name: /Multi tenant/,
+      checked: false,
+    });
+    expect(multiTenantCard).toBeInTheDocument();
+
+    // Click the multi-tenant card
+    await userEvent.click(multiTenantCard);
+
+    // Verify the selection changed locally
+    expect(
+      screen.getByRole("radio", {
+        name: /Multi tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", {
+        name: /Single tenant/,
+        checked: false,
+      }),
+    ).toBeInTheDocument();
+
     setupPropertiesEndpoints(createMockSettings({ "use-tenants": true }));
-    await userEvent.click(await screen.findByText("Multi tenant"));
+
+    // Click the Apply button
+    const applyButton = screen.getByRole("button", { name: /apply/i });
+    await userEvent.click(applyButton);
+
+    // Verify the API call was made
     await waitFor(async () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
     });
 
-    const select2 = await userStrategySelect();
-    expect(select2).toBeInTheDocument();
-    expect(select2).toHaveValue("Multi tenant");
+    const puts = await findRequests("PUT");
+    expect(puts[0].body).toEqual({ value: true });
+  });
+
+  it("should disable Apply button when selection hasn't changed", async () => {
+    await setup();
+
+    await screen.findByRole("radio", { name: /Single tenant/ });
+
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
+    expect(applyButton).toBeDisabled();
+  });
+
+  it("should enable Apply button when selection changes", async () => {
+    await setup();
+
+    const multiTenantCard = await screen.findByRole("radio", {
+      name: /Multi tenant/,
+    });
+
+    await userEvent.click(multiTenantCard);
+
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
+    expect(applyButton).toBeEnabled();
   });
 
   it("should handle failing to update", async () => {
@@ -94,18 +150,29 @@ describe("EditUserStrategyModal", () => {
       },
     });
 
-    const select1 = await userStrategySelect();
-    expect(select1).toBeInTheDocument();
-    expect(select1).toHaveValue("Single tenant");
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
 
-    await userEvent.click(select1);
-    await userEvent.click(await screen.findByText("Multi tenant"));
+    const multiTenantCard = screen.getByRole("radio", {
+      name: /Multi tenant/,
+    });
+    await userEvent.click(multiTenantCard);
+
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
+    await userEvent.click(applyButton);
+
     await waitFor(() => findRequests("PUT"));
 
-    const select2 = await userStrategySelect();
-    expect(select2).toBeInTheDocument();
-    expect(select2).toHaveValue("Single tenant");
+    // Selection should remain as multi-tenant in the UI even though the API call failed
+    expect(
+      screen.getByRole("radio", {
+        name: /Multi tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
   });
 });
-
-const userStrategySelect = () => screen.findByLabelText("User strategy");
