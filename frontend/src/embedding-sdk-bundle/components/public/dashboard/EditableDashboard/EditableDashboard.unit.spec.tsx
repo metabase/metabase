@@ -10,7 +10,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { addSubscriptionTests } from "../sharedTests.spec";
+import { addSubscriptionTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,

@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor, within } from "__support__/ui";
 
-import { addSubscriptionTests } from "../sharedTests.spec";
+import { addSubscriptionTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
