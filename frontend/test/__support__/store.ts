@@ -14,6 +14,7 @@ import {
   SegmentSchema,
   SnippetSchema,
   TableSchema,
+  TableSymlinkSchema,
 } from "metabase/schema";
 import type {
   Card,
@@ -59,6 +60,7 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   snippets: [SnippetSchema],
   indexedEntities: [IndexedEntitySchema],
   questions: [QuestionSchema],
+  tableSymlinks: [TableSymlinkSchema],
 };
 
 export const createMockEntitiesState = (
