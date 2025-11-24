@@ -397,12 +397,10 @@
       (let [paths-excluding-gtap-paths (set/difference paths (:paths gtap-perms))]
         (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths-excluding-gtap-paths)
             (throw (perms-exception paths)))))
-
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
-
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -415,11 +413,9 @@
   (try
     (let [required-perms (required-perms-for-query query)]
       (check-data-perms query required-perms)
-
       ;; Check card read permissions for any cards referenced in subqueries!
       (doseq [card-id (:card-ids required-perms)]
         (check-card-read-perms database-id card-id))
-
       true)
     (catch clojure.lang.ExceptionInfo _e
       false)))

@@ -651,6 +651,94 @@ databaseChangeLog:
       rollback:
         - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
 
+  - changeSet:
+      id: v58.2025-11-21.00:00:00
+      author: camsaul
+      comment: Add Table Symlink (Table => Collection) 1tM table
+      changes:
+        - createTable:
+            tableName: table_symlink
+            comment: Adds a Table to a Collection; 1tM table
+            columns:
+              # composite PK of table_id + collection_id; no surrogate key (id)
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_table_symlink
+              - column:
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_table_symlink
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: ID of the User who created this Symlink, for audit purposes. Set to NULL if the User is deleted.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2025-11-21.00:00:01
+      author: camsaul
+      comment: Add FK constraint for table_symlink.table_id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_table_symlink_table_id
+            baseTableName: table_symlink
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v58.2025-11-21.00:00:02
+      author: camsaul
+      comment: Add FK constraint for table_symlink.collection_id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_table_symlink_collection_id
+            baseTableName: table_symlink
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v58.2025-11-21.00:00:03
+      author: camsaul
+      comment: Add FK constraint for table_symlink.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_table_symlink_creator_id
+            baseTableName: table_symlink
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v58.2025-11-21.00:00:04
+      author: camsaul
+      comment: Add index on table_symlink.collection_id
+      changes:
+        - createIndex:
+            tableName: table_symlink
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_table_symlink_collection_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

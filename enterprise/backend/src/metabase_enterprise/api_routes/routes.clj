@@ -96,45 +96,46 @@
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
   ;; Postponing a granular flag for :actions until it's used more widely.
-  {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
-   "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
-   "/ai-sql-fixer"                 (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
-   "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
-   "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
-   "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
-   "/billing"                      metabase-enterprise.billing.api.routes/routes
-   "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
-   "/comment"                      (premium-handler metabase-enterprise.comments.api/routes :documents)
-   "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
-                                       (premium-handler :attached-dwh)
-                                       (premium-handler :etl-connections)
-                                       (premium-handler :etl-connections-pg))
-   "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
-   "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
-   "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
-   "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
-   "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
-   "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
-   "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
-                                       (premium-handler :attached-dwh)
-                                       (premium-handler :etl-connections))
-   "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
-   "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
-   "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
-   "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   "/public"                       (api.routes.common/+public-exceptions metabase-enterprise.public-sharing.api/routes)
-   "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
-   "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
-   "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
-   "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
-   "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+  {"/action-v2"            (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
+   "/advanced-permissions" (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
+   "/ai-entity-analysis"   (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
+   "/ai-sql-fixer"         (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
+   "/ai-sql-generation"    (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
+   "/audit-app"            (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
+   "/autodescribe"         (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
+   "/billing"              metabase-enterprise.billing.api.routes/routes
+   "/cloud-add-ons"        metabase-enterprise.cloud-add-ons.api/routes
+   "/comment"              (premium-handler metabase-enterprise.comments.api/routes :documents)
+   "/content-translation"  (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
+   "/database-replication" (-> database-replication.api/routes ;; database-replication requires all these features.
+                               (premium-handler :attached-dwh)
+                               (premium-handler :etl-connections)
+                               (premium-handler :etl-connections-pg))
+   "/database-routing"     (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/dependencies"         (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
+   "/document"             (premium-handler metabase-enterprise.documents.api/routes :documents)
+   "/email"                (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/embedding-hub"        (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
+   "/gsheets"              (-> gsheets.api/routes ;; gsheets requires both features.
+                               (premium-handler :attached-dwh)
+                               (premium-handler :etl-connections))
+   "/logs"                 (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/metabot-tools"        metabase-enterprise.metabot-v3.tools.api/routes
+   "/metabot-v3"           (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
+   ;; TODO (Cam 2025-11-21) update this to use a `kebab-case` route like the rest of our API
+   "/permission_debug"     (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/public"               (api.routes.common/+public-exceptions metabase-enterprise.public-sharing.api/routes)
+   "/remote-sync"          (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
+   "/scim"                 (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   "/semantic-search"      (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
+   "/serialization"        (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/stale"                (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
-   "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
-   "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
-   "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+   "/transform"            (premium-handler metabase-enterprise.transforms.api/routes :transforms)
+   "/transform-job"        (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
+   "/transform-tag"        (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
+   "/transforms-python"    (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
+   "/upload-management"    (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

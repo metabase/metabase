@@ -175,6 +175,7 @@
    "/setup"                'metabase.setup-rest.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
+   "/table-symlink"        (+auth metabase.warehouse-schema-rest.api/table-symlink-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
