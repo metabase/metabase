@@ -32,13 +32,7 @@ export function ModelingSidebarView({
   hasNativeWrite,
 }: ModelingSidebarViewProps) {
   return (
-    <Box
-      w={320}
-      h="100%"
-      bg="bg-white"
-      className={S.sidebar}
-      data-testid="modeling-sidebar"
-    >
+    <Box w={320} h="100%" className={S.sidebar} data-testid="modeling-sidebar">
       <Stack gap={0}>
         <Box className={S.section} p="md" data-testid="collections-section">
           <LibrarySection
