@@ -143,7 +143,7 @@ export const useRootCollectionPickerItems = (
 
     if (tenantsEnabled && currentUser) {
       collectionItems.push({
-        name: t`Tenant Collections`,
+        name: t`Shared Tenant Collections`,
         id: "tenant",
         namespace: "shared-tenant-collection",
         here: ["collection", "card", "dashboard"],
@@ -151,6 +151,20 @@ export const useRootCollectionPickerItems = (
         can_write: true,
         model: "collection",
         location: "/",
+      });
+    }
+
+    const userTenantCollectionId = currentUser?.tenant_collection_id;
+    if (tenantsEnabled && userTenantCollectionId) {
+      collectionItems.push({
+        name: t`My Tenant Collection`,
+        id: userTenantCollectionId,
+        here: ["collection", "card", "dashboard"],
+        description: null,
+        can_write: true,
+        model: "collection",
+        location: "/",
+        type: "tenant-specific-root-collection",
       });
     }
 

@@ -77,6 +77,9 @@ export const getCollectionIdPath = (
   if (collection.type === "library") {
     return [collection.id];
   }
+  if (collection.namespace === "tenant-specific") {
+    return ["tenant"];
+  }
 
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return ["personal"];

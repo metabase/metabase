@@ -39,6 +39,7 @@ export type CollectionType =
   | "library-models"
   | "library-metrics"
   | "shared-tenant-collection"
+  | "tenant-specific-root-collection"
   | null;
 
 export type LastEditInfo = Pick<
@@ -170,7 +171,7 @@ export interface CollectionListQuery {
 
 export type getCollectionRequest = {
   id: CollectionId;
-  namespace?: "snippets";
+  namespace?: "snippets" | "tenant-specific";
   ignore_error?: boolean;
 };
 

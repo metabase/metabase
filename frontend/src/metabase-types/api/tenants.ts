@@ -7,6 +7,7 @@ export type Tenant = {
   member_count: number;
   is_active: boolean;
   attributes: UserAttributeMap | null;
+  tenant_collection_id: number | null;
 };
 
 export type CreateTenantInput = Pick<Tenant, "name" | "slug">;

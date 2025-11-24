@@ -45,7 +45,7 @@
 
 (defn- present-tenants [tenants]
   (->> (t2/hydrate tenants :member_count)
-       (map #(select-keys % [:id :name :slug :is_active :member_count :attributes]))))
+       (map #(select-keys % [:id :name :slug :is_active :member_count :attributes :tenant_collection_id]))))
 
 (defn- present-tenant [tenant]
   (first (present-tenants [tenant])))
