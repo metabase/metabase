@@ -782,21 +782,24 @@ databaseChangeLog:
             tableName: table_symlink
             comment: Adds a Table to a Collection; 1tM table
             columns:
-              # composite PK of table_id + collection_id; no surrogate key (id)
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_table_symlink
+                    nullable: false
               - column:
                   name: table_id
                   type: int
                   constraints:
                     nullable: false
-                    primaryKey: true
-                    primaryKeyName: pk_table_symlink
               - column:
                   name: collection_id
                   type: int
                   constraints:
                     nullable: false
-                    primaryKey: true
-                    primaryKeyName: pk_table_symlink
               - column:
                   name: creator_id
                   type: int
@@ -860,6 +863,16 @@ databaseChangeLog:
               - column:
                   name: collection_id
             indexName: idx_table_symlink_collection_id
+
+  - changeSet:
+      id: v58.2025-11-21.00:00:05
+      author: metamben
+      comment: Add unique constraint on table_symlink(table_id, collection_id)
+      changes:
+        - addUniqueConstraint:
+            tableName: table_symlink
+            columnNames: table_id, collection_id
+            constraintName: unique_table_symlink_table_collection
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

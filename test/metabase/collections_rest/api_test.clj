@@ -784,15 +784,15 @@
 (deftest collection-items-table-symlink-test
   (testing "GET /api/collection/:id/items"
     (testing "table-symlink items appear in collection items"
-      (mt/with-temp [:model/Collection collection {}
-                     :model/Card       _ {:collection_id (u/the-id collection)
-                                          :name          "a-card"}
-                     :model/TableSymlink _ {:collection_id (u/the-id collection)
-                                            :table_id      (mt/id :venues)}]
+      (mt/with-temp [:model/Collection   collection {}
+                     :model/Card         _ {:collection_id (u/the-id collection)
+                                            :name          "a-card"}
+                     :model/TableSymlink {symlink-id :id} {:collection_id (u/the-id collection)
+                                                           :table_id      (mt/id :venues)}]
         (let [items    (:data (mt/user-http-request :crowberto :get 200
                                                     (str "collection/" (u/the-id collection) "/items")))
               symlinks (filter #(= "table-symlink" (:model %)) items)]
-          (is (=? [{:id          (mt/id :venues)
+          (is (=? [{:id          symlink-id
                     :table_id    (mt/id :venues)
                     :name        "Venues"
                     :model       "table-symlink"

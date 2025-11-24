@@ -438,8 +438,8 @@
   [_ collection {:keys [archived? pinned-state]}]
   ;; Table symlinks cannot be archived and don't have pinning. When viewing archived items, return nothing.
   ;; When filtering by pinned items, also return nothing (they can't be pinned).
-  {:select [[:t.id :id]
-            [:ts.table_id :table_id]
+  {:select [[:ts.id :id]
+            [:t.id :table_id]
             [:t.display_name :name]
             [:t.description :description]
             [:ts.collection_id :collection_id]
