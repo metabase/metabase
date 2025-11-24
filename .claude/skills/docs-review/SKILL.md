@@ -54,8 +54,6 @@ Run through the diff looking for these issues:
 
 **Formatting:**
 
-- [ ] Backticks on UI elements (should use **bold**)
-- [ ] Backticks used as quotation marks
 - [ ] Ampersands as "and" substitute (except proper nouns)
 - [ ] Inconsistent list formatting
 
