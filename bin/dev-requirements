@@ -309,12 +309,13 @@ main() {
         requirements_met=false
     fi
 
-    # Babashka (optional)
+    # Babashka
     bb_version=$(get_babashka_version)
     if [ -n "$bb_version" ]; then
-        print_found "Babashka $bb_version (optional - for mage tasks)"
+        print_found "Babashka $bb_version"
     else
-        print_info "Babashka not installed (optional - only needed for 'mage' commands)"
+        print_not_found "Babashka (required for mage task automation)"
+        requirements_met=false
     fi
 
     # Show warning if requirements are not met
@@ -341,10 +342,13 @@ main() {
     else
         echo "    • Clojure CLI"
     fi
+    echo "    • Babashka (for mage task automation)"
     echo ""
     echo -e "  ${BOLD}Optional Tools:${NC}"
-    echo "    • Babashka - Enables 'mage' task automation (./bin/mage)"
-    echo "      Not required for builds or daily dev work, just a QoL improvement"
+    echo "    • bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
+    echo "    • fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
+    echo "    • fd - A fast alternative to find (https://github.com/sharkdp/fd)"
+    echo "    • ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
 
     print_section "Recommended Setup"
 
