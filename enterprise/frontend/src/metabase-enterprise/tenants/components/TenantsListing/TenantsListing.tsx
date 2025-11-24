@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { ActiveStatusFilter } from "metabase/admin/people/components/ActiveStatusFilter";
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
 import {
   ACTIVE_STATUS,
@@ -19,7 +18,6 @@ import {
   Box,
   Button,
   Flex,
-  Group,
   Icon,
   Menu,
   Text,
@@ -36,7 +34,6 @@ interface TenantsListingProps {
   searchInputValue: string;
   setSearchInputValue: (value: string) => void;
   status: ActiveStatus;
-  onStatusChange: (status: ActiveStatus) => void;
 }
 
 export const TenantsListing = ({
@@ -45,7 +42,6 @@ export const TenantsListing = ({
   searchInputValue,
   setSearchInputValue,
   status,
-  onStatusChange,
   children,
 }: TenantsListingProps) => {
   const dispatch = useDispatch();
@@ -64,19 +60,11 @@ export const TenantsListing = ({
       <AdminPaneLayout
         headerContent={
           <Flex justify="space-between" w="100%">
-            <Group>
-              <SearchFilter
-                value={searchInputValue}
-                onChange={setSearchInputValue}
-                placeholder={t`Find a tenant`}
-              />
-              {isAdmin && (
-                <ActiveStatusFilter
-                  status={status}
-                  onStatusChange={onStatusChange}
-                />
-              )}
-            </Group>
+            <SearchFilter
+              value={searchInputValue}
+              onChange={setSearchInputValue}
+              placeholder={t`Find a tenant`}
+            />
             {isAdmin && (
               <Button
                 variant="filled"

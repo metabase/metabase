@@ -1,17 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { ACTIVE_STATUS } from "metabase/admin/people/constants";
+import {
+  ACTIVE_STATUS,
+  type ActiveStatus,
+} from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Stack, Tabs } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { TenantsListing } from "../components/TenantsListing";
+
+import S from "./TenantsListingApp.module.css";
 
 export const TenantsListingApp = ({
   children,
@@ -21,26 +27,56 @@ export const TenantsListingApp = ({
   const isAdmin = useSelector(getUserIsAdmin);
 
   const [searchInputValue, setSearchInputValue] = useState("");
-  const [status, setStatus] = useState(ACTIVE_STATUS.active);
+  const [status, setStatus] = useState<ActiveStatus>(ACTIVE_STATUS.active);
 
   const { isLoading, error, data } = useListTenantsQuery({ status });
   const tenants = useMemo(() => data?.data ?? [], [data]);
 
+  const { data: deactivatedTenantsData } = useListTenantsQuery({
+    status: "deactivated",
+  });
+  const hasDeactivatedTenants =
+    deactivatedTenantsData && deactivatedTenantsData.data.length > 0;
+
+  const handleTabChange = (tab: string | null) => {
+    if (tab) {
+      setStatus(tab as ActiveStatus);
+    }
+  };
+
+  useEffect(() => {
+    if (!hasDeactivatedTenants) {
+      setStatus("active");
+    }
+  }, [hasDeactivatedTenants]);
+
   return (
     <SettingsPageWrapper title={t`Tenants`}>
-      <SettingsSection>
-        <LoadingAndErrorWrapper error={error} loading={isLoading}>
-          <TenantsListing
-            isAdmin={isAdmin}
-            tenants={tenants}
-            searchInputValue={searchInputValue}
-            setSearchInputValue={setSearchInputValue}
-            status={status}
-            onStatusChange={setStatus}
-          />
-        </LoadingAndErrorWrapper>
-        {children}
-      </SettingsSection>{" "}
+      <Stack gap={0}>
+        {isAdmin && hasDeactivatedTenants && (
+          <Tabs value={status} onChange={handleTabChange} pl="md">
+            <Tabs.List className={S.tabs}>
+              <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
+              <Tabs.Tab
+                value={ACTIVE_STATUS.deactivated}
+              >{t`Deactivated`}</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+        )}
+
+        <SettingsSection>
+          <LoadingAndErrorWrapper error={error} loading={isLoading}>
+            <TenantsListing
+              isAdmin={isAdmin}
+              tenants={tenants}
+              searchInputValue={searchInputValue}
+              setSearchInputValue={setSearchInputValue}
+              status={status}
+            />
+          </LoadingAndErrorWrapper>
+          {children}
+        </SettingsSection>
+      </Stack>
     </SettingsPageWrapper>
   );
 };
