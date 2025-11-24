@@ -1,10 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  JWT_SHARED_SECRET,
-  createQuestion,
-  getSignedJwtForResource,
-  updateSetting,
-} from "e2e/support/helpers";
+import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountGuestEmbedQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
@@ -13,7 +8,9 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > guest-embedding-error-handling", () => {
   beforeEach(() => {
-    signInAsAdminAndSetupGuestEmbedding();
+    signInAsAdminAndSetupGuestEmbedding({
+      token: "starter",
+    });
 
     createQuestion({
       name: "47563",
@@ -27,7 +24,6 @@ describe("scenarios > embedding-sdk > guest-embedding-error-handling", () => {
       },
     }).then(({ body: question }) => {
       cy.wrap(question.id).as("questionId");
-      cy.wrap(question.entity_id).as("questionEntityId");
     });
 
     cy.signOut();
@@ -37,7 +33,9 @@ describe("scenarios > embedding-sdk > guest-embedding-error-handling", () => {
     cy.get("@questionId").then(async () => {
       mountGuestEmbedQuestion(
         { token: "foo" },
-        { sdkProviderProps: { isGuestEmbed: true } },
+        {
+          shouldAssertCardQuery: false,
+        },
       );
 
       getSdkRoot().within(() => {
@@ -61,13 +59,32 @@ describe("scenarios > embedding-sdk > guest-embedding-error-handling", () => {
 
       mountGuestEmbedQuestion(
         { token },
-        { sdkProviderProps: { isGuestEmbed: true } },
+        {
+          shouldAssertCardQuery: false,
+        },
       );
 
       getSdkRoot().within(() => {
         cy.findByText("Embedding is not enabled for this object.").should(
           "be.visible",
         );
+      });
+    });
+  });
+
+  it("should show an error when an id is passed instead of a token", () => {
+    cy.get("@questionId").then(async (questionId) => {
+      mountGuestEmbedQuestion(
+        { questionId },
+        {
+          shouldAssertCardQuery: false,
+        },
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText(
+          "A valid JWT token is required to be passed in guest embeds mode.",
+        ).should("be.visible");
       });
     });
   });

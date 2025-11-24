@@ -60,21 +60,3 @@ export function mountStaticQuestion(
     });
   }
 }
-
-export function mountGuestEmbedQuestion(
-  extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
-  { shouldAssertCardQuery, sdkProviderProps }: MountQuestionOptions = {
-    shouldAssertCardQuery: true,
-  },
-) {
-  cy.intercept("GET", "/api/embed/card/*").as("getCard");
-  cy.intercept("POST", "/api/embed/card/*/query").as("cardQuery");
-
-  mountSdkContent(<StaticQuestion {...extraProps} />, { sdkProviderProps });
-
-  if (shouldAssertCardQuery) {
-    cy.wait("@getCard").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-    });
-  }
-}

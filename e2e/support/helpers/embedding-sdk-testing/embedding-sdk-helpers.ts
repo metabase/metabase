@@ -78,13 +78,18 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   });
 }
 
-export function signInAsAdminAndSetupGuestEmbedding() {
+export function signInAsAdminAndSetupGuestEmbedding({
+  token,
+}: {
+  token: "starter" | "pro-cloud";
+}) {
   Cypress.config("baseUrl", METABASE_INSTANCE_URL);
 
   restore();
 
   cy.signInAsAdmin();
 
+  activateToken(token);
   updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
 }
 
