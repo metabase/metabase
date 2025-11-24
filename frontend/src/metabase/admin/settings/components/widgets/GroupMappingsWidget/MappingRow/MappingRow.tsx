@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import type * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,21 +8,22 @@ import type {
   GroupIds,
 } from "metabase/admin/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
-import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
+import { DeleteGroupMappingModal } from "../DeleteGroupMappingModal/DeleteGroupMappingModal";
 import Selectbox from "../GroupSelect";
 
-import { DeleteMappingButton } from "./MappingRow.styled";
+import S from "./MappingRow.module.css";
 
 type OnDeleteMappingType = (arg: {
   name: string;
   groupIdsToDelete?: GroupIds;
-  onSuccess?: () => void;
+  onSuccess?: () => Promise<void>;
 }) => void;
 
 type MappingRowProps = {
@@ -32,7 +32,7 @@ type MappingRowProps = {
   selectedGroupIds: GroupIds;
   clearGroupMember: ({ id }: { id: number }) => void;
   deleteGroup: ({ id }: { id: number }) => void;
-  onChange: () => void;
+  onChange: (group: { id: number }, selected: boolean) => void;
   onDeleteMapping: OnDeleteMappingType;
 };
 
@@ -79,11 +79,11 @@ export const MappingRow = ({
   const getCallbackForGroupsAfterDeletingMapping = (
     whatToDoAboutGroups: DeleteMappingModalValueType,
     groupIds: GroupIds,
-  ) => {
+  ): (() => Promise<void>) | undefined => {
     switch (whatToDoAboutGroups) {
       case "clear":
-        return () =>
-          Promise.all(
+        return async () => {
+          await Promise.all(
             groupIds.map(async (id) => {
               try {
                 const group = groups.find((group) => group.id === id);
@@ -95,9 +95,10 @@ export const MappingRow = ({
               }
             }),
           );
+        };
       case "delete":
-        return () =>
-          Promise.all(
+        return async () => {
+          await Promise.all(
             groupIds.map(async (id) => {
               try {
                 const group = groups.find((group) => group.id === id);
@@ -109,8 +110,9 @@ export const MappingRow = ({
               }
             }),
           );
+        };
       default:
-        return () => null;
+        return undefined;
     }
   };
 
@@ -141,13 +143,18 @@ export const MappingRow = ({
         </td>
         <td className={AdminS.TableActions}>
           <div className={cx(CS.floatRight, CS.mr1)}>
-            <DeleteButton
-              onDelete={() =>
-                shouldUseDeleteGroupMappingModal
-                  ? openDeleteGroupMappingModal()
-                  : openDeleteMappingModal()
-              }
-            />
+            <Tooltip label={t`Remove mapping`} position="top">
+              <IconButtonWrapper
+                className={S.deleteMappingButton}
+                onClick={() =>
+                  shouldUseDeleteGroupMappingModal
+                    ? openDeleteGroupMappingModal()
+                    : openDeleteMappingModal()
+                }
+              >
+                <Icon name="close" />
+              </IconButtonWrapper>
+            </Tooltip>
           </div>
         </td>
       </tr>
@@ -171,15 +178,3 @@ export const MappingRow = ({
     </>
   );
 };
-
-const DeleteButton = ({
-  onDelete,
-}: {
-  onDelete?: React.MouseEventHandler<HTMLButtonElement>;
-}) => (
-  <Tooltip label={t`Remove mapping`} position="top">
-    <DeleteMappingButton onClick={onDelete}>
-      <Icon name="close" />
-    </DeleteMappingButton>
-  </Tooltip>
-);

@@ -1,0 +1,7 @@
+.deleteMappingButton {
+  color: var(--mb-color-text-dark);
+}
+
+.deleteMappingButton:hover {
+  color: var(--mb-color-danger);
+}

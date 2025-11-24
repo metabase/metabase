@@ -1,0 +1,22 @@
+.root {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  width: 100%;
+}
+
+.header {
+  background-color: var(--mb-color-bg-light);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  margin-bottom: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+}
+
+.addMappingButton {
+  float: right;
+  margin-right: var(--mantine-spacing-md);
+  margin-bottom: -40px;
+}
