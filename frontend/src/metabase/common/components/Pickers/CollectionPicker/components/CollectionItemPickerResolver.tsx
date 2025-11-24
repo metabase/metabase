@@ -21,6 +21,8 @@ export const CollectionItemPickerResolver = ({
   shouldShowItem,
   entity = "collection",
   initialValue,
+  tablesPath,
+  onTablesPathChange,
 }: CollectionItemListProps) => {
   if (!query) {
     return (
@@ -70,7 +72,8 @@ export const CollectionItemPickerResolver = ({
       <TablePicker
         value={initialValue}
         onItemSelect={(i) => onClick(i as unknown as CollectionPickerItem)}
-        onPathChange={_.noop}
+        path={tablesPath}
+        onPathChange={onTablesPathChange || _.noop}
         shouldDisableItem={(i) =>
           shouldDisableItem?.(i as unknown as CollectionPickerItem) ||
           !shouldShowItem?.(i as unknown as CollectionPickerItem) ||

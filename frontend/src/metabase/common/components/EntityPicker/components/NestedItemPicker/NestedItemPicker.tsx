@@ -2,7 +2,10 @@ import type { ComponentType } from "react";
 import { useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
+import type {
+  TablePickerStatePath,
+  TablePickerValue,
+} from "metabase/common/components/Pickers/TablePicker";
 import { Flex } from "metabase/ui";
 
 import type {
@@ -34,6 +37,8 @@ export interface NestedItemPickerProps<
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
+  tablesPath?: TablePickerStatePath;
+  onTablesPathChange?: (tablesPath: TablePickerStatePath) => void;
 }
 
 export function NestedItemPicker<
@@ -52,6 +57,8 @@ export function NestedItemPicker<
   shouldDisableItem,
   shouldShowItem,
   initialValue,
+  tablesPath,
+  onTablesPathChange,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
@@ -96,6 +103,8 @@ export function NestedItemPicker<
                   isFolder={isFolder}
                   refresh={() => setHashBuster((b) => b + 1)}
                   initialValue={initialValue}
+                  tablesPath={tablesPath}
+                  onTablesPathChange={onTablesPathChange}
                 />
               </ErrorBoundary>
             </ListBox>

@@ -14,6 +14,7 @@ import { CollectionItemPickerResolver } from "../../CollectionPicker/components/
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import {
   type TablePickerItem,
+  type TablePickerStatePath,
   type TablePickerValue,
   isTablePickerValue,
 } from "../../TablePicker";
@@ -42,10 +43,12 @@ interface QuestionPickerProps {
   models?: QuestionPickerModel[];
   options: QuestionPickerOptions;
   path: QuestionPickerStatePath | undefined;
+  tablesPath?: TablePickerStatePath;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
   onInit: (item: QuestionPickerItem) => void;
   onItemSelect: (item: QuestionPickerItem) => void;
   onPathChange: (path: QuestionPickerStatePath) => void;
+  onTablesPathChange?: (path: TablePickerStatePath) => void;
   shouldDisableItem?: (item: QuestionPickerItem) => boolean;
 }
 
@@ -54,10 +57,12 @@ export const QuestionPicker = ({
   models = ["dataset", "card"],
   options,
   path: pathProp,
+  tablesPath,
   shouldShowItem,
   onInit,
   onItemSelect,
   onPathChange,
+  onTablesPathChange,
   shouldDisableItem,
 }: QuestionPickerProps) => {
   const defaultPath = useMemo(() => {
@@ -212,6 +217,8 @@ export const QuestionPicker = ({
       listResolver={CollectionItemPickerResolver}
       shouldShowItem={shouldShowItem}
       shouldDisableItem={shouldDisableItem}
+      tablesPath={tablesPath}
+      onTablesPathChange={onTablesPathChange}
     />
   );
 };
