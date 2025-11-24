@@ -1,0 +1,4 @@
+.radioCard {
+  cursor: pointer;
+  border: 1px solid var(--mb-color-border);
+}
