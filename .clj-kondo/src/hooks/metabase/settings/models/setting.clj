@@ -119,10 +119,10 @@
      reset-token-ttl-hours
      retired-setting
      retry-initial-interval
-     retry-max-attempts
+     retry-max-retries
      retry-max-interval-millis
      retry-multiplier
-     retry-randomization-factor
+     retry-jitter-factor
      saml-application-name
      saml-attribute-email
      saml-attribute-firstname

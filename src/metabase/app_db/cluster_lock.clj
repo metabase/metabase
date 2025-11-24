@@ -28,12 +28,9 @@
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
-  {:max-attempts 5
-   :multiplier 1.0
-   :randomization-factor 0.1
-   :initial-interval-millis 1000
-   :max-interval-millis 1000
-   :retry-on-exception-pred retryable?})
+  {:max-retries 4
+   :delay-ms 1000 ;; Constant delay between retries.
+   :retry-if (fn [_ e] (retryable? e))})
 
 (defn- prepare-statement
   "Create a prepared statement to query cache"
@@ -82,15 +79,14 @@
     (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
     :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
                 lock-name-str (str (namespace lock-name) "/" (name lock-name))
-                do-with-cluster-lock** (fn [] (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
-                config (merge default-retry-config retry-config)
-                retrier (retry/make config)]
+                config (merge default-retry-config retry-config)]
             (try
-              (retrier do-with-cluster-lock**)
+              (retry/with-retry config
+                (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
               (catch Throwable e
                 (if (retryable? e)
                   (throw (ex-info "Failed to run statement with cluster lock"
-                                  {:retries (:max-attempts config)}
+                                  {:retries (:max-retries config)}
                                   e))
                   (throw e)))))))
 
