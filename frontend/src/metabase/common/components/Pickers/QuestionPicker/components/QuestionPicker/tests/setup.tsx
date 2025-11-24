@@ -109,7 +109,7 @@ const tenantDashboard = createMockCollectionItem({
     collection: createMockCollection({
       id: 7,
       location: "/6/7/",
-      type: "shared-tenant-collection",
+      namespace: "shared-tenant-collection",
     }),
   }),
   location: "/6/7/",
@@ -352,7 +352,7 @@ const commonSetup = ({ isEE = false }: { isEE?: boolean } = {}) => {
       if (item.model === "collection") {
         fetchMock.get(`path:/api/collection/${item.id}`, {
           ...item,
-          type: "shared-tenant-collection",
+          namespace: "shared-tenant-collection",
         });
       } else if (item.model === "dashboard") {
         fetchMock.get(`path:/api/dashboard/${item.id}`, item);

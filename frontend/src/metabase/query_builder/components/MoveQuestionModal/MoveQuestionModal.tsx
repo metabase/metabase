@@ -264,6 +264,9 @@ export const MoveQuestionModal = ({
     }
   };
 
+  // Determine the savingModel based on question type
+  const savingModel = question.type() === "model" ? "model" : "question";
+
   return (
     <MoveModal
       title={t`Where do you want to save this?`}
@@ -272,6 +275,7 @@ export const MoveQuestionModal = ({
       onMove={handleChooseMoveLocation}
       canMoveToDashboard={question.type() === "question"}
       recentAndSearchFilter={recentAndSearchFilter}
+      savingModel={savingModel}
     />
   );
 };

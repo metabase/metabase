@@ -23,6 +23,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import {
   ActionIcon,
   Flex,
@@ -32,7 +33,6 @@ import {
   Tooltip
 } from "metabase/ui";
 import type { Bookmark, Collection } from "metabase-types/api";
-import { getUserCanWriteToCollections } from "metabase/selectors/user";
 
 import {
   PaddedSidebarLink,

@@ -11,6 +11,7 @@ import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessMo
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import {
+  PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -24,6 +25,7 @@ import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/
 import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
+import { TenantCollectionPermissionsPage } from "./components/TenantCollectionPermissionsPage";
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
@@ -40,6 +42,21 @@ import {
 
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
+    // Register tenant collection permissions tab and routes
+    PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
+      name: t`Tenant Collections`,
+      value: "tenant-collections",
+    });
+
+    PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes = () => (
+      <Route
+        path="tenant-collections"
+        component={TenantCollectionPermissionsPage}
+      >
+        <Route path=":collectionId" />
+      </Route>
+    );
+
     PLUGIN_TENANTS.userStrategyRoute = (
       <ModalRoute path="user-strategy" modal={EditUserStrategyModal} noWrap />
     );

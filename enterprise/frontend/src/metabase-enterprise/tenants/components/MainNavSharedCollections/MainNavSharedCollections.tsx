@@ -25,7 +25,7 @@ export const MainNavSharedCollections = () => {
   );
 
   const { data: tenantCollections } = useListCollectionsTreeQuery(
-    { "include-tenant-collections": true },
+    { namespace: "shared-tenant-collection" },
     {
       skip: !isTenantsEnabled,
     },
@@ -43,7 +43,7 @@ export const MainNavSharedCollections = () => {
       await createCollection({
         ...values,
         parent_id: null,
-        type: "shared-tenant-collection",
+        namespace: "shared-tenant-collection",
       });
       setModalOpen(false);
     },

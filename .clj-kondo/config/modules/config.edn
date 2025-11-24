@@ -2213,23 +2213,6 @@
            settings
            util}}
 
-  enterprise/tenants
-  {:team "Admin Webapp"
-   :api #{metabase-enterprise.tenants.api}
-   :uses #{api
-           audit-app
-           auth-identity
-           collections
-           collections-rest
-           events
-           models
-           permissions
-           premium-features
-           request
-           settings
-           tenants
-           util}}
-
   enterprise/support-access-grants
   {:team "UX West"
    :api  #{metabase-enterprise.support-access-grants.api
@@ -2241,6 +2224,21 @@
            request
            settings
            system
+           util}}
+
+  enterprise/tenants
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.tenants.api}
+   :uses #{api
+           audit-app
+           auth-identity
+           collections
+           events
+           models
+           permissions
+           premium-features
+           request
+           settings
            util}}
 
   enterprise/transforms
