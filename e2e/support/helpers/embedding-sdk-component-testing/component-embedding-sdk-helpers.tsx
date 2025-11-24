@@ -38,7 +38,11 @@ export function mountSdkContent(
     waitForUser = true,
   }: MountSdkContentOptions = {},
 ) {
-  cy.intercept("GET", "/api/user/current").as("getUser");
+  const isGuestEmbed = !!sdkProviderProps?.isGuestEmbed;
+
+  if (isGuestEmbed) {
+    cy.intercept("GET", "/api/user/current").as("getUser");
+  }
 
   const reactNode = (
     <ThemeProvider>
@@ -60,7 +64,7 @@ export function mountSdkContent(
     cy.mount(reactNode);
   }
 
-  if (waitForUser) {
+  if (!isGuestEmbed && waitForUser) {
     // When running stress tests with network throttling, the request can take longer to complete
     // as it first needs to fetch the bundle from the server
     cy.wait("@getUser", { timeout: 20_000 }).then(({ response }) => {
