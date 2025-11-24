@@ -1,13 +1,13 @@
-export const getEmbedModalContent = () =>
+export const embedModalContent = () =>
   cy.findByTestId("sdk-iframe-embed-setup-modal-content");
 
-export const getEmbedModalEmbeddingControlCard = () =>
+export const embedModalEmbeddingControlCard = () =>
   cy.findByTestId("embedding-control-card");
 
 export const embedModalEnableEmbedding = () =>
-  getEmbedModalEmbeddingControlCard().within(() => {
+  embedModalEmbeddingControlCard().within(() => {
     cy.findByText(/(Agree and (continue|enable)|Enable)/).click();
   });
 
-export const getLegacyStaticEmbeddingButton = () =>
+export const legacyStaticEmbeddingButton = () =>
   cy.findByTestId("legacy-static-embedding-button");

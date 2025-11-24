@@ -299,7 +299,7 @@ function ensureEmbeddingIsDisabled() {
   H.openEmbedJsModal();
   H.embedModalEnableEmbedding();
 
-  H.getEmbedModalContent().within(() => {
+  H.embedModalContent().within(() => {
     cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
     cy.findByLabelText("Existing Metabase session").should("be.disabled");
   });
