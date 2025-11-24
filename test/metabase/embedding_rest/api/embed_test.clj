@@ -1586,8 +1586,8 @@
               (is (= expected
                      (->> (mt/user-http-request
                            :crowberto :get 200
-                           (format "embed/dashboard/%s/dashcard/%s/card/%s/%s?format_rows=%s"
-                                   (dash-token dashboard-id) dashcard-id card-id (name export-format) apply-formatting?))
+                           #p (format "embed/dashboard/%s/dashcard/%s/card/%s/%s?format_rows=%s"
+                                      (dash-token dashboard-id) dashcard-id card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format))))))))))))
 
 (deftest filter-linked-to-locked-filter-test
