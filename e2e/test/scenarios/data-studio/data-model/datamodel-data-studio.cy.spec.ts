@@ -642,8 +642,8 @@ describe("scenarios > data studio > datamodel", () => {
 
         TablePicker.getTable(domesticAnimalsTable)
           .findByTestId("table-published")
-          .icon("verified_round")
-          .should("have.attr", "aria-label", "published");
+          .findByLabelText("Published")
+          .should("be.visible");
 
         TablePicker.getSchema(wildSchema).click();
 
