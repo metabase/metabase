@@ -69,6 +69,10 @@ export const getCollectionIdPath = (
     return ["tenant"];
   }
 
+  if (collection.namespace === "tenant-specific") {
+    return ["tenant"];
+  }
+
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return ["personal"];
   }

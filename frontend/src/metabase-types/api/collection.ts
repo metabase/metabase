@@ -31,7 +31,12 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType = "instance-analytics" | "trash" | null;
+export type CollectionType =
+  | "instance-analytics"
+  | "trash"
+  | "shared-tenant-collection"
+  | "tenant-specific-root-collection"
+  | null;
 
 export type LastEditInfo = {
   email: string;
@@ -163,7 +168,7 @@ export interface CollectionListQuery {
 
 export type getCollectionRequest = {
   id: CollectionId;
-  namespace?: "snippets";
+  namespace?: "snippets" | "tenant-specific";
   ignore_error?: boolean;
 };
 
