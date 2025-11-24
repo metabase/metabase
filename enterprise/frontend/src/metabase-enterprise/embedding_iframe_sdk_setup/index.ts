@@ -1,7 +1,6 @@
+import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-
-import { SdkIframeEmbedSetupModal } from "./components/SdkIframeEmbedSetupModal";
 
 // Feature gate the embed setup for gradual rollouts.
 // In the future, we may drop this to enable users to try out new iframe embedding.

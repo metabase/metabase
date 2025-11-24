@@ -347,5 +347,11 @@ module.exports = {
         "import/no-commonjs": "off",
       },
     },
+    {
+      files: ["**/*.stories.tsx", "**/preview.tsx"],
+      rules: {
+        "import/no-default-export": "off",
+      },
+    },
   ],
 };
