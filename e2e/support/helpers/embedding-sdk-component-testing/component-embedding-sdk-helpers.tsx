@@ -40,7 +40,7 @@ export function mountSdkContent(
 ) {
   const isGuestEmbed = !!sdkProviderProps?.isGuestEmbed;
 
-  if (isGuestEmbed) {
+  if (!isGuestEmbed) {
     cy.intercept("GET", "/api/user/current").as("getUser");
   }
 
