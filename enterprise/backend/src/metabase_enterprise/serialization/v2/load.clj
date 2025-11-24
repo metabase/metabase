@@ -7,6 +7,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -91,12 +92,13 @@
   Logs a warning if there is a mismatch."
   [ingested path]
   (when (or (nil? *warned-version-mismatch*) (not @*warned-version-mismatch*))
-    (let [exported-version (or (:serdes/version ingested) "UNKNOWN")]
-      (when (not= exported-version serdes/serdes-version)
-        (log/warnf "Version mismatch loading %s: exported with: %s, supported version: %s"
+    (let [current-version config/mb-version-string
+          exported-version (or (:metabase_version ingested) "UNKNOWN")]
+      (when (not= exported-version current-version)
+        (log/warnf "Version mismatch loading %s: exported with: %s, current version: %s"
                    path
                    exported-version
-                   serdes/serdes-version)
+                   current-version)
         (when (not (nil? *warned-version-mismatch*))
           (reset! *warned-version-mismatch* true))))))
 

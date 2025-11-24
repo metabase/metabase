@@ -1489,7 +1489,7 @@
         (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
           (ts/with-db dest-db
             (testing "logs a warning when version in serdes/meta differs from current version"
-              (let [old-version-extract (map #(assoc % :serdes/version "v1.0.0 (oldcommit)") extract)]
+              (let [old-version-extract (map #(assoc % :metabase_version "v1.0.0 (oldcommit)") extract)]
                 (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
                   (serdes.load/load-metabase! (ingestion-in-memory old-version-extract))
                   (is (some #(str/includes? % "Version mismatch loading") (messages)))
