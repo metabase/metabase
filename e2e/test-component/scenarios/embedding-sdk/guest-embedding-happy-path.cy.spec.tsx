@@ -15,12 +15,15 @@ import {
   mountGuestEmbedQuestion,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
+import type { Card } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 2000;
+
 describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
   describe("question", () => {
-    beforeEach(() => {
+    const setup = ({ display }: { display?: Card["display"] } = {}) => {
       signInAsAdminAndSetupGuestEmbedding({
         token: "starter",
       });
@@ -35,14 +38,20 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
           breakout: [["field", ORDERS.PRODUCT_ID, null]],
           limit: 2,
         },
+        display,
       }).then(({ body: question }) => {
         cy.wrap(question.id).as("questionId");
       });
 
       cy.signOut();
-    });
+    };
 
     it("should show question content for unauthorized user", () => {
+      setup();
+
+      cy.intercept("/api/user/*").as("internalApiRequest");
+      cy.intercept("/api/card/*").as("internalApiRequest");
+
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
           resourceId: questionId as unknown as number,
@@ -55,12 +64,20 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
           cy.findByText("Product ID").should("be.visible");
           cy.findByText("Max of Quantity").should("be.visible");
         });
+
+        // Wait for requests
+        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
+
+        cy.get("@internalApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length(0);
+        });
       });
     });
 
-    it("should not perform requests to the internal API that require authorization", () => {
-      cy.intercept("/api/user/*").as("internalApiRequest");
-      cy.intercept("/api/card/*").as("internalApiRequest");
+    it("should show content of a question with `pivot table` type for unauthorized user", () => {
+      setup({ display: "pivot" });
+
+      cy.intercept("/api/card/pivot/*/query*").as("internalApiRequest");
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
@@ -68,10 +85,22 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
           resourceType: "question",
         });
 
-        mountGuestEmbedQuestion({ token });
+        mountGuestEmbedQuestion(
+          { token },
+          {
+            shouldAssertCardQuery: false,
+          },
+        );
+
+        cy.wait("@getCardPivotQuery");
+
+        getSdkRoot().within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByText("Max of Quantity").should("be.visible");
+        });
 
         // Wait for requests
-        cy.wait(2000);
+        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
 
         cy.get("@internalApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(0);
@@ -112,21 +141,6 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
     });
 
     it("should show dashboard content for unauthorized user", () => {
-      cy.get("@dashboardId").then(async (dashboardId) => {
-        const token = await getSignedJwtForResource({
-          resourceId: dashboardId as unknown as number,
-          resourceType: "dashboard",
-        });
-
-        mountGuestEmbedDashboard({ token });
-
-        getSdkRoot().within(() => {
-          cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
-        });
-      });
-    });
-
-    it("should not perform requests to the internal API that require authorization", () => {
       cy.intercept("/api/user/*").as("internalApiRequest");
       cy.intercept("/api/dashboard/*").as("internalApiRequest");
 
@@ -138,8 +152,12 @@ describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
 
         mountGuestEmbedDashboard({ token });
 
+        getSdkRoot().within(() => {
+          cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
+        });
+
         // Wait for requests
-        cy.wait(2000);
+        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
 
         cy.get("@internalApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(0);
