@@ -7,6 +7,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
+import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -29,11 +30,8 @@ import {
 
 import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
 
-const mockIsEmbeddingSdkObject = {
-  value: false,
-};
 jest.mock("metabase/embedding-sdk/config", () => ({
-  isEmbeddingSdk: jest.fn(() => mockIsEmbeddingSdkObject.value),
+  isEmbeddingSdk: jest.fn(() => false),
 }));
 
 export const dashcard = createMockDashboardCard();
@@ -152,7 +150,7 @@ export function setup(
     };
   }
 
-  mockIsEmbeddingSdkObject.value = isEmbeddingSdk;
+  (mockIsEmbeddingSdk as jest.Mock).mockReturnValue(isEmbeddingSdk);
 
   setupNotificationChannelsEndpoints(channelData.channels);
 
