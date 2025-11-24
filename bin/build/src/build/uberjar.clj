@@ -129,7 +129,11 @@
    ;; tf` -- see Slacc thread
    ;; https://metaboat.slack.com/archives/C5XHN8GLW/p1731633690703149?thread_ts=1731504670.951389&cid=C5XHN8GLW
    #".*module-info\.class"
-   #"^LICENSE$"])
+   #"^LICENSE$"
+   #".*LICENSE.jol.txt"
+   #"META-INF/license/LICENSE.jol.txt"
+   #"META-INF/license.*"
+   #"META-INF/LICENSE.*"])
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"

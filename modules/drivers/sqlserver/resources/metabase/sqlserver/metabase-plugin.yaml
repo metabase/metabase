@@ -1,0 +1,40 @@
+info:
+  name: Metabase SQL Server Driver
+  version: 1.1.0-SNAPSHOT-9.2.1.jre8
+  description: Allows Metabase to connect to SQL Server databases.
+driver:
+  name: sqlserver
+  display-name: SQL Server
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - helper-text: Leave empty to use Dynamic Ports, or input specific port. Standard port is 1433.
+    - merge:
+        - dbname
+        - name: db
+          placeholder: BirdsOfTheWorld
+    - name: instance
+      display-name: Database instance name
+      placeholder: N/A
+    - user
+    - password
+    - name: role
+      display-name: Default impersonation user (required for impersonation if the connection's user cannot be impersonated)
+      helper-text: User used to run system queries, required if the connection's user cannot be impersonated, such as the 'sa' user.
+      placeholder: user
+    - cloud-ip-address-info
+    - ssl
+    - ssh-tunnel
+    - advanced-options-start
+    - merge:
+        - additional-options
+        - placeholder: "trustServerCertificate=false"
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.sqlserver
+  - step: register-jdbc-driver
+    class: com.microsoft.sqlserver.jdbc.SQLServerDriver
