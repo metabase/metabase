@@ -1076,7 +1076,7 @@
 
 (deftest create-card-remote-synced-collection-non-remote-synced-deps-test
   (testing "create-card! should throw exception when saving to remote-synced collection with non-remote-synced dependencies"
-    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {source-card-id :id} {:collection_id regular-coll-id
                                                      :name "Non-remote-synced source card"}]
@@ -1105,7 +1105,7 @@
 
 (deftest update-card-remote-synced-collection-non-remote-synced-deps-test
   (testing "update-card! should throw exception when moving to remote-synced collection with non-remote-synced dependencies"
-    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {source-card-id :id} {:collection_id regular-coll-id
                                                      :name "Non-remote-synced source card"}
@@ -1122,7 +1122,7 @@
                :actor {:id (mt/user->id :rasta)}}))))
 
       (testing "Card with remote-synced dependencies can be moved to remote-synced collection"
-        (mt/with-temp [:model/Collection {another-remote-synced-coll-id :id} {:type "remote-synced" :location (str "/" remote-synced-coll-id "/")}
+        (mt/with-temp [:model/Collection {another-remote-synced-coll-id :id} {:is_remote_synced true :location (str "/" remote-synced-coll-id "/")}
                        :model/Card {remote-synced-source-card-id :id} {:collection_id another-remote-synced-coll-id
                                                                        :name "Remote-Synced source card"}
                        :model/Card movable-card {:collection_id regular-coll-id
@@ -1137,7 +1137,7 @@
 
 (deftest update-card-existing-remote-synced-card-non-remote-synced-deps-test
   (testing "update-card! should throw exception when card in remote-synced collection gains non-remote-synced dependencies"
-    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {non-remote-synced-source-id :id} {:collection_id regular-coll-id
                                                                   :name "Non-remote-synced source"}
@@ -1155,7 +1155,7 @@
 
 (deftest update-card-remote-synced-dependents-prevents-move-from-remote-synced-test
   (testing "update-card! should prevent moving card out of remote-synced collection when it has remote-synced dependents"
-    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
                                                                                    :dataset_query (mt/mbql-query venues)
@@ -1183,7 +1183,7 @@
 
 (deftest update-card-remote-synced-dependents-with-parameters-test
   (testing "update-card! should prevent moving card out of remote-synced collection when dependents reference it via parameters"
-    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
                                                                                    :name "Remote-Synced card"}
@@ -1206,7 +1206,7 @@
 
 (deftest update-card-remote-synced-dependents-with-template-tags-test
   (testing "update-card! should prevent moving card out of remote-synced collection when dependents reference it via template tags"
-    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
                                                                                    :dataset_query (mt/mbql-query venues)
@@ -1230,8 +1230,8 @@
 
 (deftest update-card-remote-synced-dependents-allows-move-within-remote-synced-test
   (testing "update-card! should allow moving card between remote-synced collections even with remote-synced dependents"
-    (mt/with-temp [:model/Collection {remote-synced-coll-1-id :id} {:type "remote-synced" :location "/"}
-                   :model/Collection {remote-synced-coll-2-id :id} {:type "remote-synced" :location (str "/" remote-synced-coll-1-id "/")}
+    (mt/with-temp [:model/Collection {remote-synced-coll-1-id :id} {:is_remote_synced true :location "/"}
+                   :model/Collection {remote-synced-coll-2-id :id} {:is_remote_synced true :location (str "/" remote-synced-coll-1-id "/")}
                    :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-1-id
                                                                                    :dataset_query (mt/mbql-query venues)
                                                                                    :name "Remote-Synced card"}
@@ -1248,7 +1248,7 @@
 
 (deftest update-card-remote-synced-dependents-allows-non-collection-updates-test
   (testing "update-card! should allow non-collection updates to remote-synced cards with dependents"
-    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
                    :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
                                                                                    :dataset_query (mt/mbql-query venues)
                                                                                    :name "Remote-Synced card"}
