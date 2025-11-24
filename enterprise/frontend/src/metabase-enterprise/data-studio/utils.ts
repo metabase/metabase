@@ -14,6 +14,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+// Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
 export function canAccessDataStudio(state: State) {
   return getUserIsAdmin(state) && !getIsEmbeddingIframe(state);
 }

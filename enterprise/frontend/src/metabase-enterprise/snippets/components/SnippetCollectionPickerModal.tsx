@@ -37,6 +37,7 @@ export function SnippetCollectionPickerModal({
         showSearch: false,
         hasConfirmButtons: true,
         hasRecents: false,
+        showLibrary: false,
       }}
     />
   );
