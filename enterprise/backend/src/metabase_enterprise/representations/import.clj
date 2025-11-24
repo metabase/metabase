@@ -67,7 +67,8 @@
   [representations]
   (loop [representations (v0-common/order-representations representations)
          index {}]
-    (when (seq representations)
+    (if (seq representations)
       (let [rep (first representations)
             instance (insert! rep (v0-common/map-entity-index index))]
-        (recur (rest representations) (assoc index (:name rep) instance))))))
+        (recur (rest representations) (assoc index (:name rep) instance)))
+      index)))
