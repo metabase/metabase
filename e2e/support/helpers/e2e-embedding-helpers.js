@@ -1,3 +1,5 @@
+import * as jose from "jose";
+
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import {
   embedModalEnableEmbedding,
@@ -5,6 +7,7 @@ import {
   getLegacyStaticEmbeddingButton,
 } from "e2e/support/helpers/e2e-embedding-iframe-sdk-setup-helpers";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 
 import { openSharingMenu } from "./e2e-sharing-helpers";
 
@@ -367,4 +370,35 @@ export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {
       onBeforeLoad?.(window);
     },
   });
+};
+
+/**
+ * @param {Object} options
+ * @param {number} options.resourceId
+ * @param {'question' | 'dashboard'} options.resourceType
+ * @param [options.params]
+ * @param [options.expirationMinutes]
+ * @return {Promise<string>}
+ */
+export const getSignedJwtForResource = async ({
+  resourceId,
+  resourceType,
+  params = {},
+  expirationMinutes = 10,
+}) => {
+  const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
+
+  const iat = Math.round(new Date().getTime() / 1000);
+  const exp = iat + 60 * expirationMinutes;
+
+  const payload = {
+    resource: { [resourceType]: resourceId },
+    params,
+    iat,
+    exp,
+  };
+
+  return new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
 };

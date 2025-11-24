@@ -40,7 +40,7 @@ export function mountInteractiveQuestion(
 
 export function mountStaticQuestion(
   extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
-  { shouldAssertCardQuery }: MountQuestionOptions = {
+  { shouldAssertCardQuery, sdkProviderProps }: MountQuestionOptions = {
     shouldAssertCardQuery: true,
   },
 ) {
@@ -48,8 +48,29 @@ export function mountStaticQuestion(
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
   cy.get<number>("@questionId").then((questionId) => {
-    mountSdkContent(<StaticQuestion questionId={questionId} {...extraProps} />);
+    mountSdkContent(
+      <StaticQuestion questionId={questionId} {...extraProps} />,
+      { sdkProviderProps },
+    );
   });
+
+  if (shouldAssertCardQuery) {
+    cy.wait("@getCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+    });
+  }
+}
+
+export function mountGuestEmbedQuestion(
+  extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
+  { shouldAssertCardQuery, sdkProviderProps }: MountQuestionOptions = {
+    shouldAssertCardQuery: true,
+  },
+) {
+  cy.intercept("GET", "/api/embed/card/*").as("getCard");
+  cy.intercept("POST", "/api/embed/card/*/query").as("cardQuery");
+
+  mountSdkContent(<StaticQuestion {...extraProps} />, { sdkProviderProps });
 
   if (shouldAssertCardQuery) {
     cy.wait("@getCard").then(({ response }) => {
