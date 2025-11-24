@@ -14,7 +14,7 @@ export function addSubscriptionTests(
         isSlackConfigured: false,
       },
       {
-        isSlackConfigured: false,
+        isSlackConfigured: true,
       },
     ])(
       "should show subscriptions button if subscriptions are enabled and email is set up (isSlackConfigured: $isSlackConfigured)",
@@ -43,39 +43,63 @@ export function addSubscriptionTests(
       {
         isEmailConfigured: false,
         isSlackConfigured: false,
-        withSubscriptions: false,
-      },
-      {
-        isEmailConfigured: false,
-        isSlackConfigured: false,
-        withSubscriptions: true,
       },
       {
         isEmailConfigured: false,
         isSlackConfigured: true,
-        withSubscriptions: false,
-      },
-      {
-        isEmailConfigured: false,
-        isSlackConfigured: true,
-        withSubscriptions: true,
       },
       {
         isEmailConfigured: true,
         isSlackConfigured: false,
-        withSubscriptions: false,
       },
       {
         isEmailConfigured: true,
         isSlackConfigured: true,
-        withSubscriptions: false,
       },
     ])(
-      "should not show subscriptions button if subscriptions are disabled or email is not configured (isEmailConfigured: $isEmailConfigured, isSlackConfigured: $isSlackConfigured, withSubscriptions: $withSubscriptions)",
-      async ({ isEmailConfigured, isSlackConfigured, withSubscriptions }) => {
+      "should not show subscriptions button if subscriptions are disabled (isEmailConfigured: $isEmailConfigured, isSlackConfigured: $isSlackConfigured)",
+      async ({ isEmailConfigured, isSlackConfigured }) => {
+        await setup({
+          props: { withSubscriptions: false },
+          isEmailConfigured,
+          isSlackConfigured,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+        });
+
+        const dashboardHeader = within(screen.getByTestId("dashboard-header"));
+
+        expect(
+          dashboardHeader.queryByLabelText("Subscriptions"),
+        ).not.toBeInTheDocument();
+      },
+    );
+
+    it.each([
+      {
+        isSlackConfigured: false,
+        withSubscriptions: false,
+      },
+      {
+        isSlackConfigured: false,
+        withSubscriptions: true,
+      },
+      {
+        isSlackConfigured: true,
+        withSubscriptions: false,
+      },
+      {
+        isSlackConfigured: true,
+        withSubscriptions: true,
+      },
+    ])(
+      "should not show subscriptions button if email is not configured (isSlackConfigured: $isSlackConfigured, withSubscriptions: $withSubscriptions)",
+      async ({ isSlackConfigured, withSubscriptions }) => {
         await setup({
           props: { withSubscriptions },
-          isEmailConfigured,
+          isEmailConfigured: false,
           isSlackConfigured,
         });
 
