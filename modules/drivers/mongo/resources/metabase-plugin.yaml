@@ -17,22 +17,24 @@ driver:
       required: true
       visible-if:
         use-conn-uri: true
-    - merge:
-        - host
-        - visible-if:
-            use-conn-uri: false
-          required: true
-          group-id: host-and-port
+    - group:
+        id: "host-and-port"
+        container-style: "host-and-port-section"
+        fields:
+          - merge:
+              - host
+              - visible-if:
+                  use-conn-uri: false
+                required: true
+          - merge:
+              - port
+              - placeholder: 27017
+                visible-if:
+                  use-conn-uri: false
     - merge:
         - dbname
         - visible-if:
             use-conn-uri: false
-    - merge:
-        - port
-        - placeholder: 27017
-          visible-if:
-            use-conn-uri: false
-          group-id: host-and-port
     - merge:
         - user
         - required: false
@@ -91,10 +93,6 @@ driver:
         use-conn-uri: false
         advanced-options: true
     - default-advanced-options
-extra:
-  field-groups:
-    - id: "host-and-port"
-      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.mongo

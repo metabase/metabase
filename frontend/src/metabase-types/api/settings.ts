@@ -83,9 +83,18 @@ export interface FieldGroupConfig {
   "container-style": string;
 }
 
+export interface EngineFieldGroup {
+  type: "group";
+  id: string;
+  "container-style": string;
+  fields: EngineField[];
+}
+
+export type EngineFieldOrGroup = EngineField | EngineFieldGroup;
+
 export interface Engine {
   "driver-name": string;
-  "details-fields"?: EngineField[];
+  "details-fields"?: EngineFieldOrGroup[];
   source: EngineSource;
   "superseded-by": string | null;
   "extra-info": {

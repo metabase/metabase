@@ -1,4 +1,10 @@
-import type { Engine, EngineField, EngineKey } from "metabase-types/api";
+import type {
+  Engine,
+  EngineField,
+  EngineFieldGroup,
+  EngineFieldOrGroup,
+  EngineKey,
+} from "metabase-types/api";
 
 import { DatabaseDetailField } from "../DatabaseDetailField";
 
@@ -6,11 +12,23 @@ import { getContainer } from "./container-styles";
 import { GroupedFields, groupFields } from "./field-grouping";
 
 interface DatabaseFormBodyDetailsProps {
-  fields: EngineField[] | GroupedFields[];
+  fields: EngineFieldOrGroup[];
   autofocusFieldName?: string;
   engineKey: EngineKey | undefined;
   engine: Engine | undefined;
 }
+
+function isEngineFieldGroup(
+  field: EngineFieldOrGroup,
+): field is EngineFieldGroup {
+  return (
+    typeof field === "object" &&
+    field !== null &&
+    "type" in field &&
+    field.type === "group"
+  );
+}
+
 export function DatabaseFormBodyDetails({
   fields,
   autofocusFieldName,
@@ -19,12 +37,19 @@ export function DatabaseFormBodyDetails({
 }: DatabaseFormBodyDetailsProps) {
   const fieldGroups = engine?.["extra-info"]?.["field-groups"] ?? [];
 
-  const mappedFields = fieldGroups.reduce<Array<EngineField | GroupedFields>>(
-    (acc, fieldGroupConfig) => {
-      return groupFields({ fields: acc, fieldGroupConfig });
-    },
-    fields,
-  );
+  // Check if fields contain nested groups (new format)
+  const hasNestedGroups = fields.some(isEngineFieldGroup);
+
+  // If using new nested group format, skip the old grouping logic
+  const mappedFields: Array<EngineFieldOrGroup | GroupedFields> =
+    hasNestedGroups
+      ? fields
+      : fieldGroups.reduce<Array<EngineField | GroupedFields>>(
+          (acc, fieldGroupConfig) => {
+            return groupFields({ fields: acc, fieldGroupConfig });
+          },
+          fields as EngineField[],
+        );
 
   function renderField(engineField: EngineField) {
     return (
@@ -40,6 +65,7 @@ export function DatabaseFormBodyDetails({
   }
 
   return mappedFields.map((field) => {
+    // Handle old GroupedFields format (backwards compatibility) - check first to avoid type issues
     if (field instanceof GroupedFields) {
       const Container = getContainer(field.fieldGroupConfig["container-style"]);
       return (
@@ -49,6 +75,15 @@ export function DatabaseFormBodyDetails({
       );
     }
 
+    // Handle new nested group format
+    if (isEngineFieldGroup(field)) {
+      const Container = getContainer(field["container-style"]);
+      return (
+        <Container key={field.id}>{field.fields.map(renderField)}</Container>
+      );
+    }
+
+    // Handle regular ungrouped fields
     return renderField(field);
   });
 }

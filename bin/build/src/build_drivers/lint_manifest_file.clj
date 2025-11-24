@@ -47,7 +47,15 @@
                       :merge-map ::connection-property-map))
 (s/def ::merge-map (spell/keys :req-un [::merge]))
 
+(s/def ::id string?)
+(s/def ::container-style string?)
+(s/def ::fields (s/coll-of ::connection-property))
+(s/def ::group-map (spell/keys :req-un [::id ::container-style ::fields]))
+(s/def ::group-property (spell/keys :req-un [::group]))
+(s/def ::group ::group-map)
+
 (s/def ::connection-property (s/or :merge-with ::merge-map
+                                   :group-with ::group-property
                                    :property-name ::raw-property-name-ref
                                    :property-map (s/merge (spell/keys :req-un [::name]) ::connection-property-map)))
 
