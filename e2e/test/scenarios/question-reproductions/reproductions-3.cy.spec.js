@@ -1553,12 +1553,20 @@ describe("issue 44974", { tags: "@external" }, () => {
 
       H.openOrdersTable({ mode: "notebook" });
       H.join();
+      H.miniPicker()
+        .findByRole("menuitem", { name: /Browse all/ })
+        .click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Recents").should("not.exist");
-        H.entityPickerModalTab("Collections").click();
+        cy.findAllByRole("tab").should("not.exist");
+        H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText(questionDetails.name).should("not.exist");
+        cy.button("Close").click();
       });
+
+      // Check that the question is actually in recents
+      H.openCommandPalette();
+      H.commandPalette().findByText(questionDetails.name).should("not.exist");
     });
   });
 });

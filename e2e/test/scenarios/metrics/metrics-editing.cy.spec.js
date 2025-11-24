@@ -282,13 +282,19 @@ describe("scenarios > metrics > editing", () => {
     it("should not be possible to join a metric", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewMetric();
+      H.miniPicker()
+        .findByRole("menuitem", { name: /Browse all/ })
+        .click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        H.entityPickerModalItem(0, "Databases").click();
+        H.entityPickerModalItem(3, "Orders").click();
       });
       startNewJoin();
+      H.miniPicker()
+        .findByRole("menuitem", { name: /Browse all/ })
+        .click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").should("be.visible");
+        H.entityPickerModalTab("Data").click();
         H.entityPickerModalTab("Metrics").should("not.exist");
       });
     });
