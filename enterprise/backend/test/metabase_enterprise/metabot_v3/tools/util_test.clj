@@ -192,7 +192,13 @@
       (is (= {:model-tag "q", :model-id "puL95JSvym3k23W1UUuog", :field-index 0}
              (metabot-v3.tools.util/parse-field-id "qpuL95JSvym3k23W1UUuog-0")))
       (is (= {:model-tag "q", :model-id "abc123XYZ", :field-index 5}
-             (metabot-v3.tools.util/parse-field-id "qabc123XYZ-5"))))))
+             (metabot-v3.tools.util/parse-field-id "qabc123XYZ-5"))))
+
+    (testing "query field IDs with nano-id containing dashes"
+      (is (= {:model-tag "q", :model-id "wG9GfYTcE-wKTg3wlZyuc", :field-index 6}
+             (metabot-v3.tools.util/parse-field-id "qwG9GfYTcE-wKTg3wlZyuc-6")))
+      (is (= {:model-tag "q", :model-id "a-b-c", :field-index 0}
+             (metabot-v3.tools.util/parse-field-id "qa-b-c-0"))))))
 
 (deftest resolve-column-test
   (testing "resolve-column resolves field IDs to columns"

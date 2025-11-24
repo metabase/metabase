@@ -90,7 +90,7 @@
     (parse-field-id \"t154-1\") => {:model-tag \"t\", :model-id 154, :field-index 1}
     (parse-field-id \"qpuL95JSvym3k23W1UUuog-0\") => {:model-tag \"q\", :model-id \"puL95JSvym3k23W1UUuog\", :field-index 0}"
   [field-id]
-  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])([^-]+)-(\d+)$" field-id)]
+  (when-let [[_ model-tag model-id field-index] (re-matches #"^([tcq])(.+)-(\d+)$" field-id)]
     {:model-tag model-tag
      ;; For tables and cards, model-id should be numeric; for queries it's a nano-id string
      :model-id (if (= model-tag "q")
