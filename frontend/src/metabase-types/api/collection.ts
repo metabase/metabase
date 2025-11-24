@@ -30,11 +30,7 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType =
-  | "instance-analytics"
-  | "trash"
-  | "remote-synced"
-  | null;
+export type CollectionType = "instance-analytics" | "trash" | null;
 
 export type LastEditInfo = {
   email: string;
@@ -74,6 +70,7 @@ export interface Collection {
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  is_remote_synced?: boolean;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;

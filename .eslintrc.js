@@ -180,6 +180,7 @@ module.exports = {
         "no-unconditional-metabase-links-render": "error",
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
+        "no-oss-reinitialize-import": "error",
         "depend/ban-dependencies": [
           "error",
           {
