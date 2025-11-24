@@ -47,5 +47,12 @@ export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
 export const getAvailableFonts = (state: SdkStoreState) =>
   getSetting(state, "available-fonts");
 
-export const getHasTokenFeature = (state: SdkStoreState) =>
-  getTokenFeature(state, EMBEDDING_SDK_CONFIG.tokenFeatureKey);
+export const getHasTokenFeature = (state: SdkStoreState) => {
+  // When the setting haven't been loaded or failed to query, we assume that the
+  // feature is _enabled_ first.
+  if (!state.settings.values?.["token-features"]) {
+    return true;
+  }
+
+  return getTokenFeature(state, EMBEDDING_SDK_CONFIG.tokenFeatureKey);
+};
