@@ -1,3 +1,5 @@
+import type { TableSymlink } from "metabase-types/api/table-symlink";
+
 import type { Card, CardType } from "./card";
 import type { Collection } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
@@ -71,8 +73,8 @@ export type Table = {
   view_count: number;
   transform?: Transform;
 
-  published_models?: Card[] | null; // present in /api/table/:id/query_metadata
-  published_as_model?: boolean; // present in /api/database/:id/schemas/:schemaId
+  published_symlinks?: TableSymlink[] | null; // present in /api/table/:id/query_metadata
+  published_as_symlink?: boolean; // present in /api/database/:id/schemas/:schemaId
 };
 
 export type SchemaName = string;
