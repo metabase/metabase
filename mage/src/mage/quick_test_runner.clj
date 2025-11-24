@@ -16,14 +16,39 @@
 (def ^:private test-path (str u/project-root-directory "/test"))
 (def ^:private enterprise-path (str u/project-root-directory "/enterprise/backend/test/"))
 
-(defn- gather-test-dirs []
+(defn- gather-file-tests []
   (->> (concat
-        (fs/glob test-path "**.clj{,s,c}")
-        (fs/glob enterprise-path "**.clj{,s,c}"))
-       (mapv (comp str fs/parent))
+        (fs/glob test-path "**.clj{,c}")
+        (fs/glob enterprise-path "**.clj?c"))
+       (mapv (fn [f] (str (fs/relativize u/project-root-directory f))))
        (remove #(str/includes? % "mage"))
-       distinct
-       (mapv (fn [f] (str (fs/relativize u/project-root-directory f))))))
+       vec))
+
+(defn- gather-dir-tests
+  ([]
+   (gather-dir-tests (gather-file-tests)))
+  ([test-files]
+   (->> test-files
+        (mapv (comp str fs/parent fs/file))
+        distinct)))
+
+(defn- gather-tests-all []
+  (let [files (gather-file-tests)
+        dirs (gather-dir-tests files)]
+    (concat files dirs)))
+
+(defn- gather-tests [selecting]
+  (prn ["selecting" selecting])
+  (case selecting
+    "file" (gather-file-tests)
+    "dir"  (gather-dir-tests)
+    "all"  (gather-tests-all)
+    (throw
+     (ex-info ""
+              {:mage/error (str "Unknown test gathering 'selection': " (c/yellow selecting) ". "
+                                "Valid options are: "
+                                (c/green "file") ", " (c/green "dir") ", or " (c/green "all") ".")
+               :babashka/exit 1}))))
 
 (defn- quotify [xs]
   (str/join " " (map #(str "\"" % "\"") xs)))
@@ -41,8 +66,7 @@
       :theme :sideline-bold
       :label-theme :marquee
       :label "Running tests in"}
-     (str/join "\n"
-               (map #(str " - " %) test-dirs)))
+     (str/join "\n" (map #(str " - " %) test-dirs)))
     (let [out (backend/nrepl-eval the-ns the-cmd)
           elapsed (u/since-ms start)]
       (try (u/pp (edn/read-string out)) (catch Exception _ #_:clj-kondo/ignore (prn out)))
@@ -56,7 +80,7 @@
                       :theme :minimal
                       :label-theme :marquee
                       :label "To Rerun Directly"}
-                     (c/cyan "mage quick-test " (str/join " " test-dirs))))))
+                     (c/cyan "mage run-tests " (str/join " " test-dirs))))))
 
 ;; namespaces will be converted to their file paths, so this check will work.
 (defn- check-arg [arg]
@@ -95,20 +119,28 @@
         (add-cljy-suffix-or-throw maybe-ns))
     maybe-ns))
 
-(defn- setup-test-files [arguments]
-  (if (seq arguments)
-    (let [file-paths-or-dirs (mapv maybe-convert-ns-to-filename arguments)]
-      (when-not (every? check-arg file-paths-or-dirs)
-        (throw (ex-info "" {:mage/error (str
-                                         "When providing arguments, they must be file paths or directories, got: "
-                                         (c/yellow (str/join " " file-paths-or-dirs)))
-                            :babashka/exit 1})))
-      file-paths-or-dirs)
-    (-> (gather-test-dirs)
-        (u/fzf-select
-         (str/join " " ["--multi" "--ansi" "--preview"
-                        (str "'" u/project-root-directory "/mage/cmd/fzf_preview.clj {}'")]))
-        str/split-lines)))
+(defn- setup-test-files [arguments {:keys [selecting] :as _options}]
+  (let [tests (if (seq arguments)
+                arguments
+                (-> (gather-tests selecting)
+                    (u/fzf-select
+                     (str/join " " ["--multi"
+                                    "--ansi"
+                                    "--marker" "'✓ '"
+                                    "--bind" "tab:toggle+up,shift-tab:toggle+down,ctrl-a:toggle-all"
+                                    "--header" "'TAB: toggle+up, Shift-TAB: toggle+down, C-a: toggle all, ENTER: accept'"
+                                    "--header-first"
+                                    "--header-border" "rounded"
+                                    "--preview" (str "'" u/project-root-directory "/mage/cmd/fzf_preview.clj {}'")]))
+                    str/split-lines))
+        test-dir-or-nss (mapv maybe-convert-ns-to-filename tests)]
+    (when-not (every? check-arg test-dir-or-nss)
+      (throw (ex-info "" {:mage/error (str
+                                       "When providing arguments, they must be file paths or directories, got: "
+                                       (pr-str {:tests tests
+                                                :test-dir-or-ns test-dir-or-nss}))
+                          :babashka/exit 1})))
+    test-dir-or-nss))
 
 (defn- run-tests-cli [test-dirs]
   (let [cmd (str "clj -X:dev:ee:ee-dev:test :only '[" (quotify test-dirs) "]'")]
@@ -118,14 +150,14 @@
 (defn go
   "Interactively select directories to run tests against."
   [{:keys [arguments options] :as _parsed}]
-  (when-not (= "dir" (:selecting options))
-    (throw (ex-info "" {:mage/error    "Selections other than dir not yet supported."
-                        :babashka/exit 1})))
-  (let [test-dirs (setup-test-files arguments)]
-    (if (backend/nrepl-open?)
+  (let [tests (setup-test-files arguments options)]
+    (prn ["TESTS" tests])
+    (if (and (backend/nrepl-open?)
+             ;; No testing against the mage nrepl! (probably noone will hit this)
+             (not= :bb (backend/nrepl-type)))
       (do
         (println "Running tests via ⏩🏎️✨" (c/green (c/bold "THE REPL")) "✨🏎️⏪.")
-        (run-tests-over-nrepl test-dirs))
+        (run-tests-over-nrepl tests))
       (do
         (println "Running via " (c/bold (c/magenta "the command line")) "."
                  (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECCOMENDED!! "))
@@ -135,7 +167,7 @@
                         :text               "Please open a REPL!"
                         :gradient-direction :to-top
                         :gradient-colors    [:magenta :red]}))
-        (run-tests-cli test-dirs)))))
+        (run-tests-cli tests)))))
 
 
 

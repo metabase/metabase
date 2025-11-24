@@ -113,6 +113,13 @@
       true)
     (catch Exception _ false)))
 
+(defn nrepl-type [& port]
+  (try
+    (let [port (nrepl-port port)
+          type (nrepl-eval "user" "#?(:bb :bb :cljs :cljs :clj :clj)" port)]
+      (keyword type))
+    (catch Exception _ nil)))
+
 (comment
 
   (nrepl-eval "metabase.logger.core-test" "(do (println :!! 'hi) 'hi)" 7888)
