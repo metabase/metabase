@@ -233,12 +233,18 @@ export function useEntitySuggestions({
 
   const onKeyDown = useCallback(
     ({ event }: { event: KeyboardEvent }) => {
-      if (event.key === "ArrowUp") {
+      if (
+        event.key === "ArrowUp" ||
+        (event.key === "p" && (event.metaKey || event.ctrlKey))
+      ) {
         upHandler();
         return true;
       }
 
-      if (event.key === "ArrowDown") {
+      if (
+        event.key === "ArrowDown" ||
+        (event.key === "n" && (event.metaKey || event.ctrlKey))
+      ) {
         downHandler();
         return true;
       }

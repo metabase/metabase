@@ -16,7 +16,7 @@
   color: var(--mb-color-text-primary);
 }
 
-.treeNode:hover {
+.treeNode[data-selected="false"]:hover {
   background-color: var(--mb-color-brand-lighter);
 }
 

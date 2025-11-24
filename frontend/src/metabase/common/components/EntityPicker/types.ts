@@ -7,7 +7,10 @@ import type {
   SearchResultId,
 } from "metabase-types/api";
 
-import type { TablePickerValue } from "../Pickers/TablePicker";
+import type {
+  TablePickerStatePath,
+  TablePickerValue,
+} from "../Pickers/TablePicker";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
@@ -84,6 +87,8 @@ export type ListProps<
   entity?: "collection" | "dashboard";
   refresh?: () => void;
   initialValue?: TablePickerValue;
+  tablesPath?: TablePickerStatePath;
+  onTablesPathChange?: (tablesPath: TablePickerStatePath) => void;
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

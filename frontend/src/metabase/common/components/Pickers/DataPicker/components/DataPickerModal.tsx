@@ -237,6 +237,8 @@ export const DataPickerModal = ({
             onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setQuestionsPath}
             shouldDisableItem={shouldDisableItem}
+            tablesPath={tablesPath}
+            onTablesPathChange={setTablesPath}
           />
         ),
       });

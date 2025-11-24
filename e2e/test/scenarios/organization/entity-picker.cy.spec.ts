@@ -1393,6 +1393,9 @@ function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
   tabs.forEach((tab) => {
     cy.log("root collection - automatically selected");
     H.entityPickerModal().within(() => {
+      if (tabs.length > 1) {
+        H.entityPickerModalTab(tab).click();
+      }
       enterSearchText({
         text: "2",
         placeholder: "Search this collection or everywhere…",

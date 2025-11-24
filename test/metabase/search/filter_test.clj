@@ -141,6 +141,6 @@
                       [:= :search_index.non_temporal_dim_ids "[1]"]
                       [:= :search_index.has_temporal_dim true]
                       [:in :search_index.display_type ["line"]]
-                      [:or [:= :search_index.collection_id 5] [:like :collection.location "/5/%"]]}}
+                      [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

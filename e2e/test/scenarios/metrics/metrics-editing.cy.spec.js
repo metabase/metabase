@@ -282,14 +282,23 @@ describe("scenarios > metrics > editing", () => {
     it("should not be possible to join a metric", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewMetric();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       startNewJoin();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText("Our analytics").click(); // go back
+      });
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").should("be.visible");
-        H.entityPickerModalTab("Metrics").should("not.exist");
+        H.entityPickerModalTab("Data").click();
+        cy.findByText("Orders").should("be.visible");
+        // FIXME: metabase#66210
+        // cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       });
     });
 

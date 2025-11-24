@@ -31,6 +31,7 @@ export type ObjectWithModel = {
   location?: Collection["location"];
   effective_location?: Collection["location"];
   is_personal?: boolean;
+  is_remote_synced?: boolean;
 };
 
 export const modelIconMap: Record<IconModel, IconName> = {
