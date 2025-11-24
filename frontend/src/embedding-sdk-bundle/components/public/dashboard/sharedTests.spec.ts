@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import type { SetupSdkDashboardOptions } from "../tests/setup";
+import type { SetupSdkDashboardOptions } from "./tests/setup";
 
 export function addSubscriptionTests(
   setup: (

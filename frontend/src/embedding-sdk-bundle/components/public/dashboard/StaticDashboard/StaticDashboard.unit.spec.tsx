@@ -2,13 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor, within } from "__support__/ui";
 
+import { addSubscriptionTests } from "../sharedTests.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
 } from "../tests/setup";
 
 import { StaticDashboard } from "./StaticDashboard";
-import { addSubscriptionTests } from "./sharedTests.spec";
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
