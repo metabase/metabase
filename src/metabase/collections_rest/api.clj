@@ -250,8 +250,8 @@
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
-    "timeline"
-    "table-symlink"})
+    "table-symlink"
+    "timeline"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -436,11 +436,25 @@
 
 (defmethod collection-children-query :table-symlink
   [_ collection {:keys [archived? pinned-state]}]
-  {:select    [[:s.table_id :id] [(h2x/literal "table-symlink") :model] :s.collection_id :s.table_id [:t.db_id :database_id]
-               [:t.display_name :name]]
-   :from      [[:table_symlink :s]]
-   :left-join [[:metabase_table :t] [:= :s.table_id :t.id]]
-   :where     [:= :collection_id (:id collection)]})
+  ;; Table symlinks cannot be archived and don't have pinning. When viewing archived items, return nothing.
+  ;; When filtering by pinned items, also return nothing (they can't be pinned).
+  {:select [[:t.id :id]
+            [:ts.table_id :table_id]
+            [:t.display_name :name]
+            [:t.description :description]
+            [:ts.collection_id :collection_id]
+            [:t.db_id :database_id]
+            [[:not= :t.archived_at nil] :archived]
+            [(h2x/literal "table-symlink") :model]]
+   :from   [[:table_symlink :ts]]
+   :join   [[:metabase_table :t] [:= :ts.table_id :t.id]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :ts.collection_id (:id collection)]
+            ;; Table symlinks inherit the table's archived state.
+            (if archived?
+              [:!= :t.archived_at nil]
+              [:= :t.archived_at nil])]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -790,16 +804,16 @@
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
-    :collection :model/Collection
-    :card       :model/Card
-    :dataset    :model/Card
-    :metric     :model/Card
-    :dashboard  :model/Dashboard
-    :document   :model/Document
-    :pulse      :model/Pulse
-    :snippet    :model/NativeQuerySnippet
-    :timeline   :model/Timeline
-    :table-symlink :model/TableSymlink))
+    :collection    :model/Collection
+    :card          :model/Card
+    :dataset       :model/Card
+    :metric        :model/Card
+    :dashboard     :model/Dashboard
+    :document      :model/Document
+    :pulse         :model/Pulse
+    :snippet       :model/NativeQuerySnippet
+    :table-symlink :model/TableSymlink
+    :timeline      :model/Timeline))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -1202,8 +1216,8 @@
      {:archived?                   (boolean archived)
       :include-can-run-adhoc-query include_can_run_adhoc_query
       :show-dashboard-questions?   (boolean show_dashboard_questions)
-      :collection-type collection_type
-      :include-library?             include_library
+      :collection-type             collection_type
+      :include-library?            include_library
       :models                      model-kwds
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
