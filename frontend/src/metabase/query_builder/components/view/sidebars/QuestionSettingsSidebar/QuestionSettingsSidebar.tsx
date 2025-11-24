@@ -33,8 +33,6 @@ export const QuestionSettingsSidebar = ({
   const handleClose = () => dispatch(onCloseQuestionSettings());
 
   const [page, setPage] = useState<"default" | "caching">("default");
-  const whetherToCloseOnEscape = page === "default";
-
   const [isOpen, setIsOpen] = useState(false);
 
   useMount(() => {
@@ -50,7 +48,7 @@ export const QuestionSettingsSidebar = ({
         title={getTitle(question)}
         onClose={handleClose}
         isOpen={isOpen}
-        closeOnEscape={whetherToCloseOnEscape}
+        closeOnEscape={page === "default"}
         data-testid="question-settings-sidebar"
       >
         {question.type() === "model" && (
