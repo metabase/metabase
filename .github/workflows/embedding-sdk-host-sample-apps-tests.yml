@@ -2,10 +2,6 @@ name: "[NOT REQUIRED] SDK Compatibility tests"
 
 on:
   workflow_call:
-    inputs:
-      cached-embedding-sdk-dist-artifact-name:
-        required: true
-        type: string
 
 jobs:
   get-sample-apps-data:
@@ -135,9 +131,11 @@ jobs:
           echo "sample_app_name=${test_suite%-e2e}" >> "$GITHUB_OUTPUT"
 
       - name: Retrieve uberjar artifact for ee
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
@@ -251,9 +249,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Retrieve uberjar artifact for ee
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
