@@ -6,6 +6,7 @@ import {
   ACTIVE_STATUS,
   type ActiveStatus,
 } from "metabase/admin/people/constants";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -49,13 +50,15 @@ export const TenantsListingApp = ({
   }, [hasDeactivatedTenants]);
 
   return (
-    <div>
-      <Group justify="space-between" mb="lg">
-        <Title order={1}>{t`Tenants`}</Title>
+    <AdminPaneLayout
+      headerContent={
+        <Group justify="space-between" w="100%">
+          <Title order={1}>{t`Tenants`}</Title>
 
-        <CreateTenantCollectionButton />
-      </Group>
-
+          <CreateTenantCollectionButton />
+        </Group>
+      }
+    >
       {isAdmin && hasDeactivatedTenants && (
         <Tabs value={status} onChange={handleTabChange} pl="md">
           <Tabs.List className={S.tabs}>
@@ -81,6 +84,6 @@ export const TenantsListingApp = ({
 
         {children}
       </SettingsSection>
-    </div>
+    </AdminPaneLayout>
   );
 };
