@@ -344,11 +344,27 @@ main() {
     fi
     echo "    • Babashka (for mage task automation)"
     echo ""
-    echo -e "  ${BOLD}Optional Tools:${NC}"
-    echo "    • bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
-    echo "    • fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
-    echo "    • fd - A fast alternative to find (https://github.com/sharkdp/fd)"
-    echo "    • ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
+    echo -e "  ${BOLD}Optional Tools (quality of life):${NC}"
+    if command -v bat &> /dev/null; then
+        echo -e "    ${GREEN}✓${NC} bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
+    else
+        echo -e "    ${RED}✗${NC} bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
+    fi
+    if command -v fzf &> /dev/null; then
+        echo -e "    ${GREEN}✓${NC} fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
+    else
+        echo -e "    ${RED}✗${NC} fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
+    fi
+    if command -v fd &> /dev/null; then
+        echo -e "    ${GREEN}✓${NC} fd - A fast alternative to find (https://github.com/sharkdp/fd)"
+    else
+        echo -e "    ${RED}✗${NC} fd - A fast alternative to find (https://github.com/sharkdp/fd)"
+    fi
+    if command -v rg &> /dev/null; then
+        echo -e "    ${GREEN}✓${NC} ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
+    else
+        echo -e "    ${RED}✗${NC} ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
+    fi
 
     print_section "Recommended Setup"
 
