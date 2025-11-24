@@ -41,7 +41,8 @@ type SearchContentType =
   | "action"
   | "indexed-entity"
   | "document"
-  | "transform";
+  | "transform"
+  | "table-symlink";
 
 type SearchContext =
   | "search-app"

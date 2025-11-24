@@ -90,7 +90,7 @@ function DataModelContent({ params }: Props) {
     isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
   const {
-    data: symlinks,
+    data: symlinks = [],
     error: symlinksError,
     isLoading: isLoadingSymlinks,
   } = useListTableSymlinksQuery({ table_id: metadataTableId });

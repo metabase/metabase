@@ -31,7 +31,11 @@ function setup({ table = createMockTable() }: SetupOpts = {}) {
     <Route
       path="/"
       component={() => (
-        <TableSection table={table} onSyncOptionsClick={onSyncOptionsClick} />
+        <TableSection
+          table={table}
+          symlinks={[]}
+          onSyncOptionsClick={onSyncOptionsClick}
+        />
       )}
     />,
     { withRouter: true },

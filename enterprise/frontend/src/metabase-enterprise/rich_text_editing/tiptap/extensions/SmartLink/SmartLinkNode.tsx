@@ -404,6 +404,7 @@ export const useEntityData = (
       };
     }
     case "indexed-entity":
+    case "table-symlink":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:
