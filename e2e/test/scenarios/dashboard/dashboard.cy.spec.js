@@ -54,7 +54,6 @@ describe("scenarios > dashboard", () => {
         "pressing escape should only close the entity picker modal, not the new dashboard modal",
       );
       H.modal().findByTestId("collection-picker-button").click();
-      H.entityPickerModal().findByText("Select a collection");
       cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
@@ -88,12 +87,9 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("dashboard-empty-state").button("Add a chart").click();
       cy.findByTestId("new-button-bar").findByText("New Question").click();
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "Pro",
-        );
-        cy.findByText("Everywhere").click();
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
@@ -200,10 +196,8 @@ describe("scenarios > dashboard", () => {
       cy.wait("@saveQuestion");
 
       cy.log("Add this new question to a dashboard created on the fly");
-      H.modal().within(() => {
-        cy.findByText("Saved! Add this to a dashboard?");
-        cy.button("Yes please!").click();
-      });
+
+      H.checkSavedToCollectionQuestionToast(true);
 
       H.entityPickerModal()
         .findByRole("tab", { name: /Dashboards/ })
@@ -1361,7 +1355,7 @@ describe("scenarios > dashboard", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard", () => {
+describe("scenarios > dashboard", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     H.resetSnowplow();

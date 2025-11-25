@@ -1,8 +1,7 @@
 import {
   NativeEditor,
-  entityPickerModal,
-  entityPickerModalTab,
   interceptIfNotPreviouslyDefined,
+  miniPicker,
   modal,
   openQuestionActions,
   popover,
@@ -39,8 +38,6 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
     }
     cy.findByText("Save").click();
   });
-
-  modal().findByText("Not now").click();
 }
 
 export function selectDimensionOptionFromSidebar(name) {
@@ -100,8 +97,8 @@ export function selectFromDropdown(option, clickOpts) {
 export function startQuestionFromModel(modelName) {
   cy.findByTestId("app-bar").findByText("New").click();
   popover().findByText("Question").should("be.visible").click();
-  entityPickerModal().within(() => {
-    entityPickerModalTab("Collections").click();
+  miniPicker().within(() => {
+    cy.findByText("Our analytics").click();
     cy.findByText(modelName).click();
   });
 }

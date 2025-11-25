@@ -676,7 +676,6 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           );
           cy.wait("@cardQuery");
 
-          H.filterWidget().contains("vrai");
           cy.findByTestId("table-body").within(() => {
             cy.findAllByText(/vrai/).should("have.length", 2);
             cy.findAllByText(/true/).should("have.length", 0);
@@ -768,6 +767,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           H.filterWidget().findByText("Multi").click();
           // Search matches against untranslated text, hence "Fran" matching these names
           cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
+          cy.wait("@searchQuery");
           cy.findByTestId("parameter-value-dropdown").within(() => {
             cy.findByText(/Glacia Froskeon/).click();
             cy.button(/Ajouter un filtre/).click();
@@ -786,6 +786,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           // Search matches against untranslated text, hence "Fran" matching these names
           cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
           cy.findByText(/Hammera Francite/).click();
+          cy.realPress("Escape");
           cy.findByTestId("parameter-value-dropdown")
             .button(/Mettre à jour le filtre/)
             .click();

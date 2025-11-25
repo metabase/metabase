@@ -110,6 +110,7 @@
   set-value-of-type!
   setting-env-map-name
   string->boolean
+  user-facing-value
   user-readable-values-map
   uuid-nonce-base
   validate-settings-formatting!
@@ -162,4 +163,10 @@
   (I think we are using an atom to facilitate updating the values??)"
   [new-values & body]
   `(binding [metabase.settings.models.setting/*user-local-values* ~new-values]
+     ~@body))
+
+(defmacro with-enforced-setting-access-checks
+  "Enable checks on Setting access."
+  [& body]
+  `(binding [metabase.settings.models.setting/*enforce-setting-access-checks* true]
      ~@body))

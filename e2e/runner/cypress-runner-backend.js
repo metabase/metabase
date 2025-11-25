@@ -6,18 +6,18 @@ const http = require("http");
 const os = require("os");
 const path = require("path");
 
+const { BACKEND_HOST, BACKEND_PORT } = require("./constants/backend-port");
 const { delay } = require("./cypress-runner-utils");
 
 const CypressBackend = {
   server: null,
-  createServer(port = process.env.BACKEND_PORT || 4000) {
+  createServer(port = BACKEND_PORT) {
     const generateTempDbPath = () =>
       path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
     const server = {
       dbFile: generateTempDbPath(),
       host: `http://localhost:${port}`,
-      port,
     };
 
     this.server = server;
@@ -41,8 +41,8 @@ const CypressBackend = {
       const metabaseConfig = {
         MB_DB_TYPE: "h2",
         MB_DB_FILE: this.server.dbFile,
-        MB_JETTY_HOST: "0.0.0.0",
-        MB_JETTY_PORT: this.server.port,
+        MB_JETTY_HOST: BACKEND_HOST,
+        MB_JETTY_PORT: BACKEND_PORT,
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
         MB_LAST_ANALYTICS_CHECKSUM: "-1",
@@ -52,25 +52,6 @@ const CypressBackend = {
         MB_IS_CYPRESS: "true", // custom flag so we can detect we're running in Cypress, used in tests.
       };
 
-      /**
-       * This ENV is used for Cloud instances only, and is subject to change.
-       * As such, it is not documented anywhere in the code base!
-       *
-       * WARNING:
-       * Changing values here will break the related E2E test.
-       */
-      const userDefaults = {
-        MB_USER_DEFAULTS: JSON.stringify({
-          token: "123456",
-          user: {
-            first_name: "Testy",
-            last_name: "McTestface",
-            email: "testy@metabase.test",
-            site_name: "Epic Team",
-          },
-        }),
-      };
-
       this.server.process = spawn(
         "java",
         [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
@@ -78,7 +59,6 @@ const CypressBackend = {
           env: {
             ...process.env,
             ...metabaseConfig,
-            ...userDefaults,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

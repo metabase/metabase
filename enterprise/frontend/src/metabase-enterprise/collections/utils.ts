@@ -48,20 +48,22 @@ export function isInstanceAnalyticsCollection(
 }
 
 export function isSyncedCollection(
-  collection: Pick<Collection, "type">,
+  collection: Pick<Collection, "is_remote_synced">,
 ): boolean {
-  return getCollectionType(collection).type === "remote-synced";
+  return collection.is_remote_synced === true;
 }
 
 export const getIcon = (item: ObjectWithModel): IconData => {
-  const collectionType = getCollectionType({ type: item.type }).type;
+  const collectionType = getCollectionType({
+    type: item.type || item.collection_type,
+  }).type;
   if (collectionType === "instance-analytics") {
     return {
       name: INSTANCE_ANALYTICS_COLLECTION.icon,
     };
   }
 
-  if (collectionType === "remote-synced") {
+  if (item.is_remote_synced) {
     return {
       name: REMOTE_SYNC_COLLECTION.icon,
     };

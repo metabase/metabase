@@ -359,7 +359,7 @@ describe("Database connection strings", () => {
   });
 });
 
-H.describeWithSnowplow("Database connection strings events", () => {
+describe("Database connection strings events", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

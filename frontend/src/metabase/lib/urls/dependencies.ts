@@ -1,6 +1,6 @@
 import type { DependencyEntry } from "metabase-types/api";
 
-const BASE_URL = `/admin/tools/dependencies`;
+const BASE_URL = `/data-studio/dependencies`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;

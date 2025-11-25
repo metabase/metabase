@@ -56,9 +56,12 @@ describe("scenarios > admin > datamodel > segments", () => {
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       }).then(({ body }) => {
         cy.wrap(body.id).as("segmentId");
@@ -212,7 +215,6 @@ describe("scenarios > admin > datamodel > segments", () => {
         .find(".Icon-ellipsis")
         .click();
       H.popover().findByText("Retire Segment").click();
-      H.modal().find("textarea").type("delete it");
       H.modal().contains("button", "Retire").click();
     });
 
@@ -279,7 +281,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
   });
 
-  H.describeWithSnowplow("x-ray", () => {
+  describe("x-ray", () => {
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
     });
@@ -299,9 +301,12 @@ describe("scenarios > admin > datamodel > segments", () => {
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       }).then(({ body: { id } }) => {
         cy.visit(`/reference/segments/${id}`);

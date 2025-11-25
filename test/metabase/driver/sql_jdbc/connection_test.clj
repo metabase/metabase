@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.connection.ssh-tunnel-test :as ssh-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
@@ -28,6 +29,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
+   [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
@@ -358,6 +360,74 @@
                               ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
 
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest test-aws-iam-auth-provider-connection
+  (mt/with-premium-features #{:database-auth-providers}
+    (testing "AWS IAM authentication for Postgres"
+      (mt/test-driver :postgres
+        (let [db-details (:details (mt/db))
+              iam-db-details (-> db-details
+                                 (dissoc :password)
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :aws-iam
+                                        :ssl true))]
+          (testing "Connection spec is configured with AWS wrapper"
+            (let [spec (sql-jdbc.conn/connection-details->spec :postgres iam-db-details)]
+              (is (= "aws-wrapper:postgresql" (:subprotocol spec)))
+              (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
+              (is (= "iam" (:wrapperPlugins spec))))))))
+    (testing "AWS IAM authentication for MySQL"
+      (mt/test-driver :mysql
+        (let [db-details (:details (mt/db))
+              iam-db-details (-> db-details
+                                 (dissoc :password)
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :aws-iam
+                                        :ssl true))]
+          (testing "Connection spec is configured with AWS wrapper"
+            (let [spec (sql-jdbc.conn/connection-details->spec :mysql iam-db-details)]
+              (is (= "aws-wrapper:mysql" (:subprotocol spec)))
+              (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
+              (is (= "iam" (:wrapperPlugins spec)))
+              (is (= "VERIFY_CA" (:sslMode spec))))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel test-aws-iam-requires-ssl
+  (testing "AWS IAM authentication requires SSL to be enabled"
+    (testing "Postgres throws error when SSL is disabled"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You must enable SSL in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :postgres
+                                                   {:host "localhost"
+                                                    :port 5432
+                                                    :user "cam"
+                                                    :auth-provider :aws-iam
+                                                    :ssl false
+                                                    :db "metabase"}))))
+    (testing "MySQL throws error when SSL is disabled"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You must enable SSL in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :mysql
+                                                   {:host "localhost"
+                                                    :port 3306
+                                                    :user "root"
+                                                    :auth-provider :aws-iam
+                                                    :ssl false
+                                                    :db "metabase"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"sslMode must be VERIFY_CA in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :mysql
+                                                   {:host "localhost"
+                                                    :port 3306
+                                                    :user "root"
+                                                    :auth-provider :aws-iam
+                                                    :ssl true
+                                                    :additional-options "sslMode=require"
+                                                    :db "metabase"}))))))
+
 (defmacro ^:private with-tunnel-details!
   [& body]
   `(let [original-details# (:details (mt/db))
@@ -508,3 +578,58 @@
                   ;; check the query again; the tunnel should have been reestablished
                   (check-data))))
             (finally (.stop ^Server server))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest postgres-aws-iam-can-connect
+  (if (config/config-bool :mb-postgres-aws-iam-test)
+    (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
+          port   (config/config-int :mb-postgres-aws-iam-test-port)
+          user   (config/config-str :mb-postgres-aws-iam-test-user)
+          dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
+      (with-redefs [premium-features/is-hosted? (constantly false)]
+        (testing "Connection details are configured"
+          (is (string? host))
+          (is (string? user))
+          (is (int? port))
+          (is (string? dbname)))
+
+        (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
+          (is
+           (driver.u/can-connect-with-details? :postgres {:host   host
+                                                          :port   port
+                                                          :dbname dbname
+                                                          :user   user
+                                                          :use-auth-provider true
+                                                          :auth-provider :aws-iam
+                                                          :ssl true})))))
+    (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST not set")))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest mysql-aws-iam-can-connect
+  (if (config/config-bool :mb-mysql-aws-iam-test)
+    (let [host   (config/config-str :mb-mysql-aws-iam-test-host)
+          port   (config/config-int :mb-mysql-aws-iam-test-port)
+          user   (config/config-str :mb-mysql-aws-iam-test-user)
+          dbname (config/config-str :mb-mysql-aws-iam-test-dbname)
+          ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
+      (with-redefs [premium-features/is-hosted? (constantly false)]
+        (testing "Connection details are configured"
+          (is (string? host))
+          (is (string? user))
+          (is (int? port))
+          (is (string? dbname))
+          (is (string? ssl-cert)))
+
+        (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
+          (is
+           (driver.u/can-connect-with-details? :mysql {:host   host
+                                                       :port   port
+                                                       :dbname dbname
+                                                       :user   user
+                                                       :additional-options (if (= ssl-cert "trust")
+                                                                             "trustServerCertificate=true"
+                                                                             (str "serverSslCert=" ssl-cert))
+                                                       :use-auth-provider true
+                                                       :auth-provider :aws-iam
+                                                       :ssl true})))))
+    (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))

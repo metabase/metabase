@@ -19,6 +19,7 @@
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletResponse)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.net SocketException)
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
@@ -188,6 +189,7 @@
           false)))
     (catch InterruptedException _ false)
     (catch ClosedChannelException _ true)
+    (catch SocketException _ true)
     (catch Throwable e
       (log/error e "Error determining whether HTTP request was canceled")
       false)))
@@ -307,6 +309,7 @@
       (write-something-to-stream! os))
 
   `f` should block until it is completely finished writing to the stream, which will be closed thereafter.
+  NOTE: `canceled-chan` **IS NOT WORKING**; see `metabase.server.streaming-response-test/canceling-response-2`
   `canceled-chan` can be monitored to see if the request is canceled before results are fully written to the stream.
 
   Current options:

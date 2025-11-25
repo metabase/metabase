@@ -25,7 +25,7 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { SetTitle } from "metabase/hoc/Title";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -353,6 +353,10 @@ export const DocumentPage = ({
     ],
   );
 
+  const focusEditorBody = useCallback(() => {
+    editorInstance?.commands.focus("start");
+  }, [editorInstance]);
+
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
     archived?: boolean;
@@ -405,9 +409,10 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
+  usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
+
   return (
     <Box className={styles.documentPage}>
-      <SetTitle title={documentData?.name || t`New document`} />
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
@@ -420,6 +425,7 @@ export const DocumentPage = ({
               showSaveButton={showSaveButton ?? false}
               isBookmarked={isBookmarked}
               onTitleChange={setDocumentTitle}
+              onTitleSubmit={focusEditorBody}
               onSave={() => {
                 if (isNewDocument) {
                   setCollectionPickerMode("save");
@@ -463,6 +469,7 @@ export const DocumentPage = ({
               showPersonalCollections: true,
               showRootCollection: true,
             }}
+            entityType="document"
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));
