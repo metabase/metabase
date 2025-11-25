@@ -639,7 +639,9 @@
            [:= :id (collection/trash-collection-id)]]
           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
         (when collection-type
-          [:= :type collection-type])
+          (if (= collection-type "remote-synced")
+            [:= :is_remote_synced true]
+            [:= :type collection-type]))
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
@@ -654,6 +656,7 @@
                 :location
                 :archived_directly
                 :type
+                [[:case [:= :is_remote_synced nil] [:inline false] :else :is_remote_synced] :is_remote_synced]
                 [(h2x/literal "collection") :model]
                 :authority_level])
       ;; the nil indicates that collections are never pinned.
@@ -733,6 +736,7 @@
         (-> (t2/instance :model/Collection row)
             collection/maybe-localize-trash-name
             (update :archived api/bit->boolean)
+            (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete)
             (dissoc :collection_position :display :moderated_status :icon
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
@@ -812,7 +816,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :type [:archived :boolean] [:last_used_at :timestamp]
+   :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -1151,7 +1155,7 @@
            include_can_run_adhoc_query collection_type
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
-                                          [:collection_type {:optional true} CollectionType]
+                                          [:collection_type             {:optional true} CollectionType]
                                           [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                           [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                           [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
@@ -1192,7 +1196,7 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level type] :as params}]
+  [{:keys [name description parent_id namespace authority_level] :as params}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
@@ -1200,26 +1204,22 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Get namespace from parent collection if not provided
-  (let [{parent-type :type
+  (let [{remote-synced? :is_remote_synced
          :as parent-collection} (when parent_id
-                                  (t2/select-one [:model/Collection :location :id :namespace :type] :id parent_id))
+                                  (t2/select-one [:model/Collection :location :id :namespace :is_remote_synced] :id parent_id))
         effective-namespace (cond
                               (contains? params :namespace) namespace
                               parent-collection (:namespace parent-collection)
-                              :else nil)
-        effective-type (cond
-                         (contains? params :type) type
-                         parent-type parent-type
-                         :else nil)]
+                              :else nil)]
      ;; Now create the new Collection :)
     (u/prog1 (t2/insert-returning-instance!
               :model/Collection
               (merge
-               {:name            name
-                :description     description
-                :type            effective-type
-                :authority_level authority_level
-                :namespace       effective-namespace}
+               {:name             name
+                :description      description
+                :is_remote_synced (boolean remote-synced?)
+                :authority_level  authority_level
+                :namespace        effective-namespace}
                (when parent-collection
                  {:location (collection/children-location parent-collection)})))
       (when config/ee-available?
@@ -1235,7 +1235,6 @@
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:type            {:optional true} [:maybe CollectionType]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   (create-collection! body))
 
@@ -1406,16 +1405,7 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
       (when (seq updates)
-        (t2/with-transaction [_conn]
-          (t2/update! :model/Collection id updates)
-          ;; if type is changing, cascade the type change to all child collections
-          (when (api/column-will-change? :type collection-before-update updates)
-            (let [child-location (collection/children-location collection-before-update)]
-              (t2/query-one {:update :collection
-                             :where [:like :location (str child-location "%")]
-                             :set {:type (:type updates)}}))
-            (when (= (:type updates) "remote-synced")
-              (collection/check-non-remote-synced-dependencies (t2/select-one :model/Collection :id id)))))))
+        (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
