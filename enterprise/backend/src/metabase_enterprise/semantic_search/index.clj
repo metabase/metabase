@@ -486,8 +486,6 @@
                               [:in :last_editor_id last-edited-by])
                             (when table-db-id
                               [:= :database_id table-db-id])
-                            (when collection
-                              [:= :collection_id collection])
                             (when (seq ids)
                               [:in :model_id (map str ids)])
                             (when (seq display-type)
