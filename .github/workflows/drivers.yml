@@ -121,6 +121,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test BigQuery Cloud SDK driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
@@ -168,6 +169,7 @@ jobs:
           clickhouse_cluster_node2
           nginx
     - name: Test Clickhouse driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-clickhouse-ee'
@@ -344,6 +346,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test H2 driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-h2'
@@ -448,6 +451,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
@@ -498,6 +502,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.version.name }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
@@ -754,6 +759,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
@@ -875,6 +881,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.job.name }}
       if: ${{ !matrix.job.skip }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
@@ -920,6 +927,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Snowflake driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
@@ -1036,6 +1044,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.version.name }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
@@ -1075,6 +1084,7 @@ jobs:
   #   - name: Make plugins directory
   #     run: mkdir plugins
   #   - name: Test Starburst driver
+  #     id: test-driver
   #     uses: ./.github/actions/test-driver
   #     with:
   #       junit-name: 'be-tests-starburst-ee'
@@ -1112,6 +1122,7 @@ jobs:
   #   - name: Make plugins directory
   #     run: mkdir plugins
   #   - name: Test Vertica driver
+  #     id: test-driver
   #     uses: ./.github/actions/test-driver
   #     with:
   #       junit-name: 'be-tests-vertica-ee'
