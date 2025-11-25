@@ -30,8 +30,10 @@ export async function startContainers({
     });
 
     await Promise.all(healthcheckPromises);
-  } catch {
-    shell(`docker logs ${appName}-metabase-1`);
+  } catch (e) {
+    console.log(e);
+    shell(`docker logs ${appName}-client-1`);
+    shell(`docker logs ${appName}-server-1`);
     shell(dockerDownCommand, { cwd, env });
   }
 }
