@@ -238,7 +238,7 @@
         "Vary"                        "Origin"})
      {"Access-Control-Allow-Headers"  "*"
       "Access-Control-Allow-Methods"  "*"
-      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"
+      "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token"
       ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
       "Access-Control-Max-Age"  "60"})))
 
