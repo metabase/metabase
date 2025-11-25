@@ -18,8 +18,7 @@ export type AdminPathKey =
   | "performance"
   | "performance-models"
   | "performance-dashboards-and-questions"
-  | "performance-databases"
-  | "transforms";
+  | "performance-databases";
 
 export type AdminPath = {
   key: AdminPathKey;

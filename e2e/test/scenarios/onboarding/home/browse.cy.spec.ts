@@ -67,7 +67,7 @@ describe("browse > models", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > browse", () => {
+describe("scenarios > browse", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -141,7 +141,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
       .findByLabelText("Create a new metric")
       .should("be.visible")
       .click();
-    cy.findByTestId("entity-picker-modal").should("be.visible");
+    H.miniPicker().should("be.visible");
 
     H.expectNoBadSnowplowEvents();
     H.expectUnstructuredSnowplowEvent({
@@ -210,7 +210,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
   });
 });
 
-H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
+describe("scenarios > browse (EE)", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

@@ -1,5 +1,4 @@
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -10,7 +9,6 @@ import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
-import CS from "metabase/css/core/index.css";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
@@ -19,16 +17,15 @@ import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { isMetabotBlock } from "metabase-enterprise/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 import { EditorBubbleMenu } from "metabase-enterprise/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
-import {
-  CardEmbed,
-  DROP_ZONE_COLOR,
-} from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import { CardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
+import DropCursorS from "metabase-enterprise/rich_text_editing/tiptap/extensions/DropCursor/DropCursor.module.css";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
+import { LinkHoverMenu } from "metabase-enterprise/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
 import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
@@ -37,8 +34,11 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { PlainLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { SupportingText } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
+import { DROP_ZONE_COLOR } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";
@@ -50,8 +50,11 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   MetabotNode.name,
   SmartLink.name,
   Image.name,
-  FlexContainer.name,
   "codeBlock",
+];
+
+const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
+  SupportingText.name,
 ];
 
 const getMetabotPromptSerializer =
@@ -107,6 +110,7 @@ export const Editor: React.FC<EditorProps> = ({
         dropcursor: {
           color: DROP_ZONE_COLOR,
           width: 2,
+          class: DropCursorS.dropCursor,
         },
       }),
       Image.configure({
@@ -121,16 +125,15 @@ export const Editor: React.FC<EditorProps> = ({
         },
         siteUrl,
       }),
-      Link.configure({
-        HTMLAttributes: {
-          class: CS.link,
-        },
+      PlainLink.configure({
+        defaultProtocol: "https",
       }),
       Placeholder.configure({
         placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
       }),
       CardEmbed,
       FlexContainer,
+      SupportingText,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
@@ -260,8 +263,16 @@ export const Editor: React.FC<EditorProps> = ({
           <EditorBubbleMenu
             editor={editor}
             disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+            disallowedFullySelectedNodes={
+              BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
+            }
           />
         )}
+        <Box pos="absolute" top={0} left={0} w="100%">
+          <Box className={S.editorContentInner} pos="relative">
+            <LinkHoverMenu editor={editor} editable={editable} />
+          </Box>
+        </Box>
       </Box>
     </Box>
   );

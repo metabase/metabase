@@ -1,6 +1,8 @@
 import {
+  NO_SQL_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_QUESTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
@@ -12,7 +14,7 @@ import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 
-H.describeWithSnowplowEE("documents", () => {
+describe("documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -99,7 +101,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     H.navigationSidebar()
-      .findByRole("tab", { name: "Bookmarks" })
+      .findByRole("section", { name: "Bookmarks" })
       .findByText("Test Document")
       .click();
 
@@ -154,6 +156,27 @@ H.describeWithSnowplowEE("documents", () => {
     H.documentContent()
       .findByRole("textbox")
       .should("have.attr", "contenteditable", "false");
+  });
+
+  it("should focus the start of the document body when pressing Enter on the title input", () => {
+    cy.visit("/document/new");
+
+    cy.log("Type a title");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.focused")
+      .type("Doc Title{enter}");
+
+    cy.log("Add some content to the document body");
+    H.addToDocument("One{enter}Two");
+
+    cy.log("Click back on the title to focus it and hit Enter");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .click()
+      .type("{enter}");
+
+    cy.log("Focus should be placed at the beginning of the document body");
+    cy.realType("NEW: ");
+    H.documentContent().should("have.text", "NEW: OneTwo");
   });
 
   it("should handle navigating from /new to /new gracefully", () => {
@@ -874,6 +897,329 @@ H.describeWithSnowplowEE("documents", () => {
           cy.location("pathname").should("equal", `/document/${id}`),
         );
       });
+    });
+  });
+
+  describe("creating new questions", () => {
+    beforeEach(() => {
+      H.createDocument({
+        name: "New Question Test Document",
+        document: {
+          content: [],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+    });
+
+    it("should allow creating a new notebook question and embedding it in the document", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionItem(/New chart/).click();
+      H.commandSuggestionItem(/New Question/).click();
+
+      cy.log("Create a simple query in the notebook editor");
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").click();
+      });
+
+      cy.log("Save and use the new question");
+      cy.findByRole("dialog", { name: "Create new question" }).within(() => {
+        cy.findByText("Orders").should("exist");
+        cy.findByRole("button", { name: "Save and use" }).click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.log("Verify the question is embedded in the document");
+      H.getDocumentCard("Orders").should("exist");
+
+      cy.get("@documentId").then((id) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "document_add_card",
+          target_id: id,
+        });
+      });
+
+      cy.log("Verify document can be saved with a new question");
+      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+      H.undoToast().findByText("Document saved").should("exist");
+    });
+
+    it("should allow creating a new native SQL question and embedding it in the document", () => {
+      cy.intercept("GET", "/api/database").as("database");
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionItem(/New chart/).click();
+      H.commandSuggestionItem(/New SQL query/).click();
+
+      cy.log("Save and use the new SQL query");
+
+      cy.wait("@database");
+      cy.wait(200); // wait for db selector to load
+
+      cy.findByTestId("selected-database").should("exist");
+
+      H.NativeEditor.focus();
+      H.NativeEditor.type("SELECT * FROM ORDERS LIMIT 10");
+
+      cy.findByRole("dialog", { name: "Edit SQL Query" })
+        .findByRole("button", { name: "Save and use" })
+        .click();
+
+      cy.wait("@dataset");
+
+      cy.log("Verify the SQL query is embedded in the document");
+      H.getDocumentCard("New question").should("exist");
+      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+
+      cy.get("@documentId").then((id) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "document_add_card",
+          target_id: id,
+        });
+      });
+
+      cy.log("Change native question title");
+      H.documentContent().within(() => {
+        cy.findByText("New question").realHover();
+        cy.icon("pencil").click();
+
+        cy.realType("New native question");
+      });
+      cy.get(".node-paragraph").first().click(); // unfocus cardEmbed
+
+      H.getDocumentCard("New native question").should("be.visible");
+
+      cy.log("Verify document can be saved with a new question");
+      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+      H.undoToast().findByText("Document saved").should("exist");
+    });
+
+    it("should support keyboard navigation when creating a new question", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and navigate to 'Chart' item");
+      H.addToDocument("/", false);
+      cy.realPress("{downarrow}");
+      H.commandSuggestionItem("Chart").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      cy.realPress("{enter}");
+
+      cy.log("Click 'New chart' to open question type menu");
+      H.commandSuggestionItem(/New chart/)
+        .should("exist")
+        .should("have.attr", "aria-selected", "true");
+      H.commandSuggestionItem(/Browse all/).should("exist");
+      cy.realPress("{enter}");
+
+      cy.log("Verify notebook option is selected by default");
+      H.commandSuggestionItem(/New Question/).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+
+      cy.log("Navigate to SQL option");
+      cy.realPress("{downarrow}");
+
+      H.commandSuggestionItem(/New SQL query/).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+
+      cy.log("Select SQL option with Enter");
+      cy.realPress("{enter}");
+
+      cy.log("Verify native query modal opens");
+      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("be.visible");
+
+      cy.log("Cancel the modal");
+      cy.findByRole("dialog", { name: "Edit SQL Query" })
+        .findByRole("button", { name: "Cancel" })
+        .click();
+
+      cy.log("Verify modal is closed");
+      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("not.exist");
+    });
+
+    it("should show 'Create new question' footer when no search results are found", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+
+      cy.log("Search for something that doesn't exist");
+      H.addToDocument("xyznonexistentquery", false);
+
+      cy.log("Verify 'No results found' message appears");
+      H.commandSuggestionDialog().should("contain.text", "No results found");
+
+      H.commandSuggestionDialog().findByRole("separator").should("exist");
+
+      cy.log("Verify 'Create new question' footer is visible");
+      H.commandSuggestionItem(/New chart/).should("be.visible");
+
+      cy.log("Verify 'Browse all' footer is also visible");
+      H.commandSuggestionItem(/Browse all/).should("be.visible");
+    });
+
+    it("should automatically assign appropriate visualization type for time series aggregation", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and create a new question");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionItem(/New chart/).click();
+      H.commandSuggestionItem(/New Question/).click();
+
+      cy.log("Create a time series query with Orders table");
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
+      H.addSummaryGroupingField({ field: "Created At" });
+
+      cy.findByRole("dialog", { name: "Create new question" })
+        .findByRole("button", { name: "Save and use" })
+        .click();
+
+      cy.log("Verify the question is embedded with a line chart visualization");
+      H.getDocumentCard("Orders, Sum of Total, Grouped by Created At: Month")
+        .should("exist")
+        .within(() => {
+          cy.log("Verify it has a line chart visualization (not a table)");
+          cy.findByTestId("chart-container").should("exist");
+          cy.get("svg").should("exist");
+          H.cartesianChartCircle().should("have.length.at.least", 1);
+        });
+    });
+
+    it("should trigger new question type suggestion menu when typing non-matching search and hitting Enter", () => {
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Type a non-matching search term");
+      H.addToDocument("/asdfsdaf", false);
+
+      H.commandSuggestionDialog().should("be.visible");
+      H.commandSuggestionDialog().should("contain.text", "No results found");
+      H.commandSuggestionItem(/New chart/)
+        .should("exist")
+        .should("have.attr", "aria-selected", "true");
+      cy.realPress("Enter");
+
+      cy.log("Verify that the new question type suggestion menu appears");
+      H.commandSuggestionDialog().should("be.visible");
+      H.commandSuggestionItem(/New Question/).should("be.visible");
+      H.commandSuggestionDialog()
+        .findByText(/Browse all/)
+        .should("not.exist");
+    });
+  });
+
+  describe("creating new questions - limited permissions", () => {
+    it("should not show 'Create new question' option for users without database permissions", () => {
+      cy.signIn("readonly");
+
+      H.createDocument({
+        name: "Test Document",
+        document: {
+          content: [],
+          type: "doc",
+        },
+        collection_id: READ_ONLY_PERSONAL_COLLECTION_ID,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+
+      cy.log("Verify 'Create new question' footer is not visible");
+      H.commandSuggestionDialog()
+        .findByRole("button", { name: /New chart/ })
+        .should("not.exist");
+
+      cy.log("Search for something to verify footer doesn't appear");
+      H.addToDocument("xyznonexistent", false);
+
+      cy.log("Verify 'No results found' message appears");
+      H.commandSuggestionDialog().should("contain.text", "No results found");
+
+      cy.log(
+        "Verify 'Create new question' footer is still not visible for no-permission user",
+      );
+      H.commandSuggestionDialog()
+        .findByRole("button", { name: /New chart/ })
+        .should("not.exist");
+
+      cy.log("Verify 'Browse all' footer is still available");
+      H.commandSuggestionItem(/Browse all/).should("be.visible");
+    });
+
+    it("should not show native SQL question option for users without native query editing permissions", () => {
+      cy.signIn("nosql");
+
+      H.createDocument({
+        name: "Test Document",
+        document: {
+          content: [],
+          type: "doc",
+        },
+        collection_id: NO_SQL_PERSONAL_COLLECTION_ID,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+
+      cy.log("Trigger command menu and select Chart");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+
+      cy.log("Click 'New chart' to open question type menu");
+      H.commandSuggestionItem(/New chart/).click();
+
+      cy.log("Verify only notebook option is available, not SQL");
+      H.commandSuggestionItem(/New SQL query/).should("not.exist");
+
+      cy.log("Verify notebook modal opens automatically");
+      cy.findByRole("dialog", { name: "Create new question" }).should(
+        "be.visible",
+      );
     });
   });
 

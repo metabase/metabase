@@ -6,7 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
-   [metabase.users.api :as api.user]
+   [metabase.users-rest.api :as api.user]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

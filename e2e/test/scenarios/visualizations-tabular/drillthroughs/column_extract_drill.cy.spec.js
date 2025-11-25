@@ -92,7 +92,7 @@ const DATE_QUESTION = {
   },
 };
 
-H.describeWithSnowplow("extract action", () => {
+describe("extract action", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -395,7 +395,7 @@ function extractColumnAndCheck({
   }
 }
 
-H.describeWithSnowplow("extract action", () => {
+describe("extract action", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
