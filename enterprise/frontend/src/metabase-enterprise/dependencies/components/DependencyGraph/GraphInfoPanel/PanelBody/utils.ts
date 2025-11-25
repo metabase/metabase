@@ -17,7 +17,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "dashboard":
     case "document":
     case "segment":
-      return node.data.created_at ?? null;
+      return node.data.created_at;
     case "table":
     case "transform":
     case "snippet":
@@ -45,8 +45,8 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
     case "dashboard":
-    case "segment":
       return node.data["last-edit-info"]?.timestamp ?? null;
+    case "segment":
     case "table":
     case "transform":
     case "snippet":
@@ -60,8 +60,8 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   switch (node.type) {
     case "card":
     case "dashboard":
-    case "segment":
       return node.data["last-edit-info"] ?? null;
+    case "segment":
     case "table":
     case "transform":
     case "snippet":
