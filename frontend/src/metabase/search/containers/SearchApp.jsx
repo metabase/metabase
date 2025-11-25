@@ -9,7 +9,6 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { usePagination } from "metabase/common/hooks/use-pagination";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
@@ -31,10 +30,17 @@ import {
 } from "metabase/search/utils";
 import { Box, Group, Paper, Text } from "metabase/ui";
 
+const getPageFromLocation = (location) => {
+  const maybePage = location.query?.page
+    ? parseInt(location.query.page, 10)
+    : 0;
+  return maybePage || 0;
+};
+
 function SearchApp({ location }) {
   const dispatch = useDispatch();
 
-  const { handleNextPage, handlePreviousPage, page } = usePagination();
+  const page = getPageFromLocation(location);
 
   const searchText = useMemo(
     () => getSearchTextFromLocation(location),
@@ -71,6 +77,13 @@ function SearchApp({ location }) {
     },
     [onChangeLocation, searchText],
   );
+
+  const advancePage = (howMany = 1) => {
+    onChangeLocation({
+      pathname: "search",
+      query: { q: searchText.trim(), ...searchFilters, page: page + howMany },
+    });
+  };
 
   const { data, error, isFetching, requestId } = useSearchQuery(query);
   const list = useMemo(() => {
@@ -119,8 +132,8 @@ function SearchApp({ location }) {
                   page={page}
                   itemsLength={list.length}
                   total={data.total}
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
+                  onNextPage={() => advancePage(1)}
+                  onPreviousPage={() => advancePage(-1)}
                 />
               </Group>
             </Box>
