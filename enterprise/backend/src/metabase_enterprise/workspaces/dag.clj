@@ -11,11 +11,6 @@
   {:transforms "transform"
    #_#_:models "card"})
 
-(def ^:private type->db-type
-  "Mapping from our entity type keywords to the dependency table's type strings."
-  {:transform "transform"
-   #_#_:model "card"})
-
 (defn- rows->entity-set
   "Convert query result rows to a set of {:id :type} maps."
   [rows]
@@ -152,21 +147,28 @@
     (toposort-dfs child->parents)))
 
 (defn- fetch-dependent-tables
-  "Fetch tables that depend on the given entities, i.e. the output tables of the transforms."
+  "Fetch tables that are the output targets of the given transforms.
+   Extracts the table IDs from the transforms' target fields by looking up
+   the table in the database based on schema and name."
   [entities]
   (when (seq entities)
-    (let [conditions (for [{:keys [id type]} entities]
-                       [:and
-                        [:= :to_entity_type (type->db-type type)]
-                        [:= :to_entity_id id]])
-          rows       (t2/query {:select-distinct [:from_entity_id]
-                                :from            [:dependency]
-                                :where           [:and
-                                                  [:= :from_entity_type "table"]
-                                                  (into [:or] conditions)]})]
-      (mapv (fn [row]
-              {:id (get row :from_entity_id) :type :table})
-            rows))))
+    (let [transform-ids (keep (fn [{:keys [id type]}]
+                                (when (= type :transform) id))
+                              entities)
+          transforms    (when (seq transform-ids)
+                          (t2/select [:model/Transform :id :target] :id [:in transform-ids]))
+          ;; Extract target table information and look up the table IDs
+          tables        (keep (fn [transform]
+                                (let [target (:target transform)]
+                                  (when (and target (= "table" (:type target)))
+                                    (t2/select-one [:model/Table :id :schema :name]
+                                                   :db_id (:database target)
+                                                   :schema (:schema target)
+                                                   :name (:name target)))))
+                              transforms)]
+      (mapv (fn [table]
+              {:id (:id table) :type :table})
+            tables))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
