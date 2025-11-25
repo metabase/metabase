@@ -2,11 +2,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import {
-  Sidesheet,
-  SidesheetCard,
-  useStackedSidesheets,
-} from "metabase/common/components/Sidesheet";
+import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import { useStackedModals } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { onCloseQuestionSettings } from "metabase/query_builder/actions";
@@ -34,12 +31,11 @@ export const QuestionSettingsSidebar = ({
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionSettings());
 
-  const { getModalProps, currentSidesheet, closeSidesheet, openSidesheet } =
-    useStackedSidesheets({
-      sidesheets: ["default", "caching"],
-      defaultOpened: "default",
-      withOverlay: true,
-    });
+  const { getModalProps, currentModal, close, open } = useStackedModals({
+    modals: ["default", "caching"],
+    defaultOpened: "default",
+    withOverlay: true,
+  });
 
   return (
     <>
@@ -60,19 +56,19 @@ export const QuestionSettingsSidebar = ({
               <PLUGIN_CACHING.SidebarCacheSection
                 model="question"
                 item={question}
-                setPage={() => openSidesheet("caching")}
-                key={currentSidesheet}
+                setPage={() => open("caching")}
+                key={currentModal}
               />
             </Stack>
           </SidesheetCard>
         )}
       </Sidesheet>
-      {currentSidesheet === "caching" && (
+      {currentModal === "caching" && (
         <PLUGIN_CACHING.SidebarCacheForm
           item={question}
           model="question"
           {...getModalProps("caching", { onClose: handleClose })}
-          onBack={() => closeSidesheet("caching")}
+          onBack={() => close("caching")}
           pt="md"
         />
       )}

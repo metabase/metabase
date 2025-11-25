@@ -4,4 +4,3 @@ export * from "./SidesheetCard";
 export * from "./SidesheetCardSection";
 export * from "./SidesheetSubPage";
 export * from "./SidesheetTabPanelContainer";
-export * from "./useStackedSidesheets";

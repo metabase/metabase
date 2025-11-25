@@ -1,34 +1,27 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import { Modal } from "metabase/ui";
 
-import { Sidesheet } from "./Sidesheet";
-import { useStackedSidesheets } from "./useStackedSidesheets";
+import { useStackedModals } from "./useStackedModals";
 
 const TestComponent = () => {
-  const sidesheets = ["first", "second"] as const;
-  type Key = (typeof sidesheets)[number];
-
-  const { getModalProps, openSidesheet } = useStackedSidesheets<Key>({
-    sidesheets: sidesheets as unknown as Key[],
+  const { getModalProps, open } = useStackedModals({
+    modals: ["first", "second"],
     defaultOpened: "first",
     withOverlay: true,
   });
 
   return (
     <div>
-      <button onClick={() => openSidesheet("second")}>Open second</button>
-      <Sidesheet title="First" {...getModalProps("first")}>
-        first-content
-      </Sidesheet>
-      <Sidesheet title="Second" {...getModalProps("second")}>
-        second-content
-      </Sidesheet>
+      <button onClick={() => open("second")}>Open second</button>
+      <Modal {...getModalProps("first")}>First</Modal>
+      <Modal {...getModalProps("second")}>Second</Modal>
     </div>
   );
 };
 
-describe("useStackedSidesheets", () => {
+describe("useStackedModals", () => {
   it("closes only the last opened sidesheet on Escape", async () => {
     render(<TestComponent />);
 
@@ -36,7 +29,7 @@ describe("useStackedSidesheets", () => {
     await screen.findByText("First");
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
 
-    // Open the second sidesheet
+    // Open the second modal
     await userEvent.click(screen.getByText("Open second"));
     await screen.findByText("Second");
 

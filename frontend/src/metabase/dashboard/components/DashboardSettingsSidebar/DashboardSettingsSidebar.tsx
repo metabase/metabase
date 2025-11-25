@@ -2,11 +2,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  Sidesheet,
-  SidesheetCard,
-  useStackedSidesheets,
-} from "metabase/common/components/Sidesheet";
+import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import { useStackedModals } from "metabase/common/hooks";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -19,24 +16,23 @@ import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 export function DashboardSettingsSidebar() {
   const { dashboard, closeSidebar } = useDashboardContext();
 
-  const { getModalProps, currentSidesheet, closeSidesheet, openSidesheet } =
-    useStackedSidesheets({
-      sidesheets: ["default", "caching"],
-      defaultOpened: "default",
-      withOverlay: true,
-    });
+  const { getModalProps, currentModal, close, open } = useStackedModals({
+    modals: ["default", "caching"],
+    defaultOpened: "default",
+    withOverlay: true,
+  });
 
   if (!dashboard) {
     return null;
   }
 
-  if (currentSidesheet === "caching") {
+  if (currentModal === "caching") {
     return (
       <PLUGIN_CACHING.SidebarCacheForm
         item={dashboard as CacheableDashboard}
         model="dashboard"
         {...getModalProps("caching", { onClose: closeSidebar })}
-        onBack={() => closeSidesheet("caching")}
+        onBack={() => close("caching")}
         pt="md"
       />
     );
@@ -49,10 +45,7 @@ export function DashboardSettingsSidebar() {
         title={t`Dashboard settings`}
         data-testid="dashboard-settings-sidebar"
       >
-        <DashboardSidesheetBody
-          dashboard={dashboard}
-          openSidesheet={openSidesheet}
-        />
+        <DashboardSidesheetBody dashboard={dashboard} openSidesheet={open} />
       </Sidesheet>
     </ErrorBoundary>
   );
