@@ -3,13 +3,15 @@
    [babashka.fs :as fs]
    [bling.banner :refer [banner]]
    [bling.core :as bling]
+   [bling.fonts.big]
    [bling.fonts.drippy]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [mage.be-dev :as backend]
    [mage.color :as c]
    [mage.shell :as shell]
-   [mage.util :as u]))
+   [mage.util :as u]
+   [pod.babashka.fswatcher :as fw]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +88,7 @@
 (defn- check-arg [arg]
   (or (str/includes? arg ".clj") (str/includes? arg "/")))
 
-(defn add-cljy-suffix-or-throw [partial-file-path maybe-ns]
+(defn- add-cljy-suffix-or-throw [partial-file-path maybe-ns]
   (or (first
        (keep (fn [suffix]
                (let [file-path (str partial-file-path suffix)]
@@ -107,17 +109,18 @@
                                      ". Tried appending .clj, .cljs, .cljc, and .bb -- is that a real namespace?")
                     :babashka/exit 1}))))
 
-(defn maybe-convert-ns-to-filename [maybe-ns]
-  (if (or (str/starts-with? maybe-ns "metabase.")
-          (str/starts-with? maybe-ns "metabase-enterprise."))
-    (-> maybe-ns
-        str
-        (str/replace "." "/")
-        (str/replace "-" "_")
-        ;; Cannot tell from the namespace alone if it's a clj, or cljc file. :melty-face:
-        ;; Try to find the file by appending each suffix until we find one that exists:
-        (add-cljy-suffix-or-throw maybe-ns))
-    maybe-ns))
+(defn- normalize [maybe-ns]
+  (let [normalized (if (or (str/starts-with? maybe-ns "metabase.")
+                           (str/starts-with? maybe-ns "metabase-enterprise."))
+                     (-> maybe-ns
+                         str
+                         (str/replace "." "/")
+                         (str/replace "-" "_")
+                         ;; Cannot tell from the namespace alone if it's a clj, or cljc file. :melty-face:
+                         ;; Try to find the file by appending each suffix until we find one that exists:
+                         (add-cljy-suffix-or-throw maybe-ns))
+                     maybe-ns)]
+    (str/replace normalized ",$" "")))
 
 (defn- setup-test-files [arguments {:keys [selecting] :as _options}]
   (let [tests (if (seq arguments)
@@ -133,7 +136,7 @@
                                     "--header-border" "rounded"
                                     "--preview" (str "'" u/project-root-directory "/mage/cmd/fzf_preview.clj {}'")]))
                     str/split-lines))
-        test-dir-or-nss (mapv maybe-convert-ns-to-filename tests)]
+        test-dir-or-nss (mapv normalize tests)]
     (when-not (every? check-arg test-dir-or-nss)
       (throw (ex-info "" {:mage/error (str
                                        "When providing arguments, they must be file paths or directories, got: "
@@ -147,27 +150,56 @@
     (bling/callout {:label "Running Command Line"} (c/bold cmd))
     (shell/sh* "clojure" "-X:dev:dev-ee:ee:test" ":only" (str "[" (quotify test-dirs) "]"))))
 
+(defn- run-the-tests [tests]
+  (if (and (backend/nrepl-open?)
+           ;; No testing against the mage nrepl! (probably noone will hit this)
+           (not= :bb (backend/nrepl-type)))
+    (do
+      (println "Running tests via ⏩🏎️✨" (c/green (c/bold "THE REPL")) "✨🏎️⏪.")
+      (run-tests-over-nrepl tests))
+    (do
+      (println "Running via " (c/bold (c/magenta "the command line")) "."
+               (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECCOMENDED!! "))
+               "Please consider starting a backend \nFor quicker test runs, use: " (c/magenta "  clj -M:test:dev:ee:ee-dev:drivers:drivers-dev:dev-start"))
+      (println "\n" (banner
+                     {:font               bling.fonts.drippy/drippy
+                      :text               "Open a REPL!"
+                      :gradient-direction :to-top
+                      :gradient-colors    [:magenta :red]})
+               "\n")
+      (run-tests-cli tests))))
+
+(defn- rerun-fn [{:keys [path type]}]
+  (u/debug (c/cyan "mage.quick-test-runner/rerun-fn") " got:" (pr-str [path type]))
+  (when (#{:write :write|chmod} type)
+    (println "\n"
+             (banner {:font bling.fonts.big/big
+                      :text (if (= type ::initial) "Running" "Re-running")})
+             "\n")
+    (println (c/green "Change detected. Rerunning tests for: " (c/bold path)))
+    (run-the-tests [path])))
+
+(defn- watch-and-run-tests
+  "Run all tests passed in itnitally, then watch them for changes and rerun the set, but only on change."
+  [tests]
+  ;; Start the watchers, one for each test path:
+  (doseq [test tests]
+    (println "- Adding watcher for " (c/green test))
+    (fw/watch test rerun-fn {:recursive true :delay-ms 50})
+    (println "  - Done"))
+  ;; Run them all initially
+  (run-the-tests tests)
+  (deref (promise)))
+
 (defn go
   "Interactively select directories to run tests against."
   [{:keys [arguments options] :as _parsed}]
-  (let [tests (setup-test-files arguments options)]
-    (prn ["TESTS" tests])
-    (if (and (backend/nrepl-open?)
-             ;; No testing against the mage nrepl! (probably noone will hit this)
-             (not= :bb (backend/nrepl-type)))
+  (let [tests
+        ;; if no arguments, prompt to select files or directories:
+        (setup-test-files arguments options)]
+    (u/debug "Tests to run:" tests)
+    (if (:watch options)
       (do
-        (println "Running tests via ⏩🏎️✨" (c/green (c/bold "THE REPL")) "✨🏎️⏪.")
-        (run-tests-over-nrepl tests))
-      (do
-        (println "Running via " (c/bold (c/magenta "the command line")) "."
-                 (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECCOMENDED!! "))
-                 "Please consider starting a backend \nFor quicker test runs, use: " (c/magenta "  clj -M:test:dev:ee:ee-dev:drivers:drivers-dev:dev-start"))
-        (println "\n" (banner
-                       {:font               bling.fonts.drippy/drippy
-                        :text               "Please open a REPL!"
-                        :gradient-direction :to-top
-                        :gradient-colors    [:magenta :red]}))
-        (run-tests-cli tests)))))
-
-
-
+        (println "Watching tests for changes in:" (c/green (str/join ", " tests)))
+        (watch-and-run-tests tests))
+      (run-the-tests tests))))
