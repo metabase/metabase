@@ -12,7 +12,7 @@
 
 (defn- nil-if-unreadable
   [instance]
-  (when (mi/can-read? instance)
+  (when (and instance (mi/can-read? instance))
     instance))
 
 (defn present-table
