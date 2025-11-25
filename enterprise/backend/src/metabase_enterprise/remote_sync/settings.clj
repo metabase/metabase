@@ -2,11 +2,26 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- update-tenant-remote-sync-flag
+  "Sets is_remote_sync=true or is_remote_sync false based on the status of the tenant collection sync."
+  [tenant-remote-sync?]
+  (t2/with-transaction [_]
+    (setting/set-value-of-type! :boolean :tenant-collections-remote-sync-enabled tenant-remote-sync?)
+    ;; Use direct query to bypass is_remote_sync parent validation since that can fail depending
+    ;; on the order these collections update in.
+    (t2/query-one {:update (t2/table-name :model/Collection)
+                   :set    {:is_remote_synced tenant-remote-sync?}
+                   :where  [:= :namespace "shared-tenant-collection"]}))
+  (doseq [updated-collection (t2/select :model/Collection :namespace "shared-tenant-collection")]
+    (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})))
 
 (defsetting remote-sync-enabled
   (deferred-tru "Is Git sync currently enabled?")
@@ -86,16 +101,24 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defsetting tenant-collections-remote-sync-enabled
+  (deferred-tru "When enabled, all collections in the shared-tenant-collection namespace are treated as remote-synced.")
+  :type :boolean
+  :visibility :admin
+  :setter update-tenant-remote-sync-flag
+  :export? false
+  :default false)
+
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
   If no args are passed, it validates the current settings.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
-  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
-                                                                     :remote-sync-token  (setting/get :remote-sync-token)
+  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url (setting/get :remote-sync-url)
+                                                                     :remote-sync-token (setting/get :remote-sync-token)
                                                                      :remote-sync-branch (setting/get :remote-sync-branch)
-                                                                     :remote-sync-type   (setting/get :remote-sync-type)})))
+                                                                     :remote-sync-type (setting/get :remote-sync-type)})))
 
   ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
    (when-not (or (not (str/index-of remote-sync-url ":"))
@@ -121,7 +144,7 @@
   overwriting it. If no branch is specified, uses the repository's default branch.
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
-  [{:keys [remote-sync-url remote-sync-token] :as settings}]
+  [{:keys [remote-sync-url remote-sync-token tenant-collections-remote-sync-enabled] :as settings}]
 
   (if (str/blank? remote-sync-url)
     (t2/with-transaction [_conn]
@@ -135,4 +158,5 @@
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
           (when (not (and (= k :remote-sync-token) obfuscated?))
-            (setting/set! k (k settings))))))))
+            (setting/set! k (k settings))))
+        (update-tenant-remote-sync-flag tenant-collections-remote-sync-enabled)))))

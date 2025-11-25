@@ -1526,7 +1526,7 @@
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collections or :analytics namespace."
+             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collection or :analytics namespace."
              (collection/check-collection-namespace :model/Card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
@@ -3452,21 +3452,21 @@
           (let [child-parent (#'collection/parent child)]
             (is (= parent-id (:id child-parent))
                 "Parent function should return the correct parent collection")
-            (is (collection/is-tenant-collection? child-parent)
+            (is (collection/tenant-collection? child-parent)
                 "Parent should be identified as tenant collection")))))))
 
 (deftest set-tenant-collection-permissions-is-tenant-check-test
-  (testing "The is-tenant-collection? predicate"
+  (testing "The tenant-collection?? predicate"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Collection tenant-coll {:namespace collection/shared-tenant-ns}
                        :model/Collection regular-coll {:type nil}
                        :model/Collection remote-coll {:type "remote-synced"}]
-          (is (collection/is-tenant-collection? tenant-coll)
+          (is (collection/tenant-collection? tenant-coll)
               "Should identify shared-tenant-collection as tenant collection")
-          (is (not (collection/is-tenant-collection? regular-coll))
+          (is (not (collection/tenant-collection? regular-coll))
               "Should not identify regular collection as tenant collection")
-          (is (not (collection/is-tenant-collection? remote-coll))
+          (is (not (collection/tenant-collection? remote-coll))
               "Should not identify remote-synced collection as tenant collection"))))))
 
 (deftest after-insert-routes-to-correct-permissions-logic-test
