@@ -1586,7 +1586,7 @@
 
 (defn- assert-type-ok [collection]
   (when (and (:type collection)
-             (is-tenant-collection? collection)
+             (tenant-collection? collection)
              (not (perms/use-tenants)))
     (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)}))))
 
@@ -2262,7 +2262,7 @@
    :bookmark [:model/CollectionBookmark [:and
                                          [:= :bookmark.collection_id :this.id]
                                              ;; a magical alias, or perhaps this clause can be implicit
-                                        [:= :bookmark.user_id :current_user/id]]]})
+                                         [:= :bookmark.user_id :current_user/id]]]})
 
 (defn is-library-collection?
   "Return true if the given collection ID corresponds to a collection in the library."

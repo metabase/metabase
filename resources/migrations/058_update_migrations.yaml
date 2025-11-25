@@ -1099,6 +1099,52 @@ databaseChangeLog:
                   value: 'library-models'
             where: type = 'library-data'
 
+      id: v58.2025-11-25T00:00:00
+      author: edpaget
+      comment: Add default read permissions for All Users group on shared-tenant-collection root
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/namespace/shared-tenant-collection/root/read/'
+              FROM permissions_group pg
+              WHERE pg.magic_group_type = 'all-internal-users'
+                AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.group_id = pg.id
+                    AND p.object = '/collection/namespace/shared-tenant-collection/root/read/'
+                );
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions
+              WHERE object = '/collection/namespace/shared-tenant-collection/root/read/'
+                AND group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-internal-users');
+
+  - changeSet:
+      id: v58.2025-11-25T00:00:01
+      author: edpaget
+      comment: Add default read permissions for All External Users group on shared-tenant-collection root
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/namespace/shared-tenant-collection/root/read/'
+              FROM permissions_group pg
+              WHERE pg.magic_group_type = 'all-external-users'
+                AND NOT EXISTS (
+                  SELECT 1 FROM permissions p
+                  WHERE p.group_id = pg.id
+                    AND p.object = '/collection/namespace/shared-tenant-collection/root/read/'
+                );
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions
+              WHERE object = '/collection/namespace/shared-tenant-collection/root/read/'
+                AND group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-external-users');
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
