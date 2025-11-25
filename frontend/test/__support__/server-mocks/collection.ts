@@ -43,23 +43,27 @@ export function setupCollectionsEndpoints({
   fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection, {
     name: `collection-${trashCollection.id}`,
   });
+  fetchMock.get("path:/api/collection", collections, {
+    name: "collection-list",
+  });
+
+  // Simple fallback handlers (will be overridden by the smart handler below)
   fetchMock.get(
     "path:/api/collection/tree",
     collections.filter((collection) => !collection.archived),
     { name: "collection-tree-exclude-archived" },
   );
   fetchMock.get("path:/api/collection/tree", collections, {
-    name: "collection-tree",
-  });
-  fetchMock.get("path:/api/collection", collections, {
-    name: "collection-list",
+    name: "collection-tree-all",
   });
 
+  // Smart collection tree endpoint with query parameter support
+  // Uses overwriteRoutes to override the simple handlers above
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
-      overwriteRoutes: false,
-      name: "collection_tree",
+      name: "collection-tree",
+      overwriteRoutes: true,
     },
     (uri) => {
       const url = new URL(uri);
@@ -69,16 +73,22 @@ export function setupCollectionsEndpoints({
         url.searchParams.get("include-tenant-collections") === "true";
 
       return collections.filter((collection) => {
+        // Filter out archived collections if requested
         if (excludeArchived && collection.archived) {
           return false;
         }
-        if (
-          includeTenantCollections &&
-          collection.type !== "shared-tenant-collection"
-        ) {
-          return false;
+
+        // Filter by tenant collection status
+        const isTenantCollection =
+          collection.namespace === "shared-tenant-collection";
+
+        if (includeTenantCollections) {
+          // When include-tenant-collections=true, return ONLY tenant collections
+          return isTenantCollection;
+        } else {
+          // When include-tenant-collections=false/undefined, return ONLY non-tenant collections
+          return !isTenantCollection;
         }
-        return true;
       });
     },
   );
