@@ -1,5 +1,6 @@
 import { indexBy } from "underscore";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -116,6 +117,7 @@ export interface SetupSdkDashboardOptions {
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];
+  hasEmbeddingEnterprisePlugin?: boolean;
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -130,6 +132,7 @@ export const setupSdkDashboard = async ({
   dashboardName = "Dashboard",
   dataPickerProps,
   dashcards = DEFAULT_DASHCARDS,
+  hasEmbeddingEnterprisePlugin = false,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
@@ -182,6 +185,10 @@ export const setupSdkDashboard = async ({
   setupBookmarksEndpoints([]);
 
   const user = createMockUser();
+
+  if (hasEmbeddingEnterprisePlugin) {
+    setupEnterpriseOnlyPlugin("embedding");
+  }
 
   const state = setupSdkState({
     currentUser: user,

@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupEmbeddingDataPickerDecisionEndpoints,
@@ -99,8 +98,7 @@ describe("EditableDashboard", () => {
   });
 
   it("should allow to create a new question in addition to adding existing questions", async () => {
-    setupEnterpriseOnlyPlugin("embedding");
-    await setup();
+    await setup({ hasEmbeddingEnterprisePlugin: true });
     setupSimpleDataPickerEndpoints();
 
     expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
