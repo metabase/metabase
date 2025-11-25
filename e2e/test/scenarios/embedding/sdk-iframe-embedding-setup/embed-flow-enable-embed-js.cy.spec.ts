@@ -9,6 +9,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
     [
       {
         instance: "ee",
+        cardTestId: "sdk-setting-card",
         cardText:
           "To continue, enable Embedded Analytics JS and agree to the usage conditions.",
         embeddingSettingName: "enable-embedding-simple",
@@ -16,6 +17,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
       },
       {
         instance: "oss",
+        cardTestId: "guest-embeds-setting-card",
         cardText:
           "To continue, enable Guest embeds and agree to the usage conditions.",
         embeddingSettingName: "enable-embedding-static",
@@ -23,7 +25,13 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
       },
     ] as const
   ).forEach(
-    ({ instance, embeddingSettingName, showTermsSettingName, cardText }) => {
+    ({
+      instance,
+      embeddingSettingName,
+      showTermsSettingName,
+      cardTestId,
+      cardText,
+    }) => {
       describe(
         `when the user has an ${instance} instance`,
         {
@@ -49,7 +57,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
 
             cy.visit("/admin/embedding");
 
-            cy.findAllByTestId("sdk-setting-card")
+            cy.findAllByTestId(cardTestId)
               .first()
               .within(() => {
                 cy.findByText("New embed").click();
@@ -97,7 +105,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
 
             cy.visit("/admin/embedding");
 
-            cy.findAllByTestId("sdk-setting-card")
+            cy.findAllByTestId(cardTestId)
               .first()
               .within(() => {
                 cy.findByText("New embed").click();
@@ -127,7 +135,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js", () 
 
             cy.visit("/admin/embedding");
 
-            cy.findAllByTestId("sdk-setting-card")
+            cy.findAllByTestId(cardTestId)
               .first()
               .within(() => {
                 cy.findByText("New embed").click();

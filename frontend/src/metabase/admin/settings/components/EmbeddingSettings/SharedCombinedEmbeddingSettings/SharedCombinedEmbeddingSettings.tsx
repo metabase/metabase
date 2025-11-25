@@ -54,6 +54,8 @@ export function SharedCombinedEmbeddingSettings({
         settingKey="enable-embedding-static"
         actionButton={<NewEmbedButton />}
         dependentSettingKeys={dependentSettingKeys}
+        sdk-setting-card
+        testId="guest-embeds-setting-card"
       />
 
       {showEmbeddingSdkSettings && <EmbeddingSdkSettings />}
