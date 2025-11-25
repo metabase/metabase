@@ -62,7 +62,7 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
-        <Route {...{ title: t`Tenants` }} component={AdminPeopleApp}>
+        <Route component={AdminPeopleApp}>
           <IndexRoute component={TenantsListingApp} />
           <Route path="" component={TenantsListingApp}>
             <ModalRoute path="new" modal={NewTenantModal} noWrap />
