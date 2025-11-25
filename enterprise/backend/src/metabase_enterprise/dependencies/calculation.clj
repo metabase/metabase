@@ -133,8 +133,9 @@
     {}))
 
 (mu/defn upstream-deps:segment :- ::deps.schema/upstream-deps
-  "Given a segment, return its upstream dependencies (the table it filters)"
-  [{:keys [table_id] :as _segment}]
-  (if table_id
-    {:table #{table_id}}
-    {}))
+  "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
+  [{:keys [table_id definition] :as _segment}]
+  {:segment (or (lib/all-segment-ids definition) #{})
+   :table (cond-> #{}
+            table_id (conj table_id))})
+
