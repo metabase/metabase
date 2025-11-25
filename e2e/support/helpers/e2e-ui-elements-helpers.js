@@ -74,30 +74,19 @@ export function entityPickerModalLevel(level) {
  * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("a");
+  return (
+    entityPickerModalLevel(level)
+      // in the recents and search results, the items look like: [collection name] [parent collection name]
+      // which makes matching difficult as you may inadvertently match the parent collection name
+      // so we ignore the parent collection name by ignoring data-testid="picker-item-location"
+      .findByText(name, { ignore: '[data-testid="picker-item-location"]' })
+      .parents("a")
+  );
 }
 
 export function entityPickerModalTab(name) {
-  return cy.findAllByRole("tab").filter(`:contains(${name})`);
-}
-
-// displays at least these tabs:
-export function shouldDisplayTabs(tabs) {
-  tabs.forEach((tab) => {
-    entityPickerModalTab(tab).should("exist");
-  });
-}
-
-export function tabsShouldBe(selected, tabs) {
-  cy.log(tabs);
-  cy.findAllByRole("tab").should("have.length", tabs.length);
-  tabs.forEach((tab) => {
-    if (tab === selected) {
-      entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
-    } else {
-      entityPickerModalTab(tab).should("exist");
-    }
-  });
+  // make this a noop for now to help with debugging
+  // return cy.findAllByRole("tab").filter(`:contains(${name})`);
 }
 
 export function collectionOnTheGoModal() {

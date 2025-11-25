@@ -81,7 +81,6 @@ describe("scenarios > data studio > library", () => {
     H.openQuestionActions("Duplicate");
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, "Library").click();
     H.entityPickerModalItem(1, "Metrics").click();
     H.entityPickerModal().button("Select this collection").click();

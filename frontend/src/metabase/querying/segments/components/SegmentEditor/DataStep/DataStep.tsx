@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import {
   DataPickerModal,
+  type DataPickerValue,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import { Tables } from "metabase/entities/tables";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -92,13 +92,13 @@ export function DataStep({
         <DataPickerModal
           title={t`Select a table`}
           models={["table"]}
-          value={tableValue as TablePickerValue}
+          value={tableValue as DataPickerValue}
           onChange={handleChange}
           onClose={() => setIsOpened(false)}
           options={{
-            showLibrary: false,
-            showRootCollection: false,
-            showPersonalCollections: false,
+            hasLibrary: false,
+            hasRootCollection: false,
+            hasPersonalCollections: false,
           }}
         />
       )}

@@ -249,11 +249,13 @@ describe("EditSandboxingModal", () => {
           expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
         });
 
-        expect(onSave).toHaveBeenCalledWith({
-          attribute_remappings: {},
-          card_id: 1,
-          group_id: 1,
-          table_id: PEOPLE_ID,
+        await waitFor(() => {
+          expect(onSave).toHaveBeenCalledWith({
+            attribute_remappings: {},
+            card_id: 1,
+            group_id: 1,
+            table_id: PEOPLE_ID,
+          });
         });
       });
     });

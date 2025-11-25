@@ -124,11 +124,7 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
       .findAllByText("Select question")
       .first()
       .click({ force: true });
-    H.entityPickerModal()
-      .findByRole("tab", { name: /Questions/ })
-      .click();
-    H.entityPickerModalItem(0, "Our analytics").click();
-    H.entityPickerModalItem(1, "Orders, Count").click();
+    H.pickEntity({ path: ["Our analytics", "Orders, Count"], select: true });
     H.dashboardGrid().findByText("Orders, Count").should("exist");
   });
 });
@@ -143,10 +139,7 @@ function selectQuestion(question) {
     .findAllByText("Select question")
     .first()
     .click({ force: true });
-  H.entityPickerModal()
-    .findByRole("tab", { name: /Questions/ })
-    .click();
-  H.entityPickerModal().findByText(question).click();
+  H.pickEntity({ path: ["Our analytics", question], select: true });
   cy.wait("@cardQuery");
   H.dashboardGrid().findByText(question).should("exist");
 }

@@ -93,9 +93,7 @@ describe("scenarios > dashboard", () => {
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findByText("Databases").click();
-        cy.findByPlaceholderText("Search this database or everywhere…").type(
-          "Pro",
-        );
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
@@ -149,9 +147,6 @@ describe("scenarios > dashboard", () => {
         });
 
         H.entityPickerModal()
-          .findByRole("tab", { name: /Collections/ })
-          .click();
-        H.entityPickerModal()
           .findByText("New collection")
           .click({ force: true });
         const NEW_COLLECTION = "Bar";
@@ -192,9 +187,9 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByTestId("dashboard-and-collection-picker-button").click();
       });
-      H.entityPickerModal().within(() => {
-        cy.findByText("First collection").click();
-        cy.findByText("Select this collection").click();
+      H.pickEntity({
+        path: ["Our analytics", "First collection"],
+        select: true,
       });
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save").click();
@@ -205,9 +200,6 @@ describe("scenarios > dashboard", () => {
 
       H.checkSavedToCollectionQuestionToast(true);
 
-      H.entityPickerModal()
-        .findByRole("tab", { name: /Dashboards/ })
-        .click();
       H.entityPickerModal().findByText("New dashboard").click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
@@ -313,7 +305,6 @@ describe("scenarios > dashboard", () => {
         H.openDashboardMenu();
         H.popover().findByText("Move").click();
         H.entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -332,7 +323,6 @@ describe("scenarios > dashboard", () => {
         H.openDashboardMenu();
         H.popover().findByText("Move").click();
         H.entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });

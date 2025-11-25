@@ -46,12 +46,7 @@ describe("documents", () => {
 
     cy.findByRole("button", { name: "Save" }).click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(0, "Our analytics").should(
-      "have.attr",
-      "data-active",
-      "true",
-    );
+    H.entityPickerModalItem(0, "Our analytics").click();
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
@@ -88,7 +83,6 @@ describe("documents", () => {
 
     H.popover().findByText("Move").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, "Our analytics")
       .should("have.attr", "data-active", "true")
       .click();
@@ -126,7 +120,6 @@ describe("documents", () => {
     );
 
     cy.findByTestId("collection-picker-button").click();
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, /Personal Collection/).click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
     H.modal().findByRole("button", { name: "Copy" }).click();
@@ -677,7 +670,6 @@ describe("documents", () => {
         H.commandSuggestionItem("Chart").click();
         H.commandSuggestionItem(/Browse all/).click();
 
-        H.entityPickerModalTab("Questions").click();
         H.entityPickerModalItem(1, PRODUCTS_AVERAGE_BY_CATEGORY.name).click();
 
         H.getDocumentCard(PRODUCTS_AVERAGE_BY_CATEGORY.name).should("exist");
@@ -689,7 +681,6 @@ describe("documents", () => {
         H.commandSuggestionItem("Chart").click();
         H.commandSuggestionItem(/Browse all/).click();
 
-        H.entityPickerModalTab("Questions").click();
         H.entityPickerModalItem(1, "Fancy Dashboard").click();
         H.entityPickerModalItem(
           2,
@@ -1591,13 +1582,8 @@ describe("documents", () => {
       // make changes and attempt to save
       cy.findByRole("textbox", { name: "Document Title" }).type("Title");
       H.documentSaveButton().click();
-      H.entityPickerModalTab("Collections").click();
       cy.wait("@getCollection");
-      H.entityPickerModalItem(0, "Our analytics").should(
-        "have.attr",
-        "data-active",
-        "true",
-      );
+      H.entityPickerModalItem(0, "Our analytics").click();
       H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
       // assert error toast is visible and user can reattempt save

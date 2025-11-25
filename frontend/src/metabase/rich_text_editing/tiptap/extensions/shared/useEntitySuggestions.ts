@@ -1,6 +1,7 @@
 import type { Editor, Range } from "@tiptap/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { DocumentLinkedEntityPickerItemValue } from "metabase/rich_text_editing/tiptap/extensions/shared/LinkedEntityPickerModal/types";
@@ -282,7 +283,11 @@ export function useEntitySuggestions({
   );
 
   const handleModalSelect = useCallback(
-    (item: DocumentLinkedEntityPickerItemValue) => {
+    (item: OmniPickerItem) => {
+      if (item.model === "snippet" || item.model === "schema") {
+        console.error(`Cannot select ${item.model}`);
+        return;
+      }
       onSelectEntity({
         id: item.id,
         model: item.model,

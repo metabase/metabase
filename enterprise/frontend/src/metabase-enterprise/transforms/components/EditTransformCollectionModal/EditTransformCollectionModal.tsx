@@ -12,7 +12,7 @@ import {
   type CollectionFormValues,
 } from "metabase/collections/schemas";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -82,7 +82,7 @@ export function EditTransformCollectionModal({
   );
 
   const shouldDisableItem = useCallback(
-    (item: CollectionPickerItem) =>
+    (item: OmniPickerItem) =>
       isItemInCollectionOrItsDescendants(item, collectionId),
     [collectionId],
   );
@@ -138,9 +138,9 @@ export function EditTransformCollectionModal({
               <FormCollectionPicker
                 name="parent_id"
                 title={t`Parent collection`}
-                type="transform-collections"
                 collectionPickerModalProps={{
-                  shouldDisableItem,
+                  isDisabledItem: shouldDisableItem,
+                  namespaces: ["transforms"],
                 }}
               />
               <Group justify="flex-end">

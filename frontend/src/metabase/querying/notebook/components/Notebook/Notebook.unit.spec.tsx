@@ -12,6 +12,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -27,7 +28,6 @@ import {
 } from "metabase/browse/models/test-utils";
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { checkNotNull } from "metabase/lib/types";
-import type { IconName } from "metabase/ui";
 import {
   SAMPLE_METADATA,
   createQueryWithClauses,
@@ -87,16 +87,12 @@ const TEST_RECENT_CARD = createMockRecentCollectionItem({
 const dataPickerValueMap: Record<
   DataPickerValue["model"],
   {
-    tabIcon: IconName;
-    tabDisplayName: string;
     recentItem: RecentItem;
     itemPickerData: string[];
     pickerColIdx?: number;
   }
 > = {
   table: {
-    tabIcon: "folder",
-    tabDisplayName: "Data",
     recentItem: TEST_RECENT_TABLE,
     itemPickerData: checkNotNull(MOCK_DATABASE.tables).map(
       (table) => table.display_name,
@@ -104,20 +100,14 @@ const dataPickerValueMap: Record<
     pickerColIdx: 3, // tables are always level 3 in the data picker
   },
   card: {
-    tabIcon: "folder",
-    tabDisplayName: "Data",
     recentItem: TEST_RECENT_CARD,
     itemPickerData: ["card"],
   },
   dataset: {
-    tabIcon: "folder",
-    tabDisplayName: "Data",
     recentItem: TEST_RECENT_MODEL,
     itemPickerData: ["dataset"],
   },
   metric: {
-    tabIcon: "folder",
-    tabDisplayName: "Data",
     recentItem: TEST_RECENT_METRIC,
     itemPickerData: ["metric"],
   },
@@ -269,87 +259,10 @@ describe("Notebook", () => {
   });
 
   describe("when filtering with modelsFilterList", () => {
-    describe("tab behavior", () => {
-      it("should not show tabs if only no type is chosen and recents are populated", async () => {
-        setup({
-          question: createSummarizedQuestion("question"),
-          modelsFilterList: [],
-        });
-
-        await goToEntityModal();
-
-        expect(
-          await screen.findByTestId("single-picker-view"),
-        ).toBeInTheDocument();
-      });
-
-      it("should not show tabs if only one type is chosen and recents are not populated", async () => {
-        setup({
-          question: createSummarizedQuestion("question"),
-          modelsFilterList: ["table"],
-          hasRecents: false,
-        });
-
-        await goToEntityModal();
-
-        expect(
-          await screen.findByTestId("single-picker-view"),
-        ).toBeInTheDocument();
-
-        assertDataInPickerColumn({
-          columnIndex: Number(dataPickerValueMap["table"].pickerColIdx),
-          data: dataPickerValueMap["table"].itemPickerData,
-        });
-      });
-
-      it("should show tabs if more than one type is chosen", async () => {
-        const models: DataPickerValue["model"][] = ["dataset", "card"];
-
-        setup({
-          question: createSummarizedQuestion("question"),
-          modelsFilterList: models,
-          hasRecents: false,
-        });
-
-        await goToEntityModal();
-
-        for (const model of models) {
-          const { pickerColIdx = 1, itemPickerData } =
-            dataPickerValueMap[model];
-
-          await userEvent.click(await screen.findByText("Our analytics"));
-
-          assertDataInPickerColumn({
-            columnIndex: pickerColIdx,
-            data: itemPickerData,
-          });
-        }
-      });
-
-      it("should show all tabs if no filter is selected", async () => {
-        setup({
-          question: createSummarizedQuestion("question"),
-        });
-
-        await goToEntityModal();
-
-        expect(await screen.findByTestId("tabs-view")).toBeInTheDocument();
-
-        await goToDataPickerTab({
-          name: "Data",
-          iconName: "folder",
-        });
-        await goToDataPickerTab({
-          name: "Recents",
-          iconName: "clock",
-        });
-      });
-    });
-
     describe.each<DataPickerValue["model"]>(["metric", "card", "dataset"])(
       "when filtering with %s",
       (entityType) => {
-        it(`should show the Collection item picker when modelsFilterList=[${entityType}]`, async () => {
+        it(`should show the entity picker when modelsFilterList=[${entityType}]`, async () => {
           setup({
             question: createSummarizedQuestion("question"),
             modelsFilterList: [entityType],
@@ -357,34 +270,24 @@ describe("Notebook", () => {
 
           const {
             pickerColIdx = 1,
-            tabDisplayName,
-            tabIcon,
             recentItem,
             itemPickerData,
           } = dataPickerValueMap[entityType];
 
           await goToEntityModal();
+          await userEvent.click(await screen.findByText(/Our analytics/));
 
-          await goToDataPickerTab({ name: tabDisplayName, iconName: tabIcon });
-
-          if (entityType !== "table") {
-            // nested items so we want to go to the next nesting
-            await userEvent.click(await screen.findByText("Our analytics"));
-          }
-
-          assertDataInPickerColumn({
+          await assertDataInPickerColumn({
             columnIndex: pickerColIdx,
             data: itemPickerData,
           });
 
-          await goToDataPickerTab({ name: "Recents", iconName: "clock" });
+          await userEvent.click(await screen.findByText(/Recent items/));
+          await waitForLoaderToBeRemoved();
 
-          assertDataInRecents({
-            data: [
-              "display_name" in recentItem
-                ? recentItem.display_name
-                : recentItem.name,
-            ],
+          await assertDataInPickerColumn({
+            columnIndex: 1,
+            data: [recentItem.name],
           });
         });
       },
@@ -401,51 +304,22 @@ const goToEntityModal = async () => {
   expect(screen.getByTestId("entity-picker-modal")).toBeInTheDocument();
 
   await waitForLoaderToBeRemoved();
-  await waitForLoaderToBeRemoved();
 };
 
-const goToDataPickerTab = async ({
-  name,
-  iconName,
-}: {
-  name: string;
-  iconName: IconName;
-}) => {
-  const tabsView = within(await screen.findByTestId("tabs-view"));
-
-  const tabButton = tabsView.getByRole("tab", {
-    name: `${iconName} icon ${name}`,
-  });
-
-  expect(
-    within(tabButton).getByLabelText(`${iconName} icon`),
-  ).toBeInTheDocument();
-
-  await userEvent.click(tabsView.getByText(name));
-
-  expect(tabButton).toHaveAttribute("data-active", "true");
-};
-
-const assertDataInPickerColumn = ({
+const assertDataInPickerColumn = async ({
   columnIndex,
   data,
 }: {
   columnIndex: number;
   data: string[];
 }) => {
-  data.forEach((d) => {
-    expect(
-      within(screen.getByTestId(`item-picker-level-${columnIndex}`)).getByText(
-        d,
-      ),
-    ).toBeInTheDocument();
-  });
-};
-
-const assertDataInRecents = ({ data }: { data: string[] }) => {
-  data.forEach((d) => {
-    expect(
-      within(screen.getByRole("tabpanel", { name: /Recents/ })).getByText(d),
-    ).toBeInTheDocument();
-  });
+  for (const datum of data) {
+    await waitFor(() => {
+      expect(
+        within(
+          screen.getByTestId(`item-picker-level-${columnIndex}`),
+        ).getByText(datum),
+      ).toBeInTheDocument();
+    });
+  }
 };

@@ -5,8 +5,8 @@ import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { State } from "metabase-types/store";
 
-import { TransformPicker } from "./components/TransformPicker";
 import { getDataStudioTransformRoutes } from "./routes";
+import { getRootCollectionItem } from "./utils";
 
 const canAccessTransforms = (state: State): boolean => {
   if (getUserIsAdmin(state)) {
@@ -33,7 +33,7 @@ export function initializePlugin() {
     PLUGIN_TRANSFORMS.canAccessTransforms = canAccessTransforms;
     PLUGIN_TRANSFORMS.getDataStudioTransformRoutes =
       getDataStudioTransformRoutes;
-    PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
     PLUGIN_TRANSFORMS.useGetTransformQuery = useGetTransformQuery;
+    PLUGIN_TRANSFORMS.getRootCollectionItem = getRootCollectionItem;
   }
 }

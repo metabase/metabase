@@ -75,7 +75,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  moveQuestionTo(/Personal Collection/, user === "admin");
+                  moveQuestionTo(/Personal Collection/);
                   assertRequestNot403("updateQuestion");
 
                   cy.findAllByRole("status")
@@ -154,7 +154,7 @@ describe(
                       .should("have.attr", "aria-selected", "false");
                   });
 
-                  moveQuestionTo(/Personal Collection/, user === "admin");
+                  moveQuestionTo(/Personal Collection/);
                   assertRequestNot403("updateQuestion");
 
                   cy.findAllByRole("status")
@@ -187,6 +187,7 @@ describe(
                   H.entityPickerModal()
                     .as("modal")
                     .within(() => {
+                      cy.findByText("Our analytics").click();
                       cy.findByText("Orders in a dashboard").click();
                       cy.button("Select").click();
                     });
@@ -237,7 +238,7 @@ describe(
 
                   cy.log("Move the question to a personal collection");
 
-                  moveQuestionTo(/Personal Collection/, true);
+                  moveQuestionTo(/Personal Collection/);
 
                   cy.log("assert public collections are not visible");
                   H.openQuestionActions();
@@ -247,8 +248,6 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
-
-                    H.tabsShouldBe("Recents", ["Recents", "Dashboards"]);
 
                     cy.findByRole("button", {
                       name: /Personal Dashboard/,
@@ -267,7 +266,7 @@ describe(
                   });
 
                   cy.log("Move the question to the root collection");
-                  moveQuestionTo("Our analytics", true);
+                  moveQuestionTo("Our analytics");
 
                   cy.log("assert all collections are visible");
                   H.openQuestionActions();
@@ -276,8 +275,6 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
-
-                    H.tabsShouldBe("Recents", ["Recents", "Dashboards"]);
 
                     cy.findByRole("button", {
                       name: /Personal Dashboard/,
@@ -309,9 +306,9 @@ describe(
                     H.openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    H.entityPickerModalTab("Dashboards").click();
-
-                    findActivePickerItem("Orders in a dashboard");
+                    H.pickEntity({
+                      path: ["Our analytics", "Orders in a dashboard"],
+                    });
                   });
 
                   it("should handle lost access", () => {
@@ -376,10 +373,6 @@ describe(
                 H.openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                H.entityPickerModal()
-                  .findByText("First collection")
-                  .should("be.visible");
-
                 findInactivePickerItem("Orders in a dashboard");
 
                 H.entityPickerModal().within(() => {
@@ -387,7 +380,7 @@ describe(
                     "Orders in a dashboard{Enter}",
                     { delay: 0 },
                   );
-                  cy.findByText(/weren't any results/).should("be.visible");
+                  cy.findByText(/didn't find anything/).should("be.visible");
                 });
               });
 
@@ -414,8 +407,9 @@ describe(
                 cy.findByTestId("add-to-dashboard-button").click();
 
                 H.entityPickerModal()
-                  .findByText("Orders in a dashboard")
-                  .should("not.exist");
+                  .findByText(/Orders in a dashboard/)
+                  .closest("a")
+                  .should("have.attr", "data-disabled", "true");
 
                 // before visiting the dashboard, we don't have any history
                 H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -424,10 +418,10 @@ describe(
                 H.openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
 
-                // still no data
                 H.entityPickerModal()
-                  .findByText("Orders in a dashboard")
-                  .should("not.exist");
+                  .findByText(/Orders in a dashboard/)
+                  .closest("a")
+                  .should("have.attr", "data-disabled", "true");
               });
             });
           });
@@ -452,8 +446,10 @@ describe("question moving", () => {
       .closest("button")
       .click();
     H.popover().findByTestId("move-button").click();
-    H.modal().findByText("Second collection").click();
-    H.modal().button("Move").click();
+    H.pickEntity({
+      path: ["Our analytics", "First collection", "Second collection"],
+      select: true,
+    });
     cy.wait("@updateQuestion").its("response.statusCode").should("eq", 200);
     cy.findAllByRole("status").contains("Question moved to Second collection");
     H.appBar().findByText("Second collection").should("be.visible");
@@ -472,8 +468,10 @@ describe("question moving", () => {
       .closest("button")
       .click();
     H.popover().findByTestId("move-button").click();
-    H.modal().findByText("Second collection").click();
-    H.modal().button("Move").click();
+    H.pickEntity({
+      path: ["Our analytics", "First collection", "Second collection"],
+      select: true,
+    });
     cy.wait("@updateQuestion");
     H.modal()
       .findByText("Sorry buddy, only cool kids in this collection")
@@ -540,11 +538,10 @@ function findInactivePickerItem(name) {
   });
 }
 
-function moveQuestionTo(newCollectionName, clickTab = false) {
+function moveQuestionTo(newCollectionName) {
   H.openQuestionActions();
   cy.findByTestId("move-button").click();
   H.entityPickerModal().within(() => {
-    clickTab && cy.findByRole("tab", { name: /Collections|Browse/ }).click();
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });

@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  QuestionPickerModal,
-  type QuestionPickerValueItem,
-} from "metabase/common/components/Pickers/QuestionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { EntityPickerModal } from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
@@ -28,9 +26,13 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
-  const handleSelectQuestion = (nextCard: QuestionPickerValueItem) => {
-    dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
-    setQuestionPickerOpen(false);
+  const handleSelectQuestion = (nextCard: OmniPickerItem) => {
+    if (typeof nextCard.id === "number") {
+      dispatch(
+        replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }),
+      );
+      setQuestionPickerOpen(false);
+    }
   };
 
   if (!isDashboard) {
@@ -63,7 +65,7 @@ function DashCardPlaceholderInner({
         )}
       </Flex>
       {isQuestionPickerOpen && (
-        <QuestionPickerModal
+        <EntityPickerModal
           title={t`Pick what you want to replace this with`}
           value={
             dashboard.collection_id
@@ -73,6 +75,8 @@ function DashCardPlaceholderInner({
                 }
               : undefined
           }
+          // TODO: account for restrictions on adding personal
+          // questions to public dashboards
           models={["card", "dataset", "metric"]}
           onChange={handleSelectQuestion}
           onClose={() => setQuestionPickerOpen(false)}
