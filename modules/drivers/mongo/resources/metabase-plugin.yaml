@@ -18,8 +18,7 @@ driver:
       visible-if:
         use-conn-uri: true
     - group:
-        id: "host-and-port"
-        container-style: "host-and-port-section"
+        container-style: ["grid", "3fr 1fr"]
         fields:
           - merge:
               - host

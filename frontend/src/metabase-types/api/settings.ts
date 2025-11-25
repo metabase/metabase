@@ -78,15 +78,18 @@ export type DatabaseProvider = {
 
 export type EngineKey = (typeof engineKeys)[number];
 
+export type ContainerStyleType = "grid" | "component";
+export type ContainerStyle = string | [ContainerStyleType, string];
+
 export interface FieldGroupConfig {
   id: string;
-  "container-style": string;
+  "container-style": ContainerStyle;
 }
 
 export interface EngineFieldGroup {
   type: "group";
   id: string;
-  "container-style": string;
+  "container-style": ContainerStyle;
   fields: EngineField[];
 }
 
