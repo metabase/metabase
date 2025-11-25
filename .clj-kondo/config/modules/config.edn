@@ -2276,6 +2276,7 @@
            app-db
            config
            driver
+           events
            query-processor
            settings
            util

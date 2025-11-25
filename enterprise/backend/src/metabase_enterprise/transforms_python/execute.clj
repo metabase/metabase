@@ -12,6 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
@@ -329,6 +330,7 @@
       (log/info "Executing Python transform" transform-id "with target" (pr-str target))
       (let [start-ms          (u/start-timer)
             transform-details {:db-id          (:id db)
+                               :transform-id   transform-id
                                :transform-type (keyword (:type target))
                                :conn-spec      (driver/connection-spec driver db)
                                :output-schema  (:schema target)
@@ -341,7 +343,8 @@
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                 (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-          (transforms.util/sync-target! target db))
+          (transforms.util/sync-target! target db)
+          (events/publish-event! :event/transform-run-complete {:object transform-details}))
         {:run_id run-id
          :result result}))
     (catch Throwable t
