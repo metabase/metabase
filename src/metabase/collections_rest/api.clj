@@ -250,7 +250,8 @@
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
-    "timeline"})
+    "timeline"
+    "table"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))

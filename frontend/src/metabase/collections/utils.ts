@@ -223,6 +223,7 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
     !isLibraryCollection(item as Pick<Collection, "type">) &&
+    item.model !== "table" &&
     !item.archived
   );
 }
