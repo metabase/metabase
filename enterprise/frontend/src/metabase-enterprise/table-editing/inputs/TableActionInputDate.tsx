@@ -9,7 +9,10 @@ import {
   useDateValueWithoutTimezone,
 } from "./use-date-value-without-timezone";
 
-export type TableActionInputDateProps = TableActionInputSharedProps & {
+export type TableActionInputDateProps = Omit<
+  TableActionInputSharedProps,
+  "onChange"
+> & {
   dateStyle?: string;
   classNames?: {
     wrapper?: string;
@@ -23,7 +26,6 @@ export const TableActionInputDate = ({
   inputProps,
   initialValue,
   classNames,
-  onChange,
   onBlur,
   onEscape,
   onEnter,
@@ -40,9 +42,9 @@ export const TableActionInputDate = ({
   const handleChange = useCallback(
     (value: string | null) => {
       setValue(value);
-      onChange?.(restoreTimezone(value));
+      onEnter?.(restoreTimezone(value));
     },
-    [onChange, restoreTimezone],
+    [restoreTimezone, onEnter],
   );
 
   const handleFocus = useCallback(() => {

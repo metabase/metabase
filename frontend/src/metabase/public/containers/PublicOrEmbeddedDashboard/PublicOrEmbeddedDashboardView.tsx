@@ -6,7 +6,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { SetTitle } from "metabase/hoc/Title";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type { DisplayTheme } from "metabase/public/lib/types";
@@ -34,6 +34,8 @@ export function PublicOrEmbeddedDashboardView() {
     withFooter,
     downloadsEnabled,
   } = useDashboardContext();
+
+  usePageTitle(dashboard?.name || "", { titleIndex: 1 });
 
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
@@ -82,7 +84,6 @@ export function PublicOrEmbeddedDashboardView() {
       pdfDownloadsEnabled={downloadsEnabled.pdf}
       withFooter={withFooter}
     >
-      {dashboard && <SetTitle title={dashboard.name} />}
       <FullWidthContainer
         className={cx({
           [DashboardS.DashboardFullscreen]: isFullscreen,
