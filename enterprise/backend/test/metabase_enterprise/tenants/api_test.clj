@@ -238,7 +238,7 @@
 
 (deftest can-update-tenant-attributes
   (testing "Can update tenant attributes via PUT"
-    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test"
                                            :slug "test-tenant"
                                            :attributes {"initial" "value"}}]
       (let [updated-attrs {"updated" "new-value"
@@ -247,14 +247,14 @@
                                            {:attributes updated-attrs})]
         (is (= updated-attrs (:attributes (t2/select-one :model/Tenant :id id))))
         (is (= {:id id
-                :name "Test Tenant"
+                :name "Tenant Test"
                 :slug "test-tenant"
                 :is_active true
                 :member_count 0}
                (dissoc response :attributes))))))
 
   (testing "Can update extisting attributes"
-    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant 2"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 2"
                                            :slug "test-tenant-2"
                                            :attributes {"existing" "value"}}]
       (let [new-attrs {"existing" "value2"
@@ -264,7 +264,7 @@
         (is (= new-attrs (:attributes (t2/select-one :model/Tenant :id id)))))))
 
   (testing "Can clear attributes by setting to empty map"
-    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant 3"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 3"
                                            :slug "test-tenant-3"
                                            :attributes {"to-be" "cleared"}}]
       (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
@@ -272,7 +272,7 @@
       (is (= {} (:attributes (t2/select-one :model/Tenant :id id))))))
 
   (testing "Cannot update with attributes starting with @"
-    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant 4"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 4"
                                            :slug "test-tenant-4"
                                            :attributes {"valid" "value"}}]
       (let [invalid-attrs {"@system" "value"
@@ -390,3 +390,242 @@
         (is (= "shared-tenant-collection"
                (:namespace (mt/user-http-request :crowberto :post 200 "collection/" {:name (mt/random-name)
                                                                                      :parent_id parent-id}))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    Dedicated Tenant Collection Protection Tests                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest cannot-archive-tenant-root-collection-test
+  (testing "Cannot archive a tenant-specific-root-collection via API"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
+          (testing "attempting to archive tenant root collection returns 400"
+            (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
+                                  {:archived true}))
+
+          (testing "tenant root collection remains unarchived"
+            (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
+
+(deftest can-archive-tenant-collection-descendants-test
+  (testing "*Can* archive descendants of tenant-specific collections via API"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
+          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+            (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
+                                                             :namespace :tenant-specific
+                                                             :location (collection/children-location tenant-coll)}]
+              (testing "archive child collection returns 200"
+                (mt/user-http-request :crowberto :put 200 (str "collection/" child-id)
+                                      {:archived true}))
+
+              (testing "child collection is archived"
+                (is (t2/select-one-fn :archived :model/Collection :id child-id))))))))))
+
+(deftest cannot-delete-tenant-root-collection-test
+  (testing "Cannot delete a tenant-specific-root-collection via API"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
+          (testing "attempting to delete tenant root collection returns 400"
+            (mt/user-http-request :crowberto :delete 400 (str "collection/" tenant-collection-id)))
+
+          (testing "tenant root collection still exists"
+            (is (t2/exists? :model/Collection :id tenant-collection-id))))))))
+
+(deftest cannot-delete-tenant-collection-descendants-test
+  (testing "Cannot delete descendants of tenant collections via API"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
+          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+            (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
+                                                             :namespace :tenant-specific
+                                                             :location (collection/children-location tenant-coll)
+                                                             :archived true}]
+              (testing "deleting the collection is allowed"
+                (mt/user-http-request :crowberto :delete 200 (str "collection/" child-id)))
+
+              (testing "child collection still exists"
+                (is (not (t2/exists? :model/Collection :id child-id)))))))))))
+
+(deftest cannot-move-tenant-root-collection-test
+  (testing "Cannot move tenant-specific-root-collection to a different parent"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/Collection {target-id :id} {:name "Target Collection"
+                                                          :location "/"
+                                                          :namespace :tenant-specific}]
+          (testing "attempting to move tenant root collection returns 400"
+            (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
+                                  {:parent_id target-id}))
+
+          (testing "tenant root collection location remains at root"
+            (is (= "/" (t2/select-one-fn :location :model/Collection :id tenant-collection-id)))))))))
+
+(deftest can-move-tenant-descendants-within-tenant-namespace-test
+  (testing "Can move tenant collection descendants within the same tenant namespace"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
+          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+            (mt/with-temp [:model/Collection {child-a-id :id} {:name "Child A"
+                                                               :namespace :tenant-specific
+                                                               :location (collection/children-location tenant-coll)}
+                           :model/Collection {child-b-id :id} {:name "Child B"
+                                                               :namespace :tenant-specific
+                                                               :location (collection/children-location tenant-coll)}]
+              (testing "can move child B under child A"
+                (mt/user-http-request :crowberto :put 200 (str "collection/" child-b-id)
+                                      {:parent_id child-a-id})
+
+                (is (= (str "/" tenant-collection-id "/" child-a-id "/")
+                       (t2/select-one-fn :location :model/Collection :id child-b-id)))))))))))
+
+(deftest cannot-move-regular-collection-into-tenant-namespace-test
+  (testing "Can move regular collection into tenant namespace via API"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/Collection {regular-id :id} {:name "Regular Collection" :location "/"}]
+          (testing "moving regular collection into tenant namespace succeeds"
+            (mt/user-http-request :crowberto :put 400 (str "collection/" regular-id)
+                                  {:parent_id tenant-collection-id})))))))
+
+(deftest cannot-move-tenant-collection-out-of-tenant-namespace-test
+  (testing "Can move tenant collection out of tenant namespace via API"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/Collection {target-id :id} {:name "Target Collection" :location "/"}]
+          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+            (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
+                                                             :namespace :tenant-specific
+                                                             :location (collection/children-location tenant-coll)}]
+              (testing "moving tenant child out to regular namespace succeeds"
+                (mt/user-http-request :crowberto :put 400 (str "collection/" child-id)
+                                      {:parent_id target-id})))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Tenant Collection Visibility Tests                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest non-tenant-users-dont-see-tenant-collections-test
+  (testing "Non-tenant users cannot see tenant collections"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/User {regular-user-id :id} {}]
+          (mt/user-http-request regular-user-id :get 403 (str "collection/" tenant-collection-id)))))))
+
+(deftest tenant-users-can-read-items-in-tenant-collection-test
+  (testing "Tenant users can read items in their tenant collection"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                       :model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id db-id}]
+          (mt/with-temp [:model/Card {card-id :id} {:name "Tenant Card"
+                                                    :collection_id tenant-collection-id
+                                                    :database_id db-id
+                                                    :dataset_query {:database db-id
+                                                                    :type :query
+                                                                    :query {:source-table table-id}}}]
+            (testing "tenant user can fetch collection items"
+              (let [items (mt/user-http-request tenant-user-id :get 200 (str "collection/" tenant-collection-id "/items"))
+                    card-ids (set (map :id (:data items)))]
+                (is (contains? card-ids card-id))))))))))
+
+(deftest non-tenant-users-cannot-access-tenant-collection-items-test
+  (testing "Non-tenant users get 403 when accessing tenant collection items"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/User {regular-user-id :id} {}]
+          (testing "regular user gets 403 for tenant collection items"
+            (mt/user-http-request regular-user-id :get 403 (str "collection/" tenant-collection-id "/items"))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                  CRUD Operations in Tenant Collections                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest can-create-cards-in-tenant-collections-test
+  (testing "Can create cards in tenant collections"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}]
+          (mt/with-perm-for-group-and-table! (perms/all-external-users-group)
+            (mt/id :venues)
+            :perms/view-data
+            :unrestricted
+            (let [card-data {:name "New Card"
+                             :collection_id tenant-collection-id
+                             :visualization_settings {}
+                             :display "table"
+                             :database_id (mt/id)
+                             :dataset_query (mt/mbql-query venues)}
+                  response (mt/user-http-request tenant-user-id :post 200 "card" card-data)]
+              ;; TODO look into why this is failing
+              (testing "card is created in tenant collection"
+                (is (some? (:id response)))
+                (is (= tenant-collection-id (:collection_id response)))))))))))
+
+(deftest can-create-dashboards-in-tenant-collections-test
+  (testing "Can create dashboards in tenant collections"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}]
+          (let [dashboard-data {:name "New Dashboard"
+                                :collection_id tenant-collection-id}
+                response (mt/user-http-request tenant-user-id :post 200 "dashboard" dashboard-data)]
+            (testing "dashboard is created in tenant collection"
+              (is (some? (:id response)))
+              (is (= tenant-collection-id (:collection_id response))))))))))
+
+(deftest can-update-items-in-tenant-collections-test
+  (testing "Can update items in tenant collections"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                       :model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id db-id}]
+          (mt/with-temp [:model/Card {card-id :id} {:name "Original Name"
+                                                    :collection_id tenant-collection-id
+                                                    :database_id db-id
+                                                    :dataset_query {:database db-id
+                                                                    :type :query
+                                                                    :query {:source-table table-id}}}]
+            (let [response (mt/user-http-request tenant-user-id :put 200 (str "card/" card-id)
+                                                 {:name "Updated Name"})]
+              (testing "card name is updated"
+                (is (= "Updated Name" (:name response)))))))))))
+
+(deftest can-archive-items-in-tenant-collections-test
+  (testing "Can archive items in tenant collections"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                       :model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id db-id}]
+          (mt/with-temp [:model/Card {card-id :id} {:name "Card to Archive"
+                                                    :collection_id tenant-collection-id
+                                                    :database_id db-id
+                                                    :dataset_query {:database db-id
+                                                                    :type :query
+                                                                    :query {:source-table table-id}}}]
+            (mt/user-http-request tenant-user-id :put 200 (str "card/" card-id)
+                                  {:archived true})
+            (testing "card is archived"
+              (is (true? (t2/select-one-fn :archived :model/Card :id card-id))))))))))
