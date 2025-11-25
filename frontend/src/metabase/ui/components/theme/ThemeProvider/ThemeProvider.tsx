@@ -5,12 +5,15 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import {
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
 
+import { useUpdateSettingMutation } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
@@ -21,7 +24,11 @@ import { mutateColors } from "metabase/lib/colors/colors";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 import { getThemeOverrides } from "../../../theme";
-import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
+import {
+  type ColorScheme,
+  ColorSchemeProvider,
+  useColorScheme,
+} from "../ColorSchemeProvider";
 import type { ResolvedColorScheme } from "../ColorSchemeProvider/ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
@@ -163,8 +170,28 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
+  const savedColorScheme = useSetting("color-scheme");
+  const [updateSetting] = useUpdateSettingMutation();
+
+  const defaultColorScheme = ["light", "dark", "auto"].includes(
+    savedColorScheme as ColorScheme,
+  )
+    ? (savedColorScheme as ColorScheme)
+    : undefined;
+
+  const handleUpdateColorScheme = useCallback(
+    (value: ColorScheme) => {
+      updateSetting({ key: "color-scheme", value: value });
+    },
+    [updateSetting],
+  );
+
   return (
-    <ColorSchemeProvider forceColorScheme={forceColorScheme}>
+    <ColorSchemeProvider
+      defaultColorScheme={defaultColorScheme}
+      forceColorScheme={forceColorScheme}
+      onUpdateColorScheme={handleUpdateColorScheme}
+    >
       <ThemeProviderInner {...props} />
     </ColorSchemeProvider>
   );
