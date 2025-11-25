@@ -7,6 +7,7 @@ import {
 import { PreventEagerPortal } from "metabase/ui";
 
 export { type OverlayProps } from "@mantine/core";
+export { LoadingOverlay } from "@mantine/core";
 export { overlayOverrides } from "./Overlay.config";
 
 /**

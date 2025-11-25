@@ -3,9 +3,9 @@ description: A test metabot
 created_at: '2025-05-21T13:50:15.894507Z'
 entity_id: CyLr7tYRKiOoTWlcbl36q
 updated_at: '2025-05-21T13:50:15.894507Z'
-use_verified_content: false
-collection_id: null
-prompts: []
 serdes/meta:
 - id: CyLr7tYRKiOoTWlcbl36q
   model: Metabot
+collection_id: null
+prompts: []
+use_verified_content: false

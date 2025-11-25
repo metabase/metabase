@@ -18,6 +18,40 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotPurchasePage } from ".";
 
+const expectNonStoreUserPage = async () => {
+  expect(
+    await screen.findByText(/Please ask a Metabase Store Admin/),
+  ).toBeVisible();
+  expect(
+    screen.queryByText(/Additional amount for the add-on/),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(/Error fetching information/),
+  ).not.toBeInTheDocument();
+};
+
+const expectStoreUserPage = async () => {
+  expect(
+    screen.queryByText(/Please ask a Metabase Store Admin/),
+  ).not.toBeInTheDocument();
+  expect(
+    await screen.findByText(/Additional amount for the add-on/),
+  ).toBeVisible();
+  expect(
+    screen.queryByText(/Error fetching information/),
+  ).not.toBeInTheDocument();
+};
+
+const expectErrorPage = async () => {
+  expect(
+    screen.queryByText(/Please ask a Metabase Store Admin/),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(/Additional amount for the add-on/),
+  ).not.toBeInTheDocument();
+  expect(await screen.findByText(/Error fetching information/)).toBeVisible();
+};
+
 const setupRefreshableProperties = ({
   current_user_matches_store_user,
   has_metabot_v3 = false,
@@ -72,6 +106,8 @@ const setup = async ({
       currentUser: user,
     },
   });
+
+  await screen.findByText(/Metabot helps you move faster/);
 };
 
 describe("MetabotPurchasePage", () => {
@@ -82,12 +118,8 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.getByText(/Please ask a Metabase Store Admin/),
-    ).toBeInTheDocument();
+
+    await expectNonStoreUserPage();
   });
 
   it("shows an error message when retrieving billing or add-on information fails", async () => {
@@ -97,13 +129,19 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: true,
       simulate_http_post_error: false,
     });
-    expect(await screen.findByText(/Error fetching information/)).toBeVisible();
-    expect(
-      screen.queryByText(/Metabot helps you move faster/),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+
+    await expectErrorPage();
+  });
+
+  it("does not show an error message when when current user is not a store user", async () => {
+    await setup({
+      current_user_matches_store_user: false,
+      billing_period_months: 12,
+      simulate_http_get_error: true,
+      simulate_http_post_error: false,
+    });
+
+    await expectNonStoreUserPage();
   });
 
   it("shows monthly tiers according to own billing period", async () => {
@@ -113,12 +151,9 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+
+    await expectStoreUserPage();
+
     const metabase_ai_tier1 = screen.getByRole("radio", {
       name: /up to 1234 requests\/month/,
     });
@@ -138,12 +173,9 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+
+    await expectStoreUserPage();
+
     const metabase_ai_tier3 = screen.getByRole("radio", {
       name: /up to 3456 requests\/month/,
     });
@@ -163,46 +195,30 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
+
+    await expectStoreUserPage();
+
+    // This add-on product tier has `is_default = true`:
     expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+      screen.getByRole("radio", { name: /up to 4567 requests/ }),
+    ).toBeChecked();
     expect(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     ).not.toBeChecked();
     expect(
       screen.getByRole("button", { name: /Confirm purchase/ }),
     ).toBeDisabled();
+
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     );
+
     expect(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     ).toBeChecked();
     expect(
       screen.getByRole("button", { name: /Confirm purchase/ }),
     ).toBeEnabled();
-  });
-
-  it("submits a HTTP request", async () => {
-    await setup({
-      current_user_matches_store_user: true,
-      billing_period_months: 12,
-      simulate_http_get_error: false,
-      simulate_http_post_error: false,
-    });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    // This add-on product tier has `is_default = true`:
-    expect(
-      screen.getByRole("radio", { name: /up to 4567 requests/ }),
-    ).toBeChecked();
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: /Terms of Service/ }),
-    );
 
     await userEvent.click(
       screen.getByRole("button", { name: /Confirm purchase/ }),
@@ -240,9 +256,9 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
+
+    await expectStoreUserPage();
+
     await userEvent.click(
       screen.getByRole("radio", { name: /up to 3456 requests/ }),
     );
@@ -272,9 +288,9 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-quantity",
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
+
+    await expectStoreUserPage();
+
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     );
@@ -299,9 +315,9 @@ describe("MetabotPurchasePage", () => {
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-connection",
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
+
+    await expectStoreUserPage();
+
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     );
