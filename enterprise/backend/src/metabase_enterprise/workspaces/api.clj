@@ -15,28 +15,85 @@
 
 ;;; schemas
 
-(def ^:private type->t2-model {:transform :model/Transform})
-
-;; The key we use to group entities of the same type in requests and responses.
-(def ^:private type->grouping {:transform :transforms})
-
 (mr/def ::entity-type [:enum :transform])
 
 (mr/def ::entity-grouping [:enum :transforms])
+
+;; Map like {:transforms [1 2 3]}
+(mr/def ::entity-map
+  [:map-of ::entity-grouping [:sequential {:min 1} ms/PositiveInt]])
 
 ;; Entities that live within the Workspace
 (mr/def ::downstream-entity
   [:map
    [:id ms/PositiveInt]
+   [:upstream_id ms/PositiveInt]
    [:type ::entity-type]
    [:name :string]])
 
-(def CreateWorkspace
-  "Schema for creating a new workspace"
+;; Entity reference used in requests
+(mr/def ::entity-reference
   [:map
-   [:name [:string {:min 1}]]
+   [:type ::entity-type]
+   [:id ms/PositiveInt]])
+
+;; Graph node for view-graph endpoint
+(mr/def ::graph-node
+  [:map
+   [:node_id :string]
+   [:id ms/PositiveInt]
+   [:type [:enum :table :transform]]
+   [:title :string]
+   [:dependents [:map-of [:enum :table :transform] ms/PositiveInt]]])
+
+;; Graph edge for view-graph endpoint
+(mr/def ::graph-edge
+  [:map
+   [:from :string]
+   [:to :string]])
+
+;; Error: entity that needs to be checked out
+(mr/def ::unchecked-out-entity
+  [:map
+   [:type ::entity-type]
+   [:id ms/PositiveInt]
+   [:name :string]])
+
+;; Error: entity that cannot be cloned
+(mr/def ::uncloneable-entity
+  [:map
+   [:type ::entity-type]
+   [:id ms/PositiveInt]
+   [:name :string]
+   [:error :string]])
+
+;; Error response for graph-not-closed
+(mr/def ::graph-not-closed-error
+  [:map
+   [:error [:= :graph-not-closed]]
+   [:message :string]
+   [:entities [:sequential ::unchecked-out-entity]]])
+
+;; Error response for uncloneable entities
+(mr/def ::uncloneable-error
+  [:map
+   [:error [:= :contains-uncloneable-entities]]
+   [:message :string]
+   [:entities [:sequential ::uncloneable-entity]]])
+
+(def ^:private CreateWorkspace
+  [:map
+   [:name {:optional true} [:string {:min 1}]]
    [:database_id {:optional true} :int]
-   [:upstream [:map-of ::entity-grouping [:sequential {:min 1} ms/PositiveInt]]]])
+   [:upstream {:optional true} ::entity-map]])
+
+(def ^:private AddEntities
+  [:map
+   [:upstream ::entity-map]])
+
+(def ^:private RemoveEntities
+  [:map
+   [:downstream ::entity-map]])
 
 (def Workspace
   "Schema for workspace response"
@@ -46,10 +103,26 @@
    [:collection_id :int]
    [:database_id :int]
    [:created_at :any]
-   [:updated_at :any]])
+   [:updated_at :any]
+   [:archived_at [:maybe :any]]
+   [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]])
+
+(def ^:private ExecuteResult
+  "Schema for workspace execution result"
+  [:map
+   [:succeeded ::entity-map]
+   [:failed ::entity-map]
+   [:not_run ::entity-map]])
+
+(def ^:private GraphResult
+  "Schema for workspace graph visualization"
+  [:map
+   [:nodes [:sequential ::graph-node]]
+   [:edges [:sequential ::graph-edge]]])
 
 (defn- ws->response [ws]
-  (select-keys ws [:id :name :collection_id :database_id :created_at :updated_at :archived_at]))
+  (select-keys ws
+               [:id :name :collection_id :database_id :created_at :updated_at :archived_at :contents]))
 
 ;;; routes
 
@@ -61,6 +134,7 @@
                            (cond-> {:order-by [[:created_at :desc]]}
                              (request/limit)  (sql.helpers/limit (request/limit))
                              (request/offset) (sql.helpers/offset (request/offset))))
+                (t2/hydrate :contents)
                 (mapv ws->response))
    :limit  (request/limit)
    :offset (request/offset)})
@@ -69,23 +143,15 @@
   "Get a single workspace by ID"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (-> (t2/select-one :model/Workspace :id id)
-      api/check-404
+  (-> (api/check-404 (t2/select-one :model/Workspace :id id))
+      (t2/hydrate :contents)
       ws->response))
 
-(api.macros/defendpoint :get "/:id/contents"
-  :- [:map [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]
-  "Get the contents being edited within a Workspace."
-  [{workspace-id :id} :- [:map [:id ms/PositiveInt]]
-   _query-params]
-  (let [fetch-entities (fn [[entity-type entity-grouping]]
-                         (let [t2-model (type->t2-model entity-type)]
-                           (when-let [entities (t2/select [t2-model :id :name] :workspace_id workspace-id)]
-                             [entity-grouping (for [e entities] (assoc e :type entity-type))])))]
-    {:contents (into {} (keep fetch-entities) type->grouping)}))
-
 (api.macros/defendpoint :post "/" :- Workspace
-  "Create a new workspace"
+  "Create a new workspace
+
+  Potential payload:
+  {:name \"a\" :database_id 2 :upstream {:transforms [1 2 3]}}"
   [_route-params
    _query-params
    body :- CreateWorkspace]
@@ -93,7 +159,7 @@
       ws->response))
 
 (api.macros/defendpoint :post "/:id/archive" :- Workspace
-  "Update a workspace"
+  "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body-params]
@@ -103,18 +169,77 @@
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
 
-(api.macros/defendpoint :get "/mapping/transform/:id/upstream"
-  :- [:map
-      [:transform [:maybe [:map
-                           [:id ms/PositiveInt]
-                           [:name :string]]]]]
-  "Get the upstream transform for a transform that is in a workspace.
-   Returns null if this transform has no upstream mapping (i.e., it's not a mirrored transform)."
+(api.macros/defendpoint :post "/:id/unarchive" :- Workspace
+  "Restore an archived workspace. Recreates the isolated schema and tables."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body-params]
+  (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
+    (api/check-400 (some? (:archived_at ws)) "You cannot unarchive a workspace that is not archived")
+    (t2/update! :model/Workspace id {:archived_at nil})
+    (-> (t2/select-one :model/Workspace :id id)
+        ws->response)))
+
+(api.macros/defendpoint :delete "/:id" :- [:map [:ok [:= true]]]
+  "Delete a workspace and all its contents, including mirrored entities."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (let [upstream-id (t2/select-one-fn :upstream_id [:model/WorkspaceMappingTransform :upstream_id] :downstream_id id)]
-    (when (nil? upstream-id) (api/check-404 (t2/exists? :model/Workspace id)))
-    {:transform (t2/select-one [:model/Transform :id :name] :id upstream-id)}))
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  ;; TODO (Chris 11/21/25) -- implement actual deletion logic
+  {:ok true})
+
+(api.macros/defendpoint :post "/:id/execute" :- ExecuteResult
+  "Execute all transforms in the workspace in dependency order.
+   Returns which transforms succeeded, failed, and were not run."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body-params]
+  (u/prog1 (t2/select-one :model/Workspace :id id)
+    (api/check-404 <>)
+    (api/check-400 (nil? (:archived_at <>)) "Cannot execute archived workspace"))
+  ;; TODO (Chris 11/21/25) -- implement execution logic
+  {:succeeded []
+   :failed    []
+   :not_run   []})
+
+(api.macros/defendpoint :get "/:id/graph" :- GraphResult
+  "Get the dependency graph for a workspace, for visualization.
+   Shows tables and transforms the workspace depends on, with edges representing dependencies.
+   Tables produced by transforms in the workspace are not shown; instead, dependencies appear
+   directly between transforms."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  ;; TODO (Chris 11/21/25) -- implement graph generation logic
+  {:nodes []
+   :edges []})
+
+(api.macros/defendpoint :post "/:id/merge" :- Workspace
+  "Merge workspace changes back to live entities and archive the workspace.
+   Updates all entities in the workspace to match their mirrored versions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body-params]
+  (api/check-404 (t2/select-one :model/Workspace :id id))
+  ;; TODO (Chris 11/21/25) -- implement merge logic
+  (-> (t2/select-one :model/Workspace :id id)
+      ws->response))
+
+(api.macros/defendpoint :post "/:id/add-entities"
+  :- [:map [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]
+  "Add entities to workspace"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- AddEntities]
+  1)
+
+(api.macros/defendpoint :post "/:id/remove-entities"
+  :- [:map [:success ms/BooleanValue]]
+  "Remove entities from workspace"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- RemoveEntities]
+  1)
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
   :- [:map

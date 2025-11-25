@@ -112,12 +112,13 @@
 ;; TODO internal: test!
 (defn create-workspace!
   "Create workspace"
-  [creator-id {ws-name     :name
-               maybe-db-id :database_id
-               upstream    :upstream}]
+  [creator-id {ws-name-maybe :name
+               maybe-db-id   :database_id
+               upstream      :upstream}]
   ;; TODO put this in the malli schema for a request
   (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
-  (let [graph    (build-graph upstream)
+  (let [ws-name (or ws-name-maybe (str (random-uuid)))
+        graph    (build-graph upstream)
         db-id    (or (:db_id graph) maybe-db-id)
         _        (when (and maybe-db-id (:db_id graph))
                    (assert (= maybe-db-id (:db_id graph))
