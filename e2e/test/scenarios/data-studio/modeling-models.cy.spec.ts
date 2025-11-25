@@ -224,6 +224,7 @@ describe("scenarios > data studio > modeling > models", () => {
     H.modal().button("Duplicate").click();
 
     cy.wait("@createCard");
+    H.modal().should("not.exist");
 
     cy.log("Verify duplicate model is created");
     H.DataStudio.Models.overviewPage()

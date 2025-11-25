@@ -346,6 +346,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     H.modal().button("Duplicate").click();
 
     cy.wait("@createCard");
+    H.modal().should("not.exist");
 
     cy.log("Verify duplicate metric is created");
     H.DataStudio.Metrics.overviewPage()

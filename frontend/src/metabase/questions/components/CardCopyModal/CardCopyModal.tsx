@@ -40,6 +40,7 @@ export function CardCopyModal({ card, onCopy, onClose }: CardCopyModalProps) {
   };
 
   const handleCopySucceeded = (newCard: Card) => {
+    onClose();
     onCopy?.(newCard);
   };
 
