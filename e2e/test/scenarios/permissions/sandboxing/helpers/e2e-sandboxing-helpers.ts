@@ -338,8 +338,7 @@ export const configureSandboxPolicy = (
   policy: SandboxPolicy,
   { databaseId = 1, tableName = "Products" } = {},
 ) => {
-  const { filterTableBy, customViewName, customViewType, filterColumn } =
-    policy;
+  const { filterTableBy, customViewName, filterColumn } = policy;
 
   cy.log(`Configure sandboxing policy: ${JSON.stringify(policy)}`);
   cy.log(
@@ -373,9 +372,10 @@ export const configureSandboxPolicy = (
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(customViewType).click();
+      cy.findByText("Our analytics").click();
       cy.findByText(/Sandboxing/).click(); // collection name
       cy.findByText(customViewName).click();
+      cy.findByText("Select").click();
     });
   }
 

@@ -964,10 +964,7 @@ describe("issue 55631", () => {
       cy.findByLabelText("Where do you want to save this?").click();
     });
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("First collection").click();
-      cy.button("Select this collection").click();
-    });
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
     H.modal().within(() => {
       cy.button("Save").click();
@@ -1406,7 +1403,9 @@ describe("issue 13347", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
 
-    H.entityPickerModalLevel(1).within(() => {
+    H.entityPickerModalItem(1, "Sample Database").click();
+
+    H.entityPickerModalLevel(2).within(() => {
       cy.findByText("Orders").should("exist");
 
       cy.findByText("13347 structured").should("not.exist");
@@ -1505,11 +1504,12 @@ describe("issue 66210", () => {
   it("should not allow you to join on metrics", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Our analytics").click();
     H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
     H.entityPickerModalItem(1, "Orders").click();
     H.join();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModalTab("Data").click();
+    H.entityPickerModalItem(0, "Our analytics").click();
     H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
   });
 });

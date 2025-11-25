@@ -14,6 +14,10 @@ import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type {
+  FilterItemsInPersonalCollection,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
 import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
@@ -101,7 +105,7 @@ function CreateCollectionForm({
   );
 
   const [selectedParentCollection, setSelectedParentCollection] =
-    useState<CollectionPickerItem | null>(null);
+    useState<OmniPickerItem | null>(null);
 
   return (
     <FormProvider
@@ -113,9 +117,10 @@ function CreateCollectionForm({
         const parentCollection = selectedParentCollection ?? initialCollection;
 
         // Hide the authority level picker if the parent is a tenant collection.
-        const isParentTenantCollection = parentCollection
-          ? PLUGIN_TENANTS.isTenantCollection(parentCollection)
-          : false;
+        const isParentTenantCollection =
+          parentCollection && "namespace" in parentCollection
+            ? PLUGIN_TENANTS.isTenantCollection(parentCollection)
+            : false;
 
         return (
           <Form>
@@ -138,7 +143,6 @@ function CreateCollectionForm({
                 title={t`Collection it's saved in`}
                 filterPersonalCollections={filterPersonalCollections}
                 entityType="collection"
-                savingModel="collection"
                 onCollectionSelect={setSelectedParentCollection}
               />
             )}

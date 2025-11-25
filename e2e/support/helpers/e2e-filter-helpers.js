@@ -21,7 +21,9 @@ export function setFilterQuestionSource({ question, field }) {
   });
 
   entityPickerModal().within(() => {
+    cy.findByText("Our analytics").click();
     cy.findByText(question).click();
+    cy.findByText("Select").click();
   });
 
   modal().within(() => {

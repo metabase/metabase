@@ -2,20 +2,21 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  type OmniPickerItem,
+  isInDbTree,
+} from "metabase/common/components/Pickers";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
+import { getCollectionType } from "metabase/common/components/Pickers/EntityPicker/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { Card, Dashboard, RecentItem } from "metabase-types/api";
+import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
-import {
-  filterPersonalRecents,
-  filterWritableDashboards,
-  filterWritableRecents,
-  shouldDisableItem,
-} from "./utils";
+import { isInPersonalCollection } from "./utils";
 
 const getTitle = ({ type }: Card) => {
   if (type === "model") {
@@ -76,15 +77,41 @@ export const AddToDashSelectDashModal = ({
     mostRecentlyViewedDashboard?.id &&
     (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
 
-  const recentsFilter = useCallback(
-    (items: RecentItem[]) => {
-      const writableRecents = filterWritableRecents(items);
-
-      if (isQuestionInPersonalCollection && personalCollectionId) {
-        return filterPersonalRecents(writableRecents, personalCollectionId);
-      } else {
-        return writableRecents;
+  const shouldDisable = useCallback(
+    (item: OmniPickerItem) => {
+      if (isInDbTree(item)) {
+        return true;
       }
+
+      if (item.model === "dashboard" && !item.can_write) {
+        return true;
+      }
+
+      if (
+        isQuestionInPersonalCollection &&
+        personalCollectionId &&
+        item.model === "dashboard"
+      ) {
+        // if the question is in a personal collection, hide dashboards that aren't in the personal collection
+        const isPersonalDash = isInPersonalCollection(
+          item,
+          personalCollectionId,
+        );
+
+        return !isPersonalDash;
+      }
+
+      // if there can't be dashboards in the collection, you can't add a question to one there
+      if (
+        !PLUGIN_DATA_STUDIO.canPlaceEntityInCollectionOrDescendants(
+          "dashboard",
+          getCollectionType(item),
+        )
+      ) {
+        return true;
+      }
+
+      return false;
     },
     [isQuestionInPersonalCollection, personalCollectionId],
   );
@@ -110,13 +137,16 @@ export const AddToDashSelectDashModal = ({
             }
       }
       options={{
-        allowCreateNew: true,
-        showPersonalCollections: true,
-        showRootCollection: !isQuestionInPersonalCollection,
+        hasPersonalCollections: true,
+        hasRootCollection: !isQuestionInPersonalCollection,
       }}
-      shouldDisableItem={shouldDisableItem}
-      searchFilter={filterWritableDashboards}
-      recentFilter={recentsFilter}
+      searchParams={{
+        filter_items_in_personal_collection: isQuestionInPersonalCollection
+          ? "only"
+          : undefined,
+      }}
+      namespaces={isQuestionInPersonalCollection ? [null] : undefined}
+      isDisabledItem={shouldDisable}
     />
   );
 };

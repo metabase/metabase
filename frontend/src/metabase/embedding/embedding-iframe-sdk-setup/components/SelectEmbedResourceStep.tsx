@@ -183,7 +183,6 @@ export const SelectEmbedResourceStep = () => {
           value={{
             id: selectedItemId ?? "root",
             model: "collection",
-            collection_id: null,
           }}
           onChange={handlePickerModalResourceSelect}
           onClose={closePicker}

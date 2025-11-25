@@ -1119,7 +1119,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       });
 
       H.saveQuestion(undefined, undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -1192,7 +1191,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     );
 
     H.saveQuestion(undefined, undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
     cy.wait("@createCard");

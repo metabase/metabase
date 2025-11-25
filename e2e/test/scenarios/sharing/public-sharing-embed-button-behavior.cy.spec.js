@@ -224,10 +224,7 @@ describe("#39152 sharing an unsaved question", () => {
   it("should ask the user to save the question before creating a public link", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "People").click();
-    });
+    H.pickEntity({ path: ["Databases", "Sample Database", "People"] });
     H.visualize();
 
     H.openSharingMenu();

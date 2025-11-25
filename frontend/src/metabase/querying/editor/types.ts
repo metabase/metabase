@@ -1,5 +1,4 @@
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker/types";
-import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker/types";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { MiniPickerTableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type {
@@ -21,8 +20,7 @@ export type QueryEditorSidebarType =
 export type QueryEditorModalType = "preview-query";
 
 export type QueryEditorDataPickerItem =
-  | DataPickerItem
-  | CollectionPickerItem
+  | OmniPickerItem
   | RecentCollectionItem
   | MiniPickerTableItem;
 

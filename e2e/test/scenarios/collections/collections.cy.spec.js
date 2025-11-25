@@ -147,7 +147,6 @@ describe("scenarios > collection defaults", () => {
       H.pickEntity({
         path: ["Our analytics", `Collection ${COLLECTIONS_COUNT}`],
         select: true,
-        tab: "Collections",
       });
 
       cy.findByTestId("new-collection-modal").button("Create").click();
@@ -392,16 +391,14 @@ describe("scenarios > collection defaults", () => {
     H.openCollectionMenu();
     H.popover().findByText("Move").click();
     H.entityPickerModal().within(() => {
-      cy.findByRole("button", { name: /First collection / }).should("exist");
-      cy.findByRole("button", { name: /Second collection/ }).should(
-        "not.exist",
-      );
+      cy.findByText("Recent items").click();
+      // the space is important, since search results are of the form "[collection name] [parent collection name]"
+      cy.findByRole("link", { name: /First collection / }).should("exist");
+      cy.findByRole("link", { name: /Second collection / }).should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("coll");
-      cy.findByRole("button", { name: /Robert Tableton/ }).should("exist");
-      cy.findByRole("button", { name: /Second collection/ }).should(
-        "not.exist",
-      );
+      cy.findByRole("link", { name: /Robert Tableton / }).should("exist");
+      cy.findByRole("link", { name: /Second collection / }).should("not.exist");
     });
   });
 
@@ -411,7 +408,7 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
-    it("should handle moving a question when you don't have access to entier collection path (metabase#44316", () => {
+    it("should handle moving a question when you don't have access to entire collection path (metabase#44316", () => {
       H.createCollection({
         name: "Collection A",
       }).then(({ body: collectionA }) => {
@@ -605,7 +602,6 @@ describe("scenarios > collection defaults", () => {
       });
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
         cy.findByText("Bobby Tables's Personal Collection").click();
         cy.findByText(COLLECTION).click();
         cy.button("Move").should("not.be.disabled");
@@ -634,7 +630,6 @@ describe("scenarios > collection defaults", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByTestId("loading-indicator").should("not.exist");
-        H.entityPickerModalTab("Collections").click();
         cy.wait([
           "@getCollectionItems",
           "@getCollectionItems",
@@ -806,7 +801,6 @@ describe("scenarios > collection defaults", () => {
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Collections").click();
             cy.log("parent collection should be selected");
             findPickerItem("First collection").should(
               "have.attr",
@@ -832,7 +826,6 @@ describe("scenarios > collection defaults", () => {
 
           H.entityPickerModal().within(() => {
             cy.log("parent collection should be selected");
-            H.entityPickerModalTab("Collections").click();
             findPickerItem("Second collection").should(
               "have.attr",
               "data-active",
@@ -911,14 +904,11 @@ describe("scenarios > collection defaults", () => {
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Recents").should(
+            cy.findByText(/inner collection/).should(
               "have.attr",
-              "data-active",
+              "data-disabled",
               "true",
             );
-
-            cy.findByText(/inner collection/).should("not.exist");
-
             cy.button("Cancel").click();
           });
 
@@ -932,13 +922,11 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("toast-card").button("Move").click();
 
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Recents").should(
+            cy.findByText(/inner collection/).should(
               "have.attr",
-              "data-active",
+              "data-disabled",
               "true",
             );
-
-            cy.findByText(/inner collection/).should("not.exist");
           });
         });
       });

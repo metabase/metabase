@@ -469,11 +469,10 @@ describe("scenarios > question > saved", () => {
       });
     });
 
-    function moveQuestionTo(newCollectionName, clickTab = false) {
+    function moveQuestionTo(newCollectionName) {
       H.openQuestionActions();
       cy.findByTestId("move-button").click();
       H.entityPickerModal().within(() => {
-        clickTab && cy.findByRole("tab", { name: /Browse/ }).click();
         cy.findByText(newCollectionName).click();
         cy.button("Move").click();
       });
@@ -506,7 +505,7 @@ describe("scenarios > question > saved", () => {
       );
 
       H.visitQuestion(ORDERS_QUESTION_ID);
-      moveQuestionTo(/Personal Collection/, true);
+      moveQuestionTo(/Personal Collection/);
 
       cy.signInAsNormalUser();
       cy.get("@questionId").then(H.visitQuestion);

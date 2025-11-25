@@ -1,7 +1,6 @@
 import {
   entityPickerModal,
   entityPickerModalLevel,
-  entityPickerModalTab,
   getFullName,
   navigationSidebar,
   popover,
@@ -83,7 +82,6 @@ export const moveOpenedCollectionTo = (newParent: string) => {
   popover().within(() => cy.findByText("Move").click());
 
   entityPickerModal().within(() => {
-    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByTestId("nested-item-picker").findByText(newParent).click();
     cy.button("Move").click();
   });
@@ -94,16 +92,10 @@ export const moveOpenedCollectionTo = (newParent: string) => {
 export function pickEntity({
   path,
   select,
-  tab,
 }: {
   path?: string[];
   select?: boolean;
-  tab?: string;
 }) {
-  if (tab) {
-    entityPickerModalTab(tab).click();
-  }
-
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {
       for (const [index, name] of path.entries()) {

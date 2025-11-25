@@ -2,12 +2,12 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
-  type DataPickerItem,
   DataPickerModal,
-  createShouldShowItem,
+  type DataPickerValue,
   getDataPickerValue,
+  shouldDisableItemNotInDb,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type {
@@ -24,7 +24,7 @@ import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { RecentCollectionItem, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import {
   type NotebookContextType,
@@ -50,9 +50,7 @@ export interface NotebookDataPickerProps {
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => void;
-  shouldDisableItem?: (
-    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
-  ) => boolean;
+  shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (item: QueryEditorDatabasePickerItem) => boolean;
   columnPicker: React.ReactNode;
   shouldShowLibrary?: boolean;
@@ -157,9 +155,7 @@ type ModernDataPickerProps = {
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
-  shouldDisableItem?: (
-    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
-  ) => boolean;
+  shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldShowLibrary?: boolean;
 };
@@ -191,28 +187,40 @@ function ModernDataPicker({
   const [focusPicker, setFocusPicker] = useState(false);
 
   const shouldHide = useMemo(() => {
-    const shouldShow = !canChangeDatabase
-      ? createShouldShowItem(modelList, databaseId)
-      : () => true;
+    const shouldDisableBasedOnDb = !canChangeDatabase
+      ? shouldDisableItemNotInDb(databaseId)
+      : () => false;
 
-    return (
-      item: MiniPickerItem | QueryEditorDatabasePickerItem | unknown,
-    ): item is MiniPickerPickableItem => {
+    return (item: MiniPickerItem | unknown): item is MiniPickerPickableItem => {
+      // FIXME: eww gross need to normalize db ids in minipicker
+      const dbId =
+        !!item &&
+        typeof item === "object" &&
+        ("db_id" in item
+          ? item.db_id
+          : "database_id" in item
+            ? item.database_id
+            : undefined);
+
       return Boolean(
-        !shouldShow(item as DataPickerItem) ||
-          shouldDisableItem?.(item as DataPickerItem) ||
+        // @ts-expect-error - Please fix 🥺
+        shouldDisableBasedOnDb({ ...item, database_id: dbId }) ||
+          shouldDisableItem?.(item as OmniPickerItem) ||
           (isObjectWithModel(item) &&
             item.model === "database" &&
             shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };
-  }, [
-    databaseId,
-    canChangeDatabase,
-    modelList,
-    shouldDisableItem,
-    shouldDisableDatabase,
-  ]);
+  }, [databaseId, canChangeDatabase, shouldDisableItem, shouldDisableDatabase]);
+
+  // when you can't change databases, let's default to
+  // selecting that database in the picker
+  const defaultDbValue = canChangeDatabase
+    ? undefined
+    : ({
+        id: databaseId,
+        model: "database" as "table", // 🤫
+      } as DataPickerValue);
 
   return (
     <>
@@ -239,12 +247,10 @@ function ModernDataPicker({
       {isOpened && isBrowsing && (
         <DataPickerModal
           title={title}
-          value={tableValue}
-          databaseId={canChangeDatabase ? undefined : databaseId}
+          value={tableValue ?? defaultDbValue}
+          onlyDatabaseId={canChangeDatabase ? undefined : databaseId}
           models={modelList}
-          onChange={(i) => {
-            onChange(i);
-          }}
+          onChange={onChange}
           onClose={() => {
             setIsBrowsing(false);
             setIsOpened(false);
@@ -257,6 +263,7 @@ function ModernDataPicker({
                   shouldDisableDatabase?.(i)),
             );
           }}
+          // searchQuery={dataSourceSearchQuery} ?
         />
       )}
       {isOpened || !table ? (

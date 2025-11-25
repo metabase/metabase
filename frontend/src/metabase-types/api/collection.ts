@@ -20,6 +20,7 @@ export type CollectionNamespace =
   | null
   | "snippets"
   | "transforms"
+  | "analytics"
   | "tenant-specific"
   | "shared-tenant-collection";
 
@@ -118,6 +119,7 @@ export const COLLECTION_ITEM_MODELS = [
   "indexed-entity",
   "document",
   "table",
+  "transform",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
@@ -137,11 +139,12 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
+  namespace?: CollectionNamespace; // namespace of the item itself
   collection_namespace?: CollectionNamespace; // namespace of the parent collection
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
-  moderated_status?: string;
+  moderated_status?: string | null;
   type?: CollectionType | CardType;
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
@@ -150,7 +153,7 @@ export interface CollectionItem {
   can_delete?: boolean;
   can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
-  location?: string;
+  location?: string | null;
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
@@ -285,6 +288,8 @@ type LibraryChild = {
   name: string;
 };
 
-export type GetLibraryCollectionResponse =
-  | (CollectionItem & { effective_children: LibraryChild[] })
-  | { data: null };
+export type LibraryCollection = CollectionItem & {
+  effective_children: LibraryChild[];
+};
+
+export type GetLibraryCollectionResponse = LibraryCollection | { data: null };

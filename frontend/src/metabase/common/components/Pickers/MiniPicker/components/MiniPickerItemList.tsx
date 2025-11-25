@@ -303,6 +303,7 @@ function SearchItemList({ query }: { query: string }) {
     q: debouncedQuery,
     models: models as SearchModel[],
     limit: 50,
+    // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
   });
 
   const searchResults: MiniPickerPickableItem[] = (

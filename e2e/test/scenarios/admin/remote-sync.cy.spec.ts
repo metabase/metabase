@@ -108,7 +108,7 @@ describe("Remote Sync", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
@@ -125,7 +125,7 @@ describe("Remote Sync", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });

@@ -94,11 +94,7 @@ describe("scenarios > notebook > data source", () => {
 
       H.miniPickerHeader().click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(2).should("not.exist");
-        assertDataPickerEntitySelected(3, "Reviews");
-      });
+      assertDataPickerEntitySelected(2, "Reviews");
     });
 
     it("should correctly display the source data for a simple saved question", () => {
@@ -110,11 +106,7 @@ describe("scenarios > notebook > data source", () => {
 
       H.miniPickerHeader().click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        // should not show schema step if there's only 1 schema
-        H.entityPickerModalLevel(2).should("not.exist");
-        assertDataPickerEntitySelected(3, "Orders");
-      });
+      assertDataPickerEntitySelected(2, "Orders");
     });
 
     it(
@@ -237,7 +229,6 @@ describe("scenarios > notebook > data source", () => {
       H.join();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Data").click();
         H.entityPickerModalLevel(0).findByText("Library").click();
         H.entityPickerModalLevel(1).findByText("Data").click();
         cy.findByText("Products").click();
@@ -444,6 +435,7 @@ describe("issue 28106", () => {
       H.entityPickerModal().within(() => {
         cy.findByText("Databases").click();
         cy.findByText("Writable Postgres12").click();
+        cy.findByText("Schema A").click();
 
         H.entityPickerModalLevel(2)
           .findByTestId("scroll-container")
@@ -454,11 +446,11 @@ describe("issue 28106", () => {
         cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
-        H.entityPickerModalItem(1, "Schema Z").should("be.visible");
+        H.entityPickerModalItem(2, "Schema Z").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         for (let i = 0; i < 3; ++i) {
-          cy.get("@schemasList").realMouseWheel({ deltaY: -100 });
+          cy.get("@schemasList").realMouseWheel({ deltaY: -50 });
           cy.wait(100);
         }
 
