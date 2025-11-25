@@ -95,8 +95,7 @@
   [:map
    [:downstream ::entity-map]])
 
-(def Workspace
-  "Schema for workspace response"
+(def ^:private Workspace
   [:map
    [:id ms/PositiveInt]
    [:name :string]
@@ -104,8 +103,12 @@
    [:database_id :int]
    [:created_at :any]
    [:updated_at :any]
-   [:archived_at [:maybe :any]]
-   [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]])
+   [:archived_at [:maybe :any]]])
+
+(def ^:private FullWorkspace
+  [:and Workspace
+   [:map
+    [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]])
 
 (def ^:private ExecuteResult
   "Schema for workspace execution result"
@@ -134,12 +137,11 @@
                            (cond-> {:order-by [[:created_at :desc]]}
                              (request/limit)  (sql.helpers/limit (request/limit))
                              (request/offset) (sql.helpers/offset (request/offset))))
-                (t2/hydrate :contents)
                 (mapv ws->response))
    :limit  (request/limit)
    :offset (request/offset)})
 
-(api.macros/defendpoint :get "/:id" :- Workspace
+(api.macros/defendpoint :get "/:id" :- FullWorkspace
   "Get a single workspace by ID"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
