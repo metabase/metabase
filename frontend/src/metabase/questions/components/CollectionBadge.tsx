@@ -46,7 +46,7 @@ const CollectionBadgeInner = ({
 
   const clickActionProps = onClick
     ? { onClick }
-    : { to: modelToUrl(collection) };
+    : { to: modelToUrl({ model: "collection", ...collection }) };
   return (
     <Badge
       className={className}
