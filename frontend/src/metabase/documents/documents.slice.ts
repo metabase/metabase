@@ -97,6 +97,7 @@ const documentsSlice = createSlice({
       state.cardEmbeds = action.payload;
     },
     setCurrentDocument: (state, action: PayloadAction<Document | null>) => {
+      // @ts-expect-error - possibly infinite type error
       state.currentDocument = action.payload;
     },
     resetDocuments: () => {

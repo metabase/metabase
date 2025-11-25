@@ -2,10 +2,10 @@ import cx from "classnames";
 import { type CSSProperties, forwardRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 
+import type { CommentThread } from "metabase/comments/types";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { Box, rem } from "metabase/ui";
-import type { CommentThread } from "metabase-enterprise/comments/types";
-import { CommentsButton } from "metabase-enterprise/rich_text_editing/tiptap/components/CommentsButton";
 
 import S from "./CommentsMenu.module.css";
 

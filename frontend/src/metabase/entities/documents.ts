@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { documentApi, useGetDocumentQuery } from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -12,7 +13,6 @@ import {
 import * as Urls from "metabase/lib/urls";
 import { DocumentSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
-import { documentApi, useGetDocumentQuery } from "metabase-enterprise/api";
 import type {
   Collection,
   CollectionId,

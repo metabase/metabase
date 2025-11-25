@@ -10,7 +10,6 @@ import {
 } from "metabase/api/tags";
 import type {
   CardDependencyNode,
-  Comment,
   DashboardDependencyNode,
   DependencyGraph,
   DependencyNode,
@@ -34,9 +33,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "document",
-  "public-document",
-  "comment",
   "sandbox",
   "transform-tag",
   "transform-job",
@@ -137,22 +133,6 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
-}
-
-export function provideCommentListTags(
-  comments: Comment[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
-}
-
-export function provideCommentTags(
-  comment: Comment,
-): TagDescription<EnterpriseTagType>[] {
-  if (comment.creator) {
-    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
-  }
-
-  return [idTag("comment", comment.id)];
 }
 
 export function providePythonLibraryTags(

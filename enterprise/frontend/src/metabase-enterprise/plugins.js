@@ -23,7 +23,6 @@ import { initializePlugin as initializeContentVerification } from "./content_ver
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
-import { initializePlugin as initializeDocuments } from "./documents";
 import { initializePlugin as initializeEmbedding } from "./embedding";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
@@ -32,7 +31,6 @@ import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
-import { initializePlugin as initializePublicSharing } from "./public-sharing";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
@@ -87,10 +85,8 @@ export function initializePlugins() {
   initializeDatabaseReplication?.();
   initializeTableEditing?.();
   initializeDependencies?.();
-  initializeDocuments?.();
   initializeSemanticSearch?.();
   initializeTransforms?.();
   initializeTransformsPython?.();
-  initializePublicSharing?.();
   initializeSupport?.();
 }

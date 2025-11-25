@@ -15,6 +15,8 @@ export const TAG_TYPES = [
   "dashboard-question-candidates",
   "database",
   "document",
+  "public-document",
+  "comment",
   "embedding-hub-checklist",
   "field",
   "field-values",

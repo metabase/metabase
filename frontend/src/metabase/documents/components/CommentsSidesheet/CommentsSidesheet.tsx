@@ -4,8 +4,19 @@ import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
+import { useCreateCommentMutation, useListCommentsQuery } from "metabase/api";
+import { CommentEditor } from "metabase/comments/components";
+import { Discussions } from "metabase/comments/components/Discussions";
+import {
+  deleteNewParamFromURLIfNeeded,
+  getCommentNodeId,
+  getCommentsCount,
+} from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import Animation from "metabase/css/core/animation.module.css";
+import { useDocumentState } from "metabase/documents/hooks/use-document-state";
+import { getCurrentDocument } from "metabase/documents/selectors";
+import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
@@ -17,20 +28,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import {
-  useCreateCommentMutation,
-  useListCommentsQuery,
-} from "metabase-enterprise/api";
-import { CommentEditor } from "metabase-enterprise/comments/components";
-import { Discussions } from "metabase-enterprise/comments/components/Discussions";
-import {
-  deleteNewParamFromURLIfNeeded,
-  getCommentNodeId,
-  getCommentsCount,
-} from "metabase-enterprise/comments/utils";
-import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
-import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
-import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import S from "./CommentsSidesheet.module.css";

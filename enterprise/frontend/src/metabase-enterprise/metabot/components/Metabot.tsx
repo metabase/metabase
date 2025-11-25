@@ -3,8 +3,8 @@ import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { getUser } from "metabase/selectors/user";
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
 import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";

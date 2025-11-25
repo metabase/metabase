@@ -14,8 +14,12 @@ import _ from "underscore";
 import {
   skipToken,
   useCreateBookmarkMutation,
+  useCreateDocumentMutation,
   useDeleteBookmarkMutation,
+  useGetDocumentQuery,
   useListBookmarksQuery,
+  useListCommentsQuery,
+  useUpdateDocumentMutation,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
@@ -30,12 +34,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import { Box } from "metabase/ui";
-import {
-  useCreateDocumentMutation,
-  useGetDocumentQuery,
-  useListCommentsQuery,
-  useUpdateDocumentMutation,
-} from "metabase-enterprise/api";
 import type {
   Card,
   CollectionId,
