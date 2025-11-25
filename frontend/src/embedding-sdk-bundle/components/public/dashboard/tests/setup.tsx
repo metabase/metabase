@@ -1,6 +1,5 @@
 import { indexBy } from "underscore";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -197,9 +196,6 @@ export const setupSdkDashboard = async ({
       dashcards: indexBy(dashcards, "id"),
     }),
   });
-
-  // Used in simple data picker
-  setupEnterprisePlugins();
 
   renderWithSDKProviders(
     <Box h="500px">
