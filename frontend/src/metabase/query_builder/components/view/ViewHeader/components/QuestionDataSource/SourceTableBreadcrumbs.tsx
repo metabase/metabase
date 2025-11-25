@@ -1,13 +1,16 @@
 import type { ReactElement } from "react";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
+import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
+import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
 
 import { DataSourceCrumbs } from "./DataSourceCrumbs";
+import S from "./QuestionDataSource.module.css";
 
 interface Props {
   question: Question;
@@ -16,9 +19,16 @@ interface Props {
   isObjectDetail?: boolean;
 }
 
-export function SourceTableBreadcrumbs({ question, ...props }: Props) {
+export function SourceTableBreadcrumbs({
+  question,
+  variant,
+  divider,
+  isObjectDetail,
+}: Props) {
   const query = question.query();
   const tableId = Lib.sourceTableOrCardId(query);
+  const isSubhead = variant === "subhead";
+  const hasTableLink = isSubhead || isObjectDetail;
 
   const { data: table, isFetching } = useGetTableQuery(
     tableId != null ? { id: tableId } : skipToken,
@@ -30,12 +40,20 @@ export function SourceTableBreadcrumbs({ question, ...props }: Props) {
 
   const collection = table.collection;
   if (collection == null) {
-    return <DataSourceCrumbs question={question} {...props} />;
+    return (
+      <DataSourceCrumbs
+        question={question}
+        variant={variant}
+        divider={divider}
+        isObjectDetail={isObjectDetail}
+      />
+    );
   }
 
   return (
     <HeadBreadcrumbs
-      {...props}
+      variant={variant}
+      divider={divider}
       parts={[
         <HeadBreadcrumbs.Badge
           key="collection"
@@ -47,10 +65,27 @@ export function SourceTableBreadcrumbs({ question, ...props }: Props) {
         </HeadBreadcrumbs.Badge>,
         <HeadBreadcrumbs.Badge
           key="name"
-          to={Urls.queryBuilderTable(table.id, table.db_id)}
-          inactiveColor="text-light"
+          to={
+            hasTableLink
+              ? Urls.queryBuilderTable(table.id, table.db_id)
+              : undefined
+          }
+          inactiveColor={!isSubhead ? "text-dark" : "text-light"}
         >
-          {table.display_name}
+          <span>
+            {table.display_name}
+            {!isSubhead && (
+              <span className={S.IconWrapper}>
+                <TableInfoIcon
+                  table={table}
+                  icon="info"
+                  size={16}
+                  position="bottom"
+                  className={HeaderS.HeaderBadgeIcon}
+                />
+              </span>
+            )}
+          </span>
         </HeadBreadcrumbs.Badge>,
       ]}
     />
