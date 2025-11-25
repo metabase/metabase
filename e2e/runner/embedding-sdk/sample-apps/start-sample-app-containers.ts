@@ -50,6 +50,7 @@ export async function startSampleAppContainers(
     });
 
     setupAppCleanup({
+      appName,
       rootPath,
       env,
       appDownCommand: dockerDownCommand,
@@ -69,6 +70,7 @@ export async function startSampleAppContainers(
     }
 
     await startContainers({
+      appName,
       cwd: rootPath,
       env,
       dockerUpCommand,
