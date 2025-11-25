@@ -1207,9 +1207,8 @@
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
-  [coll]
-  (api/write-check (parent-or-root coll))
-  coll)
+  [parent-coll]
+  (api/write-check parent-coll))
 
 (defn- write-check-authority-level
   "Check that a superuser is creating this collection if they are setting the authority level."
@@ -1252,7 +1251,7 @@
   "Converts `CreateCollectionArguments` into `NewCollectionArguments` - i.e. translates what the API gets into what
   toucan needs to create a collection."
   [coll-data :- CreateCollectionArguments]
-  (let [parent-coll #p (parent-or-root coll-data)]
+  (let [parent-coll (parent-or-root coll-data)]
     (write-check-collection-or-root-collection parent-coll)
     (-> (cond-> coll-data
           (and (:namespace parent-coll)
