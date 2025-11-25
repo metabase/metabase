@@ -78,6 +78,18 @@
            nil))))
     (not-empty (persistent! @metric-ids))))
 
+(mu/defn all-segment-ids [query]
+  (let [segment-ids (volatile! (transient #{}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:segment _opts (id :guard pos-int?)]
+         (do
+           (vswap! segment-ids conj! id)
+           nil))))
+    (not-empty (persistent! @segment-ids))))
+
 (defn- all-template-tag-card-ids [query]
   (not-empty
    (into #{}

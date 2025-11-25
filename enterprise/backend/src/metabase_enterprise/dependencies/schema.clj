@@ -11,4 +11,5 @@
    [:transform {:optional true} [:set ::lib.schema.id/transform]]
    [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
    [:document  {:optional true} [:set ::lib.schema.id/document]]
-   [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]])
+   [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]
+   [:segment   {:optional true} [:set ::lib.schema.id/segment]]])

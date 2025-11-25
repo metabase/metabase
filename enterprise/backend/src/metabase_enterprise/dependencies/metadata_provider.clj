@@ -245,6 +245,10 @@
 (defmethod add-override :sandbox [^OverridingMetadataProvider mp _entity-type _id _updates]
   mp)
 
+(defmethod add-override :segment [^OverridingMetadataProvider mp _entity-type _id _updates]
+  ;; TODO(rileythomp, 2025-11-25): Update this if necessary
+  mp)
+
 (defn all-overrides
   "Returns all the overrides by ID, in the same form as the map input to [[with-deps]]:
   `{:card [1 2 3], :transform [45 99]}."

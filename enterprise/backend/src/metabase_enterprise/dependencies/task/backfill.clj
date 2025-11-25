@@ -38,7 +38,8 @@
    :model/NativeQuerySnippet
    :model/Dashboard
    :model/Document
-   :model/Sandbox])
+   :model/Sandbox
+   :model/Segment])
 
 ;; In-memory state for tracking failed entities
 ;; Stores {:model/Type {id {:fail-count N :next-retry-timestamp M}}}

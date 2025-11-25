@@ -152,7 +152,8 @@
    :document  [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
-   :sandbox   [:table :table_id]})
+   :sandbox   [:table :table_id]
+   :segment   [:name :description :created_at :creator_id :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -174,7 +175,8 @@
    :transform :model/Transform
    :dashboard :model/Dashboard
    :document  :model/Document
-   :sandbox   :model/Sandbox})
+   :sandbox   :model/Sandbox
+   :segment   :model/Segment})
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -196,7 +198,8 @@
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source]
    :snippet   [:id :name :description]
-   :sandbox   [:id :table_id]})
+   :sandbox   [:id :table_id]
+   :segment.  [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
@@ -334,7 +337,8 @@
                                                       (revisions/with-last-edit-info :dashboard))
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                      (->> (map collection.root/hydrate-root-collection)))
-                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields]))
+                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
+                       (= entity-type :segment) (t2/hydrate :creator :table))
                      (mapv #(entity-value entity-type % usages)))))
             nodes-by-type)))
 

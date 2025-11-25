@@ -14,6 +14,7 @@
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
   {:card (or (lib/all-source-card-ids query) #{})
+   :segment (or (lib/all-segment-ids query) #{})
    :table (-> #{}
               (into (lib/all-source-table-ids query))
               (into (lib/all-implicitly-joined-table-ids query)))})
@@ -129,4 +130,11 @@
   [sandbox]
   (if-let [card-id (:card_id sandbox)]
     {:card #{card-id}}
+    {}))
+
+(mu/defn upstream-deps:segment :- ::deps.schema/upstream-deps
+  "Given a segment, return its upstream dependencies (the table it filters)"
+  [{:keys [table_id] :as _segment}]
+  (if table_id
+    {:table #{table_id}}
     {}))
