@@ -35,6 +35,7 @@
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
+  infer-metadata-with-model-overrides
   refresh-metadata]
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query

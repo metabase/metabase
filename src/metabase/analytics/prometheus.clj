@@ -431,6 +431,13 @@
    (prometheus/counter :metabase-gsheets/connection-manually-synced
                        {:description "How many times the instance has manually sync'ed their Google Sheets connection."})
 
+   ;; Card result_metadata refresh metrics
+   (prometheus/counter :metabase-card-refresh/result
+                       {:description "Number of cards refreshed by refresh outcome."
+                        :labels [:status]})
+   (prometheus/gauge :metabase-card-refresh/pending-refreshes
+                     {:description "Number of card refreshes queued up for processing."})
+
    ;; transform metrics
    (prometheus/counter :metabase-transforms/job-runs-total
                        {:description "Total number of transform job runs started."

@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase-enterprise.dependencies.task.test-util :as dependencies.task.tu]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -14,19 +15,9 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- backfill-all-existing-entities!
-  []
-  (mt/with-premium-features #{:dependencies}
-    (while (#'dependencies.backfill/backfill-dependencies!))))
-
-(defn- backfill-dependencies-single-trigger!
-  []
-  (mt/with-premium-features #{:dependencies}
-    (#'dependencies.backfill/backfill-dependencies!)))
-
 (deftest ^:sequential backfill-dependency-analysis-test
   (testing "Test that the backfill job correctly updates the dependency_analysis_version"
-    (backfill-all-existing-entities!)
+    (dependencies.task.tu/backfill-all-existing-entities!)
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "2")]
       (let [query (mt/mbql-query orders)]
         (mt/with-premium-features #{}
@@ -38,18 +29,18 @@
                   current-version dependencies.model/current-dependency-analysis-version]
               (is (= 3 (card-count)))
               ;; first run, should process 2 cards
-              (is (true? (backfill-dependencies-single-trigger!)))
+              (is (true? (dependencies.task.tu/backfill-dependencies-single-trigger!)))
               (is (= 2 (card-count :dependency_analysis_version current-version)))
               ;; second run, should process the last card
-              (is (false? (backfill-dependencies-single-trigger!)))
+              (is (false? (dependencies.task.tu/backfill-dependencies-single-trigger!)))
               (is (= 3 (card-count :dependency_analysis_version current-version)))
               ;; third run, should not process anything
-              (is (false? (backfill-dependencies-single-trigger!)))
+              (is (false? (dependencies.task.tu/backfill-dependencies-single-trigger!)))
               (is (= 3 (card-count :dependency_analysis_version current-version))))))))))
 
 (deftest ^:sequential backfill-transform-test
   (testing "Test that transforms are correctly backfilled"
-    (backfill-all-existing-entities!)
+    (dependencies.task.tu/backfill-all-existing-entities!)
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "2")]
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)
@@ -64,7 +55,7 @@
           (is (t2/exists? :model/Transform :id transform-id :dependency_analysis_version 0))
           (is (false? (t2/exists? :model/Dependency :from_entity_type :card      :from_entity_id card-id)))
           (is (false? (t2/exists? :model/Dependency :from_entity_type :transform :from_entity_id transform-id)))
-          (backfill-dependencies-single-trigger!)
+          (dependencies.task.tu/backfill-dependencies-single-trigger!)
           (is (t2/exists? :model/Card :id card-id
                           :dependency_analysis_version dependencies.model/current-dependency-analysis-version))
           (is (t2/exists? :model/Transform :id transform-id
@@ -78,7 +69,7 @@
 
 (deftest ^:sequential backfill-snippet-test
   (testing "Test that cards with snippets are correctly backfilled"
-    (backfill-all-existing-entities!)
+    (dependencies.task.tu/backfill-all-existing-entities!)
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "2")]
       (mt/with-premium-features #{}
         (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my_snippet"
@@ -101,7 +92,7 @@
           (is (false? (t2/exists? :model/Dependency
                                   :from_entity_type :card :from_entity_id card-id
                                   :to_entity_type :snippet :to_entity_id snippet-id)))
-          (backfill-dependencies-single-trigger!)
+          (dependencies.task.tu/backfill-dependencies-single-trigger!)
           (is (t2/exists? :model/Card :id card-id
                           :dependency_analysis_version dependencies.model/current-dependency-analysis-version))
           (is (t2/exists? :model/NativeQuerySnippet :id snippet-id
@@ -112,7 +103,7 @@
 
 (deftest ^:sequential backfill-idempotency-test
   (testing "Running the backfill multiple times should be idempotent"
-    (backfill-all-existing-entities!)
+    (dependencies.task.tu/backfill-all-existing-entities!)
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "1")]
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)
@@ -121,28 +112,19 @@
           (is (false? (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                                   :to_entity_type :table :to_entity_id (mt/id :orders))))
           ;; First run
-          (backfill-dependencies-single-trigger!)
+          (dependencies.task.tu/backfill-dependencies-single-trigger!)
           (is (t2/exists? :model/Card :id card-id
                           :dependency_analysis_version dependencies.model/current-dependency-analysis-version))
           ;; Second run - should not change anything
-          (backfill-dependencies-single-trigger!)
+          (dependencies.task.tu/backfill-dependencies-single-trigger!)
           (is (t2/exists? :model/Card :id card-id
                           :dependency_analysis_version dependencies.model/current-dependency-analysis-version))
           (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                           :to_entity_type :table :to_entity_id (mt/id :orders))))))))
 
-(defn- wait-for-condition
-  [predicate timeout-ms]
-  (let [limit (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (Thread/sleep 100)
-      (or (predicate)
-          (when (< (System/currentTimeMillis) limit)
-            (recur))))))
-
 (deftest ^:sequential backfill-scheduling-test
   (testing "Test that the backfill job schedules and reschedules itself correctly"
-    (backfill-all-existing-entities!)
+    (dependencies.task.tu/backfill-all-existing-entities!)
     (mt/with-temp-scheduler!
       (with-redefs [env/env (assoc env/env
                                    :mb-dependency-backfill-batch-size "1"
@@ -161,12 +143,14 @@
                   (mt/with-premium-features #{:dependencies}
                     ;; Initialize the task, which should schedule the first run
                     (task/init! ::dependencies.backfill/DependencyBackfill)
-                    (wait-for-condition #(= 3 (card-count :dependency_analysis_version current-version)) 10000)
+                    (dependencies.task.tu/wait-for-condition
+                     #(= 3 (card-count :dependency_analysis_version current-version))
+                     10000)
                     (is (= 3 (card-count :dependency_analysis_version current-version)))))))))))))
 
 (deftest ^:sequential backfill-terminal-failure-test
   (testing "Entities should be marked as terminally broken after MAX_RETRIES failures"
-    (backfill-all-existing-entities!)
+    (dependencies.task.tu/backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dependency_analysis_version 0, :dataset_query (mt/mbql-query orders)}]
         (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
@@ -186,18 +170,18 @@
                                        (apply t2/update! model-kw id args)))]
             ;; fail MAX_RETRIES + 1 times
             (while (< @update-attempts failures)
-              (backfill-dependencies-single-trigger!))))
+              (dependencies.task.tu/backfill-dependencies-single-trigger!))))
 
         ;; verify card is not processed and is terminally broken
         (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
 
         ;; verify subsequent runs don't process it
-        (backfill-dependencies-single-trigger!)
+        (dependencies.task.tu/backfill-dependencies-single-trigger!)
         (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))))))
 
 (deftest ^:sequential backfill-delayed-retry-test
   (testing "Failed entities should be retried after their delay period expires"
-    (backfill-all-existing-entities!)
+    (dependencies.task.tu/backfill-all-existing-entities!)
     (let [current-version dependencies.model/current-dependency-analysis-version
           update-attempts (volatile! 0)]
       (mt/with-premium-features #{}
@@ -217,15 +201,15 @@
             ;; first failure - should be put into retry state
             ;; fail MAX_RETRIES + 1 times
             (while (zero? @update-attempts)
-              (backfill-dependencies-single-trigger!))
+              (dependencies.task.tu/backfill-dependencies-single-trigger!))
             (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0)))
 
           ;; advance time by less than retry delay - should NOT be processed
           (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
-            (backfill-dependencies-single-trigger!))
+            (dependencies.task.tu/backfill-dependencies-single-trigger!))
           (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
 
           ;; advance time by more than retry delay - should be processed
           (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
-            (backfill-dependencies-single-trigger!))
+            (dependencies.task.tu/backfill-dependencies-single-trigger!))
           (is (t2/exists? :model/Card :id card-id :dependency_analysis_version current-version)))))))
