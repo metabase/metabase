@@ -13,7 +13,7 @@ export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters | null;
 };
 
-export type EmbedResourceType = "dashboard" | "question";
+export type EmbedResourceType = "dashboard" | "question" | "document";
 
 export type EmbedResourceParameter = {
   id: string;
@@ -28,6 +28,8 @@ export type EmbedResourceDownloadOptions = {
   pdf?: boolean;
   results?: boolean;
 };
+
+export type EmbeddingType = "static-legacy";
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 
@@ -71,7 +73,8 @@ export type CodeSampleParameters = {
   resourceType: EmbedResourceType;
   resourceId: EmbedResource["id"];
   params: EmbeddingParametersValues;
-  displayOptions: EmbeddingDisplayOptions;
+  displayOptions?: EmbeddingDisplayOptions;
+  withIframeSnippet: boolean;
 };
 
 export type ClientCodeSampleConfig = {

@@ -8,6 +8,7 @@ import type {
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Flex, Tooltip } from "metabase/ui";
 
 import {
@@ -35,8 +36,8 @@ export interface CheckBoxProps
   indeterminate?: boolean;
   disabled?: boolean;
   size?: number;
-  checkedColor?: string;
-  uncheckedColor?: string;
+  checkedColor?: ColorName;
+  uncheckedColor?: ColorName;
   autoFocus?: boolean;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;

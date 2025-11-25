@@ -13,9 +13,10 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -168,12 +169,35 @@
   [_driver _feature _database]
   true)
 
-;;; BigQuery is tested separately in [[metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test]], because
-;;; otherwise this test takes too long and flakes intermittently Redshift is also tested separately because it flakes.
-(doseq [driver [:bigquery-cloud-sdk :redshift]]
+;;; These drivers are tested separately because they take too long and flake in CI
+(doseq [driver [:bigquery-cloud-sdk :redshift :databricks]]
   (defmethod driver/database-supports? [driver ::database-schema-filtering-test]
     [_driver _feature _database]
     false))
+
+(defmulti filtered-db-details
+  "Returns database details for the filtered database tests."
+  {:arglists '([driver filter-type-prop filter-type patterns-type-prop pattern])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod filtered-db-details :default
+  [_driver filter-type-prop filter-type patterns-type-prop pattern]
+  (-> (mt/db)
+      :details
+      (assoc filter-type-prop filter-type
+             patterns-type-prop pattern)))
+
+(defmethod filtered-db-details :snowflake
+  [_driver filter-type-prop filter-type patterns-type-prop pattern]
+  (-> (mt/db)
+      :details
+      (assoc filter-type-prop filter-type
+             patterns-type-prop pattern)
+      (dissoc :private-key-id)
+      (assoc :private-key-options "uploaded"
+             :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
+             :use-password false)))
 
 (deftest database-schema-filtering-test
   (mt/test-drivers (set/intersection (schema-filtering-drivers)
@@ -187,10 +211,8 @@
           (sync-and-assert-filtered-tables
            {:name    (format "Test %s DB with dataset inclusion filters" driver)
             :engine  driver
-            :details (-> (mt/db)
-                         :details
-                         (assoc filter-type-prop "inclusion"
-                                patterns-type-prop "s*,v*,2*"))}
+            :details (filtered-db-details driver filter-type-prop "inclusion"
+                                          patterns-type-prop "public.s*,public.v*,public.2*")}
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (contains? #{\s \v \2} (first schema-name)))))))
@@ -198,10 +220,8 @@
           (sync-and-assert-filtered-tables
            {:name    (format "Test %s DB with dataset exclusion filters" driver)
             :engine  driver
-            :details (-> (mt/db)
-                         :details
-                         (assoc filter-type-prop "exclusion"
-                                patterns-type-prop "v*"))}
+            :details (filtered-db-details driver filter-type-prop "exclusion"
+                                          patterns-type-prop "v*")}
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))

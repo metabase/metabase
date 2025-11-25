@@ -68,14 +68,13 @@
       :history         history
       :state           state
       :on-complete     (fn [lines]
-                         (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages "assistant" lines))
+                         (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
                          :store-in-db)})))
 
 (api.macros/defendpoint :post "/agent-streaming"
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-
    body :- [:map
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]

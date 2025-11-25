@@ -1,7 +1,6 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -14,23 +13,39 @@ import {
   Paper,
   Stack,
   Text,
-  Textarea,
   Tooltip,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
+import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
+import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
-export const MetabotChat = () => {
+const defaultConfig: MetabotConfig = {
+  suggestionModels: [
+    "dataset",
+    "metric",
+    "card",
+    "table",
+    "database",
+    "dashboard",
+  ],
+};
+
+export const MetabotChat = ({
+  config = defaultConfig,
+}: {
+  config?: MetabotConfig;
+}) => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
-    useMetabotChatHandlers();
+    useMetabotChatHandlers(config);
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -52,6 +67,15 @@ export const MetabotChat = () => {
     metabot.setVisible(false);
   };
 
+  const handleEditorChange = useCallback(
+    (value: string) => metabot.setPrompt(value),
+    [metabot],
+  );
+
+  const handleEditorSubmit = useCallback(() => {
+    handleSubmitInput(metabot.prompt);
+  }, [handleSubmitInput, metabot.prompt]);
+
   return (
     <Sidebar
       isOpen={metabot.visible}
@@ -64,8 +88,8 @@ export const MetabotChat = () => {
         <Box ref={headerRef} className={Styles.header}>
           <Flex align-items="center">
             <Text lh={1} fz="sm" c="text-secondary">
-              {metabot.profile
-                ? t`Using profile: ${metabot.profile}`
+              {metabot.profileOverride
+                ? t`Using profile: ${metabot.profileOverride}`
                 : t`Metabot isn't perfect. Double-check results.`}
             </Text>
           </Flex>
@@ -79,9 +103,14 @@ export const MetabotChat = () => {
                 <Icon c="text-primary" name="revert" />
               </ActionIcon>
             </Tooltip>
-            <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
-              <Icon c="text-primary" name="close" />
-            </ActionIcon>
+            {!config.preventClose && (
+              <ActionIcon
+                onClick={handleClose}
+                data-testid="metabot-close-chat"
+              >
+                <Icon c="text-primary" name="close" />
+              </ActionIcon>
+            )}
           </Flex>
         </Box>
 
@@ -103,33 +132,33 @@ export const MetabotChat = () => {
                 data-testid="metabot-empty-chat-info"
               >
                 <Box component={EmptyDashboardBot} w="6rem" />
-                <Text
-                  c="text-light"
-                  maw="12rem"
-                  ta="center"
-                >{t`I can help you explore your metrics and models.`}</Text>
+                <Text c="text-light" maw="12rem" ta="center">
+                  {config.emptyText ??
+                    t`I can help you explore your metrics and models.`}
+                </Text>
               </Flex>
-              {/* empty state with suggested prompts */}
-              <Stack
-                gap="sm"
-                className={Styles.promptSuggestionsContainer}
-                data-testid="metabot-prompt-suggestions"
-              >
-                <>
-                  {suggestedPrompts.map(({ prompt }, index) => (
-                    <Box key={index}>
-                      <Button
-                        fz="sm"
-                        size="xs"
-                        onClick={() => handleSubmitInput(prompt)}
-                        className={Styles.promptSuggestionButton}
-                      >
-                        {prompt}
-                      </Button>
-                    </Box>
-                  ))}
-                </>
-              </Stack>
+              {!config.hideSuggestedPrompts && (
+                <Stack
+                  gap="sm"
+                  className={Styles.promptSuggestionsContainer}
+                  data-testid="metabot-prompt-suggestions"
+                >
+                  <>
+                    {suggestedPrompts.map(({ prompt }, index) => (
+                      <Box key={index}>
+                        <Button
+                          fz="sm"
+                          size="xs"
+                          onClick={() => handleSubmitInput(prompt)}
+                          className={Styles.promptSuggestionButton}
+                        >
+                          {prompt}
+                        </Button>
+                      </Box>
+                    ))}
+                  </>
+                </Stack>
+              )}
             </>
           )}
 
@@ -146,20 +175,12 @@ export const MetabotChat = () => {
                 isDoingScience={metabot.isDoingScience}
                 showFeedbackButtons
               />
-
               {/* loading */}
               {metabot.isDoingScience && (
-                <MetabotThinking
-                  toolCalls={metabot.toolCalls}
-                  hasStartedResponse={
-                    _.last(metabot.messages)?.role === "agent"
-                  }
-                />
+                <MetabotThinking toolCalls={metabot.activeToolCalls} />
               )}
-
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
-
               {/* long convo warning */}
               {metabot.isLongConversation && <MetabotResetLongChatButton />}
             </Box>
@@ -173,40 +194,16 @@ export const MetabotChat = () => {
               metabot.isDoingScience && Styles.inputContainerLoading,
             )}
           >
-            <Textarea
-              id="metabot-chat-input"
-              data-testid="metabot-chat-input"
-              w="100%"
-              leftSection={
-                <Box h="100%" pt="11px">
-                  <Icon name="metabot" c="brand" />
-                </Box>
-              }
-              autosize
-              minRows={1}
-              maxRows={10}
+            <MetabotChatEditor
               ref={metabot.promptInputRef}
-              autoFocus
               value={metabot.prompt}
-              className={cx(
-                Styles.textarea,
-                metabot.isDoingScience && Styles.textareaLoading,
-              )}
+              autoFocus
+              isResponding={metabot.isDoingScience}
               placeholder={t`Tell me to do something, or ask a question`}
-              onChange={(e) => metabot.setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing) {
-                  return;
-                }
-                const isModifiedKeyPress =
-                  e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
-                if (e.key === "Enter" && !isModifiedKeyPress) {
-                  // prevent event from inserting new line + interacting with other content
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSubmitInput(metabot.prompt);
-                }
-              }}
+              onChange={handleEditorChange}
+              onSubmit={handleEditorSubmit}
+              onStop={metabot.cancelRequest}
+              suggestionModels={config.suggestionModels}
             />
           </Paper>
         </Box>

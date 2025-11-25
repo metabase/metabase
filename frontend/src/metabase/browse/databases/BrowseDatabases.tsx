@@ -7,7 +7,6 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { newDatabase } from "metabase/lib/urls";
@@ -69,7 +68,7 @@ export const BrowseDatabases = () => {
                   title={database.name}
                   icon="database"
                   size="lg"
-                  iconColor={color("accent2")} // can we change this?
+                  iconColor="accent2" // can we change this? - Yes we can
                 />
               ))}
             {isAdmin && <AddDatabaseCard />}

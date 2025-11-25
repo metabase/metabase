@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type { CreateApiKeyResponse } from "metabase-types/api";
 
@@ -93,9 +94,10 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
  */
 export function loadSdkIframeEmbedTestPage({
   origin = "",
+  selector,
   onVisitPage,
   ...options
-}: BaseEmbedTestPageOptions) {
+}: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
 
   const testPageUrl = `${origin}/sdk-iframe-test-page`;
@@ -108,7 +110,7 @@ export function loadSdkIframeEmbedTestPage({
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
 
-  return getIframeBody();
+  return getIframeBody(selector);
 }
 
 /**
@@ -338,3 +340,9 @@ export const mockEmbedJsToDevServer = () => {
     }
   });
 };
+
+export function openEmbedJsModal() {
+  openSharingMenu("Embed");
+
+  cy.findByText("Embedded Analytics JS").click();
+}

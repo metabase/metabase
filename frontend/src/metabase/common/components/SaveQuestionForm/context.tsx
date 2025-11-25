@@ -11,7 +11,11 @@ import {
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import {
+  canPlaceEntityInCollection,
+  getEntityTypeFromCardType,
+  isInstanceAnalyticsCollection,
+} from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -111,6 +115,15 @@ export const SaveQuestionProvider = ({
   // analytics questions should not default to saving in dashboard
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
 
+  const entityType = getEntityTypeFromCardType(question.type());
+
+  const isValidLastSelectedCollection =
+    lastSelectedCollection &&
+    canPlaceEntityInCollection(
+      entityType,
+      lastSelectedCollection.collection_type,
+    );
+
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
@@ -124,7 +137,7 @@ export const SaveQuestionProvider = ({
     (!isAnalytics
       ? lastSelectedDashboard?.parent_collection.id
       : defaultCollectionId) ??
-    lastSelectedCollection?.id ??
+    (isValidLastSelectedCollection ? lastSelectedCollection?.id : undefined) ??
     defaultCollectionId;
 
   const initialValues: FormValues = useMemo(

@@ -9,7 +9,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events.core :as events]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
@@ -18,6 +17,7 @@
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin.types :as p]
@@ -167,7 +167,7 @@
                            ;; 1. so that people have a chance to change their mind.
                            ;; 2. if a query is running against the cache, it doesn't get ripped out.
                            [:< :state_change_at
-                            (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                            (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
                           [:= :c.type "question"]
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted

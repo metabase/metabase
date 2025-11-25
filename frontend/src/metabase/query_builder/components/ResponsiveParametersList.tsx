@@ -11,7 +11,10 @@ import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";
 
 interface ResponsiveParametersListProps {
-  className?: string;
+  classNames?: {
+    container?: string;
+    parametersList?: string;
+  };
   cardId?: CardId;
   dashboardId?: DashboardId;
   parameters: Parameter[];
@@ -23,7 +26,7 @@ interface ResponsiveParametersListProps {
 }
 
 export const ResponsiveParametersList = ({
-  className,
+  classNames,
   cardId,
   dashboardId,
   parameters,
@@ -68,10 +71,15 @@ export const ResponsiveParametersList = ({
       )}
       <Box
         py="sm"
-        className={cx(ResponsiveParametersListS.ParametersListContainer, {
-          [ResponsiveParametersListS.isSmallScreen]: isSmallScreen,
-          [ResponsiveParametersListS.isShowingMobile]: mobileShowParameterList,
-        })}
+        className={cx(
+          ResponsiveParametersListS.ParametersListContainer,
+          {
+            [ResponsiveParametersListS.isSmallScreen]: isSmallScreen,
+            [ResponsiveParametersListS.isShowingMobile]:
+              mobileShowParameterList,
+          },
+          classNames?.container,
+        )}
       >
         {parameters.length > 0 && isSmallScreen && (
           <Flex p="0.75rem 1rem" align="center" justify="space-between">
@@ -87,7 +95,7 @@ export const ResponsiveParametersList = ({
         <SyncedParametersList
           className={cx(
             ResponsiveParametersListS.StyledParametersList,
-            className,
+            classNames?.parametersList,
           )}
           cardId={cardId}
           dashboardId={dashboardId}

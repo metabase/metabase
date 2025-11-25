@@ -77,12 +77,12 @@ describe("scenarios > dashboard > visualizer > pie", () => {
 
       H.echartsContainer().within(() => {
         cy.findByText("200").should("exist");
-        cy.findByText("TOTAL").should("exist");
+        cy.findByText("Total").should("exist");
       });
       cy.findByTestId("chartsettings-sidebar").findByText("Show total").click();
       H.echartsContainer().within(() => {
         cy.findByText("200").should("not.exist");
-        cy.findByText("TOTAL").should("not.exist");
+        cy.findByText("Total").should("not.exist");
       });
 
       cy.button("Save").click();

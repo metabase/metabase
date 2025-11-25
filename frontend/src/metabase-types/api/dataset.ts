@@ -8,7 +8,12 @@ import type {
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
-import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type {
+  Field,
+  FieldFingerprint,
+  FieldId,
+  FieldVisibilityType,
+} from "./field";
 import type { Insight } from "./insight";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
@@ -75,7 +80,7 @@ export interface DatasetColumn {
 }
 
 export interface ResultsMetadata {
-  columns: DatasetColumn[];
+  columns: Field[];
 }
 
 export interface DatasetData {
@@ -98,7 +103,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: unknown[];
+  parameters?: Parameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -177,7 +182,7 @@ export type SingleSeries = {
    * COLUMN_2, etc.) to their original values (count, avg, etc.).
    */
   columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
-} & Pick<Dataset, "error" | "started_at" | "data">;
+} & Pick<Dataset, "error" | "started_at" | "data" | "json_query">;
 
 export type SingleSeriesWithTranslation = SingleSeries & {
   data: Dataset["data"] & {

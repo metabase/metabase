@@ -1,10 +1,15 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import DateTime, {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
+import { isWithinIframe } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -18,6 +23,7 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import { DocumentPublicLinkPopover } from "metabase-enterprise/embedding/components/PublicLinkPopover";
 import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
@@ -39,6 +45,7 @@ interface DocumentHeaderProps {
   showSaveButton: boolean;
   isBookmarked: boolean;
   onTitleChange: (title: string) => void;
+  onTitleSubmit?: () => void;
   onSave: () => void;
   onMove: () => void;
   onToggleBookmark: () => void;
@@ -54,12 +61,21 @@ export const DocumentHeader = ({
   showSaveButton,
   isBookmarked,
   onTitleChange,
+  onTitleSubmit,
   onSave,
   onMove,
   onToggleBookmark,
   onArchive,
   hasComments = false,
 }: DocumentHeaderProps) => {
+  const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const hasDocumentsFeature = useHasTokenFeature("documents");
+  const isAdmin = useSelector(getUserIsAdmin);
+  const [isPublicLinkPopoverOpen, setIsPublicLinkPopoverOpen] = useState(false);
+
+  const hasPublicLink = !!document?.public_uuid;
+  const canUsePublicSharing = isPublicSharingEnabled && hasDocumentsFeature;
+
   const handlePrint = useCallback(() => {
     window.print();
     trackDocumentPrint(document);
@@ -92,6 +108,15 @@ export const DocumentHeader = ({
           readOnly={!canWrite}
           maxLength={DOCUMENT_TITLE_MAX_LENGTH}
           classNames={{ input: S.titleInput }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+
+              if (canWrite) {
+                onTitleSubmit?.();
+              }
+            }
+          }}
         />
         {document && (
           <Flex gap="md">
@@ -131,7 +156,7 @@ export const DocumentHeader = ({
             </Box>
           )}
         </Transition>
-        {!isNewDocument && hasComments && (
+        {!isNewDocument && hasComments && !isWithinIframe() && (
           <Tooltip label={t`Show all comments`}>
             <Box>
               {document && (
@@ -170,6 +195,43 @@ export const DocumentHeader = ({
               </Menu.Item>
               {!isNewDocument && (
                 <>
+                  {isAdmin && (
+                    <Menu.Item
+                      leftSection={<Icon name="link" />}
+                      onClick={() => setIsPublicLinkPopoverOpen(true)}
+                      {...(!canUsePublicSharing && {
+                        onClick: undefined,
+                        component: "div",
+                        disabled: true,
+                      })}
+                    >
+                      {canUsePublicSharing ? (
+                        hasPublicLink ? (
+                          t`Public link`
+                        ) : (
+                          t`Create a public link`
+                        )
+                      ) : (
+                        <>
+                          {t`Public link`}
+                          <Button
+                            component={Link}
+                            to="/admin/settings/public-sharing"
+                            target="_blank"
+                            variant="subtle"
+                            h="auto"
+                            lh="inherit"
+                            ml="sm"
+                            p={0}
+                            bd={0}
+                            className={CS.floatRight}
+                          >
+                            {t`Enable`}
+                          </Button>
+                        </>
+                      )}
+                    </Menu.Item>
+                  )}
                   {canWrite && (
                     <Menu.Item
                       leftSection={<Icon name="move" />}
@@ -199,6 +261,13 @@ export const DocumentHeader = ({
               )}
             </Menu.Dropdown>
           </Menu>
+        )}
+        {document && isAdmin && (
+          <DocumentPublicLinkPopover
+            document={document}
+            isOpen={isPublicLinkPopoverOpen}
+            onClose={() => setIsPublicLinkPopoverOpen(false)}
+          />
         )}
       </Flex>
     </Flex>

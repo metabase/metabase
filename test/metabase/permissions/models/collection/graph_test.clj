@@ -27,7 +27,7 @@
    (replace-collection-ids collection-or-id graph :COLLECTION))
 
   ([collection-or-id graph replacement-key]
-   (let [id      (if (map? collection-or-id) (:id collection-or-id) collection-or-id)
+   (let [id (if (map? collection-or-id) (:id collection-or-id) collection-or-id)
          ;; match variations that pop up depending on whether the map was serialized to JSON. 100, :100, or "100"
          id-keys #{id (str id) (keyword (str id))}]
      (update graph :groups (partial m/map-vals (partial m/map-keys (fn [collection-id]
@@ -71,31 +71,48 @@
       (only-collections (cons :root collections))))
 
 (deftest basic-test
-  (testing "Check that the basic graph works"
+  (testing "Check that the basic graph works (sparse - only groups with permissions)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (is (= {:revision 0
-              :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                         (u/the-id (perms-group/admin))     {:root :write}}}
+              :groups {(u/the-id (perms-group/admin)) {:root :write}}}
              (graph :clear-revisions? true))))))
 
 (deftest new-collection-perms-test
-  (testing "Creating a new Collection shouldn't give perms to anyone but admins"
+  (testing "Creating a new Collection shouldn't give perms to anyone but admins (sparse - no :none entries)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection]
         (is (= {:revision 0
-                :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
-                           (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
+                :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :write}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest audit-collections-graph-test
-  (testing "Check that the audit collection has :read for admins."
+  (testing "Check that the audit collection has :read for admins (sparse - no :none entries)."
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection collection {}]
+      (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
         (with-redefs [audit/default-audit-collection (constantly collection)]
           (is (= {:revision 0
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
-                             (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :read}}}
+                  :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
                  (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))))))
+
+(deftest cannot-set-audit-permissions-for-non-admins-test
+  (clear-graph-revisions!)
+  (mt/with-premium-features #{}
+    (testing "Cannot set write permissiosn with no feature flag"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
+          (with-redefs [audit/default-audit-collection (constantly collection)]
+            (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :write}}})
+            (is (= {:revision 0
+                    :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
+                   (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
+    (testing "Cannot set read permissiosn with no feature flag"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
+          (with-redefs [audit/default-audit-collection (constantly collection)]
+            (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :read}}})
+            (is (= {:revision 0
+                    :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
+                   (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))))
 
 (deftest read-perms-test
   (testing "make sure read perms show up correctly"
@@ -103,8 +120,8 @@
       (mt/with-temp [:model/Collection collection]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (is (= {:revision 0
-                :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :read}
-                           (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
+                :groups {(u/the-id (perms-group/all-users)) {:COLLECTION :read}
+                         (u/the-id (perms-group/admin)) {:root :write, :COLLECTION :write}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest grant-write-perms-for-new-collections-test
@@ -112,30 +129,27 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (is (=  {:revision 0
-                 :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :write}
-                            (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
-                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
+        (is (= {:revision 0
+                :groups {(u/the-id (perms-group/all-users)) {:COLLECTION :write}
+                         (u/the-id (perms-group/admin)) {:root :write, :COLLECTION :write}}}
+               (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest non-magical-groups-test
-  (testing "make sure a non-magical group will show up"
+  (testing "sparse graph - groups without permissions don't appear"
     (mt/with-temp [:model/PermissionsGroup new-group]
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (=   {:revision 0
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                             (u/the-id (perms-group/admin))     {:root :write}
-                             (u/the-id new-group)               {:root :none}}}
-                 (graph :clear-revisions? true, :groups [new-group])))))))
+        (is (= {:revision 0
+                :groups {(u/the-id (perms-group/admin)) {:root :write}}}
+               (graph :clear-revisions? true, :groups [new-group])))))))
 
 (deftest root-collection-read-perms-test
-  (testing "How abut *read* permissions for the Root Collection?"
+  (testing "How about *read* permissions for the Root Collection?"
     (mt/with-temp [:model/PermissionsGroup new-group]
       (mt/with-non-admin-groups-no-root-collection-perms
         (perms/grant-collection-read-permissions! new-group collection/root-collection)
         (is (= {:revision 0
-                :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                           (u/the-id (perms-group/admin))     {:root :write}
-                           (u/the-id new-group)               {:root :read}}}
+                :groups {(u/the-id (perms-group/admin)) {:root :write}
+                         (u/the-id new-group) {:root :read}}}
                (graph :clear-revisions? true, :groups [new-group])))))))
 
 (deftest root-collection-write-perms-test
@@ -144,9 +158,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (perms/grant-collection-readwrite-permissions! new-group collection/root-collection)
         (is (= {:revision 0
-                :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                           (u/the-id (perms-group/admin))     {:root :write}
-                           (u/the-id new-group)               {:root :write}}}
+                :groups {(u/the-id (perms-group/admin)) {:root :write}
+                         (u/the-id new-group) {:root :write}}}
                (graph :clear-revisions? true, :groups [new-group])))))))
 
 (deftest no-op-test
@@ -157,8 +170,7 @@
       (binding [*current-user-id* (mt/user->id :crowberto)]
         (graph/update-graph! (graph :clear-revisions? true))
         (is (= {:revision 0
-                :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                           (u/the-id (perms-group/admin))     {:root :write}}}
+                :groups {(u/the-id (perms-group/admin)) {:root :write}}}
                (graph))
             "revision should not have changed, because there was nothing to do...")))))
 
@@ -172,8 +184,8 @@
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :read))
           (is (= {:revision 1
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :read}
-                             (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
+                  :groups {(u/the-id (perms-group/all-users)) {:COLLECTION :read}
+                           (u/the-id (perms-group/admin)) {:root :write, :COLLECTION :write}}}
                  (replace-collection-ids collection (graph :collections [collection]))))
           (is (= 1 (c-perm-revision/latest-id)))))))
 
@@ -185,12 +197,12 @@
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :write))
           (is (= {:revision 1
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :write}
-                             (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
+                  :groups {(u/the-id (perms-group/all-users)) {:COLLECTION :write}
+                           (u/the-id (perms-group/admin)) {:root :write, :COLLECTION :write}}}
                  (replace-collection-ids collection (graph :collections [collection])))))))))
 
 (deftest revoke-perms-test
-  (testing "can we *revoke* perms?"
+  (testing "can we *revoke* perms? (sparse - revoked perms don't appear)"
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection]
@@ -200,8 +212,7 @@
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :none))
           (is (= {:revision 1
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
-                             (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
+                  :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :write}}}
                  (replace-collection-ids collection (graph :collections [collection])))))))))
 
 (deftest grant-root-permissions-test
@@ -214,9 +225,8 @@
                                          [:groups (u/the-id new-group) :root]
                                          :read))
           (is (= {:revision 1
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                             (u/the-id (perms-group/admin))     {:root :write}
-                             (u/the-id new-group)               {:root :read}}}
+                  :groups {(u/the-id (perms-group/admin)) {:root :write}
+                           (u/the-id new-group) {:root :read}}}
                  (graph :groups [new-group])))))))
 
   (testing "How about granting *write* permissions for the Root Collection?"
@@ -228,13 +238,12 @@
                                          [:groups (u/the-id new-group) :root]
                                          :write))
           (is (= {:revision 1
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                             (u/the-id (perms-group/admin))     {:root :write}
-                             (u/the-id new-group)               {:root :write}}}
+                  :groups {(u/the-id (perms-group/admin)) {:root :write}
+                           (u/the-id new-group) {:root :write}}}
                  (graph :groups [new-group]))))))))
 
 (deftest revoke-root-permissions-test
-  (testing "can we *revoke* RootCollection perms?"
+  (testing "can we *revoke* RootCollection perms? (sparse - revoked perms don't appear)"
     (mt/with-temp [:model/PermissionsGroup new-group]
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
@@ -244,17 +253,14 @@
                                          [:groups (u/the-id new-group) :root]
                                          :none))
           (is (= {:revision 1
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                             (u/the-id (perms-group/admin))     {:root :write}
-                             (u/the-id new-group)               {:root :none}}}
+                  :groups {(u/the-id (perms-group/admin)) {:root :write}}}
                  (graph :groups [new-group]))))))))
 
 (deftest personal-collections-should-not-appear-test
   (testing "Make sure that personal Collections *do not* appear in the Collections graph"
     (mt/with-non-admin-groups-no-root-collection-perms
       (is (= {:revision 0
-              :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                         (u/the-id (perms-group/admin))     {:root :write}}}
+              :groups {(u/the-id (perms-group/admin)) {:root :write}}}
              (graph :clear-revisions? true)))))
 
   (testing "Make sure descendants of Personal Collections do not come back as part of the graph either..."
@@ -262,22 +268,20 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection _ {:location (lucky-collection-children-location)}]
         (is (= {:revision 0
-                :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                           (u/the-id (perms-group/admin))     {:root :write}}}
+                :groups {(u/the-id (perms-group/admin)) {:root :write}}}
                (graph)))))))
 
 (deftest disallow-editing-personal-collections-test
   (testing "Make sure that if we try to be sneaky and edit a Personal Collection via the graph, changes are ignored"
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [lucky-personal-collection-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
-            path                         [:groups (u/the-id (perms-group/all-users)) lucky-personal-collection-id]]
+            path [:groups (u/the-id (perms-group/all-users)) lucky-personal-collection-id]]
         (mt/throw-if-called! graph/update-group-permissions!
           (graph/update-graph! (assoc-in (graph :clear-revisions? true) path :read)))
 
         (testing "double-check that the graph is unchanged"
           (is (= {:revision 0
-                  :groups   {(u/the-id (perms-group/all-users)) {:root :none}
-                             (u/the-id (perms-group/admin))     {:root :write}}}
+                  :groups {(u/the-id (perms-group/admin)) {:root :write}}}
                  (graph))))
 
         (testing "No revision should have been saved"
@@ -306,18 +310,18 @@
      ;; Block until the entire graph has been `filled-in!`
      @future)))
 
-(deftest collection-namespace-test
-  (testing "The permissions graph should be namespace-aware.\n"
+(deftest collection-namespace-fetch-default-test
+  (testing "Fetching graph with no args should only show Collections in the default namespace (sparse - no :none entries)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {default-a :id}   {:location "/"}
-                     :model/Collection {default-ab :id}  {:location (format "/%d/" default-a)}
-                     :model/Collection {currency-a :id}  {:namespace "currency" :location "/"}
+      (mt/with-temp [:model/Collection {default-a :id} {:location "/"}
+                     :model/Collection {default-ab :id} {:location (format "/%d/" default-a)}
+                     :model/Collection {currency-a :id} {:namespace "currency" :location "/"}
                      :model/Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
                      :model/PermissionsGroup {group-id :id} {}]
         (letfn [(nice-graph [graph]
-                  (let [id->alias {default-a   "Default A"
-                                   default-ab  "Default A -> B"
-                                   currency-a  "Currency A"
+                  (let [id->alias {default-a "Default A"
+                                   default-ab "Default A -> B"
+                                   currency-a "Currency A"
                                    currency-ab "Currency A -> B"}]
                     (transduce
                      identity
@@ -331,84 +335,221 @@
                      id->alias)))]
           (doseq [collection [default-a default-ab currency-a currency-ab]]
             (perms/grant-collection-read-permissions! group-id collection))
-          (testing "Calling (graph) with no args should only show Collections in the default namespace"
-            (is (= {"Default A" :read, "Default A -> B" :read, :root :none}
-                   (nice-graph (graph/graph))
-                   (nice-graph (graph/graph nil)))))
+          (is (= {"Default A" :read, "Default A -> B" :read}
+                 (nice-graph (graph/graph))
+                 (nice-graph (graph/graph nil)))))))))
 
-          (testing "You should be able to pass an different namespace to (graph) to see Collections in that namespace"
-            (is (= {"Currency A" :read, "Currency A -> B" :read, :root :none}
-                   (nice-graph (graph/graph :currency)))))
+(deftest collection-namespace-fetch-non-default-test
+  (testing "Fetching graph for a specific namespace should only show Collections in that namespace (sparse - no :none)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {default-a :id} {:location "/"}
+                     :model/Collection {default-ab :id} {:location (format "/%d/" default-a)}
+                     :model/Collection {currency-a :id} {:namespace "currency" :location "/"}
+                     :model/Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (letfn [(nice-graph [graph]
+                  (let [id->alias {default-a "Default A"
+                                   default-ab "Default A -> B"
+                                   currency-a "Currency A"
+                                   currency-ab "Currency A -> B"}]
+                    (transduce
+                     identity
+                     (fn
+                       ([graph]
+                        (-> (get-in graph [:groups group-id])
+                            (select-keys (cons :root (vals id->alias)))))
+                       ([graph [collection-id k]]
+                        (replace-collection-ids collection-id graph k)))
+                     graph
+                     id->alias)))]
+          (doseq [collection [default-a default-ab currency-a currency-ab]]
+            (perms/grant-collection-read-permissions! group-id collection))
+          (is (= {"Currency A" :read, "Currency A -> B" :read}
+                 (nice-graph (graph/graph :currency)))))))))
 
-          ;; bind a current user so CollectionPermissionGraphRevisions get saved.
+(deftest collection-namespace-update-default-test
+  (testing "Should be able to update the graph for the default namespace"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {default-a :id} {:location "/"}
+                     :model/Collection {default-ab :id} {:location (format "/%d/" default-a)}
+                     :model/Collection {currency-a :id} {:namespace "currency" :location "/"}
+                     :model/Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (letfn [(nice-graph [graph]
+                  (let [id->alias {default-a "Default A"
+                                   default-ab "Default A -> B"
+                                   currency-a "Currency A"
+                                   currency-ab "Currency A -> B"}]
+                    (transduce
+                     identity
+                     (fn
+                       ([graph]
+                        (-> (get-in graph [:groups group-id])
+                            (select-keys (cons :root (vals id->alias)))))
+                       ([graph [collection-id k]]
+                        (replace-collection-ids collection-id graph k)))
+                     graph
+                     id->alias)))]
+          (doseq [collection [default-a default-ab currency-a currency-ab]]
+            (perms/grant-collection-read-permissions! group-id collection))
           (mt/with-test-user :crowberto
-            (testing "Should be able to update the graph for the default namespace.\n"
-              (let [before (graph/graph)]
-                (update-graph-and-wait! (assoc before :groups {group-id {default-ab :write, currency-ab :write}}))
-                (is (= {"Default A" :read, "Default A -> B" :write, :root :none}
-                       (nice-graph (graph/graph))))
-
-                (testing "Updates to Collections in other namespaces should be ignored"
-                  (is (= {"Currency A" :read, "Currency A -> B" :read, :root :none}
-                         (nice-graph (graph/graph :currency)))))
-
-                (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (malli= [:map
-                               [:id         ms/PositiveInt]
-                               [:before     [:fn #(= % (mt/obj->json->obj (assoc before :namespace nil)))]]
-                               [:after      [:fn #(= % {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})]]
-                               [:user_id    [:= (mt/user->id :crowberto)]]
-                               [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
-                              (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
-
-            (testing "Should be able to update the graph for a non-default namespace.\n"
-              (let [before (graph/graph :currency)]
-                @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
-                (is (= {"Currency A" :write, "Currency A -> B" :read, :root :none}
-                       (nice-graph (graph/graph :currency))))
-
-                (testing "Updates to Collections in other namespaces should be ignored"
-                  (is (= {"Default A" :read, "Default A -> B" :write, :root :none}
-                         (nice-graph (graph/graph)))))
-
-                (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                  (is (malli= [:map
-                               [:id         ms/PositiveInt]
-                               [:before     [:fn #(= % (mt/obj->json->obj (assoc before :namespace "currency")))]]
-                               [:after      [:fn #(= % {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})]]
-                               [:user_id    [:= (mt/user->id :crowberto)]]
-                               [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
-                              (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
-
-            (testing "should be able to update permissions for the Root Collection in the default namespace via the graph"
-              (update-graph-and-wait! (assoc (graph/graph) :groups {group-id {:root :read}}))
-              (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
+            (let [before (graph/graph)]
+              (update-graph-and-wait! (assoc before :groups {group-id {default-ab :write, currency-ab :write}}))
+              (is (= {"Default A" :read, "Default A -> B" :write}
                      (nice-graph (graph/graph))))
 
-              (testing "\nshouldn't affect Root Collection perms for non-default namespaces"
-                (is (= {:root :none, "Currency A" :write, "Currency A -> B" :read}
+              (testing "Updates to Collections in other namespaces should be ignored"
+                (is (= {"Currency A" :read, "Currency A -> B" :read}
                        (nice-graph (graph/graph :currency)))))
 
-              (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                (is (=? {:before {:namespace nil
-                                  :groups    {(keyword (str group-id)) {:root "none"}}}
-                         :after  {(keyword (str group-id)) {:root "read"}}}
-                        (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
+              (testing "A CollectionPermissionGraphRevision recording the *changes* should be saved (sparse before/after)"
+                (is (malli= [:map
+                             [:id ms/PositiveInt]
+                             [:before [:map]]
+                             [:after [:fn #(= % {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})]]
+                             [:user_id [:= (mt/user->id :crowberto)]]
+                             [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
+                            (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
 
-            (testing "should be able to update permissions for Root Collection in non-default namespace"
-              (update-graph-and-wait! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
-              (is (= {:root :write, "Currency A" :write, "Currency A -> B" :read}
-                     (nice-graph (graph/graph :currency))))
+(deftest collection-namespace-update-non-default-test
+  (testing "Should be able to update the graph for a non-default namespace"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {default-a :id} {:location "/"}
+                     :model/Collection {default-ab :id} {:location (format "/%d/" default-a)}
+                     :model/Collection {currency-a :id} {:namespace "currency" :location "/"}
+                     :model/Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (letfn [(nice-graph [graph]
+                  (let [id->alias {default-a "Default A"
+                                   default-ab "Default A -> B"
+                                   currency-a "Currency A"
+                                   currency-ab "Currency A -> B"}]
+                    (transduce
+                     identity
+                     (fn
+                       ([graph]
+                        (-> (get-in graph [:groups group-id])
+                            (select-keys (cons :root (vals id->alias)))))
+                       ([graph [collection-id k]]
+                        (replace-collection-ids collection-id graph k)))
+                     graph
+                     id->alias)))]
+          (doseq [collection [default-a default-ab currency-a currency-ab]]
+            (perms/grant-collection-read-permissions! group-id collection))
+          ;; First update default namespace to set up state
+          (mt/with-test-user :crowberto
+            (let [before-default (graph/graph)]
+              (update-graph-and-wait! (assoc before-default :groups {group-id {default-ab :write, currency-ab :write}})))
+            ;; Now update currency namespace
+            @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
+            (is (= {"Currency A" :write, "Currency A -> B" :read}
+                   (nice-graph (graph/graph :currency))))
 
-              (testing "\nshouldn't affect Root Collection perms for default namespace"
-                (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
-                       (nice-graph (graph/graph)))))
+            (testing "Updates to Collections in other namespaces should be ignored"
+              (is (= {"Default A" :read, "Default A -> B" :write}
+                     (nice-graph (graph/graph)))))
 
-              (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
-                (is (=? {:before {:namespace "currency"
-                                  :groups    {(keyword (str group-id)) {:root "none"}}}
-                         :after  {(keyword (str group-id)) {:root "write"}}}
-                        (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
+            (testing "A CollectionPermissionGraphRevision recording the *changes* should be saved (sparse before/after)"
+              (is (malli= [:map
+                           [:id ms/PositiveInt]
+                           [:before [:map]]
+                           [:after [:fn #(= % {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})]]
+                           [:user_id [:= (mt/user->id :crowberto)]]
+                           [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
+                          (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))))))
+
+(deftest collection-namespace-update-root-default-test
+  (testing "Should be able to update permissions for the Root Collection in the default namespace"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {default-a :id} {:location "/"}
+                     :model/Collection {default-ab :id} {:location (format "/%d/" default-a)}
+                     :model/Collection {currency-a :id} {:namespace "currency" :location "/"}
+                     :model/Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (letfn [(nice-graph [graph]
+                  (let [id->alias {default-a "Default A"
+                                   default-ab "Default A -> B"
+                                   currency-a "Currency A"
+                                   currency-ab "Currency A -> B"}]
+                    (transduce
+                     identity
+                     (fn
+                       ([graph]
+                        (-> (get-in graph [:groups group-id])
+                            (select-keys (cons :root (vals id->alias)))))
+                       ([graph [collection-id k]]
+                        (replace-collection-ids collection-id graph k)))
+                     graph
+                     id->alias)))]
+          (doseq [collection [default-a default-ab currency-a currency-ab]]
+            (perms/grant-collection-read-permissions! group-id collection))
+          ;; Set up state with default namespace update
+          (mt/with-test-user :crowberto
+            (let [before-default (graph/graph)]
+              (update-graph-and-wait! (assoc before-default :groups {group-id {default-ab :write, currency-ab :write}})))
+            ;; Update currency namespace
+            @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
+            ;; Now update root collection
+            (update-graph-and-wait! (assoc (graph/graph) :groups {group-id {:root :read}}))
+            (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
+                   (nice-graph (graph/graph))))
+
+            (testing "Shouldn't affect Root Collection perms for non-default namespaces (sparse - no :root entry)"
+              (is (= {"Currency A" :write, "Currency A -> B" :read}
+                     (nice-graph (graph/graph :currency)))))
+
+            (testing "A CollectionPermissionGraphRevision recording the *changes* should be saved (sparse - no :root in before)"
+              (is (=? {:before {:namespace nil
+                                :groups {}}
+                       :after {(keyword (str group-id)) {:root "read"}}}
+                      (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))))))
+
+(deftest collection-namespace-update-root-non-default-test
+  (testing "Should be able to update permissions for Root Collection in non-default namespace"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {default-a :id} {:location "/"}
+                     :model/Collection {default-ab :id} {:location (format "/%d/" default-a)}
+                     :model/Collection {currency-a :id} {:namespace "currency" :location "/"}
+                     :model/Collection {currency-ab :id} {:namespace "currency" :location (format "/%d/" currency-a)}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (letfn [(nice-graph [graph]
+                  (let [id->alias {default-a "Default A"
+                                   default-ab "Default A -> B"
+                                   currency-a "Currency A"
+                                   currency-ab "Currency A -> B"}]
+                    (transduce
+                     identity
+                     (fn
+                       ([graph]
+                        (-> (get-in graph [:groups group-id])
+                            (select-keys (cons :root (vals id->alias)))))
+                       ([graph [collection-id k]]
+                        (replace-collection-ids collection-id graph k)))
+                     graph
+                     id->alias)))]
+          (doseq [collection [default-a default-ab currency-a currency-ab]]
+            (perms/grant-collection-read-permissions! group-id collection))
+          ;; Set up all previous state
+          (mt/with-test-user :crowberto
+            (let [before-default (graph/graph)]
+              (update-graph-and-wait! (assoc before-default :groups {group-id {default-ab :write, currency-ab :write}})))
+            (let [before-currency (graph/graph :currency)]
+              @(graph/update-graph! :currency (assoc before-currency :groups {group-id {default-a :write, currency-a :write}}) false))
+            (update-graph-and-wait! (assoc (graph/graph) :groups {group-id {:root :read}}))
+            ;; Now update root for currency namespace
+            (update-graph-and-wait! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
+            (is (= {:root :write, "Currency A" :write, "Currency A -> B" :read}
+                   (nice-graph (graph/graph :currency))))
+
+            (testing "Shouldn't affect Root Collection perms for default namespace"
+              (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
+                     (nice-graph (graph/graph)))))
+
+            (testing "A CollectionPermissionGraphRevision recording the *changes* should be saved (sparse - no :root in before)"
+              (is (=? {:before {:namespace "currency"
+                                :groups {}}
+                       :after {(keyword (str group-id)) {:root "write"}}}
+                      (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))))))
 
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [:model/User :model/Collection]
@@ -420,15 +561,15 @@
                               :id %)
                       user-ids)]
       (t2/query {:insert-into (t2/table-name :model/User)
-                 :values      values})
+                 :values values})
       (assert (= (count user-ids) num-users))
       ;; insert the Collections
       (t2/query {:insert-into (t2/table-name :model/Collection)
-                 :values      (for [user-id user-ids
-                                    :let    [collection (mt/with-temp-defaults :model/Collection)]]
-                                (assoc collection
-                                       :personal_owner_id user-id
-                                       :slug "my_collection"))}))
+                 :values (for [user-id user-ids
+                               :let [collection (mt/with-temp-defaults :model/Collection)]]
+                           (assoc collection
+                                  :personal_owner_id user-id
+                                  :slug "my_collection"))}))
     ;; now run the thunk
     (thunk)))
 

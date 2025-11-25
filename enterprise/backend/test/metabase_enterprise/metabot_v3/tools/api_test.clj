@@ -8,13 +8,14 @@
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.tools.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.dependencies-test :as metabot-v3.tools.dependencies-test]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -492,17 +493,19 @@
 
 (deftest ^:parallel get-current-user-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [conversation-id (str (random-uuid))
-          ai-token (ai-session-token)
-          response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-current-user"
-                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                         {:conversation_id conversation-id})]
-      (is (=? {:structured_output {:id (mt/user->id :rasta)
-                                   :type "user"
-                                   :name "Rasta Toucan"
-                                   :email_address "rasta@metabase.com"}
-               :conversation_id conversation-id}
-              response)))))
+    (mt/with-temp [:model/Glossary _ {:term "asdf" :definition "Sales Team Performance"}]
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token)
+            response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-current-user"
+                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                           {:conversation_id conversation-id})]
+        (is (=? {:structured_output {:id (mt/user->id :rasta)
+                                     :type "user"
+                                     :name "Rasta Toucan"
+                                     :email_address "rasta@metabase.com"
+                                     :glossary {(keyword "asdf") "Sales Team Performance"}}
+                 :conversation_id conversation-id}
+                response))))))
 
 (deftest get-dashboard-details-test
   (mt/with-premium-features #{:metabot-v3}
@@ -648,13 +651,14 @@
           generated-id (-> response :structured_output :query_id)]
       (is (=? {:structured_output {:type "query"
                                    :query_id string?
-                                   :query query
+                                   :query map?
                                    :result_columns
                                    [{:field_id (str "q" generated-id "/0"), :name "CREATED_AT", :display_name "Created At: Week", :type "datetime"}
                                     {:field_id (str "q" generated-id "/1"), :name "avg", :display_name "Average of Rating", :type "number"}]}
                :conversation_id conversation-id}
-              ;; normalize query to convert strings like "field" to keywords
-              (update-in response [:structured_output :query] mbql.normalize/normalize))))))
+              response))
+      ;; Verify the query is normalized (supports both MBQL v4 and v5)
+      (is (= (mt/id) (get-in response [:structured_output :query :database]))))))
 
 (deftest get-report-details-test
   (mt/with-premium-features #{:metabot-v3}
@@ -717,7 +721,7 @@
 
 ;; Helper function to set up model test fixtures
 (defn- model-test-fixtures []
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))
         source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
         model-data {:name "Model Model"
                     :description "Model desc"
@@ -727,7 +731,8 @@
         metric-data {:name "Metric"
                      :description "Model based metric"
                      :type :metric}
-        expected-fields
+        ;; Core fields returned by the model (lib/returned-columns)
+        expected-core-fields
         [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
          {:name "USER_ID", :display_name "User ID", :type "number", :semantic_type "fk"}
          {:name "PRODUCT_ID", :display_name "Product ID", :type "number", :semantic_type "fk"}
@@ -736,47 +741,59 @@
          {:name "TOTAL", :display_name "Total", :type "number"}
          {:name "DISCOUNT", :display_name "Discount", :type "number", :semantic_type "discount"}
          {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}
-         {:name "QUANTITY", :display_name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}
-         {:name "ID", :display_name "ID", :type "number", :semantic_type "pk", :table_reference "User"}
-         {:name "ADDRESS", :display_name "Address", :type "string", :table_reference "User"}
-         {:name "EMAIL", :display_name "Email", :type "string", :semantic_type "email", :table_reference "User"}
-         {:name "PASSWORD", :display_name "Password", :type "string", :table_reference "User"}
-         {:name "NAME", :display_name "Name", :type "string", :semantic_type "name", :table_reference "User"}
-         {:name "CITY", :display_name "City", :type "string", :semantic_type "city", :table_reference "User"}
-         {:name "LONGITUDE", :display_name "Longitude", :type "number", :semantic_type "longitude", :table_reference "User"}
-         {:name "STATE", :display_name "State", :type "string", :semantic_type "state", :table_reference "User"}
-         {:name "SOURCE", :display_name "Source", :type "string", :semantic_type "source", :table_reference "User"}
-         {:name "BIRTH_DATE", :display_name "Birth Date", :type "date", :table_reference "User"}
-         {:name "ZIP", :display_name "Zip", :type "string", :table_reference "User"}
-         {:name "LATITUDE", :display_name "Latitude", :type "number", :semantic_type "latitude", :table_reference "User"}
-         {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "User"}
-         {:name "ID", :display_name "ID", :type "number", :semantic_type "pk", :table_reference "Product"}
-         {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?, :table_reference "Product"}
-         {:name "TITLE", :display_name "Title"
-          :type "string"
-          :semantic_type "title"
-          :field_values string-sequence?
-          :table_reference "Product"}
-         {:name "CATEGORY", :display_name "Category"
-          :type "string"
-          :semantic_type "category"
-          :field_values string-sequence?
-          :table_reference "Product"}
-         {:name "VENDOR", :display_name "Vendor"
-          :type "string"
-          :semantic_type "company"
-          :field_values string-sequence?
-          :table_reference "Product"}
-         {:name "PRICE", :display_name "Price", :type "number", :table_reference "Product"}
-         {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score", :table_reference "Product"}
-         {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp", :table_reference "Product"}]]
+         {:name "QUANTITY", :display_name "Quantity", :type "number", :semantic_type "quantity", :field_values int-sequence?}]
+        ;; Related tables via FK (order matches what related-tables function returns)
+        expected-related-tables
+        [{:type "table"
+          :id (mt/id :products)
+          :name "PRODUCTS"
+          :display_name "Products"
+          :database_id (mt/id)
+          :database_schema "PUBLIC"
+          :fields
+          [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
+           {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?}
+           {:name "TITLE", :display_name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
+           {:name "CATEGORY", :display_name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
+           {:name "VENDOR", :display_name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+           {:name "PRICE", :display_name "Price", :type "number"}
+           {:name "RATING", :display_name "Rating", :type "number", :semantic_type "score"}
+           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}
+         {:type "table"
+          :id (mt/id :people)
+          :name "PEOPLE"
+          :display_name "People"
+          :database_id (mt/id)
+          :database_schema "PUBLIC"
+          :fields
+          [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
+           {:name "ADDRESS", :display_name "Address", :type "string"}
+           {:name "EMAIL", :display_name "Email", :type "string", :semantic_type "email"}
+           {:name "PASSWORD", :display_name "Password", :type "string"}
+           {:name "NAME", :display_name "Name", :type "string", :semantic_type "name"}
+           {:name "CITY", :display_name "City", :type "string", :semantic_type "city"}
+           {:name "LONGITUDE", :display_name "Longitude", :type "number", :semantic_type "longitude"}
+           {:name "STATE", :display_name "State", :type "string", :semantic_type "state"}
+           {:name "SOURCE", :display_name "Source", :type "string", :semantic_type "source"}
+           {:name "BIRTH_DATE", :display_name "Birth Date", :type "date"}
+           {:name "ZIP", :display_name "Zip", :type "string"}
+           {:name "LATITUDE", :display_name "Latitude", :type "number", :semantic_type "latitude"}
+           {:name "CREATED_AT", :display_name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]}]]
     {:model-data model-data
      :metric-data metric-data
-     :expected-fields expected-fields}))
+     :expected-core-fields expected-core-fields
+     :expected-related-tables expected-related-tables}))
+
+(defn- add-field-ids
+  "Add field_id to fields using map-indexed. Optionally apply transform-fn to each field."
+  ([prefix-template fields]
+   (add-field-ids prefix-template fields identity))
+  ([prefix-template fields transform-fn]
+   (map-indexed #(transform-fn (assoc %2 :field_id (format prefix-template %1))) fields)))
 
 (deftest get-model-details-basic-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [{:keys [model-data metric-data expected-fields]} (model-test-fixtures)
+    (let [{:keys [model-data metric-data expected-core-fields expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
       (mt/with-temp [:model/Card {model-id :id}  model-data
@@ -799,11 +816,12 @@
                                                 (assoc :id model-id
                                                        :type "model"
                                                        :display_name "Model Model"
-                                                       :queryable_foreign_key_tables []
                                                        :verified true
-                                                       :fields
-                                                       (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
-                                                                    expected-fields)
+                                                       :fields (add-field-ids (format "c%d/%%d" model-id) expected-core-fields)
+                                                       :related_tables
+                                                       (map #(update % :fields
+                                                                     (partial add-field-ids (format "t%d/%%d" (:id %))))
+                                                            expected-related-tables)
                                                        :metrics [(assoc metric-data
                                                                         :id metric-id
                                                                         :type "metric"
@@ -813,7 +831,7 @@
 
 (deftest get-model-details-without-field-values-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [{:keys [model-data metric-data expected-fields]} (model-test-fixtures)
+    (let [{:keys [model-data metric-data expected-core-fields expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
       (mt/with-temp [:model/Card {model-id :id}  model-data
@@ -835,13 +853,16 @@
                                               (assoc :id model-id
                                                      :type "model"
                                                      :display_name "Model Model"
-                                                     :queryable_foreign_key_tables []
                                                      :verified true
                                                      :fields
-                                                     (map-indexed #(assoc %2
-                                                                          :field_id (format "c%d/%d" model-id %1)
-                                                                          :field_values missing-value)
-                                                                  expected-fields)
+                                                     (add-field-ids (format "c%d/%%d" model-id) expected-core-fields
+                                                                    #(assoc % :field_values missing-value))
+                                                     :related_tables
+                                                     (map (fn [table]
+                                                            (update table :fields
+                                                                    #(add-field-ids (format "t%d/%%d" (:id table)) %
+                                                                                    (fn [f] (assoc f :field_values missing-value)))))
+                                                          expected-related-tables)
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
@@ -851,7 +872,7 @@
 
 (deftest get-model-details-without-fields-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [{:keys [model-data metric-data]} (model-test-fixtures)
+    (let [{:keys [model-data metric-data expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
       (mt/with-temp [:model/Card {model-id :id}  model-data
@@ -873,9 +894,10 @@
                                               (assoc :id model-id
                                                      :type "model"
                                                      :display_name "Model Model"
-                                                     :queryable_foreign_key_tables []
                                                      :verified true
                                                      :fields []
+                                                     :related_tables
+                                                     (map #(assoc % :fields []) expected-related-tables)
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
@@ -885,7 +907,7 @@
 
 (deftest get-model-details-without-metric-temporal-breakout-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [{:keys [model-data metric-data]} (model-test-fixtures)
+    (let [{:keys [model-data metric-data expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
       (mt/with-temp [:model/Card {model-id :id}  model-data
@@ -907,9 +929,10 @@
                                               (assoc :id model-id
                                                      :type "model"
                                                      :display_name "Model Model"
-                                                     :queryable_foreign_key_tables []
                                                      :verified true
                                                      :fields []
+                                                     :related_tables
+                                                     (map #(assoc % :fields []) expected-related-tables)
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
@@ -921,7 +944,7 @@
 
 (deftest get-model-details-without-metrics-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [{:keys [model-data]} (model-test-fixtures)
+    (let [{:keys [model-data expected-related-tables]} (model-test-fixtures)
           conversation-id (str (random-uuid))
           ai-token (ai-session-token)]
       (mt/with-temp [:model/Card {model-id :id}  model-data
@@ -943,14 +966,48 @@
                                               (assoc :id model-id
                                                      :type "model"
                                                      :display_name "Model Model"
-                                                     :queryable_foreign_key_tables []
                                                      :verified true
                                                      :fields []
+                                                     :related_tables
+                                                     (map #(assoc % :fields []) expected-related-tables)
                                                      :metrics missing-value))
                        :conversation_id conversation-id}
                       (request (assoc arguments
                                       :with_fields false
                                       :with_metrics false)))))))))))
+
+(deftest get-model-details-without-related-tables-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [{:keys [model-data]} (model-test-fixtures)
+          conversation-id (str (random-uuid))
+          ai-token (ai-session-token)]
+      (mt/with-temp [:model/Card {model-id :id}  model-data
+                     :model/Card {_metric-id :id} (assoc (:metric-data (model-test-fixtures)) :dataset_query
+                                                         (mt/mbql-query orders
+                                                           {:source-table (str "card__" model-id)
+                                                            :aggregation [[:count]]
+                                                            :breakout [!month.*created_at *quantity]}))]
+        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+          (let [request (fn [arguments]
+                          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                {:arguments arguments
+                                                 :conversation_id conversation-id}))]
+            (testing "Without related tables"
+              (is (=? {:structured_output (-> model-data
+                                              (select-keys [:name :description :database_id])
+                                              (assoc :id model-id
+                                                     :type "model"
+                                                     :display_name "Model Model"
+                                                     :verified true
+                                                     :fields []
+                                                     :related_tables missing-value
+                                                     :metrics missing-value))
+                       :conversation_id conversation-id}
+                      (request {:model_id model-id
+                                :with_fields false
+                                :with_related_tables false
+                                :with_metrics false}))))))))))
 
 (deftest field-values-auto-populate-test
   (mt/with-premium-features #{:metabot-v3}
@@ -1110,3 +1167,267 @@
                     (request (assoc arguments
                                     :with_fields false
                                     :with_metrics false))))))))))
+
+(deftest get-table-details-related-tables-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          request (fn [arguments]
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                          {:arguments arguments
+                                           :conversation_id conversation-id}))]
+      (testing "Normal call includes related_tables by default"
+        (let [response (request {:table_id (mt/id :orders)})
+              related-tables (get-in response [:structured_output :related_tables])]
+          (is (= (sort [(mt/id :products) (mt/id :people)])
+                 (sort (map :id related-tables)))
+              "Should include tables related to Orders by foreign keys")
+          (is (every? #(not (contains? % :related_tables)) related-tables)
+              "Related tables should not have nested related_tables")))
+      (testing "Without related tables"
+        (is (nil? (-> (request {:table_id (mt/id :orders)
+                                :with_related_tables false})
+                      (get-in [:structured_output :related_tables]))))))))
+
+(deftest get-transforms-test
+  (mt/with-premium-features #{:metabot-v3 :transforms}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
+      (mt/with-temp [:model/Transform t1 {:name "People Transform"
+                                          :description "Simple select on People table"
+                                          :source {:type "query"
+                                                   :query (lib/native-query (mt/metadata-provider) "SELECT * FROM PEOPLE")}
+                                          :target {:type "table"
+                                                   :name "t1_table"}}
+                     :model/Transform t2 {:name "MBQL Transform"
+                                          :description "Simple MQBL query on Products table"
+                                          :source {:type "query"
+                                                   :query (mt/mbql-query products)}
+                                          :target {:type "table"
+                                                   :name "t2_table"}}
+                     :model/Transform t3 {:name "Python Transform"
+                                          :description "Simple python transform"
+                                          :source {:type "python"
+                                                   :body "print('hello world')"
+                                                   :source-tables {}}
+                                          :target {:type "table"
+                                                   :name "t2_table"}}]
+        (testing "With insufficient permissions"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transforms"
+                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                       {:conversation_id conversation-id}))))
+        (testing "With superuser permissions"
+          (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
+                                         ;; note: t2 not included because it's a (non-native) MBQL query
+                                       (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
+                   :conversation_id conversation-id}
+                  (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
+                                            {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                            {:conversation_id conversation-id})
+                      (update :structured_output (fn [output]
+                                                   (->> output
+                                                        (filter #(#{(:id t1) (:id t2) (:id t3)} (:id %)))
+                                                        (sort-by :id))))))))))))
+
+(deftest get-transform-test
+  (mt/with-premium-features #{:metabot-v3 :transforms}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
+      (mt/with-temp [:model/Transform t1 {:name "People Transform"
+                                          :description "Simple select on People table"
+                                          :source {:type "query"
+                                                   :query (mt/native-query {:query "SELECT * FROM PEOPLE"})}
+                                          :target {:type "table"
+                                                   :name "t1_table"}}
+                     :model/Transform t2 {:name "Python Transform"
+                                          :description "Simple Python transform"
+                                          :source {:type "python"
+                                                   :body "print('hello world')"
+                                                   :source-tables {}}
+                                          :target {:type "table"
+                                                   :name "t2_table"
+                                                   :database (mt/id)}}]
+        (testing "With insufficient permissions"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-details"
+                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                       {:arguments {:transform_id (:id t1)}
+                                        :conversation_id conversation-id}))))
+        (testing "With non-existent transform"
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-transform-details"
+                                       {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                       {:arguments {:transform_id (+ 10000 (:id t2))}
+                                        :conversation_id conversation-id}))))
+        (testing "With superuser permissions"
+          (doseq [transform [t1 t2]]
+            (testing (:name transform)
+              (is (=? {:structured_output (mt/obj->json->obj (select-keys transform [:id :entity_id :name :description :source :target]))
+                       :conversation_id conversation-id}
+                      (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-details"
+                                            {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                            {:arguments {:transform_id (:id transform)}
+                                             :conversation_id conversation-id}))))))))))
+
+(deftest get-transform-python-library-details-test
+  (mt/with-premium-features #{:metabot-v3 :python-transforms}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
+          saved-python-library (t2/select-one :model/PythonLibrary :path "common.py")]
+      (when (seq saved-python-library)
+        (t2/delete! :model/PythonLibrary))
+      (try
+        (testing "With no Python library present"
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-transform-python-library-details"
+                                       {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                       {:arguments {:path "common.py"}
+                                        :conversation_id conversation-id}))))
+        (mt/with-temp [:model/PythonLibrary lib1 {:path "common.py"
+                                                  :source "def hello():\n    return 'world'"}]
+          (testing "With insufficient permissions"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-transform-python-library-details"
+                                         {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                         {:arguments {:path (:path lib1)}
+                                          :conversation_id conversation-id}))))
+          (testing "With non-existent library path"
+            (is (=? {:allowed-paths ["common.py"]
+                     :message "Invalid library path. Only 'common' is currently supported."
+                     :path "nonexistent.py"}
+                    (mt/user-http-request :rasta :post 400 "ee/metabot-tools/get-transform-python-library-details"
+                                          {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                          {:arguments {:path "nonexistent.py"}
+                                           :conversation_id conversation-id}))))
+          (testing "With superuser permissions"
+            (is (=? {:structured_output (select-keys lib1 [:source :path :created_at :updated_at])
+                     :conversation_id conversation-id}
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-python-library-details"
+                                          {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                          {:arguments {:path (:path lib1)}
+                                           :conversation_id conversation-id})))))
+        (finally
+          (when (seq saved-python-library)
+            (t2/insert! :model/PythonLibrary saved-python-library)))))))
+
+(deftest get-snippets-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)]
+      (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:content     "1"
+                                                          :name        "snippet_1"
+                                                          :description "great snippet 1"}
+                     :model/NativeQuerySnippet snippet-2 {:content     "2"
+                                                          :name        "snippet_2"}]
+        (testing "No snippets visible without data perms"
+          (is (=? {:structured_output []
+                   :conversation_id conversation-id}
+                  (-> (mt/with-no-data-perms-for-all-users!
+                        (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-snippets"
+                                              {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                              {:conversation_id conversation-id}))
+                      (update :structured_output (fn [output]
+                                                   (filter #(#{(:id snippet-1) (:id snippet-2)} (:id %))
+                                                           output)))))))
+        (testing "All snippets visible with full data perms"
+          (is (=? {:structured_output [(select-keys snippet-1 [:id :name :description])
+                                       (select-keys snippet-2 [:id :name :description])]
+                   :conversation_id conversation-id}
+                  (-> (mt/with-full-data-perms-for-all-users!
+                        (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-snippets"
+                                              {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                              {:conversation_id conversation-id}))
+                      (update :structured_output (fn [output]
+                                                   (filter #(#{(:id snippet-1) (:id snippet-2)} (:id %))
+                                                           output)))))))))))
+
+(deftest get-snippet-details-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)]
+      (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:content     "1"
+                                                          :name        "snippet_1"
+                                                          :description "great snippet 1"}
+                     :model/NativeQuerySnippet _         {:content     "2"
+                                                          :name        "snippet_2"}]
+        (testing "400 for invalid args"
+          (is (=? {:errors
+                   {:arguments {:snippet_id string?}},
+                   :specific-errors {:arguments {:snippet_id ["should be an integer, received: nil"]}}}
+                  (mt/user-http-request :rasta :post 400 "ee/metabot-tools/get-snippet-details"
+                                        {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                        {:arguments {:snippet_id nil}
+                                         :conversation_id conversation-id}))))
+        (testing "404 returned for non-existent snippet"
+          (is (= "Not found."
+                 (let [max-snippet-id (t2/select-one-fn :max-id [:model/NativeQuerySnippet [:%max.id :max-id]])]
+                   (mt/user-http-request :rasta :post 404 "ee/metabot-tools/get-snippet-details"
+                                         {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                         {:arguments {:snippet_id (inc max-snippet-id)}
+                                          :conversation_id conversation-id})))))
+        (testing "403 returned for missing data perms"
+          (is (= "You don't have permissions to do that."
+                 (mt/with-no-data-perms-for-all-users!
+                   (mt/user-http-request :rasta :post 403 "ee/metabot-tools/get-snippet-details"
+                                         {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                         {:arguments {:snippet_id (:id snippet-1)}
+                                          :conversation_id conversation-id})))))
+        (testing "Snippet details returned with sufficient data perms"
+          (is (=? {:structured_output (select-keys snippet-1 [:id :name :description :content])
+                   :conversation_id conversation-id}
+                  (mt/with-full-data-perms-for-all-users!
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-snippet-details"
+                                          {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                          {:arguments {:snippet_id (:id snippet-1)}
+                                           :conversation_id conversation-id})))))))))
+
+(deftest check-transform-dependencies-test
+  ;; This is just a quick sanity check for the API endpoint. The function powering this endpoint is tested more
+  ;; thoroughly in metabase-enterprise.metabot-v3.tools.dependencies-test.
+  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies}
+    (let [conversation-id (str (random-uuid))
+          rasta-ai-token (ai-session-token)
+          crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
+          people-query (lib/native-query (mt/metadata-provider) "SELECT * FROM people")
+          modified-source {:type "query" :query people-query}]
+      (metabot-v3.tools.dependencies-test/with-dependent-transforms! [transform1-id _]
+        (testing "400 for invalid args"
+          (is (=? {:errors
+                   {:arguments {:source string?}},
+                   :specific-errors {:arguments {:source ["missing required key, received: nil"]}}}
+                  (mt/user-http-request :rasta :post 400 "ee/metabot-tools/check-transform-dependencies"
+                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                        {:arguments {:transform_id 1}
+                                         :conversation_id conversation-id}))))
+        (testing "403 for insufficient permissions"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/metabot-tools/check-transform-dependencies"
+                                       {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
+                                       {:arguments {:transform_id transform1-id
+                                                    :source modified-source}
+                                        :conversation_id conversation-id}))))
+        (testing "404 returned for non-existent snippet"
+          (is (= "Not found."
+                 (let [max-transform-id (t2/select-one-fn :max-id [:model/Transform [:%max.id :max-id]])]
+                   (mt/user-http-request :rasta :post 404 "ee/metabot-tools/check-transform-dependencies"
+                                         {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                         {:arguments {:transform_id (inc max-transform-id)
+                                                      :source modified-source}
+                                          :conversation_id conversation-id})))))
+        (testing "Edits with broken dependencies"
+          (is (=? {:structured_output {:success false
+                                       :bad_question_count 0
+                                       :bad_questions nil
+                                       :bad_transform_count 1
+                                       :bad_transforms seq?}
+                   :conversation_id conversation-id}
+                  (mt/user-http-request :rasta :post 200 "ee/metabot-tools/check-transform-dependencies"
+                                        {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
+                                        {:arguments {:transform_id transform1-id
+                                                     :source modified-source}
+                                         :conversation_id conversation-id}))))))))

@@ -4,13 +4,13 @@
    [metabase-enterprise.documents.core :as documents]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -26,16 +26,39 @@
                               {:order-by [[:id :desc]]})]
     (= (:status review) "verified")))
 
+(def ^:private max-glossary-items
+  "Maximal number of items from glossary to include in Metabot's context."
+  100)
+
+(def ^:private glossary-order-column
+  "Column to order by when selecting glossary items for Metabot's context injection."
+  :updated_at)
+
+(defn- glossary-for-context
+  []
+  ;; Rather small glossary sizes are anticipated. Additional count is bearable.
+  (let [glossary-size (t2/count :model/Glossary)]
+    (when (> glossary-size max-glossary-items)
+      ;; If we are notified about the following warning we should reconsider current,
+      ;; context injection, approach to glossary integration into Metabot.
+      (log/warnf "Glossary size is larger than limit for context injection (%d > %d)."
+                 glossary-size max-glossary-items)))
+  (not-empty (t2/select-fn->fn :term :definition :model/Glossary
+                               {:order-by [[glossary-order-column :desc]]
+                                :limit max-glossary-items})))
+
 (defn get-current-user
   "Get information about the current user."
   []
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
                (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
-    {:structured-output {:id id
-                         :type :user
-                         :name (str first_name " " last_name)
-                         :email-address email}}
+    {:structured-output (merge {:id id
+                                :type :user
+                                :name (str first_name " " last_name)
+                                :email-address email}
+                               (when-some [glossary (glossary-for-context)]
+                                 {:glossary glossary}))}
     {:output "current user not found"}))
 
 (defn get-dashboard-details
@@ -68,7 +91,7 @@
   ([id] (metric-details id nil))
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
-     (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
+     (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
@@ -126,21 +149,24 @@
        (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
        (select-keys  [:id :type :name :description :default_time_dimension_field_id]))))
 
+(declare related-tables)
+
 (defn- table-details
   ([id] (table-details id nil))
-  ([id {:keys [metadata-provider field-values-fn with-fields? with-metrics?]
-        :or   {field-values-fn add-field-values
-               with-fields?    true
-               with-metrics?   true}
+  ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?]
+        :or   {field-values-fn      add-field-values
+               with-fields?         true
+               with-related-tables? true
+               with-metrics?        true}
         :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
-     (let [query-needed? (or with-fields? with-metrics?)
+     (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
            mp (when query-needed?
                 (or metadata-provider
-                    (lib.metadata.jvm/application-database-metadata-provider db-id)))
+                    (lib-be/application-database-metadata-provider db-id)))
            table-query (when query-needed?
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
@@ -148,7 +174,9 @@
                        field-values-fn
                        (map #(metabot-v3.tools.u/add-table-reference table-query %))))
            field-id-prefix (when with-fields?
-                             (metabot-v3.tools.u/table-field-id-prefix id))]
+                             (metabot-v3.tools.u/table-field-id-prefix id))
+           related-tables (when with-related-tables?
+                            (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
@@ -159,27 +187,43 @@
             :database_id db-id
             :database_schema (:schema base)}
            (m/assoc-some :description (:description base)
+                         :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))))))))
+
+(defn- related-tables
+  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key."
+  [query with-fields? field-values-fn]
+  (let [fk-fields (->> (lib/visible-columns query)
+                       (filter :fk-field-id))
+        related-table-ids (->> fk-fields
+                               (map :table-id)
+                               (into #{}))]
+    (when (seq related-table-ids)
+      (map #(table-details % {:with-fields? with-fields?
+                              :field-values-fn field-values-fn
+                              ;; Important! Only recurse one level
+                              :with-related-tables? false
+                              :with-metrics? false})
+           related-table-ids))))
 
 (defn- card-details
   "Get details for a card."
   ([id] (card-details id nil))
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
-     (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
-  ([base metadata-provider {:keys [field-values-fn with-fields? with-metrics?]
-                            :or   {field-values-fn add-field-values
-                                   with-fields?    true
-                                   with-metrics?   true}
+     (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
+  ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?]
+                            :or   {field-values-fn      add-field-values
+                                   with-fields?         true
+                                   with-related-tables? true
+                                   with-metrics?        true}
                             :as   options}]
    (let [id (:id base)
-         query-needed? (or with-fields? with-metrics?)
-         card-metadata (when query-needed?
-                         (lib.metadata/card metadata-provider id))
-         dataset-query (when query-needed?
-                         (get card-metadata :dataset-query))
+         card-metadata (lib.metadata/card metadata-provider id)
+         dataset-query (get card-metadata :dataset-query)
+         query-needed? (or with-fields? with-related-tables? with-metrics?)
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
          card-query (when query-needed?
@@ -188,31 +232,32 @@
                                                             (#{:query} (:type dataset-query)))
                                                      dataset-query
                                                      card-metadata)))
-         cols (when with-fields?
-                (->> (lib/visible-columns card-query)
-                     field-values-fn
-                     (map #(metabot-v3.tools.u/add-table-reference card-query %))))
+         returned-fields (when with-fields?
+                           (->> (lib/returned-columns card-query)
+                                field-values-fn))
+         related-tables (when with-related-tables?
+                          (related-tables card-query with-fields? field-values-fn))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
-          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
+          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
           :database_id (:database_id base)
-          :queryable-foreign-key-tables []
           :verified (verified-review? id "card")}
-
-         (m/assoc-some :description (:description base)
-                       :metrics (when with-metrics?
-                                  (not-empty (mapv #(convert-metric % metadata-provider options)
-                                                   (lib/available-metrics card-query)))))))))
+         (m/assoc-some
+          :description (:description base)
+          :related_tables related-tables
+          :metrics (when with-metrics?
+                     (not-empty (mapv #(convert-metric % metadata-provider options)
+                                      (lib/available-metrics card-query)))))))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
   from the database with ID `database-id` respecting `options`."
   [card-type database-id cards options]
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+  (let [mp (lib-be/application-database-metadata-provider database-id)
         detail-fn (case card-type
                     :metric metric-details
                     :model card-details)]
@@ -226,7 +271,7 @@
   ([metabot-id]
    (answer-sources metabot-id nil))
   ([metabot-id options]
-   (lib.metadata.jvm/with-metadata-provider-cache
+   (lib-be/with-metadata-provider-cache
      (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-id)
            {metrics :metric, models :model}
            (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
@@ -260,7 +305,7 @@
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
   [{:keys [model-id table-id] :as arguments}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (cond
@@ -290,7 +335,7 @@
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
   [{:keys [metric-id] :as arguments}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (if (int? metric-id)
@@ -303,7 +348,7 @@
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id] :as arguments}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (if (int? report-id)
@@ -331,23 +376,23 @@
     {:output "invalid document_id"}))
 
 (defn- execute-query
-  [query-id legacy-query]
-  (let [legacy-query (mbql.normalize/normalize legacy-query)
+  [query-id query-input]
+  (let [normalized-query (lib-be/normalize-query query-input)
         field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        database-id (:database legacy-query)
+        database-id (:database normalized-query)
         _ (api/read-check :model/Database database-id)
-        mp (lib.metadata.jvm/application-database-metadata-provider database-id)
-        query (lib/query mp legacy-query)
+        mp (lib-be/application-database-metadata-provider database-id)
+        query (lib/query mp normalized-query)
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     :query legacy-query
+     :query normalized-query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 field-id-prefix))
                            returned-cols)}))
 
 (defn get-query-details
-  "Get the details of a (legacy) query."
+  "Get the details of a query (supports both MBQL v4 and v5)."
   [{:keys [query]}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     {:structured-output (execute-query (u/generate-nano-id) query)}))

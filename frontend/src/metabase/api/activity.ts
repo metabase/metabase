@@ -14,6 +14,7 @@ import {
   TAG_TYPE_MAPPING,
   idTag,
   invalidateTags,
+  listTag,
   provideActivityItemListTags,
 } from "./tags";
 
@@ -70,6 +71,7 @@ export const activityApi = Api.injectEndpoints({
         }),
         invalidatesTags: (_, error, item) =>
           invalidateTags(error, [
+            listTag(TAG_TYPE_MAPPING[item.model]),
             idTag(TAG_TYPE_MAPPING[item.model], item.model_id),
           ]),
       },

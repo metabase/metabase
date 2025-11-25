@@ -1,14 +1,15 @@
 (ns metabase.lib.metric
   "A Metric is a special type of Card that you can do special metric stuff with. (Not sure exactly what said special
   stuff is TBH.)"
-  (:refer-clojure :exclude [select-keys])
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -18,7 +19,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys]]))
+   [metabase.util.performance :refer [select-keys not-empty]]))
 
 (defn- resolve-metric [query card-id]
   (when (pos-int? card-id)
@@ -27,10 +28,11 @@
 (mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
   (when dataset-query
-    (let [normalized-definition (cond-> dataset-query
-                                  (not (contains? dataset-query :lib/type))
-                                  ;; legacy; needs conversion
-                                  (-> mbql.normalize/normalize lib.convert/->pMBQL))]
+    (let [normalized-definition (case (lib.util/normalized-mbql-version dataset-query)
+                                  ;; TODO (Cam 10/7/25) -- not sure we'll ever see legacy queries here anymore since
+                                  ;; they get normalized to MBQL 5 coming out of the app DB
+                                  :mbql-version/legacy (-> dataset-query mbql.normalize/normalize lib.convert/->pMBQL)
+                                  :mbql-version/mbql5  (lib.normalize/normalize ::lib.schema/query dataset-query))]
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric

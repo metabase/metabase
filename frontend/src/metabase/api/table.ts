@@ -1,5 +1,5 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
-import { TableSchema } from "metabase/schema";
+import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
   ForeignKey,
   GetTableDataRequest,
@@ -74,6 +74,10 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/fks`,
       }),
       providesTags: [listTag("field")],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [ForeignKeySchema])),
+        ),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -151,6 +155,7 @@ export const {
   useListTablesQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
   useGetTableDataQuery,
   useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,

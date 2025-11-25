@@ -1,7 +1,7 @@
 (ns metabase.query-processor.util.transformations.nest-breakouts
   "TODO (Cam 8/7/25) -- this is a pure-MBQL-5 high-level query transformation, and almost certainly belongs in Lib
-  rather than in QP -- we should move it there."
-  (:refer-clojure :exclude [mapv select-keys some])
+  rather than in QP -- we should move it there. (This also applies to [[metabase.query-processor.util.nest-query]])."
+  (:refer-clojure :exclude [mapv select-keys some not-empty])
   (:require
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
@@ -14,7 +14,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys some]]))
+   [metabase.util.performance :refer [mapv select-keys some not-empty]]))
 
 (defn- stage-has-window-aggregation? [stage]
   (lib.util.match/match (:aggregation stage)
@@ -71,23 +71,23 @@
 
 (def ^:private granularity
   {:time-unbucketed 0
-   :minute 1
-   :minute-of-hour 2
-   :hour 3
-   :hour-of-day 4
-   :day 5
+   :minute          1
+   :minute-of-hour  2
+   :hour            3
+   :hour-of-day     4
+   :day             5
    :date-unbucketed 5
-   :day-of-week 6
-   :day-of-month 7
-   :day-of-year 8
-   :week 9
-   :week-of-year 10
-   :month 11
-   :month-of-year 12
-   :quarter 13
+   :day-of-week     6
+   :day-of-month    7
+   :day-of-year     8
+   :week            9
+   :week-of-year    10
+   :month           11
+   :month-of-year   12
+   :quarter         13
    :quarter-of-year 14
-   :year 15
-   :year-of-era 16})
+   :year            15
+   :year-of-era     16})
 
 (defn- original-temporal-unit
   [temporal-attributes]

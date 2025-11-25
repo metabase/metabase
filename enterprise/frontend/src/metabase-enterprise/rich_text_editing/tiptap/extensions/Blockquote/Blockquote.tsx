@@ -9,6 +9,7 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
@@ -19,6 +20,7 @@ import {
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -43,7 +45,7 @@ export const CustomBlockquote = Blockquote.extend({
   },
 });
 
-export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
+export const BlockquoteNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   const childTargetId = useSelector(getChildTargetId);
   const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
@@ -87,16 +89,19 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
         <NodeViewContent<"blockquote"> as="blockquote" />
       </NodeViewWrapper>
 
-      {document && rendered && (
-        <CommentsMenu
-          active={isOpen}
-          href={`/document/${document.id}/comments/${_id}`}
-          ref={refs.setFloating}
-          show={isOpen || hovered}
-          style={floatingStyles}
-          threads={threads}
-        />
-      )}
+      {document &&
+        rendered &&
+        isTopLevel({ editor, getPos }) &&
+        !isWithinIframe() && (
+          <CommentsMenu
+            active={isOpen}
+            href={`/document/${document.id}/comments/${_id}`}
+            ref={refs.setFloating}
+            show={isOpen || hovered}
+            style={floatingStyles}
+            threads={threads}
+          />
+        )}
     </>
   );
 };

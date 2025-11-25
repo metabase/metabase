@@ -7,16 +7,19 @@ import { useMetabotContext } from "metabase/metabot";
 import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
+  type MetabotUserChatMessage,
+  cancelInflightAgentRequests,
+  getActiveToolCalls,
   getAgentErrorMessages,
+  getDebugMode,
   getIsLongMetabotConversation,
   getIsProcessing,
-  getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
+  getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
   getProfileOverride,
-  getToolCalls,
   resetConversation as resetConversationAction,
   retryPrompt,
   setVisible as setVisibleAction,
@@ -36,9 +39,6 @@ export const useMetabotAgent = () => {
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
   >;
-  const lastAgentMessages = useSelector(
-    getLastAgentMessagesByType as any,
-  ) as ReturnType<typeof getLastAgentMessagesByType>;
 
   const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
     typeof getAgentErrorMessages
@@ -59,8 +59,12 @@ export const useMetabotAgent = () => {
     getMetabotRequestId as any,
   ) as ReturnType<typeof getMetabotRequestId>;
 
-  const toolCalls = useSelector(getToolCalls as any) as ReturnType<
-    typeof getToolCalls
+  const activeToolCalls = useSelector(getActiveToolCalls as any) as ReturnType<
+    typeof getActiveToolCalls
+  >;
+
+  const debugMode = useSelector(getDebugMode as any) as ReturnType<
+    typeof getDebugMode
   >;
 
   const setVisible = useCallback(
@@ -68,8 +72,12 @@ export const useMetabotAgent = () => {
     [dispatch],
   );
 
-  const profile = useSelector(getProfileOverride as any) as ReturnType<
+  const profileOverride = useSelector(getProfileOverride as any) as ReturnType<
     typeof getProfileOverride
+  >;
+
+  const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
+    typeof getMetabotReactionsState
   >;
 
   const resetConversation = useCallback(
@@ -88,18 +96,27 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string) => {
+    async (prompt: string | Omit<MetabotUserChatMessage, "id" | "role">) => {
       if (!visible) {
         setVisible(true);
       }
 
       const context = await getChatContext();
       const action = await dispatch(
-        submitInputAction({
-          message: prompt,
-          context,
-          metabot_id: metabotRequestId,
-        }),
+        submitInputAction(
+          typeof prompt === "string"
+            ? {
+                type: "text",
+                message: prompt,
+                context,
+                metabot_id: metabotRequestId,
+              }
+            : {
+                ...prompt,
+                context,
+                metabot_id: metabotRequestId,
+              },
+        ),
       );
 
       trackMetabotRequestSent();
@@ -137,6 +154,10 @@ export const useMetabotAgent = () => {
     [dispatch, getChatContext, metabotRequestId, prepareRetryIfUnsuccesful],
   );
 
+  const cancelRequest = useCallback(() => {
+    dispatch(cancelInflightAgentRequests());
+  }, [dispatch]);
+
   const startNewConversation = useCallback(
     async (message: string) => {
       await resetConversation();
@@ -157,7 +178,6 @@ export const useMetabotAgent = () => {
     metabotId,
     visible,
     messages,
-    lastAgentMessages,
     errorMessages,
     isLongConversation,
     resetConversation,
@@ -165,7 +185,10 @@ export const useMetabotAgent = () => {
     startNewConversation,
     submitInput,
     retryMessage,
-    toolCalls,
-    profile,
+    cancelRequest,
+    activeToolCalls,
+    debugMode,
+    profileOverride,
+    reactions,
   };
 };

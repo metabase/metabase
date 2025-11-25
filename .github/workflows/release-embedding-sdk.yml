@@ -254,8 +254,6 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "release-sdk"
 
       - name: Run unit tests
         run: yarn embedding-sdk:test-unit
@@ -277,8 +275,6 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "release-sdk"
 
       - name: Bump published npm package version
         # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
@@ -349,8 +345,9 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
+        # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
         run: |
-          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
+          gh pr edit --add-reviewer albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 

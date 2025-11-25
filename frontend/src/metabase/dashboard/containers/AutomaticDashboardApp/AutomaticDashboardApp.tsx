@@ -18,7 +18,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
-import { SetTitle } from "metabase/hoc/Title";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
@@ -39,6 +39,8 @@ type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 const AutomaticDashboardAppInner = () => {
   const { dashboard, parameters, isHeaderVisible, tabs } =
     useDashboardContext();
+
+  usePageTitle(dashboard?.name || "", { titleIndex: 1 });
 
   const dispatch = useDispatch();
 
@@ -94,12 +96,10 @@ const AutomaticDashboardAppInner = () => {
 
   return (
     <div
-      className={cx(CS.relative, "AutomaticDashboard", {
+      className={cx(CS.relative, S.Root, "AutomaticDashboard", {
         "AutomaticDashboard--withSidebar": hasSidebar,
       })}
     >
-      {dashboard && <SetTitle title={dashboard.name} />}
-
       {isHeaderVisible && (
         <div
           className={cx(CS.bgWhite, CS.borderBottom)}
@@ -169,8 +169,9 @@ const AutomaticDashboardAppInner = () => {
       )}
 
       <div
-        className={CS.relative}
-        style={{ paddingRight: hasSidebar ? SIDEBAR_W : undefined }}
+        className={cx(CS.relative, S.DashboardWrapper, {
+          [S.HasSidebar]: hasSidebar,
+        })}
       >
         <div className={cx(CS.wrapper, CS.pb4)}>
           {parameters && parameters.length > 0 && (

@@ -6,13 +6,13 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.walk :as lib.walk]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -157,23 +157,23 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn check-query-action-permissions*
-  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [{database-id :database, :as outer-query} :- [:map
-                                                [:database ::lib.schema.id/database]
-                                                [:type [:enum :query :native]]]]
+  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception. Takes
+  as [[metabase.actions.args/action-arg-map-schema]]."
+  [{database-id :database, :as query} :- ::lib.schema/query]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (query-perms/check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
-             outer-query
-             (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+             query
+             (query-perms/required-perms-for-query query :already-preprocessed? true)
              :throw-exceptions? false)
-    (check-block-permissions outer-query)))
+    (check-block-permissions query)))
 
-(defn check-query-action-permissions
+(mu/defn check-query-action-permissions :- ::qp.schema/qp
   "Middleware that check that the current user has permissions to run the current query action."
-  [qp]
-  (fn [query rff]
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query :- ::lib.schema/native-only-query
+          rff   :- ::qp.schema/rff]
     (check-query-action-permissions* query)
     (qp query rff)))
 

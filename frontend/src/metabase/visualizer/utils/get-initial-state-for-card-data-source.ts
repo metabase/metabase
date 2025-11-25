@@ -8,6 +8,7 @@ import {
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
+import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Card,
   Dataset,
@@ -82,10 +83,15 @@ function pickColumns(
   }
 
   if (isCartesianChart(display)) {
+    const tooltipColumns = (settings["graph.tooltip_columns"] || []).map(
+      getColumnNameFromKey,
+    );
+
     return originalColumns.filter((col) => {
       return (
         settings["graph.metrics"]?.includes(col.name) ||
-        settings["graph.dimensions"]?.includes(col.name)
+        settings["graph.dimensions"]?.includes(col.name) ||
+        tooltipColumns.includes(col.name)
       );
     });
   }
@@ -107,15 +113,9 @@ export function getInitialStateForCardDataSource(
       : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
-    settings: {
-      "card.title": card.name,
-    },
+    settings: {},
     datasetFallbacks: { [card.id]: dataset },
   };
-
-  if (card.description != null) {
-    state.settings["card.description"] = card.description;
-  }
 
   const dataSource = createDataSource("card", card.id, card.name);
 
@@ -226,12 +226,7 @@ export function getInitialStateForCardDataSource(
   state.settings = {
     ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
     ...Object.fromEntries(entries),
-    "card.title": card.name,
   };
-
-  if (card.description != null) {
-    state.settings["card.description"] = card.description;
-  }
 
   return state;
 }

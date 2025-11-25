@@ -1,0 +1,33 @@
+@keyframes expand {
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes shrink {
+  50% {
+    transform: scale(0.8);
+  }
+}
+
+.actionIconBookmarked {
+  color: var(--mb-color-brand);
+}
+
+.icon {
+  animation-duration: 0.3s;
+  animation-timing-function: linear;
+  animation-play-state: paused;
+}
+
+.iconAnimating {
+  animation-play-state: running;
+}
+
+.iconAnimatingBookmarked {
+  animation-name: expand;
+}
+
+.iconAnimatingUnbookmarked {
+  animation-name: shrink;
+}

@@ -1,8 +1,9 @@
 {:min-bb-version "1.12.208"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths          ["mage" "test" "bin/lint-migrations-file/src"]
- :deps           {org.babashka/json {:mvn/version "0.1.6"}
+ :paths          ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
+ :deps           {dev.weavejester/cljfmt {:mvn/version "0.15.3"}
+                  org.babashka/json {:mvn/version "0.1.6"}
                   metosin/malli     {:mvn/version "0.17.0"}
                   table/table       {:mvn/version "0.5.0"}
                   mvxcvi/puget      {:mvn/version "1.3.4"}}
@@ -81,6 +82,18 @@
    :examples [["./bin/mage check"]]
    :requires [[mage.check]]
    :task     (task! (mage.check/check (:arguments parsed)))}
+
+  codespell
+  {:doc      "Check for misspellings in the source code."
+   :examples [["./bin/mage codespell"]]
+   :requires [[mage.codespell]]
+   :task     (task! (mage.codespell/codespell (:arguments parsed)))}
+
+  codespell-interactive
+  {:doc      "Check for misspellings in the source code, and interactively prompt to fix them."
+   :examples [["./bin/mage codespell-interactive"]]
+   :requires [[mage.codespell]]
+   :task     (task! (mage.codespell/codespell-interactive (:arguments parsed)))}
 
   start-maildev
   {:doc      "Start Maildev"
@@ -190,6 +203,20 @@
                            "(do ((requiring-resolve 'dev.reload/reload!)) (find-and-run-tests-repl {:only %s}))"
                            test)]
                  (nrepl-eval "mb.hawk.core" (str code) (:port options)))}
+
+  affected-modules
+  {:doc      "Prints information about which backend modules have changes compared to a Git ref e.g. `master`"
+   :examples [["./bin/mage affected-modules master"]
+              ["./bin/mage affected-modules"]]
+   :requires [[mage.modules]]
+   :task     (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
+
+  can-skip-driver-tests
+  {:doc      "Returns zero (success) if we can skip driver tests based on changes related to a Git ref e.g. `master`"
+   :examples [["./bin/mage can-skip-driver-tests master"]
+              ["./bin/mage can-skip-driver-tests"]]
+   :requires [[mage.modules]]
+   :task     (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
   ls {:doc      "List all mage public and private tasks"
       :examples [["./bin/mage ls" "List all tasks"]]

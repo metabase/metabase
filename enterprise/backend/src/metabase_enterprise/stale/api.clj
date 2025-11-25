@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.api :as api.collection]
+   [metabase.collections-rest.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
@@ -87,7 +87,7 @@
        (map (fn [card]
               (-> card
                   (assoc :model (if (queries/model? card) "dataset" "card"))
-                  (assoc :fully_parameterized (api.collection/fully-parameterized-query? card))
+                  (assoc :fully_parameterized (queries/fully-parameterized? card))
                   (dissoc :dataset_query))))))
 
 (defn- annotate-dashboard-with-collection-info
@@ -119,6 +119,9 @@
        annotate-dashboard-with-collection-info
        present-collections))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get ["/:id" :id #"(?:\d+)|(?:root)"]
   "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
   - `before_date` - only return entities that were last edited before this date (default: 6 months ago)

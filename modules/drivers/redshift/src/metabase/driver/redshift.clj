@@ -47,7 +47,10 @@
                               :database-routing               true
                               :metadata/table-existence-check true
                               :transforms/python              true
-                              :transforms/table               true}]
+                              :transforms/table               true
+                              :describe-default-expr          false
+                              :describe-is-generated          false
+                              :describe-is-nullable           false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -91,9 +94,9 @@
      "  where c.relnamespace = n.oid"
      "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
      "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
-     "    and pg_catalog.has_schema_privilege(n.nspname, 'USAGE')"
-     "    and (pg_catalog.has_table_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT')"
-     "         or pg_catalog.has_any_column_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT'))"
+     "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
+     "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
+     "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
      "union all"
      "select"
      "  tablename as name,"
@@ -465,7 +468,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db dbname], :as opts}]
   (when (and db dbname)
-    (throw (ex-info "Redshift connection details cannot contain both 'db' and 'dbname' options" {})))
+    (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"

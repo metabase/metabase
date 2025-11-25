@@ -7,15 +7,16 @@ import type {
   EmbeddingParametersValues,
 } from "./types";
 
-async function getSignedToken(
+export async function getSignedToken(
   resourceType: EmbedResourceType,
-  resourceId: EmbedResource["id"],
+  rawResourceId: EmbedResource["id"],
   params: EmbeddingParametersValues = {},
   secretKey: string,
   previewEmbeddingParams: EmbeddingParametersValues,
 ) {
+  const normalizedResourceId = parseInt(rawResourceId as string, 10);
   const unsignedToken: Record<string, any> = {
-    resource: { [resourceType]: resourceId },
+    resource: { [resourceType]: normalizedResourceId },
     params: params,
     iat: Math.round(new Date().getTime() / 1000),
   };

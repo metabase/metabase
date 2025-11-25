@@ -916,7 +916,8 @@ describe("issue 7884", () => {
             cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
               ...sourceQuestion,
               dataset_query: {
-                ...sourceQuestion.dataset_query,
+                type: "native",
+                database: SAMPLE_DB_ID,
                 native: newSourceQuestionDetails.native,
               },
             });
@@ -1275,7 +1276,10 @@ describe("issue 52339", () => {
     });
 
     H.editDashboard();
-    H.findDashCardAction(H.getDashboardCard(0), "Click behavior").click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Click behavior")
+      .click();
 
     H.sidebar().within(() => {
       cy.findByText("Go to a custom destination").click();
@@ -1545,5 +1549,54 @@ describe("issue 63745", () => {
       const map = new Map(chunk(cellsFlat, 2));
       expect(map.get("User ID")).to.eq("1");
     });
+  });
+});
+
+describe("issue 56094", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to switch between automatic pivot table and usual table visualization (metabase#56094)", () => {
+    H.visitQuestionAdhoc({
+      name: "56094",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+
+          limit: 20,
+        },
+      },
+    });
+
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
+
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+
+    H.queryBuilderFooterDisplayToggle().should("exist");
   });
 });

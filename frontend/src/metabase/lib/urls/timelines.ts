@@ -1,6 +1,7 @@
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 import { collection as getCollectionUrl } from "./collections";
+import type { UrlableModel } from "./modelToUrl";
 
 export function timelinesInCollection(collection?: Collection) {
   const collectionUrl = getCollectionUrl(collection);
@@ -65,4 +66,8 @@ export function deleteEventInCollection(
 ) {
   const timelineUrl = timelineInCollection(timeline);
   return `${timelineUrl}/events/${event.id}/delete`;
+}
+
+export function timeline(timeline: UrlableModel) {
+  return `/collection/${timeline.collection_id}/timelines/${timeline.id}`;
 }

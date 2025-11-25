@@ -1,18 +1,17 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
-  {:clj-kondo/config '{:linters
-                       ;; allowing `with-temp` here for now since perms is mostly still app-DB based.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn])
@@ -246,7 +245,7 @@
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
           (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
-          (let [query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+          (let [query (lib-be/normalize-query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2}))
                 check! (fn [query]
                          (binding [api/*current-user-id* (mt/user->id :rasta)]
                            (qp.store/with-metadata-provider (mt/id)

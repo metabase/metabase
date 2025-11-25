@@ -1,11 +1,15 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import type {
   Database,
   DatabaseId,
+  DraftTransformSource,
+  Transform,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
@@ -120,4 +124,72 @@ export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
     default:
       return undefined;
   }
+}
+
+export function isTransformRunning(transform: Transform) {
+  const lastRun = transform.last_run;
+  return lastRun?.status === "started";
+}
+
+export function isTransformCanceling(transform: Transform) {
+  const lastRun = transform.last_run;
+  return lastRun?.status === "canceling";
+}
+
+export function isTransformSyncing(transform: Transform) {
+  const lastRun = transform.last_run;
+
+  // If the last run succeeded but there is no table yet, wait for the sync to
+  // finish. If the transform is changed until the sync finishes, stop polling,
+  // because the table could be already deleted.
+  if (
+    transform.table == null &&
+    lastRun?.status === "succeeded" &&
+    lastRun?.end_time != null
+  ) {
+    const endedAt = parseTimestamp(lastRun.end_time);
+    const updatedAt = parseTimestamp(transform.updated_at);
+    return endedAt.isAfter(updatedAt);
+  }
+
+  return false;
+}
+
+export function isSameSource(
+  source1: DraftTransformSource,
+  source2: DraftTransformSource,
+) {
+  if (source1.type === "query" && source2.type === "query") {
+    return Lib.areLegacyQueriesEqual(source1.query, source2.query);
+  }
+  if (source1.type === "python" && source2.type === "python") {
+    return _.isEqual(source1, source2);
+  }
+  return false;
+}
+
+export function isNotDraftSource(
+  source: DraftTransformSource,
+): source is TransformSource {
+  return source.type !== "python" || source["source-database"] != null;
+}
+
+export type ValidationResult = {
+  isValid: boolean;
+  errorMessage?: string;
+};
+
+export function getValidationResult(query: Lib.Query): ValidationResult {
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (isNative) {
+    const tags = Object.values(Lib.templateTags(query));
+    if (tags.some((t) => t.type !== "card" && t.type !== "snippet")) {
+      return {
+        isValid: false,
+        errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
+      };
+    }
+  }
+
+  return { isValid: Lib.canSave(query, "question") };
 }

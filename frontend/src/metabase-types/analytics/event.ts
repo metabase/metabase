@@ -3,7 +3,7 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
-import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModel/types";
+import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModelV1/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
@@ -201,7 +201,8 @@ export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
   | "exploration"
-  | "browser";
+  | "browser"
+  | "metabot";
 
 export type EmbedWizardOpenedEvent = ValidateEvent<{
   event: "embed_wizard_opened";
@@ -260,19 +261,16 @@ export type ConnectionStringParsedFailedEvent = ValidateEvent<{
 
 export type TransformTriggerManualRunEvent = ValidateEvent<{
   event: "transform_trigger_manual_run";
-  triggered_from: "transform-page";
   target_id: TransformId;
 }>;
 
 export type TransformJobTriggerManualRunEvent = ValidateEvent<{
   event: "transform_job_trigger_manual_run";
-  triggered_from: "job-page";
   target_id: TransformId;
 }>;
 
 export type TransformCreateEvent = ValidateEvent<{
   event: "transform_create";
-  triggered_from: "transform-page-create-menu";
   event_detail: "query" | "native" | "python" | "saved-question";
 }>;
 
@@ -313,6 +311,11 @@ export type DocumentAskMetabotEvent = ValidateEvent<{
 
 export type DocumentPrintEvent = ValidateEvent<{
   event: "document_print";
+  target_id: number | null;
+}>;
+
+export type DocumentAddSupportingTextEvent = ValidateEvent<{
+  event: "document_add_supporting_text";
   target_id: number | null;
 }>;
 
@@ -371,7 +374,7 @@ export type TableEditingEvent =
 export type MetabotChatOpenedEvent = ValidateEvent<{
   event: "metabot_chat_opened";
   triggered_from:
-    | "search"
+    | "header"
     | "command_palette"
     | "keyboard_shortcut"
     | "native_editor";
@@ -451,6 +454,46 @@ export type ClickActionPerformedEvent = ValidateEvent<{
   triggered_from: ClickActionSection;
 }>;
 
+export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
+  event: "remote_sync_branch_switched";
+  triggered_from: "sidebar" | "admin-settings";
+}>;
+
+export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
+  event: "remote_sync_branch_created";
+  triggered_from: "branch-picker" | "conflict-modal";
+}>;
+
+export type RemoteSyncPullChangesEvent = ValidateEvent<{
+  event: "remote_sync_pull_changes";
+  triggered_from: "sidebar" | "admin-settings";
+  event_detail?: "force";
+}>;
+
+export type RemoteSyncPushChangesEvent = ValidateEvent<{
+  event: "remote_sync_push_changes";
+  triggered_from: "sidebar" | "conflict-modal";
+  event_detail?: "force";
+}>;
+
+export type RemoteSyncSettingsChangedEvent = ValidateEvent<{
+  event: "remote_sync_settings_changed";
+  triggered_from: "admin-settings";
+}>;
+
+export type RemoteSyncDeactivatedEvent = ValidateEvent<{
+  event: "remote_sync_deactivated";
+  triggered_from: "admin-settings";
+}>;
+
+export type RemoteSyncEvent =
+  | RemoteSyncBranchSwitchedEvent
+  | RemoteSyncBranchCreatedEvent
+  | RemoteSyncPullChangesEvent
+  | RemoteSyncPushChangesEvent
+  | RemoteSyncSettingsChangedEvent
+  | RemoteSyncDeactivatedEvent;
+
 export type BookmarkEvent =
   | BookmarkQuestionEvent
   | BookmarkModelEvent
@@ -496,6 +539,7 @@ export type SimpleEvent =
   | TransformCreateEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
+  | DocumentAddSupportingTextEvent
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
@@ -508,4 +552,5 @@ export type SimpleEvent =
   | LearnAboutDataClickedEvent
   | MetadataEditEvent
   | BookmarkEvent
+  | RemoteSyncEvent
   | ClickActionPerformedEvent;

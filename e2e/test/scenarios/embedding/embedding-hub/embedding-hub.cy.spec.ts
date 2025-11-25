@@ -37,7 +37,7 @@ describe("scenarios - embedding hub", () => {
           "be.visible",
         );
         // Click on the first available table
-        cy.get("[data-testid='picker-item']").first().click();
+        H.entityPickerModalItem(3, "Accounts").click();
       });
 
       cy.log("Should navigate to auto dashboard creation");
@@ -154,7 +154,11 @@ describe("scenarios - embedding hub", () => {
         .findByText("Get embed snippet")
         .click();
 
-      cy.url().should("include", "/embed-js?auth_method=user_session");
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Select your embed experience").should("be.visible");
+        });
     });
 
     it("Embed in production step should be locked until JWT is enabled", () => {

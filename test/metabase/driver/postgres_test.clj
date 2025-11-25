@@ -30,9 +30,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -46,9 +47,11 @@
    [metabase.util.log :as log]
    [metabase.warehouses.provider-detection :as provider-detection]
    [next.jdbc :as next.jdbc]
+   [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,22 +62,7 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (thunk))))
-
-(deftest ^:parallel interval-test
-  (is (= ["INTERVAL '2 day'"]
-         (sql/format-expr [::postgres/interval 2 :day])))
-  (is (= ["INTERVAL '-2.5 year'"]
-         (sql/format-expr [::postgres/interval -2.5 :year])))
-  (are [amount unit msg] (thrown-with-msg?
-                          AssertionError
-                          msg
-                          (sql/format-expr [::postgres/interval amount unit]))
-    "2"  :day  #"\QAssert failed: (number? amount)\E"
-    :day 2     #"\QAssert failed: (number? amount)\E"
-    2    "day" #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
-    2    2     #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
-    2    :can  #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"))
+                        (mt/with-test-user :rasta (thunk)))))
 
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
@@ -1055,7 +1043,7 @@
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
 
-;; API tests are in [[metabase.actions.api-test]]
+;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
     (is (=? {:type :metabase.actions.error/violate-not-null-constraint,
@@ -1354,10 +1342,10 @@
                                   (-> {:query         (str "SELECT * FROM json_table "
                                                            "WHERE json_val::jsonb ? 'a' "
                                                            "AND json_val::jsonb ->> 'a' = {{val}}")
-                                       :template-tags {:val
+                                       :template-tags {"val"
                                                        {:name         "val"
-                                                        :display_name "Val"
-                                                        :type         "text"}}}
+                                                        :display-name "Val"
+                                                        :type         :text}}}
                                       mt/native-query
                                       (assoc :parameters
                                              [{:type   "number/="
@@ -1896,3 +1884,98 @@
       (doseq [[provider host] tests]
         (let [database {:details {:host host} :engine :postgres}]
           (is (= provider (provider-detection/detect-provider-from-database database))))))))
+
+(deftest ^:parallel complex-types-in-notification-payload
+  (mt/test-driver :postgres
+    (testing "we handle complex types in notifications"
+      (let [sql "SELECT
+                    i AS id,
+                    'User_' || i AS username,
+                    -- JSON types
+                    ('{\"userId\": ' || i || ', \"score\": ' || (i % 1000) || ', \"active\": ' || (i % 2 = 0)::text || '}')::jsonb AS settings,
+                    -- Arrays
+                    ARRAY['tag' || (i % 10), 'category' || (i % 5)]::text[] AS tags,
+                    ARRAY[i, i*2, i*3]::integer[] AS numbers,
+                    -- UUID
+                    '7e3cd49d-bfe1-4620-83dd-0c163719175c'::uuid AS uuid,
+                    -- Network
+                    ('192.168.' || (i % 255) || '.' || ((i*7) % 255))::inet AS ip,
+                    -- Geometric
+                    point(i % 180 - 90, i % 360 - 180) AS coordinates,
+                    circle(point(i % 100, i % 100), 50) AS area,
+                    -- Text search
+                    to_tsvector('english', 'Content for row ' || i) AS search_data,
+                    -- Binary
+                    decode(md5(i::text), 'hex') AS hash,
+                    -- Range types
+                    int4range(i, i + 100) AS value_range,
+                    -- Money
+                    ((RANDOM() * 1000)::numeric(10,2))::money AS price,
+                    -- Standard
+                    NOW() - ((i % 365) || ' days')::interval AS created_at
+               FROM generate_series(1, 5000) AS i;"
+            results (qp/process-query (mt/native-query {:query sql})
+                                      (temp-storage/notification-rff
+                                       5000 {:context 'complex-types-in-notification-payload}))]
+        (is (integer? (:data.rows-file-size results)))
+        (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
+        (is (=? [1
+                 "User_1"
+                 "{\"score\": 1, \"active\": false, \"userId\": 1}"
+                 ["tag1" "category1"]
+                 [1 2 3]
+                 ;; match on type
+                 uuid?
+                 "192.168.1.7"
+                 "(-89.0,-179.0)"
+                 "<(1.0,1.0),50.0>"
+                 "'1':4 'content':1 'row':3"
+                 "\\xc4ca4238a0b923820dcc509a6f75849b"
+                 "[1,101)"
+                 ;; match on type
+                 decimal?
+                 ;; we don't have an easy way to recognize a datetime string. assuming if it's a string and query
+                 ;; doesnt error then it worked
+                 string?]
+                (-> results :data :rows deref first)))))))
+
+(defn- hex->bytes [hex]
+  (->> (partition 2 hex)
+       (map #(apply str %))
+       (map #(Integer/parseInt % 16))
+       (map unchecked-byte)
+       byte-array))
+
+(deftest bytea-column-not-truncated-test
+  (testing "fix for #30671"
+    (mt/test-driver :postgres
+      (mt/dataset (mt/dataset-definition
+                   "bytea_dataset"
+                   [["bytea_table"
+                     [{:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                     [[(hex->bytes "900000000000810074123E9DB008AB5C")]
+                      [(hex->bytes "900000000000475000DE4EC0C0A920AB")]]]])
+        (let [mp (mt/metadata-provider)]
+          (is (= [[1 "\\x900000000000810074123e9db008ab5c"]
+                  [2 "\\x900000000000475000de4ec0c0a920ab"]]
+                 (->> (lib.metadata/table mp (mt/id :bytea_table))
+                      (lib/query mp)
+                      (qp/process-query)
+                      (mt/rows)))))))))
+
+(deftest pgobject-freeze-thaw-test
+  (letfn [(make-pgobject [type value]
+            (doto (PGobject.) (.setType type) (.setValue value)))
+          (test-pgobject-caching [obj]
+            (is (= obj (-> obj nippy/freeze nippy/thaw))))]
+    (testing "Simple PGobject instances can be frozen and thawed"
+      (test-pgobject-caching (make-pgobject "foo_type" "abc_val")))
+    (testing "PGobjects in an array can be frozen and thawed"
+      (let [pg-obj-1 (make-pgobject "foo_type" "abc_val")
+            pg-obj-2 (make-pgobject "foo_type" "xyz_val")
+            pg-obj-arr [pg-obj-1 pg-obj-2]]
+        (test-pgobject-caching pg-obj-arr)))
+    (testing "PGobjects in a map can be frozen and thawed"
+      (let [pg-obj (make-pgobject "foo_type" "abc_val")
+            pg-obj-map {:data [pg-obj] :metadata {:type "test"}}]
+        (test-pgobject-caching pg-obj-map)))))

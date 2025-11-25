@@ -26,6 +26,8 @@ export interface EmbedModalContentProps {
   onDeletePublicLink: () => void;
   getPublicUrl: (publicUuid: string, extension?: ExportFormatType) => string;
 
+  onClose: () => void;
+
   className?: string;
 }
 
@@ -43,6 +45,7 @@ export const EmbedModalContent = (
     onCreatePublicLink,
     onDeletePublicLink,
     getPublicUrl,
+    onClose,
   } = props;
 
   if (embedType == null) {
@@ -54,6 +57,7 @@ export const EmbedModalContent = (
         onDeletePublicLink={onDeletePublicLink}
         getPublicUrl={getPublicUrl}
         goToNextStep={goToNextStep}
+        closeModal={onClose}
       />
     );
   }

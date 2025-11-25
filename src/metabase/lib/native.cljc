@@ -1,15 +1,17 @@
 (ns metabase.lib.native
   "Functions for working with native queries."
-  (:refer-clojure :exclude [some select-keys mapv every?])
+  (:refer-clojure :exclude [some select-keys mapv every? empty? not-empty])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.parameters.parse :as lib.params.parse]
+   [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -17,11 +19,12 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some select-keys mapv every?]]))
+   [metabase.util.performance :refer [every? mapv select-keys some empty? not-empty]]))
 
 ;; Template Tags: Variables
 
@@ -290,21 +293,38 @@
             :template-tags (extract-template-tags query inner-query existing-tags)))))
 
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
-;;; `with-replaced-template-tags`
+;;; `with-replaced-template-tags`. It only replaces tags you specify rather then completely setting a new list
 (mu/defn with-template-tags :- ::lib.schema/query
   "Updates the native query's template tags."
-  [query :- ::lib.schema/query
-   tags  :- ::lib.schema.template-tag/template-tag-map]
-  (lib.util/update-query-stage
-   query 0
-   (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query stage)
-     (let [valid-tags (keys existing-tags)]
-       (assoc stage :template-tags
-              (merge existing-tags (select-keys tags valid-tags)))))))
+  [query        :- ::lib.schema/query
+   updated-tags :- ::lib.schema.template-tag/template-tag-map]
+  (letfn [(update-template-tags [existing-tags]
+            ;; the way we do this is really weird, but it's important that we use the order of the keys in
+            ;; `updated-tags` See
+            ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759975007383889?thread_ts=1759289751.539169&cid=C0645JP1W81
+            ;;
+            ;; first, filter out the tags in `updated-tags` not in existing tags, preserving the original order.
+            (let [tags (reduce-kv
+                        (fn [m k v]
+                          (cond-> m
+                            (contains? existing-tags k) (assoc k v)))
+                        {}
+                        updated-tags)]
+              ;; merge in old values that weren't in the `updated-tags` map
+              (reduce-kv
+               (fn [m k v]
+                 (cond-> m
+                   (not (contains? m k)) (assoc k v)))
+               tags
+               existing-tags)))
+          (update-stage [stage]
+            (assert-native-query stage)
+            (update stage :template-tags update-template-tags))]
+    (lib.util/update-query-stage query 0 update-stage)))
 
-(mu/defn raw-native-query :- ::common/non-blank-string
-  "Returns the native query string"
+(mu/defn raw-native-query :- some?
+  "Returns the native query. This is a SQL string for SQL-based drivers; for other drivers like MongoDB it might be a
+  Clojure map."
   [query :- ::lib.schema/query]
   (:native (lib.util/query-stage query 0)))
 
@@ -342,7 +362,7 @@
 
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
-   This is only filled in by [[metabase.warehouses.api/add-native-perms-info]]
+   This is only filled in by [[metabase.warehouses-rest.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
   (assert-native-query (lib.util/query-stage query 0))
@@ -367,7 +387,7 @@
   (:engine (lib.metadata/database query)))
 
 (defn- get-parameter-value
-  [tag-name {:keys [id dimension], param-type :type}]
+  [query tag-name {:keys [id dimension], param-type :type}]
   ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
   ;; value so that the query will compile.
   (case param-type
@@ -387,13 +407,20 @@
                     :type   :boolean/=,
                     :value  [false],
                     :target ["variable" ["template-tag" tag-name]]}
-    :dimension     (merge {:id     id,
-                           :type   :string/=,
-                           :value  ["foo"],
-                           :target ["dimension" ["template-tag" tag-name]]}
-                          (when (isa? (-> dimension lib.options/options :effective-type) :type/Number)
-                            {:type   :number/=,
-                             :value  ["0"]}))
+    :dimension     (let [effective-type (->> dimension
+                                             lib.ref/field-ref-id
+                                             (lib.metadata/field query)
+                                             :effective-type)]
+                     (merge {:id     id,
+                             :type   :string/=,
+                             :value  ["foo"],
+                             :target ["dimension" ["template-tag" tag-name]]}
+                            (when (isa? effective-type :type/Number)
+                              {:type   :number/=,
+                               :value  ["0"]})
+                            (when (isa? effective-type :type/HasDate)
+                              {:type  :date/single
+                               :value "2025-01-01"})))
     :temporal-unit {:id     id,
                     :type   :temporal-unit,
                     :value  "week",
@@ -411,8 +438,57 @@
         new-parameters (into []
                              (keep (fn [[tag-name {:keys [id] :as tag}]]
                                      (or (params-by-id id)
-                                         (get-parameter-value tag-name tag))))
+                                         (get-parameter-value query tag-name tag))))
 
                              ttags)]
     (cond-> query
       (seq new-parameters) (assoc :parameters new-parameters))))
+
+(mu/defn- fully-parameterized-text?
+  "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
+  described by `template-tags` (usually the template tags of a native query).
+
+  The rules to consider a piece of text fully parameterized is as follows:
+
+  1. All parameters not in an optional block are field-filters or snippets or have a default value.
+  2. All required parameters have a default value.
+
+  The first rule is absolutely necessary, as queries violating it cannot be executed without
+  externally supplied parameter values. The second rule is more controversial, as field-filters
+  outside of optional blocks ([[ ... ]]) don't prevent the query from being executed without
+  external parameter values (neither do parameters in optional blocks). The rule has been added
+  nonetheless, because marking a parameter as required is something the user does intentionally
+  and queries that are technically executable without parameters can be unacceptably slow
+  without the necessary constraints. (Marking parameters in optional blocks as required doesn't
+  seem to be useful any way, but if the user said it is required, we honor this flag.)"
+  [text              :- :string
+   template-tags-map :- ::lib.schema.template-tag/template-tag-map]
+  (try
+    (let [obligatory-params (into #{}
+                                  (comp (filter lib.params.parse.types/param?)
+                                        (map :k))
+                                  (lib.params.parse/parse text))]
+      (and (every? #(or (#{:dimension :snippet :card} (:type %))
+                        (:default %))
+                   (map template-tags-map obligatory-params))
+           (every? #(or (not (:required %))
+                        (:default %))
+                   (vals template-tags-map))))
+    (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
+      ;; true so that we still can try to generate a preview for the query and display an error.
+      false)))
+
+;;; TODO (Cam 10/3/25) -- this needs a much better docstring
+(mu/defn fully-parameterized-query? :- boolean?
+  "Given a query, returns `true` if its query is fully parameterized."
+  [query :- ::lib.schema/query]
+  (let [raw-native-query-string (when (lib.schema/native-only-query? query)
+                                  (let [query (raw-native-query query)]
+                                    (when (string? query)
+                                      query)))
+        template-tags-map       (when raw-native-query-string
+                                  (not-empty (lib.walk.util/all-template-tags-map query)))]
+    (if (and template-tags-map raw-native-query-string)
+      (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
+      true)))

@@ -47,7 +47,6 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {
@@ -155,7 +154,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     width,
     isPivoted = false,
-    isNightMode,
     question,
     clicked,
     hasMetadataPopovers = true,
@@ -170,8 +168,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isRawTable,
     isEmbeddingSdk,
     scrollToLastColumn,
-    token,
-    uuid,
     getColumnTitle,
     renderTableHeader,
     visualizationIsClickable,
@@ -677,20 +673,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     zoomedRowIndex,
   ]);
 
-  const backgroundColor = useMemo(() => {
-    if (!isNightMode) {
-      return "transparent";
-    }
-
-    const isPublicOrStaticEmbedding = token != null || uuid != null;
-    return isPublicOrStaticEmbedding
-      ? "var(--mb-color-bg-black)"
-      : "var(--mb-color-bg-night)";
-  }, [isNightMode, token, uuid]);
-
   const dataGridTheme: DataGridTheme = useMemo(
-    () => tableThemeToDataGridTheme(tableTheme, backgroundColor),
-    [tableTheme, backgroundColor],
+    () => tableThemeToDataGridTheme(tableTheme),
+    [tableTheme],
   );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
@@ -800,13 +785,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   return (
     <div
       ref={ref}
-      className={cx(
-        S.root,
-        DashboardS.fullscreenNormalText,
-        DashboardS.fullscreenNightText,
-        EmbedFrameS.fullscreenNightText,
-        className,
-      )}
+      className={cx(S.root, DashboardS.fullscreenNormalText, className)}
     >
       <DataGrid
         {...tableProps}

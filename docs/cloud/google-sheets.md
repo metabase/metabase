@@ -34,7 +34,7 @@ Here's how to set it up:
 5. Give the service account **Viewer** permissions. Metabase will only have access to this folder or sheet; it won't have access to any other files in your Google Drive. If you select folder, Metabase will also sync any sheets it finds in any subfolders.
 6. Click **Send** to share the folder with the Metabase service account.
 7. Copy the sharing link for the folder or sheet.
-8. Return to Metabase and paste the sharing link into the field that asks for "the sharing link for this folder/file".
+8. Return to Metabase and paste the sharing link into "the sharing link for this folder/file" field.
 
 **If you synced a Google Drive folder**, Metabase will sync with the Google Drive folder (and its subfolders) and import all Google Sheets, creating a new table in your Metabase Cloud Storage database for each sheet. For sheets with multiple tabs, Metabase will create a table for each tab. Metabase will only sync Google Sheets; it'll ignore other file types in the folder. After the initial sync, Metabase will sync every 15 minutes.
 

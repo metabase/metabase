@@ -38,7 +38,7 @@ const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
 export const cardApi = Api.injectEndpoints({
   endpoints: (builder) => {
-    const updateCardPropertyMutation = <
+    const updateCardPropertiesMutation = <
       PropertyKey extends keyof UpdateCardRequest,
     >() =>
       builder.mutation<Card, UpdateCardKeyRequest<PropertyKey>>({
@@ -163,6 +163,7 @@ export const cardApi = Api.injectEndpoints({
             idTag("card", payload.id),
             idTag("table", `card__${payload.id}`),
             listTag("revision"),
+            listTag("table"), // table listings include information about published models
           ];
 
           if (payload.dashboard_id != null) {
@@ -291,10 +292,12 @@ export const cardApi = Api.injectEndpoints({
         invalidatesTags: (_, error) =>
           invalidateTags(error, [listTag("public-card")]),
       }),
-      updateCardEnableEmbedding:
-        updateCardPropertyMutation<"enable_embedding">(),
-      updateCardEmbeddingParams:
-        updateCardPropertyMutation<"embedding_params">(),
+      updateCardEnableEmbedding: updateCardPropertiesMutation<
+        "enable_embedding" | "embedding_type"
+      >(),
+      updateCardEmbeddingParams: updateCardPropertiesMutation<
+        "embedding_params" | "embedding_type"
+      >(),
       getCardDashboards: builder.query<
         { id: DashboardId; name: string }[],
         Pick<Card, "id">

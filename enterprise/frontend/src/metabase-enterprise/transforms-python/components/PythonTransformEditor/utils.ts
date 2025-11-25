@@ -7,12 +7,11 @@ import { useExecutePythonMutation } from "metabase-enterprise/api/transform-pyth
 import type {
   ExecutePythonTransformResponse,
   PythonTransformSource,
+  PythonTransformSourceDraft,
   PythonTransformTableAliases,
   Table,
   TableId,
 } from "metabase-types/api";
-
-import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
 export function updateTransformSignature(
   script: string,
@@ -157,9 +156,8 @@ export type ExecutionResult = {
 };
 
 type TestPythonScriptState = {
-  isRunning: boolean;
-  isDirty: boolean;
   executionResult: ExecutionResult | null;
+  isRunning: boolean;
   run: () => void;
   cancel: () => void;
 };
@@ -167,13 +165,10 @@ type TestPythonScriptState = {
 export function useTestPythonTransform(
   source: PythonTransformSourceDraft,
 ): TestPythonScriptState {
-  const [executePython, { isLoading: isRunning, originalArgs }] =
-    useExecutePythonMutation();
+  const [executePython, { isLoading: isRunning }] = useExecutePythonMutation();
   const abort = useRef<(() => void) | null>(null);
   const [executionResult, setData] =
     useState<ExecutePythonTransformResponse | null>(null);
-
-  const isDirty = originalArgs?.code !== source.body;
 
   const run = async () => {
     if (source["source-database"] === undefined) {
@@ -206,11 +201,10 @@ export function useTestPythonTransform(
   };
 
   return {
-    isRunning,
-    isDirty,
-    cancel,
-    run,
     executionResult,
+    isRunning,
+    run,
+    cancel,
   };
 }
 
@@ -224,26 +218,4 @@ export function useShouldShowPythonDebugger() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   return params.get("debugger") === "1";
-}
-
-export function getValidationResult(source: PythonTransformSourceDraft) {
-  if (!source["source-database"]) {
-    return { isValid: false, errorMessage: t`Select a source a database` };
-  }
-
-  if (source.body.trim() === "") {
-    return {
-      isValid: false,
-      errorMessage: t`The Python script cannot be empty`,
-    };
-  }
-
-  if (Object.keys(source["source-tables"]).length === 0) {
-    return {
-      isValid: false,
-      errorMessage: t`Select at least one table to alias`,
-    };
-  }
-
-  return { isValid: true };
 }

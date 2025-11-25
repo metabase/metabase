@@ -69,8 +69,8 @@
                                                              :template-tags {"#card" {:card-id      card-id
                                                                                       :display-name "card"
                                                                                       :id           "card"
-                                                                                      :name         "card"
-                                                                                      :type         "card"}}}))))))
+                                                                                      :name         "#card"
+                                                                                      :type         :card}}}))))))
 
 (deftest alert-test
   (with-used-cards-setup!

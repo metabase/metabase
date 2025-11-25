@@ -90,10 +90,12 @@
           (is (= nil
                  (:public_uuid card))))))))
 
-(defn- dummy-dataset-query [database-id]
+(defn- dummy-dataset-query
+  "A dummy dataset query for testing things that don't need a real one"
+  [database-id]
   {:database database-id
-   :type     :native
-   :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
+   :type :query
+   :query {:source-table 1}})
 
 (deftest database-id-test
   (mt/with-temp [:model/Card {:keys [id]} {:name          "some name"
@@ -112,19 +114,22 @@
   (mt/with-actions-enabled
     (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
       (testing "happy paths\n"
-        (let [base (mt/mbql-query users)]
-          (doseq [query-change [{:limit 1}
-                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
-                                {:filter [:> (mt/$ids $users.id) 2]}
-                                {:breakout [(mt/$ids !month.users.last_login)]}
-                                {:aggregation [[:count]]}
-                                {:joins [{:fields       :all
-                                          :source-table (mt/id :checkins)
-                                          :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                          :alias        "People"}]}
-                                {:order-by [[(mt/$ids $users.id) :asc]]}
-                                {:fields [(mt/$ids $users.id)]}]]
-            (testing (format "when adding %s to the query" (first (keys query-change)))
+        (let [mp   (mt/metadata-provider)
+              base (lib/query
+                    mp
+                    (mt/mbql-query users))]
+          (doseq [[f & args] [[#'lib/limit 1]
+                              [#'lib/expression "id + 1" (lib/+ (lib.metadata/field mp (mt/id :users :id)) 1)]
+                              [#'lib/filter (lib/> (lib.metadata/field mp (mt/id :users :id)) 2)]
+                              [#'lib/breakout (-> (lib.metadata/field mp (mt/id :users :last_login))
+                                                  (lib/with-temporal-bucket :month))]
+                              [#'lib/aggregate (lib/count)]
+                              [#'lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :checkins)))
+                                              (lib/with-join-fields :all)
+                                              (lib/with-join-alias "People"))]
+                              [#'lib/order-by (lib.metadata/field mp (mt/id :users :id))]
+                              [#'lib/with-fields [(lib.metadata/field mp (mt/id :users :id))]]]]
+            (testing (format "when applying %s to the query" (pr-str f))
               (mt/with-actions [{model-id :id
                                  query    :dataset_query}   {:type :model, :dataset_query base}
                                 {action-id-1 :action-id} {:type :implicit
@@ -133,13 +138,13 @@
                                                           :kind "row/update"}]
                 ;; make sure we have thing exists to start with
                 (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
-                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))
+                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))
                 ;; should be gone by now
                 (is (= 0 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
                 (is (= 0 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
-                ;; call it twice to make we don't get delete error if no actions are found
-                ;; Returns zero because there are no actual changes happening here
-                (is (= 0 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))))
+                ;; call it twice to make we don't get delete error if no actions are found Returns either zero or one
+                ;; depending on the change because the query will possibly have different UUIDs
+                (is (#{0 1} (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled
@@ -209,8 +214,8 @@
     (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
                                                 :result_metadata metadata}]
-        (is (= (mt/derecordize metadata)
-               (mt/derecordize (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
+        (is (= metadata
+               (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))
 
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]
@@ -313,7 +318,6 @@
       (let [original {:graph.metrics ["expression" "sum" "count"]}]
         (f original original)))))
 
-;; this is a separate function so we can use the same tests for DashboardCards as well
 (defn test-visualization-settings-normalization [f]
   (testing "visualization settings should get normalized to use modern MBQL syntax"
     (doseq [varr [#'test-visualization-settings-normalization-1
@@ -324,12 +328,12 @@
       (testing varr
         (varr f)))))
 
-(deftest ^:parallel normalize-visualization-settings-test
+(deftest normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
-     (mt/with-temp [:model/Card card {:visualization_settings original}]
+     (mt/with-temp [:model/Card {card-id :id} {:visualization_settings original}]
        (is (= expected
-              (t2/select-one-fn :visualization_settings :model/Card :id (u/the-id card))))))))
+              (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))))
 
 (deftest ^:parallel template-tag-parameters-test
   (testing "Card with a Field filter parameter"
@@ -397,14 +401,12 @@
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
                (t2/update! :model/Card card-id bad-card-data))))))))
 
-;;; ------------------------------------------ Parameters tests ------------------------------------------
-
 (deftest ^:parallel validate-parameters-test
   (testing "Should validate Card :parameters when"
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
+           #"Invalid output: \{:parameters \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
                                                      :type "id"}]}]
@@ -416,7 +418,7 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
+             #"Invalid output:.*:parameters"
              (t2/update! :model/Card id {:parameters [{:id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
@@ -438,7 +440,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+           #"Invalid output:.*:parameter_mappings"
            (mt/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
                                                              :target       [:field 1000 nil]}]}]
@@ -450,12 +452,12 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+             #"Invalid output:.*:parameter_mappings"
              (t2/update! :model/Card id {:parameter_mappings [{:parameter_id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
                                                                     :target       [:field 1000 nil]}]})))))))
 
-(deftest normalize-parameter-mappings-test
+(deftest ^:parallel normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
     (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
                                                                     :card_id      1
@@ -465,7 +467,7 @@
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
@@ -600,7 +602,7 @@
             (is (=? [{:name                 "Param 1"
                       :id                   "param_1"
                       :type                 :category
-                      :values_source_type   "card"
+                      :values_source_type   :card
                       :values_source_config {:card_id     source-card-id
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
@@ -620,7 +622,7 @@
 (deftest ^:parallel descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp [:model/Card card {:name "some card"}]
-      (is (empty? (serdes/descendants "Card" (:id card)))))))
+      (is (empty? (serdes/descendants "Card" (:id card) {}))))))
 
 (deftest ^:parallel descendants-test-2
   (testing "cards which have another card as the source depend on that card"
@@ -629,9 +631,9 @@
                                       :dataset_query {:database (mt/id)
                                                       :type     :query
                                                       :query    {:source-table (str "card__" (:id card1))}}}]
-      (is (empty? (serdes/descendants "Card" (:id card1))))
+      (is (empty? (serdes/descendants "Card" (:id card1) {})))
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
-             (serdes/descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2) {}))))))
 
 (deftest ^:parallel descendants-test-3
   (testing "cards that has a native template tag"
@@ -647,7 +649,7 @@
                                                                          :snippet-id   (:id snippet)}}
                                                :query         "select * from products where {{snippet}}"}}}]
       (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
-             (serdes/descendants "Card" (:id card)))))))
+             (serdes/descendants "Card" (:id card) {}))))))
 
 (deftest ^:parallel descendants-test-4
   (testing "cards which have parameter's source is another card"
@@ -658,7 +660,7 @@
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id (:id card1)}}]}]
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
-             (serdes/descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2) {}))))))
 
 (deftest ^:parallel extract-test
   (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
@@ -678,8 +680,6 @@
             ;; this is a quick comparison, since the actual stored metadata is quite complex
             (is (= (map :display_name metadata)
                    (map :display_name (:result_metadata extracted))))))))))
-
-;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
@@ -733,36 +733,42 @@
                              {:dataset_query nil :collection_id 1})))))))
 
 (deftest hydrate-dashboard-count-test
-  (mt/with-temp
-    [:model/Card          card1 {}
-     :model/Card          card2 {}
-     :model/Card          card3 {}
-     :model/Dashboard     dash  {}
-     :model/DashboardCard _dc1  {:card_id (:id card1) :dashboard_id (:id dash)}
-     :model/DashboardCard _dc2  {:card_id (:id card1) :dashboard_id (:id dash)}
-     :model/DashboardCard _dc3  {:card_id (:id card2) :dashboard_id (:id dash)}]
-    (is (= [2 1 0]
-           (map :dashboard_count (t2/hydrate [card1 card2 card3] :dashboard_count))))))
+  (testing "cards associated with more than 1 dashboard"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dashboard-id-1 :id} {}
+                   :model/Dashboard {dashboard-id-2 :id} {}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id-1 :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id-2 :card_id card-id}]
+      (let [card-with-dashboard-count (t2/hydrate (t2/select-one :model/Card :id card-id) :dashboard_count)]
+        (testing "dashboard_count is equal to 2"
+          (is (= 2 (:dashboard_count card-with-dashboard-count)))))))
+
+  (testing "cards with no associated dashboard"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (let [card-with-dashboard-count (t2/hydrate (t2/select-one :model/Card :id card-id) :dashboard_count)]
+        (testing "dashboard_count is 0"
+          (is (= 0 (:dashboard_count card-with-dashboard-count))))))))
 
 (deftest hydrate-parameter-usage-count-test
-  (mt/with-temp
-    [:model/Card          card1 {}
-     :model/Card          card2 {}
-     :model/Card          card3 {}
-     :model/ParameterCard _pc1  {:card_id (:id card1)
-                                 :parameter_id              "param_1"
-                                 :parameterized_object_type "card"
-                                 :parameterized_object_id (:id card1)}
-     :model/ParameterCard _pc2  {:card_id (:id card1)
-                                 :parameter_id              "param_2"
-                                 :parameterized_object_type "card"
-                                 :parameterized_object_id (:id card2)}
-     :model/ParameterCard _pc3  {:card_id (:id card2)
-                                 :parameter_id              "param_3"
-                                 :parameterized_object_type "card"
-                                 :parameterized_object_id (:id card3)}]
-    (is (= [2 1 0]
-           (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
+  (testing "cards used as parameter sources by multiple dashboards"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard _ {:parameters [{:id "param-1"
+                                                     :type "category"
+                                                     :values_source_type "card"
+                                                     :values_source_config {:card_id card-id}}]}
+                   :model/Dashboard _ {:parameters [{:id "param-2"
+                                                     :type "category"
+                                                     :values_source_type "card"
+                                                     :values_source_config {:card_id card-id}}]}]
+      (let [card-with-usage-count (t2/hydrate (t2/select-one :model/Card :id card-id) :parameter_usage_count)]
+        (testing "parameter_usage_count is equal to 2"
+          (is (= 2 (:parameter_usage_count card-with-usage-count)))))))
+
+  (testing "cards not used as parameter sources"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (let [card-with-usage-count (t2/hydrate (t2/select-one :model/Card :id card-id) :parameter_usage_count)]
+        (testing "parameter_usage_count is 0"
+          (is (= 0 (:parameter_usage_count card-with-usage-count))))))))
 
 (deftest ^:parallel average-query-time-and-last-query-started-test
   (let [now       (t/offset-date-time)
@@ -830,7 +836,7 @@
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
-(deftest can-run-adhoc-query-test
+(deftest ^:parallel can-run-adhoc-query-test
   (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
@@ -859,43 +865,48 @@
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
 
-(deftest breakouts-->identifier->action-fn-test
-  (are [b1 b2 expected--identifier->action] (= expected--identifier->action
-                                               (#'card/breakouts-->identifier->action b1 b2))
-    [[:field 10 {:temporal-unit :day}]]
+(deftest ^:parallel breakouts->identifier->action-fn-test
+  (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
+                                               (#'card/breakouts->identifier->action
+                                                (map lib/normalize b1)
+                                                (map lib/normalize b2)))
+    [[:field {:temporal-unit :day} 10]]
     nil
     nil
 
-    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression {:temporal-unit :day} "x"]]
     nil
     nil
 
-    [[:expression "x" {:temporal-unit :day}]]
-    [[:expression "x" {:temporal-unit :month}]]
-    {[:expression "x"] [:update [:expression "x" {:temporal-unit :month}]]}
+    [[:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :month} "x"]]
+    {[:expression "x"] [:update [:expression {:temporal-unit :month} "x"]]}
 
-    [[:expression "x" {:temporal-unit :day}]]
-    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :day} "x"]]
     nil
 
-    [[:field 10 {:temporal-unit :day}] [:expression "x" {:temporal-unit :day}]]
-    [[:expression "x" {:temporal-unit :day}] [:field 10 {:temporal-unit :month}]]
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [[:field {:temporal-unit :day} 10]
+     [:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :day} "x"]
+     [:field {:temporal-unit :month} 10]]
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
 
-    [[:field 10 {:temporal-unit :year}] [:field 10 {:temporal-unit :day-of-week}]]
-    [[:field 10 {:temporal-unit :year}]]
+    [[:field {:temporal-unit :year} 10]
+     [:field {:temporal-unit :day-of-week} 10]]
+    [[:field {:temporal-unit :year} 10]]
     nil))
 
-(deftest update-for-dashcard-fn-test
+(deftest ^:parallel update-for-dashcard-fn-test
   (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
        (= expected-quasi-dashcards
           (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
 
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
     [{:parameter_mappings []}]
     nil
 
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
     [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
 
@@ -903,7 +914,7 @@
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
     nil
 
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
                                  {:target [:dimension [:field 33 {:temporal-unit :month}]]}
                                  {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
@@ -955,7 +966,8 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Collection {other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                 :model/Card card {:dashboard_id dash-id}]
+                 :model/Card card {:dashboard_id dash-id
+                                   :dataset_query (mt/mbql-query venues)}]
     (mt/with-test-user :rasta
       (testing "Can't update the collection_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot manually set `collection_id` on a Dashboard Question"
@@ -1034,8 +1046,8 @@
         (t2/update! :model/Card card-id {:dataset_query unnormalized-query})
         ;; Verify the query was normalized (field-id -> field)
         (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
-          (is (= [:= [:field (mt/id :venues :name) nil] "Test"]
-                 (get-in updated-query [:query :filter]))))))))
+          (is (=? [:= {} [:field {} (mt/id :venues :name)] "Test"]
+                  (get-in updated-query [:stages 0 :filters 0]))))))))
 
 (deftest before-update-query-fields-population-test
   (testing "populate-query-fields is called"
@@ -1062,6 +1074,198 @@
                                        :verified-result-metadata? true})
       (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))
 
+(deftest create-card-remote-synced-collection-non-remote-synced-deps-test
+  (testing "create-card! should throw exception when saving to remote-synced collection with non-remote-synced dependencies"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {source-card-id :id} {:collection_id regular-coll-id
+                                                     :name "Non-remote-synced source card"}]
+      (testing "Card with non-remote-synced source card dependency cannot be created in remote-synced collection"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Uses content that is not remote synced."
+             (card/create-card!
+              {:name "Card with non-remote-synced dependency"
+               :display "table"
+               :visualization_settings {}
+               :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})
+               :collection_id remote-synced-coll-id}
+              {:id (mt/user->id :rasta)}))))
+
+      (testing "Card without dependencies can be created in remote-synced collection"
+        (let [card (card/create-card!
+                    {:name "Card without dependencies"
+                     :display "table"
+                     :visualization_settings {}
+                     :dataset_query (mt/mbql-query venues)
+                     :collection_id remote-synced-coll-id}
+                    {:id (mt/user->id :rasta)})]
+          (is (some? card))
+          (is (= remote-synced-coll-id (:collection_id card))))))))
+
+(deftest update-card-remote-synced-collection-non-remote-synced-deps-test
+  (testing "update-card! should throw exception when moving to remote-synced collection with non-remote-synced dependencies"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {source-card-id :id} {:collection_id regular-coll-id
+                                                     :name "Non-remote-synced source card"}
+                   :model/Card card {:collection_id regular-coll-id
+                                     :name "Card with dependency"
+                                     :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (testing "Card with non-remote-synced dependencies cannot be moved to remote-synced collection"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Uses content that is not remote synced."
+             (card/update-card!
+              {:card-before-update card
+               :card-updates {:collection_id remote-synced-coll-id}
+               :actor {:id (mt/user->id :rasta)}}))))
+
+      (testing "Card with remote-synced dependencies can be moved to remote-synced collection"
+        (mt/with-temp [:model/Collection {another-remote-synced-coll-id :id} {:is_remote_synced true :location (str "/" remote-synced-coll-id "/")}
+                       :model/Card {remote-synced-source-card-id :id} {:collection_id another-remote-synced-coll-id
+                                                                       :name "Remote-Synced source card"}
+                       :model/Card movable-card {:collection_id regular-coll-id
+                                                 :name "Card with remote-synced dependency"
+                                                 :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-source-card-id)})}]
+          (let [updated-card (card/update-card!
+                              {:card-before-update movable-card
+                               :card-updates {:collection_id remote-synced-coll-id}
+                               :actor {:id (mt/user->id :rasta)}})]
+            (is (some? updated-card))
+            (is (= remote-synced-coll-id (:collection_id updated-card)))))))))
+
+(deftest update-card-existing-remote-synced-card-non-remote-synced-deps-test
+  (testing "update-card! should throw exception when card in remote-synced collection gains non-remote-synced dependencies"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {non-remote-synced-source-id :id} {:collection_id regular-coll-id
+                                                                  :name "Non-remote-synced source"}
+                   :model/Card card {:collection_id remote-synced-coll-id
+                                     :name "Remote-Synced card"
+                                     :dataset_query (mt/mbql-query venues)}]
+      (testing "Cannot update remote-synced card to have non-remote-synced dependencies"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Uses content that is not remote synced."
+             (card/update-card!
+              {:card-before-update card
+               :card-updates {:dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-source-id)})}
+               :actor {:id (mt/user->id :rasta)}})))))))
+
+(deftest update-card-remote-synced-dependents-prevents-move-from-remote-synced-test
+  (testing "update-card! should prevent moving card out of remote-synced collection when it has remote-synced dependents"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card {dependent-card-id :id} {:collection_id remote-synced-coll-id
+                                                        :name "Card dependent on remote-synced card"
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+      (testing "Cannot move remote-synced card to regular collection when remote-synced dependents exist"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Used by remote synced content."
+             (card/update-card!
+              {:card-before-update remote-synced-card
+               :card-updates {:collection_id regular-coll-id}
+               :actor {:id (mt/user->id :rasta)}}))))
+
+      (testing "Can move remote-synced card when no remote-synced dependents exist"
+        (t2/delete! :model/Card :id dependent-card-id)
+        (let [updated-card (card/update-card!
+                            {:card-before-update remote-synced-card
+                             :card-updates {:collection_id regular-coll-id}
+                             :actor {:id (mt/user->id :rasta)}})]
+          (is (some? updated-card))
+          (is (= regular-coll-id (:collection_id updated-card))))))))
+
+(deftest update-card-remote-synced-dependents-with-parameters-test
+  (testing "update-card! should prevent moving card out of remote-synced collection when dependents reference it via parameters"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-id
+                                  :name "Card with parameter reference"
+                                  :parameters [{:id "test-param"
+                                                :name "test-param"
+                                                :display_param "test param"
+                                                :type :category
+                                                :values_source_type "card"
+                                                :values_source_config {:card_id remote-synced-card-id}}]}]
+      (testing "Cannot move remote-synced card when dependents reference it via parameters"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Used by remote synced content."
+             (card/update-card!
+              {:card-before-update remote-synced-card
+               :card-updates {:collection_id regular-coll-id}
+               :actor {:id (mt/user->id :rasta)}})))))))
+
+(deftest update-card-remote-synced-dependents-with-template-tags-test
+  (testing "update-card! should prevent moving card out of remote-synced collection when dependents reference it via template tags"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
+                   :model/Collection {regular-coll-id :id} {}
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-id
+                                  :name "Card with template tag reference"
+                                  :dataset_query (mt/native-query {:query "SELECT * FROM {{#123-abc}}"
+                                                                   :template-tags {"123-abc" {:id "123-abc"
+                                                                                              :name "123-abc"
+                                                                                              :display-name "Test Template Tag"
+                                                                                              :type :card
+                                                                                              :card-id remote-synced-card-id}}})}]
+      (testing "Cannot move remote-synced card when dependents reference it via template tags"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Used by remote synced content."
+             (card/update-card!
+              {:card-before-update remote-synced-card
+               :card-updates {:collection_id regular-coll-id}
+               :actor {:id (mt/user->id :rasta)}})))))))
+
+(deftest update-card-remote-synced-dependents-allows-move-within-remote-synced-test
+  (testing "update-card! should allow moving card between remote-synced collections even with remote-synced dependents"
+    (mt/with-temp [:model/Collection {remote-synced-coll-1-id :id} {:is_remote_synced true :location "/"}
+                   :model/Collection {remote-synced-coll-2-id :id} {:is_remote_synced true :location (str "/" remote-synced-coll-1-id "/")}
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-1-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-1-id
+                                  :name "Card dependent on remote-synced card"
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+      (testing "Can move remote-synced card between remote-synced collections"
+        (let [updated-card (card/update-card!
+                            {:card-before-update remote-synced-card
+                             :card-updates {:collection_id remote-synced-coll-2-id}
+                             :actor {:id (mt/user->id :rasta)}})]
+          (is (some? updated-card))
+          (is (= remote-synced-coll-2-id (:collection_id updated-card))))))))
+
+(deftest update-card-remote-synced-dependents-allows-non-collection-updates-test
+  (testing "update-card! should allow non-collection updates to remote-synced cards with dependents"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-id
+                                  :name "Card dependent on remote-synced card"
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+      (testing "Can update name and description of remote-synced card with dependents"
+        (let [updated-card (card/update-card!
+                            {:card-before-update remote-synced-card
+                             :card-updates {:name "Updated Remote-Synced Card"
+                                            :description "Updated description"}
+                             :actor {:id (mt/user->id :rasta)}})]
+          (is (some? updated-card))
+          (is (= "Updated Remote-Synced Card" (:name updated-card)))
+          (is (= "Updated description" (:description updated-card)))
+          (is (= remote-synced-coll-id (:collection_id updated-card))))))))
+
 (deftest native-query-search-indexing-test
   (testing "native queries should have only query text indexed for search, not the full JSON structure (#64121)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Test Native Card"
@@ -1086,3 +1290,10 @@
         (let [doc (first search-docs)]
           (testing "native-query field is nil for non-native queries"
             (is (nil? (:native_query doc)))))))))
+
+(deftest normalize-card-on-update-test
+  (mt/with-temp [:model/Card card {:name "some card", :type "model"}]
+    (let [card' (assoc card :type "question")]
+      (t2/save! card')
+      (is (= :question
+             (t2/select-one-fn :type :model/Card :id (:id card)))))))

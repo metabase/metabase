@@ -713,7 +713,7 @@ describe("scenarios > question > filter", () => {
     // Esc closes the suggestion popover
     cy.realPress("Escape");
 
-    H.CustomExpressionEditor.completions().should("be.visible");
+    H.CustomExpressionEditor.completions().should("not.be.visible");
   });
 
   it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {

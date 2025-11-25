@@ -210,10 +210,17 @@
   [driver {:keys [details]}]
   (assoc details :role (impersonation-default-user driver)))
 
-(doseq [driver [:postgres :snowflake]]
-  (defmethod impersonation-details driver
-    [_driver {:keys [details]}]
-    details))
+(defmethod impersonation-details :snowflake
+  [driver {:keys [details]}]
+  (let [priv-key (tx/db-test-env-var-or-throw driver :private-key)]
+    (merge (dissoc details :private-key-id)
+           {:private-key-options "uploaded"
+            :private-key-value (mt/priv-key->base64-uri priv-key)
+            :use-password false})))
+
+(defmethod impersonation-details :postgres
+  [_driver {:keys [details]}]
+  details)
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
@@ -758,3 +765,41 @@
                        java.lang.Exception
                        (mt/run-mbql-query checkins
                          {:aggregation [[:count]]}))))))))))))
+
+(deftest impersonated-throws-without-token-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+    (mt/with-premium-features #{:advanced-permissions}
+      (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+            checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
+            role-a (u/lower-case-en (mt/random-name))
+            role-b (u/lower-case-en (mt/random-name))]
+        (tx/with-temp-roles! driver/*driver*
+          (impersonation-granting-details driver/*driver* (mt/db))
+          {role-a {venues-table {}}
+           role-b {checkins-table {}}}
+          (impersonation-default-user driver/*driver*)
+          (impersonation-default-role driver/*driver*)
+          (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                   :details (impersonation-details driver/*driver* (mt/db))}]
+            (mt/with-db database
+              (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
+              ;; this creates impersonations for the rasta user by default, and does `(request/with-test-user :rasta ...)`
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" role-a}}
+                (mt/with-premium-features #{}
+                  (testing "impersonated user is blocked"
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                          #"Advanced Permissions is a paid feature not currently available"
+                                          (mt/formatted-rows [int]
+                                                             (mt/run-mbql-query venues
+                                                               {:aggregation [[:count]]})))))
+                  (testing "admin should still be able to query"
+                    (request/as-admin
+                      (is (= [100]
+                             (map
+                              long
+                              (mt/first-row
+                               (mt/run-mbql-query venues
+                                 {:aggregation [[:count]]}))))))))))))))))

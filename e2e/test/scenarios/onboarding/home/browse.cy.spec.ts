@@ -61,13 +61,13 @@ describe("browse > models", () => {
     cy.get("@open").should("have.been.calledOnce");
     cy.get("@open").should(
       "have.been.calledOnceWithExactly",
-      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      `/model/${ORDERS_MODEL_ID}-orders-model`,
       "_blank",
     );
   });
 });
 
-H.describeWithSnowplow("scenarios > browse", () => {
+describe("scenarios > browse", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -141,7 +141,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
       .findByLabelText("Create a new metric")
       .should("be.visible")
       .click();
-    cy.findByTestId("entity-picker-modal").should("be.visible");
+    H.miniPicker().should("be.visible");
 
     H.expectNoBadSnowplowEvents();
     H.expectUnstructuredSnowplowEvent({
@@ -210,7 +210,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
   });
 });
 
-H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
+describe("scenarios > browse (EE)", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -325,6 +325,9 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
     cy.log("Visit Model 1");
     cy.findByRole("heading", { name: "Model 1" }).click();
+
+    cy.log("make sure data is loaded");
+    H.tableInteractive().findByText("Rustic Paper Wallet").should("be.visible");
 
     browseModels();
 

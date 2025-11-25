@@ -1,11 +1,11 @@
 (ns metabase.lib.schema.util
-  (:refer-clojure :exclude [ref run! every? mapv])
+  (:refer-clojure :exclude [ref run! every? mapv empty? first second])
   (:require
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [run! every? mapv]]))
+   [metabase.util.performance :as perf :refer [run! every? mapv empty? first second]]))
 
 (declare collect-uuids*)
 
@@ -16,7 +16,6 @@
     (if (@result our-uuid)
       (vswap! result vary-meta update :duplicates (fnil conj #{}) our-uuid)
       (vswap! result conj our-uuid)))
-
   (reduce-kv (fn [_ k v]
                (when (not (qualified-keyword? k))
                  (collect-uuids* v result)))
@@ -85,13 +84,18 @@
 (mu/defn mbql-clause-distinct-key
   "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
   another. Removes namespaced keywords and type information keys like `:base-type`."
-  [[tag opts & children]]
-  (into [tag
-         (opts-distinct-key opts)]
-        (map (fn [child]
-               (cond-> child
-                 (mbql-clause? child) mbql-clause-distinct-key)))
-        children))
+  [clause]
+  (let [tag (first clause)
+        opts (second clause)
+        f #(cond-> %
+             (mbql-clause? %) mbql-clause-distinct-key)]
+    (if (= (count clause) 3)
+      ;; Fastpath: this verbosity was introduced for performance reasons. Most clauses have only one child, and
+      ;; constructing a vector directly is more efficient than appending to a vector with `into`.
+      [tag (opts-distinct-key opts) (f (nth clause 2))]
+      (into [tag (opts-distinct-key opts)]
+            (map f)
+            (drop 2 clause)))))
 
 (defn distinct-mbql-clauses?
   "Is a sequence of `mbql-clauses` distinct for the purposes of appearing in things like `:fields`, `:breakouts`, or
@@ -125,7 +129,7 @@
        (map? x) (dissoc :lib/uuid)))
    x))
 
-(defn- indexed-order-bys-for-stage
+(defn indexed-order-bys-for-stage
   "Convert all order-bys in a stage to refer to aggregations by index instead of uuid"
   [{:keys [aggregation order-by] :as stage}]
   (if (and aggregation order-by)
@@ -141,10 +145,28 @@
                                       order-bys))))
     stage))
 
-(defn indexed-order-bys
-  "Convert all order-bys in a query to refer to aggregations by index instead of uuid. The result is
-  not a valid query, but avoiding random uuids is important during hashing."
-  [query]
-  (if (:stages query)
-    (update query :stages #(mapv indexed-order-bys-for-stage %))
-    query))
+(defn pred-matches-form?
+  "Check if `form` or any of its children forms match `pred`. This function is used for validation; during normal
+  operation it will never match, so calling this function before `matching-locations` is more efficient."
+  [form pred]
+  (cond
+    (pred form)        true
+    (map? form)        (reduce-kv (fn [b _ v] (or b (pred-matches-form? v pred))) false form)
+    (sequential? form) (reduce (fn [b x] (or b (pred-matches-form? x pred))) false form)
+    :else              false))
+
+(defn matching-locations
+  "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
+  [form pred]
+  ;; Surprisingly enough, a list works better as a stack here than a vector.
+  (loop [stack (list [[] form]), matches []]
+    (if-let [[loc form :as top] (peek stack)]
+      (let [stack (pop stack)
+            map-onto-stack #(transduce (map (fn [[k v]] [(conj loc k) v])) conj stack %)
+            seq-onto-stack #(transduce (map-indexed (fn [i v] [(conj loc i) v])) conj stack %)]
+        (cond
+          (pred form)        (recur stack                 (conj matches top))
+          (map? form)        (recur (map-onto-stack form) matches)
+          (sequential? form) (recur (seq-onto-stack form) matches)
+          :else              (recur stack                 matches)))
+      matches)))

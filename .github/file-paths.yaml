@@ -16,11 +16,6 @@ frontend_ci: &frontend_ci
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/frontend.yml"
 
-frontend_embedding_sdk_ci: &frontend_embedding_sdk_ci
-  - ".github/actions/prepare-frontend/**"
-  - ".github/actions/prepare-backend/**"
-  - ".github/workflows/*embedding-sdk*.yml"
-
 frontend_configs: &frontend_configs
   - "yarn.lock"
   - "**/tsconfig*.json"
@@ -127,18 +122,19 @@ e2e_ci: &e2e_ci
 e2e_specs: &e2e_specs
   - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
-e2e_cross_version: &e2e_cross_version
-  - ".github/workflows/e2e-cross-version.yml"
-  - "e2e/test/scenarios/cross-version/**"
+embedding_sdk_ci: &embedding_sdk_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/embedding-sdk*.yml"
 
-e2e_embedding_sdk:
-  - *frontend_embedding_sdk_ci
+embedding_sdk_components:
+  - *embedding_sdk_ci
   - *sources
   - "e2e/component/**/*.cy.*.{js,ts}"
 
-e2e_embedding_sdk_compatibility:
+embedding_sdk_host_sample_apps:
   - *default
-  - *frontend_embedding_sdk_ci
+  - *embedding_sdk_ci
   - *frontend_sources
   - *backend_sources
   - "e2e/embedding-sdk-host-apps/**"
@@ -170,6 +166,7 @@ yaml:
   - "**/*.yaml"
 
 codeql:
+  - ".github/workflows/codeql.yml"
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
 

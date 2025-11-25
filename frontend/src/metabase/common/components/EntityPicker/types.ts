@@ -1,7 +1,16 @@
 import type { ReactNode } from "react";
 
 import type { IconName } from "metabase/ui";
-import type { SearchResult, SearchResultId } from "metabase-types/api";
+import type {
+  CollectionType,
+  SearchResult,
+  SearchResultId,
+} from "metabase-types/api";
+
+import type {
+  TablePickerStatePath,
+  TablePickerValue,
+} from "../Pickers/TablePicker";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
@@ -11,6 +20,7 @@ export type TypeWithModel<Id, Model extends string> = {
   name: string;
   can_write?: boolean;
   moderated_status?: "verified" | null;
+  type?: CollectionType;
 };
 
 export type IsFolder<
@@ -75,6 +85,10 @@ export type ListProps<
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
   entity?: "collection" | "dashboard";
+  refresh?: () => void;
+  initialValue?: TablePickerValue;
+  tablesPath?: TablePickerStatePath;
+  onTablesPathChange?: (tablesPath: TablePickerStatePath) => void;
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

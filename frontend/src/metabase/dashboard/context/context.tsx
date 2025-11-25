@@ -27,7 +27,6 @@ import type { DashboardActionKey } from "../components/DashboardHeader/Dashboard
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
-  useDashboardTheme,
   useRefreshDashboard,
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
@@ -79,9 +78,9 @@ export type DashboardContextOwnProps = {
 };
 
 export type DashboardContextOwnResult = {
-  shouldRenderAsNightMode: boolean;
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
+  isEditableDashboard: boolean;
 };
 
 export type DashboardControls = UseAutoScrollToDashcardResult &
@@ -129,11 +128,11 @@ const DashboardContextProviderInner = forwardRef(
 
       children,
 
+      theme = "light",
       background = true,
       bordered = true,
       titled = true,
       font = null,
-      theme: initTheme = "light",
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
       autoScrollToDashcardId = undefined,
@@ -190,18 +189,6 @@ const DashboardContextProviderInner = forwardRef(
       onFullscreenChange,
       ref: fullscreenRef,
     } = useDashboardFullscreen();
-
-    const {
-      hasNightModeToggle,
-      isNightMode,
-      onNightModeChange,
-      theme,
-      setTheme,
-    } = useDashboardTheme(initTheme);
-
-    const shouldRenderAsNightMode = Boolean(
-      isNightMode && (isFullscreen || isEmbeddingIframe),
-    );
 
     const handleError = useCallback(
       (error: unknown) => {
@@ -362,6 +349,23 @@ const DashboardContextProviderInner = forwardRef(
         ? initDashboardActions({ isEditing, downloadsEnabled })
         : (initDashboardActions ?? null);
 
+    // Determine if the dashboard is editable.
+    // This lets us distinguish read-only dashboards (e.g. public embeds, InteractiveDashboard)
+    // from editable dashboards (e.g. main app, EditableDashboard).
+    const isEditableDashboard = useMemo(() => {
+      // When the dashboard is being edited, the "edit" action won't exist.
+      if (isEditing) {
+        return true;
+      }
+
+      // A dashboard is editable if it has the edit action and the user has write permissions.
+      const hasEditDashboardAction = (dashboardActions ?? []).includes(
+        "EDIT_DASHBOARD",
+      );
+
+      return hasEditDashboardAction && Boolean(dashboard?.can_write);
+    }, [isEditing, dashboardActions, dashboard?.can_write]);
+
     return (
       <DashboardContext.Provider
         value={{
@@ -373,6 +377,7 @@ const DashboardContextProviderInner = forwardRef(
           dashcardMenu,
           dashboardActions,
           onNewQuestion,
+          isEditableDashboard,
 
           navigateToNewCardFromDashboard,
           isLoading,
@@ -382,19 +387,14 @@ const DashboardContextProviderInner = forwardRef(
           isFullscreen,
           onFullscreenChange,
           fullscreenRef,
-          hasNightModeToggle,
-          onNightModeChange,
-          isNightMode,
-          shouldRenderAsNightMode,
           refreshPeriod,
           setRefreshElapsedHook,
           onRefreshPeriodChange,
+          theme,
           background,
           bordered,
           titled,
           font,
-          theme,
-          setTheme,
           hideParameters,
           downloadsEnabled,
           autoScrollToDashcardId,

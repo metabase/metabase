@@ -16,7 +16,7 @@ There are some additional steps you'll need to take to migrate from Heroku to Me
 
 ## Follow the migration guide to get the migration script
 
-You should follow along with the [migration guide](./guide.md). Once you download the migration script you'll need to get shell access to your Heroku server in order to execute the migration script.
+You should follow along with the [migration guide](./guide.md). Once you download the migration script you'll need to get shell access to your Heroku server to execute the migration script.
 
 ## Install Heroku CLI for your OS
 

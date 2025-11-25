@@ -22,15 +22,15 @@ const DashboardEmbeddedResources = () => {
   const query = useListEmbeddableDashboardsQuery(undefined, refetchSettings);
 
   return (
-    <>
-      <SettingHeader id="embedded-dashboards" title={t`Embedded Dashboards`} />
+    <Stack gap="xs">
+      <SettingHeader id="embedded-dashboards" title={t`Embedded dashboards`} />
       <PublicLinksListing<GetEmbeddableDashboard>
         data-testid="-embedded-dashboards-setting"
         getUrl={(dashboard) => Urls.dashboard(dashboard)}
         noLinksMessage={t`No dashboards have been embedded yet.`}
         {...query}
       />
-    </>
+    </Stack>
   );
 };
 
@@ -38,21 +38,21 @@ export const QuestionEmbeddedResources = () => {
   const query = useListEmbeddableCardsQuery(undefined, refetchSettings);
 
   return (
-    <>
-      <SettingHeader id="embedded-questions" title={t`Embedded Questions`} />
+    <Stack gap="xs">
+      <SettingHeader id="embedded-questions" title={t`Embedded questions`} />
       <PublicLinksListing<GetEmbeddableCard>
         data-testid="-embedded-questions-setting"
         getUrl={(question) => Urls.question(question)}
         noLinksMessage={t`No questions have been embedded yet.`}
         {...query}
       />
-    </>
+    </Stack>
   );
 };
 
 export const EmbeddedResources = () => {
   return (
-    <Stack gap="md" maw="50rem">
+    <Stack gap="lg" maw="50rem">
       <DashboardEmbeddedResources />
       <QuestionEmbeddedResources />
     </Stack>

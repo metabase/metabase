@@ -118,7 +118,7 @@
 
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
-  [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
+  [embedding-vec {:keys [model id searchable_text embeddable_text native_query created_at creator_id updated_at
                          last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                          pinned dashboardcard_count view_count last_viewed_at] :as doc}]
   {:model               model
@@ -128,7 +128,7 @@
    :database_id         database_id
    :last_editor_id      last_editor_id
    :name                (or (:name doc) "")
-   :content             searchable_text
+   :content             embeddable_text
    :display_type        display_type
    :archived            (some-> archived to-boolean)
    :official_collection (some-> official_collection to-boolean)
@@ -145,18 +145,18 @@
    :text_search_vector  (if (:name doc)
                           [:||
                            (search/weighted-tsvector "A" (:name doc))
-                           (search/weighted-tsvector "B" (or (:searchable_text doc) ""))]
-                          (search/weighted-tsvector "A" (or (:searchable_text doc) "")))
+                           (search/weighted-tsvector "B" (or searchable_text ""))]
+                          (search/weighted-tsvector "A" (or searchable_text "")))
    :text_search_with_native_query_vector
    (if (:name doc)
      [:||
       (search/weighted-tsvector "A" (:name doc))
       (search/weighted-tsvector "B"
-                                (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
-                                                                  (or (:native_query doc) "")])))]
+                                (str/join " " (remove str/blank? [(or searchable_text "")
+                                                                  (or native_query "")])))]
      (search/weighted-tsvector "A"
-                               (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
-                                                                 (or (:native_query doc) "")]))))})
+                               (str/join " " (remove str/blank? [(or searchable_text "")
+                                                                 (or native_query "")]))))})
 
 (defn index-size
   "Fetches the number of documents in the index table."
@@ -299,14 +299,14 @@
 (defn- upsert-index-batch!
   [connectable index documents & {:as opts}]
   (when (seq documents)
-    (let [text->docs        (group-by :searchable_text documents)
-          searchable-texts  (keys text->docs)
+    (let [text->docs        (group-by :embeddable_text documents)
+          embeddable-texts  (keys text->docs)
           upsert-embedding! (upsert-embedding!-fn connectable index text->docs)
           [new-texts stats]
-          (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count searchable-texts)})
-            (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index searchable-texts)]
+          (u/profile (str "Semantic search embedding caching attempt for " {:docs (count documents) :texts (count embeddable-texts)})
+            (let [[new-texts existing-embeddings] (partition-existing-embeddings connectable index embeddable-texts)]
               (if-not (seq existing-embeddings)
-                [searchable-texts nil]
+                [embeddable-texts nil]
                 (u/profile (str "Semantic search cached embedding db update for " {:texts (count existing-embeddings)})
                   [new-texts (upsert-embedding! existing-embeddings)]))))]
       (->>
@@ -472,7 +472,7 @@
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type collection]}]
   (let [conditions (filter some?
                            [(when (some? archived?)
                               [:= :archived archived?])
@@ -486,6 +486,8 @@
                               [:in :last_editor_id last-edited-by])
                             (when table-db-id
                               [:= :database_id table-db-id])
+                            (when collection
+                              [:= :collection_id collection])
                             (when (seq ids)
                               [:in :model_id (map str ids)])
                             (when (seq display-type)
@@ -754,6 +756,22 @@
 
           docs)))))
 
+(defn- filter-by-collection-id
+  "Filter documents by collection and all descendant collections."
+  [docs collection-id]
+  (let [collection-ids (keep :collection_id docs)
+        collections-map (when (seq collection-ids)
+                          (->> (t2/select [:collection :id :location]
+                                          :id [:in collection-ids])
+                               (into {} (map (juxt :id identity)))))]
+    (filterv (fn [doc]
+               (let [doc-collection-id (:collection_id doc)]
+                 (or (= doc-collection-id collection-id)
+                     (when doc-collection-id
+                       (when-let [collection (get collections-map doc-collection-id)]
+                         (str/starts-with? (:location collection) (str "/" collection-id "/")))))))
+             docs)))
+
 (defn- apply-collection-filter
   "Apply personal collection filtering with logging."
   [search-context docs]
@@ -769,6 +787,23 @@
                                         :dropped (- (count docs) (count filtered-docs))
                                         :time_ms time-ms})
         (analytics/inc! :metabase-search/semantic-collection-filter-ms time-ms)
+        filtered-docs))))
+
+(defn- apply-collection-id-filter
+  "Apply collection ID filtering with logging."
+  [search-context docs]
+  (let [collection-id (:collection search-context)]
+    (if (nil? collection-id)
+      docs
+      (let [timer (u/start-timer)
+            filtered-docs (filter-by-collection-id docs collection-id)
+            time-ms (u/since-ms timer)]
+        (log/debug "Collection filter" {:collection-id collection-id
+                                        :before        (count docs)
+                                        :after         (count filtered-docs)
+                                        :dropped       (- (count docs) (count filtered-docs))
+                                        :time_ms       time-ms})
+        (analytics/inc! :metabase-search/semantic-collection-id-filter-ms time-ms)
         filtered-docs))))
 
 (defn- reducible-search-query
@@ -790,7 +825,7 @@
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
-            weights (search.config/weights (:context search-context))
+            weights (search.config/weights search-context)
             scorers (scoring/semantic-scorers (:table-name index) search-context)
             query (scored-search-query index embedding search-context scorers)
             xform (comp (map decode-metadata)
@@ -803,6 +838,7 @@
             filtered-results (->> raw-results
                                   filter-read-permitted
                                   (apply-collection-filter search-context)
+                                  (apply-collection-id-filter search-context)
                                   (mapv search/collapse-id))
             filter-time-ms (u/since-ms filter-timer)
 

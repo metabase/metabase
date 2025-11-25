@@ -15,7 +15,7 @@ Go ahead and click **Let’s get started**.
 
 ## Setting up an admin account
 
-The first thing you’ll need to do is set up an admin account. The account you create when you first install Metabase is an admin account by default — handy! If you’ve installed Metabase on a production server, you should be really careful to remember the password for this account since it will be used to add other users, connect to databases, set up email, and more. You can also create additional admin accounts later.
+The first thing you'll need to do is set up an admin account. The account you create when you first install Metabase is an admin account by default — handy! If you've installed Metabase on a production server, you should be careful to remember the password for this account since it will be used to add other users, connect to databases, set up email, and more. You can also create additional admin accounts later.
 
 For now, let's just create an account for ourselves to explore Metabase. Type in your info, and when you’re ready to continue, click the **Next** button.
 

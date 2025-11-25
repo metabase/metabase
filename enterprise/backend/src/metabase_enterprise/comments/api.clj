@@ -4,13 +4,14 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.comments.models.comment :as comment]
    [metabase-enterprise.comments.models.comment-reaction :as comment-reaction]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.users.api :as api.user]
+   [metabase.users-rest.api :as api.user]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -18,6 +19,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
 (def ^:private TYPE->MODEL
   {"document" :model/Document})
 
@@ -86,20 +88,28 @@
                    (keep delete-comment))
           comments)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
    {:keys [target_type target_id]} :- [:map
                                        [:target_type [:enum "document"]]
-                                       [:target_id ms/PositiveInt]]]
-  (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
-        comments (-> (t2/select :model/Comment
-                                {:where    [:and
-                                            [:= :target_type target_type]
-                                            [:= :target_id target_id]]
-                                 :order-by [[:created_at :asc]]})
-                     (t2/hydrate :creator :reactions))]
-    {:comments (render-comments comments)}))
+                                       [:target_id ms/PositiveInt]]
+   _body
+   req]
+  (if (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))
+    {:disabled true
+     :comments []}
+    (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
+          comments (-> (t2/select :model/Comment
+                                  {:where    [:and
+                                              [:= :target_type target_type]
+                                              [:= :target_id target_id]]
+                                   :order-by [[:created_at :asc]]})
+                       (t2/hydrate :creator :reactions))]
+      {:comments (render-comments comments)})))
 
 (defn notify-comment!
   "Send a notification about comment"
@@ -171,6 +181,9 @@
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
     (notify-comment! comment {:entity entity :parent parent})
+    (events/publish-event! :event/comment-create
+                           {:object comment
+                            :user-id api/*current-user-id*})
     comment))
 
 (api.macros/defendpoint :put "/:comment-id"
@@ -200,8 +213,12 @@
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
 
-    (-> (t2/select-one :model/Comment :id comment-id)
-        (t2/hydrate :creator :reactions))))
+    (let [updated-comment (-> (t2/select-one :model/Comment :id comment-id)
+                              (t2/hydrate :creator :reactions))]
+      (events/publish-event! :event/comment-update
+                             {:object updated-comment
+                              :user-id api/*current-user-id*})
+      updated-comment)))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
@@ -220,6 +237,10 @@
 
     ;; Soft delete the comment
     (t2/update! :model/Comment comment-id {:deleted_at [:now]})
+
+    (events/publish-event! :event/comment-delete
+                           {:object comment
+                            :user-id api/*current-user-id*})
 
     ;; Return 204 No Content
     api/generic-204-no-content))
@@ -241,7 +262,10 @@
 
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
-  [_route-params _query-params]
+  [_route _query _body req]
+  ;; no access in embedding context
+  (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
+
   (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
                                                       :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc

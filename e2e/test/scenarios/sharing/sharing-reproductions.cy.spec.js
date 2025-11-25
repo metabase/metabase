@@ -323,10 +323,10 @@ describe("issue 21559", { tags: "@external" }, () => {
   it("should respect dashboard card visualization (metabase#21559)", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     H.modal().within(() => {
       H.switchToAddMoreData();
@@ -339,7 +339,7 @@ describe("issue 21559", { tags: "@external" }, () => {
     // Make sure visualization changed to funnel
     H.getDashboardCard(0).within(() => {
       cy.findByText("80.52").should("exist");
-      cy.get("polygon[fill='#509EE3']").should("exist");
+      cy.get("polygon[fill='#509EE2']").should("exist");
     });
 
     H.saveDashboard();
@@ -929,7 +929,8 @@ describe("issue 17547", () => {
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    H.openSharingMenu("Edit alerts");
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Edit alerts").click();
     H.modal().findByText("Check daily at 9:00 AM").should("be.visible").click();
 
     H.modal().within(() => {

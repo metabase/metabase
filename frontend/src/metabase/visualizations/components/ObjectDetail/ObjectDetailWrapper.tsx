@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
@@ -25,6 +25,12 @@ export function ObjectDetailWrapper({
 }: ObjectDetailProps) {
   const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
 
+  useEffect(() => {
+    if (data.rows.length <= currentObjectIndex) {
+      setCurrentObjectIndex(0);
+    }
+  }, [data.rows, currentObjectIndex]);
+
   // only show modal if this object detail was triggered via an object detail zoom action
   const shouldShowModal = isObjectDetail;
   const getFallbackQuestion = () =>
@@ -41,21 +47,28 @@ export function ObjectDetailWrapper({
       question.supportsImplicitActions(),
   );
 
-  if (shouldShowModal) {
-    const {
-      canZoom,
-      canZoomNextRow,
-      canZoomPreviousRow,
-      settings,
-      table: tableWrapper,
-      viewNextObjectDetail,
-      viewPreviousObjectDetail,
-      zoomedRow,
-      zoomedRowID,
-    } = rest;
-    const table = getApiTable(tableWrapper);
-    const columns = data?.cols;
+  const {
+    canZoom,
+    canZoomNextRow,
+    canZoomPreviousRow,
+    settings,
+    table: tableWrapper,
+    viewNextObjectDetail,
+    viewPreviousObjectDetail,
+    zoomedRow,
+    zoomedRowID,
+  } = rest;
+  const table = getApiTable(tableWrapper);
+  const columns = data?.cols;
 
+  const filteredQuery = useMemo(() => {
+    if (columns == null || zoomedRowID == null || question == null) {
+      return undefined;
+    }
+    return filterByPk(question.query(), columns, zoomedRowID);
+  }, [columns, zoomedRowID, question]);
+
+  if (shouldShowModal) {
     if (columns != null && zoomedRowID != null && question != null) {
       const columnsSettings = columns.map((column) => {
         return settings?.column_settings?.[getColumnKey(column)];
@@ -66,7 +79,7 @@ export function ObjectDetailWrapper({
           columnSettings={settings?.["table.columns"]}
           columns={columns}
           columnsSettings={columnsSettings}
-          query={filterByPk(question.query(), columns, zoomedRowID)}
+          query={filteredQuery}
           row={zoomedRow}
           rowId={zoomedRowID}
           showImplicitActions={areImplicitActionsEnabled}

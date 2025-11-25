@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
@@ -30,22 +29,26 @@ const BUTTON_TITLE = {
   },
 };
 
+type NotebookNativePreviewProps = {
+  question: Question;
+  title?: string;
+  buttonTitle?: string;
+  onConvertClick: (newQuestion: Question) => void;
+};
+
 export const NotebookNativePreview = ({
   question,
-  onConvertClick,
+  title,
   buttonTitle,
-}: {
-  question: Question;
-  onConvertClick: (newQuestion: Question) => void;
-  buttonTitle?: string;
-}) => {
+  onConvertClick,
+}: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const payload = Lib.toLegacyQuery(sourceQuery);
+  const payload = Lib.toJsQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
@@ -79,14 +82,14 @@ export const NotebookNativePreview = ({
     >
       <Box
         component="header"
-        c={color("text-dark")}
+        c="text-dark"
         fz={rem(20)}
         lh={rem(24)}
         fw="bold"
         ta="start"
         p="1.5rem"
       >
-        {TITLE[engineType]}
+        {title ?? TITLE[engineType]}
       </Box>
       <Flex
         style={{
@@ -101,7 +104,7 @@ export const NotebookNativePreview = ({
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
-            <Icon name="warning" size="2rem" color={color("error")} />
+            <Icon name="warning" size="2rem" c="error" />
             {t`Error generating the query.`}
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>

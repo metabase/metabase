@@ -96,7 +96,7 @@
 }
 
 .ButtonWhite {
-  background-color: white;
+  background-color: var(--mb-color-bg-white);
   color: var(--mb-color-text-dark);
   border-color: var(--mb-color-border);
 }

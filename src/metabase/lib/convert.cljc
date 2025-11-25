@@ -1,13 +1,13 @@
 (ns metabase.lib.convert
-  (:refer-clojure :exclude [mapv some select-keys])
+  (:refer-clojure :exclude [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -17,11 +17,12 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv some select-keys]])
+   [metabase.util.performance :as perf :refer [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)]])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -173,7 +174,7 @@
   Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
   aliases and truncate them or anything like that."
   [joins]
-  (let [unique-name-fn (lib.util/unique-name-generator)]
+  (let [unique-name-fn (lib.util.unique-name-generator/unique-name-generator)]
     (mapv (fn [join]
             (cond-> join
               (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
@@ -570,7 +571,7 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date
-             :concat :substring :replace :regex-match-first :split-part
+             :concat :substring :replace :regex-match-first :split-part :collate
              :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 
@@ -616,11 +617,15 @@
        (and top-level? (:native inner-query)) (set/rename-keys {:native :query})))))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
-  (into {}
-        (comp (disqualify)
-              (map (fn [[k v]]
-                     [k (->legacy-MBQL v)])))
-        m))
+  (if (and (:database m)
+           (#{:query :native} (:type m)))
+    ;; already a legacy query
+    m
+    (into {}
+          (comp (disqualify)
+                (map (fn [[k v]]
+                       [k (->legacy-MBQL v)])))
+          m)))
 
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
@@ -763,7 +768,8 @@
     stage-number :- :int
     legacy-ref   :- some?]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
-                                          (mbql.normalize/normalize-fragment nil))
+                                          #_{:clj-kondo/ignore [:deprecated-var]}
+                                          mbql.normalize/normalize-field-ref)
          {aggregations :aggregation} (lib.util/query-stage query stage-number)]
      (with-aggregation-list aggregations
        (try

@@ -9,6 +9,7 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
@@ -47,7 +48,8 @@ export const ParagraphNodeView = ({
   extension,
 }: NodeViewProps) => {
   const editorContext = extension?.options?.editorContext || "document";
-  const shouldHideCommentMenu = editorContext === "comments";
+  const shouldHideCommentMenu =
+    editorContext === "comments" || isWithinIframe();
   const childTargetId = useSelector(getChildTargetId);
   const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);

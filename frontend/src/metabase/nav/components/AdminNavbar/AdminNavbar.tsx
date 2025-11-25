@@ -19,6 +19,7 @@ import { AdminNavItem } from "./AdminNavItem";
 import { AdminNavLink } from "./AdminNavItem.styled";
 import AdminNavCS from "./AdminNavbar.module.css";
 import {
+  AdminButtons,
   AdminExitLink,
   AdminLogoContainer,
   AdminLogoLink,
@@ -92,10 +93,13 @@ export const AdminNavbar = ({
         </AdminNavbarItems>
 
         {!isPaidPlan && isAdmin && <StoreLink />}
-        <AdminExitLink
-          to="/"
-          data-testid="exit-admin"
-        >{t`Exit admin`}</AdminExitLink>
+
+        <AdminButtons>
+          <AdminExitLink
+            to="/"
+            data-testid="exit-admin"
+          >{t`Exit admin`}</AdminExitLink>
+        </AdminButtons>
       </MobileHide>
     </AdminNavbarRoot>
   );

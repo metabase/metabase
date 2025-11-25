@@ -33,6 +33,7 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{:model/ApiKey
+    :model/AuthIdentity
     :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
@@ -79,11 +80,14 @@
     :model/QueryField
     :model/QueryTable
     :model/RecentViews
+    :model/RemoteSyncObject
+    :model/RemoteSyncTask
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
+    :model/SupportAccessGrantLog
     :model/TaskHistory
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported

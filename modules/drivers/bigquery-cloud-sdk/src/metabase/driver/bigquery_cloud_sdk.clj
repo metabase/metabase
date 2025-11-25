@@ -1,5 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:refer-clojure :exclude [mapv some])
+  (:refer-clojure :exclude [mapv some empty? not-empty])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -24,7 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some]]
+   [metabase.util.performance :refer [mapv some empty? not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -34,6 +34,7 @@
     BigQuery
     BigQuery$DatasetListOption
     BigQuery$JobOption
+    BigQuery$QueryResultsOption
     BigQuery$TableDataListOption
     BigQuery$TableOption
     BigQueryException
@@ -45,6 +46,7 @@
     FieldValueList
     InsertAllRequest
     InsertAllRequest$RowToInsert
+    JobInfo
     QueryJobConfiguration
     Schema
     Table
@@ -698,18 +700,22 @@
   (let [^BigQuery client (database-details->client database-details)
         result-promise (promise)
         request (build-bigquery-request sql parameters)
+        job (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+        job-id (.getJobId job)
         query-future (future
                        ;; ensure the classloader is available within the future.
                        (driver-api/the-classloader)
                        (try
                          (*page-callback*)
-                         (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
-                           (deliver result-promise [:ready result])
-                           (throw (ex-info "Null response from query" {})))
+                         (let [result-options (if *page-size* [(BigQuery$QueryResultsOption/pageSize *page-size*)] [])
+                               result (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
+                           (if result
+                             (deliver result-promise [:ready result])
+                             (throw (ex-info "Null response from query" {}))))
                          (catch Throwable t
                            (deliver result-promise [:error t]))))]
 
-    ;; This `go` is responsible for cancelling the *initial* .query call.
+    ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
       (a/go
@@ -722,7 +728,12 @@
     (let [[status result] @result-promise]
       (case status
         :error  (handle-bigquery-exception result sql parameters)
-        :cancel (throw-cancelled sql parameters)
+        :cancel (try
+                  (.cancel client job-id)
+                  (catch Throwable t
+                    (log/warnf t "Couldn't cancel job %s" job-id))
+                  (finally
+                    (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*
@@ -993,9 +1004,10 @@
   [_]
   nil)
 
-(defmethod driver/native-query-deps :bigquery-cloud-sdk
-  [driver query]
-  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+(mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (let [db-tables (driver-api/tables query)
         transforms (t2/select [:model/Transform :id :target])]
     (into #{} (comp
                (map :component)
@@ -1004,6 +1016,7 @@
                        {:schema (first parts) :table (second parts)}))
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
+              driver-api/raw-native-query
               macaw/parsed-query
               macaw/query->components
               :tables))))

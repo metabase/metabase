@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -73,15 +74,17 @@
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
+    (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
   (u/prog1 (t2.realize/realize snippet)
-    (events/publish-event! :event/snippet-create {:object <>})))
+    (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
@@ -92,12 +95,12 @@
 (t2/define-after-update :model/NativeQuerySnippet
   [snippet]
   (u/prog1 (t2.realize/realize snippet)
-    (events/publish-event! :event/snippet-update {:object <>})))
+    (events/publish-event! :event/snippet-update {:object <> :user-id api/*current-user-id*})))
 
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
   (u/prog1 snippet
-    (events/publish-event! :event/snippet-delete {:object <>})))
+    (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 (defmethod serdes/hash-fields :model/NativeQuerySnippet
   [_snippet]

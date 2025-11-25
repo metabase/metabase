@@ -391,6 +391,45 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
   });
 
+  it("should allow searching dashboard parameters in preview embed modal", () => {
+    H.visitDashboard("@dashboardId");
+
+    H.openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+    });
+
+    H.modal().within(() => {
+      // Set the Name parameter to enabled so we can test searching
+      cy.findByText("Name")
+        .parent()
+        .within(() => {
+          cy.findByText("Disabled").click();
+        });
+    });
+
+    H.popover().findByText("Editable").click();
+
+    // Test the preview iframe parameter search functionality
+    H.getIframeBody().within(() => {
+      // Open the Name filter dropdown
+      cy.findByTestId("dashboard-parameters-widget-container")
+        .findByText("Name")
+        .click();
+
+      // Test searching for names containing specific text
+      cy.findByPlaceholderText("Search by Name").type("Af");
+
+      // Verify that search results are filtered
+      H.popover().within(() => {
+        // Should show names containing "Af"
+        cy.findByText("Afton Lesch").should("be.visible");
+        // Should not show names that don't match the search
+        cy.findByText("Lina Heaney").should("not.exist");
+      });
+    });
+  });
+
   it("should render error message when `params` is not an object (metabase#14474)", () => {
     cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
@@ -524,24 +563,13 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     cy.log("test downloading result (metabase#36721)");
     H.getDashboardCard().realHover();
-    H.downloadAndAssert(
-      {
-        fileType: "csv",
-        isDashboard: true,
-        isEmbed: true,
-        logResults: true,
-        downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
-        downloadMethod: "GET",
-      },
-      (sheet) => {
-        expect(sheet["A1"].v).to.eq("ID");
-        expect(sheet["A2"].v).to.eq(9);
-        expect(sheet["B1"].v).to.eq("EAN");
-        expect(sheet["B2"].v).to.eq(7217466997444);
-
-        H.assertSheetRowsCount(54)(sheet);
-      },
-    );
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      isEmbed: true,
+      downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+      downloadMethod: "GET",
+    });
 
     cy.log(
       "The PDF download button should be clickable when there is no title, but has parameters (metabase#59503)",
@@ -773,6 +801,15 @@ describe("scenarios > embedding > dashboard appearance", () => {
     H.modal().within(() => {
       cy.findByRole("tab", { name: "Look and Feel" }).click();
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log(
+        'Embed preview requests should not have "X-Metabase-Client: embedding-iframe" header (EMB-930)',
+      );
+      cy.get("@previewEmbed").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.not.equal(
+          "embedding-iframe",
+        );
+      });
 
       cy.log("Assert dashboard theme");
       H.getIframeBody()
@@ -1213,7 +1250,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
           cy.findByTestId("dashcard").should(
             "have.css",
             "background-color",
-            "rgb(46, 53, 59)",
+            "rgb(7, 23, 34)",
           );
 
           cy.log("pivot table cell background should be transparent");
@@ -1221,12 +1258,12 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .first()
             .findAllByTestId("pivot-table-cell")
             .first()
-            .should("have.css", "background-color", "rgba(46, 53, 59, 0.1)");
+            .should("have.css", "background-color", "rgba(48, 61, 70, 0.1)");
 
           cy.log("pivot table cell color should be white");
           cy.findByText("Row totals")
             .should("be.visible")
-            .should("have.css", "color", "rgb(255, 255, 255)");
+            .should("have.css", "color", "rgba(255, 255, 255, 0.95)");
         });
       });
     });

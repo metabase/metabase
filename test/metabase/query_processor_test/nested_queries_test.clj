@@ -16,7 +16,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
@@ -24,12 +24,13 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel basic-test
@@ -364,17 +365,18 @@
                                        (count long-col-full-name)))
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-            native-sub-query   (with-redefs [lib.util/truncate-alias
+            native-sub-query   (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
                                              (fn mock-truncate-alias
                                                ([ss] ss)
                                                ([ss _] ss))]
-                                 (-> (mt/mbql-query people
-                                       {:source-table $$people
-                                        :aggregation  [[:aggregation-options [:count] {:name coun-col-name}]]
-                                        :breakout     [[:field %state {:name long-col-name}]]
-                                        :limit        5})
-                                     qp.compile/compile
-                                     :query))
+                                 (mu/disable-enforcement
+                                   (-> (mt/mbql-query people
+                                         {:source-table $$people
+                                          :aggregation  [[:aggregation-options [:count] {:name coun-col-name}]]
+                                          :breakout     [[:field %state {:name long-col-name}]]
+                                          :limit        5})
+                                       qp.compile/compile
+                                       :query)))
             query              (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                           [(mt/native-query {:query native-sub-query})])
@@ -625,6 +627,7 @@
                           :unit         :day)
                    (dissoc :semantic_type :coercion_strategy :table_id
                            :id :settings :fingerprint :nfc_path)
+                   #_{:clj-kondo/ignore [:deprecated-var]}
                    lib.temporal-bucket/ensure-temporal-unit-in-display-name)
                (qp.test-util/aggregate-col :count)]
               (mt/cols
@@ -725,7 +728,8 @@
                                             {:segments [{:id         1
                                                          :name       "Segment 1"
                                                          :table-id   (mt/id :venues)
-                                                         :definition (mt/$ids {:filter [:= $venues.price 1]})}]})
+                                                         :definition (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                                                                         (lib/filter (lib/= (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price)) 1)))}]})
                                            (qp.test-util/metadata-provider-with-cards-for-queries
                                             [(mt/mbql-query venues
                                                {:filter [:segment 1]})]))
@@ -865,8 +869,8 @@
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
-              (is (=? {:message "You do not have curate permissions for this Collection."}
-                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
+              (is (= "You don't have permissions to do that."
+                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             ;; allowing `with-temp` here since we need it to make Collections
@@ -874,8 +878,8 @@
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
-              (is (=? {:message "You do not have curate permissions for this Collection."}
-                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
+              (is (= "You don't have permissions to do that."
+                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 
 (deftest ^:parallel infer-source-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

@@ -5,7 +5,8 @@
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -18,14 +19,14 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -34,6 +35,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -234,33 +236,34 @@
 
 (deftest native-query-with-long-column-alias
   (testing "nested native query with long column alias (#47584)"
-    (let [short-col-name "coun"
-          long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
-
+    (let [short-col-name       "coun"
+          long-col-name        "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
           ;; Lightly validate the native form that comes back. Resist the urge to check for exact equality.
           validate-native-form (fn [native-form-lines]
                                  (and (some #(str/includes? % short-col-name) native-form-lines)
                                       (some #(str/includes? % long-col-name) native-form-lines)))
-
           ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
           ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-          native-sub-query (with-redefs [lib.util/truncate-alias
-                                         (fn mock-truncate-alias
-                                           [ss & _] ss)]
-                             (-> (mt/mbql-query people
-                                   {:source-table $$people
-                                    :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
-                                    :breakout     [[:field %state {:name long-col-name}]]
-                                    :limit        5})
-                                 qp.compile/compile
-                                 :query))
-          native-query (mt/native-query {:query native-sub-query})
-
+          native-sub-query     (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                             (fn mock-truncate-alias
+                                               [ss & _] ss)]
+                                 ;; make sure the schema checks don't fail for aliases > 60 characters
+                                 (mu/disable-enforcement
+                                   (-> (mt/mbql-query people
+                                         {:source-table $$people
+                                          :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
+                                          :breakout     [[:field %state {:name long-col-name}]]
+                                          :limit        5})
+                                       qp.compile/compile
+                                       :query)))
+          _                    (is (not (str/includes? native-sub-query "_00028d48"))
+                                   "double-check that the native-sub-query was not truncated")
+          native-query         (mt/native-query {:query native-sub-query})
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
-          metadata-card     (lib.metadata/card metadata-provider 1)]
+          metadata-provider    (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
+          metadata-card        (lib.metadata/card metadata-provider 1)]
       (mt/with-temp
-        [:model/Card card {:dataset_query native-query
+        [:model/Card card {:dataset_query   native-query
                            :entity_id       (:entity-id metadata-card)
                            :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
@@ -666,7 +669,7 @@
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
-                :class "class com.databricks.client.support.exceptions.ErrorException"}
+                :class "class com.databricks.jdbc.exception.DatabricksSQLException"}
                (select-keys res [:error_type :status :class])))
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 

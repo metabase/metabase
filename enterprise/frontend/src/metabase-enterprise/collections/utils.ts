@@ -14,6 +14,7 @@ import {
   INSTANCE_ANALYTICS_COLLECTION,
   OFFICIAL_COLLECTION,
   REGULAR_COLLECTION,
+  REMOTE_SYNC_COLLECTION,
 } from "./constants";
 
 export function isRegularCollection({
@@ -46,10 +47,25 @@ export function isInstanceAnalyticsCollection(
   );
 }
 
+export function isSyncedCollection(
+  collection: Pick<Collection, "is_remote_synced">,
+): boolean {
+  return collection.is_remote_synced === true;
+}
+
 export const getIcon = (item: ObjectWithModel): IconData => {
-  if (getCollectionType({ type: item.type }).type === "instance-analytics") {
+  const collectionType = getCollectionType({
+    type: item.type || item.collection_type,
+  }).type;
+  if (collectionType === "instance-analytics") {
     return {
       name: INSTANCE_ANALYTICS_COLLECTION.icon,
+    };
+  }
+
+  if (item.is_remote_synced) {
+    return {
+      name: REMOTE_SYNC_COLLECTION.icon,
     };
   }
 

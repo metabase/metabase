@@ -730,24 +730,12 @@ export function getDashboardId(): Cypress.Chainable<number> {
     .then((dashboardId) => dashboardId as unknown as number);
 }
 
-export function waitForPublicDashboardData() {
-  // tests with public dashboards always have 4 dashcards
-  cy.wait([
-    "@publicDashboardData",
-    "@publicDashboardData",
-    "@publicDashboardData",
-    "@publicDashboardData",
-  ]);
+export function waitForPublicDashboardData(requestCount: number) {
+  cy.wait(Array(requestCount).fill("@publicDashboardData"));
 }
 
-export function waitForEmbeddedDashboardData() {
-  // tests with embedded dashboards always have 4 dashcards
-  cy.wait([
-    "@embeddedDashboardData",
-    "@embeddedDashboardData",
-    "@embeddedDashboardData",
-    "@embeddedDashboardData",
-  ]);
+export function waitForEmbeddedDashboardData(requestCount: number) {
+  cy.wait(Array(requestCount).fill("@embeddedDashboardData"));
 }
 
 export function verifyDashcardMappingOptions(

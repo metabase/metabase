@@ -1,10 +1,9 @@
 (ns metabase.lib.card
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv select-keys empty? not-empty])
   (:require
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -17,12 +16,13 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv select-keys]]))
+   [metabase.util.performance :as perf :refer [mapv select-keys empty? not-empty]]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -103,7 +103,7 @@
         (merge (when card-id
                  {:lib/source :source/card, :lib/card-id card-id}))
         ;; :effective-type is required, but not always set, see e.g.,
-        ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
+        ;; [[metabase.warehouse-schema-rest.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))
         ;; add original display name IF not already present AND we have a value
         (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
@@ -234,7 +234,7 @@
                ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
                ;; 'crazy long' column name then we need to use that in the next stage.
                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util/non-truncating-unique-name-generator))
+               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols))))))))
 
@@ -252,17 +252,21 @@
    _stage-number :- :int
    card          :- ::lib.schema.metadata/card
    options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (mapv (fn [col]
-          (assoc col :lib/source :source/card, :lib/card-id (:id card)))
-        (if (= (:type card) :metric)
-          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
-                                 (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (lib.metadata.calculation/returned-columns
-             (assoc metric-query :lib/metadata (:lib/metadata query))
-             -1
-             (lib.util/query-stage metric-query -1)
-             options))
-          (card-returned-columns query card))))
+  (lib.computed/with-cache-sticky* query
+    [::returned-columns (:id card) (lib.metadata.calculation/cacheable-options options)]
+    (fn []
+      (mapv (fn [col]
+              (assoc col :lib/source :source/card, :lib/card-id (:id card)))
+            (if (= (:type card) :metric)
+              (let [metric-query (-> card
+                                     :dataset-query
+                                     (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+                (lib.metadata.calculation/returned-columns
+                 (assoc metric-query :lib/metadata (:lib/metadata query))
+                 -1
+                 (lib.util/query-stage metric-query -1)
+                 options))
+              (card-returned-columns query card))))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."
@@ -291,6 +295,4 @@
   (let [mp                                                            (lib.metadata/->metadata-provider metadata-providerable)
         {card-query :dataset-query, result-metadata :result-metadata} card]
     (cond-> (lib.query/query mp card-query)
-      result-metadata (lib.util/update-query-stage -1 (fn [stage]
-                                                        (->> (assoc stage :lib/stage-metadata (lib.util/->stage-metadata result-metadata))
-                                                             (lib.normalize/normalize ::lib.schema/stage)))))))
+      result-metadata (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.normalize/->normalized-stage-metadata result-metadata)))))

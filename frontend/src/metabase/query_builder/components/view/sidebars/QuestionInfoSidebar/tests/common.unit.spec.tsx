@@ -10,6 +10,7 @@ import {
   createMockCard,
   createMockCollection,
   createMockModerationReview,
+  createMockUserInfo,
 } from "metabase-types/api/mocks";
 import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
@@ -114,13 +115,13 @@ describe("QuestionInfoSidebar", () => {
     it("should show creation information", () => {
       const card = createMockCard({
         name: "Question",
-        creator: {
+        creator: createMockUserInfo({
           first_name: "Ash",
           last_name: "Ketchum",
           email: "Ashboy@example.com",
           common_name: "Ash Ketchum",
           id: 19,
-        },
+        }),
         created_at: "2024-04-13T00:00:00Z",
       });
       setup({ card });
@@ -267,7 +268,7 @@ describe("QuestionInfoSidebar", () => {
       const query = getJoinedQuery();
       const card = createMockCard({
         type: "model",
-        dataset_query: Lib.toLegacyQuery(query),
+        dataset_query: Lib.toJsQuery(query),
       });
       await setup({ card });
       await userEvent.click(screen.getByRole("tab", { name: "Relationships" }));

@@ -37,6 +37,48 @@
             (fn [_query path-type path stage-or-join]
               (assoc stage-or-join :path-type path-type, :path path, :order (swap! order inc))))))))
 
+(deftest ^:parallel walk-stages-reversed-test
+  (let [query {:stages [{:joins [{:stages [{:source-card 1}]}]}
+                        {:joins [{:stages [{:source-table 3}
+                                           {}]}
+                                 {:stages [{:source-table 4}]}]}]}
+        order (atom -1)]
+    (is (= {:stages [{:joins     [{:stages    [{:source-card 1
+                                                :path-type   :lib.walk/stage
+                                                :path        [:stages 0 :joins 0 :stages 0]
+                                                :order       6}]
+                                   :path-type :lib.walk/join
+                                   :path      [:stages 0 :joins 0]
+                                   :order     7}]
+                      :path-type :lib.walk/stage
+                      :path      [:stages 0]
+                      :order     8}
+                     {:joins     [{:stages    [{:source-table 3
+                                                :path-type    :lib.walk/stage
+                                                :path         [:stages 1 :joins 0 :stages 0]
+                                                :order        3}
+                                               {:path-type    :lib.walk/stage
+                                                :path         [:stages 1 :joins 0 :stages 1]
+                                                :order        2}]
+                                   :path-type :lib.walk/join
+                                   :path      [:stages 1 :joins 0]
+                                   :order     4}
+                                  {:stages    [{:source-table 4
+                                                :path-type    :lib.walk/stage
+                                                :path         [:stages 1 :joins 1 :stages 0]
+                                                :order        0}]
+                                   :path-type :lib.walk/join
+                                   :path      [:stages 1 :joins 1]
+                                   :order     1}]
+                      :path-type :lib.walk/stage
+                      :path      [:stages 1]
+                      :order     5}]}
+           (lib.walk/walk
+            query
+            (fn [_query path-type path stage-or-join]
+              (assoc stage-or-join :path-type path-type, :path path, :order (swap! order inc)))
+            {:reversed? true})))))
+
 (deftest ^:parallel reduced-test
   (let [query             {:stages [{:joins [{:stages [{:source-card 1}]}]}]}
         nodes-visited (atom [])]

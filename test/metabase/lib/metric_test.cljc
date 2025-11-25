@@ -8,7 +8,8 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -127,6 +128,27 @@
                    (lib/type-of query-with-metric metric))
     metric-clause
     metric-metadata))
+
+(deftest ^:parallel type-of-normalization-test
+  (testing "Metric type-of should normalize the metric :dataset-query as needed"
+    (let [metric {:description    "A metric"
+                  :archived       false
+                  :lib/type       :metadata/metric
+                  :database-id    (meta/id)
+                  :table-id       (meta/id :orders)
+                  :name           "Count"
+                  :type           :metric
+                  :source-card-id nil
+                  :id             80
+                  :dataset-query  {:lib/type "mbql/query"
+                                   :database (meta/id)
+                                   :stages   [{:source-table (meta/id :orders)
+                                               :lib/type     "mbql.stage/mbql"
+                                               :aggregation  [["count" {:lib/uuid "bd23f4c1-c973-4a04-8dc2-342236fe2b0f"}]]}]}}]
+      ;; disable Malli enforcement to make sure this works in the FE
+      (mu/disable-enforcement
+        (is (= :type/Integer
+               (lib/type-of (lib/query meta/metadata-provider (meta/table-metadata :orders)) metric)))))))
 
 (deftest ^:parallel unknown-type-of-test
   (is (= :type/*

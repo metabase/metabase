@@ -1,7 +1,7 @@
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:refer-clojure :exclude [group-by last])
+  (:refer-clojure :exclude [group-by last #?(:clj for)])
   (:require
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
@@ -29,7 +29,7 @@
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [#?(:clj for)]]
    [metabase.util.polyfills]
    [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
@@ -316,6 +316,11 @@
   [m]
   (recursive-map-keys ->snake_case_en m))
 
+(defn deep-kebab-keys
+  "Recursively convert the keys in a map to `kebab_case`."
+  [m]
+  (recursive-map-keys ->kebab-case-en m))
+
 (defn deep-kebab->snake-keys
   "Recursively convert kebab-case keys in a map to snake_case by replacing hyphens.
   Preserves camelCase and other formatting."
@@ -440,9 +445,12 @@
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
   [x]
-  (and (number? x)
-       (not (NaN? x))
-       (not (infinite? x))))
+  ;; Check for BigDec explicitly. BigDec cannot be nan or infinite, but using those predicates on bigdec with higher
+  ;; precision may allocate.
+  (or #?(:clj (decimal? x) :default false)
+      (and (number? x)
+           (not (NaN? x))
+           (not (infinite? x)))))
 
 (defn remove-diacritical-marks
   "Return a version of `s` with diacritical marks removed."
@@ -1229,7 +1237,11 @@
        (coll-reduce [_ f init]
          (let [acc1 (reduce f init r1)
                acc2 (reduce f acc1 r2)]
-           acc2)))
+           acc2))
+
+       ;; The only reason to implement Seqable is to make it properly renderable by CIDER (and other IDEs, probably).
+       clojure.lang.Seqable
+       (seq [_] (concat (seq r1) (seq r2))))
      :cljs
      (reify IReduce
        (-reduce [_ f]

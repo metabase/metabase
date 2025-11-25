@@ -1419,7 +1419,7 @@ describe("issues 15279 and 24500", () => {
     name: "",
     slug: "",
     id: "af72ce9c",
-    type: "foo",
+    type: "string/=",
     sectionId: "bar",
   };
 
@@ -3260,7 +3260,7 @@ describe("44047", () => {
           parameter_id: parameterDetails.id,
           target: [
             "dimension",
-            ["field", REVIEWS.RATING, { type: "type/Integer" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
           ],
         },
       ],
@@ -3275,7 +3275,10 @@ describe("44047", () => {
         {
           card_id: card.id,
           parameter_id: parameterDetails.id,
-          target: ["dimension", ["field", "RATING", { type: "type/Integer" }]],
+          target: [
+            "dimension",
+            ["field", "RATING", { "base-type": "type/Integer" }],
+          ],
         },
       ],
     };
@@ -4601,7 +4604,10 @@ describe("issue 62627", () => {
 
     cy.log("add an inline card filter");
     H.showDashboardCardActions();
-    H.findDashCardAction(H.getDashboardCard(), "Add a filter").click();
+    H.getDashboardCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Add a filter")
+      .click();
     H.popover().findByText("Text or Category").click();
     H.selectDashboardFilter(H.getDashboardCard(), "Category");
     H.setDashboardParameterName("Category");
@@ -5196,7 +5202,7 @@ describe("Issue 60987", () => {
       cy.findByPlaceholderText("Find...").type("aa");
       cy.findByText("Didn't find any results")
         .should("be.visible")
-        .should("have.css", "color", "rgb(105, 110, 123)"); // the text should be grey
+        .should("have.css", "color", "rgba(7, 23, 34, 0.62)"); // the text "text-medium"
     });
   });
 });

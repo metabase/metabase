@@ -1,13 +1,18 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { push } from "react-router-redux";
 
 import {
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupDatabaseListEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
+  createMockCollection,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
@@ -48,6 +53,29 @@ const setup = ({ isAdmin = true } = {}) => {
   );
 
   setupSearchEndpoints([]);
+  setupDatabaseListEndpoint([]);
+  setupCollectionByIdEndpoint({
+    collections: [
+      createMockCollection({ id: "root" }),
+      createMockCollection({ id: 1 }),
+    ],
+  });
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: "root" }),
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: 1 }),
+    collectionItems: [],
+  });
+
+  // Additional query param variant for uploadable databases
+  fetchMock.get({
+    url: "path:/api/database",
+    query: { include_only_uploadable: true },
+    response: { data: [], total: 0 },
+  });
+  fetchMock.get("path:/api/ee/embedding-hub/checklist", {});
 
   return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
 };
@@ -70,7 +98,7 @@ describe("EmbeddingHub", () => {
     });
   });
 
-  it("opens DataPickerModal when 'Create a dashboard' is clicked", async () => {
+  it("opens table picker when 'Create a dashboard' is clicked", async () => {
     setup();
 
     await userEvent.click(screen.getByText("Create a dashboard"));
@@ -81,6 +109,8 @@ describe("EmbeddingHub", () => {
     expect(
       await within(dialog).findByText("Choose a table to generate a dashboard"),
     ).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByText("Recents"));
 
     expect(
       await within(dialog).findByText("Foo Bar Table"),

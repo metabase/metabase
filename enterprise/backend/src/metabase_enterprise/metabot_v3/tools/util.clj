@@ -3,8 +3,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -116,7 +117,7 @@
   "Return a query based on the model with ID `model-id`."
   [card-id]
   (when-let [card (get-card card-id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (cond-> (lib.metadata/card mp card-id)
                       ;; pivot questions have strange result-columns so we work with the dataset-query
                       (#{:question} (:type card)) (get :dataset-query))))))
@@ -125,14 +126,14 @@
   "Return a query based on the model with ID `model-id`."
   [metric-id]
   (when-let [card (get-card metric-id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (lib.metadata/metric mp metric-id)))))
 
 (defn table-query
   "Return a query based on the table with ID `table-id`."
   [table-id]
   (when-let [table (get-table table-id :db_id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+    (let [mp (lib-be/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 
 (defn metabot-metrics-and-models-query
@@ -140,7 +141,9 @@
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
   and its subcollections. If the metabot has use_verified_content enabled, only verified
-  content is returned."
+  content is returned.
+
+  Ignores analytics content."
   [metabot-id & {:keys [limit] :as _opts}]
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
@@ -153,6 +156,7 @@
         base-query {:select [:report_card.*]
                     :from   [[:report_card]]
                     :where [:and
+                            [:!= :report_card.database_id audit-app/audit-db-id]
                             collection-filter
                             [:in :type [:inline ["metric" "model"]]]
                             [:= :archived false]

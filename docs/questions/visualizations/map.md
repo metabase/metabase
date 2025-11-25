@@ -2,7 +2,7 @@
 title: Maps
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/maps
-description: "Maps in Metabase allow you to visualize geographical data either using coordinates or by region. Metabase gives you three types of maps : pin map for unaggregated data, grid map for histograms, and region map for distributions by regions like countries or states. You can also create custom maps."
+description: "Maps in Metabase allow you to visualize geographic data either using coordinates or by region. Metabase gives you three types of maps : pin map for unaggregated data, grid map for histograms, and region map for distributions by regions like countries or states. You can also create custom maps."
 ---
 
 # Maps
@@ -13,7 +13,7 @@ Metabase has three types of map visualization:
 - [**Grid map**](#grid-map) for distributing a large number of points over a specified area.
 - [**Region map**](#region-maps) for data broken out by regions, like countries or states. Metabase comes with two built-in maps, but you can upload your own custom regions.
 
-When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set, as long as the columns with the geographical data have the [right metadata](../../data-modeling/metadata-editing.md).
+When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set, as long as the columns with the geographic data have the [right metadata](../../data-modeling/metadata-editing.md).
 
 ![Map types](../images/map-types.png)
 
@@ -21,7 +21,7 @@ When you select the **Map** visualization setting, Metabase will automatically t
 
 ## Pin map
 
-Pin maps display markers or tiles for individual data points on the map. They work best for displaying small amounts of unaggregated geographical data.
+Pin maps display markers or tiles for individual data points on the map. They work best for displaying small amounts of unaggregated geographic data.
 
 ### Pin map data shape
 
@@ -57,13 +57,13 @@ To change the pin type:
    - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer then 1,000 rows.
    - **Tiles**. Maps display up to 2,000 tiles. Maps default to tiles for results greater than 1,000 rows. Tooltips will not be displayed for tiles.
 
-By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browswer.
+By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browser.
 
-If you need to display a large number of geographical data points, consider using a grid map to display the distribution instead.
+If you need to display a large number of geographic data points, consider using a grid map to display the distribution instead.
 
 ## Grid map
 
-Grid map is an aggregated version of the pin map — like a heatmap for the distribution of pins. Grid map breaks the the map into a grid based on latitude/longitude, and then colors each grid cell based on how many data points fall in it.
+Grid map is an aggregated version of the pin map — like a heatmap for the distribution of pins. Grid map breaks the map into a grid based on latitude/longitude, and then colors each grid cell based on how many data points fall in it.
 
 ![Grid map](../images/grid-map.png)
 

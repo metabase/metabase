@@ -15,8 +15,8 @@ export const AdminSettingsLayout = ({
 }: {
   sidebar?: React.ReactNode;
   children?: React.ReactNode;
-  maw?: string;
   fullWidth?: boolean;
+  maw?: string;
 }) => {
   return (
     <Box className={S.Wrapper}>
@@ -32,7 +32,7 @@ export const AdminSettingsLayout = ({
           p={fullWidth ? 0 : "2rem"}
         >
           <Box maw={fullWidth ? undefined : maw} w="100%">
-            <Box pb={fullWidth ? 0 : "2rem"}>
+            <Box {...(fullWidth ? { h: "100%" } : { pb: "2rem" })}>
               <ErrorBoundary>{children ?? <NotFound />}</ErrorBoundary>
             </Box>
           </Box>

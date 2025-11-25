@@ -25,7 +25,7 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { SetTitle } from "metabase/hoc/Title";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -138,7 +138,8 @@ export const DocumentPage = ({
   const hasComments =
     !!commentsData?.comments && commentsData.comments.length > 0;
 
-  const canWrite = isNewDocument || documentData?.can_write;
+  const canWrite =
+    !documentData?.archived && (isNewDocument || documentData?.can_write);
 
   useEffect(() => {
     if (error) {
@@ -198,7 +199,10 @@ export const DocumentPage = ({
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
-    const titleChanged = currentTitle !== originalTitle;
+    // We call .trim() on documentTitle to ensure that no one can push the save button
+    // with a document name that is all whitespace, the API will reject it. However,
+    // when comparing saved with current titles, we need to use unmofidied values
+    const titleChanged = documentTitle !== originalTitle;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
@@ -349,6 +353,10 @@ export const DocumentPage = ({
     ],
   );
 
+  const focusEditorBody = useCallback(() => {
+    editorInstance?.commands.focus("start");
+  }, [editorInstance]);
+
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
     archived?: boolean;
@@ -401,9 +409,10 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
+  usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
+
   return (
     <Box className={styles.documentPage}>
-      <SetTitle title={documentData?.name || t`New document`} />
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
@@ -416,6 +425,7 @@ export const DocumentPage = ({
               showSaveButton={showSaveButton ?? false}
               isBookmarked={isBookmarked}
               onTitleChange={setDocumentTitle}
+              onTitleSubmit={focusEditorBody}
               onSave={() => {
                 if (isNewDocument) {
                   setCollectionPickerMode("save");
@@ -455,11 +465,11 @@ export const DocumentPage = ({
           <CollectionPickerModal
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
-            value={{ id: "root", model: "collection" }}
             options={{
               showPersonalCollections: true,
               showRootCollection: true,
             }}
+            entityType="document"
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));

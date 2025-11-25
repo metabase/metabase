@@ -645,10 +645,10 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.selectDataset(Q2.name);
@@ -1223,7 +1223,7 @@ describe("issue 49160", () => {
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");
-    H.echartsContainer().findByText("TOTAL").should("be.visible");
+    H.echartsContainer().findByText("Total").should("be.visible");
   });
 
   it("pie chart should work when instance colors have overrides", () => {

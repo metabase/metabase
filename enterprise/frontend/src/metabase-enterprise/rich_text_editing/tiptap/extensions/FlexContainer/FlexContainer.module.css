@@ -48,6 +48,19 @@
   padding-right: 0;
 }
 
+.flexContent :global(.node-supportingText) {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.flexContent :global(.node-supportingText):first-child {
+  margin-left: 0;
+}
+
+.flexContent :global(.node-supportingText):last-child {
+  margin-right: 0;
+}
+
 /* Resize handles */
 .resizeHandle {
   position: absolute;
@@ -67,7 +80,7 @@
 
 .flexContainer:hover .resizeHandle {
   opacity: 1;
-  background-color: var(--mb-color-text-secondary-inverse);
+  background-color: var(--mb-color-text-secondary);
 }
 
 .flexContainer.resizing {

@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, lighten } from "metabase/lib/colors";
 
 interface ToasterContainerProps {
   show: boolean;
@@ -44,7 +44,7 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${() => alpha(color("bg-white"), 0.1)};
+  background-color: ${() => alpha("bg-white", 0.1)};
   border-radius: 6px;
   color: var(--mb-color-text-white);
   height: fit-content;
@@ -56,7 +56,7 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${() => alpha(color("bg-white"), 0.3)};
+    background-color: ${() => alpha("bg-white", 0.3)};
   }
 `;
 

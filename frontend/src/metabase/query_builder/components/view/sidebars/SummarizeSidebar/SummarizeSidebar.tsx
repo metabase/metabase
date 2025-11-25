@@ -2,11 +2,11 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
 import { useDefaultQueryAggregation } from "metabase/query_builder/hooks/use-default-query-aggregation";
 import { Divider } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import {
   SummarizeAggregationItemList,

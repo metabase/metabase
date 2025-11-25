@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupTokenStatusEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { EmbedResource } from "metabase/public/lib/types";
@@ -49,6 +50,7 @@ export function setup(
       onUpdateEnableEmbedding = jest.fn(),
       onCreatePublicLink = jest.fn(),
       onDeletePublicLink = jest.fn(),
+      onClose = jest.fn(),
     } = {},
     hasEnterprisePlugins,
     tokenFeatures = createMockTokenFeatures(),
@@ -71,6 +73,10 @@ export function setup(
     setupEnterprisePlugins();
   }
 
+  setupTokenStatusEndpoint({
+    valid: true,
+  });
+
   const view = renderWithProviders(
     <Route
       path="*"
@@ -87,6 +93,7 @@ export function setup(
             onUpdateEnableEmbedding={onUpdateEnableEmbedding}
             onCreatePublicLink={onCreatePublicLink}
             onDeletePublicLink={onDeletePublicLink}
+            onClose={onClose}
           />
         );
       }}

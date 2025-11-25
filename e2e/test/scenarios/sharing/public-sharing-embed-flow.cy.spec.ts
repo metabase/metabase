@@ -9,7 +9,7 @@ const { H } = cy;
 
 const suiteTitle = "scenarios > sharing > embed flow pre-selection";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -28,17 +28,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
+      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
     });
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.location("search").should((search) => {
-      const params = new URLSearchParams(search);
-
-      expect(params.get("resource_type")).to.equal("dashboard");
-      expect(params.get("resource_id")).to.equal(String(ORDERS_DASHBOARD_ID));
-    });
 
     getEmbedSidebar().within(() => {
       cy.findByText("Behavior").should("be.visible");
@@ -51,7 +44,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByText("Orders in a dashboard", { timeout: 10_000 })
       .should("be.visible");
 
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -64,17 +57,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane()
-      .findByRole("link", { name: "Embedded Analytics JS" })
+      .findByRole("button", { name: "Embedded Analytics JS" })
       .click();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.location("search").should((search) => {
-      const params = new URLSearchParams(search);
-
-      expect(params.get("resource_type")).to.equal("question");
-      expect(params.get("resource_id")).to.equal(String(ORDERS_QUESTION_ID));
-    });
 
     getEmbedSidebar().within(() => {
       cy.findByText("Behavior").should("be.visible");
@@ -87,7 +73,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByText("Orders", { timeout: 10_000 })
       .should("be.visible");
 
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -100,7 +86,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
+      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
     });
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
@@ -123,7 +109,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.openSharingMenu("Embed");
 
     H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("link", { name: "Embedded Analytics JS" }).click();
+      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
     });
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
