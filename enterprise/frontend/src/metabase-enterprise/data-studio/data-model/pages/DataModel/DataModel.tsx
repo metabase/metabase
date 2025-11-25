@@ -9,7 +9,6 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DataModelProvider } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import {
   getTableMetadataQuery,
   parseRouteParams,
@@ -40,15 +39,15 @@ interface Props {
   params: RouteParams;
 }
 
-export const DataModel = ({ children, location, params }: Props) => (
-  <DataModelProvider eventSource="data_studio">
+export const DataModel = ({ children, location, params }: Props) => {
+  return (
     <SelectionProvider>
       <DataModelContent location={location} params={params}>
         {children}
       </DataModelContent>
     </SelectionProvider>
-  </DataModelProvider>
-);
+  );
+};
 
 function DataModelContent({ params }: Props) {
   const {
@@ -236,6 +235,7 @@ function DataModelContent({ params }: Props) {
                     key={getRawTableFieldId(field)}
                     parent={parentField}
                     table={table}
+                    eventSource="data_studio"
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}
                   />

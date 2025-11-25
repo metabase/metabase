@@ -7,8 +7,8 @@ import {
   LabeledValue,
   TitledSection,
 } from "metabase/metadata/components";
-import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { MetadataEventSource } from "metabase/metadata/pages/DataModelV1/types";
 import {
   canCoerceFieldType,
   getFieldRawName,
@@ -25,9 +25,10 @@ import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
 interface Props {
   field: Field;
+  eventSource: MetadataEventSource;
 }
 
-const DataSectionBase = ({ field }: Props) => {
+const DataSectionBase = ({ field, eventSource }: Props) => {
   const id = getRawTableFieldId(field);
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
@@ -76,7 +77,6 @@ const DataSectionBase = ({ field }: Props) => {
     }
   };
 
-  const { eventSource } = useDataModelContext();
   const handleCoercionStrategyChange = async (
     coercionStrategy: string | null,
   ) => {

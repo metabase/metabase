@@ -10,8 +10,8 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
-import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { MetadataEventSource } from "metabase/metadata/pages/DataModelV1/types";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -52,12 +52,14 @@ import {
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   database: Database;
   field: Field;
+  eventSource: MetadataEventSource;
 }
 
 export const RemappingPicker = ({
   comboboxProps,
   database,
   field,
+  eventSource,
   ...props
 }: Props) => {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -126,7 +128,6 @@ export const RemappingPicker = ({
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
-  const { eventSource } = useDataModelContext();
   const sendDefaultToast = (error: unknown) => {
     if (error) {
       sendErrorToast(

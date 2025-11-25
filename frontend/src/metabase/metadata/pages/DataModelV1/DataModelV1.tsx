@@ -11,7 +11,6 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DataModelProvider } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
@@ -40,13 +39,7 @@ interface Props {
   params: RouteParams;
 }
 
-export const DataModelV1 = (props: Props) => (
-  <DataModelProvider eventSource="admin">
-    <DataModelContent {...props} />
-  </DataModelProvider>
-);
-
-const DataModelContent = ({ children, location, params }: Props) => {
+export const DataModelV1 = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
@@ -193,6 +186,7 @@ const DataModelContent = ({ children, location, params }: Props) => {
                       key={getRawTableFieldId(field)}
                       parent={parentField}
                       table={table}
+                      eventSource="admin"
                       onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
                     />

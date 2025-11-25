@@ -6,13 +6,13 @@ import {
   useUpdateFieldMutation,
 } from "metabase/api";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
-import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
+import type { MetadataEventSource } from "../../DataModelV1/types";
 import { DataModelContext } from "../DataModelContext";
 import { trackMetadataChange } from "../analytics";
 
@@ -26,9 +26,15 @@ interface Props {
   databaseId: DatabaseId;
   field: Field;
   table: Table;
+  eventSource: MetadataEventSource;
 }
 
-const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
+const MetadataSectionBase = ({
+  databaseId,
+  field,
+  table,
+  eventSource,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
@@ -42,7 +48,6 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
-  const { eventSource } = useDataModelContext();
   const handleChange = async (patch: Patch) => {
     const { error } = await updateField({ id, ...patch });
 
