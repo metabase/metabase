@@ -11162,9 +11162,15 @@
                     "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
                   },
                   "collection_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "description" : "String must be a valid 21-character NanoID string.",
+                      "type" : "string",
+                      "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                    } ]
                   },
                   "cache_ttl" : {
                     "description" : "value must be an integer greater than zero.",
@@ -16185,6 +16191,44 @@
         "tags" : [ "/api/ee/billing" ]
       }
     },
+    "/api/ee/cloud-add-ons/addons" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/addons",
+        "description" : "Get addons information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
+    "/api/ee/cloud-add-ons/plans" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/plans",
+        "description" : "Get plans information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
     "/api/ee/cloud-add-ons/{product-type}" : {
       "post" : {
         "summary" : "POST /api/ee/cloud-add-ons/{product-type}",
@@ -16195,7 +16239,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered" ]
           }
         } ],
         "responses" : {
@@ -16215,11 +16259,13 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "quantity" : {
+                    "type" : "integer"
+                  },
                   "terms_of_service" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ "terms_of_service" ]
+                }
               }
             }
           }
@@ -25754,6 +25800,25 @@
         "tags" : [ "/api/preview_embed" ]
       }
     },
+    "/api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}",
+        "description" : "Embedded version of chain filter search endpoint.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
     "/api/preview_embed/dashboard/{token}/params/{param-key}/values" : {
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/values",
@@ -28618,25 +28683,6 @@
                 "required" : [ "token", "user", "prefs" ]
               }
             }
-          }
-        },
-        "tags" : [ "/api/setup" ]
-      }
-    },
-    "/api/setup/user_defaults" : {
-      "get" : {
-        "summary" : "GET /api/setup/user_defaults",
-        "description" : "Returns object containing default user details for initial setup, if configured,\n   and if the provided token value matches the token in the configuration value.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/setup" ]
