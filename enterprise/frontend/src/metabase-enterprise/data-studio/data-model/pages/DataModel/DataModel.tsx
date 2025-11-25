@@ -154,7 +154,6 @@ function DataModelContent({ params }: Props) {
       style={{ overflow: "auto" }}
     >
       <Stack
-        bg="bg-white"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}

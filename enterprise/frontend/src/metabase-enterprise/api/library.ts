@@ -3,6 +3,12 @@ import type { Collection, CollectionItem } from "metabase-types/api";
 import { EnterpriseApi } from "./api";
 import { idTag, listTag, tag } from "./tags";
 
+type LibraryChild = {
+  description: string;
+  id: number;
+  name: string;
+};
+
 export const libraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     createLibrary: builder.mutation<Collection, void>({
@@ -12,7 +18,11 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: [listTag("collection"), tag("library-collection")],
     }),
-    getLibraryCollection: builder.query<CollectionItem | { data: null }, void>({
+    getLibraryCollection: builder.query<
+      | (CollectionItem & { effective_children: LibraryChild[] })
+      | { data: null },
+      void
+    >({
       query: () => ({
         url: `/api/ee/library`,
         method: "GET",

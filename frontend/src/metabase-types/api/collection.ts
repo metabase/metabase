@@ -16,6 +16,8 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
+export type CollectionNamespace = null | "snippets";
+
 // Collection ID can be either a numeric or entity id
 export type RegularCollectionId = number | string;
 
@@ -77,6 +79,7 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  namespace: CollectionNamespace;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -141,8 +144,8 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  getIcon: () => IconProps;
-  getUrl: (opts?: Record<string, unknown>) => string;
+  getIcon?: () => IconProps;
+  getUrl?: (opts?: Record<string, unknown>) => string;
   setArchived?: (
     isArchived: boolean,
     opts?: Record<string, unknown>,
