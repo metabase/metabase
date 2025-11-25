@@ -59,7 +59,7 @@ const QUESTION_PICKER_MODELS: QuestionPickerModel[] = [
   "dataset",
   "metric",
   "dashboard",
-  "table", // yes, tables are in the question picker now, I'm sorry
+  "table",
 ];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
