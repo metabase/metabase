@@ -131,6 +131,22 @@
      :tables            (t2/hydrate (t2/select :model/Table :active true {:where where}) :collection)
      :target_collection target-collection}))
 
+(api.macros/defendpoint :post "/unpublish-table"
+  "Create a model for each of selected tables"
+  [_route-params
+   _query-params
+   body :- ::table-selectors]
+  (api/check-superuser)
+  (let [where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        updated-count     (-> (t2/query {:update (t2/table-name :model/Table)
+                                         :set    {:collection_id nil
+                                                  :is_published  false}
+                                         :where  where})
+                              first)]
+
+    {:created_count     updated-count
+     :tables            (t2/select :model/Table :active true {:where where})}))
+
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
