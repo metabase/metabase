@@ -77,6 +77,22 @@
   :type       :boolean
   :default    true)
 
+(defsetting expand-collections-in-nav
+  (deferred-tru "User preference for whether the ''Collections'' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting expand-library-in-nav
+  (deferred-tru "User preference for whether the ''Library'' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
 (defsetting browse-filter-only-verified-models
   (deferred-tru "User preference for whether the ''Browse models'' page should be filtered to show only verified models.")
   :user-local :only

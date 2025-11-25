@@ -15,9 +15,10 @@ describe("scenarios > visualizations > table", () => {
 
   function joinTable(table) {
     cy.findByText("Join data").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText(table).click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, table).click();
     });
   }
 

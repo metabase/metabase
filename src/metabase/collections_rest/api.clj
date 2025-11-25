@@ -76,8 +76,11 @@
   The Trash Collection itself (the container for archived items) is *always* included.
 
   To select only personal collections, pass in `personal-only` as `true`.
-  This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
+  This will select only collections where `personal_owner_id` is not `nil`.
+
+  To include library collections and their descendants, pass in `include-library?` as `true`.
+  By default, library-type collections are excluded."
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only include-library?]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -95,15 +98,20 @@
                          [:!= :personal_owner_id nil])
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+                       (when-not include-library?
+                         [:or [:= nil :type]
+                          [:not-in :type [collection/library-collection-type
+                                          collection/library-models-collection-type
+                                          collection/library-metrics-collection-type]]])
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-filter-clause
                         :id
-                        {:include-archived-items (if archived
-                                                   :only
-                                                   :exclude)
+                        {:include-archived-items    (if archived
+                                                      :only
+                                                      :exclude)
                          :include-trash-collection? true
-                         :permission-level :read
-                         :archive-operation-id nil})]
+                         :permission-level          :read
+                         :archive-operation-id      nil})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -136,7 +144,8 @@
                         :exclude-other-user-collections exclude-other-user-collections
                         :namespace                      namespace
                         :shallow                        false
-                        :personal-only                  personal-only}) collections
+                        :personal-only                  personal-only
+                        :include-library?               true}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
     (if (or archived personal-only)
       collections
@@ -144,7 +153,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced)
+    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (collection/personal-collections-with-ui-details  (for [collection collections]
@@ -195,19 +204,22 @@
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
   some point in the future."
   [_route-params
-   {:keys [exclude-archived exclude-other-user-collections
+   {:keys [exclude-archived exclude-other-user-collections include-library
            namespace shallow collection-id]} :- [:map
                                                  [:exclude-archived               {:default false} [:maybe :boolean]]
                                                  [:exclude-other-user-collections {:default false} [:maybe :boolean]]
+                                                 [:include-library                {:default false} [:maybe :boolean]]
                                                  [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
                                                  [:shallow                        {:default false} [:maybe :boolean]]
                                                  [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [archived    (if exclude-archived false nil)
-        collections (select-collections {:archived                       archived
-                                         :exclude-other-user-collections exclude-other-user-collections
-                                         :namespace                      namespace
-                                         :shallow                        shallow
-                                         :collection-id                  collection-id})]
+        collections (-> (select-collections {:archived                       archived
+                                             :exclude-other-user-collections exclude-other-user-collections
+                                             :namespace                      namespace
+                                             :shallow                        shallow
+                                             :collection-id                  collection-id
+                                             :include-library?               include-library})
+                        (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
@@ -264,6 +276,7 @@
    [:show-dashboard-questions?     :boolean]
    [:collection-type {:optional true} [:maybe CollectionType]]
    [:archived?                     :boolean]
+   [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
@@ -628,7 +641,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
@@ -642,6 +655,11 @@
           (if (= collection-type "remote-synced")
             [:= :is_remote_synced true]
             [:= :type collection-type]))
+        (when-not include-library?
+          [:or [:= nil :type]
+           [:not [:in :type [collection/library-collection-type
+                             collection/library-metrics-collection-type
+                             collection/library-models-collection-type]]]])
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
@@ -734,7 +752,7 @@
     (for [row (annotate-collections parent-collection rows options)]
       (let [type-value (:type row)]
         (-> (t2/instance :model/Collection row)
-            collection/maybe-localize-trash-name
+            collection/maybe-localize-system-collection-name
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete)
@@ -1148,17 +1166,20 @@
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter.
 
+  By default, library collections are excluded from the results; to include them, pass `?include_library=true`.
+
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query collection_type
+           include_can_run_adhoc_query include_library collection_type
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
                                           [:collection_type             {:optional true} CollectionType]
                                           [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                           [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                           [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                          [:include_library             {:default false} [:maybe ms/BooleanValue]]
                                           [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
                                           [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
                                           [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
@@ -1175,6 +1196,7 @@
       :include-can-run-adhoc-query include_can_run_adhoc_query
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type collection_type
+      :include-library?             include_library
       :models                      model-kwds
       :pinned-state                (keyword pinned_state)
       :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
@@ -1473,6 +1495,7 @@
     (u/prog1 (collection-children collection
                                   {:show-dashboard-questions?   show_dashboard_questions
                                    :models                      model-kwds
+                                   :include-library?             true
                                    :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state                (keyword pinned_state)
                                    :include-can-run-adhoc-query include_can_run_adhoc_query
