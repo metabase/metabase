@@ -278,9 +278,10 @@ describe("user > settings", () => {
 
       cy.wait("@saveSetting");
 
-      // emulate browser change by deleting localStorage value
+      // emulate browser change by deleting localStorage values
       cy.window().then((win) => {
-        win.localStorage.removeItem("metabase-color-scheme");
+        win.sessionStorage.clear();
+        win.localStorage.clear();
       });
 
       cy.visit("/account/profile");
