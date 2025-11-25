@@ -9,7 +9,7 @@
    [metabuild-common.core :as u]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
-   (java.io OutputStream)
+   (java.io File OutputStream)
    (java.nio.file Files OpenOption StandardOpenOption)
    (java.util.jar Manifest)))
 
@@ -38,7 +38,8 @@
 
 (defn- create-basis [edition]
   {:pre [(#{:ee :oss} edition)]}
-  (b/create-basis {:project "deps.edn", :aliases #{edition :drivers}}))
+  (b/create-basis {:project "deps.edn",
+                   :aliases #{edition :drivers}}))
 
 (defn- all-paths [basis]
   (concat (:paths basis)
@@ -69,6 +70,18 @@
    (ns.deps/graph)
    ns-decls))
 
+(defn- all-drivers []
+  (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
+       (filter (fn [^File d]                                        ;
+                 (and
+                  ;; watch for errant DS_Store files on os_x
+                  (.isDirectory d)
+                  ;; ignore stuff like .cpcache
+                  (not (.isHidden d))
+                  ;; only consider a directory to be a driver if it contains a lein or deps build file
+                  (.exists (io/file d "deps.edn")))))
+       (map (comp symbol #(str "metabase.driver." %) #(.getName ^File %)))))
+
 (defn- metabase-namespaces-in-topo-order [basis]
   (let [ns-decls   (into []
                          (comp (map io/file)
@@ -79,7 +92,7 @@
                         ns.deps/topo-sort
                         (filter ns-symbols))
         orphans    (remove (set sorted) ns-symbols)
-        all        (concat orphans sorted)]
+        all        (concat orphans sorted (all-drivers))]
     (assert (contains? (set all) 'metabase.core.bootstrap))
     (when (contains? ns-symbols 'metabase-enterprise.core.dummy-namespace)
       (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
