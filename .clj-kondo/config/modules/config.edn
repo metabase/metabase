@@ -786,7 +786,6 @@
    :uses #{api
            app-db
            classloader
-           config
            legacy-mbql
            lib
            settings
