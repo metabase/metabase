@@ -95,7 +95,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "dataset"
     | "indexed-entity"
     | "snippet"
-    | "document";
+    | "document"
+    | "table";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -413,6 +414,12 @@ export type MetadataEditEvent = ValidateEvent<{
   triggered_from: "admin";
 }>;
 
+export type BookmarkTableEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "table";
+  triggered_from: "collection_list";
+}>;
+
 export type BookmarkQuestionEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "question";
@@ -495,6 +502,7 @@ export type RemoteSyncEvent =
   | RemoteSyncDeactivatedEvent;
 
 export type BookmarkEvent =
+  | BookmarkTableEvent
   | BookmarkQuestionEvent
   | BookmarkModelEvent
   | BookmarkMetricEvent

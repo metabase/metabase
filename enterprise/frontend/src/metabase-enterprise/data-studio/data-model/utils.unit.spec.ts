@@ -1,28 +1,30 @@
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import { getPublishSeeItLink } from "./components/TablePicker/utils";
 
-const createMockPublishModelsResponse = ({
+const createMockPublishTablesResponse = ({
   target_collection = createMockCollection({ type: "library-models" }),
-  models = [createMockCard({ type: "model" })],
-  created_count = 1,
+  tables = [createMockTable()],
 } = {}) => {
-  return { target_collection, models, created_count };
+  return { target_collection, tables };
 };
 
 describe("getPublishSeeItLink", () => {
   describe("published inside data studio", () => {
-    it("1 model created", () => {
-      const response = createMockPublishModelsResponse();
+    it("1 table published", () => {
+      const response = createMockPublishTablesResponse();
       const link = getPublishSeeItLink(response);
 
-      expect(link).toContain(
-        `data-studio/modeling/models/${response.models[0].id}`,
-      );
+      expect(link).toContain(`question`);
     });
 
-    it("> 1 model created", () => {
-      const response = createMockPublishModelsResponse({ created_count: 2 });
+    it("> 1 table published", () => {
+      const response = createMockPublishTablesResponse({
+        tables: [createMockTable({ id: 1 }), createMockTable({ id: 2 })],
+      });
       const link = getPublishSeeItLink(response);
 
       expect(link).toContain(
@@ -32,19 +34,19 @@ describe("getPublishSeeItLink", () => {
   });
 
   describe("published outside data studio", () => {
-    it("1 model created", () => {
-      const response = createMockPublishModelsResponse({
+    it("1 table published", () => {
+      const response = createMockPublishTablesResponse({
         target_collection: createMockCollection(),
       });
       const link = getPublishSeeItLink(response);
 
-      expect(link).toContain(`model/${response.models[0].id}`);
+      expect(link).toContain(`question`);
     });
 
-    it("> 1 model created", () => {
-      const response = createMockPublishModelsResponse({
+    it("> 1 table published", () => {
+      const response = createMockPublishTablesResponse({
+        tables: [createMockTable({ id: 1 }), createMockTable({ id: 2 })],
         target_collection: createMockCollection(),
-        created_count: 2,
       });
       const link = getPublishSeeItLink(response);
 
