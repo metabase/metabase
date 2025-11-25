@@ -41,17 +41,30 @@ describe("DashboardSubscriptionsSidebar", () => {
     expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
   });
 
-  describe("Embedding SDK", () => {
-    it("should not show subscription options when Slack is set up", async () => {
-      setup({ isEmbeddingSdk: true, email: true, slack: true });
+  it("should show email warning message", async () => {
+    setup({ email: true, slack: true });
 
-      expect(
-        await screen.findByText("Email this dashboard"),
-      ).toBeInTheDocument();
-    });
+    await userEvent.click(await screen.findByText("Email it"));
+    expect(await screen.findByText("Email this dashboard")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Recipients will see this data just as you see it, regardless of their permissions.",
+      ),
+    ).toBeInTheDocument();
+  });
 
-    it("should not show subscription options when Slack is not set up", async () => {
-      setup({ isEmbeddingSdk: true, email: true, slack: false });
+  describe.each([
+    {
+      slack: true,
+    },
+    {
+      slack: false,
+    },
+  ])("Embedding SDK", ({ slack }) => {
+    const whenMessage = slack ? "Slack is set up" : "Slack is not set up";
+
+    it(`should not show subscription options when ${whenMessage}`, async () => {
+      setup({ isEmbeddingSdk: true, email: true, slack });
 
       expect(
         await screen.findByText("Email this dashboard"),
@@ -59,6 +72,19 @@ describe("DashboardSubscriptionsSidebar", () => {
     });
 
     // We don't test `email: false` because this sidebar is only accessible when email is already set up
+
+    it(`should not show email warning message when ${whenMessage}`, async () => {
+      setup({ isEmbeddingSdk: true, email: true, slack });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Recipients will see this data just as you see it, regardless of their permissions.",
+        ),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("Slack Subscription sidebar", () => {
