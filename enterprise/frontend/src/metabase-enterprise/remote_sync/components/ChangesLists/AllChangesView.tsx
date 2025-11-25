@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils";
 import {
   Box,
   Divider,
@@ -44,17 +45,33 @@ export const AllChangesView = ({
 }: AllChangesViewProps) => {
   const { data: collectionTree = [] } = useListCollectionsTreeQuery();
 
-  const collectionMap = useMemo(() => {
-    const map = buildCollectionMap(collectionTree);
+  const { value: isTenantCollectionsRemoteSyncEnabled } = useAdminSetting(
+    "tenant-collections-remote-sync-enabled",
+  );
 
+  // Fetch collection tree for shared-tenant-collections namespace only if the feature is enabled
+  const { data: tenantCollectionTree = [] } = useListCollectionsTreeQuery(
+    { namespace: "shared-tenant-collection" },
+    { skip: !isTenantCollectionsRemoteSyncEnabled },
+  );
+
+  const collectionMap = useMemo(() => {
+    const map = new Map([
+      ...buildCollectionMap(collectionTree),
+      ...buildCollectionMap(tenantCollectionTree),
+    ]);
+
+    // Add all synced collections to the map, including those from namespaces.
+    // This ensures that collections from namespaces like "shared-tenant-collection"
+    // are available when building collection path segments.
     collections.forEach((c) => {
-      if (typeof c.id === "number" && !map.has(c.id)) {
+      if (typeof c.id === "number") {
         map.set(c.id, c);
       }
     });
 
     return map;
-  }, [collectionTree, collections]);
+  }, [collectionTree, tenantCollectionTree, collections]);
 
   const hasRemovals = useMemo(() => {
     return (

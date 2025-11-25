@@ -24,15 +24,8 @@ import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
-import {
-  ActionIcon,
-  Flex,
-  Icon,
-  type IconName,
-  type IconProps,
-  Tooltip
-} from "metabase/ui";
-import type { Bookmark, Collection } from "metabase-types/api";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
+import type { Bookmark } from "metabase-types/api";
 
 import {
   PaddedSidebarLink,
@@ -225,6 +218,8 @@ export function MainNavbarView({
             />
           )}
 
+          <PLUGIN_TENANTS.MainNavSharedCollections />
+
           <SidebarSection>
             <ErrorBoundary>
               <CollectionSectionHeading
@@ -250,8 +245,6 @@ export function MainNavbarView({
             </ErrorBoundary>
           </SidebarSection>
 
-          <PLUGIN_TENANTS.MainNavSharedCollections />
-
           <SidebarSection>
             <ErrorBoundary>
               <BrowseNavSection
@@ -276,10 +269,10 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-        <div>
-          <WhatsNewNotification />
+          <div>
+            <WhatsNewNotification />
+          </div>
         </div>
-      </div>
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
