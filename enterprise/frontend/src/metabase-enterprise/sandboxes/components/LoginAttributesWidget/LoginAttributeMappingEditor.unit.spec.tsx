@@ -286,6 +286,8 @@ describe("LoginAttributeMappingEditor", () => {
         role: "admin",
         type: "insect",
         color: "green",
+      });
+    });
 
     it("can override a tenant attribute value", async () => {
       const { onChange } = setup({ structuredAttributes });
@@ -314,6 +316,7 @@ describe("LoginAttributeMappingEditor", () => {
         personal: "secret",
       });
     });
+
     it("can change an overridden tenant attribute value", async () => {
       const { onChange } = setup({ structuredAttributes });
 
@@ -346,6 +349,7 @@ describe("LoginAttributeMappingEditor", () => {
         personal: "secret",
       });
     });
+
     it("can revert a tenant attribute value", async () => {
       const { onChange } = setup({ structuredAttributes });
 
