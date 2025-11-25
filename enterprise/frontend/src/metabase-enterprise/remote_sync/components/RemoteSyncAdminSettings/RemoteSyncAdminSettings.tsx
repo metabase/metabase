@@ -51,6 +51,7 @@ import {
   BRANCH_KEY,
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
+  TENANT_COLLECTIONS_REMOTE_SYNC_KEY,
   TOKEN_KEY,
   TYPE_KEY,
   URL_KEY,
@@ -188,6 +189,7 @@ export const RemoteSyncAdminSettings = () => {
   );
 
   const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
+  const isTenantsEnabled = useSetting("use-tenants");
   const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
 
   return (
@@ -295,6 +297,15 @@ export const RemoteSyncAdminSettings = () => {
                         label={t`Auto-sync with git`}
                       />
                     </Stack>
+                  )}
+
+                  {isTenantsEnabled && (
+                    <FormSwitch
+                      size="sm"
+                      name={TENANT_COLLECTIONS_REMOTE_SYNC_KEY}
+                      label={t`Sync tenant collections`}
+                      description={t`Enable remote sync for tenant collections in the shared-tenant-collection namespace`}
+                    />
                   )}
 
                   <Flex justify="end" align="center" gap="md">
