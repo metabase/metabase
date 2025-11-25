@@ -53,9 +53,13 @@ export function initializePlugin() {
           <Route component={DetailsPageLayout}>
             <Route path="jobs/new" component={NewJobPage} />
             <Route path="jobs/:jobId" component={JobPage} />
-            <Route path="workspaces/:workspaceId" component={WorkspacePage} />
             <Route path=":transformId" component={TransformPage} />
           </Route>
+
+          <Route component={DetailsPageLayout} props={{ fullWidth: true }}>
+            <Route path="workspaces/:workspaceId" component={WorkspacePage} />
+          </Route>
+
           {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
           <Route path="new/query" component={NewQueryTransformPage} />
           <Route path="new/native" component={NewNativeTransformPage} />
