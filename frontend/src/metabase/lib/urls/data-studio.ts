@@ -2,6 +2,7 @@ import type {
   CardId,
   CollectionId,
   NativeQuerySnippetId,
+  SegmentId,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -105,4 +106,12 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 
 export function newDataStudioSnippet() {
   return `${dataStudioModeling()}/snippets/new`;
+}
+
+export function dataStudioSegment(segmentId: SegmentId) {
+  return `/admin/datamodel/segment/${segmentId}`;
+}
+
+export function dataStudioSegmentDependencies(segmentId: SegmentId) {
+  return `${dataStudioSegment(segmentId)}/dependencies`;
 }
