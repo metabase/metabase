@@ -589,6 +589,82 @@ describe("Remote Sync", () => {
 
       ensureSyncedCollectionIsVisible();
     });
+
+    it("can enable tenant collections remote sync in read-only mode when tenants feature is enabled", () => {
+      // Enable tenants feature
+      cy.request("PUT", "/api/setting/use-tenants", { value: true });
+
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
+
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText(/repository url/i)
+        .clear()
+        .type(LOCAL_GIT_URL);
+
+      cy.findByTestId("admin-layout-content").findByText("Read-only").click();
+
+      // Tenant collections toggle should be visible when tenants is enabled
+      cy.findByLabelText("Sync tenant collections").should("exist");
+      cy.findByLabelText("Sync tenant collections").should("not.be.checked");
+
+      // Enable tenant collections remote sync
+      cy.findByLabelText("Sync tenant collections").click();
+      cy.findByLabelText("Sync tenant collections").should("be.checked");
+
+      cy.button("Set up Remote Sync").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
+
+      // Verify the setting persists
+      cy.reload();
+      cy.findByLabelText("Sync tenant collections").should("be.checked");
+    });
+
+    it("can enable tenant collections remote sync in read-write mode when tenants feature is enabled", () => {
+      // Enable tenants feature
+      cy.request("PUT", "/api/setting/use-tenants", { value: true });
+
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText(/repository url/i)
+        .clear()
+        .type(LOCAL_GIT_URL);
+
+      cy.findByTestId("admin-layout-content").findByText("Read-write").click();
+
+      // Tenant collections toggle should be visible in read-write mode too
+      cy.findByLabelText("Sync tenant collections").should("exist");
+      cy.findByLabelText("Sync tenant collections").should("not.be.checked");
+
+      // Enable tenant collections remote sync
+      cy.findByLabelText("Sync tenant collections").click();
+      cy.findByLabelText("Sync tenant collections").should("be.checked");
+
+      cy.button("Set up Remote Sync").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
+
+      // Verify the setting persists
+      cy.reload();
+      cy.findByLabelText("Sync tenant collections").should("be.checked");
+    });
+
+    it("does not show tenant collections toggle when tenants feature is disabled", () => {
+      // Ensure tenants feature is disabled
+      cy.request("PUT", "/api/setting/use-tenants", { value: false });
+
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText(/repository url/i)
+        .clear()
+        .type(LOCAL_GIT_URL);
+
+      cy.findByTestId("admin-layout-content").findByText("Read-only").click();
+
+      // Tenant collections toggle should not be visible
+      cy.findByLabelText("Sync tenant collections").should("not.exist");
+    });
   });
 
   describe("read-only mode", () => {

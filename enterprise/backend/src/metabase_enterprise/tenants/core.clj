@@ -57,7 +57,7 @@
   "Throws API exceptions if the passed collection is an invalid tenant collection."
   :feature :tenants
   [collection]
-  (when (collection/is-tenant-collection? collection)
+  (when (collection/tenant-collection? collection)
     ;; make sure tenants is enabled
     (api/check-400 (perms/use-tenants))
 

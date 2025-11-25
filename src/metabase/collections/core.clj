@@ -19,4 +19,5 @@
   create-library-collection!
   moving-into-remote-synced?
   moving-from-remote-synced?
-  non-remote-synced-dependencies])
+  non-remote-synced-dependencies
+  tenant-collection?])

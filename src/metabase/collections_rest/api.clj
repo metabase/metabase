@@ -625,7 +625,7 @@
       (assoc :location (or (when parent-collection
                              (collection/children-location parent-collection))
                            "/"))
-      (assoc :is_tenant_dashboard (collection/is-tenant-collection? parent-collection))
+      (assoc :is_tenant_dashboard (collection/tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
@@ -1298,15 +1298,18 @@
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
+(defn- parent-or-root
+  "From a create request return either the parent collection or the root collection"
+  [{collection-id :parent_id collection-namespace :namespace}]
+  (if collection-id
+    (t2/select-one :model/Collection :id collection-id)
+    (collection/root-collection-with-ui-details collection-namespace)))
+
 (defn- write-check-collection-or-root-collection
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
-  [{collection-id :parent_id collection-namespace :namespace :as coll}]
-  (api/write-check (if collection-id
-                     (t2/select-one :model/Collection :id collection-id)
-                     (cond-> collection/root-collection
-                       collection-namespace (assoc :namespace collection-namespace))))
-  coll)
+  [parent-coll]
+  (api/write-check parent-coll))
 
 (defn- write-check-authority-level
   "Check that a superuser is creating this collection if they are setting the authority level."
@@ -1322,7 +1325,7 @@
   means 'any tenant collection.'"
   metabase-enterprise.tenants.core
   [collection]
-  (when (collection/is-tenant-collection? collection)
+  (when (collection/tenant-collection? collection)
     (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400})))
   collection)
 
@@ -1349,8 +1352,8 @@
   "Converts `CreateCollectionArguments` into `NewCollectionArguments` - i.e. translates what the API gets into what
   toucan needs to create a collection."
   [coll-data :- CreateCollectionArguments]
-  (let [parent-coll (when-let [pid (:parent_id coll-data)]
-                      (t2/select-one [:model/Collection :id :location :namespace :is_remote_synced] pid))]
+  (let [parent-coll (parent-or-root coll-data)]
+    (write-check-collection-or-root-collection parent-coll)
     (-> (cond-> coll-data
           (and (:namespace parent-coll)
                (not (contains? coll-data :namespace))) (assoc :namespace (:namespace parent-coll))
@@ -1363,8 +1366,7 @@
   [coll-data]
   (u/prog1 (t2/insert-returning-instance!
             :model/Collection
-            (-> (write-check-collection-or-root-collection coll-data)
-                apply-defaults-to-collection
+            (-> (apply-defaults-to-collection coll-data)
                 write-check-authority-level
                 validate-new-tenant-collection!))
     (when config/ee-available?
@@ -1418,7 +1420,7 @@
                                                   (collection/perms-for-moving collection-before-update new-parent)))
 
         (api/check
-         (not (collection/is-tenant-collection? new-parent)))
+         (not (collection/tenant-collection? new-parent)))
 
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location
@@ -1654,7 +1656,7 @@
                                    :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state                (keyword pinned_state)
                                    :include-can-run-adhoc-query include_can_run_adhoc_query
-                                   :include-tenant-collections? (collection/is-tenant-collection? collection)
+                                   :include-tenant-collections? (collection/tenant-collection? collection)
                                    :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                                                  :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
                                                                  ;; default to sorting official collections first, except for the trash.

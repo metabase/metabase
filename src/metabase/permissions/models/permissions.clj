@@ -449,9 +449,9 @@
 (defn- is-trash-or-descendant? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
 
-(defn- is-tenant-collection?
+(defn- tenant-collection?
   [collection]
-  ((requiring-resolve 'metabase.collections.models.collection/is-tenant-collection?) collection))
+  ((requiring-resolve 'metabase.collections.models.collection/tenant-collection?) collection))
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
@@ -497,7 +497,7 @@
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (let [collection (collection-or-id->collection collection-or-id)]
-    (when (and (not (is-tenant-collection? collection))
+    (when (and (not (tenant-collection? collection))
                (perms-group/is-tenant-group? group-or-id))
       (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))

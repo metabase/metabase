@@ -27,3 +27,17 @@
   [collection]
   (or (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
+
+(defenterprise tenant-collection-remote-synced?
+  "Returns true if the tenant-collections-remote-sync-enabled setting is enabled
+   AND the collection is in the shared-tenant-collection namespace."
+  :feature :none
+  [collection]
+  (and (settings/tenant-collections-remote-sync-enabled)
+       (collections/tenant-collection? collection)))
+
+(defenterprise tenant-collections-remote-sync-enabled?
+  "Returns the current value of the tenant-collections-remote-sync-enabled setting."
+  :feature :none
+  []
+  (settings/tenant-collections-remote-sync-enabled))

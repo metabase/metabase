@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [potemkin.types :as p.types]
@@ -37,7 +38,7 @@
            (not (premium-features/enable-snippet-collections?)))
     #{}
     #{((case read-or-write
-         :read  perms/collection-read-path
+         :read perms/collection-read-path
          :write perms/collection-readwrite-path) collection)}))
 
 (def ^RootCollection root-collection
@@ -60,7 +61,9 @@
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :is_personal false
-                :id   "root"))
+                :id "root"
+                :is_remote_synced (when (= (keyword collection-namespace) :shared-tenant-collection)
+                                    (remote-sync/tenant-collections-remote-sync-enabled?))))
 
 (defn hydrated-root-collection
   "Return the root collection entity."

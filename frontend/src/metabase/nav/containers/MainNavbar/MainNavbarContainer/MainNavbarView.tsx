@@ -316,10 +316,10 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-        <div>
-          <WhatsNewNotification />
+          <div>
+            <WhatsNewNotification />
+          </div>
         </div>
-      </div>
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
