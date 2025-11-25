@@ -16,7 +16,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 1000;
 
-describe("scenarios > embedding-sdk > guest-embedding-happy-path", () => {
+describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
   describe("question", () => {
     const setup = ({ display }: { display?: Card["display"] } = {}) => {
       signInAsAdminAndSetupGuestEmbedding({

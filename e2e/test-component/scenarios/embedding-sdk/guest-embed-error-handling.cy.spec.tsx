@@ -6,7 +6,7 @@ import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embeddi
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > embedding-sdk > guest-embedding-error-handling", () => {
+describe("scenarios > embedding-sdk > guest-embed-error-handling", () => {
   beforeEach(() => {
     signInAsAdminAndSetupGuestEmbedding({
       token: "starter",
