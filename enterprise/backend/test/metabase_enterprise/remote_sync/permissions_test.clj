@@ -15,58 +15,58 @@
                          :text text}]}]})
 
 (deftest remote-synced-permissions-with-remote-sync-type-import-test
-  (testing "can_write should be false for remote-synced collection items when remote-sync-type is production"
+  (testing "can_write should be false for remote-synced collection items when remote-sync-type is read-only"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temporary-setting-values [settings/remote-sync-type :production]
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
 
           (testing "Cards in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
                                                       :collection_id library-coll-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}]
               (is (false? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                  "Card in remote-synced collection should not be writable when remote-sync-type is production")))
+                  "Card in remote-synced collection should not be writable when remote-sync-type is read-only")))
 
           (testing "Dashboards in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Library Dashboard"
                                                                 :collection_id library-coll-id}]
               (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                  "Dashboard in remote-synced collection should not be writable when remote-sync-type is production")))
+                  "Dashboard in remote-synced collection should not be writable when remote-sync-type is read-only")))
 
           (testing "Documents in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Document {document-id :id} {:name "Library Document"
                                                               :document (text->prose-mirror-ast "Library content")
                                                               :collection_id library-coll-id}]
               (is (false? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                  "Document in remote-synced collection should not be writable when remote-sync-type is production"))))))))
+                  "Document in remote-synced collection should not be writable when remote-sync-type is read-only"))))))))
 
 (deftest remote-synced-permissions-with-remote-sync-type-export-test
-  (testing "can_write should be true for remote-synced collection items when remote-sync-type is development"
+  (testing "can_write should be true for remote-synced collection items when remote-sync-type is read-write"
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-temporary-setting-values [settings/remote-sync-type :development]
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
 
           (testing "Cards in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
                                                       :collection_id library-coll-id
                                                       :dataset_query (mt/native-query {:query "SELECT 1"})}]
               (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                  "Card in remote-synced collection should be writable when remote-sync-type is development")))
+                  "Card in remote-synced collection should be writable when remote-sync-type is read-write")))
 
           (testing "Dashboards in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Library Dashboard"
                                                                 :collection_id library-coll-id}]
               (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                  "Dashboard in remote-synced collection should be writable when remote-sync-type is development")))
+                  "Dashboard in remote-synced collection should be writable when remote-sync-type is read-write")))
 
           (testing "Documents in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Document {document-id :id} {:name "Library Document"
                                                               :document (text->prose-mirror-ast "Library content")
                                                               :collection_id library-coll-id}]
               (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                  "Document in remote-synced collection should be writable when remote-sync-type is development"))))))))
+                  "Document in remote-synced collection should be writable when remote-sync-type is read-write"))))))))
 
 (deftest non-remote-synced-permissions-unaffected-by-remote-sync-type-test
   (testing "can_write for non-remote-synced collection items should be unaffected by remote-sync-type setting"
@@ -74,7 +74,7 @@
       (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
 
-        (doseq [remote-sync-setting [:production :development]]
+        (doseq [remote-sync-setting [:read-only :read-write]]
           (testing (str "When remote-sync-type is " remote-sync-setting)
             (mt/with-temporary-setting-values [settings/remote-sync-type remote-sync-setting]
 
@@ -102,67 +102,67 @@
   (testing "can_write for items in nested remote-synced collections should respect remote-sync-type"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {parent-library-id :id} {:name "Parent Library Collection"
-                                                                :type "remote-synced"}
+                                                                :is_remote_synced true}
                      :model/Collection {child-library-id :id} {:name "Child Library Collection"
                                                                :location (format "/%d/" parent-library-id)
-                                                               :type "remote-synced"}]
+                                                               :is_remote_synced true}]
 
-        (testing "When remote-sync-type is production"
-          (mt/with-temporary-setting-values [settings/remote-sync-type :production]
+        (testing "When remote-sync-type is read-only"
+          (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
 
             (testing "Cards in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
                                                         :collection_id child-library-id
                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
                 (is (false? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                    "Card in nested remote-synced collection should not be writable when remote-sync-type is production")))
+                    "Card in nested remote-synced collection should not be writable when remote-sync-type is read-only")))
 
             (testing "Dashboards in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Nested Library Dashboard"
                                                                   :collection_id child-library-id}]
                 (is (false? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                    "Dashboard in nested remote-synced collection should not be writable when remote-sync-type is production")))
+                    "Dashboard in nested remote-synced collection should not be writable when remote-sync-type is read-only")))
 
             (testing "Documents in nested remote-synced collections have can_write=false"
               (mt/with-temp [:model/Document {document-id :id} {:name "Nested Library Document"
                                                                 :document (text->prose-mirror-ast "Nested library content")
                                                                 :collection_id child-library-id}]
                 (is (false? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                    "Document in nested remote-synced collection should not be writable when remote-sync-type is production")))))
+                    "Document in nested remote-synced collection should not be writable when remote-sync-type is read-only")))))
 
-        (testing "When remote-sync-type is development"
-          (mt/with-temporary-setting-values [settings/remote-sync-type :development]
+        (testing "When remote-sync-type is read-write"
+          (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
 
             (testing "Cards in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Card {card-id :id} {:name "Nested Library Card"
                                                         :collection_id child-library-id
                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
                 (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                    "Card in nested remote-synced collection should be writable when remote-sync-type is development")))
+                    "Card in nested remote-synced collection should be writable when remote-sync-type is read-write")))
 
             (testing "Dashboards in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Nested Library Dashboard"
                                                                   :collection_id child-library-id}]
                 (is (true? (mi/can-write? (t2/select-one :model/Dashboard :id dashboard-id)))
-                    "Dashboard in nested remote-synced collection should be writable when remote-sync-type is development")))
+                    "Dashboard in nested remote-synced collection should be writable when remote-sync-type is read-write")))
 
             (testing "Documents in nested remote-synced collections have can_write=true"
               (mt/with-temp [:model/Document {document-id :id} {:name "Nested Library Document"
                                                                 :document (text->prose-mirror-ast "Nested library content")
                                                                 :collection_id child-library-id}]
                 (is (true? (mi/can-write? (t2/select-one :model/Document :id document-id)))
-                    "Document in nested remote-synced collection should be writable when remote-sync-type is development")))))))))
+                    "Document in nested remote-synced collection should be writable when remote-sync-type is read-write")))))))))
 
 (deftest mixed-collection-types-permissions-test
   (testing "can_write behavior should differ between library and regular collections in same test"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                              :type "remote-synced"}
+                                                              :is_remote_synced true}
                      :model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
 
-        (testing "When remote-sync-type is production"
-          (mt/with-temporary-setting-values [settings/remote-sync-type :production]
+        (testing "When remote-sync-type is read-only"
+          (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
 
             (testing "Library items have can_write=false while regular items have can_write=true"
               (mt/with-temp [:model/Card {library-card-id :id} {:name "Library Card"
@@ -201,12 +201,12 @@
   (testing "can_write behavior should differ between library and regular collections in same test when the user is a super user"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                              :type "remote-synced"}
+                                                              :is_remote_synced true}
                      :model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
 
-        (testing "When remote-sync-type is production"
-          (mt/with-temporary-setting-values [settings/remote-sync-type :production]
+        (testing "When remote-sync-type is read-only"
+          (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
 
             (testing "Library items have can_write=false while regular items have can_write=true"
               (mt/with-temp [:model/Card {library-card-id :id} {:name "Library Card"
@@ -244,24 +244,24 @@
 (deftest remote-synced-collection-itself-permissions-test
   (testing "can_write for remote-synced collections themselves should respect remote-sync-type"
 
-    (testing "When remote-sync-type is production"
-      (mt/with-temporary-setting-values [settings/remote-sync-type :production]
+    (testing "When remote-sync-type is read-only"
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
           (mt/with-current-user (mt/user->id :rasta))
           (is (false? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
-              "Library collection itself should not be writable when remote-sync-type is production"))))
+              "Library collection itself should not be writable when remote-sync-type is read-only"))))
 
-    (testing "When remote-sync-type is development"
-      (mt/with-temporary-setting-values [settings/remote-sync-type :development]
+    (testing "When remote-sync-type is read-write"
+      (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
           (mt/with-current-user (mt/user->id :rasta)
             (is (true? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
-                "Library collection itself should be writable when remote-sync-type is development")))))
+                "Library collection itself should be writable when remote-sync-type is read-write")))))
 
     (testing "Regular collections are always writable regardless of remote-sync-type"
-      (doseq [remote-sync-setting [:production :development]]
+      (doseq [remote-sync-setting [:read-only :read-write]]
         (mt/with-temporary-setting-values [settings/remote-sync-type remote-sync-setting]
           (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                                   :type nil}]

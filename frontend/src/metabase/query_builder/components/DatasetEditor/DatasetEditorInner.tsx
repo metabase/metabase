@@ -29,6 +29,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,
   setUIControls,
+  updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
@@ -49,6 +50,12 @@ import {
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -62,6 +69,8 @@ import type {
   Field,
   RawSeries,
   ResultsMetadata,
+  Series,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
@@ -75,7 +84,6 @@ import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { EDITOR_TAB_INDEXES } from "./constants";
-
 type MetadataDiff = Record<string, Partial<Field>>;
 
 export type DatasetEditorInnerProps = {
@@ -151,7 +159,6 @@ function getSidebar(
     onFieldMetadataChange,
     onMappedDatabaseColumnChange,
     onUpdateModelSettings,
-    modelSettings,
   }: {
     datasetEditorTab: DatasetEditorTab;
     isQueryError?: unknown;
@@ -160,8 +167,9 @@ function getSidebar(
     focusFirstField: () => void;
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
-    onUpdateModelSettings: (settings: ModelSettings) => void;
-    modelSettings: ModelSettings;
+    onUpdateModelSettings: (settings: {
+      display: ModelSettings["display"];
+    }) => void;
   },
 ): ReactNode {
   const {
@@ -203,13 +211,15 @@ function getSidebar(
     if (isQueryError || !props.rawSeries) {
       return null;
     }
+
     if (!focusedField) {
       // Returning a div, so the sidebar is visible while the data is loading.
       return <div />;
     }
+
     return (
       <DatasetEditorSettingsSidebar
-        display={modelSettings.display}
+        display={question.display()}
         visualizationSettings={question.settings()}
         onUpdateModelSettings={onUpdateModelSettings}
       />
@@ -250,6 +260,34 @@ function getColumnTabIndex(columnIndex: number, focusedFieldIndex: number) {
         ? EDITOR_TAB_INDEXES.NEXT_FIELDS
         : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS,
   );
+}
+
+function getTempRawSeries(
+  rawSeries: RawSeries,
+  display: VisualizationDisplay,
+): RawSeries {
+  if (!rawSeries || !rawSeries.length) {
+    return rawSeries;
+  }
+
+  return [
+    {
+      ...rawSeries[0],
+      card: { ...rawSeries[0].card, display },
+    },
+  ] as RawSeries;
+}
+
+function getComputedVisualizationSettings(
+  series: Series | null,
+): ComputedVisualizationSettings | null {
+  if (series == null) {
+    return series;
+  }
+
+  return getComputedSettingsForSeries(
+    getVisualizationTransformed(extractRemappings(series)).series,
+  ) as ComputedVisualizationSettings;
 }
 
 const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
@@ -294,36 +332,26 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   );
 
   /**
-   * tempModelSettings and tempRawSeries are introduced as a workaround to support new "list" display type for models.
-   * - `tempModelSettings` stores local state for currently selected display and allows to switch between 'Columns'/'Settings' tabs
-   * without triggering question changes detection, because otherwise updating `display` property would open LeaveConfirmationModal.
-   * 'Columns' tab works only for "table" display type, so when user opens 'Settings' for Model saved with "list" display type,
-   *  and wants to see 'Columns' tab, we need to update `display` property to "table".
-   * - `tempRawSeries` is introduced for the same reason. It patches `rawSeries` property inside nested `VisualizationResult` component,
-   *  so that it renders correct visualization for 'Columns' tab.
+   * `tempRawSeries` is a workaround to display "Columns" tab properly,
+   * because this view expects that the question has "table" display type.
+   * But when a question has "list" display, and we change it implicitly to "table"
+   * when switching to "Columns" tab, then can be incorrectly applied with field
+   * metadata changes.
+   * So instead we patch the card display property in the series object,
+   * without affecting the actual question.
    */
-  const [tempModelSettings, setTempModelSettings] = useState<ModelSettings>(
-    () => {
-      return {
-        display: question.display(),
-      };
-    },
-  );
   const tempRawSeries = useMemo(() => {
     if (!rawSeries || !rawSeries.length) {
       return rawSeries;
     }
 
-    return [
-      {
-        ...rawSeries[0],
-        card: { ...rawSeries[0].card, display: tempModelSettings.display },
-      },
-    ];
-  }, [tempModelSettings, rawSeries]);
+    return getTempRawSeries(
+      rawSeries,
+      datasetEditorTab === "columns" ? "table" : question.display(),
+    );
+  }, [rawSeries, datasetEditorTab, question]);
 
-  const [isSettingsDirty, setSettingsDirty] = useState(false);
-  const isDirty = isSettingsDirty || isModelQueryDirty || isMetadataDirty;
+  const isDirty = isModelQueryDirty || isMetadataDirty;
 
   const { data: modelIndexes } = useListModelIndexesQuery(
     {
@@ -421,39 +449,19 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     (tab: DatasetEditorTab) => {
       setDatasetEditorTab(tab);
       setEditorHeight(tab === "query" ? initialEditorHeight : 0);
-      /**
-       * The only way to properly display interface for "Columns" tab is to
-       * set model's display type to "table".
-       * We use local `tempModelSettings` to store unsaved changes to avoid
-       * affecting the `question` object in store, which triggers unwanted
-       * `dirty` checks.
-       */
-      const display = question.display();
-      const tempDisplay = tempModelSettings.display;
-      const hasListViewSelected = display === "list" || tempDisplay === "list";
-      if (hasListViewSelected) {
-        if (tab !== "metadata") {
-          setTempModelSettings({
-            display: "table",
-          });
-        }
-      }
-      if (tab === "metadata") {
-        setTempModelSettings({
-          display: question.display(),
-        });
-      }
-      if (hasListViewSelected && isShowingListViewConfiguration) {
-        dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+      if (isShowingListViewConfiguration) {
+        dispatch(
+          setUIControls({
+            isShowingListViewConfiguration: false,
+          }),
+        );
       }
     },
     [
       initialEditorHeight,
       setDatasetEditorTab,
-      question,
       dispatch,
       isShowingListViewConfiguration,
-      tempModelSettings,
     ],
   );
 
@@ -501,14 +509,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    let questionWithUpdatedSettings = question;
-    if (tempModelSettings?.display !== question.display()) {
-      questionWithUpdatedSettings = question.setDisplay(
-        tempModelSettings.display,
-      );
-    }
-    const questionWithMetadata =
-      questionWithUpdatedSettings.setResultMetadataDiff(metadataDiff);
+    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
     if (isShowingListViewConfiguration) {
       dispatch(setUIControls({ isShowingListViewConfiguration: false }));
     }
@@ -526,7 +527,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
   }, [
     question,
-    tempModelSettings.display,
     metadataDiff,
     isShowingListViewConfiguration,
     dispatch,
@@ -653,13 +653,18 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       focusFirstField,
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
-      onUpdateModelSettings: (settings: ModelSettings) => {
-        setSettingsDirty(settings.display !== question.display());
-        if (settings.display) {
-          setTempModelSettings({ display: settings.display });
-        }
+      onUpdateModelSettings: (settings) => {
+        const nextQuestion = question.setDisplay(settings.display);
+        const nextSettings =
+          settings.display === "list" && rawSeries != null
+            ? getComputedVisualizationSettings(
+                getTempRawSeries(rawSeries, settings.display),
+              ) || question.settings()
+            : question.settings();
+        dispatch(
+          updateQuestionAction(nextQuestion.updateSettings(nextSettings)),
+        );
       },
-      modelSettings: tempModelSettings,
     },
   );
 

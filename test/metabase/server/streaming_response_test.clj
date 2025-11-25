@@ -3,8 +3,10 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [compojure.response]
    [metabase.driver :as driver]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.server.instance :as server.instance]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
@@ -15,6 +17,7 @@
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
+   (java.io Closeable InputStream)
    (java.util.concurrent Executors)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
@@ -139,15 +142,62 @@
                                                           nil)
                   futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
               (is (future? futur))
-             ;; wait a little while for the query to start running -- this should usually happen fairly quickly
+              ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
               (future-cancel futur)
-             ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
+              ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
               (is (loop [[wait & more] (repeat 10 100)]
                     (or @canceled?
                         (when wait
                           (Thread/sleep (long wait))
                           (recur more))))))))))))
+
+(deftest canceling-chan-is-working-test
+  (let [cnt      (atom 30)
+        canceled (atom nil)
+        handler  (fn [req respond _raise]
+                   (respond
+                    (compojure.response/render
+                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"
+                                                             :headers {"Transfer-Encoding" "chunked"}} [os canceled-chan]
+                       (try
+                         (loop []
+                           (if (a/poll! canceled-chan)
+                             (reset! canceled :nice)
+                             (do
+                               (.write os (.getBytes (str "msg-" @cnt)))
+                               (.write os (.getBytes "\n"))
+                               (.flush os)
+                               (swap! cnt dec)
+                               (Thread/sleep 10)
+                               (when (pos? @cnt)
+                                 (recur)))))
+                         (catch Exception _e
+                           (reset! canceled :not-nice))))
+                     req)))
+        server   (doto (server.instance/create-server handler {:port 0 :join? false})
+                   .start)
+        url      (str "http://localhost:" (.. server getURI getPort))]
+    (try
+      (with-redefs [streaming-response/async-cancellation-poll-interval-ms 5]
+        (testing "Closing body stops request handler"
+          (let [res (http/request {:method          :post :url url
+                                   :as              :stream
+                                   :decompress-body false})]
+            (.read ^InputStream (:body res)) ;; start the handler
+            ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
+            (.close ^Closeable (:http-client res))
+            (u/poll {:thunk       #(deref canceled)
+                     :done?       some?
+                     :interval-ms 5})
+            ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
+            (is (< 20 @cnt) "Stopped writing when channel closed")
+            (testing "cancellation is working"
+              ;; we're not checking for particular way of cancelling, because cancellation poll interval can conflict
+              ;; with Thread/sleep and will make this test flaky
+              (is (some? @canceled))))))
+      (finally
+        (.stop server)))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 

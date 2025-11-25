@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
+import type { CollectionTreeItem } from "metabase/entities/collections";
 import { ActionIcon, Icon } from "metabase/ui";
 
 import { PushChangesModal } from "../PushChangesModal";

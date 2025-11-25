@@ -13,6 +13,7 @@ import type {
 import {
   buildSearchModelMenuItems,
   entityToUrlableModel,
+  getBrowseAllItemIndex,
 } from "./suggestionUtils";
 import type { SuggestionModel } from "./types";
 import { useEntitySearch } from "./useEntitySearch";
@@ -31,6 +32,8 @@ interface UseEntitySuggestionsOptions {
   searchModels?: SuggestionModel[];
   canFilterSearchModels: boolean;
   canBrowseAll: boolean;
+  canCreateNewQuestion?: boolean;
+  onTriggerCreateNewQuestion?: () => void;
 }
 
 interface UseEntitySuggestionsResult {
@@ -51,6 +54,7 @@ interface UseEntitySuggestionsResult {
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
+    onSaveNewQuestion: (id: number, name: string) => void;
   };
 }
 
@@ -62,7 +66,9 @@ export function useEntitySuggestions({
   enabled = true,
   searchModels,
   canFilterSearchModels,
-  canBrowseAll,
+  canBrowseAll = false,
+  canCreateNewQuestion = false,
+  onTriggerCreateNewQuestion,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [modal, setModal] = useState<"question-picker" | null>(null);
@@ -181,17 +187,31 @@ export function useEntitySuggestions({
     return entityMenuItems;
   }, [isInModelSelectionMode, searchModelMenuItems, entityMenuItems]);
 
-  const totalItems = menuItems.length + Number(canBrowseAll);
+  const totalItems =
+    menuItems.length + Number(canBrowseAll) + Number(canCreateNewQuestion);
 
   const selectItem = useCallback(
     (index: number) => {
       if (index < menuItems.length) {
         menuItems[index].action();
-      } else {
+        return;
+      }
+
+      if (index === menuItems.length && canCreateNewQuestion) {
+        onTriggerCreateNewQuestion?.();
+        return;
+      }
+
+      const browseAllItemIndex = getBrowseAllItemIndex(
+        menuItems.length,
+        canCreateNewQuestion,
+      );
+
+      if (index === browseAllItemIndex) {
         setModal("question-picker");
       }
     },
-    [menuItems],
+    [canCreateNewQuestion, menuItems, onTriggerCreateNewQuestion],
   );
 
   const upHandler = useCallback(() => {
@@ -213,12 +233,18 @@ export function useEntitySuggestions({
 
   const onKeyDown = useCallback(
     ({ event }: { event: KeyboardEvent }) => {
-      if (event.key === "ArrowUp") {
+      if (
+        event.key === "ArrowUp" ||
+        (event.key === "p" && (event.metaKey || event.ctrlKey))
+      ) {
         upHandler();
         return true;
       }
 
-      if (event.key === "ArrowDown") {
+      if (
+        event.key === "ArrowDown" ||
+        (event.key === "n" && (event.metaKey || event.ctrlKey))
+      ) {
         downHandler();
         return true;
       }
@@ -258,6 +284,15 @@ export function useEntitySuggestions({
     setModal("question-picker");
   }, []);
 
+  const onSaveNewQuestion = (id: number, name: string) => {
+    onSelectEntity({
+      id: id,
+      model: "card",
+      label: name,
+      href: modelToUrl(entityToUrlableModel({ id, name }, "card")),
+    });
+  };
+
   useEffect(() => {
     setSelectedIndex(0);
   }, [menuItems.length]);
@@ -285,6 +320,7 @@ export function useEntitySuggestions({
       handleModalClose,
       openModal,
       hoverHandler,
+      onSaveNewQuestion,
     },
   };
 }

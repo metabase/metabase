@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import userEvent, {
   PointerEventsCheckLevel,
 } from "@testing-library/user-event";

@@ -34,17 +34,20 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]])
+   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]]
+   [taoensso.nippy :as nippy])
   (:import
-   (java.io StringReader)
+   (java.io DataInput DataOutput StringReader)
    (java.sql
     Connection
     ResultSet
     ResultSetMetaData
     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
+   (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
-   (org.postgresql.jdbc PgConnection)))
+   (org.postgresql.jdbc PgConnection)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -158,7 +161,7 @@
     (assoc driver.common/default-port-details :placeholder 5432)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/auth-provider-options
+    (driver.common/auth-provider-options)
     (assoc driver.common/default-password-details
            :visible-if {"use-auth-provider" false})
     driver.common/cloud-ip-address-info
@@ -920,8 +923,9 @@
   {:sslmode "disable"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
-  [_ {ssl? :ssl, :as details-map}]
-  (let [props (-> details-map
+  [_ {ssl? :ssl, :keys [auth-provider], :as details-map}]
+  (let [use-iam? (= (some-> auth-provider keyword) :aws-iam)
+        props (-> details-map
                   (update :port (fn [port]
                                   (if (string? port)
                                     (Integer/parseInt port)
@@ -937,10 +941,19 @@
                   ;; internal property values back; only merge in the ones the driver might recognize
                   (merge ssl-prms (select-keys props (keys ssl-prms))))
                 (merge disable-ssl-params props))
+        props (if use-iam?
+                (-> props
+                    (assoc :subprotocol "aws-wrapper:postgresql"
+                           :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+                           :wrapperPlugins "iam")
+                    (dissoc :auth-provider :use-auth-provider))
+                props)
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
                 (driver-api/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
+    (when (and use-iam? (not ssl?))
+      (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
     props))
 
 (defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
@@ -987,13 +1000,20 @@
   [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
   (fn [] (.getString rs i)))
 
+;; Handle bytea columns to avoid truncation (#30671)
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BINARY]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn []
+    (when-let [bytes (.getBytes rs i)]
+      (str "\\x" (String. (Hex/encodeHex bytes))))))
+
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [obj (.getObject rs i)]
-      (cond (instance? org.postgresql.util.PGobject obj)
-            (.getValue ^org.postgresql.util.PGobject obj)
+      (cond (instance? PGobject obj)
+            (.getValue ^PGobject obj)
 
             :else
             obj))))
@@ -1257,3 +1277,16 @@
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
                {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
+
+;; Custom nippy handling for PGobject to enable proper caching of postgres domains in arrays (#55301)
+
+(nippy/extend-freeze PGobject :postgres/PGobject
+  [^PGobject obj ^DataOutput data-output]
+  (nippy/freeze-to-out! data-output (.getType obj))
+  (nippy/freeze-to-out! data-output (.getValue obj)))
+
+(nippy/extend-thaw :postgres/PGobject
+  [^DataInput data-input]
+  (let [type  (nippy/thaw-from-in! data-input)
+        value (nippy/thaw-from-in! data-input)]
+    (doto (PGobject.) (.setType type) (.setValue value))))
