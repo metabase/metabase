@@ -52,7 +52,7 @@ export const getCollectionIdPath = (
     | "is_personal"
     | "effective_location"
     | "model"
-    | "is_tenant_collection"
+    | "is_shared_tenant_collection"
     | "is_tenant_dashboard"
     | "type"
     | "namespace"
@@ -107,7 +107,7 @@ export const getCollectionIdPath = (
   const isTenantCollection =
     isTenantNamespace(collection.namespace) ||
     isTenantNamespace(collection.collection_namespace) ||
-    collection.is_tenant_collection ||
+    collection.is_shared_tenant_collection ||
     collection.is_tenant_dashboard;
 
   if (isInUserPersonalCollection) {

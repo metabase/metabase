@@ -33,7 +33,7 @@ type MockCollection = {
   location: string | null;
   effective_location: string | null;
   is_personal: boolean;
-  is_tenant_collection?: boolean;
+  is_shared_tenant_collection?: boolean;
   collections: MockCollection[];
   here: CollectionItem["here"];
 };
@@ -105,7 +105,7 @@ const tenantCollectionsTree: MockCollection[] = [
     location: "/",
     effective_location: "/",
     is_personal: false,
-    is_tenant_collection: true,
+    is_shared_tenant_collection: true,
     here: ["collection"],
     collections: [
       {
@@ -114,7 +114,7 @@ const tenantCollectionsTree: MockCollection[] = [
         effective_location: "/6/",
         name: "Tenant Sub Collection",
         is_personal: false,
-        is_tenant_collection: true,
+        is_shared_tenant_collection: true,
         collections: [],
         here: [],
       },

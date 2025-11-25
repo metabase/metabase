@@ -141,7 +141,7 @@ const tenantCollectionsTree: NestedCollectionItem[] = [
     location: "/",
     effective_location: "/",
     is_personal: false,
-    is_tenant_collection: true,
+    is_shared_tenant_collection: true,
     model: "collection",
     here: ["collection"],
     below: ["dashboard"],
@@ -154,7 +154,7 @@ const tenantCollectionsTree: NestedCollectionItem[] = [
         name: "Tenant Sub Collection",
         model: "collection",
         is_personal: false,
-        is_tenant_collection: true,
+        is_shared_tenant_collection: true,
         can_write: true,
         descendants: [
           {
