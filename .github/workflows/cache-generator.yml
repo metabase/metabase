@@ -51,14 +51,19 @@ jobs:
       eslint-cache-key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
 
-  generate-m2-cache:
+  generate-caches:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     needs: get-cache-keys
     env:
       M2_CACHE_KEY: ${{ needs.get-cache-keys.outputs.m2-cache-key }}
+      NODE_CACHE_KEY: ${{ needs.get-cache-keys.outputs.node-cache-key }}
+      CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
+      ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
     steps:
       - uses: actions/checkout@v4
+
+      # Backend preparation and cache
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
 
@@ -75,16 +80,7 @@ jobs:
             ~/.gitlibs
           key: ${{ env.M2_CACHE_KEY }}
 
-  generate-frontend-caches:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    needs: get-cache-keys
-    env:
-      NODE_CACHE_KEY: ${{ needs.get-cache-keys.outputs.node-cache-key }}
-      ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
-      CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
-    steps:
-      - uses: actions/checkout@v4
+      # Frontend preparation and caches
       # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
       # It then (3) runs `yarn install --frozen-lockfile --prefer-offline` which ensures the local cache is fully populated.
       # IMPORTANT: Caching node_modules after patches are already applied will break any PR that attempts to either:
@@ -111,6 +107,11 @@ jobs:
           yarn cypress verify
         shell: bash
 
+      # Run Prettier to populate its cache (stored in node_modules/.cache/prettier)
+      # so it gets saved as part of the node_modules cache below
+      - name: Run Prettier to populate cache
+        run: yarn lint-prettier-pure
+
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
         with:
@@ -119,14 +120,21 @@ jobs:
             node_modules
           key: ${{ env.NODE_CACHE_KEY }}
 
-      - name: Update eslint cache
-        uses: ./.github/actions/update-cache
-        with:
-          path: ${{ github.workspace}}/.eslintcache
-          key: ${{ env.ESLINT_CACHE_KEY }}
-
       - name: Update Cypress cache
         uses: ./.github/actions/update-cache
         with:
           path: ~/.cache/Cypress
           key: ${{ env.CYPRESS_CACHE_KEY }}
+
+      # ESLint cache (requires both backend and frontend)
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+
+      - name: Run ESLint to populate cache
+        run: yarn lint-eslint-pure
+
+      - name: Update eslint cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: ${{ github.workspace}}/.eslintcache
+          key: ${{ env.ESLINT_CACHE_KEY }}
