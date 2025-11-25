@@ -209,7 +209,7 @@
         grouped-fks      (group-by (juxt :table-id :fk-field-id) fk-cols)]
     (when (seq grouped-fks)
       (mapv
-       (fn [[[table-id fk-field-id] fk-path-cols]]
+       (fn [[[table-id fk-field-id] _]]
          (let [base-details   (table-details table-id
                                              {:with-fields?          with-fields?
                                               :field-values-fn       field-values-fn

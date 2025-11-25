@@ -104,17 +104,19 @@
   The field-id format is '<model-tag><model-id>-<field-index>' where:
   - model-tag is 't' for tables, 'c' for cards/models/metrics, or 'q' for ad-hoc queries
   - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
-  - field-index is the index within that model's visible columns
+  - field-index is the index within the columns array (using wide field IDs across all visible columns)
 
-  For example, 't154-1' refers to the second visible column (index 1) from table 154, and
-  'qpuL95JSvym3k23W1UUuog-0' refers to the first column (index 0) from query with nano-id puL95JSvym3k23W1UUuog."
+  For example, 't154-1' refers to the column at index 1 in the columns array,
+  and 'qpuL95JSvym3k23W1UUuog-0' refers to the column at index 0."
   [{:keys [field-id] :as item} columns]
-  (if-let [{:keys [field-index]} (parse-field-id field-id)]
+  (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
     (if-let [column (get columns field-index)]
       (assoc item :column column)
       (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
                       {:agent-error? true
                        :field-id field-id
+                       :model-tag model-tag
+                       :model-id model-id
                        :field-index field-index
                        :available-columns-count (count columns)})))
     (throw (ex-info (str "invalid field_id format: " field-id)

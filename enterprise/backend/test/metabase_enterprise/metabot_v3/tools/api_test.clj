@@ -750,6 +750,7 @@
           :display_name "People"
           :database_id (mt/id)
           :database_schema "PUBLIC"
+          :related_by "USER_ID"
           :fields
           [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
            {:name "ADDRESS", :display_name "Address", :type "string"}
@@ -770,6 +771,7 @@
           :display_name "Products"
           :database_id (mt/id)
           :database_schema "PUBLIC"
+          :related_by "PRODUCT_ID"
           :fields
           [{:name "ID", :display_name "ID", :type "number", :semantic_type "pk"}
            {:name "EAN", :display_name "Ean", :type "string", :field_values string-sequence?}
@@ -1168,6 +1170,23 @@
         (is (nil? (-> (request {:table_id (mt/id :orders)
                                 :with_related_tables false})
                       (get-in [:structured_output :related_tables]))))))))
+
+(deftest get-table-details-related-by-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "Related tables include related_by field indicating the FK field name"
+      (let [conversation-id (str (random-uuid))
+            ai-token (ai-session-token)
+            response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                           {:arguments {:table_id (mt/id :orders)}
+                                            :conversation_id conversation-id})
+            related-tables (get-in response [:structured_output :related_tables])
+            people-table (first (filter #(= (:id %) (mt/id :people)) related-tables))
+            products-table (first (filter #(= (:id %) (mt/id :products)) related-tables))]
+        (testing "People table is related by USER_ID FK"
+          (is (= "USER_ID" (:related_by people-table))))
+        (testing "Products table is related by PRODUCT_ID FK"
+          (is (= "PRODUCT_ID" (:related_by products-table))))))))
 
 (deftest get-transforms-test
   (mt/with-premium-features #{:metabot-v3 :transforms}
