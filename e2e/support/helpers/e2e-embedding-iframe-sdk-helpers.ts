@@ -223,19 +223,23 @@ export function prepareSdkIframeEmbedTest({
  * Prepares the testing environment for sdk iframe embedding tests in guest embed mode.
  */
 export function prepareGuestEmbedSdkIframeEmbedTest({
+  instance = "ee",
   withTokenFeatures = true,
   onPrepare,
 }: {
+  instance?: "oss" | "ee";
   withTokenFeatures?: boolean;
   onPrepare?: () => void;
 } = {}) {
   restore();
   cy.signInAsAdmin();
 
-  if (withTokenFeatures) {
-    activateToken("bleeding-edge");
-  } else {
-    activateToken("starter");
+  if (instance === "ee") {
+    if (withTokenFeatures) {
+      activateToken("bleeding-edge");
+    } else {
+      activateToken("starter");
+    }
   }
 
   onPrepare?.();
