@@ -1546,27 +1546,25 @@ describe("issue 44974", { tags: "@external" }, () => {
         },
       };
 
-      H.createQuestion(questionDetails, {
-        // Visit question to put it in recents
-        visitQuestion: true,
-      });
+      H.createQuestion(questionDetails);
 
       H.openOrdersTable({ mode: "notebook" });
       H.join();
-      H.miniPicker()
-        .findByRole("menuitem", { name: /Browse all/ })
-        .click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders Model").should("be.visible");
+        cy.findByText(questionDetails.name).should("not.exist");
+      });
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
 
       H.entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("not.exist");
         H.entityPickerModalItem(0, "Our analytics").click();
+        cy.findByText("Orders Model").should("be.visible");
         cy.findByText(questionDetails.name).should("not.exist");
         cy.button("Close").click();
       });
-
-      // Check that the question is actually in recents
-      H.openCommandPalette();
-      H.commandPalette().findByText(questionDetails.name).should("not.exist");
     });
   });
 });

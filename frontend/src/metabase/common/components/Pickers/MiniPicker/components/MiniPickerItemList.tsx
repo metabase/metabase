@@ -316,7 +316,7 @@ function SearchItemList({ query }: { query: string }) {
 }
 
 export const MiniPickerListLoader = () => (
-  <Box>
+  <Box data-testid="mini-picker-loader">
     <LoadingAndErrorWrapper loading />
   </Box>
 );
