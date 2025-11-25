@@ -10,11 +10,17 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- nil-if-unreadable
+  [instance]
+  (when (mi/can-read? instance)
+    instance))
+
 (defn present-table
   "Given a table, shape it for the API."
   [table]
   (-> table
       (update :db dissoc :router_database_id)
+      (update :collection nil-if-unreadable)
       (update :schema str)))
 
 (defn- format-fields-for-response [resp]
@@ -32,10 +38,12 @@
   (if include-editable-data-model?
     (api/write-check table)
     (api/read-check table))
-  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics]
+  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                                :segments :metrics :collection]
                          (premium-features/has-feature? :transforms) (conj :transform)
                          api/*is-superuser?*                         (conj :published_models))]
     (-> table
+        (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
         (m/dissoc-in [:db :details])
         format-fields-for-response
