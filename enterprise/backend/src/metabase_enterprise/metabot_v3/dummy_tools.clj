@@ -164,6 +164,9 @@
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
+           db-engine (:engine (if metadata-provider
+                                (lib.metadata/database metadata-provider)
+                                (metabot-v3.tools.u/get-database db-id :engine)))
            mp (when query-needed?
                 (or metadata-provider
                     (lib-be/application-database-metadata-provider db-id)))
@@ -185,6 +188,7 @@
             :display_name (some->> (:name base)
                                    (u.humanization/name->human-readable-name :simple))
             :database_id db-id
+            :database_engine db-engine
             :database_schema (:schema base)}
            (m/assoc-some :description (:description base)
                          :related_tables related-tables
@@ -221,6 +225,8 @@
                                    with-metrics?        true}
                             :as   options}]
    (let [id (:id base)
+         database-id (:database_id base)
+         database-engine (:engine (lib.metadata/database metadata-provider))
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
          query-needed? (or with-fields? with-related-tables? with-metrics?)
@@ -244,7 +250,8 @@
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
-          :database_id (:database_id base)
+          :database_id database-id
+          :database_engine database-engine
           :verified (verified-review? id "card")}
          (m/assoc-some
           :description (:description base)
