@@ -237,6 +237,7 @@
    :api  #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           collections
            config
            premium-features
            queries
@@ -1530,6 +1531,7 @@
            api
            app-db
            audit-app
+           config
            driver
            lib
            lib-be
@@ -1555,6 +1557,7 @@
            models
            parameters
            permissions
+           premium-features
            query-processor
            request
            sync
@@ -1613,7 +1616,6 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
-
 
   xrays
   {:team "Querying"
@@ -1841,6 +1843,22 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-studio
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-studio.api}
+   :uses #{api
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           queries
+           request
+           sync
+           util
+           warehouse-schema}}
+
   enterprise/database-replication
   {:team "Cloud"
    :api  #{metabase-enterprise.database-replication.api
@@ -1975,6 +1993,13 @@
    :api  #{}
    :uses #{premium-features
            settings}}
+
+  enterprise/library
+  {:team "UX West"
+   :api  #{metabase-enterprise.library.api}
+   :uses #{api
+           collections
+           premium-features}}
 
   enterprise/llm
   {:team "Metabot"

@@ -74,7 +74,7 @@ const DataSourceSelectors = ({
     const allDatabases = query
       .metadata()
       .databasesList({ savedQuestions: false })
-      .filter((db) => db.canWrite());
+      .filter((db) => db.canWrite() && !db.is_audit);
 
     if (editorContext === "action") {
       return allDatabases.filter((database) => database.hasActionsEnabled());

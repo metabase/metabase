@@ -61,6 +61,12 @@ export {
   type PluginDashcardMenu,
 } from "./oss/dashcard-menu";
 export {
+  PLUGIN_DATA_STUDIO,
+  type DataStudioToolbarButtonProps,
+  type LibraryCollectionType,
+  type NavbarLibrarySectionProps,
+} from "./oss/data-studio";
+export {
   PLUGIN_DB_ROUTING,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
@@ -108,6 +114,14 @@ export { PLUGIN_SEMANTIC_SEARCH } from "./oss/semantic-search";
 export { PLUGIN_ADMIN_SETTINGS } from "./oss/settings";
 export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
+  PLUGIN_SNIPPET_FOLDERS,
+  type MoveSnippetModalProps,
+  type SnippetFormModalProps,
+  type SnippetCollectionMenuProps,
+  type SnippetCollectionPermissionsModalProps,
+  type SnippetCollectionPickerModalProps,
+} from "./oss/snippets";
+export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
   PLUGIN_DEPENDENCIES,
@@ -116,6 +130,7 @@ export {
   type TransformsPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,
+  type PythonTransformSourceValidationResult,
   type PythonTransformsPlugin,
   type DependencyGraphPageContextType,
   type CheckDependenciesFormProps,
@@ -145,6 +160,7 @@ import { reinitialize as reinitializeContentTranslation } from "./oss/content-tr
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeDashcardMenu } from "./oss/dashcard-menu";
+import { reinitialize as reinitializeDatastudio } from "./oss/data-studio";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeDocuments } from "./oss/documents";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
@@ -161,6 +177,7 @@ import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-do
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
 import { reinitialize as reinitializeSmtpOverride } from "./oss/smtp-override";
+import { reinitialize as reinitializeSnippets } from "./oss/snippets";
 import { reinitialize as reinitializeSupport } from "./oss/support";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
@@ -183,6 +200,7 @@ export function reinitialize() {
   reinitializeCore();
   reinitializeDashcardMenu();
   reinitializeDatabase();
+  reinitializeDatastudio();
   reinitializeDocuments();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
@@ -198,6 +216,7 @@ export function reinitialize() {
   reinitializeSemanticSearch();
   reinitializeSettings();
   reinitializeSmtpOverride();
+  reinitializeSnippets();
   reinitializeSupport();
   reinitializeTransforms();
   reinitializeUploadManagement();

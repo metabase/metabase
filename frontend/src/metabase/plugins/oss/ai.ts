@@ -65,6 +65,8 @@ type PluginMetabotType = {
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
   MetabotAdminAppBarButton: ComponentType;
+  MetabotDataStudioButton: ComponentType;
+  MetabotDataStudioSidebar: ComponentType;
 };
 
 const getDefaultMetabotContextValue = (): MetabotContext => ({
@@ -116,6 +118,8 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
   MetabotAdminAppBarButton: PluginPlaceholder,
+  MetabotDataStudioButton: PluginPlaceholder,
+  MetabotDataStudioSidebar: PluginPlaceholder,
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 
