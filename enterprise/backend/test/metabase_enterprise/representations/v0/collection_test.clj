@@ -68,7 +68,15 @@
                    :model/Collection child {:name "Child Collection"
                                             :location (format "/%d/" (:id parent))}]
       (mt/with-test-user :crowberto
-        (let [exported (export/export-entire-collection (:id parent))]
-          (is (-> exported
-                  (import/prepare-collection-tree-for-import)
-                  (import/insert-all!))))))))
+        (let [exported (export/export-entire-collection (:id parent))
+              ready (import/prepare-collection-tree-for-import exported)
+              refs (import/insert-all! ready)]
+          (is (= 2 (count ready)))
+          (is refs)
+          (let [[p c] (sort (keys refs))
+                parent1 (get refs p)
+                child1  (get refs c)]
+            (is (= (str "/" (:id parent1) "/")
+                   (:location child1)))
+            (is (= (:name parent) (:name parent1)))
+            (is (= (:name child)  (:name child1)))))))))
