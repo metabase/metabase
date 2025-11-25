@@ -42,7 +42,9 @@ export type CollectionPickerItem = TypeWithModel<
   Partial<
     Pick<
       CollectionItem,
-      "is_tenant_collection" | "is_tenant_dashboard" | "collection_namespace"
+      | "is_shared_tenant_collection"
+      | "is_tenant_dashboard"
+      | "collection_namespace"
     >
   > & {
     location?: string | null;

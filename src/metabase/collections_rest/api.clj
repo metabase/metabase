@@ -818,7 +818,7 @@
             collection/maybe-localize-system-collection-name
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
-            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_tenant_collection)
+            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
             (dissoc :collection_position :display :moderated_status :icon
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
