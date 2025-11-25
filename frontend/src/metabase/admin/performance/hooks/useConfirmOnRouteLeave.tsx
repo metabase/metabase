@@ -28,8 +28,10 @@ export const useConfirmOnRouteLeave = ({ shouldConfirm, confirm }: Props) => {
          * This will roll browser's URL back.
          * Returning false from this function cancels routing on the redux level, but browser's URL changes anyway.
          * So we need to roll this change back and then roll forward if user confirms.
+         *
+         * Unfortunately it won't work if user somewhere in the middle of history (e.g. has forward button available)
          */
-        router.go(1);
+        router.goForward();
         confirm(() => {
           confirmedRef.current = true;
           if (nextLocation) {

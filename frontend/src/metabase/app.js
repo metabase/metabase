@@ -48,6 +48,7 @@ import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 
+import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
 import { getStore } from "./store";
 
@@ -82,7 +83,9 @@ function _init(reducers, getRoutes, callback) {
           <ThemeProvider>
             <GlobalStyles />
             <MetabotProvider>
-              <RouterProvider history={syncedHistory}>{routes}</RouterProvider>
+              <HistoryProvider history={syncedHistory}>
+                <RouterProvider>{routes}</RouterProvider>
+              </HistoryProvider>
             </MetabotProvider>
           </ThemeProvider>
         </DragDropContextProvider>

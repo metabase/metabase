@@ -2,7 +2,11 @@ import type { History } from "history";
 import { type PropsWithChildren, createContext } from "react";
 import { Route, Router, type WithRouterProps, withRouter } from "react-router";
 
-export const RouterContext = createContext<WithRouterProps | null>(null);
+import { useHistory } from "metabase/history";
+
+type RouterContextType = WithRouterProps;
+
+export const RouterContext = createContext<RouterContextType | null>(null);
 
 const RouterContextProviderBase = ({
   router,
@@ -10,7 +14,7 @@ const RouterContextProviderBase = ({
   params,
   routes,
   children,
-}: PropsWithChildren<WithRouterProps>) => {
+}: PropsWithChildren<RouterContextType>) => {
   return (
     <RouterContext.Provider value={{ router, location, params, routes }}>
       {children}
@@ -28,11 +32,12 @@ type RouterProviderProps = {
  * This provider encapsulates react-router initiation and puts router and routes references to the context
  * This is v3's only solution to provide a router and routes.
  * Without extra Route component it doesn't work.
+ * Additionally, it provides the history reference
  */
 export const RouterProvider = ({
-  history,
   children,
 }: PropsWithChildren<RouterProviderProps>) => {
+  const { history } = useHistory();
   return (
     <Router history={history}>
       <Route component={RouterContextProvider}>{children}</Route>

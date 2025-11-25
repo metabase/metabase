@@ -21,6 +21,7 @@ import _ from "underscore";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
+import { HistoryProvider } from "metabase/history";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
@@ -270,16 +271,25 @@ function MaybeRouter({
   children,
   hasRouter,
   history,
-}: {
-  children: React.ReactElement;
-  hasRouter: boolean;
-  history?: History;
-}): JSX.Element {
+}:
+  | {
+      children: React.ReactElement;
+      hasRouter: false;
+      history?: History;
+    }
+  | {
+      children: React.ReactElement;
+      hasRouter: true;
+      history: History;
+    }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-
-  return <RouterProvider history={history}>{children}</RouterProvider>;
+  return (
+    <HistoryProvider history={history}>
+      <RouterProvider>{children}</RouterProvider>;
+    </HistoryProvider>
+  );
 }
 
 function MaybeKBar({
