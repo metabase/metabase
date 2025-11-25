@@ -134,7 +134,7 @@ jobs:
         uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          extract-path: "target/uberjar"
+          extract-path: "${{ github.workspace }}/target/uberjar"
           output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
@@ -252,7 +252,7 @@ jobs:
         uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          extract-path: "target/uberjar"
+          extract-path: "${{ github.workspace }}/target/uberjar"
           output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
