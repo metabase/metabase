@@ -14,17 +14,23 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet";
 
 export const GetCodeStep = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
+  const { experience, resource, settings } = useSdkIframeEmbedSetupContext();
   const [updateInstanceSettings] = useUpdateSettingsMutation();
 
   const serverSnippetData = useSdkIframeEmbedServerSnippet();
   const snippet = useSdkIframeEmbedSnippet();
 
-  const handleCodeSnippetCopied = () => {
-    // Embed Flow: track code copied
-    trackEmbedWizardCodeCopied(
-      settings.useExistingUserSession ? "user_session" : "sso",
-    );
+  const trackSnippetCopied = (snippetType: "frontend" | "server") => {
+    trackEmbedWizardCodeCopied({
+      experience,
+      resource,
+      snippetType,
+      settings,
+    });
+  };
+
+  const handleFrontendSnippetCopied = () => {
+    trackSnippetCopied("frontend");
 
     // Embedding Hub: track step completion
     const settingKey: SettingKey = settings.useExistingUserSession
@@ -34,6 +40,8 @@ export const GetCodeStep = () => {
     updateInstanceSettings({ [settingKey]: true });
   };
 
+  const handleServerSnippetCopied = () => trackSnippetCopied("server");
+
   return (
     <Stack gap="md">
       <Card p="md">
@@ -42,7 +50,7 @@ export const GetCodeStep = () => {
         </Text>
 
         <Stack gap="sm">
-          <div onCopy={handleCodeSnippetCopied}>
+          <div onCopy={handleFrontendSnippetCopied}>
             <CodeEditor
               language="html"
               value={snippet}
@@ -53,7 +61,7 @@ export const GetCodeStep = () => {
 
           <CopyCodeSnippetButton
             snippet={snippet}
-            onCopy={handleCodeSnippetCopied}
+            onCopy={handleFrontendSnippetCopied}
           />
         </Stack>
       </Card>
@@ -82,6 +90,7 @@ export const GetCodeStep = () => {
 
             <CopyCodeSnippetButton
               snippet={serverSnippetData.serverSnippetOption.source}
+              onCopy={handleServerSnippetCopied}
             />
 
             <MoreServerSnippetExamplesLink />

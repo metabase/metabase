@@ -1,3 +1,4 @@
+import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import {
   trackStaticEmbedDiscarded,
@@ -6,25 +7,10 @@ import {
 } from "metabase/public/lib/analytics";
 import type {
   EmbedResourceParameter,
-  EmbeddingParameterVisibility,
   EmbeddingParameters,
 } from "metabase/public/lib/types";
 
 import { getDefaultEmbeddingParams } from "./get-default-embedding-params";
-
-const countEmbeddingParameterOptions = (
-  embeddingParams: EmbeddingParameters,
-): Record<EmbeddingParameterVisibility, number> =>
-  Object.values(embeddingParams).reduce(
-    (acc, value) => {
-      acc[value] += 1;
-      return acc;
-    },
-    { disabled: 0, locked: 0, enabled: 0 } as Record<
-      EmbeddingParameterVisibility,
-      number
-    >,
-  );
 
 function convertResourceParametersToEmbeddingParams(
   resourceParameters: EmbedResourceParameter[],

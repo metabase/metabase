@@ -3,6 +3,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import {
@@ -47,7 +48,6 @@ const AuthenticationSection = () => {
     updateSettings,
   } = useSdkIframeEmbedSetupContext();
 
-  const isGuestEmbed = !!settings.isGuestEmbed;
   const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
     experience,
     settings,
@@ -61,11 +61,7 @@ const AuthenticationSection = () => {
   const isSsoEnabledAndConfigured =
     (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
 
-  const authType = isGuestEmbed
-    ? "guest-embed"
-    : settings.useExistingUserSession
-      ? "user-session"
-      : "sso";
+  const authType = getAuthTypeForSettings(settings);
 
   const handleAuthTypeChange = (value: string) => {
     const isGuestEmbed = value === "guest-embed";

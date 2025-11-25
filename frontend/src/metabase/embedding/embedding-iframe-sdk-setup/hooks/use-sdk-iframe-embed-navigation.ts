@@ -14,10 +14,12 @@ export function useSdkIframeEmbedNavigation() {
     isGuestEmbedsEnabled,
     initialState,
     experience,
+    resource,
     currentStep,
     setCurrentStep,
     settings,
     defaultSettings,
+    embeddingParameters,
   } = useSdkIframeEmbedSetupContext();
 
   const availableSteps = useMemo(() => {
@@ -40,17 +42,20 @@ export function useSdkIframeEmbedNavigation() {
         );
       })
       .with("select-embed-resource", () => {
-        trackEmbedWizardResourceSelectionCompleted(
-          settings,
-          defaultSettings.resourceId,
-        );
+        trackEmbedWizardResourceSelectionCompleted({
+          experience,
+          currentSettings: settings,
+          defaultResourceId: defaultSettings.resourceId,
+        });
       })
       .with("select-embed-options", () => {
         trackEmbedWizardOptionsCompleted({
           initialState,
-          settings,
           experience,
+          resource,
+          settings,
           isGuestEmbedsEnabled,
+          embeddingParameters,
         });
       });
 
