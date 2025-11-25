@@ -91,7 +91,7 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
+      event_detail: "isDefaultResource=true,experience=dashboard",
     });
   });
 
@@ -111,7 +111,7 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
+      event_detail: "isDefaultResource=true,experience=chart",
     });
   });
 });
