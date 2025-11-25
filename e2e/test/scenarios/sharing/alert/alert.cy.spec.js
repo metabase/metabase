@@ -49,10 +49,10 @@ describe("scenarios > alert", () => {
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP or Slack.",
+          "To get notified when something happens, or to send this chart on a schedule, ask your admin to set up email, Slack, or a webhook.",
         );
 
-        cy.findByText("Set up SMTP").should("not.exist");
+        cy.findByText("Set up email").should("not.exist");
         cy.findByText("Set up Slack").should("not.exist");
         cy.findByText("Add a webhook").should("not.exist");
       });
