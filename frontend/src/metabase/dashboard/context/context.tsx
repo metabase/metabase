@@ -62,13 +62,12 @@ export type DashboardContextOwnProps = {
   dashcardMenu?: DashboardCardMenu | null;
   dashboardActions?:
     | DashboardActionButtonList
-    | (({
-        isEditing,
-        downloadsEnabled,
-      }: Pick<
-        DashboardContextReturned,
-        "isEditing" | "downloadsEnabled"
-      >) => DashboardActionButtonList);
+    | ((
+        props: Pick<
+          DashboardContextReturned,
+          "isEditing" | "downloadsEnabled" | "withSubscriptions"
+        >,
+      ) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
   /**
    * I want this to be optional, and error out when it's not passed, so it's obvious we need to pass it.
@@ -135,6 +134,12 @@ const DashboardContextProviderInner = forwardRef(
       font = null,
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
+      /**
+       * TODO: (Kelvin 2025-11-17) See if we could communicate better how these default values are derived from. E.g. some are passed via the SDK props
+       * which already have default values and we're setting another default values here again. One thing we could do is to have a constant file that
+       * multiple places could refer to.
+       */
+      withSubscriptions = false,
       autoScrollToDashcardId = undefined,
       reportAutoScrolledToDashcard = noop,
       cardTitled = true,
@@ -346,7 +351,11 @@ const DashboardContextProviderInner = forwardRef(
 
     const dashboardActions =
       typeof initDashboardActions === "function"
-        ? initDashboardActions({ isEditing, downloadsEnabled })
+        ? initDashboardActions({
+            isEditing,
+            downloadsEnabled,
+            withSubscriptions,
+          })
         : (initDashboardActions ?? null);
 
     // Determine if the dashboard is editable.
@@ -397,6 +406,7 @@ const DashboardContextProviderInner = forwardRef(
           font,
           hideParameters,
           downloadsEnabled,
+          withSubscriptions,
           autoScrollToDashcardId,
           reportAutoScrolledToDashcard,
           cardTitled,

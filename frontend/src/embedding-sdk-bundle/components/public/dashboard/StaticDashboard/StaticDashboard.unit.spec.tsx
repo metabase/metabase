@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor, within } from "__support__/ui";
 
+import { addSubscriptionTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
@@ -100,6 +101,8 @@ describe("StaticDashboard", () => {
       dashboardHeader.queryByTestId("dashboard-header-row-button"),
     ).not.toBeInTheDocument();
   });
+
+  addSubscriptionTests(setup);
 
   it("should not show 'Add a chart' button on empty dashboards", async () => {
     await setup({ dashcards: [] });
