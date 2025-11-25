@@ -40,11 +40,36 @@ const setup = async (props: Partial<MiniPickerProps> = {}) => {
     name: "Mini Db",
     id: 1,
     tables: [
-      createMockTable({ id: 1, display_name: "weather", schema: "public" }),
-      createMockTable({ id: 2, display_name: "roads", schema: "public" }),
-      createMockTable({ id: 3, display_name: "pokedex", schema: "pokemon" }),
-      createMockTable({ id: 4, display_name: "cards", schema: "pokemon" }),
-      createMockTable({ id: 5, display_name: "digimon", schema: "digimon" }),
+      createMockTable({
+        id: 1,
+        db_id: 1,
+        display_name: "weather",
+        schema: "public",
+      }),
+      createMockTable({
+        id: 2,
+        db_id: 1,
+        display_name: "roads",
+        schema: "public",
+      }),
+      createMockTable({
+        id: 3,
+        db_id: 1,
+        display_name: "pokedex",
+        schema: "pokemon",
+      }),
+      createMockTable({
+        id: 4,
+        db_id: 1,
+        display_name: "cards",
+        schema: "pokemon",
+      }),
+      createMockTable({
+        id: 5,
+        db_id: 1,
+        display_name: "digimon",
+        schema: "digimon",
+      }),
     ],
   });
 
@@ -52,8 +77,18 @@ const setup = async (props: Partial<MiniPickerProps> = {}) => {
     name: "Solo Db",
     id: 2,
     tables: [
-      createMockTable({ id: 6, display_name: "pride", schema: "only" }),
-      createMockTable({ id: 7, display_name: "prejudice", schema: "only" }),
+      createMockTable({
+        id: 6,
+        db_id: 2,
+        display_name: "pride",
+        schema: "only",
+      }),
+      createMockTable({
+        id: 7,
+        db_id: 2,
+        display_name: "prejudice",
+        schema: "only",
+      }),
     ],
   });
 
@@ -61,11 +96,16 @@ const setup = async (props: Partial<MiniPickerProps> = {}) => {
     name: "NoSchema Db",
     id: 3,
     tables: [
-      createMockTable({ id: 8, display_name: "jane", schema: "" }),
-      createMockTable({ id: 9, display_name: "elizabeth", schema: "" }),
-      createMockTable({ id: 10, display_name: "mary", schema: "" }),
-      createMockTable({ id: 11, display_name: "kitty", schema: "" }),
-      createMockTable({ id: 12, display_name: "lydia", schema: "" }),
+      createMockTable({ id: 8, db_id: 3, display_name: "jane", schema: "" }),
+      createMockTable({
+        id: 9,
+        db_id: 3,
+        display_name: "elizabeth",
+        schema: "",
+      }),
+      createMockTable({ id: 10, db_id: 3, display_name: "mary", schema: "" }),
+      createMockTable({ id: 11, db_id: 3, display_name: "kitty", schema: "" }),
+      createMockTable({ id: 12, db_id: 3, display_name: "lydia", schema: "" }),
     ],
   });
   setupDatabasesEndpoints([db, db2, db3]);
@@ -205,6 +245,7 @@ describe("MiniPicker", () => {
       id: 2,
       model: "table",
       name: "roads",
+      db_id: 1,
     });
 
     const [req] = await findRequests("POST");
@@ -228,6 +269,7 @@ describe("MiniPicker", () => {
         id: 1,
         model: "table",
         name: "weather",
+        db_id: 1,
       });
     });
 
@@ -242,6 +284,7 @@ describe("MiniPicker", () => {
         id: 6,
         model: "table",
         name: "pride",
+        db_id: 2,
       });
     });
 
@@ -256,6 +299,7 @@ describe("MiniPicker", () => {
         id: 10,
         model: "table",
         name: "mary",
+        db_id: 3,
       });
     });
 
