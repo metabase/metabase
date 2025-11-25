@@ -119,15 +119,15 @@ export function setupCollectionVirtualSchemaEndpoints(
 }
 
 function handleCollectionItemsResponse({
-  uri,
+  call,
   collectionItems,
   modelsParam,
 }: {
-  uri: string;
+  call: { url: string };
   collectionItems: CollectionItem[];
   modelsParam?: string[];
 }) {
-  const url = new URL(uri);
+  const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
   const matchedItems = collectionItems.filter(({ model }) =>
     models.includes(model),
@@ -154,8 +154,11 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, (uri) =>
-    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items`,
+    (call) =>
+      handleCollectionItemsResponse({ call, collectionItems, modelsParam }),
+    { name: `collection-${collection.id}-items` },
   );
 }
 
@@ -166,8 +169,8 @@ export function setupTenantRootCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/ee/tenant/collection/root/items`, (uri) =>
-    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
+  fetchMock.get(`path:/api/ee/tenant/collection/root/items`, (call) =>
+    handleCollectionItemsResponse({ call, collectionItems, modelsParam }),
   );
 }
 
