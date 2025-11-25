@@ -65,7 +65,6 @@ export {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
 } from "./oss/database";
-export { PLUGIN_DOCUMENTS } from "./oss/documents";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
 export {
@@ -146,7 +145,6 @@ import { reinitialize as reinitializeContentVerification } from "./oss/content-v
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeDashcardMenu } from "./oss/dashcard-menu";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
-import { reinitialize as reinitializeDocuments } from "./oss/documents";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
@@ -183,7 +181,6 @@ export function reinitialize() {
   reinitializeCore();
   reinitializeDashcardMenu();
   reinitializeDatabase();
-  reinitializeDocuments();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();
