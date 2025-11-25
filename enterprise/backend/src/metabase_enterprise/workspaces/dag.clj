@@ -148,27 +148,30 @@
 
 (defn- fetch-dependent-tables
   "Fetch tables that are the output targets of the given transforms.
-   Extracts the table IDs from the transforms' target fields by looking up
-   the table in the database based on schema and name."
+   Returns tables with their IDs if they exist in the database, or with :id nil if they don't exist yet.
+   This supports workspace checkout for transforms that haven't been executed yet."
   [entities]
   (when (seq entities)
     (let [transform-ids (keep (fn [{:keys [id type]}]
                                 (when (= type :transform) id))
                               entities)
           transforms    (when (seq transform-ids)
-                          (t2/select [:model/Transform :id :target] :id [:in transform-ids]))
-          ;; Extract target table information and look up the table IDs
-          tables        (keep (fn [transform]
-                                (let [target (:target transform)]
-                                  (when (and target (= "table" (:type target)))
-                                    (t2/select-one [:model/Table :id :schema :name]
-                                                   :db_id (:database target)
-                                                   :schema (:schema target)
-                                                   :name (:name target)))))
-                              transforms)]
-      (mapv (fn [table]
-              {:id (:id table) :type :table})
-            tables))))
+                          (t2/select [:model/Transform :id :target] :id [:in transform-ids]))]
+      (mapv (fn [transform]
+              (let [target (:target transform)]
+                (when (not= (:type target) "table")
+                  (throw (ex-info "Unknown target type" {:target target})))
+                (or (some-> (t2/select-one [:model/Table :id :schema :name]
+                                           :db_id (:database target)
+                                           :schema (:schema target)
+                                           :name (:name target))
+                            (assoc :type :table))
+                    ;; output table was not created yet
+                    {:id     nil
+                     :schema (:schema target)
+                     :name   (:name target)
+                     :type   :table})))
+            transforms))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
