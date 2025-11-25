@@ -94,6 +94,7 @@ TableSchema.define({
   metrics: [QuestionSchema],
   segments: [SegmentSchema],
   schema: SchemaSchema,
+  collection: CollectionSchema,
 });
 
 FieldSchema.define({
