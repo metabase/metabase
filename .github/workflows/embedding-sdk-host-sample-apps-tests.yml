@@ -194,7 +194,7 @@ jobs:
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
-          docker compose logs -f metabase-nodejs-react-sdk-embedding-sample-metabase-1 &&
+          docker logs metabase-nodejs-react-sdk-embedding-sample-metabase-1 &&
           node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }}
 
       - name: Upload Cypress Artifacts upon failure
