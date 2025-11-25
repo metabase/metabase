@@ -3202,3 +3202,44 @@
   (mt/with-temp [:model/Collection {a-id :id} {:archived true}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
+
+(deftest collection-items-table-test
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection collection                         {}
+                   :model/Card       _                                  {:collection_id (u/the-id collection)
+                                                                         :name          "a-card"}
+                   :model/Table      {table-id :id :as table}           {:collection_id (u/the-id collection)
+                                                                         :is_published  true}
+                   :model/Table      {root-table-id :id :as root-table} {:is_published  true}]
+      (testing "table items appear in collection items"
+        (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                 (str "collection/" (u/the-id collection) "/items")))]
+          (is (=? [{:id          table-id
+                    :name        (:display_name table)
+                    :model       "table"
+                    :database_id (mt/id)
+                    :archived    false}]
+                  (filter #(= "table" (:model %)) items)))))
+      (testing "table items appear in root collection items"
+        (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+          (is (=? [{:id          root-table-id
+                    :name        (:display_name root-table)
+                    :model       "table"
+                    :database_id (mt/id)
+                    :archived    false}]
+                  (filter #(= "table" (:model %)) items)))))
+      (testing "tables don't appear when archived=true"
+        (let [items (mt/user-http-request :crowberto :get 200
+                                          (str "collection/" (u/the-id collection) "/items")
+                                          :archived true)]
+          (is (empty? (filter #(= "table" (:model %)) (:data items))))))
+      (testing "tables don't appear when pinned_state=is_pinned"
+        (let [items (mt/user-http-request :crowberto :get 200
+                                          (str "collection/" (u/the-id collection) "/items")
+                                          :pinned_state "is_pinned")]
+          (is (empty? (filter #(= "table" (:model %)) (:data items))))))
+      (testing "tables appear when pinned_state=is_not_pinned"
+        (let [items (mt/user-http-request :crowberto :get 200
+                                          (str "collection/" (u/the-id collection) "/items")
+                                          :pinned_state "is_not_pinned")]
+          (is (= 1 (count (filter #(= "table" (:model %)) (:data items))))))))))
