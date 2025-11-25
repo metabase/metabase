@@ -12,8 +12,6 @@ import {
   useState,
 } from "react";
 
-import { useUpdateSettingMutation } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
@@ -21,7 +19,10 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { parseHashOptions } from "metabase/lib/browser";
 import { mutateColors } from "metabase/lib/colors/colors";
+import { useSelector } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
+import { getSetting, getSettingsLoading } from "metabase/selectors/settings";
+import { SettingsApi } from "metabase/services";
 
 import { getThemeOverrides } from "../../../theme";
 import {
@@ -170,8 +171,10 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
-  const savedColorScheme = useSetting("color-scheme");
-  const [updateSetting] = useUpdateSettingMutation();
+  const savedColorScheme = useSelector((state) =>
+    getSetting(state, "color-scheme"),
+  );
+  const isLoadingSettings = useSelector(getSettingsLoading);
 
   const defaultColorScheme = ["light", "dark", "auto"].includes(
     savedColorScheme as ColorScheme,
@@ -179,12 +182,17 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? (savedColorScheme as ColorScheme)
     : undefined;
 
-  const handleUpdateColorScheme = useCallback(
-    (value: ColorScheme) => {
-      updateSetting({ key: "color-scheme", value: value });
-    },
-    [updateSetting],
-  );
+  const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
+    await SettingsApi.put({
+      key: "color-scheme",
+      value: value,
+    });
+  }, []);
+
+  if (isLoadingSettings) {
+    // waiting for user to load
+    return null;
+  }
 
   return (
     <ColorSchemeProvider
