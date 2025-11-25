@@ -45,13 +45,13 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
     case "dashboard":
+    case "segment":
       return node.data["last-edit-info"]?.timestamp ?? null;
     case "table":
     case "transform":
     case "snippet":
     case "document":
     case "sandbox":
-    case "segment":
       return null;
   }
 }
@@ -60,13 +60,13 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
   switch (node.type) {
     case "card":
     case "dashboard":
+    case "segment":
       return node.data["last-edit-info"] ?? null;
     case "table":
     case "transform":
     case "snippet":
     case "document":
     case "sandbox":
-    case "segment":
       return null;
   }
 }

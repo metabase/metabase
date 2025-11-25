@@ -68,9 +68,11 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
     return null;
   }
 
+  const title = hasEditedInfo ? t`Creator and last editor` : t`Creator`;
+
   return (
     <Stack gap="sm" lh="1rem">
-      <Title order={6}>{t`Creator and last editor`}</Title>
+      <Title order={6}>{title}</Title>
       {createdAt != null && createdBy != null && (
         <Group gap="sm" wrap="nowrap">
           <FixedSizeIcon name="ai" />

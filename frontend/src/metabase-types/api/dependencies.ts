@@ -135,10 +135,8 @@ export type SandboxDependencyNode = BaseDependencyNode<
 
 export type SegmentDependencyNodeData = Pick<
   Segment,
-  "name" | "description" | "table_id"
+  "name" | "description" | "table_id" | "created_at" | "creator_id" | "creator"
 > & {
-  created_at?: string | null;
-  creator?: any | null;
   table?: Table | null;
 };
 

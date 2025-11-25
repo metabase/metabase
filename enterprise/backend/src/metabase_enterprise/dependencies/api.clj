@@ -153,7 +153,7 @@
                :created_at :creator
                :collection :collection_id]
    :sandbox   [:table :table_id]
-   :segment   [:name :description :created_at :creator_id :table_id]})
+   :segment   [:name :description :created_at :creator :creator_id :table :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -364,7 +364,7 @@
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                      (->> (map collection.root/hydrate-root-collection)))
                        (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
-                       (= entity-type :segment) (t2/hydrate :creator :table))
+                       (= entity-type :segment) (t2/hydrate :creator [:table :db]))
                      (mapv #(entity-value entity-type % usages)))))
             nodes-by-type)))
 

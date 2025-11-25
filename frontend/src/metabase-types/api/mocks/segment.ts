@@ -10,5 +10,7 @@ export const createMockSegment = (opts?: Partial<Segment>): Segment => ({
   archived: false,
   definition: createMockStructuredDatasetQuery(),
   definition_description: "",
+  created_at: "2021-01-01T00:00:00Z",
+  creator_id: 1,
   ...opts,
 });
