@@ -65,7 +65,7 @@ export const GroupSelect = ({
   isCurrentUser = false,
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
-  const [opened, { toggle, close }] = useDisclosure(false);
+  const [opened, { toggle }] = useDisclosure(false);
 
   const handleCheckboxChange = (group: UserGroupType, checked: boolean) => {
     onGroupChange(group, checked);
@@ -90,7 +90,7 @@ export const GroupSelect = ({
 
   if (groups.length === 0) {
     return (
-      <Popover opened={opened} onClose={close}>
+      <Popover opened={opened} onChange={toggle}>
         <Popover.Target>{triggerElement}</Popover.Target>
         <Popover.Dropdown>
           <Text p="sm" c="text-medium">
@@ -104,7 +104,7 @@ export const GroupSelect = ({
   const sections = getSections(groups);
 
   return (
-    <Popover opened={opened} onClose={close}>
+    <Popover opened={opened} onChange={toggle}>
       <Popover.Target>{triggerElement}</Popover.Target>
       <Popover.Dropdown p="sm">
         <Stack gap="xs">
