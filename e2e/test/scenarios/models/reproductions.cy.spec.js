@@ -580,6 +580,7 @@ describe("filtering based on the remapped column name should result in a correct
   });
 
   it("when done through the column header action (metabase#22715-1)", () => {
+    expect(2).to.eq(3);
     H.tableHeaderClick("Created At");
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
