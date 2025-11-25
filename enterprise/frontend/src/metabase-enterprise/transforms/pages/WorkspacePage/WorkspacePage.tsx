@@ -15,6 +15,7 @@ import {
 import {
   useGetWorkspaceContentsQuery,
   useGetWorkspaceQuery,
+  useListTransformsQuery,
 } from "metabase-enterprise/api";
 import type { WorkspaceContentItem } from "metabase-types/api";
 
@@ -27,6 +28,7 @@ type WorkspacePageProps = {
 export function WorkspacePage({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
 
+  const { data: transforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
   const { data: contents, isLoading: isLoadingContents } =
@@ -48,7 +50,7 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
     );
   }
 
-  const transforms = contents?.contents.transforms ?? [];
+  const workspaceTransforms = contents?.contents.transforms ?? [];
 
   return (
     <Stack h="100%">
@@ -90,23 +92,53 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
               </Tabs.List>
             </Box>
             <Tabs.Panel value="code" p="md">
-              {transforms.length === 0 ? (
-                <Text c="text-secondary">
-                  {t`No transforms in this workspace`}
-                </Text>
-              ) : (
-                <Stack gap="md">
-                  {transforms.map((transform: WorkspaceContentItem) => (
-                    <Card key={transform.id} p="md" shadow="none" withBorder>
-                      <Group justify="space-between">
-                        <Anchor href={Urls.transform(transform.id)} fw={500}>
-                          {transform.name}
-                        </Anchor>
-                      </Group>
-                    </Card>
-                  ))}
-                </Stack>
-              )}
+              <Stack>
+                {workspaceTransforms.length === 0 ? null : (
+                  <Stack gap="md">
+                    <Stack gap={0}>
+                      <Text fw={600}>{t`Workspace Transforms`}</Text>
+                      {workspaceTransforms.map(
+                        (transform: WorkspaceContentItem) => (
+                          <Group
+                            justify="flex-start"
+                            align="center"
+                            key={transform.id}
+                            gap="sm"
+                          >
+                            <Icon name="sun" size={12} />
+                            <Anchor
+                              href={Urls.transform(transform.id)}
+                              fw={500}
+                            >
+                              {transform.name}
+                            </Anchor>
+                          </Group>
+                        ),
+                      )}
+                    </Stack>
+                    <Stack
+                      py="md"
+                      dir="column"
+                      style={{ borderTop: "1px solid var(--mb-color-border)" }}
+                      gap="sm"
+                    >
+                      {transforms.map((transform: WorkspaceContentItem) => (
+                        <Group
+                          justify="flex-start"
+                          align="center"
+                          key={transform.id}
+                          gap="sm"
+                        >
+                          <Icon name="sun" size={12} />
+                          <Anchor href={Urls.transform(transform.id)} fw={500}>
+                            {transform.name}
+                          </Anchor>
+                        </Group>
+                      ))}
+                    </Stack>
+                  </Stack>
+                )}
+              </Stack>
             </Tabs.Panel>
           </Tabs>
         </Box>
