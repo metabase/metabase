@@ -11,6 +11,7 @@ export const ENABLED_SEARCH_MODELS = [
   "metric",
   "dashboard",
   "document",
+  "segment",
 ] as const satisfies SearchModel[];
 
 export const ENABLED_SEARCH_MODEL_TO_GROUP_TYPE: Record<
@@ -24,6 +25,7 @@ export const ENABLED_SEARCH_MODEL_TO_GROUP_TYPE: Record<
   metric: "metric",
   dashboard: "dashboard",
   document: "document",
+  segment: "segment",
 };
 
 export const SEARCH_MODELS: SearchModel[] = ENABLED_SEARCH_MODELS;

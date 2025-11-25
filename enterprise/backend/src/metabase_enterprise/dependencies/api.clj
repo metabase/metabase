@@ -199,7 +199,7 @@
                :source]
    :snippet   [:id :name :description]
    :sandbox   [:id :table_id]
-   :segment.  [:id :name :description :created_at :creator_id :table_id]})
+   :segment   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
@@ -279,7 +279,33 @@
                                                         :exclude     [:and
                                                                       [:= active-column true]
                                                                       [:= visibility-type-column nil]]
-                                                        (:only :all) nil)]}]])))))
+                                                        (:only :all) nil)]}]])
+
+                     ;; Segment with table permissions and archived filtering
+                     :model/Segment
+                     (let [archived-column (keyword (name table-name) "archived")
+                           table-id-column (keyword (name table-name) "table_id")]
+                       [:and
+                        [:= entity-type-field (name entity-type)]
+                        [:in entity-id-field {:select [:id]
+                                              :from [table-name]
+                                              :where [:and
+                                                      ;; Check that user can see the table this segment belongs to
+                                                      [:in table-id-column
+                                                       {:select [:metabase_table.id]
+                                                        :from [:metabase_table]
+                                                        :where (mi/visible-filter-clause
+                                                                :model/Table
+                                                                :metabase_table.id
+                                                                {:user-id api/*current-user-id*
+                                                                 :is-superuser? api/*is-superuser?*}
+                                                                {:perms/view-data :unrestricted
+                                                                 :perms/create-queries :query-builder})}]
+                                                      ;; Filter by archived status
+                                                      (case include-archived-items
+                                                        :exclude [:= archived-column false]
+                                                        :only [:= archived-column true]
+                                                        :all nil)]}]])))))
          entity-model)))
 
 (defn- readable-graph-dependencies

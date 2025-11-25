@@ -16,7 +16,8 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
     case "document":
-      return node.data.created_at;
+    case "segment":
+      return node.data.created_at ?? null;
     case "table":
     case "transform":
     case "snippet":
@@ -30,6 +31,7 @@ export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
     case "card":
     case "dashboard":
     case "document":
+    case "segment":
       return node.data.creator ?? null;
     case "table":
     case "transform":
@@ -49,6 +51,7 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "snippet":
     case "document":
     case "sandbox":
+    case "segment":
       return null;
   }
 }
@@ -63,6 +66,7 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
     case "snippet":
     case "document":
     case "sandbox":
+    case "segment":
       return null;
   }
 }
@@ -117,6 +121,7 @@ export function getNodeFields(node: DependencyNode): Field[] {
     case "snippet":
     case "dashboard":
     case "document":
+    case "segment":
       return [];
   }
 }
