@@ -9695,6 +9695,7 @@
             "description" : "Server error response"
           }
         },
+        "deprecated" : true,
         "tags" : [ "/api/activity" ]
       }
     },
@@ -13091,6 +13092,7 @@
             "description" : "Server error response"
           }
         },
+        "deprecated" : true,
         "tags" : [ "/api/dashboard" ]
       },
       "post" : {
