@@ -43,12 +43,13 @@
 
 (mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
   "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
-  [tables :- [:map-of :string :int]]
+  [{{tables :source-tables} :source :as _py-transform}
+   :- [:map [:source-tables {:optional true} [:map-of :string :int]]]]
   {:table (set (vals tables))})
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
-  [{{:keys [query], tables :source-tables, source-type :type} :source :as transform} :-
+  [{{:keys [query], source-type :type} :source :as transform} :-
    [:map
     [:source [:multi {:dispatch (comp keyword :type)}
               [:query
@@ -60,7 +61,7 @@
     (upstream-deps:query query)
 
     (= (keyword source-type) :python)
-    (upstream-deps:python-transform tables)
+    (upstream-deps:python-transform transform)
 
     :else
     (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
