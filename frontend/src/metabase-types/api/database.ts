@@ -54,6 +54,7 @@ export type DatabaseFeature =
   | "distinct-where"
   | "saved-question-sandboxing"
   | "split-part"
+  | "collate"
   | "transforms/python"
   | "transforms/table";
 
