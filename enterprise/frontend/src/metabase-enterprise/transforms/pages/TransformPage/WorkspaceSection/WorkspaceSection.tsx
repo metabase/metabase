@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -35,28 +36,22 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
   );
 
   const { data: workspace } = useGetWorkspaceQuery(
-    transform.workspace_id ?? 0,
-    {
-      skip: transform.workspace_id == null,
-    },
+    transform.workspace_id == null ? skipToken : transform.workspace_id,
   );
 
   const { data: workspaceContents } = useGetWorkspaceContentsQuery(
-    createdWorkspaceId ?? 0,
-    {
-      skip: createdWorkspaceId == null,
-    },
+    createdWorkspaceId == null ? skipToken : createdWorkspaceId,
   );
 
   const { data: upstreamMapping, isLoading: isLoadingUpstream } =
-    useGetTransformUpstreamMappingQuery(transform.id, {
-      skip: !hasWorkspace,
-    });
+    useGetTransformUpstreamMappingQuery(
+      hasWorkspace ? transform.id : skipToken,
+    );
 
   const { data: downstreamMapping, isLoading: isLoadingDownstream } =
-    useGetTransformDownstreamMappingQuery(transform.id, {
-      skip: hasWorkspace,
-    });
+    useGetTransformDownstreamMappingQuery(
+      hasWorkspace ? skipToken : transform.id,
+    );
 
   const isLoadingMappings = isLoadingUpstream || isLoadingDownstream;
 
