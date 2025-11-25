@@ -1,30 +1,29 @@
 import type { ReactNode } from "react";
 
-import { Group, Stack, Text, Title } from "metabase/ui";
+import { Card, Group, Stack, Text, Title } from "metabase/ui";
 
 type TitleSectionProps = {
   label: string;
   description?: string;
-  rightSection?: ReactNode;
   children?: ReactNode;
 };
 
 export function TitleSection({
   label,
   description,
-  rightSection,
   children,
 }: TitleSectionProps) {
   return (
     <Stack>
       <Group>
-        <Stack flex={1}>
+        <Stack flex={1} gap="sm">
           <Title order={4}>{label}</Title>
           <Text c="text-secondary">{description}</Text>
         </Stack>
-        {rightSection}
       </Group>
-      {children}
+      <Card p={0} shadow="none" withBorder>
+        {children}
+      </Card>
     </Stack>
   );
 }

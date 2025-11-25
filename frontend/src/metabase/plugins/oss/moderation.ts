@@ -2,7 +2,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { BaseUser, Dashboard } from "metabase-types/api";
+import type { BaseUser, Card, Dashboard } from "metabase-types/api";
 
 export type RevisionOrModerationEvent = {
   title: string;
@@ -27,6 +27,7 @@ const getDefaultPluginModeration = () => ({
     [] as RevisionOrModerationEvent[],
   useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
   useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
+  useCardMenuItems: (_model?: Card, _reload?: () => void) => [],
 });
 
 export const PLUGIN_MODERATION = getDefaultPluginModeration();

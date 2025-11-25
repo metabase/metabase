@@ -153,7 +153,7 @@ describe("user > settings", () => {
     });
   });
 
-  it("Should show correct translations when a user logs in with a locale that is different from the site locale", () => {
+  it("should show correct translations when a user logs in with a locale that is different from the site locale", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
     cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, { locale: "fr" });
     cy.signOut();
@@ -165,7 +165,7 @@ describe("user > settings", () => {
 
     // should be redirected to new question page
     cy.wait("@getUser");
-    H.entityPickerModalTab("Collections").click();
+    H.miniPicker().findByText("Parcourir tout").click();
     H.entityPickerModal().findByText("Orders Model").click();
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")

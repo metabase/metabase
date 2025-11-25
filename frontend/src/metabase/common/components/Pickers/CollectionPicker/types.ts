@@ -2,6 +2,7 @@ import type {
   CardId,
   CollectionId,
   CollectionItemModel,
+  CollectionType,
   DashboardId,
   ListCollectionItemsRequest,
   SearchResult,
@@ -33,14 +34,29 @@ export type CollectionPickerItem = TypeWithModel<
   CollectionItemId,
   CollectionPickerModel
 > &
-  Pick<Partial<SearchResult>, "description" | "can_write" | "database_id"> & {
+  Pick<
+    Partial<SearchResult>,
+    "description" | "can_write" | "database_id" | "collection_type"
+  > & {
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;
     collection_id?: CollectionId | null;
     here?: CollectionItemModel[];
     below?: CollectionItemModel[];
+    type?: CollectionType;
   };
+
+/**
+ * Returns the collection type for an item.
+ * Recent items and search results use `collection_type` field,
+ * while regular collection picker items use `type` field.
+ */
+export function getCollectionType(
+  item: CollectionPickerItem,
+): CollectionType | null {
+  return item.collection_type ?? item.type ?? null;
+}
 
 export type CollectionPickerValueItem =
   | (Omit<CollectionPickerItem, "model" | "id"> & {
@@ -54,10 +70,11 @@ export type CollectionPickerValueItem =
     });
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
+  namespace?: "snippets";
   allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
-  namespace?: "snippets";
+  showLibrary?: boolean;
 };
 
 export type CollectionItemListProps = ListProps<
