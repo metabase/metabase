@@ -253,7 +253,7 @@ describe("user > settings", () => {
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
 
-      cy.findByDisplayValue("Light").click();
+      cy.findByDisplayValue("Use system default").click();
       H.popover().findByText("Dark").click();
       assertDarkMode();
 
@@ -272,7 +272,7 @@ describe("user > settings", () => {
 
       cy.visit("/account/profile");
 
-      cy.findByDisplayValue("Light").click();
+      cy.findByDisplayValue("Use system default").click();
       H.popover().findByText("Dark").click();
       assertDarkMode();
 

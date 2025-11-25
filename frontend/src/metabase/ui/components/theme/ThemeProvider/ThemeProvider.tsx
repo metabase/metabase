@@ -17,12 +17,12 @@ import {
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PUT } from "metabase/lib/api";
 import { parseHashOptions } from "metabase/lib/browser";
 import { mutateColors } from "metabase/lib/colors/colors";
 import { useSelector } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { getSetting, getSettingsLoading } from "metabase/selectors/settings";
-import { SettingsApi } from "metabase/services";
 
 import { getThemeOverrides } from "../../../theme";
 import {
@@ -183,7 +183,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     : undefined;
 
   const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
-    await SettingsApi.put({
+    await PUT("/api/setting/:key")({
       key: "color-scheme",
       value: value,
     });
