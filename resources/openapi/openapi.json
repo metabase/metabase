@@ -240,6 +240,18 @@
         "type" : "array"
       },
       "mbql.clause.coalesce" : { },
+      "mbql.clause.collate" : {
+        "prefixItems" : [ {
+          "const" : "collate"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        }, {
+          "type" : "string"
+        } ],
+        "type" : "array"
+      },
       "mbql.clause.concat" : { },
       "mbql.clause.contains" : { },
       "mbql.clause.convert-timezone" : { },
@@ -5969,6 +5981,8 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.text"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.split-part"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.collate"
         } ]
       },
       "metabase.legacy-mbql.schema.StringExpressionArg" : {
@@ -6202,6 +6216,10 @@
       "metabase.legacy-mbql.schema.coalesce" : {
         "allOf" : [ ],
         "description" : "schema for a valid MBQL 4 :coalesce clause"
+      },
+      "metabase.legacy-mbql.schema.collate" : {
+        "allOf" : [ ],
+        "description" : "schema for a valid MBQL 4 :collate clause"
       },
       "metabase.legacy-mbql.schema.concat" : {
         "allOf" : [ ],
@@ -7889,6 +7907,8 @@
           "$ref" : "#/components/schemas/mbql.clause.ceil"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.collate"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.concat"
         }, {
@@ -14472,14 +14492,6 @@
                       "description" : "value must be an integer greater than zero.",
                       "minimum" : 1,
                       "type" : "integer"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "type" : {
-                    "oneOf" : [ {
-                      "enum" : [ "remote-synced" ],
-                      "type" : "string"
                     }, {
                       "type" : "null"
                     } ]
