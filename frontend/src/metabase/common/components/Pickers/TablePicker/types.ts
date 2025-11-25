@@ -53,10 +53,3 @@ export const isTablePickerFolder = (
   input?: TablePickerItem | CollectionPickerItem,
 ): input is TablePickerFolderItem =>
   input?.model === "database" || input?.model === "schema";
-
-export const isTablePickerItem = (
-  input?: TablePickerItem | CollectionPickerItem,
-): input is TablePickerItem =>
-  input?.model === "database" ||
-  input?.model === "schema" ||
-  input?.model === "table";
