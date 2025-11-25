@@ -179,7 +179,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
   const defaultColorScheme = ["light", "dark", "auto"].includes(
     savedColorScheme as ColorScheme,
   )
-    ? (savedColorScheme as ColorScheme)
+    ? (savedColorScheme as "light" | "dark" | "auto")
     : undefined;
 
   const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {

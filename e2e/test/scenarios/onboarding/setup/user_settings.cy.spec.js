@@ -266,6 +266,26 @@ describe("user > settings", () => {
       cy.realPress([metaKey, "Shift", "L"]);
       assertDarkMode();
     });
+
+    it("should persist theme selection on browser change", () => {
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveSetting");
+
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Light").click();
+      H.popover().findByText("Dark").click();
+      assertDarkMode();
+
+      cy.wait("@saveSetting");
+
+      // emulate browser change by deleting localStorage value
+      cy.window().then((win) => {
+        win.localStorage.removeItem("metabase-color-scheme");
+      });
+
+      cy.visit("/account/profile");
+      assertDarkMode();
+    });
   });
 });
 
