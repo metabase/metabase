@@ -278,32 +278,23 @@ const TableSectionBase = ({
 
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 
-          {/* NOTE: We're using here CSS display property to avoid scroll jump when toggling sorting mode. */}
           {hasFields && (
             <>
-              <Box
-                style={{
-                  display: isSorting ? "block" : "none",
-                }}
-              >
+              {isSorting && (
                 <TableSortableFieldList
                   activeFieldId={activeFieldId}
                   table={table}
                   onChange={handleCustomFieldOrderChange}
                 />
-              </Box>
+              )}
 
-              <Box
-                style={{
-                  display: !isSorting ? "block" : "none",
-                }}
-              >
+              {!isSorting && (
                 <TableFieldList
                   table={table}
                   activeFieldId={activeFieldId}
                   getFieldHref={getFieldHref}
                 />
-              </Box>
+              )}
             </>
           )}
         </Stack>
