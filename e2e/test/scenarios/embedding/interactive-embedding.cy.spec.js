@@ -1937,6 +1937,54 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
     H.main().findByText("Orders in a dashboard").should("be.visible");
   });
+
+  it("should pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
+    const jwtAttributeValue = "jwt_test_value";
+
+    // 1) set up a click behavior that uses a user attribute in the URL
+    addLinkClickBehavior({
+      dashboardId,
+      linkTemplate: "http://example.com/{{test_attribute}}",
+    });
+
+    // 2) sign a jwt for the user with a custom attribute
+    cy.task("signJwt", {
+      payload: {
+        email: USERS.normal.email,
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
+        test_attribute: jwtAttributeValue,
+      },
+      secret: jwtSecret,
+    }).then((jwtToken) => {
+      // 3) mock the JWT provider to redirect to the auth/sso endpoint with the JWT
+      cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
+        const redirectUrl = `${baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`;
+        req.redirect(redirectUrl);
+      }).as("jwt-provider");
+    });
+
+    // 4) visit the dashboard as embedded
+    H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
+
+    cy.wait("@jwt-provider");
+
+    // 5) verify user is on dashboard
+    cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
+
+    // 6) intercept the click behavior navigation to verify the URL contains the JWT attribute
+    cy.window().then((win) => {
+      cy.stub(win, "open").as("windowOpen");
+    });
+
+    // 7) click on a cell to trigger the click behavior
+    cy.findAllByRole("gridcell").first().click();
+
+    // 8) verify the URL contains the JWT attribute value
+    cy.get("@windowOpen").should(
+      "have.been.calledWithMatch",
+      `http://example.com/${jwtAttributeValue}`,
+    );
+  });
 });
 
 const visitQuestionUrl = (urlOptions) => {
