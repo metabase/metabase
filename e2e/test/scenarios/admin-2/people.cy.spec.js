@@ -711,7 +711,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.icon("ellipsis").eq(0).click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit Name").click();
-      cy.get("input").type(" updated");
+      cy.findByDisplayValue("collection").type(" updated");
       cy.button("Done").click();
 
       // Click on the group with the new name

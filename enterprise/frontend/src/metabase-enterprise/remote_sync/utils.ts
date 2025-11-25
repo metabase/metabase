@@ -116,16 +116,20 @@ export const buildCollectionMap = (
 ): Map<number, Collection> => {
   const map = new Map<number, Collection>();
 
-  const processCollection = (collection: Collection) => {
+  const processCollection = (parents: Collection[], collection: Collection) => {
     if (typeof collection.id === "number") {
-      map.set(collection.id, collection);
+      map.set(collection.id, { ...collection, effective_ancestors: parents });
     }
     if (collection.children) {
-      collection.children.forEach(processCollection);
+      collection.children.forEach((child) => {
+        processCollection([...parents, collection], child);
+      });
     }
   };
 
-  collectionTree.forEach(processCollection);
+  collectionTree.forEach((collection) => {
+    processCollection([], collection);
+  });
   return map;
 };
 

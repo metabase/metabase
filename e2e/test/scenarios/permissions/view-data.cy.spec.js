@@ -462,7 +462,13 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
     H.popover().should("not.contain", "No self-service (Deprecated)");
 
     H.selectPermissionRow("Sample Database", CREATE_QUERIES_PERM_IDX);
-    H.isPermissionDisabled(CREATE_QUERIES_PERM_IDX, "No", false);
+
+    H.isPermissionDisabled(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "No",
+      false,
+    );
 
     // load the page w/ legacy value in the graph and test that it does exist
     cy.reload();
@@ -494,7 +500,12 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
     ]);
 
     // User should not be able to modify Create queries permission while set to legacy-no-self-service
-    H.isPermissionDisabled(CREATE_QUERIES_PERM_IDX, "No", true);
+    H.isPermissionDisabled(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "No",
+      true,
+    );
 
     H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Can view");
 

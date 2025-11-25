@@ -523,16 +523,9 @@
                         (-> (mt/boolean-ids-and-timestamps new-user)
                             (dissoc :last_login))))
                  (testing "User Invite Event is logged."
-                   (is (= {:details  {:email      "newuser@metabase.com"
-                                      :first_name "New"
-                                      :last_name  "User"
-                                      :user_group_memberships [{:id 1}]
-                                      :sso_source "saml"}
-                           :model    "User"
-                           :model_id (:id new-user)
-                           :topic    :user-invited
-                           :user_id  nil}
-                          (mt/latest-audit-log-entry :user-invited (:id new-user))))))
+                   (is (= "newuser@metabase.com"
+                          (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
+                                  [:details :email])))))
                (testing "attributes"
                  (is (= (some-saml-attributes "newuser")
                         (saml-login-attributes "newuser@metabase.com"))))

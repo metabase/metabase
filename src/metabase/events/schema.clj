@@ -48,7 +48,7 @@
 
 (mr/def ::collection
   [:map {:closed true}
-   [:user-id pos-int?]
+   [:user-id [:maybe pos-int?]]
    [:object [:fn #(t2/instance-of? :model/Collection %)]]])
 
 (mr/def :event/collection-create ::collection)

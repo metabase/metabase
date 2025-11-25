@@ -823,6 +823,23 @@
         (is (= {:is-superuser? false, :pgm-exists? false}
                (superuser-and-admin-pgm-info email)))))))
 
+(deftest create-user-must-assign-to-all-users-group
+  (testing "POST /api/user"
+    (testing "Creating a tenant user automatically assigns them to All External Users group even when other groups are specified"
+      (mt/with-temp [:model/PermissionsGroup group-1 {:name "Custom Group 1"}
+                     :model/PermissionsGroup group-2 {:name "Custom Group 2"}]
+        (let [user-name (mt/random-name)
+              email     (mt/random-email)]
+          (mt/with-model-cleanup [:model/User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 400 "user"
+                                               {:first_name             user-name
+                                                :last_name              user-name
+                                                :email                  email
+                                                :user_group_memberships (group-or-ids->user-group-memberships
+                                                                         [group-1 group-2])})]
+                (is (= "You cannot add or remove users to/from the 'All Users' group." resp))))))))))
+
 (deftest create-user-mixed-case-email
   (testing "POST /api/user/:id"
     (testing "can create a new User with a mixed case email and the email is normalized to lower case"
@@ -838,7 +855,7 @@
                                                    :email (u/upper-case-en email)
                                                    :login_attributes {:test "value"}}))
                            (finally
-                             ;; clean up after ourselves
+                               ;; clean up after ourselves
                              (t2/delete! :model/User :email email)))))))))))
 
 (deftest create-user-mixed-case-email-2
@@ -929,6 +946,37 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
+(deftest login-attributes-cannot-start-with-at-symbol
+  (testing "PUT /api/user/:id"
+    (testing "We can't create login attributes starting with `@`"
+      (mt/with-temp [:model/User {user-id :id} {:first_name   "Test"
+                                                :last_name    "User"
+                                                :email        "testuser@metabase.com"
+                                                :is_superuser true}]
+        (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                :errors
+                {:login_attributes
+                 {(keyword "@foo")
+                  "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                     {:email            "testuser@metabase.com"
+                                      :login_attributes {"@foo" "foo"}}))))))
+  (testing "POST /api/user"
+    (let [user-name (mt/random-name)
+          email     (mt/random-email)]
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-fake-inbox
+          (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                  :errors
+                  {:login_attributes
+                   {(keyword "@foo")
+                    "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+                 (mt/user-http-request :crowberto :post 400 "user"
+                                       {:first_name       user-name
+                                        :last_name        user-name
+                                        :email            email
+                                        :login_attributes {"@foo" "bar"}}))))))))
+
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."
     (let [names {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
@@ -943,7 +991,7 @@
       (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name names {:first_name "T" :last_name "U"})))
       (is (= {:first_name "Test" :last_name "U"} (#'api.user/updated-user-name names {:last_name "U"})))
       (is (= {:first_name "T" :last_name "User"} (#'api.user/updated-user-name names {:first_name "T"})))
-      ;; starting with 'nil' names
+        ;; starting with 'nil' names
       (is (nil? (#'api.user/updated-user-name nonames {})))
       (is (nil? (#'api.user/updated-user-name nonames {:first_name nil})))
       (is (nil? (#'api.user/updated-user-name nonames {:last_name nil})))
@@ -951,7 +999,7 @@
       (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name nonames {:first_name "T" :last_name "U"})))
       (is (= {:first_name nil :last_name "U"} (#'api.user/updated-user-name nonames {:last_name "U"})))
       (is (= {:first_name "T" :last_name nil} (#'api.user/updated-user-name nonames {:first_name "T"})))
-      ;; starting with one name nil
+        ;; starting with one name nil
       (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test" :last_name nil})))
       (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test"})))
       (is (nil? (#'api.user/updated-user-name lastname {:first_name nil :last_name "User"})))
@@ -1140,7 +1188,7 @@
 (deftest update-groups-test-2
   (testing "PUT /api/user/:id"
     (testing "if we pass user_group_memberships, and are updating ourselves as a non-superuser, the entire call should fail"
-      ;; By wrapping the test in this macro even if the test fails it will restore the original values
+        ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:first_name "Rasta"}
         (mt/test-helpers-set-global-values!
           (with-preserved-rasta-personal-collection-name!
@@ -1300,7 +1348,7 @@
   (testing "PUT /api/user/:id/reactivate"
     (testing "Test that reactivating a disabled account works"
       (mt/with-temp [:model/User user {:is_active false}]
-        ;; now try creating the same user again, should re-activiate the original
+          ;; now try creating the same user again, should re-activiate the original
         (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user))
                               {:first_name (:first_name user)
                                :last_name "whatever"
@@ -1341,7 +1389,7 @@
       ;; use API to reset the users password
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                         :old_password "def"})
-      ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
+        ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
       (not= hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))))))
 
 (deftest can-reset-password-test

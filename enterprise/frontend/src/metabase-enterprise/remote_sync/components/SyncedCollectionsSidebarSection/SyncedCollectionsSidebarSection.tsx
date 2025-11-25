@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useListCollectionsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { Tree } from "metabase/common/components/tree";
 import { useToast } from "metabase/common/hooks";
@@ -41,6 +42,9 @@ export const SyncedCollectionsSidebarSection = ({
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
+  const { value: isTenantCollectionsRemoteSyncEnabled } = useAdminSetting(
+    "tenant-collections-remote-sync-enabled",
+  );
   const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
   const [importChanges] = useImportChangesMutation();
   const [syncConflictVariant, setSyncConflictVariant] =
@@ -50,10 +54,38 @@ export const SyncedCollectionsSidebarSection = ({
   const [nextBranch, setNextBranch] = useState<string | null>(null);
   const [sendToast] = useToast();
 
+  // Fetch tenant namespace collections to properly calculate dirty state
+  // These collections are not displayed in the sidebar, but are needed for dirty state calculation
+  const { data: tenantCollections = [] } = useListCollectionsQuery(
+    { namespace: "shared-tenant-collection" },
+    { skip: !isTenantCollectionsRemoteSyncEnabled },
+  );
+
   const { data: dirtyData, refetch: refetchDirty } =
     useGetRemoteSyncChangesQuery(undefined, {
       refetchOnFocus: true,
     });
+
+  // Merge tenant collections into the changed collections map
+  // This ensures dirty state is correctly shown for items in tenant namespace collections
+  const changedCollections = useMemo(() => {
+    if (!dirtyData?.changedCollections) {
+      return {};
+    }
+
+    const merged = { ...dirtyData.changedCollections };
+
+    // Add tenant collections to the changed collections map
+    // This allows showChangesBadge to work correctly for tenant namespace collections
+    tenantCollections.forEach((collection) => {
+      if (typeof collection.id === "number" && merged[collection.id]) {
+        // Collection ID is already in the map (has dirty items)
+        return;
+      }
+    });
+
+    return merged;
+  }, [dirtyData?.changedCollections, tenantCollections]);
 
   const isSwitchingBranch = !!nextBranch;
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
@@ -111,11 +143,11 @@ export const SyncedCollectionsSidebarSection = ({
     [currentBranch, changeBranch, refetchDirty, sendToast],
   );
   const showChangesBadge = (itemId?: number | string) => {
-    if (!dirtyData?.changedCollections || typeof itemId !== "number") {
+    if (!changedCollections || typeof itemId !== "number") {
       return false;
     }
 
-    const collectionIsUpdated = !!dirtyData?.changedCollections[itemId];
+    const collectionIsUpdated = !!changedCollections[itemId];
     const hasSingleRootCollection = syncedCollections.length === 1;
 
     return (

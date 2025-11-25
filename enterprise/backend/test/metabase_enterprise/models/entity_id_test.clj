@@ -89,6 +89,7 @@
     :model/Session
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/Tenant
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun

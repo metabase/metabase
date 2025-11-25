@@ -44,6 +44,7 @@ const MoveCollectionModalView = ({
       onMove={handleMove}
       onClose={onClose}
       recentAndSearchFilter={recentsAndSearchFilter}
+      savingModel="collection"
     />
   );
 };

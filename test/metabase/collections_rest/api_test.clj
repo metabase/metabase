@@ -645,27 +645,28 @@
                                                                      :moderator_id        user-id
                                                                      :most_recent         true}]
         (is (= (mt/obj->json->obj
-                [{:collection_id       (:id collection)
-                  :dashboard_count     0
-                  :dashboard           nil
-                  :dashboard_id        nil
-                  :can_write           true
-                  :can_delete          false
-                  :can_restore         false
-                  :id                  card-id
-                  :archived            false
-                  :location            nil
-                  :name                (:name card)
-                  :collection_position nil
-                  :collection_preview  true
-                  :database_id         (mt/id)
-                  :display             "table"
-                  :description         nil
-                  :entity_id           (:entity_id card)
-                  :moderated_status    "verified"
-                  :is_remote_synced    false
-                  :model               "card"
-                  :last_used_at        (:last_used_at card)
+                [{:collection_id        (:id collection)
+                  :dashboard_count      0
+                  :dashboard            nil
+                  :dashboard_id         nil
+                  :can_write            true
+                  :can_delete           false
+                  :can_restore          false
+                  :collection_namespace nil
+                  :id                   card-id
+                  :archived             false
+                  :location             nil
+                  :name                 (:name card)
+                  :collection_position  nil
+                  :collection_preview   true
+                  :database_id          (mt/id)
+                  :display              "table"
+                  :description          nil
+                  :entity_id            (:entity_id card)
+                  :moderated_status     "verified"
+                  :is_remote_synced     false
+                  :model                "card"
+                  :last_used_at         (:last_used_at card)
                   :fully_parameterized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
@@ -2476,7 +2477,7 @@
                    :namespace "snippets"}
                   (mt/user-http-request :crowberto :post 200 "collection"
                                         {:name       collection-name
-                                         :descrption "My SQL Snippets"
+                                         :description "My SQL Snippets"
                                          :namespace  "snippets"})))
           (finally
             (t2/delete! :model/Collection :name collection-name)))))))
@@ -2926,7 +2927,7 @@
                  :model/Card card {}]
     (testing "Collections can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id collection)) {:parent_id (collection/trash-collection-id)})
-      (is (not (t2/exists? :model/Collection :location (collection/trash-path)))))
+      (is (not (t2/exists? :model/Collection :id (u/the-id collection) :location (collection/trash-path)))))
     (testing "Dashboards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 403 (str "dashboard/" (u/the-id dashboard)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Dashboard :collection_id (collection/trash-collection-id)))))

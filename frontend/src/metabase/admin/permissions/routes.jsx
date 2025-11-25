@@ -5,6 +5,7 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
 } from "metabase/plugins";
 
@@ -41,6 +42,7 @@ const getRoutes = () => (
       <Route path=":collectionId" />
     </Route>
 
+    {PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes()}
     {PLUGIN_APPLICATION_PERMISSIONS.getRoutes()}
   </Route>
 );

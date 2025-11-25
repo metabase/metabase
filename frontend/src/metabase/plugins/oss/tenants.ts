@@ -1,0 +1,33 @@
+import type React from "react";
+
+import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { Collection, Group, User } from "metabase-types/api";
+
+const getDefaultPluginTenants = () => ({
+  userStrategyRoute: null as React.ReactElement | null,
+  tenantsRoutes: null as React.ReactElement | null,
+  EditUserStrategySettingsButton: PluginPlaceholder,
+  FormTenantWidget: (_props: any) => null as React.ReactElement | null,
+  TenantDisplayName: (_props: any) => null as React.ReactElement | null,
+  isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
+  isTenantGroup: (_group: Pick<Group, "is_tenant_group">) => false,
+  isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
+  isTenantCollection: (_collection: Collection) => false,
+  PeopleNav: null as React.ReactElement | null,
+  ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
+    null as React.ReactElement | null,
+  TenantGroupHintIcon: PluginPlaceholder,
+  MainNavSharedCollections: PluginPlaceholder,
+  TenantCollectionItemList: (_props: CollectionItemListProps) =>
+    null as React.ReactElement | null,
+});
+
+export const PLUGIN_TENANTS = getDefaultPluginTenants();
+
+/**
+ * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
+ */
+export function reinitialize() {
+  Object.assign(PLUGIN_TENANTS, getDefaultPluginTenants());
+}

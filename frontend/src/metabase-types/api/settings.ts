@@ -330,6 +330,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms",
   "transforms-python",
+  "tenants",
   "support-users",
 ] as const;
 
@@ -561,6 +562,7 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
   "non-table-chart-generated": boolean;
+  "use-tenants": boolean;
 }
 
 export type UserSettings = {
@@ -652,6 +654,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-branch"?: string | null;
   "remote-sync-type"?: "read-only" | "read-write" | null;
   "remote-sync-auto-import"?: boolean | null;
+  "tenant-collections-remote-sync-enabled"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
@@ -678,6 +681,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
   "jwt-attribute-groups": string | null;
+  "jwt-attribute-tenant": string | null;
   "jwt-group-sync": boolean | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;

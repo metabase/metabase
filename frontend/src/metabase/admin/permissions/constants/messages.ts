@@ -1,11 +1,29 @@
 import { t } from "ttag";
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-export const UNABLE_TO_CHANGE_ADMIN_PERMISSIONS = t`Administrators always have the highest level of access to everything in Metabase.`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-export const NATIVE_PERMISSION_REQUIRES_DATA_ACCESS = t`Groups with View data access set to "Blocked" can't create queries.`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-export const UNABLE_TO_CHANGE_LEGACY_PERMISSIONS = t`Change "No self-service (Deprecated)" View data access to enable custom Create queries permissions.`;
+export const Messages = {
+  get UNABLE_TO_CHANGE_ADMIN_PERMISSIONS() {
+    return t`Administrators always have the highest level of access to everything in Metabase.`;
+  },
+  get NATIVE_PERMISSION_REQUIRES_DATA_ACCESS() {
+    return t`Groups with View data access set to "Blocked" can't create queries.`;
+  },
+  get UNABLE_TO_CHANGE_LEGACY_PERMISSIONS() {
+    return t`Change "No self-service (Deprecated)" View data access to enable custom Create queries permissions.`;
+  },
+  get EXTERNAL_USERS_NO_ACCESS_COLLECTION() {
+    return t`External users can only access tenant collections`;
+  },
+  get EXTERNAL_USERS_NO_ACCESS_DATABASE() {
+    return t`External users cannot manage database permissions`;
+  },
+
+  get EXTERNAL_USERS_NO_ACCESS_SETTINGS() {
+    return t`External users cannot have settings permissions`;
+  },
+  get EXTERNAL_USERS_NO_ACCESS_MONITORING() {
+    return t`External users cannot have monitoring permissions`;
+  },
+};
 
 export const getLimitedPermissionAvailabilityMessage = () =>
   t`Only available in certain Metabase plans.`;

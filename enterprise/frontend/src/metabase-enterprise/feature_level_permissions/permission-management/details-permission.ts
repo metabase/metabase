@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -50,6 +50,7 @@ export const buildDetailsPermission = (
   entityId: EntityId,
   groupId: number,
   isAdmin: boolean,
+  isExternal: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
@@ -89,11 +90,15 @@ export const buildDetailsPermission = (
     permission: DataPermission.DETAILS,
     type: DataPermissionType.DETAILS,
     value,
-    isDisabled: isAdmin,
+    isDisabled: isAdmin || isExternal,
     isHighlighted: isAdmin,
     warning,
     confirmations,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : isExternal
+        ? Messages.EXTERNAL_USERS_NO_ACCESS_DATABASE
+        : null,
     options: [DETAILS_PERMISSION_OPTIONS.no, DETAILS_PERMISSION_OPTIONS.yes],
   };
 };

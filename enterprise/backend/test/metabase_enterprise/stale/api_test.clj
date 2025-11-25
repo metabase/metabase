@@ -32,7 +32,7 @@
                        (mt/user-http-request :get 200 (str "collection/" (u/the-id a) "/items")
                                              :models "dashboard" :models "card")
                        (dissoc :models)
-                       (update :data (fn [results] (map (fn [result] (dissoc result :moderated_status :is_remote_synced)) results))))
+                       (update :data (fn [results] (map (fn [result] (dissoc result :moderated_status :is_remote_synced :namespace :collection_namespace)) results))))
                    (update result :data (fn [results] (map (fn [result] (dissoc result :collection :moderated_status :card_schema)) results))))))
           (testing "The card and dashboard are in there"
             (is (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]}

@@ -311,6 +311,10 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
+(define-premium-feature ^{:added "0.58.0"} enable-tenants?
+  "Is this a development instance that should have watermarks?"
+  :tenants)
+
 (define-premium-feature ^{:added "0.57.1"} enable-support-users?
   "Should users be allowed to enable support users in-app?"
   :support-users)
@@ -363,6 +367,7 @@
    :sso_saml                       (enable-sso-saml?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
+   :tenants                        (enable-tenants?)
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
