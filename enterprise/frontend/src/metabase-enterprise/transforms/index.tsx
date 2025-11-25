@@ -1,5 +1,5 @@
 import { PLUGIN_ENTITIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { canAccessDataStudio } from "metabase-enterprise/data-studio/utils";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -13,7 +13,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("transforms")) {
     PLUGIN_TRANSFORMS.isEnabled = true;
     PLUGIN_ENTITIES.entities["transforms"] = Transforms;
-    PLUGIN_TRANSFORMS.canAccessTransforms = canAccessDataStudio;
+    PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
     PLUGIN_TRANSFORMS.getDataStudioTransformRoutes =
       getDataStudioTransformRoutes;
     PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
