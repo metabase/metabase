@@ -1,4 +1,4 @@
-import { handleBookmarkCache } from "metabase/api";
+import { handleBookmarkCacheInvalidation } from "metabase/api";
 import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import type {
   CreateDocumentRequest,
@@ -45,11 +45,11 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/document/${document.id}`,
         body: document,
       }),
-      invalidatesTags: (_, error, patch) =>
-        !error ? [listTag("document"), idTag("document", patch.id)] : [],
+      invalidatesTags: (_, error, { id }) =>
+        !error ? [listTag("document"), idTag("document", id)] : [],
       onQueryStarted: async (patch, { dispatch, getState, queryFulfilled }) => {
         handleQueryFulfilled(queryFulfilled, () => {
-          handleBookmarkCache({
+          handleBookmarkCacheInvalidation({
             patch,
             bookmarkType: "document",
             invalidateOnKeys: ["name"],

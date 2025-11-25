@@ -24,7 +24,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { handleBookmarkCache } from "./bookmark";
+import { handleBookmarkCacheInvalidation } from "./bookmark";
 import {
   idTag,
   invalidateTags,
@@ -179,7 +179,7 @@ export const cardApi = Api.injectEndpoints({
           { dispatch, getState, queryFulfilled },
         ) => {
           handleQueryFulfilled(queryFulfilled, () => {
-            handleBookmarkCache({
+            handleBookmarkCacheInvalidation({
               patch,
               bookmarkType: "card",
               invalidateOnKeys: ["name", "type"],

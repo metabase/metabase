@@ -81,18 +81,23 @@ export const bookmarkApi = Api.injectEndpoints({
   }),
 });
 
-export const handleBookmarkCache = <
+/**
+ * Effeciently invalidate the bookmark cache for bookmarkable entity updates.
+ * `patch` is a partial entity object and `invalidateOnKeys` are a subset of
+ * a patch's keys that, when changed, will trigger an invalidation event.
+ */
+export const handleBookmarkCacheInvalidation = <
   Patch extends { id: string | number; archived?: boolean },
 >({
   patch,
-  bookmarkType,
   invalidateOnKeys,
+  bookmarkType,
   dispatch,
   getState,
 }: {
   patch: Patch;
-  bookmarkType: BookmarkType;
   invalidateOnKeys: Array<keyof Patch>;
+  bookmarkType: BookmarkType;
   dispatch: ThunkDispatch<any, any, UnknownAction>;
   getState: () => RootState<any, any, "metabase-api">;
 }) => {
