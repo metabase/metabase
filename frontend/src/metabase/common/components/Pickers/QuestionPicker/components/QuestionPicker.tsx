@@ -157,7 +157,7 @@ export const QuestionPicker = ({
             { ...currentCollection, model: "collection" },
             userPersonalCollectionId,
           ),
-          models: models as CollectionPickerModel[],
+          models,
         });
 
         // start with the current item selected if we can
@@ -204,15 +204,11 @@ export const QuestionPicker = ({
     <NestedItemPicker
       initialValue={isTablePickerValue(initialValue) ? initialValue : undefined}
       isFolder={(item: QuestionPickerItem | TablePickerItem) =>
-        isTablePickerFolderOrQuestionPickerFolder(
-          item,
-          models as QuestionPickerModel[],
-        )
+        isTablePickerFolderOrQuestionPickerFolder(item, models)
       }
       options={options}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
-      // @ts-expect-error - CollectionPickerItem and QuestionPickerItem don't mix 😢
       path={path}
       listResolver={CollectionItemPickerResolver}
       shouldShowItem={shouldShowItem}
