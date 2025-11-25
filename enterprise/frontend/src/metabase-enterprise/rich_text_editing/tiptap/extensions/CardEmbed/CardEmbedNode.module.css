@@ -18,6 +18,7 @@
   flex-direction: column;
   height: 100%;
   background: var(--mb-color-background);
+  overflow: hidden;
 }
 
 .cardEmbed.selected {

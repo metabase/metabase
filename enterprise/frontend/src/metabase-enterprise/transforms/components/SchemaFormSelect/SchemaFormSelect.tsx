@@ -8,15 +8,15 @@ import { SelectItem, Text } from "metabase/ui";
 
 export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
   const { data, name, ...rest } = props;
-  const [{ value }] = useField(name);
+  const [{ value }] = useField<string | null>(name);
 
-  const [searchValue, setSearchValue] = useState(value);
+  const [searchValue, setSearchValue] = useState(value ?? "");
   const dataWithNewItem = _.uniq([
     ...data,
     ...(searchValue !== "" ? [searchValue] : []),
   ]);
 
-  const isNewValue = value !== "" && !data.includes(value);
+  const isNewValue = value !== "" && !data.includes(value ?? "");
 
   return (
     <FormField>

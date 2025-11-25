@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Redirect } from "react-router";
+import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -40,8 +40,7 @@ import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
-import { DataModel } from "metabase/metadata/pages/DataModel";
+import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_TOOLS,
@@ -50,7 +49,7 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
-  PLUGIN_TRANSFORMS,
+  PLUGIN_SUPPORT,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -63,7 +62,7 @@ import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route path="/admin" component={CanAccessSettings}>
-    <Route title={t`Admin`} component={AdminApp}>
+    <Route component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />
       <Route
         path="databases"
@@ -82,21 +81,21 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
-          <Route path="database" component={DataModel} />
-          <Route path="database/:databaseId" component={DataModel} />
+          <Route path="database" component={DataModelV1} />
+          <Route path="database/:databaseId" component={DataModelV1} />
           <Route
             path="database/:databaseId/schema/:schemaId"
-            component={DataModel}
+            component={DataModelV1}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId"
-            component={DataModel}
+            component={DataModelV1}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-            component={DataModel}
+            component={DataModelV1}
           />
-          <Route component={DataModel}>
+          <Route component={DataModelV1}>
             <Route path="segments" component={SegmentListApp} />
             <Route path="segment/create" component={SegmentApp} />
             <Route path="segment/:id" component={SegmentApp} />
@@ -115,7 +114,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
         </Route>
       </Route>
-      {PLUGIN_TRANSFORMS.getAdminRoutes()}
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>
         <Route title={t`People`} component={AdminPeopleApp}>
@@ -252,7 +250,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           >
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
           </Route>
-          <Route path="help" component={Help} />
+          <Route path="help" component={Help}>
+            {PLUGIN_SUPPORT.isEnabled && (
+              <ModalRoute
+                modal={PLUGIN_SUPPORT.GrantAccessModal}
+                path="grant-access"
+              />
+            )}
+          </Route>
           <Route path="tasks" component={TasksApp}>
             <ModalRoute
               path=":taskId"

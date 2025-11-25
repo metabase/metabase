@@ -1590,6 +1590,89 @@ describe("scenarios > embedding > full app", () => {
       );
     });
 
+    describe("navigation through postMessage", () => {
+      const assertIsLost = () => {
+        cy.get("@iframeBody")
+          .find("[role=status]")
+          .should("contain", "We're a little lost");
+      };
+
+      const assertIsDashboard = () => {
+        cy.get("@iframeBody")
+          .find("[data-testid=table-footer]")
+          .should("contain", "Showing first 2,000 rows");
+      };
+
+      const assertIsQuestion = () => {
+        cy.get("@iframeBody")
+          .find("[data-testid=question-row-count]")
+          .should("contain", "Showing first 2,000 rows");
+      };
+
+      const goTo = (url) => {
+        H.postMessageToIframe({
+          iframeSelector: 'iframe[src*="localhost:4000/dashboard"]',
+          messageData: {
+            metabase: { type: "location", location: url },
+          },
+        });
+      };
+
+      it("should handle invalid questions/dashboards (metabase#65500)", () => {
+        cy.signInAsAdmin();
+
+        H.createDashboardWithTabs({
+          dashboard: {
+            name: "Dashboard with tabs",
+          },
+          dashcards: [
+            createMockDashboardCard({
+              card_id: ORDERS_QUESTION_ID,
+              size_x: 10,
+              size_y: 8,
+            }),
+          ],
+        }).then((dashboard) => {
+          H.loadInteractiveIframeEmbedTestPage({
+            dashboardId: dashboard.id,
+            iframeSelector: 'iframe[src*="localhost:4000/dashboard"]',
+          });
+
+          cy.get('iframe[src*="localhost:4000/dashboard"]')
+            .its("0.contentDocument.body")
+            .should("not.be.empty")
+            .then(cy.wrap)
+            .as("iframeBody");
+
+          assertIsDashboard();
+
+          // invalid dashboard -> valid dashboard
+          goTo("/dashboard/9999990");
+          assertIsLost();
+          goTo(`/dashboard/${dashboard.id}`);
+          assertIsDashboard();
+
+          // invalid question -> valid question
+          goTo("/question/9999990");
+          assertIsLost();
+          goTo(`/question/${ORDERS_QUESTION_ID}`);
+          assertIsQuestion();
+
+          // invalid question -> valid dashboard
+          goTo("/question/9999990");
+          assertIsLost();
+          goTo(`/dashboard/${dashboard.id}`);
+          assertIsDashboard();
+
+          // invalid dashboard -> valid question
+          goTo("/dashboard/9999990");
+          assertIsLost();
+          goTo(`/question/${ORDERS_QUESTION_ID}`);
+          assertIsQuestion();
+        });
+      });
+    });
+
     it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };

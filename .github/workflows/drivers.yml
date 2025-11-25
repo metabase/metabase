@@ -17,7 +17,7 @@ jobs:
   determine-driver-skips:
     runs-on: ubuntu-latest
     outputs:
-      skip: ${{ steps.check_team_and_branch.outputs.skip }}
+      skip: ${{ steps.check-branch-and-files-changed.outputs.skip }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,49 +25,31 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
         run: |
           # Fetch the base branch to ensure its history is available for diffing
-          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
           # Only run this if it's a pull request and the base ref exists
-      - name: Check if tier3 drivers should run
-        id: check_team_and_branch
+      - name: Check if driver tests should run
+        id: check-branch-and-files-changed
         run: |
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
-          HAS_TEAM_LABEL="${{ contains(github.event.pull_request.labels.*.name, '.Team/Drivers') || contains(github.event.pull_request.labels.*.name, '.Team/Querying') || contains(github.event.pull_request.labels.*.name, '.Team/SemanticLayer') || contains(github.event.pull_request.labels.*.name, '.Team/DevEx') }}"
-
-
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
-          echo "Has '.Team/Drivers' or '.Team/Querying' or '.Team/SemanticLayer' label: ${HAS_TEAM_LABEL}"
+
           if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "Merging into master or a release branch. Tier 3 driver tests will run."
-          elif [[ "${HAS_TEAM_LABEL}" == "true" ]]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "A relevant team label is present. Tier 3 driver tests will run."
+            echo "Merging into master or a release branch. All driver tests will run."
           else
-            echo "Checking for changes in relevant folders..."
-            CHANGED_FILES=$(git diff --name-only $(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.sha }}) ${{ github.sha }})
-
-            # Initialize an empty array to store folders with changes
-            CHANGED_FOLDERS=()
-            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers" "src/metabase/driver"; do
-              if echo "$CHANGED_FILES" | grep -q "$folder"; then
-                CHANGED_FOLDERS+=("$folder")
-              fi
-            done
-
-            if [[ ${#CHANGED_FOLDERS[@]} -gt 0 ]]; then
-              echo "skip=false" >> $GITHUB_OUTPUT
-              echo "Changes detected in the following folders: ${CHANGED_FOLDERS[*]}."
-              echo "Tier 3 driver tests will run."
+            echo "Checking for changes in relevant modules..."
+            if ./bin/mage can-skip-driver-tests "${{ github.event.pull_request.base.ref }}"; then
+              echo 'skip=true' >> $GITHUB_OUTPUT
             else
-              echo "skip=true" >> $GITHUB_OUTPUT
-              echo "No relevant team label, not merging into master/release, and no changes in relevant folders. Tier 3 driver tests will be skipped."
+              echo 'skip=false' >> $GITHUB_OUTPUT
             fi
           fi
         shell: bash
+
   be-tests-athena-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -85,6 +67,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Athena driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
@@ -93,7 +76,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -104,8 +87,9 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-bigquery-cloud-sdk-ee:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -146,7 +130,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -163,8 +147,9 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-clickhouse-ee:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -216,7 +201,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -235,7 +220,7 @@ jobs:
   be-tests-druid-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -251,6 +236,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
@@ -259,7 +245,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -272,7 +258,7 @@ jobs:
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -288,6 +274,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid JDBC driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-jdbc-ee'
@@ -296,7 +283,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -309,7 +296,7 @@ jobs:
   be-tests-databricks-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -325,6 +312,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
@@ -333,7 +321,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -346,7 +334,7 @@ jobs:
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -363,6 +351,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver with multi-catalog
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
@@ -371,7 +360,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -383,7 +372,7 @@ jobs:
 
   be-tests-h2:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -400,7 +389,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -411,8 +400,9 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mysql-mariadb:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -423,21 +413,25 @@ jobs:
             image: circleci/mariadb:10.2.23
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
             image: circleci/mariadb:latest
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: MySQL 8.0
             junit-name: be-tests-mysql-8-0-ee
             image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: MySQL Latest
             junit-name: be-tests-mysql-latest-ee
             image: mysql:latest
             env:
               enable-ssl-tests: 'true'
+              enable-aws-iam-tests: 'true'
         job:
           - name: Driver Tests
             test-args: >-
@@ -496,6 +490,14 @@ jobs:
       MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
+      MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
+      MB_MYSQL_AWS_IAM_TEST_HOST: ${{ secrets.MYSQL_AURORA_IAM_INSTANCE_HOST }}
+      MB_MYSQL_AWS_IAM_TEST_PORT: 3306
+      MB_MYSQL_AWS_IAM_TEST_USER: my_iam_user
+      MB_MYSQL_AWS_IAM_TEST_DBNAME: test_db
+      MB_MYSQL_AWS_IAM_TEST_SSL_CERT: trust
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
     # "be-tests-mariadb-10-2-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
@@ -516,7 +518,7 @@ jobs:
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -535,7 +537,7 @@ jobs:
   be-tests-mongo:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -585,7 +587,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -604,7 +606,7 @@ jobs:
   be-tests-mongo-ssl:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -648,6 +650,7 @@ jobs:
           curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
           -o ./test_resources/ssl/mongo/metaca.crt
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
@@ -656,7 +659,7 @@ jobs:
             :only-tags [:mb/driver-tests]
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -669,7 +672,7 @@ jobs:
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -683,6 +686,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test MongoDB driver (Sharded cluster)
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
@@ -690,7 +694,7 @@ jobs:
           :only metabase.driver.mongo.sharded-cluster-test
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -703,7 +707,7 @@ jobs:
   be-tests-oracle:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -755,6 +759,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.version.name }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
@@ -763,7 +768,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -774,8 +779,9 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-postgres:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -786,11 +792,13 @@ jobs:
             docker-image: postgres:12-alpine
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: Postgres Latest
             junit-name: postgres-latest-ee
             docker-image: postgres:latest
             env:
               enable-ssl-tests: 'true'
+              enable-aws-iam-tests: 'true'
         job:
           - name: Driver Tests
             test-args: >-
@@ -830,6 +838,13 @@ jobs:
       MB_POSTGRES_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
       MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
+      MB_POSTGRES_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
+      MB_POSTGRES_AWS_IAM_TEST_HOST: ${{ secrets.POSTGRES_AURORA_IAM_INSTANCE_HOST }}
+      MB_POSTGRES_AWS_IAM_TEST_PORT: 5432
+      MB_POSTGRES_AWS_IAM_TEST_USER: my_iam_user
+      MB_POSTGRES_AWS_IAM_TEST_DBNAME: test_db
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     services:
       postgres:
         image: ${{ matrix.version.docker-image }}
@@ -856,7 +871,7 @@ jobs:
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -875,7 +890,7 @@ jobs:
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -924,6 +939,7 @@ jobs:
         -file /tmp/presto-ssl-ca.der
         -trustcacerts
     - name: Test Presto JDBC driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
@@ -932,7 +948,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -943,8 +959,9 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-redshift-ee:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -994,7 +1011,7 @@ jobs:
           ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: ${{ !matrix.job.skip && !cancelled() }}
+      if: ${{ !matrix.job.skip && !cancelled() && steps.test-driver.outputs.quarantine-skipped != 'true' }}
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1010,80 +1027,80 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  # dan sutton 2025-10-23: disable snowflake because of account
-  # issues. https://linear.app/metabase/issue/DEV-997/reenable-snowflake-in-ci. Note that the transforms tests were
-  # disabled previously
-  # be-tests-snowflake-ee:
-  #   if: ${{ !inputs.skip }}
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 60
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       job:
-  #         - name: Driver Tests
-  #           test-args: >-
-  #             :only-tags [:mb/driver-tests]
-  #             :exclude-tags [:mb/transforms-python-test]
+  be-tests-snowflake-ee:
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Driver Tests
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+
 # DS 2025-09-26 temporarily disabled while we diagnose flakes
 #          - name: Transforms Python Tests
 #            test-args: >-
 #              :only-tags [:mb/transforms-python-test]
 #            needs-python-runner: true
-    # env:
-    #   CI: 'true'
-    #   DRIVERS: snowflake
-    #   MB_SNOWFLAKE_TEST_USER: METABASE CI
-    #   MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
-    #   MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
-    #   MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
-    #   MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
-    #   MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
-    #   MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
-    #   MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
-    #   MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
 
-    #   # RSA Role testing:
-    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
-    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
-    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
-    #   MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
-    # name: Snowflake ${{ matrix.job.name }}
-    # steps:
-    # - uses: actions/checkout@v4
-    # - name: Setup python-runner
-    #   if: ${{ matrix.job.needs-python-runner == true }}
-    #   uses: ./.github/actions/setup-python-runner
-    #   with:
-    #     metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-    # - name: Test Snowflake driver
-    #   id: test-driver
-    #   uses: ./.github/actions/test-driver
-    #   with:
-    #     junit-name: 'be-tests-snowflake-ee'
-    #     test-args: ${{ matrix.job.test-args }}
-    # - name: Upload Test Results
-    #   uses: ./.github/actions/upload-test-results
-    #   if: always()
-    #   with:
-    #     input-path: ./target/junit/
-    #     output-name: ${{ github.job }}
-    #     bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-    #     aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-    #     aws-region: ${{ vars.AWS_REGION }}
-    #     trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-    # - name: Cleanup python-runner
-    #   if: ${{ always() && matrix.job.needs-python-runner == true }}
-    #   uses: ./.github/actions/cleanup-python-runner
-    #   with:
-    #     upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-    #     logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake ${{ matrix.job.name }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup python-runner
+      if: ${{ matrix.job.needs-python-runner == true }}
+      uses: ./.github/actions/setup-python-runner
+      with:
+        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+    - name: Test Snowflake driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-snowflake-ee'
+        test-args: ${{ matrix.job.test-args }}
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+    - name: Cleanup python-runner
+      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      uses: ./.github/actions/cleanup-python-runner
+      with:
+        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -1097,6 +1114,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Spark driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
@@ -1105,7 +1123,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1118,7 +1136,7 @@ jobs:
   be-tests-sqlite-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -1127,6 +1145,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test SQLite driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
@@ -1135,7 +1154,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1148,7 +1167,7 @@ jobs:
   be-tests-sqlserver:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -1200,7 +1219,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1220,7 +1239,7 @@ jobs:
   # be-tests-starburst-ee:
   #   needs: determine-driver-skips
   #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-  #   runs-on: ubuntu-22.04
+  #   runs-on: ubuntu-latest
   #   timeout-minutes: 60
   #   env:
   #     CI: 'true'
@@ -1258,7 +1277,7 @@ jobs:
   login-to-ecr:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       id-token: write
@@ -1288,7 +1307,7 @@ jobs:
   be-tests-vertica-ee:
     needs: [determine-driver-skips, login-to-ecr]
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -1307,6 +1326,7 @@ jobs:
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
@@ -1315,7 +1335,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1342,8 +1362,7 @@ jobs:
       - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
-      # dan: disabled for account reasons. https://linear.app/metabase/issue/DEV-997/reenable-snowflake-in-ci
-      # - be-tests-snowflake-ee
+      - be-tests-snowflake-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
