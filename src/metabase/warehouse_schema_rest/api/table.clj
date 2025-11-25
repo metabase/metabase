@@ -177,18 +177,18 @@
   [newly-unhidden]
   (when (seq newly-unhidden)
     (quick-task/submit-task!
-      (fn []
-        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-          (let [database (t2/select-one :model/Database db-id)]
+     (fn []
+       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
+         (let [database (t2/select-one :model/Database db-id)]
             ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
             ;; purposes of creating a new H2 database.
-            (if (binding [driver.settings/*allow-testing-h2-connections* true]
-                  (driver.u/can-connect-with-details? (:engine database) (:details database)))
-              (doseq [table tables]
-                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-                (sync/sync-table! table))
-              (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                          (:name database))))))))))
+           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
+             (doseq [table tables]
+               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+               (sync/sync-table! table))
+             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                       (:name database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -422,12 +422,12 @@
   (let [table    (t2/select-one :model/Table :id id)
         database (warehouses/get-database (:db_id table))]
     (api/check-403
-      (perms/user-has-permission-for-table?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        (:id database)
-        id))
+     (perms/user-has-permission-for-table?
+      api/*current-user-id*
+      :perms/manage-table-metadata
+      :yes
+      (:id database)
+      id))
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try
