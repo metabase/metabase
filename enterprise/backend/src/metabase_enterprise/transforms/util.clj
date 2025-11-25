@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -44,7 +45,8 @@
   (= :query (-> transform :source :type keyword)))
 
 (defn native-query-transform?
-  "Check if this is a native query transform"
+  "Check if this is a native query transform.
+  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
   [transform]
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
@@ -55,9 +57,20 @@
   [transform]
   (= :python (-> transform :source :type keyword)))
 
+(defn normalize-transform
+  "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
+  This should be called on transforms before processing them to ensure queries are in the expected format."
+  [transform]
+  (if (and (map? transform)
+           (= (:type transform) "transform")
+           (get-in transform [:source :query]))
+    (update-in transform [:source :query] lib-be/normalize-query)
+    transform))
+
 (defn transform-source-type
   "Returns the type of a transform's source: :python, :native, or :mbql.
-  Throws if the source type cannot be detected."
+  Throws if the source type cannot be detected.
+  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
   [source]
   (case (keyword (:type source))
     :python :python
@@ -115,15 +128,10 @@
 
 (defn sync-target!
   "Sync target of a transform"
-  ([transform-id run-id]
-   (let [{:keys [source target]} (t2/select-one :model/Transform transform-id)
-         db (get-in source [:query :database])
-         database (t2/select-one :model/Database db)]
-     (sync-target! target database run-id)))
-  ([target database _run-id]
-   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
-   (log/info "Syncing target" (pr-str target) "for transform")
-   (activate-table-and-mark-computed! database target)))
+  [target database]
+  ;; sync the new table (note that even a failed sync status means that the execution succeeded)
+  (log/info "Syncing target" (pr-str target) "for transform")
+  (activate-table-and-mark-computed! database target))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
@@ -147,16 +155,20 @@
   ([database target {:keys [create?]}]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
-                          (sync/create-table! database (select-keys target [:schema :name]))))]
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority]))))]
      (sync/sync-table! table)
      table)))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
   [database target]
-  (when-let [table (sync-table! database target {:create? true})]
-    (when (or (not (:active table)) (not (= (:data_authority table) :computed)))
-      (t2/update! :model/Table (:id table) {:active true, :data_authority :computed}))))
+  (when-let [table (sync-table! database (assoc target
+                                                :data_authority :computed
+                                                :data_source :metabase-transform)
+                                {:create? true})]
+    (when-not (:active table)
+      (t2/update! :model/Table (:id table) {:active true}))
+    table))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."

@@ -74,6 +74,7 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-support-users?
   enable-transforms?
   enable-python-transforms?
   enable-upload-management?
@@ -81,7 +82,8 @@
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
-  offer-metabase-ai?
+  offer-metabase-ai-trial?
+  offer-metabase-ai-paid?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

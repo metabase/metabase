@@ -2827,12 +2827,30 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
-            "created_at" : {
-              "type" : "string",
-              "minLength" : 1
+            "weights" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "number"
+              }
+            },
+            "semantic_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            },
+            "limit" : {
+              "default" : 50,
+              "type" : "integer"
             },
             "database_id" : {
               "type" : "integer"
+            },
+            "term_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
             },
             "entity_types" : {
               "type" : "array",
@@ -2841,29 +2859,17 @@
                 "enum" : [ "table", "model", "question", "dashboard", "metric", "database", "transform" ]
               }
             },
+            "created_at" : {
+              "type" : "string",
+              "minLength" : 1
+            },
             "last_edited_at" : {
               "type" : "string",
               "minLength" : 1
             },
-            "limit" : {
-              "default" : 50,
-              "type" : "integer"
-            },
             "search_native_query" : {
               "type" : "boolean",
               "default" : false
-            },
-            "semantic_queries" : {
-              "type" : "array",
-              "items" : {
-                "type" : "string"
-              }
-            },
-            "term_queries" : {
-              "type" : "array",
-              "items" : {
-                "type" : "string"
-              }
             }
           }
         }, {
@@ -2910,6 +2916,9 @@
             "type" : "object",
             "properties" : {
               "authority_level" : {
+                "type" : "string"
+              },
+              "description" : {
                 "type" : "string"
               },
               "name" : {
@@ -3844,7 +3853,7 @@
           "required" : [ "type", "subject", "body" ]
         } ]
       },
-      "metabase.collections.api.DashboardQuestionCandidate" : {
+      "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
         "properties" : {
           "description" : {
@@ -3876,13 +3885,13 @@
         },
         "required" : [ "id", "name", "sole_dashboard_info" ]
       },
-      "metabase.collections.api.DashboardQuestionCandidatesResponse" : {
+      "metabase.collections-rest.api.DashboardQuestionCandidatesResponse" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "type" : "array",
             "items" : {
-              "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidate"
+              "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidate"
             }
           },
           "total" : {
@@ -3891,7 +3900,7 @@
         },
         "required" : [ "data", "total" ]
       },
-      "metabase.collections.api.MoveDashboardQuestionCandidatesResponse" : {
+      "metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse" : {
         "type" : "object",
         "properties" : {
           "moved" : {
@@ -9202,7 +9211,7 @@
         "type" : "string",
         "enum" : [ "events" ]
       },
-      "metabase.users.api.user-group-membership" : {
+      "metabase.users-rest.api.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
         "properties" : {
@@ -9258,12 +9267,12 @@
         },
         "required" : [ "schedule_type" ]
       },
-      "metabase.warehouse-schema.api.table.data-authority-write" : {
+      "metabase.warehouse-schema-rest.api.table.data-authority-write" : {
         "description" : "Schema for writing a valid table data authority.",
         "type" : "string",
         "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
       },
-      "metabase.warehouses.api.available-settings" : {
+      "metabase.warehouses-rest.api.available-settings" : {
         "type" : "object",
         "additionalProperties" : {
           "type" : "object",
@@ -9695,6 +9704,7 @@
             "description" : "Server error response"
           }
         },
+        "deprecated" : true,
         "tags" : [ "/api/activity" ]
       }
     },
@@ -11161,9 +11171,15 @@
                     "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
                   },
                   "collection_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "description" : "String must be a valid 21-character NanoID string.",
+                      "type" : "string",
+                      "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                    } ]
                   },
                   "cache_ttl" : {
                     "description" : "value must be an integer greater than zero.",
@@ -11675,6 +11691,9 @@
                   },
                   "parameter_mappings" : {
                     "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+                  },
+                  "embedding_type" : {
+                    "type" : "string"
                   },
                   "name" : {
                     "type" : "string",
@@ -12512,7 +12531,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -12638,7 +12657,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.MoveDashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -12896,7 +12915,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -13031,7 +13050,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.MoveDashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -13091,6 +13110,7 @@
             "description" : "Server error response"
           }
         },
+        "deprecated" : true,
         "tags" : [ "/api/dashboard" ]
       },
       "post" : {
@@ -13833,6 +13853,9 @@
                   "width" : {
                     "type" : "string",
                     "enum" : [ "fixed", "full" ]
+                  },
+                  "embedding_type" : {
+                    "type" : "string"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -15098,7 +15121,7 @@
                   "type" : "object",
                   "properties" : {
                     "settings" : {
-                      "$ref" : "#/components/schemas/metabase.warehouses.api.available-settings"
+                      "$ref" : "#/components/schemas/metabase.warehouses-rest.api.available-settings"
                     }
                   },
                   "required" : [ "settings" ]
@@ -16183,6 +16206,44 @@
         "tags" : [ "/api/ee/billing" ]
       }
     },
+    "/api/ee/cloud-add-ons/addons" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/addons",
+        "description" : "Get addons information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
+    "/api/ee/cloud-add-ons/plans" : {
+      "get" : {
+        "summary" : "GET /api/ee/cloud-add-ons/plans",
+        "description" : "Get plans information from the Metabase Store API.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
     "/api/ee/cloud-add-ons/{product-type}" : {
       "post" : {
         "summary" : "POST /api/ee/cloud-add-ons/{product-type}",
@@ -16193,7 +16254,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution" ]
           }
         } ],
         "responses" : {
@@ -16213,11 +16274,13 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "quantity" : {
+                    "type" : "integer"
+                  },
                   "terms_of_service" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ "terms_of_service" ]
+                }
               }
             }
           }
@@ -20083,7 +20146,7 @@
                   },
                   "remote-sync-type" : {
                     "type" : "string",
-                    "enum" : [ "production", "development" ]
+                    "enum" : [ "read-only", "read-write" ]
                   },
                   "remote-sync-url" : {
                     "type" : "string"
@@ -20906,6 +20969,14 @@
           "required" : true,
           "schema" : {
             "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "reindex",
+          "required" : true,
+          "schema" : {
+            "default" : true,
             "type" : "boolean"
           }
         } ],
@@ -27915,11 +27986,6 @@
             "default" : "default",
             "type" : "string"
           }
-        }, {
-          "in" : "query",
-          "name" : "search_engine",
-          "required" : false,
-          "schema" : { }
         } ],
         "responses" : {
           "2XX" : {
@@ -28613,25 +28679,6 @@
         "tags" : [ "/api/setup" ]
       }
     },
-    "/api/setup/user_defaults" : {
-      "get" : {
-        "summary" : "GET /api/setup/user_defaults",
-        "description" : "Returns object containing default user details for initial setup, if configured,\n   and if the provided token value matches the token in the configuration value.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/setup" ]
-      }
-    },
     "/api/slack/bug-report" : {
       "post" : {
         "summary" : "POST /api/slack/bug-report",
@@ -28769,7 +28816,7 @@
                     "enum" : [ "technical", "hidden", "cruft" ]
                   },
                   "data_authority" : {
-                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -28932,7 +28979,7 @@
                     "enum" : [ "technical", "hidden", "cruft" ]
                   },
                   "data_authority" : {
-                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -30428,7 +30475,7 @@
                   "user_group_memberships" : {
                     "type" : "array",
                     "items" : {
-                      "$ref" : "#/components/schemas/metabase.users.api.user-group-membership"
+                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                     }
                   }
                 },
@@ -30566,7 +30613,7 @@
                   "user_group_memberships" : {
                     "type" : "array",
                     "items" : {
-                      "$ref" : "#/components/schemas/metabase.users.api.user-group-membership"
+                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                     }
                   }
                 }

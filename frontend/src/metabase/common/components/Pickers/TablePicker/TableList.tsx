@@ -38,7 +38,7 @@ export const TableList = ({
   }, [tables]);
 
   return (
-    <ListBox data-testid="item-picker-level-2">
+    <ListBox data-testid="item-picker-level-3">
       <ItemList
         error={error}
         isCurrentLevel={isCurrentLevel}

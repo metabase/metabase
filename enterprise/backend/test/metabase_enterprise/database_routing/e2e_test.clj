@@ -1,7 +1,9 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.e2e-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
+   [clojurewerkz.quartzite.conversion :as qc]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
@@ -9,6 +11,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
@@ -310,7 +313,23 @@
                           (is (= [[1 "routed-foo"] [2 "routed-bar"]]
                                  (->> (mt/query t)
                                       (mt/process-query)
-                                      (mt/formatted-rows [int str])))))))))))))))))
+                                      (mt/formatted-rows [int str]))))))
+                      (testing "sync task can see database"
+                        (let [job-data       (reify qc/JobDataMapConversion
+                                               ;; i'm doing this at the "job-data" level so it's as close to what runs in
+                                               ;; the task itself without actually hitting scheduler stuff.
+                                               (from-job-data [_] {"db-id" (u/the-id router)})
+                                               (to-job-data [_]))
+                              results        (#'task.sync-databases/sync-and-analyze-database! job-data)
+                              step-with-name (fn [step-name]
+                                               (->> results :metadata-results :steps
+                                                    (some (fn [step] (when (= step-name (first step)) (second step))))))]
+                          (is (set/subset? #{"sync-fields" "sync-tables"}
+                                           (->> results :metadata-results :steps (map first) set)))
+                          ;; this is usually 1 total tables, but some cloud dbs put multiple databases inside of a
+                          ;; single catalog
+                          (is (=? {:updated-tables 0 :total-tables pos-int?}
+                                  (step-with-name "sync-tables"))))))))))))))))
 
 (deftest athena-region-bucket-routing-test
   (mt/test-driver :athena
