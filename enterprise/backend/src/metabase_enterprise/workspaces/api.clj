@@ -14,19 +14,19 @@
 
 ;;; schemas
 
-(def ^:private type->t2-model {:transform :model/Transform})
-
-;; The key we use to group entities of the same type in requests and responses.
-(def ^:private type->grouping {:transform :transforms})
-
 (mr/def ::entity-type [:enum :transform])
 
 (mr/def ::entity-grouping [:enum :transforms])
+
+;; Map like {:transforms [1 2 3]}
+(mr/def ::entity-map
+  [:map-of ::entity-grouping [:sequential {:min 1} ms/PositiveInt]])
 
 ;; Entities that live within the Workspace
 (mr/def ::downstream-entity
   [:map
    [:id ms/PositiveInt]
+   [:upstream_id ms/PositiveInt]
    [:type ::entity-type]
    [:name :string]])
 
@@ -39,23 +39,17 @@
 ;; Graph node for view-graph endpoint
 (mr/def ::graph-node
   [:map
+   [:node_id :string]
    [:id ms/PositiveInt]
    [:type [:enum :table :transform]]
-   [:data :map]])
+   [:title :string]
+   [:dependents [:map-of [:enum :table :transform] ms/PositiveInt]]])
 
 ;; Graph edge for view-graph endpoint
 (mr/def ::graph-edge
   [:map
-   [:from_type [:enum :table :transform]]
-   [:from_id ms/PositiveInt]
-   [:to_type [:enum :table :transform]]
-   [:to_id ms/PositiveInt]])
-
-;; Transform execution result
-(mr/def ::transform-result
-  [:map
-   [:type [:= :transform]]
-   [:id ms/PositiveInt]])
+   [:from :string]
+   [:to :string]])
 
 ;; Error: entity that needs to be checked out
 (mr/def ::unchecked-out-entity
@@ -86,20 +80,19 @@
    [:message :string]
    [:entities [:sequential ::uncloneable-entity]]])
 
-(def CreateWorkspace
-  "Schema for creating a new workspace"
+(def ^:private CreateWorkspace
   [:map
-   [:name [:string {:min 1}]]
+   [:name {:optional true} [:string {:min 1}]]
    [:database_id {:optional true} :int]
-   [:upstream [:map-of ::entity-grouping [:sequential {:min 1} ms/PositiveInt]]]])
+   [:upstream {:optional true} ::entity-map]])
 
-(def UpdateWorkspaceContents
-  "Schema for updating workspace contents (adding/removing entities)"
+(def ^:private AddEntities
   [:map
-   [:upstream
-    [:map
-     [:added {:optional true} [:map-of ::entity-grouping [:sequential ms/PositiveInt]]]
-     [:removed {:optional true} [:map-of ::entity-grouping [:sequential ms/PositiveInt]]]]]])
+   [:upstream ::entity-map]])
+
+(def ^:private RemoveEntities
+  [:map
+   [:downstream ::entity-map]])
 
 (def Workspace
   "Schema for workspace response"
@@ -109,44 +102,26 @@
    [:collection_id :int]
    [:database_id :int]
    [:created_at :any]
-   [:updated_at :any]])
+   [:updated_at :any]
+   [:archived_at [:maybe :any]]
+   [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]])
 
-(def ExecuteResult
+(def ^:private ExecuteResult
   "Schema for workspace execution result"
   [:map
-   [:succeeded [:sequential ::transform-result]]
-   [:failed [:sequential ::transform-result]]
-   [:not_run [:sequential ::transform-result]]])
+   [:succeeded ::entity-map]
+   [:failed ::entity-map]
+   [:not_run ::entity-map]])
 
-(def GraphResult
+(def ^:private GraphResult
   "Schema for workspace graph visualization"
   [:map
    [:nodes [:sequential ::graph-node]]
    [:edges [:sequential ::graph-edge]]])
 
-(def PromoteRequest
-  "Schema for promoting workspace entities"
-  [:map
-   [:entities [:map-of ::entity-grouping [:sequential ms/PositiveInt]]]])
-
-(def RequestAddEntities
-  "Schema for metabot requesting to add entities"
-  [:map
-   [:entities [:sequential ::entity-reference]]])
-
-(def RequestAddSourceTables
-  "Schema for metabot requesting to add source tables"
-  [:map
-   [:tables [:sequential [:map [:type [:= :table]] [:id ms/PositiveInt]]]]])
-
-(def ApprovalLink
-  "Schema for approval link response"
-  [:map
-   [:approval_url :string]
-   [:request_id ms/PositiveInt]])
-
 (defn- ws->response [ws]
-  (select-keys ws [:id :name :collection_id :database_id :created_at :updated_at :archived_at]))
+  (select-keys ws
+               [:id :name :collection_id :database_id :created_at :updated_at :archived_at :contents]))
 
 ;;; routes
 
@@ -158,6 +133,7 @@
                            (cond-> {:order-by [[:created_at :desc]]}
                              (request/limit)  (sql.helpers/limit (request/limit))
                              (request/offset) (sql.helpers/offset (request/offset))))
+                (t2/hydrate :contents)
                 (mapv ws->response))
    :limit  (request/limit)
    :offset (request/offset)})
@@ -166,23 +142,15 @@
   "Get a single workspace by ID"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (-> (t2/select-one :model/Workspace :id id)
-      api/check-404
+  (-> (api/check-404 (t2/select-one :model/Workspace :id id))
+      (t2/hydrate :contents)
       ws->response))
 
-(api.macros/defendpoint :get "/:id/contents"
-  :- [:map [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]
-  "Get the contents being edited within a Workspace."
-  [{workspace-id :id} :- [:map [:id ms/PositiveInt]]
-   _query-params]
-  (let [fetch-entities (fn [[entity-type entity-grouping]]
-                         (let [t2-model (type->t2-model entity-type)]
-                           (when-let [entities (t2/select [t2-model :id :name] :workspace_id workspace-id)]
-                             [entity-grouping (for [e entities] (assoc e :type entity-type))])))]
-    {:contents (into {} (keep fetch-entities) type->grouping)}))
-
 (api.macros/defendpoint :post "/" :- Workspace
-  "Create a new workspace"
+  "Create a new workspace
+
+  Potential payload:
+  {:name \"a\" :database_id 2 :upstream {:transforms [1 2 3]}}"
   [_route-params
    _query-params
    body :- CreateWorkspace]
@@ -219,31 +187,19 @@
   ;; TODO (Chris 11/21/25) -- implement actual deletion logic
   {:ok true})
 
-(api.macros/defendpoint :post "/:id/contents" :- Workspace
-  "Update workspace contents by adding or removing entities.
-   Has the same error responses as create-workspace (graph-not-closed, contains-uncloneable-entities)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   body :- UpdateWorkspaceContents]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO (Chris 11/21/25) -- implement update contents logic
-  (let [upstream (:upstream body)
-        _added (:added upstream)
-        _removed (:removed upstream)]
-    (-> (t2/select-one :model/Workspace :id id)
-        ws->response)))
-
 (api.macros/defendpoint :post "/:id/execute" :- ExecuteResult
   "Execute all transforms in the workspace in dependency order.
    Returns which transforms succeeded, failed, and were not run."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
+  (u/prog1 (t2/select-one :model/Workspace :id id)
+    (api/check-404 <>)
+    (api/check-400 (nil? (:archived_at <>)) "Cannot execute archived workspace"))
   ;; TODO (Chris 11/21/25) -- implement execution logic
   {:succeeded []
-   :failed []
-   :not_run []})
+   :failed    []
+   :not_run   []})
 
 (api.macros/defendpoint :get "/:id/graph" :- GraphResult
   "Get the dependency graph for a workspace, for visualization.
@@ -257,17 +213,6 @@
   {:nodes []
    :edges []})
 
-(api.macros/defendpoint :post "/:id/promote" :- [:map [:ok [:= true]]]
-  "Promote workspace entities to update their live counterparts.
-   Checks that promoting won't break any downstream dependents."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   body :- PromoteRequest]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO (Chris 11/21/25) -- implement promote logic
-  (let [_entities (:entities body)]
-    {:ok true}))
-
 (api.macros/defendpoint :post "/:id/merge" :- Workspace
   "Merge workspace changes back to live entities and archive the workspace.
    Updates all entities in the workspace to match their mirrored versions."
@@ -279,64 +224,21 @@
   (-> (t2/select-one :model/Workspace :id id)
       ws->response))
 
-(api.macros/defendpoint :post "/:id/request/add-entities" :- ApprovalLink
-  "Request to add entities to a workspace (used by metabot).
-   Returns an approval link for the workspace owner to approve the request.
-   Can return graph-not-closed or contains-uncloneable-entities errors."
+(api.macros/defendpoint :post "/:id/add-entities"
+  :- [:map [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]
+  "Add entities to workspace"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   body :- RequestAddEntities]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO (Chris 11/21/25) -- implement request logic
-  (let [_entities (:entities body)]
-    {:approval_url "https://metabase.example.com/workspace/approve/123"
-     :request_id 123}))
+   body :- AddEntities]
+  1)
 
-(api.macros/defendpoint :post "/:id/request/add-source-tables" :- ApprovalLink
-  "Request to add source tables to a workspace (used by metabot).
-   Source tables are input tables that entities in the workspace can query.
-   Returns an approval link for the workspace owner."
+(api.macros/defendpoint :post "/:id/remove-entities"
+  :- [:map [:success ms/BooleanValue]]
+  "Remove entities from workspace"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   body :- RequestAddSourceTables]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO (Chris 11/21/25) -- implement request logic
-  (let [_tables (:tables body)]
-    {:approval_url "https://metabase.example.com/workspace/approve/124"
-     :request_id 124}))
-
-(api.macros/defendpoint :post "/:id/approval/:request-id/entity" :- [:map [:ok [:= true]]]
-  "Approve a metabot request to add entities to a workspace."
-  [{:keys [id request-id]} :- [:map [:id ms/PositiveInt] [:request-id ms/PositiveInt]]
-   _query-params
-   _body-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO (Chris 11/21/25) -- implement approval logic and check request exists
-  (let [_request-id request-id]
-    {:ok true}))
-
-(api.macros/defendpoint :post "/:id/approval/:request-id/source-table" :- [:map [:ok [:= true]]]
-  "Approve a metabot request to add source tables to a workspace."
-  [{:keys [id request-id]} :- [:map [:id ms/PositiveInt] [:request-id ms/PositiveInt]]
-   _query-params
-   _body-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  ;; TODO (Chris 11/21/25) -- implement approval logic and check request exists
-  (let [_request-id request-id]
-    {:ok true}))
-
-(api.macros/defendpoint :get "/mapping/transform/:id/upstream"
-  :- [:map
-      [:transform [:maybe [:map
-                           [:id ms/PositiveInt]
-                           [:name :string]]]]]
-  "Get the upstream transform for a transform that is in a workspace.
-   Returns null if this transform has no upstream mapping (i.e., it's not a mirrored transform)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params]
-  (let [upstream-id (t2/select-one-fn :upstream_id [:model/WorkspaceMappingTransform :upstream_id] :downstream_id id)]
-    (when (nil? upstream-id) (api/check-404 (t2/exists? :model/Workspace id)))
-    {:transform (t2/select-one [:model/Transform :id :name] :id upstream-id)}))
+   body :- RemoveEntities]
+  1)
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
   :- [:map
