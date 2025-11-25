@@ -143,7 +143,7 @@ export function SearchNew({
   };
 
   return (
-    <Stack>
+    <Stack h="100%" style={{ overflow: "auto" }}>
       <Stack gap={0} px="lg">
         {filteredTables.map((table, tableIndex) => {
           const breadcrumbs = table.schema
