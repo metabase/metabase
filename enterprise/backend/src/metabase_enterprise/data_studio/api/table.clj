@@ -123,7 +123,7 @@
    :collection_id          collection-id
    :published_table_id     id})
 
-(api.macros/defendpoint :post "/publish-model"
+(api.macros/defendpoint :post "/publish-table"
   "Create a model for each of selected tables"
   [_route-params
    _query-params
