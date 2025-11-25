@@ -1892,6 +1892,14 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     H.updateSetting("jwt-shared-secret", jwtSecret);
     H.updateSetting("jwt-enabled", true);
 
+    cy.intercept("POST", `/api/card/${ORDERS_QUESTION_ID}/query`).as(
+      "getCardQuery",
+    );
+    addLinkClickBehavior({
+      dashboardId,
+      linkTemplate: "/question/{{test_attribute}}",
+    });
+
     cy.signOut(); // we *need* to sign out, otherwise the SSO process won't kick in
   });
 
@@ -1939,13 +1947,10 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
   });
 
   it("should pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
-    const jwtAttributeValue = "jwt_test_value";
+    const jwtAttributeValue = ORDERS_QUESTION_ID;
 
     // 1) set up a click behavior that uses a user attribute in the URL
-    addLinkClickBehavior({
-      dashboardId,
-      linkTemplate: "http://example.com/{{test_attribute}}",
-    });
+    // Added in beforeeach so it uses the admin user
 
     // 2) sign a jwt for the user with a custom attribute
     cy.task("signJwt", {
@@ -1971,19 +1976,11 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     // 5) verify user is on dashboard
     cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
 
-    // 6) intercept the click behavior navigation to verify the URL contains the JWT attribute
-    cy.window().then((win) => {
-      cy.stub(win, "open").as("windowOpen");
-    });
-
-    // 7) click on a cell to trigger the click behavior
     cy.findAllByRole("gridcell").first().click();
+    cy.wait("@getCardQuery");
 
-    // 8) verify the URL contains the JWT attribute value
-    cy.get("@windowOpen").should(
-      "have.been.calledWithMatch",
-      `http://example.com/${jwtAttributeValue}`,
-    );
+    cy.findByTestId("question-filter-header").realHover();
+    cy.findByTestId("main-logo").should("be.visible");
   });
 });
 
