@@ -10,16 +10,16 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
 import { getQuestionIcon } from "./utils";
 
-interface SourceDatasetBreadcrumbsProps {
+interface SourceModelBreadcrumbsProps {
   divider?: ReactElement | string;
   question: Question;
   variant: "head" | "subhead";
 }
 
-export function SourceDatasetBreadcrumbs({
+export function SourceModelBreadcrumbs({
   question,
   ...props
-}: SourceDatasetBreadcrumbsProps) {
+}: SourceModelBreadcrumbsProps) {
   const collectionId = question.collectionId();
 
   const { data: collection, isFetching } = useGetCollectionQuery(
@@ -35,7 +35,7 @@ export function SourceDatasetBreadcrumbs({
       {...props}
       parts={[
         <HeadBreadcrumbs.Badge
-          key="dataset-collection"
+          key="collection"
           to={Urls.collection(collection)}
           icon={getQuestionIcon(question)}
           inactiveColor="text-light"
@@ -44,7 +44,7 @@ export function SourceDatasetBreadcrumbs({
         </HeadBreadcrumbs.Badge>,
         question.isArchived() ? (
           <Tooltip
-            key="dataset-name"
+            key="name"
             label={t`This model is archived and shouldn't be used.`}
             maw="auto"
             position="bottom"
@@ -62,6 +62,7 @@ export function SourceDatasetBreadcrumbs({
           </Tooltip>
         ) : (
           <HeadBreadcrumbs.Badge
+            key="name"
             to={Urls.question(question.card())}
             inactiveColor="text-light"
           >

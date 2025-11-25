@@ -6,8 +6,9 @@ import {
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { DataSourceCrumbs } from "./DataSourceCrumbs";
-import { SourceDatasetBreadcrumbs } from "./SourceDatasetBreadcrumbs";
+import { SourceModelBreadcrumbs } from "./SourceModelBreadcrumbs";
 import { SourceQuestionBreadcrumbs } from "./SourceQuestionBreadcrumbs";
+import { SourceTableBreadcrumbs } from "./SourceTableBreadcrumbs";
 import { getDataSourceParts } from "./utils";
 
 interface QuestionDataSourceProps {
@@ -36,15 +37,25 @@ export function QuestionDataSource({
 
   const variant = subHead ? "subhead" : "head";
 
-  if (isNative || !isVirtualCardId(sourceTableId)) {
+  if (isNative) {
     return (
       <DataSourceCrumbs question={question} variant={variant} {...props} />
     );
   }
 
+  if (!isVirtualCardId(sourceTableId)) {
+    return (
+      <SourceTableBreadcrumbs
+        question={question}
+        variant={variant}
+        {...props}
+      />
+    );
+  }
+
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
-      <SourceDatasetBreadcrumbs
+      <SourceModelBreadcrumbs
         question={originalQuestion}
         variant={variant}
         {...props}
