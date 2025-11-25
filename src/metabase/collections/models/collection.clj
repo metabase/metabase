@@ -696,17 +696,22 @@
              [:collection :c]
              [{:union-all (keep identity [{:select visible-union-columns
                                            :from [[:collection :c]]
-                                           :where [:exists {:select [1]
-                                                            :from [[:permissions :p]]
-                                                            :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
-                                                            :where [:and
-                                                                    [:= :pgm.user_id [:inline current-user-id]]
-                                                                    [:= :c.id :p.collection_id]
-                                                                    [:= :p.perm_type (h2x/literal "perms/collection-access")]
-                                                                    [:or
-                                                                     [:= :p.perm_value (h2x/literal "read-and-write")]
-                                                                     (when (= :read (:permission-level visibility-config))
-                                                                       [:= :p.perm_value (h2x/literal "read")])]]}]}
+                                           :where [:and [:exists {:select [1]
+                                                                  :from [[:permissions :p]]
+                                                                  :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
+                                                                  :where [:and
+                                                                          [:= :pgm.user_id [:inline current-user-id]]
+                                                                          [:= :c.id :p.collection_id]
+                                                                          [:= :p.perm_type (h2x/literal "perms/collection-access")]
+                                                                          [:or
+                                                                           [:= :p.perm_value (h2x/literal "read-and-write")]
+                                                                           (when (= :read (:permission-level visibility-config))
+                                                                             [:= :p.perm_value (h2x/literal "read")])]]}]
+                                                   (when (perms/use-tenants)
+                                                     [:not [:exists {:select [1]
+                                                                     :from [[:collection :sub_c]]
+                                                                     :where [:and [:= :c.id :sub_c.id]
+                                                                             [:= :sub_c.namespace "shared-tenant-collection"]]}]])]}
                                           {:select visible-union-columns
                                            :from [[:collection :c]]
                                            :where [:= :type (h2x/literal trash-collection-type)]}
@@ -718,9 +723,6 @@
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
-            (when-not (perms/use-tenants)
-              [:not (tenant-collection-where-clause :c.namespace)])
-
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
               [:not= [:inline (trash-collection-id)] :c.id])
