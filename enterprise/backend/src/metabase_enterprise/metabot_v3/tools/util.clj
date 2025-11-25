@@ -109,25 +109,14 @@
   For example, 't154-1' refers to the second visible column (index 1) from table 154, and
   'qpuL95JSvym3k23W1UUuog-0' refers to the first column (index 0) from query with nano-id puL95JSvym3k23W1UUuog."
   [{:keys [field-id] :as item} columns]
-  (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
-    (let [;; Filter columns to those from the specified model
-          ;; For fields in tables, we filter by table-id since it may be an implicitly-joined table to another
-          ;; table/card, and we only want to index into the columns from that specific table.
-          model-columns (if (= model-tag "t")
-                          (filterv #(= (:table-id %) model-id) columns)
-                          columns)
-          ;; Get the column at the specified index within the filtered set
-          column (get model-columns field-index)]
-      (if column
-        (assoc item :column column)
-        (throw (ex-info (str "field " field-id " not found - no column at index " field-index
-                             " for " (case model-tag "t" "table" "c" "card" "q" "query") " " model-id)
-                        {:agent-error? true
-                         :field-id field-id
-                         :model-tag model-tag
-                         :model-id model-id
-                         :field-index field-index
-                         :available-columns-count (count model-columns)}))))
+  (if-let [{:keys [field-index]} (parse-field-id field-id)]
+    (if-let [column (get columns field-index)]
+      (assoc item :column column)
+      (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
+                      {:agent-error? true
+                       :field-id field-id
+                       :field-index field-index
+                       :available-columns-count (count columns)})))
     (throw (ex-info (str "invalid field_id format: " field-id)
                     {:agent-error? true
                      :field-id field-id}))))

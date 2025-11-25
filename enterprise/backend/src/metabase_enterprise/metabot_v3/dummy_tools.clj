@@ -173,10 +173,10 @@
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        field-values-fn
                        (map #(metabot-v3.tools.u/add-table-reference table-query %))))
-           field-id-prefix (when with-fields?
+           field-id-prefix (when (or with-fields? with-related-tables?)
                              (metabot-v3.tools.u/table-field-id-prefix id))
            related-tables (when with-related-tables?
-                            (related-tables table-query with-fields? field-values-fn))]
+                            (related-tables table-query field-id-prefix with-fields? field-values-fn))]
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
@@ -192,22 +192,44 @@
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))))))))
 
-(defn- related-tables
-  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key."
-  [query with-fields? field-values-fn]
-  (let [fk-fields (->> (lib/visible-columns query)
-                       (filter :fk-field-id))
-        related-table-ids (->> fk-fields
-                               (map :table-id)
-                               (into #{})
-                               sort)]
-    (when (seq related-table-ids)
-      (map #(table-details % {:with-fields? with-fields?
-                              :field-values-fn field-values-fn
-                              ;; Important! Only recurse one level
-                              :with-related-tables? false
-                              :with-metrics? false})
-           related-table-ids))))
+(defn related-tables
+  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
+   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
+  [query main-field-id-prefix with-fields? field-values-fn]
+  (let [all-main-cols    (lib/visible-columns query)
+        ;; Map [table-id fk-field-id field-name] -> index in the main query
+        contextual-index (into {}
+                               (keep-indexed
+                                (fn [idx {:keys [fk-field-id table-id name]}]
+                                  (when fk-field-id
+                                    {[table-id fk-field-id name] idx})))
+                               all-main-cols)
+        fk-cols          (filter :fk-field-id all-main-cols)
+        ;; { [table-id fk-field-id] [fk-col ...] }
+        grouped-fks      (group-by (juxt :table-id :fk-field-id) fk-cols)]
+    (when (seq grouped-fks)
+      (mapv
+       (fn [[[table-id fk-field-id] fk-path-cols]]
+         (let [base-details   (table-details table-id
+                                             {:with-fields?          with-fields?
+                                              :field-values-fn       field-values-fn
+                                              :with-related-tables?  false
+                                              :with-metrics?         false})
+               base-table-col (lib.metadata/field query fk-field-id)
+               fk-field-name  (:name base-table-col)
+               updated-fields
+               (when with-fields?
+                 (->> (:fields base-details)
+                      (mapv
+                       (fn [{:keys [name] :as field}]
+                         (if-let [idx (get contextual-index [table-id fk-field-id name])]
+                           (assoc field :field_id (str main-field-id-prefix idx))
+                           field)))))]
+
+           (cond-> base-details
+             updated-fields (assoc :fields updated-fields)
+             true (assoc :related_by fk-field-name))))
+       grouped-fks))))
 
 (defn- card-details
   "Get details for a card."
@@ -236,9 +258,9 @@
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
+         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)
          related-tables (when with-related-tables?
-                          (related-tables card-query with-fields? field-values-fn))
-         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
+                          (related-tables card-query field-id-prefix with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
