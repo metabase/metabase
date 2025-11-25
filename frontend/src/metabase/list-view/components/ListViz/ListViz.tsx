@@ -11,6 +11,7 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { Box, type IconName } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -55,7 +56,7 @@ const vizDefinition = {
       default: null,
     },
     "list.entity_icon_color": {
-      default: "text-primary",
+      default: color("text-primary"),
     },
     "list.entity_icon_enabled": {
       default: true,

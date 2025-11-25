@@ -19,6 +19,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -61,44 +62,6 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-(defn- query-and-value-column
-  "Searches stages of card's dataset query for column matching value-field-ref. Searching from -1 to 0th stage,
-  removing the later stages. Returns map as
-  {:query ...
-   :value-column ...}.
-  Query contains stages where last one is empty, having the matching column available.
-  Value column contains that column.
-  Callers can use column to build something beautiful on the last empty stage (see [[values-from-card-query]]).
-  Returns nil if column is not found."
-  [card value-field-ref]
-  (when-some [mp (-> card :dataset_query :lib/metadata)]
-    (let [card (lib.metadata/card mp (:id card))
-          full-query (lib/card->underlying-query mp card)]
-      (loop [stage-number (lib/canonical-stage-index full-query -1)
-             query full-query]
-        ;; (1) Append stage. The searched column may be part of summaries. Further transformations will add
-        ;; filters and breakouts. A new stage ensures those operations are not conflated with existing summaries.
-        ;; (2) visible-columns. Visible columns are used because ref may come from implicit join.
-        (let [query (lib/append-stage query)]
-          (or
-           ;; Examine the query with summaries first.
-           (when-some [value-column (lib/find-matching-column
-                                     query -1
-                                     value-field-ref (lib/visible-columns query))]
-             {:query query
-              :value-column value-column})
-           ;; If column was not found, remove the summaries.
-           (let [query (lib/drop-summary-clauses query stage-number)]
-             (when-some [value-column (lib/find-matching-column
-                                       query -1
-                                       value-field-ref (lib/visible-columns query))]
-               {:query query
-                :value-column value-column}))
-           ;; If not found, drop the newly added stage and examined stage, then continue searching.
-           (when (pos-int? stage-number)
-             (recur (-> query lib/drop-stage lib/drop-stage)
-                    (dec stage-number)))))))))
-
 (mr/def ::values-from-card-query.options
   [:map
    ;; despite this being called "query string" it can actually be any value because it just gets used in an `:=`
@@ -106,29 +69,37 @@
    [:query-string {:optional true} :any]])
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
-  [{query :dataset_query, :as card} :- [:and
-                                        :metabase.queries.schema/card
-                                        [:map
-                                         [:id ::lib.schema.id/card]]]
+  [{query :dataset_query, :keys [id], :as _card} :- [:and
+                                                     :metabase.queries.schema/card
+                                                     [:map
+                                                      [:id ::lib.schema.id/card]]]
    field-ref                        :- [:or :mbql.clause/field :mbql.clause/expression]
    {:keys [query-string] :as _opts} :- [:maybe ::values-from-card-query.options]]
   (when (seq query)
-    (let [{:keys [query value-column]} (query-and-value-column card field-ref)]
-      (when value-column
-        (let [textual?     (lib.types.isa/string? value-column)
-              nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
-              query-filter (when query-string
-                             (if textual?
-                               (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                               (lib/= value-column query-string)))]
-          (-> query
-              (lib/limit *max-rows*)
-              (lib/filter nonempty)
-              (cond-> #_query query-filter (lib/filter query-filter))
-              (lib/breakout value-column)
-              ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
-              ;; "internal" query in the BE.
-              (assoc-in [:middleware :disable-remaps?] true)))))))
+    ;; start a new query using this Card as a starting point
+    (let [query (lib/query query (lib.metadata/card query id))]
+      (when-let [visible-columns (or (not-empty (lib/visible-columns query))
+                                     (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
+                                                id))]
+        (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
+                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
+                                               id
+                                               (pr-str field-ref)
+                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
+          (let [textual?     (lib.types.isa/string? value-column)
+                nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
+                query-filter (when query-string
+                               (if textual?
+                                 (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
+                                 (lib/= value-column query-string)))]
+            (-> query
+                (lib/limit *max-rows*)
+                (lib/filter nonempty)
+                (cond-> #_query query-filter (lib/filter query-filter))
+                (lib/breakout value-column)
+                ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
+                ;; "internal" query in the BE.
+                (assoc-in [:middleware :disable-remaps?] true))))))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.

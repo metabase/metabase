@@ -1276,7 +1276,10 @@ describe("issue 52339", () => {
     });
 
     H.editDashboard();
-    H.findDashCardAction(H.getDashboardCard(0), "Click behavior").click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Click behavior")
+      .click();
 
     H.sidebar().within(() => {
       cy.findByText("Go to a custom destination").click();

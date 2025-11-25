@@ -5,10 +5,13 @@ import type { QuestionPickerValueItem } from "metabase/common/components/Pickers
 import { Box, Divider, Text } from "metabase/ui";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import {
+  CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import type { SearchResult } from "metabase-types/api";
+
+import { getBrowseAllItemIndex } from "./suggestionUtils";
 
 interface EntitySearchSectionProps {
   menuItems: MenuItem[];
@@ -22,7 +25,9 @@ interface EntitySearchSectionProps {
   onModalClose: () => void;
   onItemHover: (index: number) => void;
   canBrowseAll?: boolean;
+  canCreateNewQuestion?: boolean;
   selectedSearchModelName?: string;
+  onTriggerCreateNew?: () => void;
 }
 
 export function EntitySearchSection({
@@ -38,7 +43,17 @@ export function EntitySearchSection({
   onItemHover,
   selectedSearchModelName,
   canBrowseAll,
+  canCreateNewQuestion,
+  onTriggerCreateNew,
 }: EntitySearchSectionProps) {
+  const hasNoItems = menuItems.length === 0 && searchResults.length === 0;
+  const shouldShowNoResults = query.length > 0 && hasNoItems;
+
+  const browseAllItemIndex = getBrowseAllItemIndex(
+    menuItems.length,
+    canCreateNewQuestion,
+  );
+
   return (
     <>
       {selectedSearchModelName && (
@@ -53,24 +68,42 @@ export function EntitySearchSection({
           key={index}
           item={item}
           isSelected={selectedIndex === index}
-          onClick={() => onItemSelect(index)}
+          onClick={(e) => {
+            // cmd/ctrl+click to open in new tab
+            if ((e.metaKey || e.ctrlKey) && item.href) {
+              e.preventDefault();
+              window.open(item.href, "_blank");
+            } else {
+              onItemSelect(index);
+            }
+          }}
           onMouseEnter={() => onItemHover(index)}
         />
       ))}
-      {query.length > 0 &&
-      menuItems.length === 0 &&
-      searchResults.length === 0 ? (
+
+      {shouldShowNoResults ? (
         <Box p="sm" ta="center">
           <Text size="md" c="text-medium">{t`No results found`}</Text>
         </Box>
       ) : null}
+
+      {(shouldShowNoResults || !hasNoItems) &&
+        (canCreateNewQuestion || canBrowseAll) && <Divider my="sm" mx="sm" />}
+
+      {canCreateNewQuestion && (
+        <CreateNewQuestionFooter
+          isSelected={selectedIndex === menuItems.length}
+          onClick={onTriggerCreateNew}
+          onMouseEnter={() => onItemHover(menuItems.length)}
+        />
+      )}
+
       {canBrowseAll && (
         <>
-          {menuItems.length > 0 && <Divider my="sm" mx="sm" />}
           <SearchResultsFooter
-            isSelected={selectedIndex === menuItems.length}
+            isSelected={selectedIndex === browseAllItemIndex}
             onClick={onFooterClick}
-            onMouseEnter={() => onItemHover(menuItems.length)}
+            onMouseEnter={() => onItemHover(browseAllItemIndex)}
           />
 
           {modal === "question-picker" && (

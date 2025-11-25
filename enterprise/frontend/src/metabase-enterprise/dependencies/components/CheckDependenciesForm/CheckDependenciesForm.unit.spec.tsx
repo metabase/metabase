@@ -188,7 +188,7 @@ describe("CheckDependenciesForm", () => {
     });
     expect(screen.getByRole("link", { name: /SQL transform/ })).toHaveAttribute(
       "href",
-      "/admin/transforms/1",
+      "/data-studio/transforms/1",
     );
   });
 });
