@@ -156,21 +156,20 @@
                                 (when (= type :transform) id))
                               entities)
           transforms    (when (seq transform-ids)
-                          (t2/select [:model/Transform :target] :id [:in transform-ids]))
-          ;; Extract target table information and look up the table IDs if they exist
-          tables        (for [{:keys [target]} transforms, :when target]
-                          (do
-                            (when (not= "table" (:type target))
-                              (throw (ex-info "Unsupported target type" {:target target})))
-                            ;; Note: id will be nil if the table has not been created yet
-                            {:id     (t2/select-one-pk :model/Table
-                                                       :db_id (:database target)
-                                                       :schema (:schema target)
-                                                       :name (:name target))
-                             :schema (:schema target)
-                             :name   (:name target)
-                             :type   :table}))]
-      (vec tables))))
+                          (t2/select [:model/Transform :target] :id [:in transform-ids]))]
+      (vec
+       (for [{:keys [target]} transforms, :when target]
+         (do
+           (when (not= "table" (:type target))
+             (throw (ex-info "Unsupported target type" {:target target})))
+           ;; Note: id will be nil if the table has not been created yet
+           {:id     (t2/select-one-pk :model/Table
+                                      :db_id (:database target)
+                                      :schema (:schema target)
+                                      :name (:name target))
+            :schema (:schema target)
+            :name   (:name target)
+            :type   :table}))))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
