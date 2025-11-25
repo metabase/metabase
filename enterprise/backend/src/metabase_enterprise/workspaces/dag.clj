@@ -156,22 +156,21 @@
                                 (when (= type :transform) id))
                               entities)
           transforms    (when (seq transform-ids)
-                          (t2/select [:model/Transform :id :target] :id [:in transform-ids]))]
-      (mapv (fn [transform]
-              (let [target (:target transform)]
-                (when (not= (:type target) "table")
-                  (throw (ex-info "Unknown target type" {:target target})))
-                (or (some-> (t2/select-one [:model/Table :id :schema :name]
-                                           :db_id (:database target)
-                                           :schema (:schema target)
-                                           :name (:name target))
-                            (assoc :type :table))
-                    ;; output table was not created yet
-                    {:id     nil
-                     :schema (:schema target)
-                     :name   (:name target)
-                     :type   :table})))
-            transforms))))
+                          (t2/select [:model/Transform :target] :id [:in transform-ids]))
+          ;; Extract target table information and look up the table IDs if they exist
+          tables        (for [{:keys [target]} transforms, :when target]
+                          (do
+                            (when (not= "table" (:type target))
+                              (throw (ex-info "Unsupported target type" {:target target})))
+                            ;; Note: id will be nil if the table has not been created yet
+                            {:id     (t2/select-one-pk :model/Table
+                                                       :db_id (:database target)
+                                                       :schema (:schema target)
+                                                       :name (:name target))
+                             :schema (:schema target)
+                             :name   (:name target)
+                             :type   :table}))]
+      (vec tables))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
