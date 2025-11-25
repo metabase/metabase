@@ -22,6 +22,8 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     owner_user_id: null,
     transform_id: null,
     view_count: 0,
+    collection_id: null,
+    published_in_collection: false,
     ...opts,
   };
 };

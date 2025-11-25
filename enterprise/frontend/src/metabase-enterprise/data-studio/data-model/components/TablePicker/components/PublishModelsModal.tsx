@@ -11,7 +11,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
-import { usePublishModelsMutation } from "metabase-enterprise/api";
+import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import { getPublishSeeItLink } from "../utils";
@@ -39,7 +39,7 @@ export function PublishModelsModal({
   const [showPublishInfo, setShowPublishInfo] = useState(
     !seenPublishModelsInfo,
   );
-  const [publishModels] = usePublishModelsMutation();
+  const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const defaultPublishCollection =
@@ -56,7 +56,7 @@ export function PublishModelsModal({
     const collectionId =
       collection.id === "root" ? null : Number(collection.id);
 
-    const { error, data } = await publishModels({
+    const { error, data } = await publishTables({
       table_ids: Array.from(tables),
       schema_ids: Array.from(schemas),
       database_ids: Array.from(databases),
@@ -66,12 +66,11 @@ export function PublishModelsModal({
     if (error) {
       sendErrorToast(t`Failed to publish models`);
     } else if (data) {
+      const seeItLink = getPublishSeeItLink(data);
       sendSuccessToast(
         t`Published`,
-        () => {
-          dispatch(push(getPublishSeeItLink(data)));
-        },
-        t`See it`,
+        seeItLink ? () => dispatch(push(seeItLink)) : undefined,
+        seeItLink ? t`See it` : undefined,
       );
       onSuccess?.();
       handleClose();

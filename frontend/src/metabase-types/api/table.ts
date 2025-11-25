@@ -1,5 +1,5 @@
 import type { Card, CardType } from "./card";
-import type { Collection } from "./collection";
+import type { Collection, CollectionId } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
@@ -71,8 +71,9 @@ export type Table = {
   view_count: number;
   transform?: Transform;
 
-  published_models?: Card[] | null; // present in /api/table/:id/query_metadata
-  published_as_model?: boolean; // present in /api/database/:id/schemas/:schemaId
+  collection_id: CollectionId | null;
+  published_in_collection: boolean;
+  collection?: Collection;
 };
 
 export type SchemaName = string;
@@ -211,16 +212,15 @@ export interface GetTableDataRequest {
   tableId: TableId;
 }
 
-export interface PublishModelsRequest {
+export interface PublishTablesRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
   target_collection_id: number | "library" | null;
 }
 
-export interface PublishModelsResponse {
-  created_count: number;
-  models: Card[];
+export interface PublishTablesResponse {
+  tables: Table[];
   target_collection: Collection | null;
 }
 
