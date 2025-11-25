@@ -2,8 +2,13 @@ const { H } = cy;
 
 import dedent from "ts-dedent";
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
   CardType,
   PythonTransformTableAliases,
@@ -20,7 +25,7 @@ const TARGET_SCHEMA = "Schema A";
 const TARGET_SCHEMA_2 = "Schema B";
 const CUSTOM_SCHEMA = "custom_schema";
 
-describe("scenarios > admin > transforms", () => {
+describe("scenarios > data studio > transforms", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -1549,7 +1554,7 @@ LIMIT
   });
 });
 
-describe("scenarios > admin > transforms > databases without :schemas", () => {
+describe("scenarios > data studio > transforms > databases without :schemas", () => {
   const DB_NAME = "QA MySQL8";
 
   beforeEach(() => {
@@ -1598,7 +1603,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
   });
 });
 
-describe("scenarios > admin > transforms > jobs", () => {
+describe("scenarios > data studio > transforms > jobs", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -1874,7 +1879,7 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 });
 
-describe("scenarios > admin > transforms > runs", () => {
+describe("scenarios > data studio > transforms > runs", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -2484,3 +2489,56 @@ function setPythonRunnerSettings() {
   );
   H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
 }
+
+describe("scenarios > data studio >transforms > permissions", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+  });
+
+  it("should allow non-admin users with data-studio permission to create transforms", () => {
+    cy.log("grant data-studio permission to All Users");
+    cy.visit("/admin/permissions/application");
+    H.modifyPermission("All Users", 3, "Yes");
+    cy.button("Save changes").click();
+    H.modal().button("Yes").click();
+
+    cy.log("grant database permissions to DATA_GROUP for writable database");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.DATA_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
+
+    cy.log("sign in as normal user and create a transform");
+    cy.signInAsNormalUser();
+    visitTransformListPage();
+    getTransformsSidebar().button("Create a transform").click();
+    H.popover().findByText("Query builder").click();
+
+    H.miniPicker().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText(TARGET_SCHEMA).click();
+      cy.findByText(SOURCE_TABLE).click();
+    });
+    getQueryEditor().button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("Non-admin transform");
+      cy.findByLabelText("Table name").type(TARGET_TABLE);
+      cy.button("Save").click();
+      cy.wait("@createTransform");
+    });
+
+    getTransformsSidebar()
+      .findByText("Non-admin transform")
+      .should("be.visible");
+  });
+});

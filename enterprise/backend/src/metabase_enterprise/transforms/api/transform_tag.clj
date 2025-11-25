@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.permissions.validation :as perms.validation]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -18,7 +19,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag:" name)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
@@ -31,7 +32,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id "with name:" name)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
@@ -43,7 +44,7 @@
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
@@ -53,7 +54,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (t2/select :model/TransformTag {:order-by [[:name :asc]]}))
 
 (def ^{:arglists '([request respond raise])} routes

@@ -15,6 +15,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.permissions.validation :as perms.validation]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -88,7 +89,7 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
@@ -121,7 +122,7 @@
             [:target ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (check-database-feature body)
   (check-feature-enabled! body)
   (api/check (not (transforms.util/target-table-exists? body))
@@ -144,7 +145,7 @@
 (defn get-transform
   "Get a specific transform."
   [id]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
@@ -162,7 +163,7 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
         _ (api/check-404 (get id->transform id))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
@@ -186,7 +187,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))
@@ -204,7 +205,7 @@
             [:target {:optional true} ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -233,7 +234,7 @@
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))]
     (t2/delete! :model/Transform id)
     (events/publish-event! :event/transform-delete
@@ -245,7 +246,7 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
@@ -253,7 +254,7 @@
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
@@ -265,7 +266,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         _         (check-feature-enabled! transform)
         start-promise (promise)]

@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.permissions.validation :as perms.validation]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -33,7 +34,7 @@
                                                                     (ms/enum-decode-keyword ui-display-types)]
                                                                    [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   ;; Validate cron expression
   (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                  (deferred-tru "Invalid cron expression: {0}" schedule))
@@ -74,7 +75,7 @@
                                                             (ms/enum-decode-keyword ui-display-types)]
                                                            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
   ;; Validate cron expression if provided
   (when schedule
@@ -105,7 +106,7 @@
   "Delete a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
   (t2/delete! :model/TransformJob :id job-id)
   (transforms.schedule/delete-job! job-id)
@@ -115,7 +116,7 @@
   "Run a transform job manually."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Manual run of transform job" job-id)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
@@ -131,7 +132,7 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (t2/hydrate job :tag_ids :last_run)))
 
@@ -146,7 +147,7 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
   (-> (transforms.jobs/job-transforms job-id)
       (t2/hydrate :creator)))
@@ -164,7 +165,7 @@
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
-  (api/check-superuser)
+  (perms.validation/check-has-application-permission :data-studio)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)

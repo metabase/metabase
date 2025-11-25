@@ -4,8 +4,9 @@ import { match } from "ts-pattern";
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import type { MiniPickerCollectionItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { LibraryCollectionType } from "metabase/plugins";
+import type { UserWithApplicationPermissions } from "metabase/plugins/oss/permissions";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type {
   CollectionItem,
@@ -16,7 +17,14 @@ import type { State } from "metabase-types/store";
 
 // Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
 export function canAccessDataStudio(state: State) {
-  return getUserIsAdmin(state) && !getIsEmbeddingIframe(state);
+  if (getIsEmbeddingIframe(state)) {
+    return false;
+  }
+  if (getUserIsAdmin(state)) {
+    return true;
+  }
+  const user = getUser(state) as UserWithApplicationPermissions | null;
+  return user?.permissions?.can_access_data_studio ?? false;
 }
 
 export function getLibraryCollectionType(

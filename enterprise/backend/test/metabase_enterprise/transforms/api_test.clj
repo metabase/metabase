@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -912,3 +913,28 @@
                                      :schema (get-test-schema)
                                      :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
+
+(deftest permissions-test
+  (testing "Transform endpoints require superuser or data-studio permission"
+    (mt/with-premium-features #{:transforms :advanced-permissions}
+      (mt/with-temp [:model/Transform transform {}]
+        (testing "Regular users without data-studio permission get 403"
+          (mt/user-http-request :rasta :get 403 "ee/transform")
+          (mt/user-http-request :rasta :get 403 (str "ee/transform/" (:id transform)))
+          (mt/user-http-request :rasta :post 403 "ee/transform"
+                                {:name   "Test"
+                                 :source {:type  "query"
+                                          :query {:database (mt/id)
+                                                  :type     "native"
+                                                  :native   {:query "SELECT 1"}}}
+                                 :target {:type "table" :name "test_table"}})
+          (mt/user-http-request :rasta :put 403 (str "ee/transform/" (:id transform))
+                                {:name "Updated"})
+          (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))
+
+        (testing "Users with data-studio permission can access endpoints"
+          (mt/with-user-in-groups [group {:name "Data Studio Group"}
+                                   user  [group]]
+            (perms/grant-application-permissions! group :data-studio)
+            (mt/user-http-request user :get 200 "ee/transform")
+            (mt/user-http-request user :get 200 (str "ee/transform/" (:id transform)))))))))
