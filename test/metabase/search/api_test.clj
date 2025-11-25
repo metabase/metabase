@@ -1930,3 +1930,33 @@
                                           :collection coll-1)]
         (is (= #{card-1}
                (set (map :id (:data results)))))))))
+
+(deftest published-table-collection-filter-test
+  (testing "Published tables are included in collection-filtered search"
+    (mt/with-temp
+      [:model/Collection {parent-coll :id} {:name "Parent Collection" :location "/"}
+       :model/Collection {child-coll :id}  {:name "Child Collection"
+                                            :location (collection/location-path parent-coll)}
+       :model/Card       {card-1 :id}      {:collection_id parent-coll :name "Parent Card"}
+       :model/Table      {table-1 :id}     {:name "Published Table" :is_published true :collection_id parent-coll}
+       :model/Table      {table-2 :id}     {:name "Child Published Table" :is_published true :collection_id child-coll}
+       :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
+       :model/Table      _                 {:name "Root Published Table" :is_published true :collection_id nil}]
+      (testing "Filter by parent collection returns published tables in that collection and descendants"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+          (is (contains? (set (map :id (:data results))) table-1)
+              "Published table in parent collection should be included")
+          (is (contains? (set (map :id (:data results))) table-2)
+              "Published table in child collection should be included")
+          (is (contains? (set (map :id (:data results))) card-1)
+              "Card in parent collection should be included")))
+      (testing "Unpublished tables are not included in collection filter results"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+          (is (not (contains? (set (map :id (:data results))) table-3))
+              "Unpublished table should not be in results")))))
+  (testing "Published tables in root collection (collection_id=nil) appear in unfiltered search"
+    (mt/with-temp
+      [:model/Table {root-table :id} {:name "Root Published Searchable" :is_published true :collection_id nil}]
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Root Published Searchable")]
+        (is (some #(= root-table (:id %)) (:data results))
+            "Root published table should appear in search results")))))
