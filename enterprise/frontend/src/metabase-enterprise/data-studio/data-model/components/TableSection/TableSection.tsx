@@ -213,7 +213,7 @@ const TableSectionBase = ({
         </Group>
       </Box>
 
-      {table.collection_id != null && (
+      {table.is_published && (
         <Box px="lg">
           <TableCollection table={table} />
         </Box>
