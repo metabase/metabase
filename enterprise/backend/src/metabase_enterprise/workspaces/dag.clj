@@ -146,22 +146,23 @@
                              entity-set)]
     (toposort-dfs child->parents)))
 
+(defn- table? [entity] (= :table (:type entity)))
+
+(defn- transform? [entity] (= :transform (:type entity)))
+
 (defn- fetch-dependent-tables
   "Fetch tables that are the output targets of the given transforms.
    Returns tables with their IDs if they exist in the database, or with :id nil if they don't exist yet.
    This supports workspace checkout for transforms that haven't been executed yet."
   [entities]
   (when (seq entities)
-    (let [transform-ids (keep (fn [{:keys [id type]}]
-                                (when (= type :transform) id))
-                              entities)
+    (let [transform-ids (map :id (filter transform? entities))
           transforms    (when (seq transform-ids)
                           (t2/select [:model/Transform :target] :id [:in transform-ids]))]
       (vec
        (for [{:keys [target]} transforms, :when target]
-         (do
-           (when (not= "table" (:type target))
-             (throw (ex-info "Unsupported target type" {:target target})))
+         (case (:type target)
+           "table"
            ;; Note: id will be nil if the table has not been created yet
            {:id     (t2/select-one-pk :model/Table
                                       :db_id (:database target)
@@ -169,17 +170,14 @@
                                       :name (:name target))
             :schema (:schema target)
             :name   (:name target)
-            :type   :table}))))))
+            :type   :table}
+           (throw (ex-info "Unsupported target type" {:target target}))))))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
         index-of  #(get index-map % Integer/MAX_VALUE)]
     (fn [e]
       [(index-of e) (:type e) (:id e)])))
-
-(defn- table? [entity] (= :table (:type entity)))
-
-(defn- transform? [entity] (= :transform (:type entity)))
 
 ;;;; Public API
 
