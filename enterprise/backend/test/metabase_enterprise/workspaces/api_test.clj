@@ -41,16 +41,16 @@
   (mt/with-premium-features [:workspaces :dependencies]
     (mt/with-model-cleanup [:model/Collection :model/Workspace :model/Transform]
       (let [tx-id          (t2/select-one-pk :model/Transform {:order-by [[:id :desc]]})
-            upstream       {:transforms [tx-id]}
             workspace-name (str "Workspace " (random-uuid))
             created        (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                  {:name     workspace-name
-                                                  :upstream upstream})
+                                                  :upstream {:transforms [tx-id]}})
             workspace-id   (:id created)
             collection-id  (:collection_id created)]
-        (is (pos-int? workspace-id))
-        (is (pos-int? collection-id))
-        (is (= workspace-name (:name created)))
+        (is (=? {:id            int?
+                 :collection_id int?
+                 :name          workspace-name}
+                created))
         (is (t2/exists? :model/Workspace :id workspace-id :collection_id collection-id))
         (is (t2/exists? :model/Collection :id collection-id :workspace_id workspace-id))
 

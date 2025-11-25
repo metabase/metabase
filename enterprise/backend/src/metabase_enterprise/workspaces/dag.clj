@@ -11,11 +11,6 @@
   {:transforms "transform"
    #_#_:models "card"})
 
-(def ^:private type->db-type
-  "Mapping from our entity type keywords to the dependency table's type strings."
-  {:transform "transform"
-   #_#_:model "card"})
-
 (defn- rows->entity-set
   "Convert query result rows to a set of {:id :type} maps."
   [rows]
@@ -152,21 +147,29 @@
     (toposort-dfs child->parents)))
 
 (defn- fetch-dependent-tables
-  "Fetch tables that depend on the given entities, i.e. the output tables of the transforms."
+  "Fetch tables that are the output targets of the given transforms.
+   Returns tables with their IDs if they exist in the database, or with :id nil if they don't exist yet.
+   This supports workspace checkout for transforms that haven't been executed yet."
   [entities]
   (when (seq entities)
-    (let [conditions (for [{:keys [id type]} entities]
-                       [:and
-                        [:= :to_entity_type (type->db-type type)]
-                        [:= :to_entity_id id]])
-          rows       (t2/query {:select-distinct [:from_entity_id]
-                                :from            [:dependency]
-                                :where           [:and
-                                                  [:= :from_entity_type "table"]
-                                                  (into [:or] conditions)]})]
-      (mapv (fn [row]
-              {:id (get row :from_entity_id) :type :table})
-            rows))))
+    (let [transform-ids (keep (fn [{:keys [id type]}]
+                                (when (= type :transform) id))
+                              entities)
+          transforms    (when (seq transform-ids)
+                          (t2/select [:model/Transform :target] :id [:in transform-ids]))]
+      (vec
+       (for [{:keys [target]} transforms, :when target]
+         (do
+           (when (not= "table" (:type target))
+             (throw (ex-info "Unsupported target type" {:target target})))
+           ;; Note: id will be nil if the table has not been created yet
+           {:id     (t2/select-one-pk :model/Table
+                                      :db_id (:database target)
+                                      :schema (:schema target)
+                                      :name (:name target))
+            :schema (:schema target)
+            :name   (:name target)
+            :type   :table}))))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
