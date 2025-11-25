@@ -53,17 +53,6 @@ export const DatabaseList = ({
         selectedItem={selectedItem}
         onClick={onClick}
         shouldDisableItem={(item) => shouldDisableItem?.(item) || false}
-        containerProps={{
-          pb: "1rem",
-        }}
-        navLinkProps={(isSelected) => ({
-          px: "1.5rem",
-          py: "1.25rem",
-          rightSection: null,
-          style: {
-            border: isSelected ? undefined : "1px solid var(--mb-color-border)",
-          },
-        })}
       />
     </ListBox>
   );

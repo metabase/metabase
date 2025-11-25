@@ -48,7 +48,7 @@ export const SchemaList = ({
   }
 
   return (
-    <ListBox data-testid="item-picker-level-1">
+    <ListBox data-testid="item-picker-level-2">
       <ItemList
         error={error}
         isCurrentLevel={isCurrentLevel}
