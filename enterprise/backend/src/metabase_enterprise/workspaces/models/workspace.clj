@@ -39,4 +39,4 @@
   "Batch hydrate `Workspace` contents"
   [_model k wses]
   (let [ids (mapv :id wses)]
-    (mi/instances-with-hydrated-data wses k (ws-contents ids) :id {:default []})))
+    (mi/instances-with-hydrated-data wses k (ws-contents ids) :id {:default {}})))
