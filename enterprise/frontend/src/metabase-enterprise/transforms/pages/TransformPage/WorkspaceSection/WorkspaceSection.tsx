@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -11,8 +10,8 @@ import {
   useCreateWorkspaceMutation,
   useGetTransformDownstreamMappingQuery,
   useGetTransformUpstreamMappingQuery,
-  useGetWorkspaceContentsQuery,
   useGetWorkspaceQuery,
+  useLazyGetWorkspaceContentsQuery,
   useMergeWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
@@ -31,17 +30,12 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [createdWorkspaceId, setCreatedWorkspaceId] = useState<number | null>(
-    null,
-  );
 
   const { data: workspace } = useGetWorkspaceQuery(
     transform.workspace_id == null ? skipToken : transform.workspace_id,
   );
 
-  const { data: workspaceContents } = useGetWorkspaceContentsQuery(
-    createdWorkspaceId == null ? skipToken : createdWorkspaceId,
-  );
+  const [getWorkspaceContents] = useLazyGetWorkspaceContentsQuery();
 
   const { data: upstreamMapping, isLoading: isLoadingUpstream } =
     useGetTransformUpstreamMappingQuery(
@@ -55,26 +49,22 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
 
   const isLoadingMappings = isLoadingUpstream || isLoadingDownstream;
 
-  useEffect(() => {
-    if (
-      workspaceContents &&
-      workspaceContents.contents.transforms.length === 1
-    ) {
-      const newTransformId = workspaceContents.contents.transforms[0].id;
-      dispatch(push(Urls.transform(newTransformId)));
-    }
-  }, [workspaceContents, dispatch]);
-
   const handleCheckoutClick = async () => {
     try {
-      const result = await createWorkspace({
+      const workspace = await createWorkspace({
         name: `${transform.name} workspace`,
         upstream: {
           transforms: [transform.id],
         },
       }).unwrap();
 
-      setCreatedWorkspaceId(result.id);
+      const { data } = await getWorkspaceContents(workspace.id);
+      const transforms = data?.contents.transforms;
+
+      if (transforms && transforms.length === 1) {
+        const newTransformId = transforms[0].id;
+        dispatch(push(Urls.transform(newTransformId)));
+      }
     } catch (error) {
       sendErrorToast(t`Failed to create workspace`);
     }

@@ -98,6 +98,7 @@ export const {
   useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useGetWorkspaceContentsQuery,
+  useLazyGetWorkspaceContentsQuery,
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,
