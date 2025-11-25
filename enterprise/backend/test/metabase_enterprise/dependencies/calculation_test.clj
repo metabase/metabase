@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.calculation-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as calculation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -383,3 +383,29 @@
                                            :card_id sandbox-card-id}]
       (is (= {:card #{sandbox-card-id}}
              (calculation/upstream-deps:sandbox sandbox))))))
+
+(deftest ^:parallel upstream-deps-segment-test
+  (let [products-id (mt/id :products)
+        price-field-id (mt/id :products :price)
+        category-field-id (mt/id :products :category)]
+    (testing "segment depending only on table"
+      (mt/with-temp [:model/Segment segment {:table_id products-id
+                                             :definition {:filter [:> [:field price-field-id nil] 50]}}]
+        (is (= {:segment #{} :table #{products-id}}
+               (calculation/upstream-deps:segment segment)))))
+
+    (testing "segment depending on another segment"
+      (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:table_id products-id
+                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                     :model/Segment segment-b {:table_id products-id
+                                               :definition {:filter [:and
+                                                                     [:segment segment-a-id]
+                                                                     [:= [:field category-field-id nil] "Widget"]]}}]
+        (testing "base segment depends only on table"
+          (is (= {:segment #{} :table #{products-id}}
+                 (calculation/upstream-deps:segment segment-a))))
+        (testing "dependent segment depends on both table and segment"
+          (is (= {:table #{products-id}
+                  :segment #{segment-a-id}}
+                 (calculation/upstream-deps:segment segment-b))))))))
+
