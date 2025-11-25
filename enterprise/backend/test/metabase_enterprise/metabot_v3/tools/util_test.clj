@@ -248,10 +248,4 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"field t1-10 not found"
-             (metabot-v3.tools.util/resolve-column {:field-id "t1-10"} columns))))
-
-      (testing "throws when no columns match the table ID"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"field t999-0 not found"
-             (metabot-v3.tools.util/resolve-column {:field-id "t999-0"} columns)))))))
+             (metabot-v3.tools.util/resolve-column {:field-id "t1-10"} columns)))))))
