@@ -72,6 +72,7 @@
                               :expressions/date                       true
                               :identifiers-with-spaces                true
                               :split-part                             true
+                              :collate                                true
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
@@ -516,6 +517,10 @@
   [driver [_ value]]
   [:to_char (sql.qp/->honeysql driver value)])
 
+(defmethod sql.qp/->honeysql [:snowflake :collate]
+  [driver [_ arg collation]]
+  [:collate (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver collation)])
+
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
   tests (and Snowflake itself) expected `details.db`. This has since been fixed, but for legacy support we'll still
@@ -921,3 +926,33 @@
   [_driver]
   ;; https://docs.snowflake.com/en/sql-reference/identifiers
   255)
+
+(defn get-string-filter-arg
+  "Generate the argument to match in the string filters. It's based on sql.qp/generate-pattern."
+  [driver
+   [type val :as arg]
+   {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
+  (if case-sensitive
+    (sql.qp/->honeysql driver arg)
+    (if (= :value type)
+      (sql.qp/->honeysql driver [type (u/lower-case-en val)])
+      [:lower (sql.qp/->honeysql driver arg)])))
+
+(defn- string-filter
+  [driver str-filter field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]
+  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))]
+    [str-filter
+     (if case-sensitive casted-field [:lower casted-field])
+     (get-string-filter-arg driver arg options)]))
+
+(defmethod sql.qp/->honeysql [:snowflake :contains]
+  [driver [_ field arg options]]
+  (string-filter driver :contains field arg options))
+
+(defmethod sql.qp/->honeysql [:snowflake :starts-with]
+  [driver [_ field arg options]]
+  (string-filter driver :startswith field arg options))
+
+(defmethod sql.qp/->honeysql [:snowflake :ends-with]
+  [driver [_ field arg options]]
+  (string-filter driver :endswith field arg options))

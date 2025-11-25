@@ -204,6 +204,20 @@
                            test)]
                  (nrepl-eval "mb.hawk.core" (str code) (:port options)))}
 
+  affected-modules
+  {:doc      "Prints information about which backend modules have changes compared to a Git ref e.g. `master`"
+   :examples [["./bin/mage affected-modules master"]
+              ["./bin/mage affected-modules"]]
+   :requires [[mage.modules]]
+   :task     (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
+
+  can-skip-driver-tests
+  {:doc      "Returns zero (success) if we can skip driver tests based on changes related to a Git ref e.g. `master`"
+   :examples [["./bin/mage can-skip-driver-tests master"]
+              ["./bin/mage can-skip-driver-tests"]]
+   :requires [[mage.modules]]
+   :task     (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
+
   ls {:doc      "List all mage public and private tasks"
       :examples [["./bin/mage ls" "List all tasks"]]
       :requires [[mage.util :as u]]
