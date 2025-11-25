@@ -516,12 +516,22 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
+
+      H.miniPicker().within(() => {
+        // no sample db in mini picker
+        cy.findByText(/Writable Postgres/).should("be.visible");
+        cy.findByText("Sample Database").should("not.exist");
+      });
+
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(0, "Databases").click();
         cy.findAllByTestId("picker-item")
           .contains("Sample Database")
           .should("have.attr", "data-disabled", "true");
+        cy.findAllByTestId("picker-item")
+          .contains(/Writable Postgres/)
+          .should("not.have.attr", "data-disabled");
       });
     });
 
@@ -529,7 +539,7 @@ LIMIT
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (tableId) =>
           H.createQuestion({
-            name: "Metric",
+            name: "Animal Metric",
             type: "metric",
             query: {
               "source-table": tableId,
@@ -544,14 +554,14 @@ LIMIT
 
       H.miniPicker().within(() => {
         cy.findByText("Our analytics").click();
-        cy.findByText("Metric").should("not.exist");
+        cy.findByText(/metric/i).should("not.exist");
       });
 
-      H.miniPickerHeader().click();
+      H.miniPickerHeader().click(); // go back
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findAllByTestId("picker-item")
-          .contains("Metric")
+          .contains("Animal Metric")
           .should("have.attr", "data-disabled", "true");
       });
     });

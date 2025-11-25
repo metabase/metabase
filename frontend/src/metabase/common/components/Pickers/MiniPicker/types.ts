@@ -32,6 +32,7 @@ export type MiniPickerSchemaItem = {
 export type MiniPickerTableItem = {
   model: "table";
   id: TableId;
+  db_id: DatabaseId;
   name: string;
 };
 

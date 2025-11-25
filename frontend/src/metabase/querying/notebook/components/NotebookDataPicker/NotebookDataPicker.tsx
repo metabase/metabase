@@ -16,6 +16,7 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -31,6 +32,7 @@ import {
 import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
+import { isObjectWithModel } from "./utils";
 
 export interface NotebookDataPickerProps {
   title: string;
@@ -50,6 +52,7 @@ export interface NotebookDataPickerProps {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
+  shouldDisableDatabase?: (item: QueryEditorDatabasePickerItem) => boolean;
   columnPicker: React.ReactNode;
 }
 
@@ -66,6 +69,7 @@ export function NotebookDataPicker({
   setIsOpened,
   onChange,
   shouldDisableItem,
+  shouldDisableDatabase,
   columnPicker,
 }: NotebookDataPickerProps) {
   const store = useStore();
@@ -128,6 +132,7 @@ export function NotebookDataPicker({
         isDisabled={isDisabled}
         onChange={handleChange}
         shouldDisableItem={shouldDisableItem}
+        shouldDisableDatabase={shouldDisableDatabase}
       />
     );
   }
@@ -148,6 +153,7 @@ type ModernDataPickerProps = {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
+  shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
 };
 
 function ModernDataPicker({
@@ -162,6 +168,7 @@ function ModernDataPicker({
   isDisabled,
   onChange,
   shouldDisableItem,
+  shouldDisableDatabase,
 }: ModernDataPickerProps) {
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
@@ -175,16 +182,28 @@ function ModernDataPicker({
   const [focusPicker, setFocusPicker] = useState(false);
 
   const shouldHide = useMemo(() => {
-    if (!canChangeDatabase) {
-      const shouldShow = createShouldShowItem(modelList, databaseId);
-      return (item: MiniPickerItem | unknown): item is MiniPickerPickableItem =>
-        Boolean(
-          !shouldShow(item as DataPickerItem) ||
-            shouldDisableItem?.(item as DataPickerItem),
-        );
-    }
-    return undefined;
-  }, [databaseId, canChangeDatabase, modelList, shouldDisableItem]);
+    const shouldShow = !canChangeDatabase
+      ? createShouldShowItem(modelList, databaseId)
+      : () => true;
+
+    return (
+      item: MiniPickerItem | QueryEditorDatabasePickerItem | unknown,
+    ): item is MiniPickerPickableItem => {
+      return Boolean(
+        !shouldShow(item as DataPickerItem) ||
+          shouldDisableItem?.(item as DataPickerItem) ||
+          (isObjectWithModel(item) &&
+            item.model === "database" &&
+            shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
+      );
+    };
+  }, [
+    databaseId,
+    canChangeDatabase,
+    modelList,
+    shouldDisableItem,
+    shouldDisableDatabase,
+  ]);
 
   return (
     <>
@@ -220,7 +239,14 @@ function ModernDataPicker({
             setIsBrowsing(false);
             setIsOpened(false);
           }}
-          shouldDisableItem={shouldDisableItem}
+          shouldDisableItem={(i) => {
+            return Boolean(
+              shouldDisableItem?.(i) ||
+                ("model" in i &&
+                  i.model === "database" &&
+                  shouldDisableDatabase?.(i)),
+            );
+          }}
         />
       )}
       {isOpened || !table ? (

@@ -215,6 +215,7 @@ function DatabaseItemList({
               onChange({
                 model: "table",
                 id: table.id,
+                db_id: table.db_id,
                 name: table.display_name ?? table.name,
               });
             }}
