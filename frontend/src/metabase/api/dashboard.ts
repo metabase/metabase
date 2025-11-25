@@ -1,5 +1,3 @@
-import { compact } from "underscore";
-
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema } from "metabase/schema";
@@ -154,15 +152,12 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error, patch) =>
-          invalidateTags(
-            error,
-            compact([
-              listTag("dashboard"),
-              idTag("dashboard", patch.id),
-              tag("parameter-values"),
-              listTag("revision"),
-            ]),
-          ),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            idTag("dashboard", patch.id),
+            tag("parameter-values"),
+            listTag("revision"),
+          ]),
         onQueryStarted: async (
           patch,
           { dispatch, getState, queryFulfilled },
