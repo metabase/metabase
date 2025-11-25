@@ -4,8 +4,12 @@ import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
+import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { Card, Dashboard } from "metabase-types/api";
 
 import type {
   SdkIframeEmbedSetupExperience,
@@ -54,16 +58,27 @@ export const trackEmbedWizardExperienceCompleted = (
       experience === defaultExperience ? "default" : `custom=${experience}`,
   });
 
-export const trackEmbedWizardResourceSelectionCompleted = (
-  currentSettings: SdkIframeEmbedSetupSettings,
-  defaultResourceId: string | number,
-) => {
+export const trackEmbedWizardResourceSelectionCompleted = ({
+  experience,
+  currentSettings,
+  defaultResourceId,
+}: {
+  experience: SdkIframeEmbedSetupExperience;
+  currentSettings: SdkIframeEmbedSetupSettings;
+  defaultResourceId: string | number;
+}) => {
   const currentResourceId = getResourceIdFromSettings(currentSettings) ?? "";
-  const isDefault = currentResourceId === defaultResourceId;
+  const isDefaultResource =
+    currentResourceId === defaultResourceId ? "default" : "custom";
+
+  const eventDetailsParts: string[] = [
+    `is_default_resource=${isDefaultResource}`,
+    `experience=${experience}`,
+  ];
 
   trackSimpleEvent({
     event: "embed_wizard_resource_selection_completed",
-    event_detail: isDefault ? "default" : "custom",
+    event_detail: buildEventDetails(eventDetailsParts),
   });
 };
 
@@ -72,14 +87,18 @@ const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
 
 export const trackEmbedWizardOptionsCompleted = ({
   initialState,
-  settings,
   experience,
+  resource,
+  settings,
   isGuestEmbedsEnabled,
+  embeddingParameters,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
-  settings: Partial<SdkIframeEmbedSettings>;
   experience: SdkIframeEmbedSetupExperience;
+  resource: Dashboard | Card | null;
+  settings: Partial<SdkIframeEmbedSetupSettings>;
   isGuestEmbedsEnabled: boolean;
+  embeddingParameters: EmbeddingParameters;
 }) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
@@ -95,46 +114,105 @@ export const trackEmbedWizardOptionsCompleted = ({
     getEmbedSettingsToCompare(defaultSettings),
   );
 
-  let options: string[] = [
+  const eventDetailsParts: (string | null)[] = [
     `settings=${hasCustomOptions ? "custom" : "default"}`,
   ];
 
   if (hasCustomOptions) {
+    const auth = settings.isGuestEmbed
+      ? "guest_embed"
+      : settings.useExistingUserSession
+        ? "user_session"
+        : "sso";
+    const params = countEmbeddingParameterOptions(embeddingParameters);
     const hasCustomTheme = settings.theme?.colors !== undefined;
 
-    options = [
-      ...options,
-      `theme=${hasCustomTheme ? "custom" : "default"}`,
-      `auth=${settings.isGuestEmbed ? "guest_embed" : settings.useExistingUserSession ? "user_session" : "sso"}`,
-    ];
-
-    for (const _optionKey in settings) {
-      const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
-
-      if (!EMBED_SETTINGS_TO_TRACK.includes(optionKey)) {
-        continue;
-      }
-
-      const value = settings[optionKey];
-
-      if (value === undefined) {
-        continue;
-      }
-
-      options.push(`${optionKey}=${value.toString()}`);
-    }
+    eventDetailsParts.push(
+      ...[
+        `experience=${experience}`,
+        ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
+        `auth=${auth}`,
+        ...buildEventDetailsPartsForSettings(settings),
+        `params=${params}`,
+        `theme=${hasCustomTheme ? "custom" : "default"}`,
+      ],
+    );
   }
 
   trackSimpleEvent({
     event: "embed_wizard_options_completed",
-    event_detail: options.join(","),
+    event_detail: buildEventDetails(eventDetailsParts),
   });
 };
 
-export const trackEmbedWizardCodeCopied = (
-  authMethod: "sso" | "user_session",
-) =>
+export const trackEmbedWizardCodeCopied = ({
+  experience,
+  resource,
+  snippetType,
+  settings,
+}: {
+  experience: SdkIframeEmbedSetupExperience;
+  resource: Dashboard | Card | null;
+  snippetType: "frontend" | "server";
+  settings: SdkIframeEmbedSetupSettings;
+}) => {
+  const authType = getAuthTypeForSettings(settings);
+
+  const eventDetailsParts: (string | null)[] = [
+    `experience=${experience}`,
+    `snippet_type=${snippetType}`,
+    ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
+    `auth_type=${authType}`,
+  ];
+
   trackSimpleEvent({
     event: "embed_wizard_code_copied",
-    event_detail: authMethod,
+    event_detail: buildEventDetails(eventDetailsParts),
   });
+};
+
+const buldEventDetailsPartsForGuestEmbedResource = ({
+  resource,
+  settings,
+}: {
+  resource: Dashboard | Card | null;
+  settings: Partial<SdkIframeEmbedSetupSettings>;
+}) => [
+  ...(settings.isGuestEmbed
+    ? [
+        resource?.enable_embedding !== undefined
+          ? `guest_embed_enabled=${resource.enable_embedding}`
+          : null,
+        resource?.embedding_type
+          ? `guest_embed_type=${resource.embedding_type}`
+          : null,
+      ]
+    : []),
+];
+
+const buildEventDetailsPartsForSettings = (
+  settings: Partial<SdkIframeEmbedSettings>,
+) => {
+  const options: string[] = [];
+
+  for (const _optionKey in settings) {
+    const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
+
+    if (!EMBED_SETTINGS_TO_TRACK.includes(optionKey)) {
+      continue;
+    }
+
+    const value = settings[optionKey];
+
+    if (value === undefined) {
+      continue;
+    }
+
+    options.push(`${optionKey}=${value.toString()}`);
+  }
+
+  return options;
+};
+
+const buildEventDetails = (eventDetailsParts: (string | null)[]): string =>
+  eventDetailsParts.filter(Boolean).join(",");
