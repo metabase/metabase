@@ -32,6 +32,69 @@
   jdbc-data-warehouse-debug-unreturned-connection-stack-traces])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Connection Details Override                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:dynamic *overridden-connection-details*
+  "A dynamic var that holds a map of database-id -> detail-update-fn for temporarily overriding JDBC connection
+  details at the connection pool level. When a JDBC connection spec is created for a database, if its ID is present
+  in this map, the corresponding function will be applied to transform the connection `:details` before they are
+  converted to a JDBC spec.
+
+  This provides a second layer of override beyond the Toucan model layer (see
+  [[metabase.warehouses.models.database/with-overridden-db-details]]). This is necessary because some code paths may
+  bypass Toucan and work directly with database detail maps.
+
+  The detail-update-fn receives the fully-processed details (after SSH tunnel and auth provider details have been
+  incorporated) and returns modified details.
+
+  This works by intercepting the flow right before [[connection-details->spec]] is called in [[create-pool!]], so it
+  affects all JDBC connections regardless of how the database metadata was obtained.
+
+  See [[with-overridden-connection-details]] for usage."
+  nil)
+
+(defmacro with-overridden-connection-details
+  "Temporarily override the JDBC connection details for a specific database within the dynamic scope of `body`.
+
+  The `detail-update-fn` is a function that takes the database connection `:details` map (after SSH tunnel and auth
+  provider details have been incorporated) and returns a modified version. Any code that creates a JDBC connection
+  for `database-id` within this scope will use the modified details.
+
+  This intercepts at the JDBC connection layer, so it works even if code bypasses Toucan model loading and works
+  directly with detail maps.
+
+  Example:
+
+    ;; Override connection to use a read replica
+    (with-overridden-connection-details 1 (fn [details]
+                                            (assoc details :host \"read-replica.example.com\"))
+      ;; All JDBC connections created in this scope use the overridden host
+      (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec 1) ...))
+
+    ;; Deep merge connection details
+    (with-overridden-connection-details 2 (fn [details]
+                                            (merge details {:read-only true :port 5433}))
+      (execute-query-on-replica query))
+
+  Note: This works in conjunction with [[metabase.warehouses.models.database/with-overridden-db-details]]. The
+  Toucan-level override affects database records loaded from the application database, while this JDBC-level override
+  affects the actual connection pool creation. Both can be nested and will compose naturally."
+  [database-id detail-update-fn & body]
+  `(binding [*overridden-connection-details* (assoc *overridden-connection-details* ~database-id ~detail-update-fn)]
+     ~@body))
+
+(defn- apply-overridden-connection-details
+  "Apply any overridden connection details if present in [[*overridden-connection-details*]].
+
+  This is called from [[create-pool!]] right before [[connection-details->spec]] to transparently apply detail
+  overrides when JDBC connection pools are created."
+  [database-id details]
+  (if-let [detail-update-fn (get *overridden-connection-details* database-id)]
+    (detail-update-fn details)
+    details))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -193,7 +256,8 @@
                              driver
                              id
                              details-with-tunnel)
-        spec                (connection-details->spec driver details-with-auth)
+        details-final       (apply-overridden-connection-details id details-with-auth)
+        spec                (connection-details->spec driver details-final)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
      (connection-pool-spec spec properties)
@@ -260,7 +324,11 @@
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
-  don't create multiple ones for the same DB."
+  don't create multiple ones for the same DB.
+
+  When [[*overridden-connection-details*]] is active for a database, the database details are modified before
+  creating the connection pool. The override is applied to the database map before hash comparison and pool
+  creation, ensuring that overridden details are used throughout the connection establishment process."
   [db-or-id-or-spec]
   (when-let [db-id (u/id db-or-id-or-spec)]
     (driver-api/check-allowed-access! db-id))
@@ -269,12 +337,16 @@
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
+          db-original (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
                             (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
                             db-or-id-or-spec)
                           (driver-api/with-metadata-provider database-id
                             (driver-api/database (driver-api/metadata-provider))))
+          ;; Apply connection detail overrides if present
+          db          (if (contains? *overridden-connection-details* database-id)
+                        (update db-original :details #(apply-overridden-connection-details database-id %))
+                        db-original)
           get-fn      (fn [db-id log-invalidation?]
                         (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond
