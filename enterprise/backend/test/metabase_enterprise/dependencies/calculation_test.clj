@@ -408,4 +408,3 @@
           (is (= {:table #{products-id}
                   :segment #{segment-a-id}}
                  (calculation/upstream-deps:segment segment-b))))))))
-

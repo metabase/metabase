@@ -138,4 +138,3 @@
   {:segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> #{}
             table_id (conj table_id))})
-
