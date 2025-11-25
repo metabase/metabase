@@ -68,11 +68,10 @@ export const trackEmbedWizardResourceSelectionCompleted = ({
   defaultResourceId: string | number;
 }) => {
   const currentResourceId = getResourceIdFromSettings(currentSettings) ?? "";
-  const isDefaultResource =
-    currentResourceId === defaultResourceId ? "default" : "custom";
+  const isDefaultResource = currentResourceId === defaultResourceId;
 
   const eventDetailsParts: string[] = [
-    `is_default_resource=${isDefaultResource}`,
+    `isDefaultResource=${isDefaultResource}`,
     `experience=${experience}`,
   ];
 
@@ -133,7 +132,7 @@ export const trackEmbedWizardOptionsCompleted = ({
         ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
         `auth=${auth}`,
         ...buildEventDetailsPartsForSettings(settings),
-        `params=${params}`,
+        ...(settings.isGuestEmbed ? [`params=${JSON.stringify(params)}`] : []),
         `theme=${hasCustomTheme ? "custom" : "default"}`,
       ],
     );
@@ -160,9 +159,9 @@ export const trackEmbedWizardCodeCopied = ({
 
   const eventDetailsParts: (string | null)[] = [
     `experience=${experience}`,
-    `snippet_type=${snippetType}`,
+    `snippetType=${snippetType}`,
     ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-    `auth_type=${authType}`,
+    `authType=${authType}`,
   ];
 
   trackSimpleEvent({
@@ -181,10 +180,10 @@ const buldEventDetailsPartsForGuestEmbedResource = ({
   ...(settings.isGuestEmbed
     ? [
         resource?.enable_embedding !== undefined
-          ? `guest_embed_enabled=${resource.enable_embedding}`
+          ? `guestEmbedEnabled=${resource.enable_embedding}`
           : null,
         resource?.embedding_type
-          ? `guest_embed_type=${resource.embedding_type}`
+          ? `guestEmbedType=${resource.embedding_type}`
           : null,
       ]
     : []),
