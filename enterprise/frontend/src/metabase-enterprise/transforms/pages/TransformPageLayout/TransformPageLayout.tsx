@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { RouteProps } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -18,12 +19,12 @@ type TransformPageLayoutPropsParams = {
 
 type TransformPageLayoutProps = {
   params: TransformPageLayoutPropsParams;
-  fullWidth?: boolean;
   children?: ReactNode;
-};
+} & { route?: RouteProps<{ fullWidth?: boolean }> };
 
 type TransformPageLayoutOwnProps = TransformPageLayoutProps & {
   maw?: string;
+  fullWidth?: boolean;
 };
 
 export function ListPageLayout({ params, children }: TransformPageLayoutProps) {
@@ -37,9 +38,10 @@ export function ListPageLayout({ params, children }: TransformPageLayoutProps) {
 export function DetailsPageLayout({
   params,
   children,
+  route,
 }: TransformPageLayoutProps) {
   return (
-    <TransformPageLayout params={params} maw="60rem">
+    <TransformPageLayout params={params} maw="60rem" {...route?.props}>
       {children}
     </TransformPageLayout>
   );
