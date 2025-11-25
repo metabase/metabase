@@ -144,7 +144,7 @@ export function SearchNew({
 
   return (
     <Stack h="100%" style={{ overflow: "auto" }}>
-      <Stack gap={0} px="lg">
+      <Stack gap={0}>
         {filteredTables.map((table, tableIndex) => {
           const breadcrumbs = table.schema
             ? `${table.db?.name} (${table.schema})`
@@ -165,7 +165,8 @@ export function SearchNew({
               key={table.id}
               data-testid="tree-item"
               data-type="table"
-              p="sm"
+              py="sm"
+              pe="sm"
               align="center"
               gap="sm"
               to={getUrl(baseUrl, {
@@ -178,10 +179,13 @@ export function SearchNew({
               right={0}
             >
               <Checkbox
+                w={40}
                 style={{
                   alignSelf: "flex-start",
+                  justifyContent: "center",
                   position: "relative",
                   top: 4,
+                  display: "flex",
                 }}
                 size="sm"
                 checked={selectedTables.has(table.id)}
