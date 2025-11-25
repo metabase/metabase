@@ -10,6 +10,7 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
+import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -125,13 +126,14 @@ export const RemappingPicker = ({
   const [createFieldDimension] = useCreateFieldDimensionMutation();
   const [deleteFieldDimension] = useDeleteFieldDimensionMutation();
 
+  const { eventSource } = useDataModelContext();
   const sendDefaultToast = (error: unknown) => {
     if (error) {
       sendErrorToast(
         t`Failed to update display values of ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("display_values");
+      trackMetadataChange("display_values", eventSource);
       sendSuccessToast(
         t`Display values of ${field.display_name} updated`,
         async () => {

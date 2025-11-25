@@ -6,6 +6,7 @@ import {
   useUpdateFieldMutation,
 } from "metabase/api";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -41,6 +42,7 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
+  const { eventSource } = useDataModelContext();
   const handleChange = async (patch: Patch) => {
     const { error } = await updateField({ id, ...patch });
 
@@ -49,7 +51,7 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
         t`Failed to update semantic type of ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("semantic_type_change");
+      trackMetadataChange("semantic_type_change", eventSource);
 
       sendSuccessToast(
         t`Semantic type of ${field.display_name} updated`,

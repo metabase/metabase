@@ -7,6 +7,7 @@ import {
   FieldVisibilityPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
+import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -41,6 +42,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
+  const { eventSource } = useDataModelContext();
   const handleVisibilityChange = async (
     visibilityType: FieldVisibilityType,
   ) => {
@@ -49,7 +51,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       visibility_type: visibilityType,
     });
 
-    trackMetadataChange("visibility_change");
+    trackMetadataChange("visibility_change", eventSource);
 
     if (error) {
       sendErrorToast(t`Failed to update visibility of ${field.display_name}`);
@@ -73,7 +75,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       has_field_values: hasFieldValues,
     });
 
-    trackMetadataChange("filtering_change");
+    trackMetadataChange("filtering_change", eventSource);
 
     if (error) {
       sendErrorToast(t`Failed to update filtering of ${field.display_name}`);
@@ -106,7 +108,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           : t`Failed to disable JSON unfolding for ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("json_unfolding");
+      trackMetadataChange("json_unfolding", eventSource);
 
       sendSuccessToast(
         jsonUnfolding

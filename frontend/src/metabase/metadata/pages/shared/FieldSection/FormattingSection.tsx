@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -31,13 +32,14 @@ const FormattingSectionBase = ({ field }: Props) => {
       : new Set(["column_title"]);
   }, [field]);
 
+  const { eventSource } = useDataModelContext();
   const handleChange = async (settings: FieldSettings) => {
     const { error } = await updateField({ id, settings });
 
     if (error) {
       sendErrorToast(t`Failed to update formatting of ${field.display_name}`);
     } else {
-      trackMetadataChange("formatting");
+      trackMetadataChange("formatting", eventSource);
 
       sendSuccessToast(
         t`Formatting of ${field.display_name} updated`,

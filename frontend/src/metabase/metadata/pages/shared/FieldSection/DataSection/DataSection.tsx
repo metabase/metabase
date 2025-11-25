@@ -7,6 +7,7 @@ import {
   LabeledValue,
   TitledSection,
 } from "metabase/metadata/components";
+import { useDataModelContext } from "metabase/metadata/components/MetadataProvider/MetadataProvider";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canCoerceFieldType,
@@ -75,6 +76,7 @@ const DataSectionBase = ({ field }: Props) => {
     }
   };
 
+  const { eventSource } = useDataModelContext();
   const handleCoercionStrategyChange = async (
     coercionStrategy: string | null,
   ) => {
@@ -90,7 +92,7 @@ const DataSectionBase = ({ field }: Props) => {
           : t`Failed to update casting for ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("type_casting");
+      trackMetadataChange("type_casting", eventSource);
 
       sendSuccessToast(
         field.coercion_strategy == null
