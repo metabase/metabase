@@ -8,13 +8,14 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type {
   CheckDependenciesResponse,
+  GetDependencyGraphRequest,
   PythonTransformSourceDraft,
   Transform,
   TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
 } from "metabase-types/api";
-import type { AdminPath } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 // Types
 export type TransformPickerItem = {
@@ -29,21 +30,17 @@ export type TransformPickerProps = {
 };
 
 export type TransformsPlugin = {
+  isEnabled: boolean;
+  canAccessTransforms: (state: State) => boolean;
+  getDataStudioTransformRoutes(): ReactNode;
   TransformPicker: ComponentType<TransformPickerProps>;
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
 };
 
 export type PythonTransformEditorProps = {
-  name?: string;
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
-  isNew: boolean;
   isDirty: boolean;
-  isSaving: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
-  onSave: () => void;
-  onCancel: () => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
 };
@@ -52,8 +49,17 @@ export type PythonTransformSourceSectionProps = {
   transform: Transform;
 };
 
+export type PythonTransformSourceValidationResult = {
+  isValid: boolean;
+  errorMessage?: string;
+};
+
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
+  getPythonLibraryRoutes: () => ReactNode;
+  getPythonSourceValidationResult: (
+    source: PythonTransformSourceDraft,
+  ) => PythonTransformSourceValidationResult;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
   SourceSection: ComponentType<PythonTransformSourceSectionProps>;
   PythonRunnerSettingsPage: ComponentType;
@@ -63,6 +69,7 @@ export type PythonTransformsPlugin = {
 
 type DependenciesPlugin = {
   isEnabled: boolean;
+  getDataStudioDependencyRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -77,6 +84,10 @@ type DependenciesPlugin = {
   useCheckTransformDependencies: (
     props: UseCheckDependenciesProps<UpdateTransformRequest>,
   ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+  useGetDependenciesCount: (args: GetDependencyGraphRequest) => {
+    dependenciesCount: number;
+    dependentsCount: number;
+  };
 };
 
 export type DependencyGraphPageContextType = {
@@ -123,15 +134,18 @@ function useCheckDependencies<TChange>({
 }
 
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
+  isEnabled: false,
+  canAccessTransforms: () => false,
+  getDataStudioTransformRoutes: () => null,
   TransformPicker: PluginPlaceholder,
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
+  getPythonLibraryRoutes: () => null,
+  getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
@@ -143,6 +157,7 @@ export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
 
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
+  getDataStudioDependencyRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
@@ -151,6 +166,10 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,
+  useGetDependenciesCount: () => ({
+    dependenciesCount: 0,
+    dependentsCount: 0,
+  }),
 });
 
 export const PLUGIN_DEPENDENCIES = getDefaultPluginDependencies();

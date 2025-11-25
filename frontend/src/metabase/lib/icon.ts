@@ -1,5 +1,5 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
@@ -49,7 +49,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   snippet: "unknown",
   document: "document",
   timeline: "calendar",
-  transform: "refresh_downstream",
+  transform: "transform",
   user: "person",
 };
 
@@ -70,6 +70,19 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
 
   if (item.model === "collection" && item.is_personal) {
     return { name: "person" };
+  }
+
+  if (item.model === "collection" && item.id === "databases") {
+    return { name: "database" };
+  }
+
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type)) {
+    case "root":
+      return { name: "repository" };
+    case "models":
+      return { name: "model" };
+    case "metrics":
+      return { name: "metric" };
   }
 
   return { name: modelIconMap?.[item.model] ?? "unknown" };

@@ -23,6 +23,10 @@ on:
         description: "Whether to run host and sample apps compatibility tests."
         required: true
         type: boolean
+      skip:
+        description: Whether to skip running tests due to one of the artifacts failing to build.
+        required: true
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -30,7 +34,7 @@ concurrency:
 
 jobs:
   embedding-sdk-cli-snippets-type-check:
-    if: inputs.cli-snippets-type-check
+    if: inputs.cli-snippets-type-check && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -46,7 +50,7 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    if: inputs.docs-snippets-type-check
+    if: inputs.docs-snippets-type-check && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -62,7 +66,7 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    if: inputs.documentation-validation
+    if: inputs.documentation-validation && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -110,13 +114,13 @@ jobs:
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   embedding-sdk-component-tests:
     name: "SDK component tests"
-    if: inputs.component-tests
+    if: inputs.component-tests && !inputs.skip
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
 
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
-    if: inputs.host-sample-apps-tests
+    if: inputs.host-sample-apps-tests && !inputs.skip
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 

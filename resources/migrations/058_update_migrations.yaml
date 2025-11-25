@@ -310,6 +310,46 @@ databaseChangeLog:
             where: revoked_at IS NULL
 
   - changeSet:
+      id: v58.2025-11-10T14:39:00
+      author: wotbrew
+      comment: Add published_table_id to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: published_table_id
+                  type: int
+                  remarks: The table id that is 'published' by this model
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:01
+      author: wotbrew
+      comment: Add index for report_card.published_table_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:02
+      author: wotbrew
+      comment: Add foreign key report_card(published_table_id) to metabase_table(id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: published_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_published_table
+            onDelete: SET NULL
+
+  - changeSet:
       id: v58.2025-11-12T00:00:00
       author: edpaget
       comment: Add index on provider_id for efficient lookups
@@ -387,7 +427,7 @@ databaseChangeLog:
         - addColumn:
             tableName: core_session
             columns:
-               - column:
+              - column:
                   name: expires_at
                   type: ${timestamp_type}
                   remarks: Timestamp when this session expires (from auth_identity or calculated)
@@ -652,6 +692,88 @@ databaseChangeLog:
         - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
 
   - changeSet:
+      id: v58.2025-11-12T11:57:00
+      author: wotbrew
+      comment: Add data_source column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_source
+                  type: varchar(254)
+                  remarks: The origin type of the data (e.g. metabase-transform)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-12T11:57:02
+      author: wotbrew
+      comment: Add data_layer column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_layer
+                  type: varchar(254)
+                  remarks: The (new) enum for visibility class
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-12T11:57:03
+      author: wotbrew
+      comment: Add owner_email column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: owner_email
+                  type: ${text.type}
+                  remarks: An optional email address of the 'owner' of this table, exclusive with owner_user_id.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-12T11:57:04
+      author: wotbrew
+      comment: Add owner_user_id column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: owner_user_id
+                  type: int
+                  remarks: An (metabase) user id of the 'owner' of this table, exclusive with owner_email.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-13T10:00:00
+      author: qnkhuat
+      comment: Backfill data_layer from visibility_type
+      changes:
+        - sql: >-
+            UPDATE metabase_table
+            SET data_layer = CASE
+              WHEN visibility_type IN ('hidden', 'retired', 'sensitive', 'technical', 'cruft') THEN 'copper'
+              ELSE 'bronze'
+            END
+      rollback:
+        - sql: >-
+            UPDATE metabase_table
+            SET visibility_type = CASE
+              WHEN data_layer = 'copper' THEN 'hidden'
+              ELSE NULL
+            END
+        - sql: >-
+            UPDATE metabase_table
+            SET data_layer = NULL
+
+  - changeSet:
       id: v58.2025-11-19T00:00:00
       author: edpaget
       comment: Add is_remote_synced boolean column to collection table
@@ -692,6 +814,7 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
