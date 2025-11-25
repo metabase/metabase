@@ -70,7 +70,7 @@ export function SourceTableBreadcrumbs({
               ? Urls.queryBuilderTable(table.id, table.db_id)
               : undefined
           }
-          inactiveColor={!isSubhead ? "text-dark" : "text-light"}
+          inactiveColor={isSubhead ? "text-light" : "text-dark"}
         >
           <span>
             {table.display_name}
