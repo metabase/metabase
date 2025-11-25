@@ -441,8 +441,8 @@ describe("issue 55619", () => {
       cy.findByLabelText("Create a new model").click();
       cy.findByText("Use the notebook editor").click();
     });
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.runButtonOverlay().click();

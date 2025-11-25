@@ -47,6 +47,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "python-transform-library",
   "support-access-grant",
   "support-access-grant-current",
+  "library-collection",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];

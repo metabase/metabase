@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { isEmpty } from "underscore";

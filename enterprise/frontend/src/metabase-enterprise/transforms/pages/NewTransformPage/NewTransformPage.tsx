@@ -2,20 +2,27 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import {
   skipToken,
   useGetCardQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { Center } from "metabase/ui";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Center, Stack } from "metabase/ui";
+import {
+  PaneHeader,
+  PaneHeaderActions,
+  PaneHeaderInput,
+} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import * as Lib from "metabase-lib";
 import type {
   Database,
   DraftTransformSource,
@@ -23,12 +30,14 @@ import type {
 } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import { NAME_MAX_LENGTH } from "../../constants";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { isNotDraftSource } from "../../utils";
+import { getValidationResult, isNotDraftSource } from "../../utils";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
+  getDefaultValues,
   getInitialCardSource,
   getInitialNativeSource,
   getInitialPythonSource,
@@ -84,11 +93,19 @@ function NewTransformPageBody({
     acceptProposed,
     rejectProposed,
   } = useSourceState({ initialSource });
+  const [name, setName] = useState(suggestedTransform?.name ?? "");
   const [uiState, setUiState] = useState(getInitialUiState);
+  const metadata = useSelector(getMetadata);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
   useRegisterMetabotTransformContext(undefined, source);
+
+  const validationResult = useMemo(() => {
+    return source.type === "query"
+      ? getValidationResult(Lib.fromJsQueryAndMetadata(metadata, source.query))
+      : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
+  }, [source, metadata]);
 
   const handleCreate = (transform: Transform) => {
     dispatch(push(Urls.transform(transform.id)));
@@ -100,19 +117,42 @@ function NewTransformPageBody({
 
   return (
     <>
-      <AdminSettingsLayout fullWidth>
+      <Stack
+        pos="relative"
+        w="100%"
+        h="100%"
+        bg="bg-white"
+        data-testid="transform-query-editor"
+        gap={0}
+      >
+        <PaneHeader
+          title={
+            <PaneHeaderInput
+              initialValue={name}
+              placeholder={t`New transform`}
+              maxLength={NAME_MAX_LENGTH}
+              isOptional
+              onChange={setName}
+            />
+          }
+          actions={
+            <PaneHeaderActions
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
+              isDirty
+              onSave={openModal}
+              onCancel={handleCancel}
+            />
+          }
+        />
         {source.type === "python" ? (
           <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
             source={source}
             proposedSource={
               proposedSource?.type === "python" ? proposedSource : undefined
             }
-            isNew={true}
             isDirty={isDirty}
-            isSaving={false}
             onChangeSource={setSourceAndRejectProposed}
-            onSave={openModal}
-            onCancel={handleCancel}
             onAcceptProposed={acceptProposed}
             onRejectProposed={rejectProposed}
           />
@@ -124,22 +164,17 @@ function NewTransformPageBody({
             }
             uiState={uiState}
             databases={databases}
-            isNew={true}
-            isSaving={false}
-            isDirty={isDirty}
             onChangeSource={setSourceAndRejectProposed}
             onChangeUiState={setUiState}
-            onSave={openModal}
-            onCancel={handleCancel}
             onAcceptProposed={acceptProposed}
             onRejectProposed={rejectProposed}
           />
         )}
-      </AdminSettingsLayout>
+      </Stack>
       {isModalOpened && isNotDraftSource(source) && (
         <CreateTransformModal
           source={source}
-          suggestedTransform={suggestedTransform}
+          defaultValues={getDefaultValues(name, suggestedTransform)}
           onCreate={handleCreate}
           onClose={closeModal}
         />

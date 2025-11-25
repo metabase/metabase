@@ -40,6 +40,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DATA_STUDIO,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
@@ -65,8 +66,11 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
+  CanAccessDataModel,
+  CanAccessDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
+  CanAccessTransforms,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -182,7 +186,7 @@ export const getRoutes = (store) => {
 
           <Route path="collection/:slug" component={CollectionLanding}>
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
-            <ModalRoute path="archive" modal={ArchiveCollectionModal} />
+            <ModalRoute path="archive" modal={ArchiveCollectionModal} noWrap />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             <ModalRoute
               path="move-questions-dashboard"
@@ -216,8 +220,16 @@ export const getRoutes = (store) => {
               modal={DashboardMoveModalConnected}
               noWrap
             />
-            <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
-            <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
+            <ModalRoute
+              path="copy"
+              modal={DashboardCopyModalConnected}
+              noWrap
+            />
+            <ModalRoute
+              path="archive"
+              modal={ArchiveDashboardModalConnected}
+              noWrap
+            />
           </Route>
 
           <Route path="/question">
@@ -354,6 +366,14 @@ export const getRoutes = (store) => {
 
           {/* ADMIN */}
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+
+          {/* DATA STUDIO */}
+          {PLUGIN_DATA_STUDIO.getDataStudioRoutes(
+            store,
+            CanAccessDataStudio,
+            CanAccessDataModel,
+            CanAccessTransforms,
+          )}
         </Route>
       </Route>
 

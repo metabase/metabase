@@ -7,6 +7,7 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Dataset,
@@ -153,6 +154,7 @@ const getDefaultFeatureLevelPermissions = () => ({
   getDataColumns: (_subject: PermissionSubject) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
+  canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
   dataModelQueryProps: {} as any,
   databaseDetailsQueryProps: {} as any,
 });

@@ -3,7 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -32,16 +32,19 @@
   (if include-editable-data-model?
     (api/write-check table)
     (api/read-check table))
-  (-> table
-      (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
-      (m/dissoc-in [:db :details])
-      format-fields-for-response
-      present-table
-      (update :fields (partial filter (fn [{visibility-type :visibility_type}]
-                                        (case (keyword visibility-type)
-                                          :hidden    include-hidden-fields?
-                                          :sensitive include-sensitive-fields?
-                                          true))))))
+  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics]
+                         (premium-features/has-feature? :transforms) (conj :transform)
+                         api/*is-superuser?*                         (conj :published_models))]
+    (-> table
+        (#(apply t2/hydrate % hydration-keys))
+        (m/dissoc-in [:db :details])
+        format-fields-for-response
+        present-table
+        (update :fields (partial filter (fn [{visibility-type :visibility_type}]
+                                          (case (keyword visibility-type)
+                                            :hidden    include-hidden-fields?
+                                            :sensitive include-sensitive-fields?
+                                            true)))))))
 
 (defn batch-fetch-query-metadatas*
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."

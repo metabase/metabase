@@ -1,7 +1,6 @@
 import { withRouter } from "react-router";
 import _ from "underscore";
 
-import { logout } from "metabase/auth/actions";
 import {
   getCommentSidebarOpen,
   getSidebarOpen,
@@ -49,7 +48,6 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
 const mapDispatchToProps = {
   onToggleNavbar: toggleNavbar,
   onCloseNavbar: closeNavbar,
-  onLogout: logout,
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
