@@ -206,7 +206,6 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
       }
       return null;
     case "snippet":
-      return null;
     case "segment":
       return null;
   }
