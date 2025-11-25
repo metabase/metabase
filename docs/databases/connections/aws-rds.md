@@ -25,37 +25,45 @@ Here's how to get connection information for databases on Amazon's RDS:
 
 {% include plans-blockquote.html feature="IAM authentication" %}
 
-You can connect to RDS PostgreSQL and MySQL instances using AWS IAM authentication instead of a password. This is available for self-hosted Pro and Enterprise plans.
+You can connect to RDS Aurora PostgreSQL and MySQL instances using AWS IAM authentication instead of a password.
 
-### Configure AWS credentials
+To set up IAM authentication:
 
-Authentication credentials must be available via one of the methods supported by the [AWS SDK credentials chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html), typically either:
+1. [In AWS, enable IAM authentication on your RDS instance](#in-aws-enable-iam-authentication-on-your-rds-instance)
+2. [In AWS, set up an IAM policy](#in-aws-set-up-an-iam-policy)
+3. [In your database, create a database user](#in-your-database-create-a-database-user)
+4. [In your Metabase environment, configure AWS credentials](#in-your-metabase-environment-configure-aws-credentials)
+5. [In Metabase, select IAM authentication](#in-metabase-select-iam-authentication)
+6. [In Metabase, configure SSL](#in-metabase-configure-ssl)
 
-- Environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`).
-- AWS credentials file (`.aws/credentials`), automatically available if running in [Elastic Container Service (ECS)](https://docs.aws.amazon.com/ecs/).
+### In AWS, enable IAM authentication on your RDS instance
 
-### Set up IAM policy
+[Enable IAM authentication on your RDS instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.Enabling.html) in the AWS console.
 
-Add a policy with the `rds-db:connect` action. The policy resource must specify the ARN of your database user in the format:
+### In AWS, set up an IAM policy
+
+Add a policy with the `rds-db:connect` action. The policy resource must specify the [Amazon Resource Name (ARN)](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) of your database user in the format:
 
 ```
 arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
 ```
 
+Note, when entering the username _in Metabase_, you'd just enter your `db-user-name`, not the full ARN.
+
 See [Creating IAM policy for IAM database access](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html).
 
-### Create database user
+### In your database, create a database user
 
 Create the database user with IAM authentication enabled. The database username must match exactly (case-sensitive) with the `db-user-name` portion of your IAM policy [Amazon Resource Name (ARN)](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html).
 
-For PostgreSQL:
+**PostgreSQL:**
 
 ```sql
 CREATE USER your_username;
 GRANT rds_iam TO your_username;
 ```
 
-For MySQL:
+**MySQL:**
 
 ```sql
 CREATE USER 'your_username'@'%' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS';
@@ -63,18 +71,17 @@ CREATE USER 'your_username'@'%' IDENTIFIED WITH AWSAuthenticationPlugin AS 'RDS'
 
 See [Setting up for IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.DBAccounts.html).
 
-### Enable IAM authentication on your RDS instance
+### In your Metabase environment, configure AWS credentials
 
-[Enable IAM authentication on your RDS instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.Enabling.html) in the AWS console.
+Authentication credentials must be available via one of the methods supported by the [AWS SDK credentials chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html), typically either:
 
-### Configure SSL
+- Environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`).
+- AWS credentials file (`.aws/credentials`), automatically available if running in [Elastic Container Service (ECS)](https://docs.aws.amazon.com/ecs/).
 
-Use a secure connection (SSL). Set the SSL Mode to **require** (or stricter). See [PostgreSQL SSL options](./postgresql.md#ssl-mode) or [MySQL SSL options](./mysql.md#use-a-secure-connection-ssl).
+### In Metabase, select IAM authentication
 
-### Select IAM authentication in Metabase
+When adding or editing a database connection in Metabase, click **Use an authentication provider** and select **IAM Authentication**.
 
-When adding or editing a database connection in Metabase, select **IAM Authentication** from the **Use an authentication provider** dropdown.
+### In Metabase, configure SSL
 
-## Database routing
-
-See [Database routing](../../permissions/database-routing.md).
+Use a secure connection (SSL). Set the SSL Mode to **require**. See [PostgreSQL SSL options](./postgresql.md#ssl-mode) or [MySQL SSL options](./mysql.md#use-a-secure-connection-ssl).
