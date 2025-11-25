@@ -717,7 +717,7 @@ class Visualization extends PureComponent<
       hovered = null;
     }
 
-    // disable hover when dowloading chart to image (png export)
+    // disable hover when exporting chart as an image (png download)
     if (isDownloadingToImage) {
       hovered = null;
     }
