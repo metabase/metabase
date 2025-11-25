@@ -122,7 +122,8 @@
                             :else                              (api/check-404 (t2/select-one :model/Collection target_collection_id)))
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         updated-count     (-> (t2/query {:update (t2/table-name :model/Table)
-                                         :set    {:collection_id (:id target-collection)}
+                                         :set    {:collection_id (:id target-collection)
+                                                  :is_published  true}
                                          :where  where})
                               first)]
 
