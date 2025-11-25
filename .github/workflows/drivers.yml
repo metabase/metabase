@@ -920,6 +920,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Snowflake driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
