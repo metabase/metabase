@@ -41,7 +41,7 @@ import {
 import type { SelectedItem } from "../types";
 
 import { AddDataModal } from "./AddDataModal";
-import BookmarkList from "./BookmarkList";
+import { BookmarkList } from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 

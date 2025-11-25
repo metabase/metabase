@@ -29,7 +29,6 @@ import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/util
 import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
@@ -171,12 +170,12 @@ const CollectionContentViewInner = ({
   };
 
   const handleCreateBookmark = () => {
-    createBookmark(collectionId.toString(), "collection");
+    createBookmark({ id: collectionId.toString(), type: "collection" });
     trackCollectionBookmarked();
   };
 
   const handleDeleteBookmark = () => {
-    deleteBookmark(collectionId.toString(), "collection");
+    deleteBookmark({ id: collectionId.toString(), type: "collection" });
   };
 
   const canCreateUpload =
@@ -213,10 +212,9 @@ const CollectionContentViewInner = ({
           canMove={collection.can_write}
           canRestore={collection.can_restore}
           canDelete={collection.can_delete}
-          onUnarchive={async () => {
+          onUnarchive={() => {
             const input = { ...actionId, name: collection.name };
-            await dispatch(Collections.actions.setArchived(input, false));
-            await dispatch(Bookmarks.actions.invalidateLists());
+            return dispatch(Collections.actions.setArchived(input, false));
           }}
           onMove={({ id }) =>
             dispatch(Collections.actions.setCollection(actionId, { id }))

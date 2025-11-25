@@ -14,7 +14,6 @@ import { entityForObject } from "metabase/lib/schema";
 import { ObjectUnionSchema } from "metabase/schema";
 
 import Actions from "./actions";
-import Bookmarks from "./bookmarks";
 import Collections from "./collections";
 import Dashboards from "./dashboards";
 import Pulses from "./pulses";
@@ -170,7 +169,6 @@ export default createEntity({
   actionShouldInvalidateLists(action) {
     return (
       Actions.actionShouldInvalidateLists(action) ||
-      Bookmarks.actionShouldInvalidateLists(action) ||
       Collections.actionShouldInvalidateLists(action) ||
       Dashboards.actionShouldInvalidateLists(action) ||
       Pulses.actionShouldInvalidateLists(action) ||

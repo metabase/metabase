@@ -25,6 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { handleBookmarkCacheInvalidation } from "./bookmark";
 import {
   idTag,
   invalidateTags,
@@ -150,13 +151,27 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}`,
           body,
         }),
-        invalidatesTags: (_, error, { id }) =>
+        invalidatesTags: (_, error, patch) =>
           invalidateTags(error, [
             listTag("dashboard"),
-            idTag("dashboard", id),
+            idTag("dashboard", patch.id),
             tag("parameter-values"),
             listTag("revision"),
           ]),
+        onQueryStarted: async (
+          patch,
+          { dispatch, getState, queryFulfilled },
+        ) => {
+          handleQueryFulfilled(queryFulfilled, () => {
+            handleBookmarkCacheInvalidation({
+              patch,
+              bookmarkType: "dashboard",
+              invalidateOnKeys: ["name", "archived"],
+              dispatch,
+              getState,
+            });
+          });
+        },
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
         query: (id) => ({

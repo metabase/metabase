@@ -11,13 +11,12 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useDeleteBookmarkMutation } from "metabase/api";
 import CollapseSection from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
-import Bookmarks from "metabase/entities/bookmarks";
 import { getIcon } from "metabase/lib/icon";
-import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
@@ -28,16 +27,10 @@ import type { SelectedItem } from "../../types";
 
 import { SidebarBookmarkItem } from "./BookmarkList.styled";
 
-const mapDispatchToProps = {
-  onDeleteBookmark: ({ item_id, type }: Bookmark) =>
-    Bookmarks.actions.delete({ id: item_id, type }),
-};
-
 interface CollectionSidebarBookmarksProps {
   bookmarks: Bookmark[];
   selectedItem?: SelectedItem;
   onSelect: () => void;
-  onDeleteBookmark: (bookmark: Bookmark) => void;
   reorderBookmarks: ({
     newIndex,
     oldIndex,
@@ -56,7 +49,6 @@ interface BookmarkItemProps {
   isSorting: boolean;
   selectedItem?: SelectedItem;
   onSelect: () => void;
-  onDeleteBookmark: (bookmark: Bookmark) => void;
 }
 
 function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
@@ -74,12 +66,22 @@ const BookmarkItem = ({
   isSorting,
   selectedItem,
   onSelect,
-  onDeleteBookmark,
 }: BookmarkItemProps) => {
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
-  const icon = getIcon({ model: bookmark.type, display: bookmark.display });
-  const onRemove = () => onDeleteBookmark(bookmark);
+
+  const bookmarkModel =
+    bookmark.type === "card" && bookmark.card_type === "model"
+      ? "dataset"
+      : bookmark.type;
+  const icon = getIcon({
+    model: bookmarkModel,
+    display: bookmark.display,
+  });
+
+  const [deleteBookmark] = useDeleteBookmarkMutation();
+  const onRemove = () =>
+    deleteBookmark({ id: bookmark.item_id, type: bookmark.type });
 
   const isIrregularCollection =
     bookmark.type === "collection" &&
@@ -112,11 +114,10 @@ const BookmarkItem = ({
   );
 };
 
-const BookmarkList = ({
+export const BookmarkList = ({
   bookmarks,
   selectedItem,
   onSelect,
-  onDeleteBookmark,
   reorderBookmarks,
   onToggle,
   initialState,
@@ -182,7 +183,6 @@ const BookmarkList = ({
                 index={index}
                 selectedItem={selectedItem}
                 onSelect={onSelect}
-                onDeleteBookmark={onDeleteBookmark}
               />
             ))}
           </ul>
@@ -191,6 +191,3 @@ const BookmarkList = ({
     </CollapseSection>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(BookmarkList);

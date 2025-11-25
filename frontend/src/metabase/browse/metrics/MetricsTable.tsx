@@ -21,7 +21,6 @@ import {
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -349,8 +348,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     } else {
@@ -363,9 +360,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-
           trackMetricBookmarked();
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     }

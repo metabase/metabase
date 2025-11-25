@@ -1,10 +1,13 @@
 import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
   useGetCollectionQuery,
+  useListBookmarksQuery,
   useListCollectionsTreeQuery,
+  useReorderBookmarksMutation,
 } from "metabase/api";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
@@ -13,7 +16,7 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import Modal from "metabase/common/components/Modal";
-import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
+import { useToast } from "metabase/common/hooks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
   ROOT_COLLECTION,
@@ -42,13 +45,11 @@ function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
     hasDataAccess: getHasDataAccess(databases),
-    bookmarks: getOrderedBookmarks(state),
   };
 }
 
 const mapDispatchToProps = {
   logout,
-  onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
 interface Props extends MainNavbarProps {
@@ -71,7 +72,6 @@ interface DatabaseProps {
 }
 
 function MainNavbarContainer({
-  bookmarks,
   isAdmin,
   selectedItems,
   isOpen,
@@ -88,6 +88,7 @@ function MainNavbarContainer({
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+  const [sendToast] = useToast();
 
   const {
     data: trashCollection,
@@ -136,6 +137,8 @@ function MainNavbarContainer({
     }
   }, [rootCollection, trashCollection, collections, currentUser]);
 
+  const { data: bookmarks = [] } = useListBookmarksQuery();
+  const [reorderBookmarksMutation] = useReorderBookmarksMutation();
   const reorderBookmarks = useCallback(
     async ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {
       const newBookmarks = [...bookmarks];
@@ -144,9 +147,23 @@ function MainNavbarContainer({
       newBookmarks.splice(oldIndex, 1);
       newBookmarks.splice(newIndex, 0, movedBookmark);
 
-      await onReorderBookmarks(newBookmarks);
+      try {
+        await reorderBookmarksMutation({
+          orderings: newBookmarks.map(({ type, item_id }) => ({
+            type,
+            item_id,
+          })),
+        });
+      } catch (err) {
+        console.error(err);
+        sendToast({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Something went wrong`,
+        });
+      }
     },
-    [bookmarks, onReorderBookmarks],
+    [bookmarks, reorderBookmarksMutation, sendToast],
   );
 
   const onCreateNewCollection = useCallback(() => {
@@ -203,9 +220,6 @@ function MainNavbarContainer({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Bookmarks.loadList({
-    loadingAndErrorWrapper: false,
-  }),
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",

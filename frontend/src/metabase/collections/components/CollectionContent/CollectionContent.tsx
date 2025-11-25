@@ -1,24 +1,23 @@
 import { useCallback } from "react";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+  useListBookmarksQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
-  useBookmarkListQuery,
   useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import Bookmark from "metabase/entities/bookmarks";
 import Databases from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import type {
-  BookmarkId,
-  BookmarkType,
-  CollectionId,
-} from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
 
@@ -27,7 +26,7 @@ export function CollectionContent({
 }: {
   collectionId: CollectionId;
 }) {
-  const { data: bookmarks, error: bookmarksError } = useBookmarkListQuery();
+  const { data: bookmarks, error: bookmarksError } = useListBookmarksQuery();
   const { data: databases, error: databasesError } = useDatabaseListQuery();
 
   const { data: collections, error: collectionsError } =
@@ -59,10 +58,8 @@ export function CollectionContent({
 
   const dispatch = useDispatch();
 
-  const createBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmark.actions.create({ id, type }));
-  const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmark.actions.delete({ id, type }));
+  const [createBookmark] = useCreateBookmarkMutation();
+  const [deleteBookmark] = useDeleteBookmarkMutation();
 
   const uploadFile = useCallback(
     ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>

@@ -1,3 +1,5 @@
+import { compact } from "underscore";
+
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
@@ -22,6 +24,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { handleBookmarkCacheInvalidation } from "./bookmark";
 import {
   idTag,
   invalidateTags,
@@ -157,23 +160,33 @@ export const cardApi = Api.injectEndpoints({
               : ""),
           body,
         }),
-        invalidatesTags: (_, error, payload) => {
-          const tags = [
-            listTag("card"),
-            idTag("card", payload.id),
-            idTag("table", `card__${payload.id}`),
-            listTag("revision"),
-          ];
-
-          if (payload.dashboard_id != null) {
-            tags.push(idTag("dashboard", payload.dashboard_id));
-          }
-
-          if (payload.collection_id != null) {
-            tags.push(idTag("collection", payload.collection_id));
-          }
-
-          return invalidateTags(error, tags);
+        invalidatesTags: (_, error, patch) =>
+          invalidateTags(
+            error,
+            compact([
+              listTag("card"),
+              idTag("card", patch.id),
+              idTag("table", `card__${patch.id}`),
+              listTag("revision"),
+              patch.dashboard_id != null &&
+                idTag("dashboard", patch.dashboard_id),
+              patch.collection_id != null &&
+                idTag("collection", patch.collection_id),
+            ]),
+          ),
+        onQueryStarted: async (
+          patch,
+          { dispatch, getState, queryFulfilled },
+        ) => {
+          handleQueryFulfilled(queryFulfilled, () => {
+            handleBookmarkCacheInvalidation({
+              patch,
+              bookmarkType: "card",
+              invalidateOnKeys: ["name", "type"],
+              dispatch,
+              getState,
+            });
+          });
         },
       }),
       deleteCard: builder.mutation<void, CardId>({

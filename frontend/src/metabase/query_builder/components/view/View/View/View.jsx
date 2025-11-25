@@ -12,7 +12,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import Toaster from "metabase/common/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import {
@@ -274,10 +273,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
 
 const mapDispatchToProps = (dispatch) => ({
   onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
-  onUnarchive: async (question) => {
-    await dispatch(setArchivedQuestion(question, false));
-    await dispatch(Bookmarks.actions.invalidateLists());
-  },
+  onUnarchive: (question) => dispatch(setArchivedQuestion(question, false)),
   onMove: (question, newCollection) =>
     dispatch(
       Questions.actions.setCollection({ id: question.id() }, newCollection, {

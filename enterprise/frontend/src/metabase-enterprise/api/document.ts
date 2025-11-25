@@ -1,3 +1,5 @@
+import { handleBookmarkCacheInvalidation } from "metabase/api";
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import type {
   CreateDocumentRequest,
   DeleteDocumentRequest,
@@ -16,7 +18,7 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/document/${id}`,
       }),
-      providesTags: (result, error, { id }) =>
+      providesTags: (_, error, { id }) =>
         !error ? [idTag("document", id)] : [],
     }),
     createDocument: builder.mutation<Document, CreateDocumentRequest>({
@@ -45,6 +47,17 @@ export const documentApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
+      onQueryStarted: async (patch, { dispatch, getState, queryFulfilled }) => {
+        handleQueryFulfilled(queryFulfilled, () => {
+          handleBookmarkCacheInvalidation({
+            patch,
+            bookmarkType: "document",
+            invalidateOnKeys: ["name"],
+            dispatch,
+            getState,
+          });
+        });
+      },
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({

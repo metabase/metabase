@@ -15,6 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { handleBookmarkCacheInvalidation } from "./bookmark";
 import {
   idTag,
   invalidateTags,
@@ -23,6 +24,7 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -64,7 +66,7 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/items`,
         params,
       }),
-      providesTags: (response, error, { models, id }) => [
+      providesTags: (response, _, { models, id }) => [
         ...provideCollectionItemListTags(response?.data ?? [], models),
         { type: "collection", id: `${id}-items` },
       ],
@@ -100,12 +102,22 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, payload) => {
-        return invalidateTags(error, [
+      invalidatesTags: (_, error, patch) =>
+        invalidateTags(error, [
           listTag("collection"),
-          idTag("collection", payload.id),
-          idTag("collection", payload.parent_id ?? "root"),
-        ]);
+          idTag("collection", patch.id),
+          idTag("collection", patch.parent_id ?? "root"),
+        ]),
+      onQueryStarted: async (patch, { dispatch, getState, queryFulfilled }) => {
+        handleQueryFulfilled(queryFulfilled, () => {
+          handleBookmarkCacheInvalidation({
+            patch,
+            bookmarkType: "collection",
+            invalidateOnKeys: ["name", "authority_level"],
+            dispatch,
+            getState,
+          });
+        });
       },
     }),
     deleteCollection: builder.mutation<void, DeleteCollectionRequest>({

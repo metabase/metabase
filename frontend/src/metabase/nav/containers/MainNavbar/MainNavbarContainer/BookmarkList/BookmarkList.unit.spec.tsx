@@ -4,7 +4,7 @@ import { times } from "underscore";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockBookmark } from "metabase-types/api/mocks";
 
-import BookmarkList from "./BookmarkList";
+import { BookmarkList } from "./BookmarkList";
 
 const mockProps: ComponentProps<typeof BookmarkList> = {
   bookmarks: [],
