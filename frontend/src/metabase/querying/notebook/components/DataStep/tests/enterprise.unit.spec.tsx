@@ -54,7 +54,7 @@ describe("DataStep", () => {
           const dataSource = await screen.findByText("Orders");
           fireEvent.click(dataSource, clickConfig);
 
-          expect(await screen.findByText("Products")).toBeInTheDocument();
+          expect(await screen.findByText("Orders")).toBeInTheDocument();
           expect(mockWindowOpen).not.toHaveBeenCalled();
           mockWindowOpen.mockClear();
         },

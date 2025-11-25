@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import {
   isInstanceAnalyticsCollection,
+  isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import Collections, {
@@ -41,6 +42,7 @@ export const collectionsQuery = {
   tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
+  "include-library": true,
 };
 
 export const getIsDirty = createSelector(
@@ -87,7 +89,16 @@ const getCollections = (state: State) =>
   ).filter(nonPersonalOrArchivedCollection);
 
 const getCollectionsTree = createSelector([getCollections], (collections) => {
-  return [getRootCollectionTreeItem(), ...buildCollectionTree(collections)];
+  const libraryCollections = collections.filter(isLibraryCollection);
+  const nonLibraryCollections = collections.filter(
+    (collection: Collection) => !isLibraryCollection(collection),
+  );
+
+  return [
+    ...buildCollectionTree(libraryCollections),
+    getRootCollectionTreeItem(),
+    ...buildCollectionTree(nonLibraryCollections),
+  ];
 });
 
 export function buildCollectionTree(

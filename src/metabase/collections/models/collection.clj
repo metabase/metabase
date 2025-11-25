@@ -18,7 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -63,6 +63,22 @@
 (def ^:constant trash-collection-type
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
+
+(def ^:constant remote-synced-collection-type
+  "The value of the `:type` field for remote-synced collections."
+  "remote-synced")
+
+(def ^:constant library-collection-type
+  "The value of the `:type` field for library collections."
+  "library")
+
+(def ^:constant library-models-collection-type
+  "The value of the `:type` field for collections that only allow models."
+  "library-models")
+
+(def ^:constant library-metrics-collection-type
+  "The value of the `:type` field for collections that only allow models."
+  "library-metrics")
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -112,8 +128,23 @@
     (map? collection-or-id) (:is_remote_synced collection-or-id)
     :else (t2/select-one-fn :is_remote_synced :model/Collection :id (u/the-id collection-or-id))))
 
+(defn- is-library?
+  "Is this the Library collection?"
+  [collection]
+  (= (:type collection) library-collection-type))
+
+(defn- is-library-models-collection?
+  "Is this the library-models (named 'Data') collection?"
+  [collection]
+  (= (:type collection) library-models-collection-type))
+
+(defn- is-library-metrics-collection?
+  "Is this the Metrics collection?"
+  [collection]
+  (= (:type collection) library-metrics-collection-type))
+
 (defn remote-synced-collection
-  "Get the remote-synced collection, if it exists."
+  "Get the remote-synced collection if it exists."
   []
   (t2/select-one :model/Collection :is_remote_synced true :location "/"))
 
@@ -134,6 +165,31 @@
   (binding [*clearing-remote-sync* true]
     (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false})))
 
+(defn library-collection
+  "Get the 'library' collection, if it exists."
+  []
+  (t2/select-one :model/Collection :type library-collection-type))
+
+(defn create-library-collection!
+  "Create the Library collection. Returns Created collection. Throws if it already exists."
+  []
+  (when-not (nil? (library-collection))
+    (throw (ex-info "Library already exists" {})))
+  (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                                        :type     library-collection-type
+                                                                        :location "/"})
+        base-location (str "/" (:id library) "/")
+        models        (t2/insert-returning-instance! :model/Collection {:name     "Data"
+                                                                        :type     library-models-collection-type
+                                                                        :location base-location})
+        metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
+                                                                        :type     library-metrics-collection-type
+                                                                        :location base-location})]
+    (doseq [col [library models metrics]]
+      (t2/delete! :model/Permissions :collection_id (:id col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col))
+    library))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
@@ -144,16 +200,19 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
-(defn maybe-localize-trash-name
-  "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
-  `define-after-select` in all circumstances, e.g. when searching or listing collection items (where we do a direct DB
-  query without `:model/Collection`)."
+(defn maybe-localize-system-collection-name
+  "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
+  or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))))
+    (is-trash? collection) (assoc :name (tru "Trash"))
+    (is-library? collection) (assoc :name (tru "Library"))
+    (is-library-models-collection? collection) (assoc :name (tru "Data"))
+    (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
-  (maybe-localize-trash-name collection))
+  (maybe-localize-system-collection-name collection))
 
 (doto :model/Collection
   (derive :metabase/model)
@@ -325,6 +384,18 @@
                     (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+
+(defenterprise check-allowed-content
+  "Checks contents of a collection before saving it. The OSS implementation is a no-op."
+  metabase-enterprise.library.validation
+  [_model-type _collection-id]
+  true)
+
+(defenterprise check-library-update
+  "Checks that a collection of type `:library` only contains allowed changes."
+  metabase-enterprise.library.validation
+  [_collection]
+  true)
 
 ;; This function is defined later after children-location is available
 
@@ -1458,6 +1529,7 @@
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-remote-synced-parent collection)
+  (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   ;; Inherit is_remote_synced from parent if not explicitly set
   (let [parent-is-remote-synced? (when-let [parent-id (and location (location-path->parent-id location))]
                                    (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id))]
@@ -1640,6 +1712,10 @@
     (when-not *clearing-remote-sync*
       (let [merged-collection (merge collection-before-updates collection-updates)]
         (assert-valid-remote-synced-parent merged-collection)))
+    ;; (3.6) Check that the parent collection allows this collection to be there
+    (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
+    ;; (3.7) Check if it's a semantic-library collection that can't be updated
+    (check-library-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
@@ -2101,3 +2177,11 @@
                                              [:= :bookmark.collection_id :this.id]
                                              ;; a magical alias, or perhaps this clause can be implicit
                                              [:= :bookmark.user_id :current_user/id]]]})
+
+(defn is-library-collection?
+  "Return true if the given collection ID corresponds to a collection in the library."
+  [collection-id]
+  (when collection-id
+    (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
+                                                                        library-models-collection-type
+                                                                        library-metrics-collection-type]]))))

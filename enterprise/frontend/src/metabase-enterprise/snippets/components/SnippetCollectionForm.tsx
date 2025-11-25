@@ -137,7 +137,6 @@ function SnippetCollectionForm({
             name="name"
             title={t`Give your folder a name`}
             placeholder={t`Something short but sweet`}
-            autoFocus
           />
           <FormTextArea
             name="description"

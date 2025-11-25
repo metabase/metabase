@@ -10,6 +10,7 @@ import {
   getDownloadWidgetMessageOverride,
 } from "./query-downloads";
 import {
+  canAccessDataModel,
   dataModelPermissionAllowedPathGetter,
   databaseManagementPermissionAllowedPathGetter,
   getDataColumns,
@@ -20,6 +21,7 @@ import {
  */
 export function initializePlugin() {
   if (hasPremiumFeature("advanced_permissions")) {
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel = canAccessDataModel;
     PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(
       dataModelPermissionAllowedPathGetter,
     );
