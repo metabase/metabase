@@ -61,9 +61,11 @@ describe("DashboardSubscriptionsSidebar", () => {
       slack: false,
     },
   ])("Embedding SDK", ({ slack }) => {
-    const whenMessage = slack ? "Slack is set up" : "Slack is not set up";
+    const testScenarioCondition = slack
+      ? "Slack is set up"
+      : "Slack is not set up";
 
-    it(`should not show subscription options when ${whenMessage}`, async () => {
+    it(`should not show subscription options when ${testScenarioCondition}`, async () => {
       setup({ isEmbeddingSdk: true, email: true, slack });
 
       expect(
@@ -73,7 +75,7 @@ describe("DashboardSubscriptionsSidebar", () => {
 
     // We don't test `email: false` because this sidebar is only accessible when email is already set up
 
-    it(`should not show email warning message when ${whenMessage}`, async () => {
+    it(`should not show email warning message when ${testScenarioCondition}`, async () => {
       setup({ isEmbeddingSdk: true, email: true, slack });
 
       expect(
