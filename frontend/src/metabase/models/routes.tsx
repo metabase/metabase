@@ -5,7 +5,6 @@ import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/Mode
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
 
-Intl.Collator("en");
 export const getRoutes = () => (
   <Route path="/model/:slug/detail">
     <Route path="actions" component={ModelActions}>

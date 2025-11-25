@@ -365,3 +365,57 @@
             (is (= #{table-id-1 table-id-2 table-id-3}
                    (fetch-visible-ids user-info permission-map :id))
                 "Clause should filter correctly when requiring :blocked level")))))))
+
+(deftest prevent-metabase-transform-data-source-change-test
+  (testing "Cannot change data_source from metabase-transform"
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
+      (testing "to another value"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot change data_source from metabase-transform"
+             (t2/update! :model/Table table-id {:data_source :transform}))))
+      (testing "to nil"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot change data_source from metabase-transform"
+             (t2/update! :model/Table table-id {:data_source nil}))))))
+
+  (testing "Cannot change data_source to metabase-transform"
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
+      (testing "from another value"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot set data_source to metabase-transform"
+             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+      (testing "but can change to other non-metabase-transform values"
+        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
+      (testing "can also change it to nil"
+        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
+        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
+
+(deftest published-as-model-test
+  (testing "hydrating :published_as_model"
+    (mt/with-temp [:model/Table {t1 :id :as table1} {}
+                   :model/Table {t2 :id :as table2} {}
+                   :model/Card  {_c1 :id} {:type :model :published_table_id t1}
+                   :model/Card  {_c2 :id} {:type :model :published_table_id t1 :archived true}
+                   :model/Card  {_c3 :id} {:type :model :published_table_id t1}
+                   :model/Card  {_c4 :id} {:type :model :published_table_id t2 :archived_directly true}
+                   :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
+      (is (= {t1 true, t2 false}
+             (->> (t2/hydrate [table1 table2] :published_as_model)
+                  (u/index-by :id :published_as_model)))))))
+
+(deftest published-models-test
+  (testing "hydrating :published_models"
+    (mt/with-temp [:model/Table {t1 :id :as table1} {}
+                   :model/Table {t2 :id :as table2} {}
+                   :model/Card  {c1 :id} {:type :model :published_table_id t1}
+                   :model/Card  {_c2 :id} {:type :model :published_table_id t1 :archived true}
+                   :model/Card  {c3 :id} {:type :model :published_table_id t1}
+                   :model/Card  {_c4 :id} {:type :model :published_table_id t2 :archived_directly true}
+                   :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
+      (is (= {t1 [c1 c3], t2 []}
+             (->> (t2/hydrate [table1 table2] :published_models)
+                  (u/index-by :id (comp (partial mapv :id) :published_models))))))))
