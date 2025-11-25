@@ -60,7 +60,7 @@ function setup({
     }),
   });
 
-  return renderWithProviders(<ProfileLink onLogout={jest.fn()} />, {
+  return renderWithProviders(<ProfileLink />, {
     storeInitialState: {
       admin,
       settings,

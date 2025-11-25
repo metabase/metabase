@@ -2,11 +2,11 @@ import { msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import type {
-  CardCreatorInfo,
   DependencyEntry,
   DependencyNode,
   Field,
   LastEditInfo,
+  UserInfo,
 } from "metabase-types/api";
 
 import type { NodeTableInfo } from "./types";
@@ -25,7 +25,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
   }
 }
 
-export function getNodeCreatedBy(node: DependencyNode): CardCreatorInfo | null {
+export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
   switch (node.type) {
     case "card":
     case "dashboard":

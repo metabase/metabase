@@ -1,7 +1,6 @@
 import { withRouter } from "react-router";
 import _ from "underscore";
 
-import { logout } from "metabase/auth/actions";
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_DOCUMENTS, PLUGIN_METABOT } from "metabase/plugins";
@@ -45,7 +44,6 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
 const mapDispatchToProps = {
   onToggleNavbar: toggleNavbar,
   onCloseNavbar: closeNavbar,
-  onLogout: logout,
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

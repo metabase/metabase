@@ -398,13 +398,13 @@ describe("issue 41785, issue 46756", () => {
   it("does not break the question when removing column with the same mapping as another column (metabase#41785) (metabase#46756)", () => {
     // it's important to create the model through UI to reproduce this issue
     H.startNewModel();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.popover().findByText("ID").click();
@@ -465,8 +465,8 @@ describe("issue 40635", () => {
 
   it("correctly displays question's and nested model's column names (metabase#40635)", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -475,8 +475,8 @@ describe("issue 40635", () => {
 
     H.join();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
@@ -490,8 +490,8 @@ describe("issue 40635", () => {
 
     H.join();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
@@ -672,8 +672,8 @@ describe("issue 25113", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("People Model").click();
     });
     H.popover().findByText("ID").click();
@@ -879,8 +879,8 @@ describe("issue 33844", () => {
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("run-button").click();
@@ -1070,11 +1070,11 @@ describe("issue 34517", () => {
     cy.location("pathname").should("eq", "/model/query");
 
     // wait for the model editor to be fully loaded
-    H.entityPickerModal().should("exist");
+    H.miniPicker().should("exist");
     cy.reload();
 
     // wait for the model editor to be fully loaded
-    H.entityPickerModal().should("exist");
+    H.miniPicker().should("exist");
     cy.location("pathname").should("eq", "/model/query");
   });
 });
@@ -1188,7 +1188,6 @@ describe("issue 34514", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
     cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
     // It's important to navigate via UI so that there are
@@ -1200,9 +1199,8 @@ describe("issue 34514", () => {
   });
 
   it("should not make network request with invalid query (metabase#34514)", () => {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.wait("@fetchTables");
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -1215,9 +1213,8 @@ describe("issue 34514", () => {
   });
 
   it("should allow browser history navigation between tabs (metabase#34514, metabase#45787)", () => {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.wait("@fetchTables");
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -1253,13 +1250,12 @@ describe("issue 34514", () => {
   }
 
   function assertBackToEmptyState() {
-    H.entityPickerModal().should("be.visible");
-    H.entityPickerModal().button("Close").click();
+    H.miniPicker().should("be.visible");
 
     cy.findByTestId("editor-tabs-columns").should("be.disabled");
     cy.button("Save").should("be.disabled");
     H.getNotebookStep("data")
-      .findByText("Pick your starting data")
+      .findByPlaceholderText("Search for tables and more...")
       .should("be.visible");
     H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
@@ -1329,13 +1325,13 @@ describe("issue 47988", () => {
     H.createQuestion(model1Details);
     H.createQuestion(model2Details);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("M1").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("M2").click();
     });
     H.visualize();
@@ -1696,8 +1692,8 @@ describe("issue 57359", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.wrap([1, 2]).each(() => {
       H.join();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
     });
@@ -1783,7 +1779,8 @@ describe("Issue 30712", () => {
 
     H.startNewModel();
 
-    H.entityPickerModal().findByText("Orders").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Orders").click();
     H.join();
     H.joinTable("Products");
 
@@ -1961,13 +1958,13 @@ describe("issue 50915", () => {
     cy.log("create a model via the UI");
     cy.visit("/model/new");
     H.main().findByText("Use the notebook editor").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("People").click();
     });
     cy.findByTestId("dataset-edit-bar").button("Save").click();
