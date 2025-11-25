@@ -87,17 +87,10 @@
     (let [mp (mt/metadata-provider)
           model-query (lib/query mp (lib.metadata/card mp model-id))
           card-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
-          ;; Field from the model itself (orders table) - uses c<card-id> syntax
+          ;; All fields use c<card-id> syntax with indices from model's visible-columns
           quantity-id (visible-field-id model-query card-field-id-prefix "Quantity")
-          ;; Fields from implicitly joined tables - use t<table-id> syntax
-          people-id (mt/id :people)
-          people-query (table-query mp people-id)
-          people-field-id-prefix (metabot-v3.tools.u/table-field-id-prefix people-id)
-          state-id (visible-field-id people-query people-field-id-prefix "State")
-          products-id (mt/id :products)
-          products-query (table-query mp products-id)
-          products-field-id-prefix (metabot-v3.tools.u/table-field-id-prefix products-id)
-          category-id (visible-field-id products-query products-field-id-prefix "Category")]
+          state-id (visible-field-id model-query card-field-id-prefix "State")
+          category-id (visible-field-id model-query card-field-id-prefix "Category")]
       (testing "No read permission results in an error."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                               (metabot-v3.tools.field-stats/field-values
@@ -108,11 +101,9 @@
                (=? {:structured-output output}
                    (metabot-v3.tools.field-stats/field-values
                     {:entity-type "model", :entity-id model-id, :field-id field-id, :limit 5}))
-            ;; Field from model itself (orders table) using c<card-id> syntax
             quantity-id {:statistics {:distinct-count 62
                                       :percent-null   0.0}
                          :values     [0 1 2 3 4]}
-            ;; Fields from implicitly joined tables using t<table-id> syntax
             state-id    {:statistics {:distinct-count 49
                                       :percent-null   0.0
                                       :percent-json   0.0
@@ -140,13 +131,9 @@
     (let [mp (mt/metadata-provider)
           metric-query (lib/query mp (lib.metadata/metric mp metric-id))
           card-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
-          ;; Field from the metric itself (orders table) - uses c<card-id> syntax
+          ;; All fields use c<card-id> syntax with indices from metric's filterable-columns
           quantity-id (filterable-field-id metric-query card-field-id-prefix "Quantity")
-          ;; Birth Date is from implicitly joined people table - use t<table-id> syntax
-          people-id (mt/id :people)
-          people-query (table-query mp people-id)
-          people-field-id-prefix (metabot-v3.tools.u/table-field-id-prefix people-id)
-          birth-date-id (filterable-field-id people-query people-field-id-prefix "Birth Date")]
+          birth-date-id (filterable-field-id metric-query card-field-id-prefix "Birth Date")]
       (testing "No read permission results in an error."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                               (metabot-v3.tools.field-stats/field-values
@@ -157,11 +144,9 @@
                (=? {:structured-output output}
                    (metabot-v3.tools.field-stats/field-values
                     {:entity-type "metric", :entity-id metric-id, :field-id field-id, :limit 5}))
-            ;; Field from metric itself (orders table) using c<card-id> syntax
             quantity-id   {:statistics {:distinct-count 62
                                         :percent-null   0.0}
                            :values     [0 1 2 3 4]}
-            ;; Field from implicitly joined table using t<table-id> syntax
             birth-date-id {:statistics
                            {:distinct-count 2308
                             :percent-null   0.0

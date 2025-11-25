@@ -214,19 +214,19 @@
           (is (= 1 (get-in result [:column :table-id])))
           (is (= :number (get-in result [:column :type])))))
 
-      (testing "resolves table field IDs with filtering by table-id"
-        (let [item {:field-id "t2-0" :operation "equals"}
+      (testing "resolves field IDs using flat index into columns vector"
+        (let [item {:field-id "t1-3" :operation "equals"}
               result (metabot-v3.tools.util/resolve-column item columns)]
           (is (= "USER_ID" (get-in result [:column :name])))
           (is (= 2 (get-in result [:column :table-id])))))
 
-      (testing "resolves card field IDs without filtering by table-id"
+      (testing "resolves card field IDs using flat index"
         (let [item {:field-id "c125-1" :operation "equals"}
               result (metabot-v3.tools.util/resolve-column item columns)]
           (is (= "NAME" (get-in result [:column :name])))
           (is (= 1 (get-in result [:column :table-id])))))
 
-      (testing "resolves query field IDs"
+      (testing "resolves query field IDs using flat index"
         (let [item {:field-id "qabc123-2" :operation "equals"}
               result (metabot-v3.tools.util/resolve-column item columns)]
           (is (= "EMAIL" (get-in result [:column :name])))))))

@@ -819,9 +819,14 @@
                                                        :verified true
                                                        :fields (add-field-ids (format "c%d-%%d" model-id) expected-core-fields)
                                                        :related_tables
-                                                       (map #(update % :fields
-                                                                     (partial add-field-ids (format "t%d-%%d" (:id %))))
-                                                            expected-related-tables)
+                                                       [(-> (first expected-related-tables)
+                                                            (update :fields (fn [fields]
+                                                                              (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-id (+ 9 %1)))
+                                                                                           fields))))
+                                                        (-> (second expected-related-tables)
+                                                            (update :fields (fn [fields]
+                                                                              (map-indexed #(assoc %2 :field_id (format "c%d-%d" model-id (+ 22 %1)))
+                                                                                           fields))))]
                                                        :metrics [(assoc metric-data
                                                                         :id metric-id
                                                                         :type "metric"
@@ -858,11 +863,18 @@
                                                      (add-field-ids (format "c%d-%%d" model-id) expected-core-fields
                                                                     #(assoc % :field_values missing-value))
                                                      :related_tables
-                                                     (map (fn [table]
-                                                            (update table :fields
-                                                                    #(add-field-ids (format "t%d-%%d" (:id table)) %
-                                                                                    (fn [f] (assoc f :field_values missing-value)))))
-                                                          expected-related-tables)
+                                                     [(-> (first expected-related-tables)
+                                                          (update :fields (fn [fields]
+                                                                            (map-indexed #(assoc %2
+                                                                                                 :field_id (format "c%d-%d" model-id (+ 9 %1))
+                                                                                                 :field_values missing-value)
+                                                                                         fields))))
+                                                      (-> (second expected-related-tables)
+                                                          (update :fields (fn [fields]
+                                                                            (map-indexed #(assoc %2
+                                                                                                 :field_id (format "c%d-%d" model-id (+ 22 %1))
+                                                                                                 :field_values missing-value)
+                                                                                         fields))))]
                                                      :metrics [(assoc metric-data
                                                                       :id metric-id
                                                                       :type "metric"
