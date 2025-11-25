@@ -230,8 +230,10 @@
 (defmethod driver/connection-properties :mysql
   [_]
   (->>
-   [(assoc driver.common/default-host-details :group-id "host-and-port")
-    (assoc driver.common/default-port-details :placeholder 3306 :group-id "host-and-port")
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 3306)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options #{:aws-iam})
@@ -1198,5 +1200,4 @@
 
 (defmethod driver/extra-info :mysql
   [_driver]
-  {:field-groups [{:id "host-and-port"
-                   :container-style "host-and-port-section"}]})
+  nil)

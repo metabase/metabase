@@ -9,7 +9,6 @@ import type {
 import { DatabaseDetailField } from "../DatabaseDetailField";
 
 import { getContainer } from "./container-styles";
-import { GroupedFields, groupFields } from "./field-grouping";
 
 interface DatabaseFormBodyDetailsProps {
   fields: EngineFieldOrGroup[];
@@ -35,22 +34,6 @@ export function DatabaseFormBodyDetails({
   engineKey,
   engine,
 }: DatabaseFormBodyDetailsProps) {
-  const fieldGroups = engine?.["extra-info"]?.["field-groups"] ?? [];
-
-  // Check if fields contain nested groups (new format)
-  const hasNestedGroups = fields.some(isEngineFieldGroup);
-
-  // If using new nested group format, skip the old grouping logic
-  const mappedFields: Array<EngineFieldOrGroup | GroupedFields> =
-    hasNestedGroups
-      ? fields
-      : fieldGroups.reduce<Array<EngineField | GroupedFields>>(
-          (acc, fieldGroupConfig) => {
-            return groupFields({ fields: acc, fieldGroupConfig });
-          },
-          fields as EngineField[],
-        );
-
   function renderField(engineField: EngineField) {
     return (
       <DatabaseDetailField
@@ -64,26 +47,13 @@ export function DatabaseFormBodyDetails({
     );
   }
 
-  return mappedFields.map((field) => {
-    // Handle old GroupedFields format (backwards compatibility) - check first to avoid type issues
-    if (field instanceof GroupedFields) {
-      const Container = getContainer(field.fieldGroupConfig["container-style"]);
-      return (
-        <Container key={field.fieldGroupConfig.id}>
-          {field.fields.map(renderField)}
-        </Container>
-      );
-    }
-
-    // Handle new nested group format
+  return fields.map((field) => {
     if (isEngineFieldGroup(field)) {
       const Container = getContainer(field["container-style"]);
-      return (
-        <Container key={field.id}>{field.fields.map(renderField)}</Container>
-      );
+      const key = field.fields.map((field) => field.name).join("-");
+      return <Container key={key}>{field.fields.map(renderField)}</Container>;
     }
 
-    // Handle regular ungrouped fields
     return renderField(field);
   });
 }
