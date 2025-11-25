@@ -107,9 +107,10 @@ jobs:
           yarn cypress verify
         shell: bash
 
+      # Run Prettier to populate its cache (stored in node_modules/.cache/prettier)
+      # so it gets saved as part of the node_modules cache below
       - name: Run Prettier to populate cache
         run: yarn lint-prettier-pure
-        continue-on-error: true
 
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
@@ -130,12 +131,9 @@ jobs:
         run: yarn build-pure:cljs
 
       - name: Run ESLint to populate cache
-        id: eslint-run
         run: yarn lint-eslint-pure
-        continue-on-error: true
 
       - name: Update eslint cache
-        if: steps.eslint-run.outcome == 'success'
         uses: ./.github/actions/update-cache
         with:
           path: ${{ github.workspace}}/.eslintcache
