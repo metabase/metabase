@@ -115,7 +115,12 @@ function FormCollectionPicker({
       hasRecents: type !== "snippet-collections",
       savingModel,
     }),
-    [filterPersonalCollections, type, showCreateNewCollectionOption, savingModel],
+    [
+      filterPersonalCollections,
+      type,
+      showCreateNewCollectionOption,
+      savingModel,
+    ],
   );
 
   const handleChange = useCallback(

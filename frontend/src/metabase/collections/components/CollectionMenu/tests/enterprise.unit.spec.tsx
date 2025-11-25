@@ -32,7 +32,7 @@ describe("CollectionMenu", () => {
     setupEnterprise({
       collection: createMockCollection({
         can_write: true,
-        type: "shared-tenant-collection",
+        namespace: "shared-tenant-collection",
       }),
       isAdmin: true,
       tokenFeatures: createMockTokenFeatures({ tenants: true }),

@@ -43,45 +43,47 @@ export function setupCollectionsEndpoints({
   fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection, {
     name: `collection-${trashCollection.id}`,
   });
+  fetchMock.get("path:/api/collection", collections, {
+    name: "collection-list",
+  });
+
+  // Simple fallback handlers (will be overridden by the smart handler below)
   fetchMock.get(
     "path:/api/collection/tree",
     collections.filter((collection) => !collection.archived),
     { name: "collection-tree-exclude-archived" },
   );
   fetchMock.get("path:/api/collection/tree", collections, {
-    name: "collection-tree",
-  });
-  fetchMock.get("path:/api/collection", collections, {
-    name: "collection-list",
+    name: "collection-tree-all",
   });
 
-  fetchMock.get(
-    {
-      url: "path:/api/collection/tree",
-      overwriteRoutes: false,
-      name: "collection_tree",
-    },
-    (uri) => {
-      const url = new URL(uri);
-      const excludeArchived =
-        url.searchParams.get("exclude-archived") === "true";
-      const includeTenantCollections =
-        url.searchParams.get("include-tenant-collections") === "true";
+  // Smart collection tree endpoint with query parameter support
+  // Uses overwriteRoutes to override the simple handlers above
+  fetchMock.get("path:/api/collection/tree", (uri: string) => {
+    const url = new URL(uri, "http://localhost");
+    const excludeArchived = url.searchParams.get("exclude-archived") === "true";
+    const includeTenantCollections =
+      url.searchParams.get("include-tenant-collections") === "true";
 
-      return collections.filter((collection) => {
-        if (excludeArchived && collection.archived) {
-          return false;
-        }
-        if (
-          includeTenantCollections &&
-          collection.type !== "shared-tenant-collection"
-        ) {
-          return false;
-        }
-        return true;
-      });
-    },
-  );
+    return collections.filter((collection) => {
+      // Filter out archived collections if requested
+      if (excludeArchived && collection.archived) {
+        return false;
+      }
+
+      // Filter by tenant collection status
+      const isTenantCollection =
+        collection.namespace === "shared-tenant-collection";
+
+      if (includeTenantCollections) {
+        // When include-tenant-collections=true, return ONLY tenant collections
+        return isTenantCollection;
+      } else {
+        // When include-tenant-collections=false/undefined, return ONLY non-tenant collections
+        return !isTenantCollection;
+      }
+    });
+  });
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
@@ -119,15 +121,15 @@ export function setupCollectionVirtualSchemaEndpoints(
 }
 
 function handleCollectionItemsResponse({
-  uri,
+  call,
   collectionItems,
   modelsParam,
 }: {
-  uri: string;
+  call: { url: string };
   collectionItems: CollectionItem[];
   modelsParam?: string[];
 }) {
-  const url = new URL(uri);
+  const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
   const matchedItems = collectionItems.filter(({ model }) =>
     models.includes(model),
@@ -154,8 +156,11 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, (uri) =>
-    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items`,
+    (call) =>
+      handleCollectionItemsResponse({ call, collectionItems, modelsParam }),
+    { name: `collection-${collection.id}-items` },
   );
 }
 
@@ -166,8 +171,21 @@ export function setupTenantRootCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/ee/tenant/collection/root/items`, (uri) =>
-    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
+  fetchMock.get(
+    `path:/api/collection/root/items`,
+    (call, request) => {
+      // Check if this is a tenant collection request
+      if (request.url.includes("namespace=shared-tenant-collection")) {
+        return handleCollectionItemsResponse({
+          call: { url: request.url },
+          collectionItems,
+          modelsParam,
+        });
+      }
+      // Otherwise let it fall through to other mocks
+      return 404;
+    },
+    { name: "tenant-root-collection-items" },
   );
 }
 
