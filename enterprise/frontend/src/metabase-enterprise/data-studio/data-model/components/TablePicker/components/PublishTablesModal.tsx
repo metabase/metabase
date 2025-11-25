@@ -25,7 +25,7 @@ interface Props {
   onSuccess?: () => void;
 }
 
-export function PublishModelsModal({
+export function PublishTablesModal({
   tables = new Set(),
   schemas = new Set(),
   databases = new Set(),
@@ -34,10 +34,10 @@ export function PublishModelsModal({
   onSuccess,
 }: Props) {
   const dispatch = useDispatch();
-  const [seenPublishModelsInfo, { ack: ackSeenPublishModelsInfo }] =
-    useUserAcknowledgement("seen-publish-models-info");
+  const [seenPublishTablesInfo, { ack: ackSeenPublishTablesInfo }] =
+    useUserAcknowledgement("seen-publish-tables-info");
   const [showPublishInfo, setShowPublishInfo] = useState(
-    !seenPublishModelsInfo,
+    !seenPublishTablesInfo,
   );
   const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -64,7 +64,7 @@ export function PublishModelsModal({
     });
 
     if (error) {
-      sendErrorToast(t`Failed to publish models`);
+      sendErrorToast(t`Failed to publish tables`);
     } else if (data) {
       const seeItLink = getPublishSeeItLink(data);
       sendSuccessToast(
@@ -78,7 +78,7 @@ export function PublishModelsModal({
   };
 
   const handleClose = () => {
-    setShowPublishInfo(!seenPublishModelsInfo);
+    setShowPublishInfo(!seenPublishTablesInfo);
     onClose?.();
   };
 
@@ -86,13 +86,13 @@ export function PublishModelsModal({
     return null;
   }
 
-  if (showPublishInfo && !seenPublishModelsInfo) {
+  if (showPublishInfo && !seenPublishTablesInfo) {
     return (
-      <AcknowledgePublishModelsModal
+      <AcknowledgePublishTablesModal
         isOpen={true}
         handleSubmit={({ acknowledged }) => {
           if (acknowledged) {
-            ackSeenPublishModelsInfo();
+            ackSeenPublishTablesInfo();
           }
           setShowPublishInfo(false);
         }}
@@ -127,7 +127,7 @@ export function PublishModelsModal({
   );
 }
 
-function AcknowledgePublishModelsModal({
+function AcknowledgePublishTablesModal({
   isOpen,
   handleSubmit,
   handleClose,
@@ -147,7 +147,7 @@ function AcknowledgePublishModelsModal({
       onClose={() => handleClose()}
     >
       <Text pt="sm">
-        {t`Publishing a table means we'll create a model based on it and save it in the collection you choose so that it’s easy for your end users to find it.`}
+        {t`Publishing a table means we'll save it in the collection you choose so that it’s easy for your end users to find it.`}
       </Text>
 
       <Group pt="xl" justify="space-between">

@@ -19,7 +19,7 @@ import type {
 
 import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
 import { SyncOptionsModal } from "../SyncOptionsModal";
-import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
+import { PublishTablesModal } from "../TablePicker/components/PublishTablesModal";
 
 import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
@@ -235,7 +235,7 @@ export function TableAttributesEditBulk() {
         </Box>
       </Stack>
 
-      <PublishModelsModal
+      <PublishTablesModal
         tables={selectedTables}
         schemas={selectedSchemas}
         databases={selectedDatabases}

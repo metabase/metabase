@@ -23,7 +23,7 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     transform_id: null,
     view_count: 0,
     collection_id: null,
-    published_in_collection: false,
+    is_published: false,
     ...opts,
   };
 };

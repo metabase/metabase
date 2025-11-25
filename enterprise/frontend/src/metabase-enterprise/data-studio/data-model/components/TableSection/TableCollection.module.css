@@ -1,18 +1,12 @@
-.modelItem {
+.collection {
   padding: 8px;
   border-radius: 8px;
   transition: background-color 0.2s ease;
   cursor: pointer;
 }
 
-.modelItem:hover {
+.collection:hover {
   background-color: var(--mb-color-bg-light);
-}
-
-.modelName {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .collectionName {

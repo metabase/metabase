@@ -72,7 +72,7 @@ export type Table = {
   transform?: Transform;
 
   collection_id: CollectionId | null;
-  published_in_collection: boolean;
+  is_published: boolean;
   collection?: Collection;
 };
 

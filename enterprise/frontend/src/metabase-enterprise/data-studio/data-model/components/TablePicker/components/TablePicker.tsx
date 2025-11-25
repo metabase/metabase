@@ -22,7 +22,7 @@ import type { ChangeOptions, FilterState, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 
 import { FilterPopover } from "./FilterPopover";
-import { PublishModelsModal } from "./PublishModelsModal";
+import { PublishTablesModal } from "./PublishTablesModal";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
 
@@ -161,7 +161,7 @@ export function TablePicker({
         )}
       </Box>
 
-      <PublishModelsModal
+      <PublishTablesModal
         tables={selectedTables}
         schemas={selectedSchemas}
         databases={selectedDatabases}
