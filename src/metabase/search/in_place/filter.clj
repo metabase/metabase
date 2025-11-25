@@ -14,6 +14,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
@@ -266,22 +267,25 @@
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
 
 ;; Collection filter - filters by collection and all descendants
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "collection" "document"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "collection" "document"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter model query collection-id]
     (let [collection-col (search.config/column-with-model-alias model :collection_id)]
       ;; Join with collection table if not already joined to get location for descendant filtering
       ;; Filter by direct match (collection_id = ?) OR descendants (collection.location LIKE '/collection_id/%')
       (cond-> query
-        (not (joined-with-table? query :left-join :collection))
-        (sql.helpers/left-join :collection [:= collection-col :collection.id])
-        true
+        (not= "collection" model)
         (sql.helpers/where [:or
                             [:= collection-col collection-id]
-                            [:like :collection.location (str "/" collection-id "/%")]])))))
+                            [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])
 
-;; Tables and databases don't belong to collections
-(doseq [model ["table" "database"]]
+        (= "collection" model)
+        (sql.helpers/where [:or
+                            [:= :collection.id collection-id]
+                            [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
+
+;; Things that don't belong to collections
+(doseq [model ["table" "database" "action" "indexed-entity"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter _model query _collection-id]
     ;; These models don't have collection_id, so they never match
@@ -352,6 +356,7 @@
    search-context :- SearchContext]
   (let [{:keys [models
                 archived?
+                collection
                 created-at
                 created-by
                 last-edited-at
@@ -398,6 +403,9 @@
 
       (seq display-type)
       (#(build-optional-filter-query :display-type model % display-type))
+
+      (some? collection)
+      (#(build-optional-filter-query :collection model % collection))
 
       (= "table" model)
       (sql.helpers/where
