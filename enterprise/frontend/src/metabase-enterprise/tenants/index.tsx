@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute } from "react-router";
+import { IndexRedirect, IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
@@ -9,7 +9,6 @@ import { UserActivationModal } from "metabase/admin/people/containers/UserActiva
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -63,7 +62,7 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
-        <Route {...{ title: t`Tenants` }} component={AdminPeopleApp}>
+        <Route component={AdminPeopleApp}>
           <IndexRoute component={TenantsListingApp} />
           <Route path="" component={TenantsListingApp}>
             <ModalRoute path="new" modal={NewTenantModal} noWrap />
@@ -87,9 +86,17 @@ export function initializePlugin() {
                 noWrap
               />
               {/* @ts-expect-error - params prop can't be infered */}
-              <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
+              <ModalRoute
+                path="deactivate"
+                modal={UserActivationModal}
+                noWrap
+              />
               {/* @ts-expect-error - params prop can't be infered */}
-              <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
+              <ModalRoute
+                path="reactivate"
+                modal={UserActivationModal}
+                noWrap
+              />
               {/* @ts-expect-error - params prop can't be infered */}
               <ModalRoute path="success" modal={UserSuccessModal} noWrap />
               {/* @ts-expect-error - params prop can't be infered */}
@@ -103,9 +110,17 @@ export function initializePlugin() {
             {/* @ts-expect-error - params prop can't be infered */}
             <ModalRoute path="edit" modal={EditTenantModal} noWrap />
             {/* @ts-expect-error - params prop can't be infered */}
-            <ModalRoute path="deactivate" modal={TenantActivationModal} noWrap />
+            <ModalRoute
+              path="deactivate"
+              modal={TenantActivationModal}
+              noWrap
+            />
             {/* @ts-expect-error - params prop can't be infered */}
-            <ModalRoute path="reactivate" modal={TenantActivationModal} noWrap />
+            <ModalRoute
+              path="reactivate"
+              modal={TenantActivationModal}
+              noWrap
+            />
           </Route>
         </Route>
       </>
