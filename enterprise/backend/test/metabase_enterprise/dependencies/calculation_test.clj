@@ -34,9 +34,11 @@
                    :model/Card joined-card {:dataset_query (-> (lib/query mp (lib.metadata/card mp products-card-id))
                                                                (lib/join orders))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card products-card)))
       (is (= {:card #{products-card-id}
+              :segment #{}
               :table #{orders-id}}
              (calculation/upstream-deps:card joined-card))))))
 
@@ -65,6 +67,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query filterable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/filter base-query (lib/= venue-name "Bird's Nest"))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -146,6 +149,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:transform transform)))))))
 
@@ -408,3 +412,42 @@
           (is (= {:table #{products-id}
                   :segment #{segment-a-id}}
                  (calculation/upstream-deps:segment segment-b))))))))
+
+(deftest ^:parallel upstream-deps-card-with-multiple-segments-test
+  (testing "Card using multiple segments depends on all of them"
+    (let [products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          category-field-id (mt/id :products :category)]
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
+                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
+                     :model/Segment {segment-b-id :id} {:table_id products-id
+                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
+                     :model/Card card {:dataset_query {:database (mt/id)
+                                                       :type :query
+                                                       :query {:source-table products-id
+                                                               :filter [:and
+                                                                        [:segment segment-a-id]
+                                                                        [:segment segment-b-id]]}}}]
+        (is (= {:card #{}
+                :table #{products-id}
+                :segment #{segment-a-id segment-b-id}}
+               (calculation/upstream-deps:card card)))))))
+
+(deftest ^:parallel upstream-deps-segment-with-multiple-segments-test
+  (testing "Segment depending on multiple other segments tracks all dependencies"
+    (let [products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          category-field-id (mt/id :products :category)
+          rating-field-id (mt/id :products :rating)]
+      (mt/with-temp [:model/Segment {segment-a-id :id} {:table_id products-id
+                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}
+                     :model/Segment {segment-b-id :id} {:table_id products-id
+                                                        :definition {:filter [:= [:field category-field-id nil] "Widget"]}}
+                     :model/Segment segment-c {:table_id products-id
+                                               :definition {:filter [:and
+                                                                     [:segment segment-a-id]
+                                                                     [:segment segment-b-id]
+                                                                     [:> [:field rating-field-id nil] 4]]}}]
+        (is (= {:table #{products-id}
+                :segment #{segment-a-id segment-b-id}}
+               (calculation/upstream-deps:segment segment-c)))))))

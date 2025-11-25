@@ -380,7 +380,6 @@
 (deftest segment-update-sets-correct-dependencies
   (mt/with-test-user :rasta
     (let [products-id (mt/id :products)
-          orders-id (mt/id :orders)
           price-field-id (mt/id :products :price)
           category-field-id (mt/id :products :category)]
       (mt/with-premium-features #{:dependencies}
