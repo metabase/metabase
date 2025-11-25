@@ -3,6 +3,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { OmniPickerModal } from "metabase/common/components/OmniPicker/components/OmniPickerModal";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
@@ -20,6 +21,7 @@ export const HomePage = (): JSX.Element => {
 
   return (
     <HomeLayout>
+      <OmniPickerModal opened onClose={() => {}} />
       <HomeContent />
     </HomeLayout>
   );
