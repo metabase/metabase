@@ -1590,7 +1590,7 @@
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)
                    "Collection must be trashed before deletion.")
-    (api/check-400 (nil? (:namespace collection))
+    (api/check-400 (contains? #{:tenant-specific :shared-tenant-collections nil} (:namespace collection))
                    "Collections in non-nil namespaces cannot be deleted.")
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
