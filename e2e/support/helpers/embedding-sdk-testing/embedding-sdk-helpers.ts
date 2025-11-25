@@ -77,7 +77,20 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   });
 }
 
-const MOCK_SAML_IDP_URI = "https://example.test/saml";
+export function signInAsAdminAndEnableEmbeddingSdkWithSaml() {
+  Cypress.config("baseUrl", METABASE_INSTANCE_URL);
+
+  restore();
+
+  cy.signInAsAdmin();
+  activateToken("pro-cloud");
+  enableSamlAuth();
+  cy.request("PUT", "/api/setting", {
+    "enable-embedding-sdk": true,
+  });
+}
+
+export const MOCK_SAML_IDP_URI = "https://example.test/saml";
 
 export function enableSamlAuth() {
   cy.readFile<string>("test_resources/sso/auth0-public-idp.cert", "utf8").then(
@@ -118,33 +131,36 @@ export function stubWindowOpenForSamlPopup({
       },
     };
 
-    // stub `window.open(IDP_URI, ...)` for the SAML popup
-    cy.stub(win, "open")
-      .withArgs(MOCK_SAML_IDP_URI)
-      .callsFake(() => {
-        setTimeout(() => {
-          // Simulate the SAML_AUTH_COMPLETE message
-          win.dispatchEvent(
-            new MessageEvent("message", {
-              data: {
-                type: "SAML_AUTH_COMPLETE",
+    // Stub window.open for URLs starting with our IdP URI
+    // (real SAML URLs include SAMLRequest params)
+    cy.stub(win, "open").callsFake((url: string) => {
+      if (!url?.startsWith(MOCK_SAML_IDP_URI)) {
+        return null;
+      }
 
-                // The snapshot creator populates the cache with a real session token.
-                // Without this, we get an "invalid user" error as we need a valid session.
-                authData: {
-                  id: isUserValid
-                    ? loginCache.normal?.sessionId
-                    : "invalid-session-token",
-                  exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
-                },
+      setTimeout(() => {
+        // Simulate the SAML_AUTH_COMPLETE message
+        win.dispatchEvent(
+          new MessageEvent("message", {
+            data: {
+              type: "SAML_AUTH_COMPLETE",
+
+              // The snapshot creator populates the cache with a real session token.
+              // Without this, we get an "invalid user" error as we need a valid session.
+              authData: {
+                id: isUserValid
+                  ? loginCache.normal?.sessionId
+                  : "invalid-session-token",
+                exp: Math.floor(Date.now() / 1000) + 600, // 10 minutes
               },
-              origin: "*",
-            }),
-          );
-          popup.close();
-        }, 100); // simulate async delay
+            },
+            origin: "*",
+          }),
+        );
+        popup.close();
+      }, 100); // simulate async delay
 
-        return popup;
-      });
+      return popup;
+    });
   });
 }
