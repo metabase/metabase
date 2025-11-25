@@ -67,6 +67,11 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
   );
 }
 
+function getBookmarkModel(bookmark: Bookmark) {
+  // we should reall fix this on the backend
+  return bookmark.card_type === "model" ? "dataset" : bookmark.type;
+}
+
 const BookmarkItem = ({
   bookmark,
   isDraggable,
@@ -77,7 +82,11 @@ const BookmarkItem = ({
 }: BookmarkItemProps) => {
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
-  const icon = getIcon({ model: bookmark.type, display: bookmark.display });
+
+  const icon = getIcon({
+    model: getBookmarkModel(bookmark),
+    display: bookmark.display,
+  });
   const onRemove = () => onDeleteBookmark(bookmark);
 
   const isIrregularCollection =
