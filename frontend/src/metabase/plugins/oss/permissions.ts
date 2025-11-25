@@ -153,6 +153,13 @@ const getDefaultFeatureLevelPermissions = () => ({
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS =
   getDefaultFeatureLevelPermissions();
 
+const getDefaultAdminPermissionsTabs = () => ({
+  getRoutes: (): ReactNode => null,
+  tabs: [] as { name: string; value: string }[],
+});
+
+export const PLUGIN_ADMIN_PERMISSIONS_TABS = getDefaultAdminPermissionsTabs();
+
 const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
   tabs: [] as any,
@@ -249,6 +256,12 @@ export function reinitialize() {
     PLUGIN_FEATURE_LEVEL_PERMISSIONS,
     getDefaultFeatureLevelPermissions(),
   );
+
+  Object.assign(
+    PLUGIN_ADMIN_PERMISSIONS_TABS,
+    getDefaultAdminPermissionsTabs(),
+  );
+
   Object.assign(
     PLUGIN_APPLICATION_PERMISSIONS,
     getDefaultApplicationPermissions(),
