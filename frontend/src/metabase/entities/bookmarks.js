@@ -141,10 +141,6 @@ const Bookmarks = createEntity({
   },
 });
 
-export function isModelBookmark(bookmark) {
-  return bookmark.type === "card" && bookmark.card_type === "model";
-}
-
 export const getOrderedBookmarks = createSelector(
   [Bookmarks.selectors.getList],
   (bookmarks) => _.sortBy(bookmarks, (bookmark) => bookmark.index),
