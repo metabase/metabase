@@ -186,10 +186,6 @@ export const setupSdkDashboard = async ({
 
   const user = createMockUser();
 
-  if (hasEmbeddingEnterprisePlugin) {
-    setupEnterpriseOnlyPlugin("embedding");
-  }
-
   const state = setupSdkState({
     currentUser: user,
     dashboard: createMockDashboardState({
@@ -203,6 +199,10 @@ export const setupSdkDashboard = async ({
       dashcards: indexBy(dashcards, "id"),
     }),
   });
+
+  if (hasEmbeddingEnterprisePlugin) {
+    setupEnterpriseOnlyPlugin("embedding");
+  }
 
   renderWithSDKProviders(
     <Box h="500px">
