@@ -40,6 +40,7 @@ const { admin } = USERS;
 describe("snapshots", () => {
   describe("default", () => {
     it("default", () => {
+      expect(2).to.eq(3);
       snapshot("blank");
       setup();
       updateSettings();
