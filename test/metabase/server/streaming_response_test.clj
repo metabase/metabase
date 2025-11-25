@@ -17,6 +17,7 @@
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
+   (java.io Closeable InputStream)
    (java.util.concurrent Executors)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
@@ -151,27 +152,26 @@
                           (Thread/sleep (long wait))
                           (recur more))))))))))))
 
-(deftest canceling-chan-is-not-working-test
+(deftest canceling-chan-is-working-test
   (let [cnt      (atom 30)
         canceled (atom nil)
         handler  (fn [req respond _raise]
                    (respond
                     (compojure.response/render
-                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"
+                                                             :headers {"Transfer-Encoding" "chunked"}} [os canceled-chan]
                        (try
                          (loop []
-                           (.write os (.getBytes (str "msg-" @cnt)))
-                           (.write os (.getBytes "\n"))
-                           (.flush os)
-                           (swap! cnt dec)
-                           (Thread/sleep 1)
-                           ;; NOTE: we never get anything in there because `do-f*`, which puts stuff on canceled-chan,
-                           ;; reacts to an exception which you get when you try to write to a closed OutputStream. So
-                           ;; the body is interrupted.
-                           (when (a/poll! canceled-chan)
-                             (reset! canceled :nice))
-                           (when (or (pos? @cnt) (nil? @canceled))
-                             (recur)))
+                           (if (a/poll! canceled-chan)
+                             (reset! canceled :nice)
+                             (do
+                               (.write os (.getBytes (str "msg-" @cnt)))
+                               (.write os (.getBytes "\n"))
+                               (.flush os)
+                               (swap! cnt dec)
+                               (Thread/sleep 10)
+                               (when (pos? @cnt)
+                                 (recur)))))
                          (catch Exception _e
                            (reset! canceled :not-nice))))
                      req)))
@@ -179,17 +179,23 @@
                    .start)
         url      (str "http://localhost:" (.. server getURI getPort))]
     (try
-      (let [res   (http/request {:method :post :url url
-                                 :as :stream
-                                 :decompress-body false})]
-        (.close ^java.io.Closeable (:body res)) ;; cancel the request
-        (Thread/sleep 10)
-        ;; it's been 28 when I tested this, if it every becomes flaky maybe decrease the number?
-        (is (< 20 @cnt) "Stopped writing when channel closed")
-        #_(testing "canceled-chan is working"
-            (is (= :nice @canceled) "Request has been canceled by looking at `canceled-chan`"))
-        (testing "canceled-chan is not working"
-          (is (= :not-nice @canceled) "Request has been canceled, but at what cost?")))
+      (with-redefs [streaming-response/async-cancellation-poll-interval-ms 5]
+        (testing "Closing body stops request handler"
+          (let [res (http/request {:method          :post :url url
+                                   :as              :stream
+                                   :decompress-body false})]
+            (.read ^InputStream (:body res)) ;; start the handler
+            ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
+            (.close ^Closeable (:http-client res))
+            (u/poll {:thunk       #(deref canceled)
+                     :done?       some?
+                     :interval-ms 5})
+            ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
+            (is (< 20 @cnt) "Stopped writing when channel closed")
+            (testing "cancellation is working"
+              ;; we're not checking for particular way of cancelling, because cancellation poll interval can conflict
+              ;; with Thread/sleep and will make this test flaky
+              (is (some? @canceled))))))
       (finally
         (.stop server)))))
 

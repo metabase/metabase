@@ -382,19 +382,15 @@ export function DetailViewSidesheet({
         </Stack>
       </Sidesheet>
 
-      <Modal
-        isOpen={isActionExecuteModalOpen}
+      <ActionExecuteModal
+        opened={isActionExecuteModalOpen}
+        actionId={actionId}
+        initialValues={initialValues}
+        fetchInitialValues={fetchInitialValues}
+        shouldPrefetch
         onClose={handleExecuteModalClose}
-      >
-        <ActionExecuteModal
-          actionId={actionId}
-          initialValues={initialValues}
-          fetchInitialValues={fetchInitialValues}
-          shouldPrefetch
-          onClose={handleExecuteModalClose}
-          onSuccess={handleActionSuccess}
-        />
-      </Modal>
+        onSuccess={handleActionSuccess}
+      />
 
       <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
         <DeleteObjectModal

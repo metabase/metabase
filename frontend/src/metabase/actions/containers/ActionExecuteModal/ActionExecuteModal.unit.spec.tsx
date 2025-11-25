@@ -52,7 +52,12 @@ function setup(props?: Partial<ActionExecuteModalProps>) {
   setupPrefetch();
 
   renderWithProviders(
-    <ActionExecuteModal {...props} actionId={implicitUpdateAction.id} />,
+    <ActionExecuteModal
+      opened
+      onClose={() => {}}
+      {...props}
+      actionId={implicitUpdateAction.id}
+    />,
   );
 }
 

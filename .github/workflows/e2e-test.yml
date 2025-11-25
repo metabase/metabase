@@ -59,7 +59,6 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
-      CYPRESS_IS_EMBEDDING_SDK: "${{ inputs.name == 'embedding-sdk' }}"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,10 +83,6 @@ jobs:
           postgres: ${{ inputs.name != 'mongo' }}
           mysql: ${{ inputs.name != 'mongo' }}
           mongo: ${{ inputs.name == 'mongo' }}
-
-      - name: Run Embedding SDK Storybook
-        if: inputs.name == 'embedding-sdk'
-        uses: ./.github/actions/run-embedding-sdk-storybook
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact
@@ -125,6 +120,8 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
@@ -138,13 +135,13 @@ jobs:
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         shell: bash
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@python+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
-            --spec "$SPEC_PATH" \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --env grepTags="-@mongo+-@python+-@OSS+-@skip" \
+            --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
@@ -155,12 +152,12 @@ jobs:
         shell: bash
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}",grepOmitFiltered=true \
-          --spec "$SPEC_PATH" \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
+          --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.

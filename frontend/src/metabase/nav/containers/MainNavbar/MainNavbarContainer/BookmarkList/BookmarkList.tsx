@@ -14,7 +14,6 @@ import { t } from "ttag";
 import CollapseSection from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
-import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -149,16 +148,14 @@ const BookmarkList = ({
 
   const bookmarkIds = bookmarks.map((b) => b.id);
 
-  const headerId = "headingForBookmarksSectionOfSidebar";
-
   return (
     <CollapseSection
-      aria-labelledby={headerId}
-      header={<SidebarHeading id={headerId}>{t`Bookmarks`}</SidebarHeading>}
+      header={<SidebarHeading>{t`Bookmarks`}</SidebarHeading>}
       initialState={initialState}
       iconPosition="right"
       iconSize={8}
-      headerClass={CS.mb1}
+      role="section"
+      aria-label={t`Bookmarks`}
       onToggle={onToggle}
     >
       <DndContext

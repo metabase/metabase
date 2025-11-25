@@ -1254,6 +1254,15 @@ The base URL where dashboard notitification links will point to instead of the M
 
 The size of the thread pool used to send system event notifications.
 
+### `MB_NOTIFICATION_TEMP_FILE_SIZE_MAX_BYTES`
+
+- Type: integer
+- Default: `10485760`
+
+The maximum file size that will be created when storing notification query results on disk.
+  Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
+  value to 0.
+
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
 - Type: integer
@@ -1320,7 +1329,7 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import`
 
-Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production.
+Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
 
@@ -1328,7 +1337,7 @@ Whether to automatically import from the remote git repository. Only applies if 
 - Default: `5`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
 
-If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 
@@ -1590,7 +1599,7 @@ Used for encrypting and checking whether SDK requests are signed.
 - Default: `null`
 
 When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
-  Value must be a valid configured langauge option in your database such as 'english' or 'simple'.
+  Value must be a valid configured language option in your database such as 'english' or 'simple'.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 

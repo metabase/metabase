@@ -305,6 +305,10 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlpha[70],
   },
+  "bg-ocean-alpha-light": {
+    light: baseColors.oceanAlpha[5],
+    dark: baseColors.oceanAlpha[20],
+  },
   "bg-black": { light: baseColors.orion[80], dark: baseColors.orion[20] }, //should be background-primary-inverse
   "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[70] }, //should be background-tertiary-inverse
   "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //should be background-secondary-inverse
@@ -493,6 +497,13 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlphaInverse[60],
   },
+
+  //Used in gauge viz... there should be a better way to do this
+  "text-medium-opaque": {
+    //should be text-secondary
+    light: baseColors.orion[60],
+    dark: baseColors.orion[20],
+  },
   "text-primary": {
     light: baseColors.orionAlpha[80],
     dark: baseColors.orionAlphaInverse[80],
@@ -674,3 +685,13 @@ export const staticVizOverrides = {
   "text-medium": baseColors.orion[60],
   "text-light": baseColors.orion[40],
 };
+
+// one-off colors for data layers which are not part of Metabase color palette
+//  we got a blessing from the design team to use these colors 😇
+export const dataLayerColors = {
+  copper: "#B87333",
+  bronze: "#CD7F32",
+  silver: "#C0C0C0",
+  gold: "#FFD700",
+  default: "#B87333",
+} as const;

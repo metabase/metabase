@@ -316,6 +316,11 @@
   [m]
   (recursive-map-keys ->snake_case_en m))
 
+(defn deep-kebab-keys
+  "Recursively convert the keys in a map to `kebab_case`."
+  [m]
+  (recursive-map-keys ->kebab-case-en m))
+
 (defn deep-kebab->snake-keys
   "Recursively convert kebab-case keys in a map to snake_case by replacing hyphens.
   Preserves camelCase and other formatting."

@@ -1,8 +1,11 @@
+import { match } from "ts-pattern";
+
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
-import type { UrlableModel } from "metabase/lib/urls/modelToUrl";
+import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import type { MetabaseProtocolEntityModel } from "metabase-enterprise/metabot/utils/links";
 import type {
   Database,
   MentionableUser,
@@ -25,11 +28,14 @@ export function buildSearchMenuItems(
       model: result.model,
       display: result.display,
     });
+    const urlableModel = entityToUrlableModel(result, result.model);
+    const href = modelToUrl(urlableModel);
     return {
       icon: iconData.name,
       label: result.name,
       id: result.id,
       model: result.model,
+      href: href || undefined,
       action: () => onSelect(result),
     };
   });
@@ -41,11 +47,14 @@ export function buildRecentsMenuItems(
 ): MenuItem[] {
   return recents.map((recent) => {
     const iconData = getIcon(recent);
+    const urlableModel = entityToUrlableModel(recent, recent.model);
+    const href = modelToUrl(urlableModel);
     return {
       icon: iconData.name,
       label: getName(recent),
       id: recent.id,
       model: recent.model as SuggestionModel,
+      href: href || undefined,
       action: () => onSelect(recent),
     };
   });
@@ -129,4 +138,25 @@ export function entityToUrlableModel<
 
 export function isMentionableUser(value: unknown): value is MentionableUser {
   return isObject(value) && typeof value.common_name === "string";
+}
+
+export function mbProtocolModelToSuggestionModel(inputModel: string): string {
+  // dom nodes record strings and it's better to not to error the input with invalid
+  // data. casting here still afford some amount of internal type awareness as these
+  // two types might diverge in the future.
+  const model: SuggestionModel = match(
+    inputModel as MetabaseProtocolEntityModel,
+  )
+    .with("model", () => "dataset" as const)
+    .with("question", () => "card" as const)
+    .otherwise((x) => x);
+
+  return model;
+}
+
+export function getBrowseAllItemIndex(
+  menuItemsLength: number,
+  canCreateNewQuestion?: boolean,
+): number {
+  return canCreateNewQuestion ? menuItemsLength + 1 : menuItemsLength;
 }
