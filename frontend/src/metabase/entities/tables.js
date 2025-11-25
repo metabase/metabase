@@ -33,7 +33,6 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -351,8 +350,6 @@ const Tables = createEntity({
     return state;
   },
   objectSelectors: {
-    getUrl: (table) =>
-      Urls.tableRowsQuery(table.database_id, table.table_id, null),
     getColor: (table) => color("accent2"),
   },
 
