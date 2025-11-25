@@ -1,5 +1,5 @@
-import { compact } from "underscore";
-
+import { handleBookmarkCache } from "metabase/api";
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import type {
   CreateDocumentRequest,
   DeleteDocumentRequest,
@@ -46,13 +46,18 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         body: document,
       }),
       invalidatesTags: (_, error, patch) =>
-        !error
-          ? compact([
-              listTag("document"),
-              idTag("document", patch.id),
-              ("name" in patch || "archived" in patch) && listTag("bookmark"),
-            ])
-          : [],
+        !error ? [listTag("document"), idTag("document", patch.id)] : [],
+      onQueryStarted: async (patch, { dispatch, getState, queryFulfilled }) => {
+        handleQueryFulfilled(queryFulfilled, () => {
+          handleBookmarkCache({
+            patch,
+            bookmarkType: "document",
+            invalidateOnKeys: ["name"],
+            dispatch,
+            getState,
+          });
+        });
+      },
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({

@@ -1,5 +1,3 @@
-import { compact } from "underscore";
-
 import type {
   Collection,
   CreateCollectionRequest,
@@ -17,6 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { handleBookmarkCache } from "./bookmark";
 import {
   idTag,
   invalidateTags,
@@ -25,6 +24,7 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -102,19 +102,22 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, patch) => {
-        return invalidateTags(
-          error,
-          compact([
-            listTag("collection"),
-            idTag("collection", patch.id),
-            idTag("collection", patch.parent_id ?? "root"),
-            ("name" in patch ||
-              "authority_level" in patch ||
-              "archived" in patch) &&
-              listTag("bookmark"),
-          ]),
-        );
+      invalidatesTags: (_, error, patch) =>
+        invalidateTags(error, [
+          listTag("collection"),
+          idTag("collection", patch.id),
+          idTag("collection", patch.parent_id ?? "root"),
+        ]),
+      onQueryStarted: async (patch, { dispatch, getState, queryFulfilled }) => {
+        handleQueryFulfilled(queryFulfilled, () => {
+          handleBookmarkCache({
+            patch,
+            bookmarkType: "collection",
+            invalidateOnKeys: ["name", "authority_level"],
+            dispatch,
+            getState,
+          });
+        });
       },
     }),
     deleteCollection: builder.mutation<void, DeleteCollectionRequest>({
