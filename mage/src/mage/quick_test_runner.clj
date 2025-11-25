@@ -40,7 +40,7 @@
     (concat files dirs)))
 
 (defn- gather-tests [selecting]
-  (prn ["selecting" selecting])
+  (u/debug "selecting:" selecting)
   (case selecting
     "file" (gather-file-tests)
     "dir"  (gather-dir-tests)
@@ -52,16 +52,13 @@
                                 (c/green "file") ", " (c/green "dir") ", or " (c/green "all") ".")
                :babashka/exit 1}))))
 
-(defn- quotify [xs]
-  (str/join " " (map #(str "\"" % "\"") xs)))
-
-(defn- run-tests-over-nrepl [test-dirs] ;; todo add dirs
+(defn- run-tests-over-nrepl [test-dirs]
   (let [start (u/start-timer)
         the-ns "mb.hawk.core"
-        the-cmd (str "(do (require (quote metabase.test-runner)) "
-                     "((requiring-resolve 'dev.reload/reload!)) "
-                     "(metabase.test-runner/find-and-run-tests-repl "
-                     "{:only [" (quotify test-dirs) "]}))")]
+        the-cmd (str "(do (require (quote metabase.test-runner))"
+                     " ((requiring-resolve 'dev.reload/reload!))"
+                     " (metabase.test-runner/find-and-run-tests-repl"
+                     " {:only " (pr-str test-dirs) "}))")]
     (println "Running Code over nrepl:" (c/bold the-cmd))
     (bling/callout
      {:type :info
@@ -126,7 +123,7 @@
   (let [tests (if (seq arguments)
                 arguments
                 (-> (gather-tests selecting)
-                    (u/fzf-select
+                    (u/fzf-select!
                      (str/join " " ["--multi"
                                     "--ansi"
                                     "--marker" "'✓ '"
@@ -146,9 +143,9 @@
     test-dir-or-nss))
 
 (defn- run-tests-cli [test-dirs]
-  (let [cmd (str "clj -X:dev:ee:ee-dev:test :only '[" (quotify test-dirs) "]'")]
+  (let [cmd (str "clj -X:dev:ee:ee-dev:test :only '" (pr-str test-dirs) "'")]
     (bling/callout {:label "Running Command Line"} (c/bold cmd))
-    (shell/sh* "clojure" "-X:dev:dev-ee:ee:test" ":only" (str "[" (quotify test-dirs) "]"))))
+    (shell/sh* "clojure" "-X:dev:dev-ee:ee:test" ":only" (pr-str test-dirs))))
 
 (defn- run-the-tests [tests]
   (if (and (backend/nrepl-open?)
@@ -159,7 +156,7 @@
       (run-tests-over-nrepl tests))
     (do
       (println "Running via " (c/bold (c/magenta "the command line")) "."
-               (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECCOMENDED!! "))
+               (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECOMMENDED!! "))
                "Please consider starting a backend \nFor quicker test runs, use: " (c/magenta "  clj -M:test:dev:ee:ee-dev:drivers:drivers-dev:dev-start"))
       (println "\n" (banner
                      {:font               bling.fonts.drippy/drippy

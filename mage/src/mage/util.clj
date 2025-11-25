@@ -183,7 +183,7 @@
 
 (def ^:dynamic *skip-warning* false)
 
-(defn can-run? [cmd]
+(defn- can-run? [cmd]
   (try (boolean (sh (str "command -v " cmd)))
        (catch Exception _
          (when-not *skip-warning*
@@ -200,7 +200,7 @@
        :mage/error (str "You don't have " (c/yellow cmd) " installed. Please install it to use this task.")
        :babashka/exit 1}))))
 
-(defn fzf-select
+(defn fzf-select!
   "Uses fzf to offer interactive selections.
 
    If the user doesn't have fzf installed, explains instructions
