@@ -64,8 +64,8 @@ describe("AdminPeopleApp", () => {
     it("should render both internal and external people links if tenants is enabled", async () => {
       await setup({ useTenants: true });
 
-      assertNavLink("People", "/admin/people");
-      assertNavLink("Groups", "/admin/people/groups");
+      assertNavLink("Internal Users", "/admin/people");
+      assertNavLink("Internal Groups", "/admin/people/groups");
       assertNavLink("Tenants", "/admin/tenants");
       assertNavLink("External Users", "/admin/tenants/people");
     });

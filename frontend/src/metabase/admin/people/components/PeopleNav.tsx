@@ -14,7 +14,7 @@ import { Divider, Stack } from "metabase/ui";
 
 export function PeopleNav() {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
-  const tenantEnabled = useSetting("use-tenants");
+  const isUsingTenants = useSetting("use-tenants");
 
   return (
     <AdminNavWrapper justify="space-between" aria-label="people-nav">
@@ -22,16 +22,16 @@ export function PeopleNav() {
         <PeopleNavItem
           path="/admin/people"
           data-testid="nav-item"
-          label={t`People`}
+          label={isUsingTenants ? t`Internal Users` : t`People`}
           icon="person"
         />
         <PeopleNavItem
           path="/admin/people/groups"
           data-testid="nav-item"
-          label={t`Groups`}
+          label={isUsingTenants ? t`Internal Groups` : t`Groups`}
           icon="group"
         />
-        {tenantEnabled && (
+        {isUsingTenants && (
           <>
             <Divider my="sm" />
             <PeopleNavItem
