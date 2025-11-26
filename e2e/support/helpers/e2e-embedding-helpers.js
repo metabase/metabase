@@ -270,7 +270,7 @@ export function closeStaticEmbeddingModal() {
 /**
  * Publish a static dashboard or question
  * @param {"card" | "dashboard"} apiPath
- * @param callback
+ * @param [callback]
  */
 export function publishChanges(apiPath, callback) {
   cy.intercept("PUT", `/api/${apiPath}/*`).as("publishChanges");
