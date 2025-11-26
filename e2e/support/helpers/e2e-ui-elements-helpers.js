@@ -45,6 +45,18 @@ export function selectDropdown() {
   return popover().findByRole("listbox");
 }
 
+export function miniPicker() {
+  return cy.findByTestId("mini-picker");
+}
+
+export function miniPickerBrowseAll() {
+  return miniPicker().findByText("Browse all");
+}
+
+export function miniPickerHeader() {
+  return cy.findByTestId("mini-picker-header");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
@@ -121,7 +133,7 @@ export function assertNavigationSidebarItemSelected(name, value = "true") {
 
 export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
   navigationSidebar()
-    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("section", { name: "Bookmarks" })
     .findByRole("listitem", { name })
     .should("have.attr", "aria-selected", value);
 }
@@ -405,6 +417,10 @@ export const undoToast = () => {
 
 export const undoToastList = () => {
   return cy.findAllByTestId("toast-undo");
+};
+
+export const undoToastListContainer = () => {
+  return cy.findByTestId("undo-list");
 };
 
 export function dashboardCards() {

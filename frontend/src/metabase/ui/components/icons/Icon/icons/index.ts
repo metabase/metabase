@@ -60,6 +60,8 @@ import bolt_component from "./bolt.svg?component";
 import bolt_source from "./bolt.svg?source";
 import bolt_filled_component from "./bolt_filled.svg?component";
 import bolt_filled_source from "./bolt_filled.svg?source";
+import book_open_component from "./book_open.svg?component";
+import book_open_source from "./book_open.svg?source";
 import bookmark_component from "./bookmark.svg?component";
 import bookmark_source from "./bookmark.svg?source";
 import bookmark_filled_component from "./bookmark_filled.svg?component";
@@ -104,6 +106,8 @@ import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
 import code_block_component from "./code_block.svg?component";
 import code_block_source from "./code_block.svg?source";
+import collection2_component from "./collection2.svg?component";
+import collection2_source from "./collection2.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
 import comment_component from "./comment.svg?component";
@@ -128,6 +132,8 @@ import dash_component from "./dash.svg?component";
 import dash_source from "./dash.svg?source";
 import dashboard_component from "./dashboard.svg?component";
 import dashboard_source from "./dashboard.svg?source";
+import data_studio_component from "./data_studio.svg?component";
+import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
 import document_component from "./document.svg?component";
@@ -278,6 +284,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import medallion_component from "./medallion.svg?component";
+import medallion_source from "./medallion.svg?source";
 import message_circle_component from "./message_circle.svg?component";
 import message_circle_source from "./message_circle.svg?source";
 import metabot_component from "./metabot.svg?component";
@@ -296,6 +304,8 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -380,6 +390,8 @@ import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
 import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
+import settings_component from "./settings.svg?component";
+import settings_source from "./settings.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
@@ -460,6 +472,8 @@ import thumbs_up_component from "./thumbs_up.svg?component";
 import thumbs_up_source from "./thumbs_up.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
+import transform_component from "./transform.svg?component";
+import transform_source from "./transform.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import trash_filled_component from "./trash_filled.svg?component";
@@ -486,6 +500,8 @@ import verified_component from "./verified.svg?component";
 import verified_source from "./verified.svg?source";
 import verified_filled_component from "./verified_filled.svg?component";
 import verified_filled_source from "./verified_filled.svg?source";
+import verified_round_component from "./verified_round.svg?component";
+import verified_round_source from "./verified_round.svg?source";
 import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
@@ -623,6 +639,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: bookmark_filled_component,
       source: bookmark_filled_source,
     },
+    book_open: {
+      component: book_open_component,
+      source: book_open_source,
+    },
     bolt: {
       component: bolt_component,
       source: bolt_source,
@@ -746,6 +766,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     database: {
       component: database_component,
       source: database_source,
+    },
+    data_studio: {
+      component: data_studio_component,
+      source: data_studio_source,
     },
     dash: {
       component: dash_component,
@@ -1047,6 +1071,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    medallion: {
+      component: medallion_component,
+      source: medallion_source,
+    },
     message_circle: {
       component: message_circle_component,
       source: message_circle_source,
@@ -1082,6 +1110,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     move_card: {
       component: move_card_component,
       source: move_card_source,
+    },
+    network: {
+      component: network_component,
+      source: network_source,
     },
     new_folder: {
       component: new_folder_component,
@@ -1194,6 +1226,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     sankey: {
       component: sankey_component,
       source: sankey_source,
+    },
+    settings: {
+      component: settings_component,
+      source: settings_source,
     },
     share: {
       component: share_component,
@@ -1409,6 +1445,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: time_history_component,
       source: time_history_source,
     },
+    transform: {
+      component: transform_component,
+      source: transform_source,
+    },
     trash: {
       component: trash_component,
       source: trash_source,
@@ -1473,6 +1513,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: verified_filled_component,
       source: verified_filled_source,
     },
+    verified_round: {
+      component: verified_round_component,
+      source: verified_round_source,
+    },
     view_archive: {
       component: view_archive_component,
       source: view_archive_source,
@@ -1525,6 +1569,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     external: { component: share_component, source: share_source },
     table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
+    collection2: {
+      component: collection2_component,
+      source: collection2_source,
+    },
     beaker: { component: formula_component, source: formula_source },
     test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
@@ -1561,6 +1609,7 @@ export type IconName =
   | "bar"
   | "bell"
   | "birthday"
+  | "book_open"
   | "bookmark"
   | "bookmark_filled"
   | "bolt"
@@ -1584,6 +1633,7 @@ export type IconName =
   | "close"
   | "cloud"
   | "cloud_filled"
+  | "collection2"
   | "compare"
   | "combine"
   | "company"
@@ -1594,6 +1644,7 @@ export type IconName =
   | "copy"
   | "curved"
   | "database"
+  | "data_studio"
   | "dash"
   | "dashboard"
   | "curve"
@@ -1672,6 +1723,7 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "medallion"
   | "message_circle"
   | "metabot"
   | "metabot_sad"
@@ -1681,6 +1733,7 @@ export type IconName =
   | "moon"
   | "move"
   | "move_card"
+  | "network"
   | "new_folder"
   | "notebook"
   | "number"
@@ -1708,6 +1761,7 @@ export type IconName =
   | "sankey"
   | "share"
   | "send"
+  | "settings"
   | "smile"
   | "split"
   | "sql"
@@ -1720,6 +1774,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "synced_collection"
+  | "transform"
   | "question"
   | "quote"
   | "redo"
@@ -1775,6 +1830,7 @@ export type IconName =
   | "official_collection"
   | "ordered_list"
   | "verified_filled"
+  | "verified_round"
   | "view_archive"
   | "warning"
   | "warning_round_filled"
