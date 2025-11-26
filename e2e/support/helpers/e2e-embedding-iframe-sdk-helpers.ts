@@ -15,6 +15,8 @@ import {
   mockAuthProviderAndJwtSignIn,
 } from "./embedding-sdk-testing";
 
+const { IS_ENTERPRISE } = Cypress.env();
+
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
 /**
@@ -232,9 +234,7 @@ export function prepareGuestEmbedSdkIframeEmbedTest({
   restore();
   cy.signInAsAdmin();
 
-  const isEE = Cypress.env("MB_EDITION") === "ee";
-
-  if (isEE) {
+  if (IS_ENTERPRISE) {
     if (withTokenFeatures) {
       activateToken("bleeding-edge");
     } else {
