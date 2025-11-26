@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useLatest } from "react-use";
+import { useLatest, usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -22,6 +22,7 @@ export const useAvailableParameters = ({
   const metadata = useSelector(getMetadata);
 
   const initialAvailableParametersRef = useRef<Parameter[] | null>(null);
+  const prevResourceId = usePrevious(resource?.id);
 
   // This prevents `availableParameters` from being updated on every metadata change,
   // which would cause unnecessary re-renders in the component using this hook.
@@ -49,6 +50,11 @@ export const useAvailableParameters = ({
 
     return [];
   }, [resource, experience, metadata, metadataRef]);
+
+  // Reset initial parameters when the resource changes
+  if (resource?.id !== prevResourceId) {
+    initialAvailableParametersRef.current = null;
+  }
 
   if (resource && initialAvailableParametersRef.current === null) {
     initialAvailableParametersRef.current = availableParameters;
