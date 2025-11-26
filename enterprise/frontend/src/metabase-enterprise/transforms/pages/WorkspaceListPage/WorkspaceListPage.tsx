@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Anchor, Box, Card, Group, Stack, Text, Title } from "metabase/ui";
 import { useGetWorkspacesQuery } from "metabase-enterprise/api";
@@ -27,7 +28,11 @@ export function WorkspaceListPage() {
           {workspaces.map((workspace) => (
             <Card key={workspace.id} p="md" shadow="none" withBorder>
               <Group justify="space-between">
-                <Anchor href={Urls.workspace(workspace.id)} fw={500}>
+                <Anchor
+                  component={ForwardRefLink}
+                  to={Urls.workspace(workspace.id)}
+                  fw={500}
+                >
                   {workspace.name}
                 </Anchor>
                 <Text c="text-secondary" size="sm">

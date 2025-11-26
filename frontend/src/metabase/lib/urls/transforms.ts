@@ -14,6 +14,7 @@ const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
 const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
 const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
+const WORKSPACES_ROOT_URL = `${TRANSFORMS_ROOT_URL}/workspaces`;
 
 export type TransformPythonLibraryParams = {
   path: string;
@@ -126,9 +127,9 @@ export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
 }
 
 export function workspaceList() {
-  return `${ROOT_URL}/workspaces`;
+  return WORKSPACES_ROOT_URL;
 }
 
 export function workspace(workspaceId: WorkspaceId) {
-  return `${ROOT_URL}/workspaces/${workspaceId}`;
+  return `${WORKSPACES_ROOT_URL}/${workspaceId}`;
 }

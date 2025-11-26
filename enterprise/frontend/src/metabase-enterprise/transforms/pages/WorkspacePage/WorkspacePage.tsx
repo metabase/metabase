@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import {
   Anchor,
   Box,
-  Card,
   Group,
   Icon,
   Stack,
@@ -13,7 +13,6 @@ import {
   Title,
 } from "metabase/ui";
 import {
-  useGetWorkspaceContentsQuery,
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
@@ -31,10 +30,8 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
   const { data: transforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
-  const { data: contents, isLoading: isLoadingContents } =
-    useGetWorkspaceContentsQuery(id);
 
-  if (isLoadingWorkspace || isLoadingContents) {
+  if (isLoadingWorkspace) {
     return (
       <Box p="lg">
         <Text>{t`Loading...`}</Text>
@@ -50,7 +47,7 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
     );
   }
 
-  const workspaceTransforms = contents?.contents.transforms ?? [];
+  const workspaceTransforms = (workspace as any)?.contents?.transforms ?? [];
 
   return (
     <Stack h="100%">
@@ -74,14 +71,6 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                 <Tabs.Tab value="setup">{t`Setup`}</Tabs.Tab>
               </Tabs.List>
             </Box>
-            <Tabs.Panel value="setup" p="md">
-              <Group gap="xs">
-                <Icon name="chevronleft" size={12} />
-                <Anchor href={Urls.workspaceList()} size="sm">
-                  {t`All workspaces`}
-                </Anchor>
-              </Group>
-            </Tabs.Panel>
           </Tabs>
         </Box>
         <Box style={{ flex: 1 }}>
@@ -107,7 +96,8 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                           >
                             <Icon name="sun" size={12} />
                             <Anchor
-                              href={Urls.transform(transform.id)}
+                              component={ForwardRefLink}
+                              to={Urls.transform(transform.id)}
                               fw={500}
                             >
                               {transform.name}
@@ -130,7 +120,11 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                           gap="sm"
                         >
                           <Icon name="sun" size={12} />
-                          <Anchor href={Urls.transform(transform.id)} fw={500}>
+                          <Anchor
+                            component={ForwardRefLink}
+                            to={Urls.transform(transform.id)}
+                            fw={500}
+                          >
                             {transform.name}
                           </Anchor>
                         </Group>

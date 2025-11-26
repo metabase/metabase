@@ -1,5 +1,11 @@
 .nav {
   border-right: 1px solid var(--mb-color-border);
+  transition: width 200ms ease;
+  width: auto;
+}
+
+.navCollapsed {
+  width: 60px;
 }
 
 .tab {
@@ -14,9 +20,76 @@
 .tab,
 .toggle {
   color: var(--mb-color-text-primary);
+  font-weight: 600;
 
   &:hover,
   &.selected {
     color: var(--mb-color-brand);
+  }
+}
+
+.workspacesSection {
+  border-top: 1px solid var(--mb-color-border);
+  padding-top: 0.75rem;
+}
+
+.workspacesSectionHeader {
+  background-color: var(--mb-color-bg-secondary);
+  color: var(--mb-color-text-primary);
+  font-weight: 600;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+    color: var(--mb-color-brand);
+  }
+
+  &.selected {
+    background-color: var(--mb-color-brand-light);
+    color: var(--mb-color-brand);
+  }
+}
+
+.workspaceItem {
+  background-color: var(--mb-color-bg-white);
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+  border: 1px solid var(--mb-color-border);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+    border-color: var(--mb-color-border-dark);
+  }
+
+  &.selected {
+    background-color: var(--mb-color-brand-lighter);
+    border-color: var(--mb-color-brand);
+    color: var(--mb-color-brand);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.newWorkspaceButton {
+  background-color: transparent;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+  border: none;
+  transition: color 150ms ease;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }

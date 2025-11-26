@@ -22,12 +22,18 @@ import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformSidebarLayout } from "./pages/TransformSidebarLayout";
 import { TransformTargetPage } from "./pages/TransformTargetPage";
 import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
+import { WorkspaceListPage } from "./pages/WorkspaceListPage/WorkspaceListPage";
+import { WorkspacePage } from "./pages/WorkspacePage/WorkspacePage";
 
 export function getDataStudioTransformRoutes() {
   return (
     <>
       <Route path="runs" component={TransformTopNavLayout}>
         <IndexRoute component={RunListPage} />
+      </Route>
+      <Route path="workspaces" component={TransformTopNavLayout}>
+        <IndexRoute component={WorkspaceListPage} />
+        <Route path=":workspaceId" component={WorkspacePage} />
       </Route>
       <Route component={TransformSidebarLayout}>
         <IndexRoute component={TransformEmptyPage} />

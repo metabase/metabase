@@ -51,8 +51,13 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
     getWorkspaceContents: builder.query<WorkspaceContents, WorkspaceId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/workspace/${id}/contents`,
+        url: `/api/ee/workspace/${id}`,
       }),
+      transformResponse: (workspace: any) => {
+        return {
+          contents: workspace?.contents ?? { transforms: [] },
+        } as WorkspaceContents;
+      },
       providesTags: (workspaceContents) =>
         workspaceContents
           ? provideWorkspaceContentsTags(workspaceContents)
