@@ -5,6 +5,7 @@ import type {
   DeleteDocumentRequest,
   Document,
   GetDocumentRequest,
+  GetPublicDocument,
   UpdateDocumentRequest,
 } from "metabase-types/api";
 
@@ -53,10 +54,7 @@ export const documentApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
     }),
-    listPublicDocuments: builder.query<
-      Array<Pick<Document, "id" | "name" | "public_uuid">>,
-      void
-    >({
+    listPublicDocuments: builder.query<GetPublicDocument[], void>({
       query: () => ({
         method: "GET",
         url: "/api/ee/document/public",

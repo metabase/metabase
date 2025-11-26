@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { Document } from "metabase-types/api";
+import type { Document, GetPublicDocument } from "metabase-types/api";
 
 export function setupDocumentEndpoints(doc: Document) {
   fetchMock.get(`path:/api/ee/document/${doc.id}`, doc);
@@ -10,4 +10,10 @@ export function setupDocumentEndpoints(doc: Document) {
     return { ...doc, ...body };
   });
   fetchMock.delete(`path:/api/ee/document/${doc.id}`, {});
+}
+
+export function setupListPublicDocumentsEndpoint(
+  publicDocuments: GetPublicDocument[],
+) {
+  fetchMock.get("path:/api/ee/document/public", publicDocuments);
 }
