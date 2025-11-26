@@ -23,6 +23,9 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(defn- db-engine-name []
+  (-> (mt/db) :engine name))
+
 (def missing-value (symbol "nil #_\"key is not present.\""))
 
 (deftest column-decode-test
@@ -444,6 +447,7 @@
                                          (assoc :id model-id
                                                 :type "model"
                                                 :verified true
+                                                :database_engine (db-engine-name)
                                                 :display_name "Model Model"
                                                 :fields (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
                                                                      expected-fields)
@@ -483,6 +487,7 @@
                             :models [(-> model-data
                                          (select-keys [:name :description :database_id])
                                          (assoc :id model-id
+                                                :database_engine (db-engine-name)
                                                 :display_name "Model Model"
                                                 :verified true
                                                 :type "model"
@@ -815,6 +820,7 @@
                                                 (select-keys [:name :description :database_id])
                                                 (assoc :id model-id
                                                        :type "model"
+                                                       :database_engine (db-engine-name)
                                                        :display_name "Model Model"
                                                        :verified true
                                                        :fields (add-field-ids (format "c%d/%%d" model-id) expected-core-fields)
@@ -852,6 +858,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields
@@ -893,6 +900,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -928,6 +936,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -965,6 +974,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -998,6 +1008,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -1095,6 +1106,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1111,6 +1123,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1128,6 +1141,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1142,6 +1156,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1158,6 +1173,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
