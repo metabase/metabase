@@ -73,8 +73,21 @@
     "https://www.googleapis.com/auth/drive"))
 
 (mu/defn- database-details->client
-  ^BigQuery [details :- :map]
-  (let [creds   (bigquery.common/database-details->service-account-credential details)
+  "Create a BigQuery client from database details. Can accept either a details map or a database object.
+  When a database object is provided, connection detail overrides are applied if present."
+  ^BigQuery [details-or-database :- :map]
+  (let [;; If we have a database object (has :id and :details), apply overrides
+        details       (if (and (:id details-or-database) (:details details-or-database))
+                        (let [db-id           (:id details-or-database)
+                              details-original (:details details-or-database)
+                              ;; Apply connection detail overrides if present
+                              detail-update-fn (get driver/*overridden-connection-details* db-id)]
+                          (if detail-update-fn
+                            (detail-update-fn details-original)
+                            details-original))
+                        ;; Otherwise, assume it's already a details map
+                        details-or-database)
+        creds   (bigquery.common/database-details->service-account-credential details)
         mb-version (:tag driver-api/mb-version-info)
         run-mode   (name driver-api/run-mode)
         user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -151,7 +164,8 @@
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
-   (get-table (database-details->client (:details database)) project-id dataset-id table-id))
+   ;; Pass the full database object so overrides can be applied
+   (get-table (database-details->client database) project-id dataset-id table-id))
 
   (^Table [^BigQuery client :- (driver-api/instance-of-class BigQuery)
            project-id       :- [:maybe driver-api/schema.common.non-blank-string]

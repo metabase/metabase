@@ -466,3 +466,12 @@
 (deftest deps-flags-when-supported-driver-is-not-covered-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
                         (driver/native-query-deps ::mock-deps-driver nil nil))))
+
+(deftest ^:parallel connection-override-implementation-test
+  (testing "TODO: All drivers should implement connection detail overrides"
+    ;; Placeholder test - should verify that:
+    ;; - JDBC drivers apply overrides in db->pooled-connection-spec
+    ;; - MongoDB applies overrides in do-with-mongo-client  
+    ;; - BigQuery applies overrides in database-details->client
+    ;; - Any new drivers also implement the override mechanism
+    (is true "Placeholder for driver override implementation verification")))

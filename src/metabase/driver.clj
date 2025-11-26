@@ -63,6 +63,61 @@
   `(do-with-driver ~driver (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Connection Details Override                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:dynamic *overridden-connection-details*
+  "A dynamic var that holds a map of database-id -> detail-update-fn for temporarily overriding connection
+  details. When a connection spec is created for a database, if its ID is present in this map, the corresponding
+  function will be applied to transform the connection `:details` before they are used to create a connection.
+
+  This provides a mechanism for temporarily using different connection details (e.g., routing queries to a read
+  replica, connecting through a tunnel, or using alternative credentials) without mutating the database record.
+
+  The detail-update-fn receives the database `:details` map and returns modified details. The override is applied
+  before any connection-specific processing (like hash calculation for connection pooling), so different overrides
+  will result in different connection pools.
+
+  Different drivers may apply this override at different points in their connection lifecycle, but the semantics
+  are consistent: overridden details are used for the duration of the dynamic scope.
+
+  See [[with-overridden-connection-details]] for usage."
+  nil)
+
+(defmacro with-overridden-connection-details
+  "Temporarily override the connection details for a specific database within the dynamic scope of `body`.
+
+  The `detail-update-fn` is a function that takes the database connection `:details` map and returns a modified
+  version. Any code that creates a connection for `database-id` within this scope will use the modified details.
+
+  This works across all drivers - each driver applies the override at the appropriate point in its connection
+  lifecycle. For JDBC drivers, this affects connection pool creation. For other drivers (like MongoDB), this
+  affects their native connection mechanisms.
+
+  Example:
+
+    ;; Override connection to use a read replica
+    (driver/with-overridden-connection-details 1 (fn [details]
+                                                    (assoc details :host \"read-replica.example.com\"))
+      ;; All connections created in this scope use the overridden host
+      (qp/process-query query))
+
+    ;; Nested overrides work correctly
+    (driver/with-overridden-connection-details 1 (fn [d] (assoc d :host \"outer\"))
+      (query-db-1)
+      (driver/with-overridden-connection-details 1 (fn [d] (assoc d :host \"inner\"))
+        ;; Inner override takes precedence
+        (query-db-1)))
+
+  Note: This works in conjunction with [[metabase.warehouses.models.database/with-overridden-db-details]]. The
+  Toucan-level override affects database records loaded from the application database, while this driver-level
+  override affects the actual connection creation. Both can be nested and will compose naturally."
+  {:style/indent 2}
+  [database-id detail-update-fn & body]
+  `(binding [*overridden-connection-details* (assoc *overridden-connection-details* ~database-id ~detail-update-fn)]
+     ~@body))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 

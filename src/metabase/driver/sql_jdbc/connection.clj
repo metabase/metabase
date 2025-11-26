@@ -32,69 +32,6 @@
   jdbc-data-warehouse-debug-unreturned-connection-stack-traces])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Connection Details Override                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:dynamic *overridden-connection-details*
-  "A dynamic var that holds a map of database-id -> detail-update-fn for temporarily overriding JDBC connection
-  details at the connection pool level. When a JDBC connection spec is created for a database, if its ID is present
-  in this map, the corresponding function will be applied to transform the connection `:details` before they are
-  converted to a JDBC spec.
-
-  This provides a second layer of override beyond the Toucan model layer (see
-  [[metabase.warehouses.models.database/with-overridden-db-details]]). This is necessary because some code paths may
-  bypass Toucan and work directly with database detail maps.
-
-  The detail-update-fn receives the fully-processed details (after SSH tunnel and auth provider details have been
-  incorporated) and returns modified details.
-
-  This works by intercepting the flow right before [[connection-details->spec]] is called in [[create-pool!]], so it
-  affects all JDBC connections regardless of how the database metadata was obtained.
-
-  See [[with-overridden-connection-details]] for usage."
-  nil)
-
-(defmacro with-overridden-connection-details
-  "Temporarily override the JDBC connection details for a specific database within the dynamic scope of `body`.
-
-  The `detail-update-fn` is a function that takes the database connection `:details` map (after SSH tunnel and auth
-  provider details have been incorporated) and returns a modified version. Any code that creates a JDBC connection
-  for `database-id` within this scope will use the modified details.
-
-  This intercepts at the JDBC connection layer, so it works even if code bypasses Toucan model loading and works
-  directly with detail maps.
-
-  Example:
-
-    ;; Override connection to use a read replica
-    (with-overridden-connection-details 1 (fn [details]
-                                            (assoc details :host \"read-replica.example.com\"))
-      ;; All JDBC connections created in this scope use the overridden host
-      (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec 1) ...))
-
-    ;; Deep merge connection details
-    (with-overridden-connection-details 2 (fn [details]
-                                            (merge details {:read-only true :port 5433}))
-      (execute-query-on-replica query))
-
-  Note: This works in conjunction with [[metabase.warehouses.models.database/with-overridden-db-details]]. The
-  Toucan-level override affects database records loaded from the application database, while this JDBC-level override
-  affects the actual connection pool creation. Both can be nested and will compose naturally."
-  [database-id detail-update-fn & body]
-  `(binding [*overridden-connection-details* (assoc *overridden-connection-details* ~database-id ~detail-update-fn)]
-     ~@body))
-
-(defn- apply-overridden-connection-details
-  "Apply any overridden connection details if present in [[*overridden-connection-details*]].
-
-  This is called from [[create-pool!]] right before [[connection-details->spec]] to transparently apply detail
-  overrides when JDBC connection pools are created."
-  [database-id details]
-  (if-let [detail-update-fn (get *overridden-connection-details* database-id)]
-    (detail-update-fn details)
-    details))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -256,8 +193,7 @@
                              driver
                              id
                              details-with-tunnel)
-        details-final       (apply-overridden-connection-details id details-with-auth)
-        spec                (connection-details->spec driver details-final)
+        spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
      (connection-pool-spec spec properties)
@@ -272,11 +208,13 @@
   (driver-api/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
-(defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
+(defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by `[database-id details-hash]`.
+  The composite key allows different connection details (e.g., from overrides) to have separate pools."}
   database-id->connection-pool
   (atom {}))
 
-(defonce ^:private ^{:doc "A map of DB details hash values, keyed by Database `:id`."}
+(defonce ^:private ^{:doc "A map of DB details hash values for the canonical (non-overridden) details, keyed by Database `:id`.
+  This is used to detect when database details have been updated in the application database."}
   database-id->jdbc-spec-hash
   (atom {}))
 
@@ -288,27 +226,41 @@
     (hash (connection-details->spec driver details))))
 
 (defn- set-pool!
-  "Atomically update the current connection pool for Database `database` with `database-id`. Use this function instead
-  of modifying database-id->connection-pool` directly because it properly closes down old pools in a thread-safe way,
-  ensuring no more than one pool is ever open for a single database. Also modifies the [[database-id->jdbc-spec-hash]]
-  map with the hash value of the given DB's details map."
-  [database-id pool-spec-or-nil database]
-  {:pre [(integer? database-id)]}
-  (let [[old-id->pool] (if pool-spec-or-nil
-                         (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)
-                         (swap-vals! database-id->connection-pool dissoc database-id))]
+  "Atomically update the connection pool using composite key `[database-id details-hash]`.
+
+  Use this function instead of modifying connection pool atoms directly because it properly closes down old pools in a
+  thread-safe way, ensuring no more than one pool is ever open for a specific database+details combination.
+
+  When `update-canonical-hash?` is true, also updates the canonical hash cache for this database. This should only
+  be true when creating a pool for non-overridden details."
+  [database-id details-hash pool-spec-or-nil update-canonical-hash?]
+  {:pre [(integer? database-id) (some? details-hash)]}
+  (let [composite-key [database-id details-hash]
+        [old-pool-map] (if pool-spec-or-nil
+                         (swap-vals! database-id->connection-pool assoc composite-key pool-spec-or-nil)
+                         (swap-vals! database-id->connection-pool dissoc composite-key))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
-    (when-let [old-pool-spec (get old-id->pool database-id)]
+    (when-let [old-pool-spec (get old-pool-map composite-key)]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
         (destroy-pool! database-id old-pool-spec))))
-  ;; update the db details hash cache with the new hash value
-  (swap! database-id->jdbc-spec-hash assoc database-id (jdbc-spec-hash database))
+  ;; Update canonical hash cache if this is for non-overridden details
+  (when update-canonical-hash?
+    (swap! database-id->jdbc-spec-hash assoc database-id details-hash))
   nil)
 
 (defn invalidate-pool-for-db!
-  "Invalidates the connection pool for the given database by closing it and removing it from the cache."
+  "Invalidates all connection pools for the given database (all detail variants) by closing them and removing from cache."
   [database]
-  (set-pool! (u/the-id database) nil nil))
+  (let [db-id (u/the-id database)
+        pools-to-destroy (into []
+                               (comp (filter (fn [[[pool-db-id _details-hash] _pool-spec]]
+                                               (= pool-db-id db-id)))
+                                     (map first))
+                               @database-id->connection-pool)]
+    (doseq [composite-key pools-to-destroy]
+      (when-let [pool-spec (get @database-id->connection-pool composite-key)]
+        (destroy-pool! db-id pool-spec)
+        (swap! database-id->connection-pool dissoc composite-key)))))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
@@ -326,9 +278,9 @@
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB.
 
-  When [[*overridden-connection-details*]] is active for a database, the database details are modified before
-  creating the connection pool. The override is applied to the database map before hash comparison and pool
-  creation, ensuring that overridden details are used throughout the connection establishment process."
+  When [[metabase.driver/*overridden-connection-details*]] is active for a database, the database details are modified
+  before creating the connection pool. The override is applied to the database map before hash calculation, and pools
+  are cached using a composite key `[database-id details-hash]`, ensuring different overrides get separate pools."
   [db-or-id-or-spec]
   (when-let [db-id (u/id db-or-id-or-spec)]
     (driver-api/check-allowed-access! db-id))
@@ -336,7 +288,7 @@
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
-          ;; we need the Database instance no matter what (in order to compare details hash with cached value)
+          ;; we need the Database instance no matter what (in order to calculate details hash)
           db-original (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
                             (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
@@ -344,11 +296,15 @@
                           (driver-api/with-metadata-provider database-id
                             (driver-api/database (driver-api/metadata-provider))))
           ;; Apply connection detail overrides if present
-          db          (if (contains? *overridden-connection-details* database-id)
-                        (update db-original :details #(apply-overridden-connection-details database-id %))
-                        db-original)
-          get-fn      (fn [db-id log-invalidation?]
-                        (let [details (get @database-id->connection-pool db-id ::not-found)]
+          has-override? (contains? driver/*overridden-connection-details* database-id)
+          db            (if-let [detail-update-fn (get driver/*overridden-connection-details* database-id)]
+                          (update db-original :details detail-update-fn)
+                          db-original)
+          ;; Calculate hash from final (possibly overridden) details
+          details-hash  (jdbc-spec-hash db)
+          composite-key [database-id details-hash]
+          get-fn      (fn [log-invalidation?]
+                        (let [pool-spec (get @database-id->connection-pool composite-key ::not-found)]
                           (cond
                             ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
@@ -356,39 +312,37 @@
                             (:is-audit db)
                             {:datasource (driver-api/data-source)}
 
-                            (= ::not-found details)
+                            (= ::not-found pool-spec)
                             nil
 
-                            ;; details hash changed from what is cached; invalid
-                            (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
-                                  new-hash  (jdbc-spec-hash db)]
-                              (when (and (some? curr-hash) (not= curr-hash new-hash))
+                            (let [curr-hash (get @database-id->jdbc-spec-hash database-id)]
+                              (when (and (not @has-override?)  (some? curr-hash) (not= curr-hash details-hash))
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match
                                 (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details] :id database-id)
                                                     jdbc-spec-hash))))
                             (when log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id))
+                              (log-jdbc-spec-hash-change-msg! database-id))
 
-                            (let [{:keys [password-expiry-timestamp]} details]
+                            (let [{:keys [password-expiry-timestamp]} pool-spec]
                               (and (int? password-expiry-timestamp)
                                    (<= password-expiry-timestamp (System/currentTimeMillis))))
                             (when log-invalidation?
-                              (log-password-expiry! db-id))
+                              (log-password-expiry! database-id))
 
-                            (nil? (:tunnel-session details)) ; no tunnel in use; valid
-                            details
+                            (nil? (:tunnel-session pool-spec)) ; no tunnel in use; valid
+                            pool-spec
 
-                            (ssh/ssh-tunnel-open? details) ; tunnel in use, and open; valid
-                            details
+                            (ssh/ssh-tunnel-open? pool-spec) ; tunnel in use, and open; valid
+                            pool-spec
 
                             :else ; tunnel in use, and not open; invalid
                             (when log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)))))]
+                              (log-ssh-tunnel-reconnect-msg! database-id)))))]
       (or
-       ;; we have an existing pool for this database, so use it
-       (get-fn database-id true)
+       ;; we have an existing pool for this database+details combo, so use it
+       (get-fn true)
        ;; Even tho `set-pool!` will properly shut down old pools if two threads call this method at the same time, we
        ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the
        ;; very next instant. This will cause their queries to fail. Thus we should do the usual locking here and make
@@ -396,10 +350,11 @@
        (locking database-id->connection-pool
          (or
           ;; check if another thread created the pool while we were waiting to acquire the lock
-          (get-fn database-id false)
+          (get-fn false)
           ;; create a new pool and add it to our cache, then return it
           (u/prog1 (create-pool! db)
-            (set-pool! database-id <> db))))))
+            ;; Only update canonical hash if this is NOT an override
+            (set-pool! database-id details-hash <> (not has-override?)))))))
 
     ;; already a `clojure.java.jdbc` spec map
     (map? db-or-id-or-spec)

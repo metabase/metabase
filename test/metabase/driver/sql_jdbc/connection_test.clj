@@ -633,3 +633,96 @@
                                                        :auth-provider :aws-iam
                                                        :ssl true})))))
     (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))
+
+(deftest with-overridden-connection-details-test
+  (testing "Override connection details temporarily"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [db (mt/db)
+            original-details (:details db)
+            override-called? (atom false)]
+        (testing "Override function is called when creating connection"
+          (driver/with-overridden-connection-details (u/the-id db)
+            (fn [details]
+              (reset! override-called? true)
+              (testing "Override function receives original details"
+                (is (= original-details details)))
+              (assoc details :test-override true))
+            ;; Create a connection spec - this should trigger the override
+            (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+              (is (some? spec))
+              (testing "Override function was called"
+                (is @override-called?)))))
+
+        (testing "Connection works normally outside override scope"
+          (reset! override-called? false)
+          (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+            (is (some? spec))
+            (testing "Override function not called outside scope"
+              (is (not @override-called?)))))))))
+
+(deftest with-overridden-connection-details-nested-test
+  (testing "Nested overrides create separate pools with different composite keys"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [db            (mt/db)
+            db-id         (u/the-id db)
+            outer-called? (atom false)
+            inner-called? (atom false)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+
+        (driver/with-overridden-connection-details db-id
+          (fn [details]
+            (reset! outer-called? true)
+            (assoc details :outer-override true))
+          (sql-jdbc.conn/db->pooled-connection-spec db)
+          (testing "Outer override was called"
+            (is @outer-called?))
+          (let [outer-pool-count (count (filter (fn [[[pool-db-id _] _]]
+                                                  (= pool-db-id db-id))
+                                                @@#'sql-jdbc.conn/database-id->connection-pool))]
+            (testing "One pool exists after outer scope creates it"
+              (is (= 1 outer-pool-count)))
+
+            (driver/with-overridden-connection-details db-id
+              (fn [details]
+                (reset! inner-called? true)
+                (assoc details :inner-override true))
+              (sql-jdbc.conn/db->pooled-connection-spec db)
+              (testing "Inner override was called"
+                (is @inner-called?))
+              (let [inner-pool-count (count (filter (fn [[[pool-db-id _] _]]
+                                                      (= pool-db-id db-id))
+                                                    @@#'sql-jdbc.conn/database-id->connection-pool))]
+                (testing "Two pools exist when nested scopes have different overrides"
+                  (is (= 2 inner-pool-count)))))))
+
+        (testing "Both pools persist after scope exits"
+          (let [final-pool-count (count (filter (fn [[[pool-db-id _] _]]
+                                                  (= pool-db-id db-id))
+                                                @@#'sql-jdbc.conn/database-id->connection-pool))]
+            (is (= 2 final-pool-count))))))))
+
+(deftest with-overridden-connection-details-persistence-test
+  (testing "Pools with overrides persist in global cache (no cleanup)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [db (mt/db)
+            db-id (u/the-id db)]
+        ;; Clear any existing pools first
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+
+        (driver/with-overridden-connection-details db-id
+          (fn [details]
+            (assoc details :test-override true))
+          ;; Create a connection in override scope
+          (sql-jdbc.conn/db->pooled-connection-spec db)
+
+          (testing "Pool exists in global cache during scope"
+            (testing "Pool is in global cache"
+              (is (= 1 (count (filter (fn [[[pool-db-id _] _]]
+                                        (= pool-db-id db-id))
+                                      @@#'sql-jdbc.conn/database-id->connection-pool)))))))
+
+        (testing "Pool persists after scope exit"
+          (testing "Pool remains in global cache after scope exits"
+            (is (= 1 (count (filter (fn [[[pool-db-id _] _]]
+                                      (= pool-db-id db-id))
+                                    @@#'sql-jdbc.conn/database-id->connection-pool))))))))))

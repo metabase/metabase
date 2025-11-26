@@ -286,55 +286,6 @@
   recursion. [[driver/normalize-db-details]] is actually done for side effects!"
   false)
 
-(def ^:dynamic *overridden-db-details*
-  "A dynamic var that holds a map of database-id -> detail-update-fn for temporarily overriding database connection
-  details. When a Database is selected from the application database, if its ID is present in this map, the
-  corresponding function will be applied to transform its `:details`.
-
-  This is useful for scenarios where you need to temporarily use different connection details (e.g., routing queries
-  to a read replica, connecting through a tunnel, or using alternative credentials) without mutating the database
-  record.
-
-  See [[with-overridden-db-details]] for usage."
-  nil)
-
-(defmacro with-overridden-db-details
-  "Temporarily override the connection details for a specific database within the dynamic scope of `body`.
-
-  The `detail-update-fn` is a function that takes the current database `:details` map and returns a modified version.
-  Any code that selects the Database with `database-id` from the application database within this scope will
-  automatically see the modified details.
-
-  This works by intercepting the Toucan `after-select` hook for `:model/Database`, so it affects all code paths
-  that load database records, including:
-  - Direct Toucan queries: `(t2/select-one :model/Database id)`
-  - Lib metadata providers: `(lib.metadata/database metadata-provider)`
-  - Any downstream code that accesses database details
-
-  Example:
-
-    ;; Route queries to a read replica
-    (with-overridden-db-details 1 (fn [details]
-                                     (assoc details :host \"read-replica.example.com\"))
-      ;; All code in this scope will see the overridden host
-      (qp/process-query query))
-
-  Note: Overrides can be nested - each `with-overridden-db-details` adds to the map of overrides rather than
-  replacing it, so you can override multiple databases in nested scopes."
-  [database-id detail-update-fn & body]
-  `(binding [*overridden-db-details* (assoc *overridden-db-details* ~database-id ~detail-update-fn)]
-     ~@body))
-
-(defn- apply-overridden-db-details
-  "Apply any overridden database details if present in [[*overridden-db-details*]].
-
-  This is called from the `after-select` hook for `:model/Database` to transparently apply detail overrides
-  when databases are loaded from the application database."
-  [{database-id :id :as database}]
-  (if-let [detail-update-fn (get *overridden-db-details* database-id)]
-    (update database :details detail-update-fn)
-    database))
-
 (t2/define-after-select :model/Database
   [{driver :engine, :as database}]
   (letfn [(normalize-details [db]
@@ -342,7 +293,7 @@
               (driver/normalize-db-details
                driver
                (m/update-existing-in db [:details :auth-provider] keyword))))]
-    (cond-> (apply-overridden-db-details database)
+    (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
            (driver.impl/registered? driver))
