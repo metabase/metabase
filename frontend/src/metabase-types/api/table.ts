@@ -136,7 +136,7 @@ export interface UpdateTableRequest {
   id: TableId;
   display_name?: string;
   visibility_type?: TableVisibilityType;
-  description?: string;
+  description?: string | null;
   caveats?: string;
   points_of_interest?: string;
   show_in_getting_started?: boolean;

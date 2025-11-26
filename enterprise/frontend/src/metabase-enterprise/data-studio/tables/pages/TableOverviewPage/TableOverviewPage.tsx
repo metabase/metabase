@@ -5,6 +5,8 @@ import { Center, Flex } from "metabase/ui";
 
 import { TableHeader } from "../../components/TableHeader";
 
+import { TableOverview } from "./TableOverview";
+
 type TableOverviewPageParams = {
   tableId: string;
 };
@@ -34,6 +36,7 @@ export function TableOverviewPage({ params }: TableOverviewPageProps) {
   return (
     <Flex direction="column" h="100%" data-testid="table-overview-page">
       <TableHeader table={table} />
+      <TableOverview table={table} />
     </Flex>
   );
 }
