@@ -1203,36 +1203,15 @@
            {:name "TOTAL",      :type "number",   :database_type "double_precision"}
            {:name "DISCOUNT",   :type "number",   :database_type "double_precision"}
            {:name "CREATED_AT", :type "datetime", :database_type "timestamp_with_time_zone"}
-           {:name "QUANTITY",   :type "number",   :database_type "integer"}
-           {:name "ID",         :type "number",   :database_type "bigint",                   :table_reference "User"}
-           {:name "ADDRESS",    :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "EMAIL",      :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "PASSWORD",   :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "NAME",       :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "CITY",       :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "LONGITUDE",  :type "number",   :database_type "double_precision",         :table_reference "User"}
-           {:name "STATE",      :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "SOURCE",     :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "BIRTH_DATE", :type "date",     :database_type "date",                     :table_reference "User"}
-           {:name "ZIP",        :type "string",   :database_type "character_varying",        :table_reference "User"}
-           {:name "LATITUDE",   :type "number",   :database_type "double_precision",         :table_reference "User"}
-           {:name "CREATED_AT", :type "datetime", :database_type "timestamp_with_time_zone", :table_reference "User"}
-           {:name "ID",         :type "number",   :database_type "bigint",                   :table_reference "Product"}
-           {:name "EAN",        :type "string",   :database_type "character_varying",        :table_reference "Product"}
-           {:name "TITLE",      :type "string",   :database_type "character_varying",        :table_reference "Product"}
-           {:name "CATEGORY",   :type "string",   :database_type "character_varying",        :table_reference "Product"}
-           {:name "VENDOR",     :type "string",   :database_type "character_varying",        :table_reference "Product"}
-           {:name "PRICE",      :type "number",   :database_type "double_precision",         :table_reference "Product"}
-           {:name "RATING",     :type "number",   :database_type "double_precision",         :table_reference "Product"}
-           {:name "CREATED_AT", :type "datetime", :database_type "timestamp_with_time_zone", :table_reference "Product"}]
+           {:name "QUANTITY",   :type "number",   :database_type "integer"}]
           request (fn [arguments]
                     (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                           {:request-options {:headers {"x-metabase-session" ai-token}}}
                                           {:arguments arguments
                                            :conversation_id conversation-id}))
           expected-fields (cond->> expected-fields-with-h2-db-types
-                            ;; For non-h2 app dbs, just verify we get some string?. We're sanity checking the result,
-                            ;; not exhaustively testing :database_type column metadata.
+                            ;; For non-h2 dbs, just verify we get some string?. We're sanity checking the result, not
+                            ;; exhaustively testing :database_type column metadata.
                             (not= "h2" (db-engine-name)) (mapv #(assoc % :database_type string?)))]
       (is (=? {:structured_output {:name "ORDERS"
                                    :display_name "Orders"
@@ -1241,7 +1220,7 @@
                                    :database_schema "PUBLIC"
                                    :id table-id
                                    :type "table"
-                                   :fields (map-indexed #(assoc %2 :field_id (format "t%d/%d" table-id %1))
+                                   :fields (map-indexed #(assoc %2 :field_id (format "t%d-%d" table-id %1))
                                                         expected-fields)}
                :conversation_id conversation-id}
               (request {:table_id table-id}))))))
