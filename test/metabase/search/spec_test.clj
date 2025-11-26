@@ -115,7 +115,7 @@
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
                                 :fields       nil
-                                :where        [:and [:= :is_published true] [:= :updated.id :this.collection_id]]}}}
+                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))
