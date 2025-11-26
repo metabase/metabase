@@ -79,6 +79,7 @@
     (not-empty (persistent! @metric-ids))))
 
 (mu/defn all-segment-ids [query]
+  "Return a set of all segment IDs anywhere in the query."
   (let [segment-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query

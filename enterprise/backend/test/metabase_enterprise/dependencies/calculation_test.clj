@@ -18,9 +18,11 @@
                                                                (lib/filter (lib/= product-category
                                                                                   "Widget")))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card prod-card)))
       (is (= {:card #{prod-card-id}
+              :segment #{}
               :table #{}}
              (calculation/upstream-deps:card widget-card))))))
 
@@ -54,6 +56,7 @@
         user-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "User" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/with-fields base-query [venue-name user-name])}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id users-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -95,6 +98,7 @@
         venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/aggregate base-query (lib/sum venue-price))}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -108,6 +112,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query orderable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/order-by base-query venue-name)}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -202,6 +207,7 @@
                                   :values_source_type "card"
                                   :values_source_config {:card_id category-values-card-id}}]}]
       (is (= {:card #{}
+              :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card category-values-card)))
       (is (= {:card #{category-values-card-id}
