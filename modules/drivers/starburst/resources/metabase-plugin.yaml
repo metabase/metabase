@@ -11,8 +11,7 @@ driver:
     - group:
         container-style: ["grid", "3fr 1fr"]
         fields:
-          - merge:
-              - host
+          - host
           - merge:
               - port
               - default: 8080
