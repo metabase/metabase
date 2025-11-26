@@ -29,7 +29,7 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
-export type TableDataLayer = "gold" | "silver" | "bronze" | "copper";
+export type TableDataLayer = "hidden" | "internal" | "published";
 
 export type TableDataSource =
   | "ingested"

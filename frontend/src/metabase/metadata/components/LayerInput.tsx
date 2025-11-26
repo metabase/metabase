@@ -10,7 +10,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   onChange: (value: TableDataLayer | null) => void;
 }
 
-const dataLayers = ["copper", "bronze", "silver", "gold"] as const;
+const dataLayers = ["hidden", "internal", "published"] as const;
 
 export const LayerInput = ({
   comboboxProps,
@@ -37,10 +37,9 @@ export const LayerInput = ({
         ...comboboxProps,
       }}
       data={[
-        { value: "copper" as const, label: t`Copper` },
-        { value: "bronze" as const, label: t`Bronze` },
-        { value: "silver" as const, label: t`Silver` },
-        { value: "gold" as const, label: t`Gold` },
+        { value: "hidden" as const, label: t`Hidden` },
+        { value: "internal" as const, label: t`Internal` },
+        { value: "published" as const, label: t`Published` },
       ]}
       label={t`Visibility type`}
       renderOption={(item) => {
@@ -49,14 +48,14 @@ export const LayerInput = ({
         return (
           <SelectItem selected={selected}>
             <Group align="center" gap="sm" justify="center">
-              <Icon c={getColor(item.option.value)} name="medallion" />
+              <Icon c={getColor(item.option.value)} name="eye_filled" />
               <span>{item.option.label}</span>
             </Group>
           </SelectItem>
         );
       }}
       leftSection={
-        value ? <Icon c={getColor(value)} name="medallion" /> : undefined
+        value ? <Icon c={getColor(value)} name="eye_filled" /> : undefined
       }
       placeholder={t`Select a visibility type`}
       value={value}
@@ -75,5 +74,6 @@ function getColor(value: TableDataLayer | string): ColorName {
   if (isDataLayer(value)) {
     return value;
   }
+  // todo fixme
   return "copper";
 }
