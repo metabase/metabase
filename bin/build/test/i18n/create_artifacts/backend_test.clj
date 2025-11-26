@@ -65,9 +65,9 @@
     true
     (catch Exception _e false)))
 
-(defn- assert-message-part [msg msg-type locale]
+(defn- assert-message-part [msg msg-part locale]
   (is (message-format? msg)
-      (format "locale %s %s is not a valid MessageFormat: %s" (pr-str locale) msg-type (pr-str msg))))
+      (format "locale %s %s is not a valid MessageFormat: %s" (pr-str locale) msg-part (pr-str msg))))
 
 (defn- assert-message [locale {:keys [id str plural? id-plural str-plural]}]
   (assert-message-part id "msgid" locale)
