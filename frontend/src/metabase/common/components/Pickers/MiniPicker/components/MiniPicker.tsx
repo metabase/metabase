@@ -26,6 +26,7 @@ export type MiniPickerProps = {
   models: MiniPickerPickableItem["model"][];
   onBrowseAll?: () => void;
   shouldHide?: (item: MiniPickerItem | unknown) => boolean;
+  shouldShowLibrary?: boolean;
 };
 
 export function MiniPicker({
@@ -38,6 +39,7 @@ export function MiniPicker({
   onBrowseAll,
   trapFocus = false,
   shouldHide,
+  shouldShowLibrary = true,
 }: MiniPickerProps) {
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection();
@@ -82,6 +84,7 @@ export function MiniPicker({
         models,
         canBrowse: !!onBrowseAll,
         libraryCollection,
+        shouldShowLibrary,
       }}
     >
       <Menu
