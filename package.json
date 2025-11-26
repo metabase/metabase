@@ -499,6 +499,5 @@
   },
   "browserslist": [
     "defaults"
-  ],
-  "packageManager": "pnpm@10.23.0"
+  ]
 }
