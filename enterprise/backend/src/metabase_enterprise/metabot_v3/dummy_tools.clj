@@ -220,15 +220,13 @@
                updated-fields
                (when with-fields?
                  (->> (:fields base-details)
-                      (mapv
+                      (keep
                        (fn [{:keys [name] :as field}]
-                         (if-let [idx (get contextual-index [table-id fk-field-id name])]
-                           (assoc field :field_id (str main-field-id-prefix idx))
-                           field)))))]
-
-           (cond-> base-details
-             updated-fields (assoc :fields updated-fields)
-             true (assoc :related_by fk-field-name))))
+                         (when-let [idx (get contextual-index [table-id fk-field-id name])]
+                           (assoc field :field_id (str main-field-id-prefix idx)))))))]
+           (-> (cond-> base-details
+                 updated-fields (assoc :fields updated-fields))
+               (assoc :related_by fk-field-name))))
        grouped-fks))))
 
 (defn- card-details
