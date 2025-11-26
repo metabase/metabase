@@ -16,11 +16,7 @@ import {
   waitFor,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { PublishTablesResponse } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockTable,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import { PublishTablesModal } from "./PublishTablesModal";
 
@@ -31,7 +27,6 @@ function setup(
     schemas?: Set<string>;
     databases?: Set<number>;
     seenPublishTablesInfo?: boolean;
-    publishResponse?: PublishTablesResponse;
     publishError?: boolean;
   } = {},
 ) {
@@ -41,7 +36,6 @@ function setup(
     schemas = new Set<string>(),
     databases = new Set<number>(),
     seenPublishTablesInfo = true,
-    publishResponse,
     publishError = false,
   } = args;
 
@@ -77,16 +71,8 @@ function setup(
       status: 500,
       body: { message: "Failed to publish" },
     });
-  } else if (publishResponse) {
-    fetchMock.post(
-      "path:/api/ee/data-studio/table/publish-table",
-      publishResponse,
-    );
   } else {
-    fetchMock.post("path:/api/ee/data-studio/table/publish-table", {
-      tables: [createMockTable({ id: 1 })],
-      target_collection: testCollection,
-    });
+    fetchMock.post("path:/api/ee/data-studio/table/publish-table", 200);
   }
 
   mockGetBoundingClientRect();
@@ -175,17 +161,11 @@ describe("PublishTablesModal", () => {
   });
 
   it("handles success flow correctly", async () => {
-    const publishResponse: PublishTablesResponse = {
-      tables: [createMockTable({ id: 1 })],
-      target_collection: createMockCollection({ id: 1 }),
-    };
-
     const { onSuccess } = setup({
       seenPublishTablesInfo: false,
       tables: new Set([1, 2]),
       schemas: new Set<string>(["10"]),
       databases: new Set([100]),
-      publishResponse,
     });
 
     const checkbox = getCheckbox();
@@ -275,14 +255,8 @@ describe("PublishTablesModal", () => {
   });
 
   it("handles root collection selection correctly", async () => {
-    const publishResponse: PublishTablesResponse = {
-      tables: [createMockTable({ id: 1 })],
-      target_collection: createMockCollection({ id: "root" }),
-    };
-
     setup({
       seenPublishTablesInfo: true,
-      publishResponse,
     });
 
     await waitFor(() => {

@@ -2,7 +2,6 @@ import type {
   DiscardTablesValuesRequest,
   EditTablesRequest,
   PublishTablesRequest,
-  PublishTablesResponse,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
 } from "metabase-types/api";
@@ -57,10 +56,7 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    publishTables: builder.mutation<
-      PublishTablesResponse,
-      PublishTablesRequest
-    >({
+    publishTables: builder.mutation<void, PublishTablesRequest>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/publish-table",

@@ -219,11 +219,6 @@ export interface PublishTablesRequest {
   target_collection_id: number | "library" | null;
 }
 
-export interface PublishTablesResponse {
-  tables: Table[];
-  target_collection: Collection | null;
-}
-
 export type TableData = {
   data: DatasetData;
   database_id: DatabaseId;
