@@ -90,7 +90,7 @@ const init = async () => {
 
   if (options.BUILD_JAR) {
     printBold("⏳ Building backend");
-    shell("./bin/build-for-test");
+    shell("./bin/build-backend-for-test");
 
     if (options.START_BACKEND) {
       const isBackendRunning = shell(

@@ -54,7 +54,7 @@ const CypressBackend = {
 
       this.server.process = spawn(
         "java",
-        [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
+        [...javaFlags, "-jar", "target/uberjar/metabase-backend.jar"],
         {
           env: {
             ...process.env,
