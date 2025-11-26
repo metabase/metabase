@@ -56,6 +56,7 @@
                          (for [t tables]
                            (let [id (t2/insert-returning-pk! :model/Table
                                                              {:db_id  (mt/id)
+                                                              :schema "public"
                                                               :name   (str "test_table_" (name t))
                                                               :active true})]
                              [t id])))
@@ -79,7 +80,7 @@
                                                                                             :native   {:query "SELECT 1"}})}
                                                                          :target {:type   "table"
                                                                                   :schema "public"
-                                                                                  :name   (str "test_output_" (name tx))}})]
+                                                                                  :name   (str "test_table_" (name tx))}})]
                              [tx id])))
         id-map     (merge tx-ids table-ids)]
     ;; Create dependencies
@@ -205,6 +206,23 @@
           ;; Transforms should be :x1
           (is (= #{:x1} (:transforms translated)))
           ;; Inputs should be :t1
+          (is (contains? (:inputs translated) :t1)))))))
+
+(deftest path-induced-subgraph-larger-test
+  (mt/with-premium-features #{:workspaces :dependencies}
+    (mt/with-model-cleanup [:model/Table :model/Transform :model/Dependency]
+      (testing "graph built from shorthand matches abstract solver"
+        (let [shorthand  {:check-outs   #{:x2, :x4}
+                          :dependencies {:x1 [:t0]
+                                         :x2 [:x1, :t0]
+                                         :x3 [:x2]
+                                         :x4 [:x3]
+                                         :x5 [:x4, :x2]}}
+              id-map     (create-test-graph! (dag-abstract/expand-shorthand shorthand))
+              result     (ws.dag/path-induced-subgraph {:transforms (mapv id-map (:check-outs shorthand))})
+              translated (translate-result result id-map)]
+          (is (= #{:x2, :x4} (:check-outs translated)))
+          (is (= #{:x2, :x3, :x4} (:transforms translated)))
           (is (contains? (:inputs translated) :t1)))))))
 
 (deftest expand-solver-test
