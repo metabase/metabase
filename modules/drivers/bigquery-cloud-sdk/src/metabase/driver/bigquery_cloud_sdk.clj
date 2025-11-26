@@ -983,9 +983,10 @@
     (try
       (doall
        (for [query queries]
-         (let [sql (if (string? query) query (first query))
+         (let [[sql params] (if (string? query) [query] query)
                _ (log/debugf "Executing BigQuery DDL: %s" sql)
                job-config (-> (QueryJobConfiguration/newBuilder sql)
+                              (bigquery.params/set-parameters! params)
                               (.setUseLegacySql false)
                               (.build))
                table-result (.query client job-config (into-array BigQuery$JobOption []))]
