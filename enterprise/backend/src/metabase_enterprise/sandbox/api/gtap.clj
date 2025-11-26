@@ -13,10 +13,14 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [_route-params

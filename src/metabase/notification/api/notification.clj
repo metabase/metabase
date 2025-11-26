@@ -213,6 +213,10 @@
                                                          :previous-object existing-notification
                                                          :user-id         api/*current-user-id*}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -238,6 +242,10 @@
                                           %))
        (m/update-existing :subscriptions #(map (fn [x] (t2/instance :model/NotificationSubscription x)) %))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
   [_route _query body :- ::models.notification/FullyHydratedNotification]

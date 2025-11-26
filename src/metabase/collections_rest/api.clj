@@ -1080,7 +1080,6 @@
                                                      (request/paged?) (take (request/limit))))
    :total (count cards)})
 
-
 (api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in this collection that can be moved into dashboards in this collection.
 

@@ -54,13 +54,12 @@
                       broken-cards)
      :bad_transforms (into [] broken-transforms)}))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/check_card"
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
@@ -95,13 +94,12 @@
                                       [:query {:optional true} ::queries.schema/query]]]]
    [:target {:optional true} [:maybe ms/Map]]])
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/check_transform"
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
@@ -122,13 +120,12 @@
     ;; if this isn't a sql query, just claim it works
     {:success true}))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
-;; of the REST API
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
