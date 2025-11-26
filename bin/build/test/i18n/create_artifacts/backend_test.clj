@@ -2,8 +2,11 @@
   (:require
    [clojure.edn :as edn]
    [clojure.test :refer :all]
+   [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
-   [i18n.create-artifacts.test-common :as test-common]))
+   [i18n.create-artifacts.test-common :as test-common])
+  (:import
+   (java.text MessageFormat)))
 
 (deftest edn-test
   (#'backend/write-edn-file! test-common/po-contents "/tmp/out.edn")
@@ -54,3 +57,32 @@
       ;; Invalid or empty references
       []                                                                            false
       ["foo"]                                                                       false)))
+
+(defn- message-format?
+  [s]
+  (try
+    (MessageFormat. s)
+    true
+    (catch Exception _e false)))
+
+(defn- assert-message-part [msg msg-type locale]
+  (is (message-format? msg)
+      (format "locale %s %s is not a valid MessageFormat: %s" (pr-str locale) msg-type (pr-str msg))))
+
+(defn- assert-message [locale {:keys [id str plural? id-plural str-plural]}]
+  (assert-message-part id "msgid" locale)
+  (if plural?
+    (do
+      (assert-message-part id-plural "msgid_plural" locale)
+      (doseq [p str-plural]
+        (assert-message-part p "msgstr" locale)))
+    (assert-message-part str "msgstr" locale)))
+
+(defn- verify-locale [locale]
+  (let [messages (filter backend/backend-message? (:messages (i18n/po-contents locale)))]
+    (doseq [m messages]
+      (assert-message locale m))))
+
+(deftest po-test
+  (testing "backend meesages in the po file can be converted to MessageFormat"
+    (doall (map verify-locale (i18n/locales)))))
