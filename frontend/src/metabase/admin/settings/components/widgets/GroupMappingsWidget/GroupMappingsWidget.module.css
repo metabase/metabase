@@ -20,3 +20,7 @@
   margin-right: var(--mantine-spacing-md);
   margin-bottom: -40px;
 }
+
+.tableColumn {
+  width: 50%;
+}

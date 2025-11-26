@@ -106,12 +106,12 @@ export const GroupSelect = ({
   return (
     <Popover opened={opened} onChange={toggle}>
       <Popover.Target>{triggerElement}</Popover.Target>
-      <Popover.Dropdown p="sm">
+      <Popover.Dropdown p="sm" w={200}>
         <Stack gap="xs">
           {sections.map((section, sectionIndex) => (
             <Box key={sectionIndex}>
               {section.name && (
-                <Text size="xs" fw={700} c="text-medium" mb="xs">
+                <Text size="md" fw={700} c="text-medium" mb="xs">
                   {section.name}
                 </Text>
               )}
@@ -124,8 +124,9 @@ export const GroupSelect = ({
                   return (
                     <Checkbox
                       key={group.id}
+                      size="md"
                       label={
-                        <Text c={color} size="sm">
+                        <Text c={color} size="md">
                           {getGroupNameLocalized(group)}
                         </Text>
                       }
@@ -145,6 +146,3 @@ export const GroupSelect = ({
     </Popover>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default GroupSelect;

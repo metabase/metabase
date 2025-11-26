@@ -169,7 +169,17 @@ export function GroupMappingsWidgetView({
               {t`New mapping`}
             </Button>
           )}
-          <AdminContentTable columnTitles={[groupHeading, t`Groups`, ""]}>
+          <AdminContentTable
+            columnTitles={[
+              <span key="name" className={S.tableColumn}>
+                {groupHeading}
+              </span>,
+              <span key="groups" className={S.tableColumn}>
+                {t`Groups`}
+              </span>,
+              "",
+            ]}
+          >
             {showAddRow && (
               <AddMappingRow
                 mappings={mappings}
@@ -181,7 +191,9 @@ export function GroupMappingsWidgetView({
             {Object.keys(mappings).length === 0 && !showAddRow && (
               <tr>
                 <td>&nbsp;</td>
-                <td>{noMappingText(mappingSetting, groupSyncSwitchValue)}</td>
+                <td className={S.tableColumn}>
+                  {noMappingText(mappingSetting, groupSyncSwitchValue)}
+                </td>
                 <td>&nbsp;</td>
               </tr>
             )}

@@ -16,7 +16,8 @@ import { Icon, Tooltip } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
 import { DeleteGroupMappingModal } from "../DeleteGroupMappingModal/DeleteGroupMappingModal";
-import GroupSelect from "../GroupSelect";
+import WidgetS from "../GroupMappingsWidget.module.css";
+import { GroupSelect } from "../GroupSelect";
 
 import S from "./MappingRow.module.css";
 
@@ -133,8 +134,8 @@ export const MappingRow = ({
   return (
     <>
       <tr>
-        <td>{name}</td>
-        <td>
+        <td className={WidgetS.tableColumn}>{name}</td>
+        <td className={WidgetS.tableColumn}>
           <GroupSelect
             groups={groups}
             selectedGroupIds={selectedGroupIdsFromGroupsThatExist}
