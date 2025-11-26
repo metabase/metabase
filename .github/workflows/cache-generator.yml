@@ -31,7 +31,7 @@ name: Cache Generator
 on:
   schedule:
     - cron: "0 3 * * 1" # Mondays at 03:00 UTC
-  workflow_dispatch:    #  manually update the cache
+  workflow_dispatch: # manually update the cache
 
 concurrency:
   group: cache-generator
@@ -50,7 +50,6 @@ jobs:
       node-cache-key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
       eslint-cache-key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
-      types-cache-key: ${{ steps.get-cache-keys.outputs.types-cache-key }}
 
   generate-caches:
     runs-on: ubuntu-22.04
@@ -61,7 +60,6 @@ jobs:
       NODE_CACHE_KEY: ${{ needs.get-cache-keys.outputs.node-cache-key }}
       CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
       ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
-      TYPES_CACHE_KEY: ${{ needs.get-cache-keys.outputs.types-cache-key }}
     steps:
       - uses: actions/checkout@v4
 
@@ -124,7 +122,7 @@ jobs:
 
       - name: Update Cypress cache
         uses: ./.github/actions/update-cache
-        with:Update eslint cache
+        with:
           path: ~/.cache/Cypress
           key: ${{ env.CYPRESS_CACHE_KEY }}
 
@@ -140,9 +138,3 @@ jobs:
         with:
           path: ${{ github.workspace}}/.eslintcache
           key: ${{ env.ESLINT_CACHE_KEY }}
-
-      - name: Update generated types cache
-        uses: ./.github/actions/update-cache
-        with:
-          path: frontend/src/metabase-types/openapi
-          key: ${{ env.TYPES_CACHE_KEY }}

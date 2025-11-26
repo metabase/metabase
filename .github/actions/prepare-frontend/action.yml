@@ -45,13 +45,6 @@ runs:
           node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
-    - name: Restore generated OpenAPI types cache
-      uses: actions/cache/restore@v4
-      id: types-cache
-      with:
-        path: frontend/src/metabase-types/openapi
-        key: ${{ steps.get-cache-keys.outputs.types-cache-key }}
-
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
