@@ -1,14 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
-import type {
-  GroupIds,
-  UserGroupType,
-  UserGroupsType,
-} from "metabase/admin/types";
-import CS from "metabase/css/core/index.css";
+import type { GroupIds } from "metabase/admin/types";
 import {
   canEditMembership,
   getGroupColor,
@@ -16,27 +10,27 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
-import { Box, Checkbox, Icon, Popover, Stack, Text } from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
 type GroupSelectProps = {
   groups: GroupInfo[];
   selectedGroupIds: GroupIds;
-  onGroupChange: (group: UserGroupType, selected: boolean) => void;
+  onGroupChange: (group: GroupInfo, selected: boolean) => void;
   isCurrentUser?: boolean;
   emptyListMessage?: string;
 };
 
 type GroupSection = {
   name?: string;
-  items: UserGroupsType;
+  items: GroupInfo[];
 };
 
-function getSections(groups: UserGroupsType): GroupSection[] {
+function getSections(groups: GroupInfo[]): GroupSection[] {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
   const topGroups = [defaultGroup, adminGroup].filter(
-    (g): g is UserGroupType => g != null,
+    (g): g is GroupInfo => g != null,
   );
   const groupsExceptDefaultAndAdmin = groups.filter(
     (g) => !isAdminGroup(g) && !isDefaultGroup(g),
@@ -67,25 +61,22 @@ export const GroupSelect = ({
 }: GroupSelectProps) => {
   const [opened, { toggle }] = useDisclosure(false);
 
-  const handleCheckboxChange = (group: UserGroupType, checked: boolean) => {
+  const handleCheckboxChange = (group: GroupInfo, checked: boolean) => {
     onGroupChange(group, checked);
   };
 
-  const isOptionDisabled = (group: UserGroupType) =>
+  const isOptionDisabled = (group: GroupInfo) =>
     (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group);
 
   const triggerElement = (
-    <Box
-      onClick={toggle}
-      className={cx(CS.flex, CS.alignCenter, CS.cursorPointer)}
-    >
+    <Flex onClick={toggle} align="center" style={{ cursor: "pointer" }}>
       <GroupSummary
         mr="0.5rem"
         groups={groups}
         selectedGroupIds={selectedGroupIds}
       />
-      <Icon className={CS.textLight} name="chevrondown" size={10} />
-    </Box>
+      <Icon c="text-tertiary" name="chevrondown" size={10} />
+    </Flex>
   );
 
   if (groups.length === 0) {
@@ -93,7 +84,7 @@ export const GroupSelect = ({
       <Popover opened={opened} onChange={toggle}>
         <Popover.Target>{triggerElement}</Popover.Target>
         <Popover.Dropdown>
-          <Text p="sm" c="text-medium">
+          <Text p="sm" c="text-secondary">
             {emptyListMessage}
           </Text>
         </Popover.Dropdown>
@@ -111,7 +102,7 @@ export const GroupSelect = ({
           {sections.map((section, sectionIndex) => (
             <Box key={sectionIndex}>
               {section.name && (
-                <Text size="md" fw={700} c="text-medium" mb="xs">
+                <Text size="md" fw={700} c="text-secondary" mb="xs">
                   {section.name}
                 </Text>
               )}

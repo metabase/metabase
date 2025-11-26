@@ -8,7 +8,7 @@ import type {
   GroupIds,
 } from "metabase/admin/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";
@@ -24,7 +24,7 @@ import S from "./MappingRow.module.css";
 type OnDeleteMappingType = (arg: {
   name: string;
   groupIdsToDelete?: GroupIds;
-  onSuccess?: () => Promise<void>;
+  onSuccess?: () => void;
 }) => void;
 
 type MappingRowProps = {
@@ -80,38 +80,38 @@ export const MappingRow = ({
   const getCallbackForGroupsAfterDeletingMapping = (
     whatToDoAboutGroups: DeleteMappingModalValueType,
     groupIds: GroupIds,
-  ): (() => Promise<void>) | undefined => {
+  ): (() => void) | undefined => {
     switch (whatToDoAboutGroups) {
       case "clear":
-        return async () => {
-          await Promise.all(
+        return () =>
+          Promise.all(
             groupIds.map(async (id) => {
               try {
                 const group = groups.find((group) => group.id === id);
                 if (group && !isAdminGroup(group)) {
-                  await clearGroupMember({ id });
+                  clearGroupMember({ id });
                 }
               } catch (error) {
                 console.error(error);
               }
             }),
           );
-        };
+
       case "delete":
-        return async () => {
-          await Promise.all(
+        return () =>
+          Promise.all(
             groupIds.map(async (id) => {
               try {
                 const group = groups.find((group) => group.id === id);
                 if (group && !isAdminGroup(group)) {
-                  await deleteGroup({ id });
+                  deleteGroup({ id });
                 }
               } catch (error) {
                 console.error(error);
               }
             }),
           );
-        };
+
       default:
         return undefined;
     }

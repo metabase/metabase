@@ -3,17 +3,18 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { MappingsType, UserGroupsType } from "metabase/admin/types";
+import type { MappingsType } from "metabase/admin/types";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
 import { Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import type { GroupInfo } from "metabase-types/api";
 
 import AddMappingRow from "./AddMappingRow";
 import S from "./GroupMappingsWidget.module.css";
 import { MappingRow } from "./MappingRow";
 
-const groupIsMappable = (group: { name: string }) => !isDefaultGroup(group);
+const groupIsMappable = (group: GroupInfo) => !isDefaultGroup(group);
 
 const helpText = (mappingSetting: string) => {
   if (mappingSetting === "jwt-group-mappings") {
@@ -24,7 +25,7 @@ const helpText = (mappingSetting: string) => {
 
 const noMappingText = (mappingSetting: string, syncSwitchValue: boolean) => {
   if (!syncSwitchValue) {
-    return `No mappings yet, group sync is not on`;
+    return t`No mappings yet, group sync is not on`;
   }
   if (mappingSetting === "jwt-group-mappings") {
     return t`No mappings yet, groups will be automatically assgined by exactly matching names`;
@@ -45,7 +46,7 @@ type SaveError = {
 type GroupMappingsWidgetViewProps = {
   groupHeading: string;
   groupPlaceholder: string;
-  allGroups?: UserGroupsType;
+  allGroups?: GroupInfo[];
   mappingSetting: string;
   deleteGroup: (args: { id: number }) => Promise<void>;
   clearGroupMember: (args: { id: number }) => Promise<void>;
@@ -115,7 +116,7 @@ export function GroupMappingsWidgetView({
     onSuccess,
   }: {
     name: string;
-    onSuccess?: () => Promise<void>;
+    onSuccess?: () => void;
   }) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, name);
 
@@ -125,7 +126,7 @@ export function GroupMappingsWidgetView({
         value: mappingsMinusDeletedMapping,
       });
 
-      onSuccess && (await onSuccess());
+      onSuccess?.();
       setSaveError(null);
     } catch (error) {
       setSaveError(error as SaveError);
@@ -141,7 +142,7 @@ export function GroupMappingsWidgetView({
           <Flex align="center" gap="sm">
             <Text
               fw={700}
-              c="text-dark"
+              c="text-primary"
               lh={1.2}
             >{t`Synchronize Group Memberships`}</Text>
             <FormSwitch
@@ -151,9 +152,9 @@ export function GroupMappingsWidgetView({
             />
           </Flex>
           <Tooltip label={helpText(mappingSetting)} position="top" maw="20rem">
-            <Flex align="center" lh={1.2} gap="sm" c="text-medium">
+            <Flex align="center" lh={1.2} gap="sm" c="text-secondary">
               <Icon name="info" />
-              <Text c="text-medium" fw={700}>{t`About mappings`}</Text>
+              <Text c="text-secondary" fw={700}>{t`About mappings`}</Text>
             </Flex>
           </Tooltip>
         </Flex>
