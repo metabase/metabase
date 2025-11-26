@@ -269,16 +269,19 @@
                       :name "CREATED_AT"
                       :display_name "Created At: Week"
                       :type "datetime"
+                      :database_type string?
                       :semantic_type "creation_timestamp"}
                      {:field_id (str "q" query-id "-1")
                       :name "CREATED_AT_2"
                       :display_name "Created At: Day"
                       :type "datetime"
+                      :database_type string?
                       :semantic_type "creation_timestamp"}
                      {:field_id (str "q" query-id "-2")
                       :name "avg"
                       :display_name "Metrica"
                       :type "number"
+                      :database_type missing-value
                       :semantic_type "score"}]}
                    :conversation_id conversation-id}
                   (-> response
@@ -658,8 +661,16 @@
                                    :query_id string?
                                    :query map?
                                    :result_columns
-                                   [{:field_id (str "q" generated-id "-0"), :name "CREATED_AT", :display_name "Created At: Week", :type "datetime"}
-                                    {:field_id (str "q" generated-id "-1"), :name "avg", :display_name "Average of Rating", :type "number"}]}
+                                   [{:field_id (str "q" generated-id "-0"),
+                                     :name "CREATED_AT",
+                                     :display_name "Created At: Week",
+                                     :type "datetime"
+                                     :database_type string?}
+                                    {:field_id (str "q" generated-id "-1"),
+                                     :name "avg",
+                                     :display_name "Average of Rating",
+                                     :type "number"
+                                     :database_type missing-value}]}
                :conversation_id conversation-id}
               response))
       ;; Verify the query is normalized (supports both MBQL v4 and v5)
@@ -687,10 +698,22 @@
                                                 {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                 {:arguments arguments
                                                  :conversation_id conversation-id}))
-                expected-fields [{:name "VENDOR" :display_name "Vendor", :type "string", :semantic_type "company"
+                expected-fields [{:name "VENDOR"
+                                  :display_name "Vendor"
+                                  :type "string"
+                                  :semantic_type "company"
+                                  :database_type string?
                                   :field_values string-sequence?}
-                                 {:name "CREATED_AT" :display_name "Created At: Week", :type "datetime", :semantic_type "creation_timestamp"}
-                                 {:name "avg" :display_name "Average of Rating", :type "number", :semantic_type "score"}]]
+                                 {:name "CREATED_AT"
+                                  :display_name "Created At: Week"
+                                  :type "datetime"
+                                  :semantic_type "creation_timestamp"
+                                  :database_type string?}
+                                 {:name "avg"
+                                  :display_name "Average of Rating"
+                                  :type "number"
+                                  :semantic_type "score"
+                                  :database_type missing-value}]]
             (testing "Normal call"
               (is (=? {:structured_output (-> question-data
                                               (select-keys [:name :description :database_id])
@@ -1164,6 +1187,43 @@
                     (request (assoc arguments
                                     :with_fields false
                                     :with_metrics false))))))))))
+
+(deftest get-table-details-database-type-test
+  ;; get-table-details-test validates other metadata, this test focuses on :database_type.
+  (mt/with-premium-features #{:metabot-v3}
+    (let [table-id (mt/id :orders)
+          conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          expected-fields-with-h2-db-types
+          [{:name "ID",         :type "number",   :database_type "bigint"}
+           {:name "USER_ID",    :type "number",   :database_type "integer"}
+           {:name "PRODUCT_ID", :type "number",   :database_type "integer"}
+           {:name "SUBTOTAL",   :type "number",   :database_type "double_precision"}
+           {:name "TAX",        :type "number",   :database_type "double_precision"}
+           {:name "TOTAL",      :type "number",   :database_type "double_precision"}
+           {:name "DISCOUNT",   :type "number",   :database_type "double_precision"}
+           {:name "CREATED_AT", :type "datetime", :database_type "timestamp_with_time_zone"}
+           {:name "QUANTITY",   :type "number",   :database_type "integer"}]
+          request (fn [arguments]
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                          {:arguments arguments
+                                           :conversation_id conversation-id}))
+          expected-fields (cond->> expected-fields-with-h2-db-types
+                            ;; For non-h2 dbs, just verify we get some string?. We're sanity checking the result, not
+                            ;; exhaustively testing :database_type column metadata.
+                            (not= "h2" (db-engine-name)) (mapv #(assoc % :database_type string?)))]
+      (is (=? {:structured_output {:name "ORDERS"
+                                   :display_name "Orders"
+                                   :database_id (mt/id)
+                                   :database_engine (db-engine-name)
+                                   :database_schema "PUBLIC"
+                                   :id table-id
+                                   :type "table"
+                                   :fields (map-indexed #(assoc %2 :field_id (format "t%d-%d" table-id %1))
+                                                        expected-fields)}
+               :conversation_id conversation-id}
+              (request {:table_id table-id}))))))
 
 (deftest get-table-details-related-tables-test
   (mt/with-premium-features #{:metabot-v3}
