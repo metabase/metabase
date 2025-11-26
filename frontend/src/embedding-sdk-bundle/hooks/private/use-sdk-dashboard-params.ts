@@ -12,7 +12,7 @@ import { isNotNull } from "metabase/lib/types";
  * @inline
  */
 export type SdkDashboardEntityInternalProps = {
-  dashboardId: SdkDashboardId | null;
+  dashboardId?: SdkDashboardId | null;
   token?: SdkEntityToken | null;
 };
 
