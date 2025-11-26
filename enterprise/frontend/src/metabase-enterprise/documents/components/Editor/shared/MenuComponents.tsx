@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   Avatar,
+  Box,
   Group,
   Icon,
   type IconName,
@@ -28,6 +29,7 @@ export interface MenuItem {
   model?: SuggestionModel;
   id?: number | string;
   href?: string;
+  parentName?: string;
   hasSubmenu?: boolean;
 }
 
@@ -48,16 +50,33 @@ export const MenuItemComponent = ({
     aria-selected={isSelected}
     {...rest}
   >
-    <Group gap="sm" wrap="nowrap" align="center">
-      {item.model === "user" && <Avatar name={item.label} size={16} />}
-
-      {item.model !== "user" && (
-        <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
-      )}
+    <Group gap="sm" wrap="nowrap" align="flex-start">
+      <Box mt=".125rem">
+        {item.model === "user" ? (
+          <Avatar name={item.label} size={16} />
+        ) : (
+          <Icon
+            name={item.icon}
+            size={16}
+            color={item.iconColor || "inherit"}
+          />
+        )}
+      </Box>
 
       <Stack gap={2} className={S.menuItemStack}>
         <Text size="md" lh="lg" c="inherit">
           {item.label}
+          {item.parentName && (
+            <Text
+              component="span"
+              mt=".125rem"
+              size="sm"
+              c="text-light"
+              lh="md"
+            >
+              {` – ${item.parentName}`}
+            </Text>
+          )}
         </Text>
         {item.description && (
           <Text size="sm" c="text-light" lh="md">
@@ -67,7 +86,7 @@ export const MenuItemComponent = ({
       </Stack>
 
       {item.hasSubmenu && (
-        <Icon name="chevronright" size=".75rem" color="text-light" />
+        <Icon name="chevronright" size=".75rem" c="text-light" />
       )}
     </Group>
   </UnstyledButton>

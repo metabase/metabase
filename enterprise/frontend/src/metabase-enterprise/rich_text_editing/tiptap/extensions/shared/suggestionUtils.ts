@@ -4,6 +4,7 @@ import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
+import { getSchemaDisplayName } from "metabase/metadata/utils/schema";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import type { MetabaseProtocolEntityModel } from "metabase-enterprise/metabot/utils/links";
 import type {
@@ -30,12 +31,18 @@ export function buildSearchMenuItems(
     });
     const urlableModel = entityToUrlableModel(result, result.model);
     const href = modelToUrl(urlableModel);
+    const parentName =
+      result.model === "table"
+        ? `${result.database_name} ${result.table_schema ? "(" + getSchemaDisplayName(result.table_schema) + ")" : ""}`
+        : result.collection.name;
+
     return {
       icon: iconData.name,
       label: result.name,
       id: result.id,
       model: result.model,
       href: href || undefined,
+      parentName,
       action: () => onSelect(result),
     };
   });
