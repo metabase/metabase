@@ -172,16 +172,6 @@ const TableSectionBase = ({
         <Group justify="stretch" gap="sm">
           <Button
             flex="1"
-            leftSection={<Icon name="settings" />}
-            onClick={onSyncOptionsClick}
-            style={{
-              width: "100%",
-            }}
-          >
-            {t`Sync settings`}
-          </Button>
-          <Button
-            flex="1"
             onClick={() => setIsCreateModelsModalOpen(true)}
             p="sm"
             leftSection={<Icon name="library" />}
@@ -191,6 +181,16 @@ const TableSectionBase = ({
             disabled={table.is_published}
           >
             {table.is_published ? t`Published` : t`Publish`}
+          </Button>
+          <Button
+            flex="1"
+            leftSection={<Icon name="settings" />}
+            onClick={onSyncOptionsClick}
+            style={{
+              width: "100%",
+            }}
+          >
+            {t`Sync settings`}
           </Button>
           <Tooltip label={t`Dependency graph`}>
             <Button
