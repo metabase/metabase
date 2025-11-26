@@ -110,6 +110,7 @@ jobs:
 
   sdk-tests:
     needs: [uberjar, embedding-sdk-package, files-changed]
+    if: always()
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
