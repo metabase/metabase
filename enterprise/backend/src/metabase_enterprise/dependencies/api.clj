@@ -440,20 +440,13 @@
   [_route-params
    {:keys [types card_types query sort_column sort_direction]
     :or {sort_column :name
-         sort_direction :asc}} :- unreferenced-items-args]
+         sort_direction :asc
+         types [:card :transform :snippet]
+         card_types [:model :metric]}} :- unreferenced-items-args]
   (let [limit (or (request/limit) 50)
         offset (or (request/offset) 0)
-
-        selected-types (or (when types
-                             (if (sequential? types)
-                               types
-                               [types]))
-                           (vec (keys entity-model)))
-        card-types (or (when card_types
-                         (if (sequential? card_types)
-                           card_types
-                           [card_types]))
-                       [:question :model :metric])
+        selected-types (if (sequential? types) types [types])
+        card-types (if (sequential? card_types) card_types [card_types])
 
         ;; Define query builders for each entity type
         entity-queries
