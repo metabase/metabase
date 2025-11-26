@@ -110,7 +110,7 @@ export type QuestionMockLocationParameters = {
  * @inline
  */
 export type SdkQuestionEntityInternalProps = {
-  questionId: SdkQuestionId | null;
+  questionId?: SdkQuestionId | null;
   token?: SdkEntityToken | null;
 };
 

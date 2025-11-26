@@ -215,7 +215,9 @@ export const SdkQuestionProvider = ({
 
   if (isGuestEmbed && isNewQuestion) {
     return (
-      <SdkError message={t`You can't save questions in Guest Embed mode`} />
+      <SdkError
+        message={t`You can't explore or save questions in Guest Embed mode`}
+      />
     );
   }
 
