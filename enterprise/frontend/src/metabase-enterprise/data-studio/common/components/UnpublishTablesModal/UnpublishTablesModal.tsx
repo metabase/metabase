@@ -15,7 +15,7 @@ type UnpublishTablesModalProps = {
   tables?: Set<TableId>;
   schemas?: Set<SchemaId>;
   databases?: Set<DatabaseId>;
-  isOpen: boolean;
+  onUnpublish?: () => void;
   onClose: () => void;
 };
 
@@ -23,7 +23,7 @@ export function UnpublishTablesModal({
   tables = new Set(),
   schemas = new Set(),
   databases = new Set(),
-  isOpen,
+  onUnpublish,
   onClose,
 }: UnpublishTablesModalProps) {
   const [unpublishTables] = useUnpublishTablesMutation();
@@ -37,13 +37,14 @@ export function UnpublishTablesModal({
     });
     await action.unwrap();
     sendSuccessToast(t`Unpublished successfully`);
+    onUnpublish?.();
     onClose();
   };
 
   return (
     <Modal
       title={getTitle(tables, schemas, databases)}
-      opened={isOpen}
+      opened
       padding="xl"
       onClose={onClose}
     >

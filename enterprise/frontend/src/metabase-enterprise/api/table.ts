@@ -2,6 +2,7 @@ import type {
   DiscardTablesValuesRequest,
   EditTablesRequest,
   PublishTablesRequest,
+  PublishTablesResponse,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
   UnpublishTablesRequest,
@@ -57,7 +58,10 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    publishTables: builder.mutation<void, PublishTablesRequest>({
+    publishTables: builder.mutation<
+      PublishTablesResponse,
+      PublishTablesRequest
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/publish-table",

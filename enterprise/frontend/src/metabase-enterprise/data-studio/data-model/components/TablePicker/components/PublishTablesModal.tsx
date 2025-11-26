@@ -68,7 +68,7 @@ export function PublishTablesModal({
       sendErrorToast(t`Failed to publish tables`);
     } else if (data) {
       const collectionLink =
-        getLibraryCollectionType(collection.type) === "models"
+        getLibraryCollectionType(data.target_collection.type) === "models"
           ? Urls.dataStudioCollection(collection.id)
           : Urls.collection(collection);
       sendSuccessToast(

@@ -219,6 +219,10 @@ export interface PublishTablesRequest {
   target_collection_id: CollectionId | null;
 }
 
+export interface PublishTablesResponse {
+  target_collection: Collection;
+}
+
 export interface UnpublishTablesRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];

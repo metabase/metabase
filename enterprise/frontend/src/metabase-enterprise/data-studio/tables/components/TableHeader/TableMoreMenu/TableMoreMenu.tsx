@@ -1,12 +1,15 @@
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type { Table } from "metabase-types/api";
 
-type TableModalType = "move" | "unpublish";
+type TableModalType = "unpublish";
 
 type TableMoreMenuProps = {
   table: Table;
@@ -51,12 +54,6 @@ function TableMenu({ table, onOpenModal }: TableMenuProps) {
           {c("A verb, not a noun").t`View`}
         </Menu.Item>
         <Menu.Item
-          leftSection={<Icon name="move" />}
-          onClick={() => onOpenModal("move")}
-        >
-          {c("A verb, not a noun").t`Move`}
-        </Menu.Item>
-        <Menu.Item
           leftSection={<Icon name="library" />}
           onClick={() => onOpenModal("unpublish")}
         >
@@ -73,6 +70,21 @@ type TableModalProps = {
   onClose: () => void;
 };
 
-function TableModal(_props: TableModalProps) {
-  return null;
+function TableModal({ table, modalType, onClose }: TableModalProps) {
+  const dispatch = useDispatch();
+
+  const handleUnpublish = () => {
+    dispatch(push(Urls.dataStudioModeling()));
+  };
+
+  switch (modalType) {
+    case "unpublish":
+      return (
+        <UnpublishTablesModal
+          tables={new Set([table.id])}
+          onUnpublish={handleUnpublish}
+          onClose={onClose}
+        />
+      );
+  }
 }

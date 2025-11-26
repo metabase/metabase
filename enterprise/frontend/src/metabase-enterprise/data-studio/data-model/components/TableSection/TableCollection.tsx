@@ -4,14 +4,13 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Box, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
+import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { getLibraryCollectionType } from "metabase-enterprise/data-studio/utils";
 import type {
   Collection,
   CollectionEssentials,
   Table,
 } from "metabase-types/api";
-
-import { getLibraryCollectionType } from "../../../utils";
-import { UnpublishTablesModal } from "../TablePicker/components/UnpublishTablesModal";
 
 import S from "./TableCollection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
@@ -41,11 +40,12 @@ export function TableCollection({ table }: TableCollectionProps) {
           </Tooltip>
         </Group>
       </TableSectionGroup>
-      <UnpublishTablesModal
-        tables={new Set([table.id])}
-        isOpen={isModalOpened}
-        onClose={closeModal}
-      />
+      {isModalOpened && (
+        <UnpublishTablesModal
+          tables={new Set([table.id])}
+          onClose={closeModal}
+        />
+      )}
     </>
   );
 }
