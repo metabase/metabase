@@ -1,4 +1,5 @@
 import { useFormikContext } from "formik";
+import { useMemo } from "react";
 
 import type {
   DatabaseData,
@@ -32,6 +33,21 @@ export function DatabaseFormBodyDetails({
   isAdvanced,
 }: DatabaseFormBodyDetailsProps) {
   const { values } = useFormikContext<DatabaseData>();
+
+  // Memoize container components to prevent remounting on rerenders
+  const containerMap = useMemo(() => {
+    const map = new Map<
+      DatabaseFieldOrGroup,
+      React.ComponentType<{ children: React.ReactNode }>
+    >();
+    fields.forEach((field) => {
+      if (isDatabaseFieldGroup(field)) {
+        map.set(field, getContainer(field["container-style"]));
+      }
+    });
+    return map;
+  }, [fields]);
+
   function renderField(engineField: EngineField) {
     if (!isFieldVisibleAndDefined(engineField, isAdvanced, values.details)) {
       return null;
@@ -51,7 +67,7 @@ export function DatabaseFormBodyDetails({
 
   return fields.map((field) => {
     if (isDatabaseFieldGroup(field)) {
-      const Container = getContainer(field["container-style"]);
+      const Container = containerMap.get(field)!;
       const key = field.fields.map((field) => field.name).join("-");
       return <Container key={key}>{field.fields.map(renderField)}</Container>;
     }
