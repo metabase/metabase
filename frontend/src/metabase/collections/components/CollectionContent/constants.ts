@@ -22,7 +22,6 @@ export type CollectionContentTableColumnsMap = {
 export const DEFAULT_VISIBLE_COLUMNS_LIST: CollectionContentTableColumn[] = [
   "type",
   "name",
-  "description",
   "lastEditedBy",
   "lastEditedAt",
   "actionMenu",

@@ -7,6 +7,7 @@ import CheckBox from "metabase/common/components/CheckBox";
 import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import EntityItem from "metabase/common/components/EntityItem";
+import Markdown from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getUserName } from "metabase/lib/user";
@@ -24,6 +25,7 @@ import { SortableColumnHeader } from "./BaseItemsTable";
 import {
   BulkSelectWrapper,
   ColumnHeader,
+  DescriptionIcon,
   EntityIconCheckBox,
   ItemButton,
   ItemCell,
@@ -153,10 +155,12 @@ export const Columns = {
     Cell: ({
       item,
       testIdPrefix = "table",
+      includeDescription = true,
       onClick,
     }: {
       item: CollectionItem;
       testIdPrefix?: string;
+      includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => {
       return (
@@ -167,6 +171,17 @@ export const Columns = {
               size={16}
               status={item.moderated_status}
             />
+            {item.description && includeDescription && (
+              <DescriptionIcon
+                name="info"
+                size={16}
+                tooltip={
+                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                    {item.description}
+                  </Markdown>
+                }
+              />
+            )}
           </ItemLinkComponent>
         </ItemNameCell>
       );

@@ -74,6 +74,7 @@ export const DefaultItemRenderer = ({
           item={item}
           testIdPrefix={testIdPrefix}
           onClick={onClick}
+          includeDescription={!visibleColumnsMap["description"]}
         />
       )}
       {visibleColumnsMap["description"] && (
