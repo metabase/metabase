@@ -74,19 +74,6 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   });
 }
 
-export function signInAsAdminAndEnableEmbeddingSdkWithSaml() {
-  Cypress.config("baseUrl", METABASE_INSTANCE_URL);
-
-  restore();
-
-  cy.signInAsAdmin();
-  activateToken("pro-cloud");
-  enableSamlAuth();
-  cy.request("PUT", "/api/setting", {
-    "enable-embedding-sdk": true,
-  });
-}
-
 export const MOCK_SAML_IDP_URI = "https://example.test/saml";
 
 export function enableSamlAuth() {

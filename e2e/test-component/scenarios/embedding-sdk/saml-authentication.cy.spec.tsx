@@ -6,11 +6,13 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import {
   MOCK_SAML_IDP_URI,
-  signInAsAdminAndEnableEmbeddingSdkWithSaml,
+  enableSamlAuth,
   stubWindowOpenForSamlPopup,
 } from "e2e/support/helpers/embedding-sdk-testing";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+const { H } = cy;
 
 /**
  * Adds the Origin header to all requests.
@@ -25,7 +27,14 @@ function addOriginHeader() {
 
 describe("scenarios > embedding-sdk > saml-authentication", () => {
   beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdkWithSaml();
+    H.restore();
+
+    cy.signInAsAdmin();
+    H.activateToken("pro-cloud");
+    enableSamlAuth();
+    cy.request("PUT", "/api/setting", {
+      "enable-embedding-sdk": true,
+    });
 
     createQuestion({
       name: "SAML Test Question",
