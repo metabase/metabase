@@ -291,6 +291,7 @@
    [:parameters  [:sequential ::parameter]]
    [:requestBody {:optional true} ::path-item.request-body]
    [:tags        {:optional true} [:sequential :string]]
+   [:deprecated  {:optional true} :boolean]
    [:responses   ::path-item.responses]])
 
 (mr/def ::components

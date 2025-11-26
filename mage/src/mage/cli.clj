@@ -74,6 +74,7 @@
         (println "\n"
                  #_:clj-kondo/ignore
                  ((eval usage-fn) current-task)))
+      #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 0))))
 
 (defn- coerce-arguments [arg-schema current-task arguments]
@@ -92,6 +93,7 @@
                               " got: " (pr-str value))))
             (binding [*command-line-args* ["-h"]]
               (check-print-help current-task))
+            #_{:clj-kondo/ignore [:discouraged-java-method]}
             (System/exit 0))))))
 
 (defn- check-option-errors [option-errors *error-hit? summary]
@@ -104,6 +106,7 @@
     (when @*error-hit?
       (println "Usage:")
       (println summary)
+      #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 0))))
 
 (defn parse!
@@ -134,7 +137,8 @@
       (u/debug (c/green "PARSED:   ") parsed)
       parsed)
     (catch Exception e
-      (println (c/red "Error: " (.getMessage e)))
+      (println (c/red "Mage CLI parsing Error:") (.getMessage e))
+      #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 1))))
 
 (comment
