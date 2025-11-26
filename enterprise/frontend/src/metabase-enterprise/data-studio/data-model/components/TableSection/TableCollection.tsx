@@ -1,56 +1,81 @@
+import { useDisclosure } from "@mantine/hooks";
 import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Box, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
-import type { CollectionEssentials, Table } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionEssentials,
+  Table,
+} from "metabase-types/api";
 
 import { getLibraryCollectionType } from "../../../utils";
+import { UnpublishTablesModal } from "../TablePicker/components/UnpublishTablesModal";
 
 import S from "./TableCollection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
-interface Props {
+type TableCollectionProps = {
   table: Table;
+};
+
+export function TableCollection({ table }: TableCollectionProps) {
+  const { collection } = table;
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
+
+  return (
+    <>
+      <TableSectionGroup title={t`This table has been published`}>
+        <Group justify="space-between" wrap="nowrap">
+          {collection != null ? (
+            <TableCollectionBreadcrumbs collection={collection} />
+          ) : (
+            <Box>{t`You don't have access to this collection`}</Box>
+          )}
+          <Tooltip label={t`Un-publish`}>
+            <ActionIcon aria-label={t`Un-publish`} onClick={openModal}>
+              <FixedSizeIcon name="library" />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      </TableSectionGroup>
+      <UnpublishTablesModal
+        tables={new Set([table.id])}
+        isOpen={isModalOpened}
+        onClose={closeModal}
+      />
+    </>
+  );
 }
 
-export function TableCollection({ table }: Props) {
-  const { collection } = table;
-  const parentCollections = (collection?.effective_ancestors ?? [])
+type TableCollectionBreadcrumbsProps = {
+  collection: Collection;
+};
+
+function TableCollectionBreadcrumbs({
+  collection,
+}: TableCollectionBreadcrumbsProps) {
+  const parentCollections = (collection.effective_ancestors ?? [])
     .filter((ancestor) => ancestor.id !== "root")
     .toReversed();
 
   return (
-    <TableSectionGroup title={t`This table has been published`}>
-      <Group justify="space-between" wrap="nowrap">
-        {collection != null ? (
-          <Group gap="xs" fw="bold">
-            {parentCollections.map((parentCollection) => (
-              <Fragment key={parentCollection.id}>
-                <Link
-                  className={S.link}
-                  to={getCollectionLink(parentCollection)}
-                >
-                  {parentCollection.name}
-                </Link>
-                {"/"}
-              </Fragment>
-            ))}
-            <Link className={S.link} to={getCollectionLink(collection)}>
-              {collection.name}
-            </Link>
-          </Group>
-        ) : (
-          <Box>{t`You don't have access to this collection`}</Box>
-        )}
-        <Tooltip label={t`Un-publish`}>
-          <ActionIcon aria-label={t`Un-publish`}>
-            <FixedSizeIcon name="library" />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
-    </TableSectionGroup>
+    <Group gap="xs" fw="bold">
+      {parentCollections.map((parentCollection) => (
+        <Fragment key={parentCollection.id}>
+          <Link className={S.link} to={getCollectionLink(parentCollection)}>
+            {parentCollection.name}
+          </Link>
+          {"/"}
+        </Fragment>
+      ))}
+      <Link className={S.link} to={getCollectionLink(collection)}>
+        {collection.name}
+      </Link>
+    </Group>
   );
 }
 

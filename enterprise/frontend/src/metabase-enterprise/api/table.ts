@@ -4,6 +4,7 @@ import type {
   PublishTablesRequest,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
+  UnpublishTablesRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -65,6 +66,15 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
     }),
+    unpublishTables: builder.mutation<void, UnpublishTablesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/data-studio/table/unpublish-table",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
+    }),
   }),
 });
 
@@ -74,4 +84,5 @@ export const {
   useSyncTablesSchemasMutation,
   useDiscardTablesFieldValuesMutation,
   usePublishTablesMutation,
+  useUnpublishTablesMutation,
 } = tableApi;

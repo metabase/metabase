@@ -39,7 +39,7 @@
     (api/write-check table)
     (api/read-check table))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                :segments :metrics [:collection :effective_ancestors]]
+                                :segments :metrics :collection]
                          (premium-features/has-feature? :transforms) (conj :transform)
                          api/*is-superuser?*                         (conj :published_models))]
     (-> table

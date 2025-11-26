@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   CollectionPickerModal,
@@ -120,7 +120,7 @@ export function PublishTablesModal({
         showPersonalCollections: true,
         confirmButtonText: t`Publish here`,
       }}
-      title={t`Pick the collection to publish this table in`}
+      title={getTitle(tables, schemas, databases)}
       onClose={() => {
         handleClose();
       }}
@@ -129,6 +129,21 @@ export function PublishTablesModal({
       }}
     />
   );
+}
+
+function getTitle(
+  tables: Set<TableId>,
+  schemas: Set<SchemaId>,
+  databases: Set<DatabaseId>,
+) {
+  if (schemas.size === 0 && databases.size === 0) {
+    return ngettext(
+      msgid`Pick the collection to publish this table in`,
+      `Pick the collection to publish these ${tables.size} tables in`,
+      tables.size,
+    );
+  }
+  return t`Pick the collection to publish these tables in`;
 }
 
 function AcknowledgePublishTablesModal({
