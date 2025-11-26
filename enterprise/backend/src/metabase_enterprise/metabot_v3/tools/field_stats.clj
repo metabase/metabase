@@ -36,8 +36,9 @@
   (try
     (let [query (metabot-v3.tools.u/table-query table-id)]
       (if query
-        (let [visible-cols (lib/visible-columns query)
-              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} visible-cols))]
+        (let [field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
+              visible-cols (lib/visible-columns query)
+              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
           {:structured-output (field-statistics col limit)})
         {:output (str "No table found with ID " table-id)}))
     (catch Exception ex
@@ -48,8 +49,9 @@
   (try
     (let [query (metabot-v3.tools.u/card-query card-id)]
       (if query
-        (let [visible-cols (lib/visible-columns query)
-              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} visible-cols))]
+        (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix card-id)
+              visible-cols (lib/visible-columns query)
+              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
           {:structured-output (field-statistics col limit)})
         {:output (str "No " card-type " found with ID " card-id)}))
     (catch Exception ex
@@ -60,8 +62,9 @@
   (try
     (let [query (metabot-v3.tools.u/metric-query metric-id)]
       (if query
-        (let [filterable-cols (lib/filterable-columns query)
-              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} filterable-cols))]
+        (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
+              filterable-cols (lib/filterable-columns query)
+              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix filterable-cols))]
           {:structured-output (field-statistics col limit)})
         {:output (str "No metric found with ID " metric-id)}))
     (catch Exception ex

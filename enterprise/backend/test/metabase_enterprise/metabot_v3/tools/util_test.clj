@@ -209,26 +209,26 @@
                    {:name "TOTAL" :table-id 2 :type :number}]]      ; index 1 for table 2
       (testing "resolves table field IDs correctly"
         (let [item {:field-id "t1-0" :operation "equals"}
-              result (metabot-v3.tools.util/resolve-column item columns)]
+              result (metabot-v3.tools.util/resolve-column item "t1-" columns)]
           (is (= "ID" (get-in result [:column :name])))
           (is (= 1 (get-in result [:column :table-id])))
           (is (= :number (get-in result [:column :type])))))
 
       (testing "resolves field IDs using flat index into columns vector"
         (let [item {:field-id "t1-3" :operation "equals"}
-              result (metabot-v3.tools.util/resolve-column item columns)]
+              result (metabot-v3.tools.util/resolve-column item "t1-" columns)]
           (is (= "USER_ID" (get-in result [:column :name])))
           (is (= 2 (get-in result [:column :table-id])))))
 
       (testing "resolves card field IDs using flat index"
         (let [item {:field-id "c125-1" :operation "equals"}
-              result (metabot-v3.tools.util/resolve-column item columns)]
+              result (metabot-v3.tools.util/resolve-column item "c125-" columns)]
           (is (= "NAME" (get-in result [:column :name])))
           (is (= 1 (get-in result [:column :table-id])))))
 
       (testing "resolves query field IDs using flat index"
         (let [item {:field-id "qabc123-2" :operation "equals"}
-              result (metabot-v3.tools.util/resolve-column item columns)]
+              result (metabot-v3.tools.util/resolve-column item "qabc123-" columns)]
           (is (= "EMAIL" (get-in result [:column :name])))))))
 
   (testing "resolve-column throws for invalid field IDs"
@@ -238,14 +238,20 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"invalid field_id format"
-             (metabot-v3.tools.util/resolve-column {:field-id "invalid"} columns)))
+             (metabot-v3.tools.util/resolve-column {:field-id "invalid"} "t1-" columns)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"invalid field_id format"
-             (metabot-v3.tools.util/resolve-column {:field-id "t154/1"} columns))))
+             (metabot-v3.tools.util/resolve-column {:field-id "t154/1"} "t154-" columns))))
 
       (testing "throws when field index is out of bounds"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"field t1-10 not found"
-             (metabot-v3.tools.util/resolve-column {:field-id "t1-10"} columns)))))))
+             (metabot-v3.tools.util/resolve-column {:field-id "t1-10"} "t1-" columns))))
+
+      (testing "throws when field ID prefix doesn't match expected prefix"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"does not match expected prefix"
+             (metabot-v3.tools.util/resolve-column {:field-id "t999-0"} "t1-" columns)))))))

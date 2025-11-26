@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.util
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
@@ -106,19 +107,29 @@
   - model-id is the numeric ID (for tables/cards) or nano-id (for queries)
   - field-index is the index within the columns array (using wide field IDs across all visible columns)
 
+  The `expected-prefix` parameter validates that the field-id starts with the expected prefix (e.g., 't154-' for table 154).
+  This prevents accidentally using a field-id from a different entity.
+
   For example, 't154-1' refers to the column at index 1 in the columns array,
   and 'qpuL95JSvym3k23W1UUuog-0' refers to the column at index 0."
-  [{:keys [field-id] :as item} columns]
+  [{:keys [field-id] :as item} expected-prefix columns]
   (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
-    (if-let [column (get columns field-index)]
-      (assoc item :column column)
-      (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
-                      {:agent-error? true
-                       :field-id field-id
-                       :model-tag model-tag
-                       :model-id model-id
-                       :field-index field-index
-                       :available-columns-count (count columns)})))
+    (do
+      ;; Validate that the field-id has the expected prefix
+      (when-not (str/starts-with? field-id expected-prefix)
+        (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
+                        {:agent-error? true
+                         :field-id field-id
+                         :expected-prefix expected-prefix})))
+      (if-let [column (get columns field-index)]
+        (assoc item :column column)
+        (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
+                        {:agent-error? true
+                         :field-id field-id
+                         :model-tag model-tag
+                         :model-id model-id
+                         :field-index field-index
+                         :available-columns-count (count columns)}))))
     (throw (ex-info (str "invalid field_id format: " field-id)
                     {:agent-error? true
                      :field-id field-id}))))
