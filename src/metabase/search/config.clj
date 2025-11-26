@@ -57,6 +57,7 @@
     "pulse-card"
     "pulse-channel"
     "snippet"
+    "table"
     "timeline"
     "user"})
 
