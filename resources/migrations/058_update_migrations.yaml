@@ -1,5 +1,6 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
   - changeSet:
       id: v58.2025-10-30T09:03:00
       author: sanex3339
@@ -160,6 +161,196 @@ databaseChangeLog:
             constraintName: unique_auth_identity_user_provider
 
   - changeSet:
+      id: v58.2025-11-06T15:00:43
+      author: edpaget
+      comment: Create support_access_grant_log table for tracking support access grants
+      changes:
+        - createTable:
+            tableName: support_access_grant_log
+            remarks: Store support access grant requests and their lifecycle for audit purposes
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique identifier for the grant
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: ID of the admin user who created this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ticket_number
+                  type: varchar(100)
+                  remarks: Support ticket number associated with this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: notes
+                  type: varchar(255)
+                  remarks: Additional notes associated with this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: grant_start_timestamp
+                  type: ${timestamp_type}
+                  remarks: When the grant becomes active (UTC)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grant_end_timestamp
+                  type: ${timestamp_type}
+                  remarks: When the grant expires (UTC)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked_at
+                  type: ${timestamp_type}
+                  remarks: When the grant was manually revoked (UTC), null if not revoked
+                  constraints:
+                    nullable: true
+              - column:
+                  name: revoked_by_user_id
+                  type: int
+                  remarks: ID of the admin user who revoked this grant
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When this record was created (UTC)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When this record was last updated (UTC)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: support_access_grant_log
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:00
+      author: edpaget
+      comment: Add index for finding support access grants by user
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_user_id
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:01
+      author: edpaget
+      comment: Add index for finding support access grants by revoked_by_user_id
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_revoked_by_user_id
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: revoked_by_user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:02
+      author: edpaget
+      comment: Add foreign key constraint from support_access_grant_log.user_id to core_user with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            baseColumnNames: user_id
+            constraintName: fk_support_access_grant_log_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            constraintName: fk_support_access_grant_log_user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:03
+      author: edpaget
+      comment: Add foreign key constraint from support_access_grant_log.revoked_by_user_id to core_user with SET NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            baseColumnNames: revoked_by_user_id
+            constraintName: fk_support_access_grant_log_revoked_by_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: support_access_grant_log
+            constraintName: fk_support_access_grant_log_revoked_by_user_id
+
+  - changeSet:
+      id: v58.2025-11-06T15:01:04
+      author: edpaget
+      comment: Add index for finding active support access grants
+      changes:
+        - createIndex:
+            indexName: idx_support_access_grant_log_active
+            tableName: support_access_grant_log
+            columns:
+              - column:
+                  name: grant_end_timestamp
+              - column:
+                  name: revoked_at
+            where: revoked_at IS NULL
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:00
+      author: wotbrew
+      comment: Add published_table_id to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: published_table_id
+                  type: int
+                  remarks: The table id that is 'published' by this model
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:01
+      author: wotbrew
+      comment: Add index for report_card.published_table_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
+      id: v58.2025-11-10T14:39:02
+      author: wotbrew
+      comment: Add foreign key report_card(published_table_id) to metabase_table(id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: published_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_published_table
+            onDelete: SET NULL
+
+  - changeSet:
       id: v58.2025-11-12T00:00:00
       author: edpaget
       comment: Add index on provider_id for efficient lookups
@@ -211,226 +402,6 @@ databaseChangeLog:
             constraintName: fk_auth_identity_core_user_id
 
   - changeSet:
-      id: v58.2025-11-12T00:00:03
-      author: edpaget
-      comment: Migrate password authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                email,
-                json_build_object('password_hash', password, 'password_salt', password_salt)::text,
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                email,
-                json_object('password_hash', password, 'password_salt', password_salt),
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL;
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'password',
-                email,
-                CONCAT('{"password_hash":"', password, '","password_salt":"', password_salt, '"}'),
-                NULL,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE password IS NOT NULL
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = 'password'
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider = 'password';
-
-  - changeSet:
-      id: v58.2025-11-12T00:00:04
-      author: edpaget
-      comment: Migrate LDAP authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'ldap',
-                email,
-                NULL,
-                json_build_object('login_attributes', login_attributes)::text,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'ldap'
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'ldap',
-                email,
-                NULL,
-                json_object('login_attributes', login_attributes),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'ldap';
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'ldap',
-                email,
-                NULL,
-                CONCAT('{"login_attributes":', COALESCE(login_attributes, 'null'), '}'),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'ldap'
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = 'ldap'
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider = 'ldap';
-
-  - changeSet:
-      id: v58.2025-11-12T00:00:05
-      author: edpaget
-      comment: Migrate Google SSO authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'google',
-                email,
-                NULL,
-                json_build_object('sso_source', 'google', 'login_attributes', login_attributes)::text,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'google'
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'google',
-                email,
-                NULL,
-                json_object('sso_source', 'google', 'login_attributes', login_attributes),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'google';
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                'google',
-                email,
-                NULL,
-                CONCAT('{"sso_source":"google","login_attributes":', COALESCE(login_attributes, 'null'), '}'),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source = 'google'
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = 'google'
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider = 'google';
-
-  - changeSet:
-      id: v58.2025-11-12T00:00:06
-      author: edpaget
-      comment: Migrate SAML and JWT authentication to auth_identity table
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                sso_source,
-                email,
-                NULL,
-                json_build_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes)::text,
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source IN ('saml', 'jwt')
-              ON CONFLICT (user_id, provider) DO NOTHING;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                sso_source,
-                email,
-                NULL,
-                json_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source IN ('saml', 'jwt');
-        - sql:
-            dbms: h2
-            sql: >-
-              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
-              SELECT
-                id,
-                sso_source,
-                email,
-                NULL,
-                CONCAT('{"sso_source":"', sso_source, '","login_attributes":', COALESCE(login_attributes, 'null'), ',"jwt_attributes":', COALESCE(jwt_attributes, 'null'), '}'),
-                COALESCE(date_joined, now()),
-                now()
-              FROM core_user
-              WHERE sso_source IN ('saml', 'jwt')
-                AND NOT EXISTS (
-                  SELECT 1 FROM auth_identity ai
-                  WHERE ai.user_id = core_user.id AND ai.provider = core_user.sso_source
-                );
-      rollback:
-        - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
-
-  - changeSet:
       id: v58.2025-11-12T00:00:07
       author: edpaget
       comment: Add auth_identity_id columns to core_session table
@@ -457,7 +428,7 @@ databaseChangeLog:
         - addColumn:
             tableName: core_session
             columns:
-               - column:
+              - column:
                   name: expires_at
                   type: ${timestamp_type}
                   remarks: Timestamp when this session expires (from auth_identity or calculated)
@@ -502,7 +473,350 @@ databaseChangeLog:
             constraintName: fk_session_auth_identity
 
   - changeSet:
-      id: v58.2025-11-18T12:00:00
+      id: v58.2025-11-12T00:00:11
+      author: edpaget
+      comment: Migrate password authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                LEFT(email, 255),
+                json_build_object('password_hash', password, 'password_salt', password_salt)::text,
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                LEFT(email, 255),
+                json_object('password_hash', password, 'password_salt', password_salt),
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'password',
+                LEFT(email, 255),
+                CONCAT('{"password_hash":"', password, '","password_salt":"', password_salt, '"}'),
+                NULL,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE password IS NOT NULL
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'password'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'password';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:12
+      author: edpaget
+      comment: Migrate LDAP authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                LEFT(email, 255),
+                NULL,
+                json_build_object('login_attributes', login_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap'
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                LEFT(email, 255),
+                NULL,
+                json_object('login_attributes', login_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'ldap',
+                LEFT(email, 255),
+                NULL,
+                CONCAT('{"login_attributes":', COALESCE(login_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'ldap'
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'ldap'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'ldap';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:13
+      author: edpaget
+      comment: Migrate Google SSO authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                LEFT(email, 255),
+                NULL,
+                json_build_object('sso_source', 'google', 'login_attributes', login_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google'
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                LEFT(email, 255),
+                NULL,
+                json_object('sso_source', 'google', 'login_attributes', login_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                'google',
+                LEFT(email, 255),
+                NULL,
+                CONCAT('{"sso_source":"google","login_attributes":', COALESCE(login_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source = 'google'
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = 'google'
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider = 'google';
+
+  - changeSet:
+      id: v58.2025-11-12T00:00:14
+      author: edpaget
+      comment: Migrate SAML and JWT authentication to auth_identity table
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                LEFT(email, 255),
+                NULL,
+                json_build_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes)::text,
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt')
+              ON CONFLICT (user_id, provider) DO NOTHING;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT IGNORE INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                LEFT(email, 255),
+                NULL,
+                json_object('sso_source', sso_source, 'login_attributes', login_attributes, 'jwt_attributes', jwt_attributes),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt');
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO auth_identity (user_id, provider, provider_id, credentials, metadata, created_at, updated_at)
+              SELECT
+                id,
+                sso_source,
+                LEFT(email, 255),
+                NULL,
+                CONCAT('{"sso_source":"', sso_source, '","login_attributes":', COALESCE(login_attributes, 'null'), ',"jwt_attributes":', COALESCE(jwt_attributes, 'null'), '}'),
+                COALESCE(date_joined, now()),
+                now()
+              FROM core_user
+              WHERE sso_source IN ('saml', 'jwt')
+                AND NOT EXISTS (
+                  SELECT 1 FROM auth_identity ai
+                  WHERE ai.user_id = core_user.id AND ai.provider = core_user.sso_source
+                );
+      rollback:
+        - sql: DELETE FROM auth_identity WHERE provider IN ('saml', 'jwt');
+
+  - changeSet:
+      id: v58.2025-11-12T11:57:00
+      author: wotbrew
+      comment: Add data_source column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_source
+                  type: varchar(254)
+                  remarks: The origin type of the data (e.g. metabase-transform)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-12T11:57:02
+      author: wotbrew
+      comment: Add data_layer column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_layer
+                  type: varchar(254)
+                  remarks: The (new) enum for visibility class
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-12T11:57:03
+      author: wotbrew
+      comment: Add owner_email column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: owner_email
+                  type: ${text.type}
+                  remarks: An optional email address of the 'owner' of this table, exclusive with owner_user_id.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-12T11:57:04
+      author: wotbrew
+      comment: Add owner_user_id column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: owner_user_id
+                  type: int
+                  remarks: An (metabase) user id of the 'owner' of this table, exclusive with owner_email.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-13T10:00:00
+      author: qnkhuat
+      comment: Backfill data_layer from visibility_type
+      changes:
+        - sql: >-
+            UPDATE metabase_table
+            SET data_layer = CASE
+              WHEN visibility_type IN ('hidden', 'retired', 'sensitive', 'technical', 'cruft') THEN 'copper'
+              ELSE 'bronze'
+            END
+      rollback:
+        - sql: >-
+            UPDATE metabase_table
+            SET visibility_type = CASE
+              WHEN data_layer = 'copper' THEN 'hidden'
+              ELSE NULL
+            END
+        - sql: >-
+            UPDATE metabase_table
+            SET data_layer = NULL
+  - changeSet:
+      id: v58.2025-11-19T00:00:00
+      author: edpaget
+      comment: Add is_remote_synced boolean column to collection table
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: is_remote_synced
+                  type: ${boolean.type}
+                  remarks: Indicates if this collection is synced from a remote source
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: collection
+            columnName: is_remote_synced
+
+  - changeSet:
+      id: v58.2025-11-19T00:00:01
+      author: edpaget
+      comment: Migrate existing remote-synced collections to use is_remote_synced column
+      changes:
+        - sql:
+            sql: UPDATE collection SET is_remote_synced = true WHERE type = 'remote-synced'
+      rollback:
+        - sql:
+            sql: UPDATE collection SET is_remote_synced = false WHERE type = 'remote-synced'
+
+  - changeSet:
+      id: v58.2025-11-19T00:00:02
+      author: edpaget
+      comment: Clear remote-synced type value (replaced by is_remote_synced column)
+      changes:
+        - sql:
+            sql: UPDATE collection SET type = NULL WHERE type = 'remote-synced'
+      rollback:
+        - sql:
+            sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
+
+  - changeSet:
+      id: v58.2025-11-26T12:00:00
       author: piranha
       comment: Create workspace table
       changes:
@@ -575,7 +889,7 @@ databaseChangeLog:
             tableName: workspace
 
   - changeSet:
-      id: v58.2025-11-18T12:00:01
+      id: v58.2025-11-26T12:00:01
       author: piranha
       comment: Add index on workspace.collection_id for quick lookups by collection
       changes:
@@ -588,7 +902,7 @@ databaseChangeLog:
       rollback: # will be removed along the table
 
   - changeSet:
-      id: v58.2025-11-18T12:00:02
+      id: v58.2025-11-26T12:00:02
       author: piranha
       comment: Add index on workspace.creator_id for quick lookups
       changes:
@@ -601,7 +915,7 @@ databaseChangeLog:
       rollback: # will be removed along the table
 
   - changeSet:
-      id: v58.2025-11-18T12:00:03
+      id: v58.2025-11-26T12:00:03
       author: piranha
       comment: Add index on workspace.api_key_id for quick lookups
       changes:
@@ -614,7 +928,7 @@ databaseChangeLog:
       rollback: # will be removed along the table
 
   - changeSet:
-      id: v58.2025-11-18T12:00:04
+      id: v58.2025-11-26T12:00:04
       author: piranha
       comment: Add index on workspace.execution_user for quick lookups
       changes:
@@ -627,7 +941,7 @@ databaseChangeLog:
       rollback: # will be removed along the table
 
   - changeSet:
-      id: v58.2025-11-18T12:00:07
+      id: v58.2025-11-26T12:00:07
       author: piranha
       comment: Add workspace_id column to metabase_table table
       changes:
@@ -646,7 +960,7 @@ databaseChangeLog:
             columnName: workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:08
+      id: v58.2025-11-26T12:00:08
       author: piranha
       comment: Add foreign key constraint from metabase_table.workspace_id to workspace
       changes:
@@ -662,7 +976,7 @@ databaseChangeLog:
             constraintName: fk_metabase_table_workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:09
+      id: v58.2025-11-26T12:00:09
       author: piranha
       comment: Add workspace_id column to metabase_field table
       changes:
@@ -681,7 +995,7 @@ databaseChangeLog:
             columnName: workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:10
+      id: v58.2025-11-26T12:00:10
       author: piranha
       comment: Add foreign key constraint from metabase_field.workspace_id to workspace
       changes:
@@ -697,7 +1011,7 @@ databaseChangeLog:
             constraintName: fk_metabase_field_workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:11
+      id: v58.2025-11-26T12:00:11
       author: piranha
       comment: Add workspace_id column to collection table
       changes:
@@ -716,7 +1030,7 @@ databaseChangeLog:
             columnName: workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:12
+      id: v58.2025-11-26T12:00:12
       author: piranha
       comment: Add foreign key constraint from collection.workspace_id to workspace
       changes:
@@ -732,7 +1046,7 @@ databaseChangeLog:
             constraintName: fk_collection_workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:13
+      id: v58.2025-11-26T12:00:13
       author: piranha
       comment: Add workspace_id column to report_card table
       changes:
@@ -751,7 +1065,7 @@ databaseChangeLog:
             columnName: workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:14
+      id: v58.2025-11-26T12:00:14
       author: piranha
       comment: Add foreign key constraint from report_card.workspace_id to workspace
       changes:
@@ -767,7 +1081,7 @@ databaseChangeLog:
             constraintName: fk_report_card_workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:17
+      id: v58.2025-11-26T12:00:17
       author: piranha
       comment: Add workspace_id column to transform table
       changes:
@@ -786,7 +1100,7 @@ databaseChangeLog:
             columnName: workspace_id
 
   - changeSet:
-      id: v58.2025-11-18T12:00:18
+      id: v58.2025-11-26T12:00:18
       author: piranha
       comment: Add foreign key constraint from transform.workspace_id to workspace
       changes:
@@ -802,7 +1116,7 @@ databaseChangeLog:
             constraintName: fk_transform_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:41
+      id: v58.2025-11-26T13:34:41
       author: christruter
       comment: Create workspace_mapping_table for mirroring tables in workspaces
       changes:
@@ -833,7 +1147,7 @@ databaseChangeLog:
             tableName: workspace_mapping_table
 
   - changeSet:
-      id: v58.2025-11-20T08:34:42
+      id: v58.2025-11-26T13:34:42
       author: christruter
       comment: Add primary key constraint to workspace_mapping_table
       changes:
@@ -847,7 +1161,7 @@ databaseChangeLog:
             constraintName: pk_workspace_mapping_table
 
   - changeSet:
-      id: v58.2025-11-20T08:34:44
+      id: v58.2025-11-26T13:34:44
       author: christruter
       comment: Add index on upstream_id for workspace_mapping_table
       changes:
@@ -863,7 +1177,7 @@ databaseChangeLog:
             indexName: idx_workspace_mapping_table_upstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:45
+      id: v58.2025-11-26T13:34:45
       author: christruter
       comment: Add index on downstream_id for workspace_mapping_table
       changes:
@@ -879,7 +1193,7 @@ databaseChangeLog:
             indexName: idx_workspace_mapping_table_downstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:46
+      id: v58.2025-11-26T13:34:46
       author: christruter
       comment: Add index on workspace_id for workspace_mapping_table
       changes:
@@ -895,7 +1209,7 @@ databaseChangeLog:
             indexName: idx_workspace_mapping_table_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:47
+      id: v58.2025-11-26T13:34:47
       author: christruter
       comment: Add foreign key constraint from workspace_mapping_table.upstream_id to metabase_table
       changes:
@@ -912,7 +1226,7 @@ databaseChangeLog:
             constraintName: fk_workspace_mapping_table_upstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:48
+      id: v58.2025-11-26T13:34:48
       author: christruter
       comment: Add foreign key constraint from workspace_mapping_table.downstream_id to metabase_table
       changes:
@@ -929,7 +1243,7 @@ databaseChangeLog:
             constraintName: fk_workspace_mapping_table_downstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:49
+      id: v58.2025-11-26T13:34:49
       author: christruter
       comment: Add foreign key constraint from workspace_mapping_table.workspace_id to workspace
       changes:
@@ -946,7 +1260,7 @@ databaseChangeLog:
             constraintName: fk_workspace_mapping_table_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:50
+      id: v58.2025-11-26T13:34:50
       author: christruter
       comment: Create workspace_mapping_transform for mirroring transforms in workspaces
       changes:
@@ -977,7 +1291,7 @@ databaseChangeLog:
             tableName: workspace_mapping_transform
 
   - changeSet:
-      id: v58.2025-11-20T08:34:51
+      id: v58.2025-11-26T13:34:51
       author: christruter
       comment: Add primary key constraint to workspace_mapping_transform
       changes:
@@ -991,7 +1305,7 @@ databaseChangeLog:
             constraintName: pk_workspace_mapping_transform
 
   - changeSet:
-      id: v58.2025-11-20T08:34:53
+      id: v58.2025-11-26T13:34:53
       author: christruter
       comment: Add index on upstream_id for workspace_mapping_transform
       changes:
@@ -1007,7 +1321,7 @@ databaseChangeLog:
             indexName: idx_workspace_mapping_transform_upstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:54
+      id: v58.2025-11-26T13:34:54
       author: christruter
       comment: Add index on downstream_id for workspace_mapping_transform
       changes:
@@ -1023,7 +1337,7 @@ databaseChangeLog:
             indexName: idx_workspace_mapping_transform_downstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:55
+      id: v58.2025-11-26T13:34:55
       author: christruter
       comment: Add index on workspace_id for workspace_mapping_transform
       changes:
@@ -1039,7 +1353,7 @@ databaseChangeLog:
             indexName: idx_workspace_mapping_transform_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:56
+      id: v58.2025-11-26T13:34:56
       author: christruter
       comment: Add foreign key constraint from workspace_mapping_transform.upstream_id to transform
       changes:
@@ -1056,7 +1370,7 @@ databaseChangeLog:
             constraintName: fk_workspace_mapping_transform_upstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:57
+      id: v58.2025-11-26T13:34:57
       author: christruter
       comment: Add foreign key constraint from workspace_mapping_transform.downstream_id to transform
       changes:
@@ -1073,7 +1387,7 @@ databaseChangeLog:
             constraintName: fk_workspace_mapping_transform_downstream_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:58
+      id: v58.2025-11-26T13:34:58
       author: christruter
       comment: Add foreign key constraint from workspace_mapping_transform.workspace_id to workspace
       changes:
@@ -1090,7 +1404,7 @@ databaseChangeLog:
             constraintName: fk_workspace_mapping_transform_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:34:59
+      id: v58.2025-11-26T13:34:59
       author: christruter
       comment: Add index on collection.workspace_id
       changes:
@@ -1106,7 +1420,7 @@ databaseChangeLog:
             indexName: idx_collection_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:02
+      id: v58.2025-11-26T13:35:02
       author: christruter
       comment: Drop collection.workspace_id FK for cascade update
       validCheckSum: ANY
@@ -1127,7 +1441,7 @@ databaseChangeLog:
             referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:03
+      id: v58.2025-11-26T13:35:03
       author: christruter
       comment: Add collection.workspace_id FK with CASCADE
       validCheckSum: ANY
@@ -1150,7 +1464,7 @@ databaseChangeLog:
             constraintName: fk_collection_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:04
+      id: v58.2025-11-26T13:35:04
       author: christruter
       comment: Drop transform.workspace_id FK for cascade update
       validCheckSum: ANY
@@ -1171,7 +1485,7 @@ databaseChangeLog:
             referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:05
+      id: v58.2025-11-26T13:35:05
       author: christruter
       comment: Add transform.workspace_id FK with CASCADE
       validCheckSum: ANY
@@ -1194,7 +1508,7 @@ databaseChangeLog:
             constraintName: fk_transform_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:06
+      id: v58.2025-11-26T13:35:06
       author: christruter
       comment: Drop report_card.workspace_id FK for cascade update
       validCheckSum: ANY
@@ -1215,7 +1529,7 @@ databaseChangeLog:
             referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:09
+      id: v58.2025-11-26T13:35:09
       author: christruter
       comment: Add report_card.workspace_id FK with CASCADE
       preConditions:
@@ -1237,7 +1551,7 @@ databaseChangeLog:
             constraintName: fk_report_card_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:10
+      id: v58.2025-11-26T13:35:10
       author: christruter
       comment: Drop metabase_table.workspace_id FK for cascade update
       preConditions:
@@ -1257,7 +1571,7 @@ databaseChangeLog:
             referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:11
+      id: v58.2025-11-26T13:35:11
       author: christruter
       comment: Add metabase_table.workspace_id FK with SET NULL
       preConditions:
@@ -1279,7 +1593,7 @@ databaseChangeLog:
             constraintName: fk_metabase_table_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:12
+      id: v58.2025-11-26T13:35:12
       author: christruter
       comment: Drop metabase_field.workspace_id FK for cascade update
       preConditions:
@@ -1299,7 +1613,7 @@ databaseChangeLog:
             referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:13
+      id: v58.2025-11-26T13:35:13
       author: christruter
       comment: Add metabase_field.workspace_id FK with SET NULL
       preConditions:
@@ -1321,7 +1635,7 @@ databaseChangeLog:
             constraintName: fk_metabase_field_workspace_id
 
   - changeSet:
-      id: v58.2025-11-20T08:35:14
+      id: v58.2025-11-26T13:35:14
       author: christruter
       comment: Add index on metabase_field.workspace_id
       validCheckSum: ANY
@@ -1353,7 +1667,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v58.2025-11-20T08:35:15
+      id: v58.2025-11-26T13:35:15
       author: christruter
       comment: Add index on metabase_table.workspace_id
       validCheckSum: ANY
@@ -1384,7 +1698,7 @@ databaseChangeLog:
             referencedColumnNames: id
 
   - changeSet:
-      id: v58.2025-11-20T21:50:00
+      id: v58.2025-11-26T14:50:00
       author: christruter
       comment: Add unique constraint on workspace_mapping_table.downstream_id
       changes:
@@ -1398,7 +1712,7 @@ databaseChangeLog:
             constraintName: uq_workspace_mapping_table_downstream_id
 
   - changeSet:
-      id: v58.2025-11-20T21:50:01
+      id: v58.2025-11-26T14:50:01
       author: christruter
       comment: Add unique constraint on workspace_mapping_transform.downstream_id
       changes:
@@ -1410,7 +1724,6 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: workspace_mapping_transform
             constraintName: uq_workspace_mapping_transform_downstream_id
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -25,7 +25,7 @@
 (defn- all-top-level-remote-synced-collections
   "Returns a vector of primary keys for all top-level remote-synced collections."
   []
-  (t2/select-pks-vec :model/Collection :type "remote-synced"))
+  (t2/select-pks-vec :model/Collection :is_remote_synced true))
 
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
@@ -182,7 +182,7 @@
   [^SourceSnapshot snapshot task-id message]
   (if snapshot
     (let [sync-timestamp (t/instant)
-          collections (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/")]
+          collections (t2/select-fn-set :entity_id :model/Collection :is_remote_synced true :location "/")]
       (if (empty? collections)
         {:status :error
          :message "No remote-synced collections available to sync."}

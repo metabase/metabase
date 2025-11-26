@@ -15,7 +15,7 @@ export const handleCardDropOnCard = (
   targetCardEmbed: Node,
 ) => {
   const {
-    cardEmbedNode,
+    draggedNode,
     view,
     event: e,
     originalParent,
@@ -25,16 +25,16 @@ export const handleCardDropOnCard = (
     cameFromFlexContainer,
   } = payload;
 
-  if (targetCardEmbed === cardEmbedNode) {
+  if (targetCardEmbed === draggedNode) {
     return true; // Prevent dropping on itself
   }
 
   const dropSide = getCardEmbedDropSide(e);
-  // Create new FlexContainer when dropping on a standalone CardEmbed
+  // Create new FlexContainer when dropping on a standalone item
   const children =
     dropSide === "left"
-      ? [cardEmbedNode.copy(), targetCardEmbed.copy()]
-      : [targetCardEmbed.copy(), cardEmbedNode.copy()];
+      ? [draggedNode.copy(), targetCardEmbed.copy()]
+      : [targetCardEmbed.copy(), draggedNode.copy()];
 
   const flexContainer = view.state.schema.nodes.flexContainer.create(
     {},
@@ -52,7 +52,7 @@ export const handleCardDropOnCard = (
 
   // Determine what to replace - if target is wrapped in resizeNode, replace the wrapper
   let replacePos = originalPos;
-  let replaceSize = cardEmbedNode.nodeSize;
+  let replaceSize = draggedNode.nodeSize;
   if (dropToParent.type.name === "resizeNode") {
     // Target is wrapped, replace the entire resizeNode
     replacePos = dropToParentPos.before();
@@ -64,7 +64,7 @@ export const handleCardDropOnCard = (
 
   // First, find and remove the dropped node from its original position
   const nodeToRemove =
-    originalParent.type.name === "resizeNode" ? originalParent : cardEmbedNode;
+    originalParent.type.name === "resizeNode" ? originalParent : draggedNode;
   let removalHandled = false;
   let removePos: number | null = null;
   view.state.doc.descendants((node, nodePos) => {

@@ -44,7 +44,7 @@ const {
 } = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
 
 const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+  __dirname + "/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");

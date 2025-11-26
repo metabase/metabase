@@ -1,13 +1,29 @@
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import {
+  type CardType,
   type Collection,
   type CollectionEssentials,
   type CollectionId,
   type CollectionItem,
+  type CollectionItemModel,
+  type CollectionType,
   isBaseEntityID,
 } from "metabase-types/api";
+
+export type EntityType = CollectionItemModel;
+
+export function getEntityTypeFromCardType(cardType: CardType): EntityType {
+  switch (cardType) {
+    case "question":
+      return "card";
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+  }
+}
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -51,7 +67,8 @@ export function isEditableCollection(collection: Collection) {
     collection.can_write &&
     !isRootCollection(collection) &&
     !isRootPersonalCollection(collection) &&
-    !isTrashedCollection(collection)
+    !isTrashedCollection(collection) &&
+    !isLibraryCollection(collection)
   );
 }
 
@@ -76,6 +93,12 @@ export function isInstanceAnalyticsCustomCollection(
 
 export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
+}
+
+export function isLibraryCollection(
+  collection: Pick<Collection, "type">,
+): boolean {
+  return PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type) != null;
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -124,24 +147,8 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
-export function isPersonalCollectionOrChild(
-  collection: Collection,
-  collectionList: Collection[],
-): boolean {
-  return (
-    isRootPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collectionList)
-  );
-}
-
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
-}
-
-export function isTopLevelCollection(
-  collection: Pick<Collection, "location">,
-): boolean {
-  return collection.location === "/";
 }
 
 export function isItemPinned(item: CollectionItem) {
@@ -168,6 +175,12 @@ export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
+export function canBookmarkItem(item: CollectionItem) {
+  return (
+    !isLibraryCollection(item as Pick<Collection, "type">) && !item.archived
+  );
+}
+
 export function canPinItem(item: CollectionItem, collection?: Collection) {
   return collection?.can_write && item.setPinned != null && !item.archived;
 }
@@ -186,7 +199,8 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     (collection?.can_write || isRootTrashCollection(collection)) &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
-    !(isItemCollection(item) && isRootPersonalCollection(item))
+    !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }
 
@@ -195,12 +209,33 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    !isLibraryCollection(item as Pick<Collection, "type">) &&
     !item.archived
   );
 }
 
 export function canCopyItem(item: CollectionItem) {
   return item.copy && !item.archived;
+}
+
+export function canPlaceEntityInCollection(
+  entityType: EntityType,
+  collectionType: CollectionType | null | undefined,
+): boolean {
+  return PLUGIN_DATA_STUDIO.canPlaceEntityInCollection(
+    entityType,
+    collectionType,
+  );
+}
+
+export function canPlaceEntityInCollectionOrDescendants(
+  entityType: EntityType,
+  collectionType: CollectionType | null | undefined,
+): boolean {
+  return PLUGIN_DATA_STUDIO.canPlaceEntityInCollectionOrDescendants(
+    entityType,
+    collectionType,
+  );
 }
 
 export function isPreviewShown(item: CollectionItem) {
