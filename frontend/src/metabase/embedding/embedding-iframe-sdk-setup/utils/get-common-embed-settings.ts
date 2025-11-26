@@ -37,6 +37,7 @@ const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
           isGuestEmbed: false,
           useExistingUserSession: true,
         }),
+    hiddenParameters: [],
   };
 };
 
@@ -56,6 +57,7 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
   > = ({ state, experience }) => {
   const isQuestionOrDashboardEmbed =
     isQuestionOrDashboardExperience(experience);
+  const isQuestionEmbed = experience === "chart";
 
   return {
     ...(isQuestionOrDashboardEmbed
@@ -68,6 +70,10 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
           isGuestEmbed: false,
           useExistingUserSession: state?.useExistingUserSession,
         }),
+    ...(isQuestionEmbed && {
+      // Currently, a chart should not have hidden parameters in non-guest embed mode
+      hiddenParameters: [],
+    }),
   };
 };
 

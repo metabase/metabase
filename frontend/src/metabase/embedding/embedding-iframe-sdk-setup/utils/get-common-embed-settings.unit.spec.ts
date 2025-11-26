@@ -33,6 +33,7 @@ describe("getCommonEmbedSettings", () => {
           isGuestEmbed: true,
           useExistingUserSession: false,
           drills: false,
+          hiddenParameters: [],
         });
       });
 
@@ -47,6 +48,7 @@ describe("getCommonEmbedSettings", () => {
           isGuestEmbed: true,
           useExistingUserSession: false,
           drills: false,
+          hiddenParameters: [],
         });
       });
 
@@ -60,6 +62,7 @@ describe("getCommonEmbedSettings", () => {
         expect(result).toEqual({
           isGuestEmbed: false,
           useExistingUserSession: true,
+          hiddenParameters: [],
         });
       });
 
@@ -73,6 +76,7 @@ describe("getCommonEmbedSettings", () => {
         expect(result).toEqual({
           isGuestEmbed: false,
           useExistingUserSession: true,
+          hiddenParameters: [],
         });
       });
 
@@ -86,6 +90,7 @@ describe("getCommonEmbedSettings", () => {
         expect(result).toEqual({
           isGuestEmbed: false,
           useExistingUserSession: true,
+          hiddenParameters: [],
         });
       });
     });
@@ -116,7 +121,25 @@ describe("getCommonEmbedSettings", () => {
           isGuestEmbed: false,
           useExistingUserSession: false,
           drills: true,
+          hiddenParameters: [],
         });
+      });
+
+      it("should reset hiddenParameters for chart but not for dashboard in non-guest mode", () => {
+        const chartResult = getCommonEmbedSettings({
+          state: { isGuestEmbed: false, useExistingUserSession: true },
+          experience: "chart" as SdkIframeEmbedSetupExperience,
+          isGuestEmbedsEnabled: false,
+        });
+
+        const dashboardResult = getCommonEmbedSettings({
+          state: { isGuestEmbed: false, useExistingUserSession: true },
+          experience: "dashboard" as SdkIframeEmbedSetupExperience,
+          isGuestEmbedsEnabled: false,
+        });
+
+        expect(chartResult).toHaveProperty("hiddenParameters", []);
+        expect(dashboardResult).not.toHaveProperty("hiddenParameters");
       });
 
       it("should return non-guest settings for exploration experience", () => {
@@ -196,6 +219,7 @@ describe("getCommonEmbedSettings", () => {
         useExistingUserSession: false,
         drills: false,
         withDownloads: true,
+        hiddenParameters: [],
       });
     });
 
@@ -211,6 +235,7 @@ describe("getCommonEmbedSettings", () => {
         useExistingUserSession: false,
         drills: false,
         withDownloads: true,
+        hiddenParameters: [],
       });
     });
 
@@ -224,6 +249,7 @@ describe("getCommonEmbedSettings", () => {
       expect(result).toEqual({
         isGuestEmbed: false,
         useExistingUserSession: true,
+        hiddenParameters: [],
       });
     });
 
@@ -237,6 +263,7 @@ describe("getCommonEmbedSettings", () => {
       expect(result).toEqual({
         isGuestEmbed: false,
         useExistingUserSession: true,
+        hiddenParameters: [],
       });
     });
 
@@ -250,6 +277,7 @@ describe("getCommonEmbedSettings", () => {
       expect(result).toEqual({
         isGuestEmbed: false,
         useExistingUserSession: true,
+        hiddenParameters: [],
       });
     });
 
@@ -272,6 +300,7 @@ describe("getCommonEmbedSettings", () => {
         useExistingUserSession: false,
         drills: false,
         withDownloads: true,
+        hiddenParameters: [],
       });
     });
 
@@ -297,6 +326,7 @@ describe("getCommonEmbedSettings", () => {
         useExistingUserSession: false,
         drills: false,
         withDownloads: true,
+        hiddenParameters: [],
       });
     });
   });
