@@ -61,19 +61,17 @@ const setup = ({
 };
 
 describe("DashboardSubscriptionMenuItem", () => {
-  describe("when user can manage subscriptions and dashboard has data cards", () => {
-    it("should show 'Subscriptions' menu item when email and slack are not set up", async () => {
-      setup({
-        isSuperuser: true,
-        hasEmailSetup: false,
-        hasSlackSetup: false,
-      });
-
-      expect(
-        screen.getByTestId("dashboard-subscription-menu-item"),
-      ).toBeInTheDocument();
-      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+  it("should show 'Subscriptions' menu item when can manage subscriptions and has no email or slack setup", async () => {
+    setup({
+      isSuperuser: true,
+      hasEmailSetup: false,
+      hasSlackSetup: false,
     });
+
+    expect(
+      screen.getByTestId("dashboard-subscription-menu-item"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
   });
 
   describe("when user can't manage subscriptions and dashboard has data cards", () => {
