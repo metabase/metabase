@@ -253,7 +253,7 @@ export function SettingsSAMLForm() {
                   <GroupMappingsWidget
                     isFormik
                     // map to legacy setting props
-                    setting={{ key: "saml-group-sync" }}
+                    settingKey="saml-group-sync"
                     onChange={handleSubmit}
                     settingValues={settingValues}
                     mappingSetting="saml-group-mappings"

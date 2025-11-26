@@ -156,7 +156,7 @@ export const SettingsJWTForm = () => {
               </FormSection>
               <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
                 <GroupMappingsWidget
-                  setting={{ key: "jwt-group-sync" }}
+                  settingKey="jwt-group-sync"
                   onChange={handleSubmit}
                   settingValues={settingValues}
                   mappingSetting="jwt-group-mappings"
