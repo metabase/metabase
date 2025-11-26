@@ -1,6 +1,7 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require
+   [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -33,6 +34,7 @@
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
@@ -1979,3 +1981,23 @@
       (let [pg-obj (make-pgobject "foo_type" "abc_val")
             pg-obj-map {:data [pg-obj] :metadata {:type "test"}}]
         (test-pgobject-caching pg-obj-map)))))
+
+(deftest canceled-query-no-stacktrace-test
+  (mt/test-driver :postgres
+    (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+      (future
+        (Thread/sleep 400)
+        (a/put! qp.pipeline/*canceled-chan* :cancel))
+      (mt/with-log-messages-for-level [messages :error]
+        (let [response (qp/process-query (assoc-in (mt/native-query {:query "select pg_sleep(8), false"})
+                                                   [:middleware :userland-query?] true))]
+          (is (= "ERROR: canceling statement due to user request" (:error response)))
+          (let [bad-messages (into []
+                                   (comp
+                                    (filter (comp #(str/includes? % "canceling statement due to user request")
+                                                  :message))
+                                    ;; should be empty, but in case it's not grab first line of the log message to
+                                    ;; exclude huge stacktrace
+                                    (map (comp first str/split-lines :message)))
+                                   (messages))]
+            (is (empty? bad-messages))))))))
