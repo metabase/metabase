@@ -176,7 +176,7 @@ const TableSectionBase = ({
           <Button
             flex="1"
             p="sm"
-            leftSection={<Icon name="library" />}
+            leftSection={<Icon name="publish" />}
             style={{
               width: "100%",
             }}

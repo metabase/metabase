@@ -153,7 +153,7 @@ export function TableAttributesEditBulk({
                 p="sm"
                 w="100%"
                 disabled={!hasLibrary || isPublishing}
-                leftSection={<Icon name="library" />}
+                leftSection={<Icon name="publish" />}
                 onClick={() =>
                   handlePublish({
                     table_ids: Array.from(selectedTables),
@@ -170,7 +170,7 @@ export function TableAttributesEditBulk({
                 p="sm"
                 w="100%"
                 disabled={!hasLibrary}
-                leftSection={<Icon name="library" />}
+                leftSection={<Icon name="unpublish" />}
                 onClick={openUnpublishModal}
               >
                 {t`Unpublish`}

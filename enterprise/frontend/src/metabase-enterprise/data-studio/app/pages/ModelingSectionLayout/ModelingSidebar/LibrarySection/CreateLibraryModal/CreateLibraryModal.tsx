@@ -37,7 +37,7 @@ export function CreateLibraryModal({
       title={
         <Group gap="sm">
           <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
-            <FixedSizeIcon name="library" />
+            <FixedSizeIcon name="repository" />
           </Center>
           <Title order={3}>{t`Create your Library`}</Title>
         </Group>

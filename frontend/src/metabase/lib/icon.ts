@@ -78,7 +78,7 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
 
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type)) {
     case "root":
-      return { name: "library" };
+      return { name: "repository" };
     case "models":
       return { name: "table" };
     case "metrics":

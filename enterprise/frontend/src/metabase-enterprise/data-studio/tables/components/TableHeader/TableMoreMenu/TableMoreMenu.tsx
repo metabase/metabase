@@ -54,7 +54,7 @@ function TableMenu({ table, onOpenModal }: TableMenuProps) {
           {c("A verb, not a noun").t`View`}
         </Menu.Item>
         <Menu.Item
-          leftSection={<Icon name="library" />}
+          leftSection={<Icon name="repository" />}
           onClick={() => onOpenModal("unpublish")}
         >
           {t`Unpublish`}

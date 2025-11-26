@@ -256,8 +256,6 @@ import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import learn_component from "./learn.svg?component";
 import learn_source from "./learn.svg?source";
-import library_component from "./library.svg?component";
-import library_source from "./library.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
@@ -352,6 +350,8 @@ import popular_component from "./popular.svg?component";
 import popular_source from "./popular.svg?source";
 import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
+import publish_component from "./publish.svg?component";
+import publish_source from "./publish.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
@@ -370,6 +370,8 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import repository_component from "./repository.svg?component";
+import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
 import return_source from "./return.svg?source";
 import revert_component from "./revert.svg?component";
@@ -490,6 +492,8 @@ import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
 import unpin_source from "./unpin.svg?source";
+import unpublish_component from "./unpublish.svg?component";
+import unpublish_source from "./unpublish.svg?source";
 import unsubscribe_component from "./unsubscribe.svg?component";
 import unsubscribe_source from "./unsubscribe.svg?source";
 import upload_component from "./upload.svg?component";
@@ -1015,10 +1019,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: learn_component,
       source: learn_source,
     },
-    library: {
-      component: library_component,
-      source: library_source,
-    },
     lightbulb: {
       component: lightbulb_component,
       source: lightbulb_source,
@@ -1207,6 +1207,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: embed_static_component,
       source: embed_static_source,
     },
+    publish: {
+      component: publish_component,
+      source: publish_source,
+    },
     pulse: {
       component: pulse_component,
       source: pulse_source,
@@ -1310,6 +1314,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     refresh_downstream: {
       component: refresh_downstream_component,
       source: refresh_downstream_source,
+    },
+    repository: {
+      component: repository_component,
+      source: repository_source,
     },
     rocket: {
       component: rocket_component,
@@ -1480,6 +1488,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     unpin: {
       component: unpin_component,
       source: unpin_source,
+    },
+    unpublish: {
+      component: unpublish_component,
+      source: unpublish_source,
     },
     unsubscribe: {
       component: unsubscribe_component,
@@ -1754,6 +1766,7 @@ export type IconName =
   | "popover"
   | "popular"
   | "progress"
+  | "publish"
   | "pulse"
   | "receipt"
   | "recents"
@@ -1782,7 +1795,7 @@ export type IconName =
   | "reference"
   | "refresh"
   | "refresh_downstream"
-  | "library"
+  | "repository"
   | "rocket"
   | "ruler"
   | "schema"
@@ -1823,6 +1836,7 @@ export type IconName =
   | "undo"
   | "unknown"
   | "unpin"
+  | "unpublish"
   | "unsubscribe"
   | "upload"
   | "variable"

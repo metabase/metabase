@@ -43,7 +43,7 @@ export function getCollectionIcon(
 
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
     case "root":
-      return { name: "library" };
+      return { name: "repository" };
     case "models":
       return { name: "table" };
     case "metrics":

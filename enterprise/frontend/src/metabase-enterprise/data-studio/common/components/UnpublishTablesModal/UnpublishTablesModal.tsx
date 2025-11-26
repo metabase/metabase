@@ -7,7 +7,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Modal, Stack, Text, rem } from "metabase/ui";
 import { useUnpublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
@@ -46,14 +46,13 @@ export function UnpublishTablesModal({
       title={getTitle(databaseIds, schemaIds, tableIds)}
       opened
       padding="xl"
+      size={rem(512)}
       onClose={onClose}
     >
       <FormProvider initialValues={{}} onSubmit={handleSubmit}>
         <Form>
           <Stack>
-            <Text>
-              {t`This will remove this table from the Library. Any queries that use this table will still work.`}
-            </Text>
+            <Text>{getMessage(databaseIds, schemaIds, tableIds)}</Text>
             <Group wrap="nowrap">
               <Box flex={1}>
                 <FormErrorMessage />
@@ -77,7 +76,7 @@ function getTitle(
   schemaIds: SchemaId[],
   tableIds: TableId[],
 ) {
-  if (schemaIds.length === 0 && databaseIds.length === 0) {
+  if (databaseIds.length === 0 && schemaIds.length === 0) {
     return ngettext(
       msgid`Unpublish this table?`,
       `Unpublish these ${tableIds.length} tables?`,
@@ -85,4 +84,20 @@ function getTitle(
     );
   }
   return t`Unpublish these tables?`;
+}
+
+function getMessage(
+  databaseIds: DatabaseId[],
+  schemaIds: SchemaId[],
+  tableIds: TableId[],
+) {
+  if (
+    databaseIds.length === 0 &&
+    schemaIds.length === 0 &&
+    tableIds.length === 1
+  ) {
+    return t`This will remove this table from the Library. Any queries that use this table will still work.`;
+  }
+
+  return t`This will remove these tables from the Library. Any queries that use these tables will still work.`;
 }
