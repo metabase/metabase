@@ -1,11 +1,14 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- extract-suffix-number
@@ -126,6 +129,53 @@
         _        (assert db-id "Was not given and could not infer a database_id for the workspace.")
         database (api/check-500 (t2/select-one :model/Database :id db-id))]
     (create-workspace-with-unique-name! creator-id db-id database ws-name graph 5)))
+
+(defn add-entities!
+  "Add upstream entities to an existing workspace by mirroring them.
+   Returns the workspace with updated graph."
+  [workspace upstream]
+  (let [new-graph (ws.dag/path-induced-subgraph upstream)
+        database  (t2/select-one :model/Database (:database_id workspace))]
+    (t2/with-transaction [_]
+      (let [mirrored-graph (ws.mirroring/mirror-entities! workspace database new-graph)
+            old-graph      (:graph workspace)
+            merged         (merge-with into old-graph mirrored-graph)]
+        (t2/update! :model/Workspace (:id workspace) {:graph merged})
+        (assoc workspace :graph merged)))))
+
+(defn create-transform!
+  "Create a new transform directly within a workspace.
+   Returns the created transform with hydrated tag_ids and creator."
+  [workspace body creator-id]
+  (u/prog1
+    (t2/with-transaction [_]
+      (let [workspace-db-id (:database_id workspace)
+            database        (t2/select-one :model/Database workspace-db-id)
+            tag-ids         (:tag_ids body)
+            body            (assoc-in body [:target :database] workspace-db-id)
+            transform       (t2/insert-returning-instance!
+                             :model/Transform
+                             (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                    :creator_id creator-id
+                                    :workspace_id (:id workspace)))]
+        (when (seq tag-ids)
+          (transforms/update-transform-tags! (:id transform) tag-ids))
+
+        (let [target            (:target transform)
+              new-graph         {:db_id      workspace-db-id
+                                 :transforms [transform]
+                                 :inputs     []
+                                 :outputs    [{:id     nil
+                                               :schema (:schema target)
+                                               :name   (:name target)}]
+                                 :check-outs []}
+              graph-with-tables (ws.isolation/create-isolated-output-tables! workspace database new-graph)
+              old-graph         (:graph workspace)
+              merged-graph      (merge-with into old-graph graph-with-tables)]
+          (t2/update! :model/Workspace (:id workspace) {:graph merged-graph}))
+
+        transform))
+    (events/publish-event! :event/transform-create {:object <> :user-id creator-id})))
 
 #_:clj-kondo/ignore
 (comment

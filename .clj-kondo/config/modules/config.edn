@@ -2297,7 +2297,10 @@
    :uses #{api
            api-keys
            driver
+           enterprise/transforms
+           events
            models
+           queries
            request
            sync
            system
