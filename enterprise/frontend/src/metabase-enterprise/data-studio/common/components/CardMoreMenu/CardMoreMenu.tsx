@@ -4,14 +4,13 @@ import { c, t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
+import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
+import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
-
-import { ArchiveCardModal } from "../ArchiveCardModal";
-import { CardCopyModal } from "../CardCopyModal";
-import { MoveCardModal } from "../MoveCardModal";
 
 type CardModalType = "move" | "copy" | "archive";
 
