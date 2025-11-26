@@ -22,11 +22,11 @@ export function SourceModelBreadcrumbs({
 }: SourceModelBreadcrumbsProps) {
   const collectionId = question.collectionId();
 
-  const { data: collection, isFetching } = useGetCollectionQuery(
+  const { data: collection, isLoading } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
   );
 
-  if (isFetching) {
+  if (isLoading) {
     return null;
   }
 
