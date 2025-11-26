@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useEmbeddingParametersConversion } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion";
@@ -21,6 +22,12 @@ export const useEmbeddingParameters = ({
     useEmbeddingParametersConversion();
 
   const hasInitializedRef = useRef(false);
+  const prevResourceId = usePrevious(resource?.id);
+
+  // Reset initialization flag when the resource changes
+  if (resource?.id !== prevResourceId) {
+    hasInitializedRef.current = false;
+  }
 
   const areEmbeddingParametersInitialized =
     (!!settings.dashboardId || !!settings.questionId) &&
@@ -57,10 +64,12 @@ export const useEmbeddingParameters = ({
     [convertToEmbedSettings, updateSettings],
   );
 
-  // Call onEmbeddingParametersChange ONLY ONCE when initialEmbeddingParameters
-  // changes from null to a non-null value (for guest embeds only)
+  // Call onEmbeddingParametersChange ONLY ONCE per resource when initialEmbeddingParameters
+  // changes from null to a non-null value (for guest embeds only).
+  // The resource?.id dependency ensures this re-runs when switching resources.
   useEffect(() => {
     if (
+      resource &&
       !hasInitializedRef.current &&
       settings.isGuestEmbed &&
       initialEmbeddingParameters !== null
@@ -72,6 +81,7 @@ export const useEmbeddingParameters = ({
     initialEmbeddingParameters,
     onEmbeddingParametersChange,
     settings.isGuestEmbed,
+    resource,
   ]);
 
   return {

@@ -545,5 +545,48 @@ describe("useEmbeddingParameters", () => {
         { getAllParams: true },
       );
     });
+
+    it("should reinitialize embedding parameters when resource id changes for guest embeds", () => {
+      const firstDashboard = createMockDashboard({ id: 1 });
+      const secondDashboard = createMockDashboard({ id: 2 });
+
+      const mockInitialParams = { category: "enabled" };
+      mockGetDefaultEmbeddingParams.mockReturnValue(mockInitialParams);
+
+      const { rerender } = renderHook(
+        ({
+          resource,
+          initialAvailableParameters,
+        }: {
+          resource: Dashboard | Card | null;
+          initialAvailableParameters: Parameter[] | null;
+        }) =>
+          useEmbeddingParameters({
+            settings: defaultSettings,
+            updateSettings: mockUpdateSettings,
+            resource,
+            initialAvailableParameters,
+            availableParameters: [mockParameter1],
+          }),
+        {
+          initialProps: {
+            resource: firstDashboard as Dashboard | Card | null,
+            initialAvailableParameters: [mockParameter1] as Parameter[] | null,
+          },
+        },
+      );
+
+      // First initialization
+      expect(mockUpdateSettings).toHaveBeenCalledTimes(1);
+
+      // Change to a different resource
+      rerender({
+        resource: secondDashboard,
+        initialAvailableParameters: [mockParameter1],
+      });
+
+      // Should reinitialize for the new resource
+      expect(mockUpdateSettings).toHaveBeenCalledTimes(2);
+    });
   });
 });
