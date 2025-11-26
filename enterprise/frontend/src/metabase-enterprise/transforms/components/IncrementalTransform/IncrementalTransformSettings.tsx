@@ -132,7 +132,8 @@ export const IncrementalTransformSettings = ({
           if (
             e.target.checked &&
             transformType === "native" &&
-            !hasCheckpointTag
+            !hasCheckpointTag &&
+            query
           ) {
             const complexity = await checkQueryComplexity(
               Lib.rawNativeQuery(query),

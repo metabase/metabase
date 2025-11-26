@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLatest } from "react-use";
 
 import { FormSelect, FormTextInput } from "metabase/forms";

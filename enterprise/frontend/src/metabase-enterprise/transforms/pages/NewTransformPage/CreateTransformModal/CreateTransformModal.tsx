@@ -8,6 +8,7 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import {
