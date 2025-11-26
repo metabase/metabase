@@ -8,13 +8,12 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
-
-import { getPublishSeeItLink } from "../utils";
 
 interface Props {
   tables?: Set<TableId>;
@@ -66,11 +65,14 @@ export function PublishTablesModal({
     if (error) {
       sendErrorToast(t`Failed to publish tables`);
     } else if (data) {
-      const seeItLink = getPublishSeeItLink(data);
+      const collectionLink =
+        collection.type === "library-models"
+          ? Urls.dataStudioCollection(collection.id)
+          : Urls.collection(collection);
       sendSuccessToast(
         t`Published`,
-        seeItLink ? () => dispatch(push(seeItLink)) : undefined,
-        seeItLink ? t`See it` : undefined,
+        () => dispatch(push(collectionLink)),
+        t`Go to ${collection.name}`,
       );
       onSuccess?.();
       handleClose();
@@ -147,7 +149,7 @@ function AcknowledgePublishTablesModal({
       onClose={() => handleClose()}
     >
       <Text pt="sm">
-        {t`Publishing a table means we'll save it in the collection you choose so that it’s easy for your end users to find it.`}
+        {t`Publishing a table means placing it in a collection in the Library so that it’s easy for your end users to find and use it in their explorations.`}
       </Text>
 
       <Group pt="xl" justify="space-between">
@@ -163,7 +165,9 @@ function AcknowledgePublishTablesModal({
         <Button
           onClick={() => handleSubmit({ acknowledged: isAcknowledged })}
           variant="filled"
-        >{t`Got it`}</Button>
+        >
+          {t`Got it`}
+        </Button>
       </Group>
     </Modal>
   );

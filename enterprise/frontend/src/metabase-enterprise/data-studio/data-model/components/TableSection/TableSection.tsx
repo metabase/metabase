@@ -188,7 +188,10 @@ const TableSectionBase = ({
             style={{
               width: "100%",
             }}
-          >{t`Publish`}</Button>
+            disabled={table.is_published}
+          >
+            {table.is_published ? t`Published` : t`Publish`}
+          </Button>
           <Tooltip label={t`Dependency graph`}>
             <Button
               component={ForwardRefLink}
