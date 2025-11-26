@@ -8,10 +8,7 @@ import type {
   EngineKey,
 } from "metabase-types/api";
 
-import {
-  isDatabaseFieldGroup,
-  isFieldVisibleAndDefined,
-} from "../../utils/schema";
+import { isDatabaseFieldGroup, shouldShowField } from "../../utils/schema";
 import { DatabaseDetailField } from "../DatabaseDetailField";
 
 import { CustomContainer } from "./container-styles";
@@ -34,7 +31,7 @@ export function DatabaseFormBodyDetails({
   const { values } = useFormikContext<DatabaseData>();
 
   function renderField(engineField: EngineField) {
-    if (!isFieldVisibleAndDefined(engineField, isAdvanced, values.details)) {
+    if (!shouldShowField(engineField, isAdvanced, values.details)) {
       return null;
     }
 

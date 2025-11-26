@@ -26,7 +26,7 @@ export const getValidationSchema = (
   isAdvanced: boolean,
 ) => {
   const flattenedFields = getFlattenedFields(engine?.["details-fields"] ?? []);
-  const definedFields = getDefinedFields(flattenedFields, isAdvanced);
+  const definedFields = filterFieldsInAdvancedMode(flattenedFields, isAdvanced);
   const fields = definedFields.filter(isDetailField);
   const entries = fields.map((field) => [field.name, getFieldSchema(field)]);
 
@@ -50,26 +50,31 @@ export const getValidationSchema = (
   });
 };
 
-export const getVisibleFieldsAndDefined = (
+export const getFieldsToShow = (
   engine: Engine | undefined,
   values: DatabaseData,
   isAdvanced: boolean,
 ) => {
   const fields = getFlattenedFields(engine?.["details-fields"] ?? []);
-  const definedFields = getDefinedFields(fields, isAdvanced);
-  return definedFields.filter((field) => {
+  const filteredByAdvancedMode = filterFieldsInAdvancedMode(fields, isAdvanced);
+  return filteredByAdvancedMode.filter((field) => {
     return isFieldVisible(field, values.details);
   });
 };
 
-export const getDefinedFields = (
+export const filterFieldsInAdvancedMode = (
   fields: EngineField[],
   isAdvanced: boolean,
 ) => {
-  return fields.filter((field) => isFieldDefined(field, isAdvanced));
+  return fields.filter((field) =>
+    shouldShowFieldInAdvancedMode(field, isAdvanced),
+  );
 };
 
-function isFieldDefined(field: EngineField, isAdvanced: boolean) {
+function shouldShowFieldInAdvancedMode(
+  field: EngineField,
+  isAdvanced: boolean,
+) {
   return isAdvanced || !ADVANCED_FIELDS.includes(field.name);
 }
 
@@ -89,11 +94,13 @@ export const getSubmitValues = (
   values: DatabaseData,
   isAdvanced: boolean,
 ): DatabaseData => {
-  const fields = getVisibleFieldsAndDefined(engine, values, isAdvanced);
-  const entries = getFlattenedFields(fields)
-    .filter((field) => isDetailField(field))
-    .filter((field) => isFieldVisible(field, values.details))
-    .map((field) => [field.name, values.details?.[field.name]]);
+  const fields = getFieldsToShow(engine, values, isAdvanced).filter(
+    isDetailField,
+  );
+  const entries = fields.map((field) => [
+    field.name,
+    values.details?.[field.name],
+  ]);
 
   // "connection-string" is a FE only field. It's used to prefill the database form and we're not sending it to or storing it in the BE.
   const submitValues = Object.entries(values).filter(
@@ -166,12 +173,15 @@ export const isFieldVisible = (
   );
 };
 
-export function isFieldVisibleAndDefined(
+export function shouldShowField(
   field: EngineField,
   isAdvanced: boolean,
   details?: Record<string, unknown>,
 ) {
-  return isFieldVisible(field, details) && isFieldDefined(field, isAdvanced);
+  return (
+    isFieldVisible(field, details) &&
+    shouldShowFieldInAdvancedMode(field, isAdvanced)
+  );
 }
 
 export function setDatabaseFormValues(
