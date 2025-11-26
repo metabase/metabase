@@ -1,5 +1,4 @@
-import userEvent from "@testing-library/user-event";
-import { useRef, useState } from "react";
+import type { History } from "history";
 import { Route } from "react-router";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
@@ -7,101 +6,77 @@ import { checkNotNull } from "metabase/lib/types";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";
 
-const ConfirmingPage = () => {
-  const [showConfirm, setShowConfirm] = useState(false);
-  const onConfirmRef = useRef<(() => void) | null>(null);
+const confirmResult = jest.fn();
 
+const PageB = () => {
   useConfirmOnRouteLeave({
     shouldConfirm: true,
-    // Use a simple async-like confirmation UI (not window.confirm)
-    confirm: (onConfirm) => {
-      onConfirmRef.current = onConfirm;
-      setShowConfirm(true);
+    confirm: (onConfirm: () => void) => {
+      if (confirmResult()) {
+        onConfirm();
+      }
     },
   });
 
-  return (
-    <div>
-      <div>Form B</div>
-      {showConfirm && (
-        <div role="dialog">
-          <div>Are you sure you want to leave?</div>
-          <button
-            onClick={() => {
-              onConfirmRef.current?.();
-              setShowConfirm(false);
-            }}
-          >
-            Yes
-          </button>
-          <button onClick={() => setShowConfirm(false)}>No</button>
-        </div>
-      )}
-    </div>
-  );
+  return <div>Page B</div>;
 };
 
-const PageA = () => <div>Page A</div>;
-
 describe("useConfirmOnRouteLeave", () => {
-  const setup = () =>
-    renderWithProviders(
+  const setup = () => {
+    const PageA = () => <div>Page A</div>;
+
+    const { history, ...rest } = renderWithProviders(
       <div>
         <Route path="/a" component={PageA} />
-        <Route path="/b" component={ConfirmingPage} />
+        <Route path="/b" component={PageB} />
       </div>,
       { withRouter: true, initialRoute: "/a" },
     );
-
-  // Shared happy-path to the confirmation dialog after attempting to leave /b
-  const navigateToBAndTriggerBack = async (history: any) => {
     const guardedHistory = checkNotNull(history);
+    return {
+      ...rest,
+      history: guardedHistory,
+    };
+  };
 
+  // Shared happy path for remaining on the /b route after an attempted exit
+  const navigateToBAndTriggerBack = async (history: History) => {
     // Navigate to /b to create a history entry to go back from
-    act(() => {
-      guardedHistory.push("/b");
-    });
+    act(() => history.push("/b"));
 
     // Ensure we're on /b
-    await screen.findByText("Form B");
-    expect(guardedHistory.getCurrentLocation().pathname).toBe("/b");
+    expect(screen.getByText("Page B")).toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe("/b");
 
     // Simulate browser back, which should trigger confirmation and roll URL forward
-    act(() => {
-      guardedHistory.goBack();
-    });
-
-    await screen.findByRole("dialog");
-    expect(guardedHistory.getCurrentLocation().pathname).toBe("/b");
-
-    return guardedHistory;
+    act(() => history.goBack());
+    return history;
   };
 
   it("shows confirmation on browser back and stays on the same route when clicking 'No' (URL unchanged)", async () => {
     const { history } = setup();
+    // Do not confirm
+    confirmResult.mockReturnValue(false);
 
-    const guardedHistory = await navigateToBAndTriggerBack(history);
-
-    // Click "No" to cancel navigation
-    await userEvent.click(screen.getByText("No"));
+    // try to leave a page
+    await navigateToBAndTriggerBack(history);
 
     // We must still be on the same route and URL
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByText("Form B")).toBeInTheDocument();
-    expect(guardedHistory.getCurrentLocation().pathname).toBe("/b");
+    expect(screen.getByText("Page B")).toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe("/b");
   });
 
   it("navigates to the previous route when clicking 'Yes' in the confirmation", async () => {
     const { history } = setup();
 
-    const guardedHistory = await navigateToBAndTriggerBack(history);
+    // Do confirm
+    confirmResult.mockReturnValue(true);
 
-    // Confirm leaving
-    await userEvent.click(screen.getByText("Yes"));
+    // try to leave a page
+    await navigateToBAndTriggerBack(history);
 
     // We should navigate to /a
-    await screen.findByText("Page A");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(guardedHistory.getCurrentLocation().pathname).toBe("/a");
+    expect(screen.getByText("Page A")).toBeInTheDocument();
+    expect(history.getCurrentLocation().pathname).toBe("/a");
   });
 });

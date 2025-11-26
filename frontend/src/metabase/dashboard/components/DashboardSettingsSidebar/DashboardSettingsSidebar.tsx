@@ -27,21 +27,31 @@ export function DashboardSettingsSidebar() {
   }
 
   if (currentModal === "caching") {
+    const { isOpen, withOverlay, overlayProps } = getModalProps("caching");
     return (
       <PLUGIN_CACHING.SidebarCacheForm
         item={dashboard as CacheableDashboard}
         model="dashboard"
-        {...getModalProps("caching", { onClose: closeSidebar })}
+        isOpen={isOpen}
+        onClose={closeSidebar}
+        withOverlay={withOverlay}
+        overlayProps={overlayProps}
         onBack={() => close("caching")}
         pt="md"
       />
     );
   }
+  const { isOpen, closeOnEscape, withOverlay, overlayProps } =
+    getModalProps("default");
 
   return (
     <ErrorBoundary>
       <Sidesheet
-        {...getModalProps("default", { onClose: closeSidebar })}
+        isOpen={isOpen}
+        onClose={closeSidebar}
+        withOverlay={withOverlay}
+        overlayProps={overlayProps}
+        closeOnEscape={closeOnEscape}
         title={t`Dashboard settings`}
         data-testid="dashboard-settings-sidebar"
       >

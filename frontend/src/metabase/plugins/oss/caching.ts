@@ -6,7 +6,7 @@ import {
 } from "metabase/admin/performance/constants/complex";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { StackProps } from "metabase/ui";
+import type { ModalOverlayProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
 
@@ -27,8 +27,8 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   isOpen: boolean;
-  withOverlay: boolean;
-  withTransparentOverlay: boolean;
+  withOverlay?: boolean;
+  overlayProps?: ModalOverlayProps;
   onClose: () => void;
   onBack: () => void;
 } & StackProps;

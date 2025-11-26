@@ -64,7 +64,7 @@ export const useConfirmation = () => {
         confirmButtonProps,
         size,
       }),
-    [setConfirmationState],
+    [],
   );
 
   return { modalContent, show };

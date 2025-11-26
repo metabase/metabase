@@ -37,11 +37,18 @@ export const QuestionSettingsSidebar = ({
     withOverlay: true,
   });
 
+  const defaultModalProps = getModalProps("default");
+  const cachingModalProps = getModalProps("caching");
+
   return (
     <>
       <Sidesheet
         title={getTitle(question)}
-        {...getModalProps("default", { onClose: handleClose })}
+        isOpen={defaultModalProps.isOpen}
+        onClose={handleClose}
+        withOverlay={defaultModalProps.withOverlay}
+        overlayProps={defaultModalProps.overlayProps}
+        closeOnEscape={defaultModalProps.closeOnEscape}
         data-testid="question-settings-sidebar"
       >
         {question.type() === "model" && (
@@ -67,7 +74,10 @@ export const QuestionSettingsSidebar = ({
         <PLUGIN_CACHING.SidebarCacheForm
           item={question}
           model="question"
-          {...getModalProps("caching", { onClose: handleClose })}
+          isOpen={cachingModalProps.isOpen}
+          onClose={handleClose}
+          withOverlay={cachingModalProps.withOverlay}
+          overlayProps={cachingModalProps.overlayProps}
           onBack={() => close("caching")}
           pt="md"
         />

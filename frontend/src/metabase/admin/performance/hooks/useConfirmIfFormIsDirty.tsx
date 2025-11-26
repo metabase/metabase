@@ -29,14 +29,10 @@ export const useConfirmIfFormIsDirty = () => {
   });
   useBeforeUnload(isStrategyFormDirty);
 
-  const guardAction = (action: () => void) =>
-    isStrategyFormDirty ? askBeforeDiscardingChanges(action) : action();
-
   return {
     askBeforeDiscardingChanges,
     confirmationModal,
     isStrategyFormDirty,
     setIsStrategyFormDirty,
-    guardAction,
   };
 };

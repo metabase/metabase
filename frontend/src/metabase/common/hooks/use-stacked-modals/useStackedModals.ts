@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
+
+import type { ModalOverlayProps } from "metabase/ui";
 
 type Props<TKeys extends string> = {
   modals: TKeys[];
@@ -9,16 +10,11 @@ type Props<TKeys extends string> = {
 };
 
 type GetModalPropsReturn = {
-  /**
-   * to support both Sidesheet and mantine's Modal property.
-   * To fix it rename Sidesheet's prop
-   */
-  opened: boolean;
   isOpen: boolean;
   onClose: () => void;
   closeOnEscape: boolean;
   withOverlay: boolean;
-  withTransparentOverlay: boolean;
+  overlayProps?: ModalOverlayProps;
 };
 
 export const useStackedModals = <TKeys extends string>({
@@ -57,20 +53,19 @@ export const useStackedModals = <TKeys extends string>({
     open(defaultOpened);
   });
 
-  const getModalProps = (
-    key: TKeys,
-    // TODO(egorgrushin): introduce mergeProps pattern
-    override?: Partial<GetModalPropsReturn>,
-  ): GetModalPropsReturn =>
-    _.defaults(override, {
-      isOpen: state[key] ?? false,
-      opened: state[key] ?? false,
-      onClose: () => close(key),
-      closeOnEscape: key === currentModal,
-      withOverlay,
-      /** Invisible overlay to prevent double darkening while preserving click-outside handling */
-      withTransparentOverlay: withOverlay && key !== firstOpenedModal,
-    });
+  const getModalProps = (key: TKeys): GetModalPropsReturn => ({
+    isOpen: state[key] ?? false,
+    onClose: () => close(key),
+    closeOnEscape: key === currentModal,
+    withOverlay,
+    /** Invisible overlay to prevent double darkening while preserving click-outside handling */
+    overlayProps:
+      withOverlay && key !== firstOpenedModal
+        ? {
+            bg: "transparent",
+          }
+        : undefined,
+  });
 
   return {
     currentModal,

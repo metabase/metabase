@@ -20,7 +20,7 @@ export const SidebarCacheForm = ({
   isOpen,
   onClose,
   withOverlay,
-  withTransparentOverlay,
+  overlayProps,
   onBack,
   ...stackProps
 }: SidebarCacheFormProps) => {
@@ -47,8 +47,12 @@ export const SidebarCacheForm = ({
     [saveStrategy, onBack],
   );
 
-  const { confirmationModal, setIsStrategyFormDirty, guardAction } =
-    useConfirmIfFormIsDirty();
+  const {
+    confirmationModal,
+    setIsStrategyFormDirty,
+    isStrategyFormDirty,
+    askBeforeDiscardingChanges,
+  } = useConfirmIfFormIsDirty();
 
   const headingId = `${model}-sidebar-caching-settings-heading`;
 
@@ -56,10 +60,14 @@ export const SidebarCacheForm = ({
     <SidesheetSubPage
       title={t`Caching settings`}
       isOpen={isOpen}
-      onClose={() => guardAction(onClose)}
+      onClose={() =>
+        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose()
+      }
       withOverlay={withOverlay}
-      withTransparentOverlay={withTransparentOverlay}
-      onBack={() => guardAction(onBack)}
+      overlayProps={overlayProps}
+      onBack={() =>
+        isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
+      }
     >
       <Stack
         align="space-between"

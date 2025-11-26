@@ -12,11 +12,28 @@ const TestComponent = () => {
     withOverlay: true,
   });
 
+  const firstModalProps = getModalProps("first");
+  const secondModalProps = getModalProps("second");
+
   return (
     <div>
       <button onClick={() => open("second")}>Open second</button>
-      <Modal {...getModalProps("first")}>First</Modal>
-      <Modal {...getModalProps("second")}>Second</Modal>
+      <Modal
+        opened={firstModalProps.isOpen}
+        onClose={firstModalProps.onClose}
+        closeOnEscape={firstModalProps.closeOnEscape}
+        withOverlay={firstModalProps.withOverlay}
+      >
+        First
+      </Modal>
+      <Modal
+        opened={secondModalProps.isOpen}
+        onClose={secondModalProps.onClose}
+        closeOnEscape={secondModalProps.closeOnEscape}
+        withOverlay={secondModalProps.withOverlay}
+      >
+        Second
+      </Modal>
     </div>
   );
 };

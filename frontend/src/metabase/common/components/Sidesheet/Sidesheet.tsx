@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { uniqueId } from "underscore";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { Modal, Stack } from "metabase/ui";
+import { Modal, type ModalOverlayProps, Stack } from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";
 
@@ -20,8 +20,7 @@ interface SidesheetProps {
   /** use this if you want to enable interior scrolling of tab panels */
   removeBodyPadding?: boolean;
   withOverlay?: boolean;
-  /** Invisible overlay to prevent double darkening while preserving click-outside handling */
-  withTransparentOverlay?: boolean;
+  overlayProps?: ModalOverlayProps;
   closeOnEscape?: boolean;
 }
 
@@ -41,8 +40,8 @@ export function Sidesheet({
   size = "sm",
   children,
   removeBodyPadding,
-  withOverlay = true,
-  withTransparentOverlay = false,
+  withOverlay,
+  overlayProps,
   closeOnEscape = true,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
@@ -55,10 +54,7 @@ export function Sidesheet({
       h="100dvh"
     >
       {withOverlay && (
-        <Modal.Overlay
-          bg={withTransparentOverlay ? "transparent" : undefined}
-          data-testid="modal-overlay"
-        />
+        <Modal.Overlay {...overlayProps} data-testid="modal-overlay" />
       )}
       <Modal.Content
         transitionProps={{ duration: 0 }}
