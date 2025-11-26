@@ -11,6 +11,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
+import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -37,7 +38,8 @@ export function TableAttributesEditBulk({
     selectedDatabases,
     selectedItemsCount,
   } = useSelection();
-  const { acknowledgeModal, isPublishing, handlePublish } = usePublishTables();
+  const { publishConfirmationModal, isPublishing, handlePublish } =
+    usePublishTables();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
   const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
@@ -47,6 +49,10 @@ export function TableAttributesEditBulk({
   const [email, setEmail] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
+  const [
+    isUnpublishModalOpen,
+    { close: closeUnpublishModal, open: openUnpublishModal },
+  ] = useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
 
@@ -144,23 +150,10 @@ export function TableAttributesEditBulk({
           <Group gap="sm">
             <Box flex={1}>
               <Button
-                leftSection={<Icon name="settings" />}
-                onClick={openSyncModal}
-                style={{
-                  width: "100%",
-                }}
-              >
-                {t`Sync settings`}
-              </Button>
-            </Box>
-            <Box flex={1}>
-              <Button
                 p="sm"
-                leftSection={<Icon name="add_folder" />}
-                style={{
-                  width: "100%",
-                }}
+                w="100%"
                 disabled={!hasLibrary || isPublishing}
+                leftSection={<Icon name="library" />}
                 onClick={() =>
                   handlePublish({
                     table_ids: Array.from(selectedTables),
@@ -170,6 +163,26 @@ export function TableAttributesEditBulk({
                 }
               >
                 {t`Publish`}
+              </Button>
+            </Box>
+            <Box flex={1}>
+              <Button
+                p="sm"
+                w="100%"
+                disabled={!hasLibrary}
+                leftSection={<Icon name="library" />}
+                onClick={openUnpublishModal}
+              >
+                {t`Unpublish`}
+              </Button>
+            </Box>
+            <Box flex={1}>
+              <Button
+                leftSection={<Icon name="settings" />}
+                w="100%"
+                onClick={openSyncModal}
+              >
+                {t`Sync settings`}
               </Button>
             </Box>
           </Group>
@@ -250,7 +263,16 @@ export function TableAttributesEditBulk({
         </Box>
       </Stack>
 
-      {acknowledgeModal}
+      {publishConfirmationModal}
+
+      {isUnpublishModalOpen && (
+        <UnpublishTablesModal
+          databaseIds={Array.from(selectedDatabases)}
+          schemaIds={Array.from(selectedSchemas)}
+          tableIds={Array.from(selectedTables)}
+          onClose={closeUnpublishModal}
+        />
+      )}
 
       <SyncOptionsModal
         isOpen={isSyncModalOpen}

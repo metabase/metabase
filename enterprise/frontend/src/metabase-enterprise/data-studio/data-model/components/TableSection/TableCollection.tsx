@@ -5,12 +5,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Box, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
-import { getLibraryCollectionType } from "metabase-enterprise/data-studio/utils";
-import type {
-  Collection,
-  CollectionEssentials,
-  Table,
-} from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import S from "./TableCollection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
@@ -29,7 +24,12 @@ export function TableCollection({ table }: TableCollectionProps) {
       <TableSectionGroup title={t`This table has been published`}>
         <Group justify="space-between" wrap="nowrap">
           {collection != null ? (
-            <TableCollectionBreadcrumbs collection={collection} />
+            <Link
+              className={S.link}
+              to={Urls.dataStudioCollection(collection.id)}
+            >
+              {collection.name}
+            </Link>
           ) : (
             <Box>{t`You don't have access to this collection`}</Box>
           )}
@@ -41,33 +41,8 @@ export function TableCollection({ table }: TableCollectionProps) {
         </Group>
       </TableSectionGroup>
       {isModalOpened && (
-        <UnpublishTablesModal
-          tables={new Set([table.id])}
-          onClose={closeModal}
-        />
+        <UnpublishTablesModal tableIds={[table.id]} onClose={closeModal} />
       )}
     </>
   );
-}
-
-type TableCollectionBreadcrumbsProps = {
-  collection: Collection;
-};
-
-function TableCollectionBreadcrumbs({
-  collection,
-}: TableCollectionBreadcrumbsProps) {
-  return (
-    <Group gap="xs" fw="bold">
-      <Link className={S.link} to={getCollectionLink(collection)}>
-        {collection.name}
-      </Link>
-    </Group>
-  );
-}
-
-function getCollectionLink(collection: CollectionEssentials) {
-  return getLibraryCollectionType(collection.type) != null
-    ? Urls.dataStudioCollection(collection.id)
-    : Urls.collection(collection);
 }

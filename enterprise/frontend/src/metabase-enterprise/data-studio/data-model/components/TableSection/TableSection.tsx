@@ -62,7 +62,8 @@ const TableSectionBase = ({
   const { baseUrl } = useContext(DataModelContext);
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
-  const { acknowledgeModal, isPublishing, handlePublish } = usePublishTables();
+  const { publishConfirmationModal, isPublishing, handlePublish } =
+    usePublishTables();
 
   const getFieldHref = (fieldId: FieldId) => {
     return getUrl(baseUrl, {
@@ -303,7 +304,7 @@ const TableSectionBase = ({
           )}
         </Stack>
       </Box>
-      {acknowledgeModal}
+      {publishConfirmationModal}
     </Stack>
   );
 };

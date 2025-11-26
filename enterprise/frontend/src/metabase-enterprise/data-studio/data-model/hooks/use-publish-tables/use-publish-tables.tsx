@@ -56,12 +56,12 @@ export function usePublishTables() {
     }
   };
 
-  const acknowledgeModal = isModalOpened ? (
+  const publishConfirmationModal = isModalOpened ? (
     <AcknowledgePublishTablesModal
       onSubmit={handleAcknowledgeSubmit}
       onClose={closeModal}
     />
   ) : null;
 
-  return { acknowledgeModal, isPublishing, handlePublish };
+  return { publishConfirmationModal, isPublishing, handlePublish };
 }

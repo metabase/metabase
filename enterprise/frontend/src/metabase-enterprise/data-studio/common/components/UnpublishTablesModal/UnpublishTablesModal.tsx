@@ -12,17 +12,17 @@ import { useUnpublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 type UnpublishTablesModalProps = {
-  tables?: Set<TableId>;
-  schemas?: Set<SchemaId>;
-  databases?: Set<DatabaseId>;
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
   onUnpublish?: () => void;
   onClose: () => void;
 };
 
 export function UnpublishTablesModal({
-  tables = new Set(),
-  schemas = new Set(),
-  databases = new Set(),
+  databaseIds = [],
+  schemaIds = [],
+  tableIds = [],
   onUnpublish,
   onClose,
 }: UnpublishTablesModalProps) {
@@ -31,9 +31,9 @@ export function UnpublishTablesModal({
 
   const handleSubmit = async () => {
     const action = unpublishTables({
-      table_ids: Array.from(tables),
-      schema_ids: Array.from(schemas),
-      database_ids: Array.from(databases),
+      database_ids: databaseIds,
+      schema_ids: schemaIds,
+      table_ids: tableIds,
     });
     await action.unwrap();
     sendSuccessToast(t`Unpublished`);
@@ -43,7 +43,7 @@ export function UnpublishTablesModal({
 
   return (
     <Modal
-      title={getTitle(tables, schemas, databases)}
+      title={getTitle(databaseIds, schemaIds, tableIds)}
       opened
       padding="xl"
       onClose={onClose}
@@ -73,15 +73,15 @@ export function UnpublishTablesModal({
 }
 
 function getTitle(
-  tables: Set<TableId>,
-  schemas: Set<SchemaId>,
-  databases: Set<DatabaseId>,
+  databaseIds: DatabaseId[],
+  schemaIds: SchemaId[],
+  tableIds: TableId[],
 ) {
-  if (schemas.size === 0 && databases.size === 0) {
+  if (schemaIds.length === 0 && databaseIds.length === 0) {
     return ngettext(
       msgid`Unpublish this table?`,
-      `Unpublish these ${tables.size} tables?`,
-      tables.size,
+      `Unpublish these ${tableIds.length} tables?`,
+      tableIds.length,
     );
   }
   return t`Unpublish these tables?`;

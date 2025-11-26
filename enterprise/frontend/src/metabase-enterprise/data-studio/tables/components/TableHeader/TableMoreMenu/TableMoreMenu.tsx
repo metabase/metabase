@@ -81,7 +81,7 @@ function TableModal({ table, modalType, onClose }: TableModalProps) {
     case "unpublish":
       return (
         <UnpublishTablesModal
-          tables={new Set([table.id])}
+          tableIds={[table.id]}
           onUnpublish={handleUnpublish}
           onClose={onClose}
         />
