@@ -5,6 +5,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 const { H } = cy;
+import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   POPOVER_ELEMENT,
@@ -12,6 +13,7 @@ import {
   popover,
 } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
@@ -409,6 +411,72 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
         });
       });
     });
+  });
+});
+
+describe("scenarios > embedding-sdk > dashboard-click-behavior - jwt attributes", () => {
+  beforeEach(() => {
+    signInAsAdminAndEnableEmbeddingSdk();
+
+    H.createDashboardWithQuestions({
+      dashboardName: "JWT Attributes Dashboard",
+      questions: [
+        {
+          name: "Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+      ],
+      cards: [
+        {
+          visualization_settings: {
+            column_settings: {
+              '["name","ID"]': {
+                click_behavior: {
+                  type: "link",
+                  linkType: "url",
+                  linkTextTemplate: "Open user attribute link",
+                  linkTemplate: "https://example.org/test/{{test_attribute}}",
+                },
+              },
+            },
+          },
+        },
+      ],
+    }).then(({ dashboard }) => {
+      cy.wrap(dashboard.id).as("jwtDashboardId");
+    });
+
+    cy.signOut();
+  });
+
+  it("should substitute JWT user attributes from in click behavior link templates (metabase#65942)", () => {
+    const jwtAttributeValue = "attribute_value";
+
+    cy.task<string>("signJwt", {
+      payload: {
+        email: USERS.normal.email,
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
+        test_attribute: jwtAttributeValue,
+      },
+      secret: JWT_SHARED_SECRET,
+    }).then((jwtToken) => {
+      mockAuthProviderAndJwtSignIn(USERS.normal, { jwt: jwtToken });
+    });
+
+    stubAnchorClick();
+    cy.intercept("POST", "/api/dashboard/**/query").as("getDashcardQuery");
+
+    cy.get<number>("@jwtDashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    cy.wait("@getDashcardQuery");
+
+    getSdkRoot().within(() => {
+      cy.findAllByText("Open user attribute link").first().click();
+    });
+
+    expectClickBehaviorForUrl(`https://example.org/test/${jwtAttributeValue}`);
   });
 });
 
