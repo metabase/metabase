@@ -116,7 +116,7 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn :model/Table id)
-        (t2/hydrate :db :pk_field :collection)
+        (t2/hydrate :db :pk_field [:collection :effective_ancestors])
         schema.table/present-table)))
 
 (api.macros/defendpoint :get "/:table-id/data"

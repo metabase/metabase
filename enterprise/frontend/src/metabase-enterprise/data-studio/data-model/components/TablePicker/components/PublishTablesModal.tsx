@@ -15,6 +15,8 @@ import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
+import { getLibraryCollectionType } from "../../../../utils";
+
 interface Props {
   tables?: Set<TableId>;
   schemas?: Set<SchemaId>;
@@ -66,7 +68,7 @@ export function PublishTablesModal({
       sendErrorToast(t`Failed to publish tables`);
     } else if (data) {
       const collectionLink =
-        collection.type === "library-models"
+        getLibraryCollectionType(collection.type) === "models"
           ? Urls.dataStudioCollection(collection.id)
           : Urls.collection(collection);
       sendSuccessToast(

@@ -1,16 +1,5 @@
-.collection {
-  padding: 8px;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
-  cursor: pointer;
-}
-
-.collection:hover {
-  background-color: var(--mb-color-bg-light);
-}
-
-.collectionName {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.link {
+  &:hover {
+    color: var(--mb-color-brand);
+  }
 }
