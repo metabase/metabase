@@ -79,7 +79,7 @@ export type DatabaseProvider = {
 export type EngineKey = (typeof engineKeys)[number];
 
 export type ContainerStyleType = "grid" | "component";
-export type ContainerStyle = string | [ContainerStyleType, string];
+export type ContainerStyle = [ContainerStyleType, string];
 
 export interface FieldGroupConfig {
   id: string;
