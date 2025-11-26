@@ -2,20 +2,14 @@ import { useEffect } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
-  useListPermissionsGroupsQuery,
-  useListUsersQuery,
-} from "metabase/api";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Flex, Stack, Tabs } from "metabase/ui";
+import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 
 import { PeopleList } from "../../components/PeopleList";
 import { SearchFilter } from "../../components/SearchFilter";
@@ -91,72 +85,65 @@ export function PeopleListingApp({
   }, [hasDeactivatedUsers, updateStatus]);
 
   return (
-    <SettingsPageWrapper title={external ? t`External Users` : t`People`}>
-      <Stack gap={0}>
-        {isAdmin && hasDeactivatedUsers && (
-          <Tabs value={status} onChange={handleTabChange} pl="md">
-            <Tabs.List className={S.tabs}>
-              <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
-              <Tabs.Tab
-                value={ACTIVE_STATUS.deactivated}
-              >{t`Deactivated`}</Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-        )}
+    <div>
+      <Group justify="space-between" w="100%" mb="lg">
+        <Title order={1}>{external ? t`External Users` : t`People`}</Title>
 
-        <SettingsSection>
-          <LoadingAndErrorWrapper
-            error={error}
-            loading={isLoading || !currentUser}
-          >
-            <div data-testid="admin-panel">
-              <Flex
-                align="center"
-                gap="xl"
-                justify="space-between"
-                mb="xl"
-                wrap="wrap"
-              >
+        {!external && <PLUGIN_TENANTS.EditUserStrategySettingsButton />}
+      </Group>
+
+      {isAdmin && hasDeactivatedUsers && (
+        <Tabs value={status} onChange={handleTabChange} pl="md">
+          <Tabs.List className={S.tabs}>
+            <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
+            <Tabs.Tab
+              value={ACTIVE_STATUS.deactivated}
+            >{t`Deactivated`}</Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+      )}
+
+      <SettingsSection>
+        <LoadingAndErrorWrapper
+          error={error}
+          loading={isLoading || !currentUser}
+        >
+          <div data-testid="admin-panel">
+            <Group w="100%" justify="space-between" mb="lg" gap="md">
+              <Flex flex="1">
                 <SearchFilter
                   value={searchInputValue}
                   onChange={updateSearchInputValue}
                   placeholder={t`Find someone`}
                 />
-
-                {buttonText && (
-                  <Flex gap="sm">
-                    <Box>
-                      <Link
-                        to={external ? Urls.newTenantUser() : Urls.newUser()}
-                      >
-                        <Button variant="filled">{buttonText}</Button>
-                      </Link>
-                    </Box>
-                    {!external && (
-                      <PLUGIN_TENANTS.EditUserStrategySettingsButton />
-                    )}
-                  </Flex>
-                )}
               </Flex>
 
-              {currentUser && (
-                <PeopleList
-                  external={external}
-                  groups={groups}
-                  isAdmin={isAdmin}
-                  currentUser={currentUser}
-                  query={query}
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
-                  noResultsMessage={noUsersFoundMessage}
-                />
+              {buttonText && (
+                <Box>
+                  <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
+                    <Button variant="filled">{buttonText}</Button>
+                  </Link>
+                </Box>
               )}
+            </Group>
 
-              {children}
-            </div>
-          </LoadingAndErrorWrapper>
-        </SettingsSection>
-      </Stack>
-    </SettingsPageWrapper>
+            {currentUser && (
+              <PeopleList
+                external={external}
+                groups={groups}
+                isAdmin={isAdmin}
+                currentUser={currentUser}
+                query={query}
+                onNextPage={handleNextPage}
+                onPreviousPage={handlePreviousPage}
+                noResultsMessage={noUsersFoundMessage}
+              />
+            )}
+
+            {children}
+          </div>
+        </LoadingAndErrorWrapper>
+      </SettingsSection>
+    </div>
   );
 }
