@@ -1132,6 +1132,45 @@
         } ],
         "description" : "All the various ways of referring to an action with the v2 APIs."
       },
+      "metabase-enterprise.data-studio.api.table.data-authorities" : {
+        "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.data-studio.api.table.data-layers" : {
+        "enum" : [ "copper", "bronze", "gold", "silver" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.data-studio.api.table.data-sources" : {
+        "enum" : [ "source-data", "transform", "unknown", "ingested", "metabase-transform", "upload" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.data-studio.api.table.table-selectors" : {
+        "properties" : {
+          "database_ids" : {
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "schema_ids" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "table_ids" : {
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "metabase-enterprise.dependencies.api.card-body" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "properties" : {
@@ -3416,6 +3455,9 @@
       },
       "metabase-enterprise.metabot-v3.tools.api.table-result" : {
         "properties" : {
+          "database_engine" : {
+            "type" : "string"
+          },
           "database_id" : {
             "type" : "integer"
           },
@@ -3462,7 +3504,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ],
+        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ],
         "type" : "object"
       },
       "metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter" : {
@@ -11053,6 +11095,14 @@
         "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ],
         "type" : "string"
       },
+      "metabase.warehouse-schema-rest.api.table.data-layers" : {
+        "enum" : [ "copper", "bronze", "gold", "silver" ],
+        "type" : "string"
+      },
+      "metabase.warehouse-schema-rest.api.table.data-sources" : {
+        "enum" : [ "source-data", "transform", "unknown", "ingested", "metabase-transform", "upload" ],
+        "type" : "string"
+      },
       "metabase.warehouses-rest.api.available-settings" : {
         "additionalProperties" : {
           "properties" : {
@@ -11486,6 +11536,7 @@
     },
     "/api/activity/recent_views" : {
       "get" : {
+        "deprecated" : true,
         "description" : "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most\n  recently. Return a maximum of 20 model of each, if they've looked at at least 20.",
         "parameters" : [ ],
         "responses" : {
@@ -14681,7 +14732,7 @@
     },
     "/api/collection/root/items" : {
       "get" : {
-        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  By default, library collections are excluded from the results; to include them, pass `?include_library=true`.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
         "parameters" : [ {
           "in" : "query",
           "name" : "models",
@@ -14737,6 +14788,18 @@
             "oneOf" : [ {
               "minLength" : 1,
               "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_library",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -14904,6 +14967,18 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-library",
           "required" : true,
           "schema" : {
             "default" : false,
@@ -15342,6 +15417,7 @@
     },
     "/api/dashboard/" : {
       "get" : {
+        "deprecated" : true,
         "description" : "This endpoint is currently unused by the Metabase frontend and may be out of date with the rest of the application.\n  It only exists for backwards compatibility and may be removed in the future.\n\n  Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:\n  *  `all`      - Return all Dashboards.\n  *  `mine`     - Return Dashboards created by the current user.\n  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)",
         "parameters" : [ {
           "in" : "query",
@@ -19273,6 +19349,250 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
+    "/api/ee/data-studio/table/discard-values" : {
+      "post" : {
+        "description" : "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/data-studio/table/discard-values",
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/edit" : {
+      "post" : {
+        "description" : "Bulk updating tables.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "data_authority" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-authorities"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_layer" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-layers"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_source" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-sources"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "database_ids" : {
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "type" : "array"
+                  },
+                  "entity_type" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "owner_email" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "owner_user_id" : {
+                    "oneOf" : [ {
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "schema_ids" : {
+                    "items" : {
+                      "type" : "string"
+                    },
+                    "type" : "array"
+                  },
+                  "table_ids" : {
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "type" : "array"
+                  }
+                },
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/data-studio/table/edit",
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/publish-model" : {
+      "post" : {
+        "description" : "Create a model for each of selected tables",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "database_ids" : {
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "type" : "array"
+                  },
+                  "schema_ids" : {
+                    "items" : {
+                      "type" : "string"
+                    },
+                    "type" : "array"
+                  },
+                  "table_ids" : {
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "type" : "array"
+                  },
+                  "target_collection_id" : {
+                    "oneOf" : [ {
+                      "anyOf" : [ {
+                        "minimum" : 1,
+                        "type" : "integer"
+                      }, {
+                        "const" : "library"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "target_collection_id" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/data-studio/table/publish-model",
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/rescan-values" : {
+      "post" : {
+        "description" : "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/data-studio/table/rescan-values",
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/sync-schema" : {
+      "post" : {
+        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asyncronous. This call may return before all tables synced.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/data-studio/table/sync-schema",
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
     "/api/ee/database-replication/connection/{database-id}" : {
       "delete" : {
         "description" : "Delete PG replication connection for the specified database.",
@@ -20521,6 +20841,61 @@
         },
         "summary" : "GET /api/ee/gsheets/service-account",
         "tags" : [ "/api/ee/gsheets" ]
+      }
+    },
+    "/api/ee/library/" : {
+      "get" : {
+        "description" : "Get the Library. If no library exists, it doesn't fail but returns an empty response.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/library/",
+        "tags" : [ "/api/ee/library" ]
+      },
+      "post" : {
+        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/library/",
+        "tags" : [ "/api/ee/library" ]
+      }
+    },
+    "/api/ee/library/tree" : {
+      "get" : {
+        "description" : "This matches /api/collection/tree but only returns the library collection.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/library/tree",
+        "tags" : [ "/api/ee/library" ]
       }
     },
     "/api/ee/logs/query_execution/{yyyy-mm}" : {
@@ -31266,6 +31641,19 @@
           }
         }, {
           "in" : "query",
+          "name" : "collection",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
           "name" : "table_db_id",
           "required" : false,
           "schema" : {
@@ -32398,7 +32786,75 @@
     "/api/table/" : {
       "get" : {
         "description" : "Get all `Tables`.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "term",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "visibility-type",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "data-layer",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-layers"
+          }
+        }, {
+          "in" : "query",
+          "name" : "data-source",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-sources"
+          }
+        }, {
+          "in" : "query",
+          "name" : "owner-user-id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "owner-email",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "orphan-only",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "unused-only",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -32414,7 +32870,7 @@
         "tags" : [ "/api/table" ]
       },
       "put" : {
-        "description" : "Update all `Table` in `ids`.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
@@ -32431,6 +32887,20 @@
                   "data_authority" : {
                     "oneOf" : [ {
                       "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_layer" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_source" : {
+                    "oneOf" : [ {
+                      "type" : "string"
                     }, {
                       "type" : "null"
                     } ]
@@ -32464,6 +32934,20 @@
                       "type" : "integer"
                     },
                     "type" : "array"
+                  },
+                  "owner_email" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "owner_user_id" : {
+                    "oneOf" : [ {
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
                   },
                   "points_of_interest" : {
                     "oneOf" : [ {
@@ -32634,6 +33118,20 @@
                       "type" : "null"
                     } ]
                   },
+                  "data_layer" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "data_source" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -32660,6 +33158,20 @@
                     "oneOf" : [ {
                       "enum" : [ "alphabetical", "custom", "database", "smart" ],
                       "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "owner_email" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "owner_user_id" : {
+                    "oneOf" : [ {
+                      "type" : "integer"
                     }, {
                       "type" : "null"
                     } ]
