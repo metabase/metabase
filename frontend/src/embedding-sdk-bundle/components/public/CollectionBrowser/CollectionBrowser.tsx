@@ -36,6 +36,7 @@ type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 export type CollectionBrowserListColumns =
   | "type"
   | "name"
+  | "description"
   | "lastEditedBy"
   | "lastEditedAt"
   | "archive";
@@ -43,6 +44,7 @@ export type CollectionBrowserListColumns =
 const COLLECTION_BROWSER_LIST_COLUMNS: CollectionBrowserListColumns[] = [
   "type",
   "name",
+  "description",
   "lastEditedBy",
   "lastEditedAt",
   "archive",
