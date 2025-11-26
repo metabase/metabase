@@ -15,7 +15,7 @@ type QuestionParameterTargetWidgetProps = {
   question: Question;
   target?: ParameterTarget | null;
   onChange: (target: ParameterTarget) => void;
-  placeholder?: string;
+  placeholder: string;
 };
 
 function QuestionParameterTargetWidgetInner({
@@ -34,12 +34,7 @@ function QuestionParameterTargetWidgetInner({
   const [opened, { close, toggle }] = useDisclosure(false);
 
   return (
-    <Popover
-      opened={opened}
-      onDismiss={close}
-      closeOnClickOutside
-      disabled={disabled}
-    >
+    <Popover opened={opened} onDismiss={close} disabled={disabled}>
       <Popover.Target>
         <SelectButton
           hasValue={!!selected}
