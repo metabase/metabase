@@ -213,12 +213,6 @@ const TableSectionBase = ({
         </Group>
       </Box>
 
-      {table.is_published && (
-        <Box px="lg">
-          <TableCollection table={table} />
-        </Box>
-      )}
-
       <Box px="lg">
         <TableAttributesEditSingle table={table} />
       </Box>
@@ -228,6 +222,12 @@ const TableSectionBase = ({
           <TableMetadata table={table} />
         </TableSectionGroup>
       </Box>
+
+      {table.is_published && (
+        <Box px="lg">
+          <TableCollection table={table} />
+        </Box>
+      )}
 
       <Box px="lg">
         <Stack gap={12}>

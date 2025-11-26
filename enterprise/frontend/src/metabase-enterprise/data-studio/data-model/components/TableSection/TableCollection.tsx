@@ -18,7 +18,7 @@ export function TableCollection({ table }: Props) {
   const { collection } = table;
 
   return (
-    <TableSectionGroup title={t`This table has been published in a collection`}>
+    <TableSectionGroup title={t`This table has been published`}>
       <Box
         className={S.collection}
         component={Link}
