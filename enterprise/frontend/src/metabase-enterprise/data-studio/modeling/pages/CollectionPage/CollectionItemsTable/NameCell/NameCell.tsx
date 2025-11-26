@@ -6,10 +6,10 @@ import {
   MaybeItemLink,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { entityForObject } from "metabase/lib/schema";
-import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, type IconName, Skeleton } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
+import { getItemUrl } from "../../../../utils";
 import type { ItemIcon } from "../types";
 
 import S from "./NameCell.module.css";
@@ -38,14 +38,8 @@ function getItemIcon(item: CollectionItem): ItemIcon {
 
 export function NameCell({ item }: NameCellProps) {
   const headingId = item ? `${item.model}-${item.id}-heading` : "dummy-heading";
-
   const icon = item ? getItemIcon(item) : { name: "folder" as IconName };
-
-  const itemUrl = item
-    ? item.model === "metric"
-      ? Urls.metric({ id: item.id, name: item.name, type: "metric" })
-      : Urls.dataStudioModel(item.id)
-    : undefined;
+  const itemUrl = item ? getItemUrl(item) : undefined;
 
   return (
     <ItemNameCell
