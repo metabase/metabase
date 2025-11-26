@@ -97,7 +97,8 @@ export const useGetInitialContainer = (
       : undefined;
 
   return {
-    currentQuestion: currentQuestion,
+    currentTable,
+    currentQuestion,
     currentCollection:
       currentTableCollection ??
       currentQuestionCollection ??

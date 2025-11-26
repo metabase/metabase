@@ -5,11 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { DelayedLoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
-import {
-  type CollectionPickerItem,
-  type CollectionPickerModel,
-  useEnsureCollectionSelected,
-} from "../../CollectionPicker";
+import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import {
@@ -68,13 +64,18 @@ export const QuestionPicker = ({
   const defaultPath = useMemo(() => {
     return getStateFromIdPath({
       idPath: ["root"],
-      models: models as CollectionPickerModel[],
+      models,
     });
   }, [models]);
   const path = pathProp ?? defaultPath;
 
-  const { currentDashboard, currentCollection, currentQuestion, isLoading } =
-    useGetInitialContainer(initialValue);
+  const {
+    currentTable,
+    currentQuestion,
+    currentCollection,
+    currentDashboard,
+    isLoading,
+  } = useGetInitialContainer(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
@@ -83,13 +84,10 @@ export const QuestionPicker = ({
       onItemSelect(folder);
 
       //if it's actually a folder
-      if (isFolder(folder, models as QuestionPickerModel[])) {
+      if (isFolder(folder, models)) {
         const newPath = getStateFromIdPath({
-          idPath: getCollectionIdPath(
-            folder as CollectionPickerItem,
-            userPersonalCollectionId,
-          ),
-          models: models as CollectionPickerModel[],
+          idPath: getCollectionIdPath(folder, userPersonalCollectionId),
+          models: models,
         });
 
         onPathChange(newPath);
@@ -134,7 +132,7 @@ export const QuestionPicker = ({
 
         const newPath = getStateFromIdPath({
           idPath,
-          models: models as CollectionPickerModel[],
+          models,
         });
 
         // start with the current item selected if we can
@@ -161,17 +159,23 @@ export const QuestionPicker = ({
         });
 
         // start with the current item selected if we can
-        const newSelectedItem: QuestionPickerItem = currentQuestion
+        const newSelectedItem: QuestionPickerItem = currentTable
           ? {
-              id: currentQuestion.id,
-              name: currentQuestion.name,
-              model: getQuestionPickerValueModel(currentQuestion.type),
+              id: currentTable.id,
+              name: currentTable.display_name,
+              model: "table",
             }
-          : {
-              id: currentCollection.id,
-              name: currentCollection.name,
-              model: "collection",
-            };
+          : currentQuestion
+            ? {
+                id: currentQuestion.id,
+                name: currentQuestion.name,
+                model: getQuestionPickerValueModel(currentQuestion.type),
+              }
+            : {
+                id: currentCollection.id,
+                name: currentCollection.name,
+                model: "collection",
+              };
 
         newPath[newPath.length - 1].selectedItem = newSelectedItem;
 
