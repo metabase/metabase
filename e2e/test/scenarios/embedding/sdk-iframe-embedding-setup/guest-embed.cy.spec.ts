@@ -1,6 +1,6 @@
 import { JWT_SHARED_SECRET } from "e2e/support/helpers";
 
-import { getEmbedSidebar, visitNewEmbedPage } from "./helpers";
+import { codeBlock, getEmbedSidebar, visitNewEmbedPage } from "./helpers";
 
 const { H } = cy;
 
@@ -93,8 +93,15 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         .should("be.visible")
         .should("be.disabled");
 
+      H.setEmbeddingParameter("Text", "Locked");
+      cy.findAllByTestId("parameter-widget").find("input").type("Foo Bar Baz");
+
       H.publishChanges("card");
       cy.button("Unpublish").should("be.visible");
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Foo Bar Baz").should("be.visible");
+      });
 
       getEmbedSidebar().within(() => {
         cy.findByText("Get code").click();
@@ -103,7 +110,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_options_completed",
         event_detail:
-          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest_embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":1,"locked":0,"enabled":0},theme=default',
+          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest_embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
       });
 
       // Get code step
@@ -117,6 +124,36 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         event: "embed_wizard_code_copied",
         event_detail:
           "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed",
+      });
+
+      // Visit embed page
+      getEmbedSidebar().within(() => {
+        codeBlock()
+          .invoke("text")
+          .then((code: string) => {
+            const match = code.match(/token="([^"]+)"/);
+            expect(match, "JWT token present in code block").to.not.be.null;
+            const jwtToken = match ? match[1] : "";
+            cy.wrap(jwtToken).as("guestEmbedToken");
+          });
+      });
+
+      cy.get<string>("@guestEmbedToken").then((token) => {
+        const frame = H.loadSdkIframeEmbedTestPage({
+          metabaseConfig: { isGuestEmbed: true },
+          elements: [
+            {
+              component: "metabase-question",
+              attributes: {
+                token,
+              },
+            },
+          ],
+        });
+
+        frame.within(() => {
+          cy.findByText("Foo Bar Baz").should("be.visible");
+        });
       });
     });
   });
