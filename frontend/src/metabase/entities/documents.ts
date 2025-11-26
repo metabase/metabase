@@ -30,7 +30,7 @@ import type { Dispatch } from "metabase-types/store";
 const Documents = createEntity({
   name: "documents",
   nameOne: "document",
-  path: "/api/ee/document",
+  path: "/api/document",
   schema: DocumentSchema,
 
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045

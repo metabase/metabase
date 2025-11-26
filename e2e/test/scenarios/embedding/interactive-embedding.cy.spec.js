@@ -1839,12 +1839,12 @@ describe("scenarios > embedding > full app", () => {
 
       cy.intercept({
         method: "GET",
-        path: "/api/ee/document/*",
+        path: "/api/document/*",
       }).as("documentGet");
 
       cy.intercept({
         method: "GET",
-        path: "/api/ee/comment/*",
+        path: "/api/comment/*",
       }).as("commentGet");
 
       H.visitFullAppEmbeddingUrl({

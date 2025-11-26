@@ -28,7 +28,6 @@ describe("document comments", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
   });
 
@@ -1054,7 +1053,7 @@ describe("document comments", () => {
 
     it("opens a link to a resolved comment correctly", () => {
       cy.get<number>("@headingCommentId").then((commentId) => {
-        cy.request("PUT", `/api/ee/comment/${commentId}`, {
+        cy.request("PUT", `/api/comment/${commentId}`, {
           is_resolved: true,
         });
         H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);

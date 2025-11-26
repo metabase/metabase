@@ -10,7 +10,6 @@ describe("documents supporting text", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
   it("should add supporting text to a standalone cardEmbed", () => {
@@ -291,7 +290,7 @@ describe("documents supporting text", () => {
   it("should allow resizing supporting text and persist width after save", () => {
     cy.intercept({
       method: "GET",
-      path: "/api/ee/document/*",
+      path: "/api/document/*",
     }).as("documentGet");
 
     H.createDocument({

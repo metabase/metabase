@@ -9,7 +9,6 @@ describe("documents card embed node custom logic", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
   describe("cardEmbed drag and drop", () => {

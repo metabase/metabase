@@ -8,7 +8,6 @@ describe("scenarios > documents > downloads", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
   it("shows Download results for read-only document access", () => {

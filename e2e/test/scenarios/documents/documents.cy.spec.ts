@@ -18,14 +18,13 @@ describe("documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
   });
 
   it("should allow you to create a new document from the new button and save", () => {
     const getDocumentStub = cy.stub();
 
-    cy.intercept("GET", "/api/ee/document/1", getDocumentStub);
+    cy.intercept("GET", "/api/document/1", getDocumentStub);
 
     cy.visit("/");
 
@@ -799,11 +798,11 @@ describe("documents", () => {
       it("should copy an added card on save", () => {
         cy.intercept({
           method: "PUT",
-          path: "/api/ee/document/*",
+          path: "/api/document/*",
         }).as("documentUpdate");
         cy.intercept({
           method: "GET",
-          path: "/api/ee/document/*",
+          path: "/api/document/*",
         }).as("documentGet");
 
         cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -1226,7 +1225,7 @@ describe("documents", () => {
   describe("error handling", () => {
     it("should display an error toast when creating a new document fails", () => {
       // setup
-      cy.intercept("POST", "/api/ee/document", { statusCode: 500 });
+      cy.intercept("POST", "/api/document", { statusCode: 500 });
       cy.visit("/document/new");
 
       // make changes and attempt to save
@@ -1247,7 +1246,7 @@ describe("documents", () => {
 
     it("should display an error toast when updating a document fails", () => {
       // setup
-      cy.intercept("PUT", "/api/ee/document/*", { statusCode: 500 });
+      cy.intercept("PUT", "/api/document/*", { statusCode: 500 });
       H.createDocument({
         name: "Test Document",
         document: { type: "doc", content: [] },

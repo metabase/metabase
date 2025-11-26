@@ -25,7 +25,7 @@ export const commentApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/comment",
+        url: "/api/comment",
         params,
       }),
       providesTags: (response) =>
@@ -35,7 +35,7 @@ export const commentApi = Api.injectEndpoints({
     createComment: builder.mutation<Comment, CreateCommentRequest>({
       query: (body) => ({
         method: "POST",
-        url: `/api/ee/comment`,
+        url: `/api/comment`,
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -45,7 +45,7 @@ export const commentApi = Api.injectEndpoints({
     updateComment: builder.mutation<Comment, UpdateCommentRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/ee/comment/${id}`,
+        url: `/api/comment/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -55,7 +55,7 @@ export const commentApi = Api.injectEndpoints({
     deleteComment: builder.mutation<void, CommentId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/ee/comment/${id}`,
+        url: `/api/comment/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
@@ -67,7 +67,7 @@ export const commentApi = Api.injectEndpoints({
     >({
       query: ({ id, emoji }) => ({
         method: "POST",
-        url: `/api/ee/comment/${id}/reaction`,
+        url: `/api/comment/${id}/reaction`,
         body: { emoji },
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -80,7 +80,7 @@ export const commentApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/comment/mentions",
+        url: "/api/comment/mentions",
         params,
       }),
       providesTags: (response) =>

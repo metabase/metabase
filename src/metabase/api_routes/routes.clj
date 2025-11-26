@@ -16,9 +16,11 @@
    [metabase.cache.api]
    [metabase.channel.api]
    [metabase.cloud-migration.api]
+   [metabase.comments.api]
    [metabase.collections-rest.api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
+   [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
    [metabase.geojson.api]
@@ -66,8 +68,10 @@
          metabase.bug-reporting.api/keep-me
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
+         metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
          metabase.dashboards-rest.api/keep-me
+         metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -141,8 +145,10 @@
    "/cards"                (+auth metabase.queries.api/cards-routes)
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
+   "/comment"              (+auth metabase.comments.api/routes)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
+   "/document"             (+auth metabase.documents.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)

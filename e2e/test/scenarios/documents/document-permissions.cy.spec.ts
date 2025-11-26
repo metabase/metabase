@@ -7,7 +7,6 @@ describe("document permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
     cy.signOut();
   });

@@ -1800,10 +1800,10 @@
            util
            enterprise/harbormaster}}
 
-  enterprise/comments
+  comments
   {:team "UX West"
-   :api  #{metabase-enterprise.comments.api
-           metabase-enterprise.comments.init}
+   :api  #{metabase.comments.api
+           metabase.comments.init}
    :uses #{analytics
            api
            channel
@@ -1910,14 +1910,14 @@
            settings
            task
            util
-           enterprise/documents}}
+           documents}}
 
-  enterprise/documents
+  documents
   {:team "UX West"
-   :api  #{metabase-enterprise.documents.api
-           metabase-enterprise.documents.core
-           metabase-enterprise.documents.init
-           metabase-enterprise.documents.prose-mirror}
+   :api  #{metabase.documents.api
+           metabase.documents.core
+           metabase.documents.init
+           metabase.documents.prose-mirror}
    :uses #{activity-feed
            api
            app-db
@@ -2049,7 +2049,7 @@
            warehouse-schema
            warehouses-rest
            enterprise/dependencies
-           enterprise/documents
+           documents
            enterprise/transforms
            enterprise/transforms-python}}
 

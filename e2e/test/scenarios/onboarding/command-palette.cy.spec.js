@@ -228,7 +228,7 @@ describe("command palette", () => {
     //Create a document so that it appears in the recents list
     cy.request(
       "POST",
-      "/api/ee/document",
+      "/api/document",
       createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
     );
 

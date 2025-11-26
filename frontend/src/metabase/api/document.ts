@@ -14,7 +14,7 @@ export const documentApi = Api.injectEndpoints({
     getDocument: builder.query<Document, GetDocumentRequest>({
       query: ({ id }) => ({
         method: "GET",
-        url: `/api/ee/document/${id}`,
+        url: `/api/document/${id}`,
       }),
       providesTags: (result, error, { id }) =>
         !error ? [idTag("document", id)] : [],
@@ -22,7 +22,7 @@ export const documentApi = Api.injectEndpoints({
     createDocument: builder.mutation<Document, CreateDocumentRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/document",
+        url: "/api/document",
         body,
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
@@ -40,7 +40,7 @@ export const documentApi = Api.injectEndpoints({
     updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
       query: (document) => ({
         method: "PUT",
-        url: `/api/ee/document/${document.id}`,
+        url: `/api/document/${document.id}`,
         body: document,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -49,7 +49,7 @@ export const documentApi = Api.injectEndpoints({
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({
         method: "DELETE",
-        url: `/api/ee/document/${document.id}`,
+        url: `/api/document/${document.id}`,
       }),
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
@@ -57,7 +57,7 @@ export const documentApi = Api.injectEndpoints({
     listPublicDocuments: builder.query<GetPublicDocument[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/document/public",
+        url: "/api/document/public",
       }),
       providesTags: (result = []) => [
         ...result.map((res) => idTag("public-document", res.id)),
@@ -70,7 +70,7 @@ export const documentApi = Api.injectEndpoints({
     >({
       query: ({ id }) => ({
         method: "POST",
-        url: `/api/ee/document/${id}/public-link`,
+        url: `/api/document/${id}/public-link`,
       }),
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("public-document"), idTag("document", id)] : [],
@@ -85,7 +85,7 @@ export const documentApi = Api.injectEndpoints({
     >({
       query: ({ id }) => ({
         method: "DELETE",
-        url: `/api/ee/document/${id}/public-link`,
+        url: `/api/document/${id}/public-link`,
       }),
       transformResponse: (_baseQueryReturnValue, _meta, { id }) => ({ id }),
       invalidatesTags: (_, error, { id }) =>
