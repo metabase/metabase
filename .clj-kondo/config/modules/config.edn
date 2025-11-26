@@ -1850,9 +1850,6 @@
            database-routing
            driver
            events
-           lib
-           lib-be
-           queries
            request
            sync
            util
