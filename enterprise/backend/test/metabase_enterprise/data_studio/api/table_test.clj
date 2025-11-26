@@ -3,6 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.table :as api.table]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-helpers :refer [without-library]]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -13,93 +15,50 @@
 
 (deftest publish-table-test
   (mt/with-premium-features #{:data-studio}
-    (testing "POST /api/ee/data-studio/table/(un)publish-table"
-      (testing "sets collection_id in tables for the selection"
-        (mt/with-temp [:model/Collection {collection-id :id} {}]
-          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-table"
-                                               {:table_ids             [(mt/id :users) (mt/id :venues)]
-                                                :target_collection_id  collection-id})]
-            (is (= 2 (:created_count response)))
-            (is (= 2 (count (:tables response))))
-            (testing "tables have correct attributes"
-              (is (= #{(mt/id :users) (mt/id :venues)}
-                     (set (map :id (:tables response))))))
-            (testing "symlinks are hydrated on tables"
-              (doseq [table (:tables response)]
-                (is (= collection-id (:id (:collection table))))))
-            (testing "collection_id and is_published are set"
-              (is (=? [{:display_name "Users"
-                        :collection_id collection-id
-                        :is_published true}
-                       {:display_name "Venues"
-                        :collection_id collection-id
-                        :is_published true}]
-                      (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
-            (testing "unpublishing"
-              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/unpublish-table"
-                                    {:table_ids [(mt/id :venues)]})
-              (is (=? {:display_name "Venues"
-                       :collection_id nil
-                       :is_published false}
-                      (t2/select-one :model/Table (mt/id :venues)))))))
-        (testing "deleting the collection unpublishes"
-          (is (=? {:display_name "Users"
-                   :collection_id nil
-                   :is_published false}
-                  (t2/select-one :model/Table (mt/id :users)))))))))
-
-;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
-
-(deftest published-as-model-test
-  (mt/with-premium-features #{:data-studio}
-    (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection {collection-id :id} {}]
-        (let [{:keys [models]} (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-model"
-                                                     {:table_ids            [(mt/id :venues)]
-                                                      :target_collection_id collection-id})
-              [model] models
-              venues-schema              (t2/select-one-fn :schema [:model/Table :schema] (mt/id :venues))
-              schema-url                 (format "database/%d/schema/%s" (mt/id) venues-schema)
-              list-tables-via-table-api  (fn [] (->> (mt/user-http-request :crowberto :get 200 "table" :db-id (mt/id))
-                                                     (filter #(= (mt/id) (:db_id %)))))
-              list-tables-via-schema-api #(mt/user-http-request :crowberto :get 200 schema-url)]
-          (testing "list tables"
-            (let [list-response      (list-tables-via-table-api)
-                  published-as-model (u/index-by :id :published_as_model list-response)]
-              (is (true? (published-as-model (mt/id :venues))))
-              (is (false? (published-as-model (mt/id :users))))))
-          (testing "list tables via schema"
-            (let [list-response      (list-tables-via-schema-api)
-                  published-as-model (u/index-by :id :published_as_model list-response)]
-              (is (true? (published-as-model (mt/id :venues))))
-              (is (false? (published-as-model (mt/id :users))))))
-          (testing "archived tables are not returned"
-            (t2/update! :model/Card (:id model) {:archived true, :archived_directly false})
-            (is (not-any? :published_as_model (list-tables-via-table-api)))))))))
-
-(deftest published-models-perm-test
-  (mt/with-premium-features #{:data-studio}
-    ;; what I think would be reasonable permissions behaviour:
-    ;;  > if no permissions on model or its collection, model is filtered out
-    ;; what I have done:
-    ;;  > if not super-user we never give you the published models
-    (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection {collection1 :id} {}
-                     :model/Collection {collection2 :id} {}]
-        (let [publish-venues        #(mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-model"
-                                                           {:table_ids            [(mt/id :venues)]
-                                                            :target_collection_id %})
-              {[{model1 :id}] :models} (publish-venues collection1)
-              {[{model2 :id}] :models} (publish-venues collection2)
-              query-meta-url        #(format "table/%d/query_metadata" %)
-              list-published-models #(:published_models (mt/user-http-request %1 :get 200 (query-meta-url %2)))]
-          (testing "admin sees both models"
-            (is (= #{model1 model2} (set (map :id (list-published-models :crowberto (mt/id :venues)))))))
-          (testing "no published models"
-            (is (nil? (list-published-models :crowberto (mt/id :users)))))
-          (testing "non admin does not see published models"
-            (is (nil? (list-published-models :rasta (mt/id :venues))))
-            (is (nil? (list-published-models :rasta (mt/id :users))))))))))
+    (without-library
+     (testing "POST /api/ee/data-studio/table/(un)publish-table"
+       (testing "publishes tables into the library-models collection"
+         (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-models-collection-type}]
+           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-table"
+                                                {:table_ids [(mt/id :users) (mt/id :venues)]})]
+             (is (= 2 (:created_count response)))
+             (is (= 2 (count (:tables response))))
+             (testing "tables have correct attributes"
+               (is (= #{(mt/id :users) (mt/id :venues)}
+                      (set (map :id (:tables response))))))
+             (testing "tables point to the collection"
+               (doseq [table (:tables response)]
+                 (is (= collection-id (:id (:collection table))))))
+             (testing "collection_id and is_published are set"
+               (is (=? [{:display_name "Users"
+                         :collection_id collection-id
+                         :is_published true}
+                        {:display_name "Venues"
+                         :collection_id collection-id
+                         :is_published true}]
+                       (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+             (testing "unpublishing"
+               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/unpublish-table"
+                                     {:table_ids [(mt/id :venues)]})
+               (is (=? {:display_name "Venues"
+                        :collection_id nil
+                        :is_published false}
+                       (t2/select-one :model/Table (mt/id :venues)))))))
+         (testing "deleting the collection unpublishes"
+           (is (=? {:display_name "Users"
+                    :collection_id nil
+                    :is_published false}
+                   (t2/select-one :model/Table (mt/id :users))))))
+       (testing "returns 404 when no library-models collection exists"
+         (is (= "Not found."
+                (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-table"
+                                      {:table_ids [(mt/id :users)]}))))
+       (testing "returns 409 when multiple library-models collections exist"
+         (mt/with-temp [:model/Collection _ {:type collection/library-models-collection-type}
+                        :model/Collection _ {:type collection/library-models-collection-type}]
+           (is (= "Multiple library-models collections found."
+                  (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-table"
+                                        {:table_ids [(mt/id :users)]})))))))))
 
 (deftest bulk-edit-visibility-sync-test
   (mt/with-premium-features #{:data-studio}
