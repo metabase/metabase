@@ -1,6 +1,7 @@
 (ns dev.reload
   (:require
    [clojure.java.shell :as shell]
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.util :as u])
   (:import
@@ -35,17 +36,32 @@
          (sort-by count >)              ; Longest match first
          first)))
 
-(defn git-changed-files
-  "Returns a set of changed/added/untracked files from git status."
+(defonce ^{:private true
+           :doc "[[get-changed-files]] will NOT report a file when it matches what's in git. But we want to know
+   about files that were changed in the past, even if they are now reverted back to the git version.
+   This atom keeps track of such files, so that we can still reload them when needed."}
+  historic-files-changed
+  (atom #{}))
+
+(defn- get-changed-files
+  "Returns a set of changed/added/untracked files ever seen from git status. Once a file is seen as changed,
+   it will be included in the set even if it is later reverted back to the git version.
+   Key point: It still needs to be reloaded even if it gets reverted, because the in-memory version
+   may still be different from the on-disk version."
   []
-  (let [{:keys [exit out]} (shell/sh "git" "status" "--porcelain")]
-    (if (and (zero? exit)
-             (not (str/blank? out)))
-      (->> (str/split-lines out)
-           (map #(str/trim (subs % 3))) ; Remove status prefix (e.g., "M ", "A ", "??")
-           (filter #(str/ends-with? % ".clj"))
-           set)
-      #{})))
+  (let [{:keys [exit out]} (shell/sh "git" "status" "--porcelain")
+        changes (if (and (zero? exit)
+                         (not (str/blank? out)))
+                  (->> (str/split-lines out)
+                       (map #(str/trim (subs % 3))) ; Remove status prefix (e.g., "M ", "A ", "??")
+                       (filter #(or (str/ends-with? % ".clj")
+                                    (str/ends-with? % ".cljc")))
+                       set)
+                  #{})]
+    ;; Add newly changed files to historic set
+    (swap! historic-files-changed set/union changes)
+    ;; Include historic files that were changed in the past
+    (set/union changes @historic-files-changed)))
 
 (defn file-last-modified
   "Returns the last modified time of a file in milliseconds."
@@ -92,7 +108,7 @@
         (> last-modified last-reload))))
 
 (defn changed-namespaces []
-  (let [changed-files  (git-changed-files)
+  (let [changed-files  (get-changed-files)
         loaded-ns      (loaded-namespaces)
         classpath-dirs (system-classpath)
         candidates     (->> changed-files

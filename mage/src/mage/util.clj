@@ -238,3 +238,6 @@
 (defn since-ms
   "Called on the return value of start-timer, returns the elapsed time in milliseconds."
   [timer] (/ (- (System/nanoTime) timer) 1e6))
+
+(defn file-checksum [path]
+  (hash (slurp path)))

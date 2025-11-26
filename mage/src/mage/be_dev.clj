@@ -1,6 +1,7 @@
 (ns mage.be-dev
   (:require
    [bencode.core :as bencode]
+   [clojure.edn :as edn]
    ^:clj-kondo/ignore
    [clojure.pprint :as pp]
    [clojure.string :as str]
@@ -70,6 +71,11 @@
                            "::loaded"
                            code)))))
 
+(def ^{:private true
+       :dynamic true
+       :doc "Set this to true to suppress stdout output from nrepl-eval."}
+  *quiet-nrepl-eval* false)
+
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
    With two args, uses the provided port number. Returns and formats the evaluation results."
@@ -81,44 +87,50 @@
         code-str    (str (eval-in-ns nns code))
         _           (u/debug "Code:\n-----\n" code-str "\n-----")
         _           (bencode/write-bencode out {:op "eval" :code code-str})
-        final-value (atom nil)]
+        final-value (atom nil)
+        safe-print (fn [& msg] (when-not *quiet-nrepl-eval*
+                                 (apply print msg)))]
     (loop []
-      (let [response (->> (bencode/read-bencode in)
-                          (walk/postwalk consume))]
+      (let [response (->> (bencode/read-bencode in) (walk/postwalk consume))]
         (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "\n-----")
-        (println)
-        (doseq [[k v] response]
-          (case k
-            "out"   (print v)
-            "err"   (binding [*out* *err*] (print v))
-            "value" (reset! final-value v)
-            nil))                       ; Ignore other keys like session, id, status
+        (do (safe-print "\n")
+            (doseq [[k v] response]
+              (case k
+                "out"   (safe-print v)
+                "err"   (binding [*out* *err*] (safe-print v))
+                "value" (reset! final-value v)
+                nil))                       ; Ignore other keys like session, id, status
 
-        ;; Flush to ensure output appears immediately
-        (flush)
+            ;; Flush to ensure output appears immediately
+            (flush)
 
-        (if (some #{"done"} (get response "status"))
-          (some->> @final-value
-                   (println "\n=> "))
-          (recur))))
+            (if (some #{"done"} (get response "status"))
+              (some->> @final-value
+                       (safe-print "\n=> \n"))
+              (recur)))))
     @final-value))
 
 (defn nrepl-open?
   "Checks if an nREPL server is running on the given port (or the port in .nrepl-port if none given)."
-  [& port]
-  (try
-    (let [port (nrepl-port port)
-          s    (java.net.Socket. "localhost" port)]
-      (.close s)
-      true)
-    (catch Exception _ false)))
+  ([] (nrepl-open? nil))
+  ([port]
+   (try
+     (let [port (or port (nrepl-port port))
+           o (binding [*quiet-nrepl-eval* true]
+               (nrepl-eval "user" "(+ 1 1)" port))]
+       (= "2" o))
+     (catch Exception _ false))))
 
-(defn nrepl-type [& port]
-  (try
-    (let [port (nrepl-port port)
-          type (nrepl-eval "user" "#?(:bb :bb :cljs :cljs :clj :clj)" port)]
-      (keyword type))
-    (catch Exception _ nil)))
+(defn nrepl-type
+  "Returns :bb :cljs or :clj to indicate what type of nrepl server is running on the given port (or the port in .nrepl-port if none given)."
+  ([] (nrepl-type nil))
+  ([port]
+   (try
+     (let [port (or port (nrepl-port port))
+           type (binding [*quiet-nrepl-eval* true]
+                  (nrepl-eval "user" "#?(:bb :bb :cljs :cljs :clj :clj)" port))]
+       (edn/read-string type))
+     (catch Exception _ nil))))
 
 (comment
 
