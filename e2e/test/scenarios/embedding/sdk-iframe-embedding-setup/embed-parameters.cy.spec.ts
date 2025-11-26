@@ -39,6 +39,10 @@ describe(suiteTitle, () => {
         dashboardDetails: {
           name: "Dashboard with Parameters",
           parameters: DASHBOARD_PARAMETERS,
+          embedding_params: {
+            id: "enabled",
+            product_id: "enabled",
+          },
         },
       }).then(({ body: card }) => {
         H.editDashboardCard(card, {
