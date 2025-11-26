@@ -2,13 +2,13 @@
   "`/api/comment/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.comments.models.comment :as comment]
-   [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.channel.render.core :as channel.render]
+   [metabase.comments.models.comment :as comment]
+   [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.users-rest.api :as api.user]

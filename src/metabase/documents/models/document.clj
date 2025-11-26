@@ -1,9 +1,9 @@
 (ns metabase.documents.models.document
   (:require
    [clojure.string :as str]
-   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]

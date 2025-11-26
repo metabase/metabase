@@ -3,8 +3,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.documents.revisions.impl]
    [metabase.config.core :as config]
+   [metabase.documents.revisions.impl]
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]

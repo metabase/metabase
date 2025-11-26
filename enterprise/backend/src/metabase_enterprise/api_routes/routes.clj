@@ -40,7 +40,6 @@
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :as api.routes.common]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
 

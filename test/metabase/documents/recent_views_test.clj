@@ -1,8 +1,8 @@
 (ns metabase.documents.recent-views-test
   (:require
    [clojure.test :refer :all]
-   [metabase.documents.recent-views :as recent-views]
    [metabase.activity-feed.core :as activity-feed]
+   [metabase.documents.recent-views :as recent-views]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

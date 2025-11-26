@@ -1,7 +1,7 @@
 (ns metabase.comments.models.comment
   (:require
-   [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.api.common :as api]
+   [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

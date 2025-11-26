@@ -1,8 +1,8 @@
 (ns metabase.documents.models.document-test
   (:require
    [clojure.test :refer :all]
-   [metabase.documents.models.document :as document]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.models.document :as document]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]

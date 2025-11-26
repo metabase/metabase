@@ -1,13 +1,13 @@
 (ns metabase.documents.api.document
   "`/api/document/` routes"
   (:require
-   [metabase.documents.models.document :as m.document]
-   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.models.document :as m.document]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]

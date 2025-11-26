@@ -91,6 +91,7 @@
            app-db
            collections
            config
+           documents
            events
            models
            premium-features
@@ -1917,7 +1918,8 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
-           metabase.documents.prose-mirror}
+           metabase.documents.prose-mirror
+           metabase.documents.recent-views}
    :uses #{activity-feed
            api
            app-db
