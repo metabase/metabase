@@ -81,6 +81,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query breakoutable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/breakout base-query venue-name)}]
       (is (= {:card #{}
+              :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
 
@@ -128,6 +129,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :segment #{}
                 :table #{checkins-id venues-id users-id}}
                (calculation/upstream-deps:transform transform)))))))
 
@@ -170,6 +172,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:transform transform)))))))
 
