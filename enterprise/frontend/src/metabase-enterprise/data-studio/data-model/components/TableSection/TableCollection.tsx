@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Fragment } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -58,20 +57,8 @@ type TableCollectionBreadcrumbsProps = {
 function TableCollectionBreadcrumbs({
   collection,
 }: TableCollectionBreadcrumbsProps) {
-  const parentCollections = (collection.effective_ancestors ?? [])
-    .filter((ancestor) => ancestor.id !== "root")
-    .toReversed();
-
   return (
     <Group gap="xs" fw="bold">
-      {parentCollections.map((parentCollection) => (
-        <Fragment key={parentCollection.id}>
-          <Link className={S.link} to={getCollectionLink(parentCollection)}>
-            {parentCollection.name}
-          </Link>
-          {"/"}
-        </Fragment>
-      ))}
       <Link className={S.link} to={getCollectionLink(collection)}>
         {collection.name}
       </Link>

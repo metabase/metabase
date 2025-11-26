@@ -37,6 +37,7 @@ export function UnpublishTablesModal({
     });
     await action.unwrap();
     sendSuccessToast(t`Un-published successfully`);
+    onClose();
   };
 
   return (
