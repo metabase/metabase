@@ -1,0 +1,4 @@
+packages:
+  - 'release'
+  - 'util'
+  - 'e2e/embedding-sdk-host-apps/*'
