@@ -7,7 +7,6 @@
    [metabase.collections.test-helpers :refer [without-library]]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch TimeUnit)))
 
