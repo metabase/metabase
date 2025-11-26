@@ -38,7 +38,7 @@ export function DashboardSubscriptionMenuItem({
         disabled
       >
         <Text size="md" c="inherit">{t`Can't send subscriptions`}</Text>
-        <Text size="sm" c="inherit">{t`Ask your admin to set up email`}</Text>
+        <Text size="sm" c="inherit">{t`Ask your admin to set up email or Slack`}</Text>
       </Menu.Item>
     );
   }
