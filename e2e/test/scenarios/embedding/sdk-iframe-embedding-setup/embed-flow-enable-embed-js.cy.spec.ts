@@ -4,8 +4,9 @@ import { getEmbedSidebar } from "./helpers";
 
 const { H } = cy;
 
-const MB_EDITION = Cypress.env("MB_EDITION") as "oss" | "ee";
-const IS_OSS = MB_EDITION === "oss";
+const { IS_ENTERPRISE } = Cypress.env();
+const IS_OSS = !IS_ENTERPRISE;
+const MB_EDITION = IS_ENTERPRISE ? "ee" : "oss";
 
 const DATA_BY_MB_EDITION = {
   oss: {
@@ -35,7 +36,7 @@ describe(
       H.restore();
       cy.signInAsAdmin();
 
-      if (!IS_OSS) {
+      if (IS_ENTERPRISE) {
         H.activateToken("bleeding-edge");
       }
 

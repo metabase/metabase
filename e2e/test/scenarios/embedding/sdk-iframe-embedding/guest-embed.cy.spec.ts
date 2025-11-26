@@ -4,8 +4,9 @@ import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
 const { H } = cy;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const MB_EDITION = Cypress.env("MB_EDITION") as "oss" | "ee";
-const IS_OSS = MB_EDITION === "oss";
+const { IS_ENTERPRISE } = Cypress.env();
+const IS_OSS = !IS_ENTERPRISE;
+const MB_EDITION = IS_OSS ? "ee" : "oss";
 
 describe(
   `scenarios > embedding > sdk iframe embedding > guest-embed > ${MB_EDITION}`,
