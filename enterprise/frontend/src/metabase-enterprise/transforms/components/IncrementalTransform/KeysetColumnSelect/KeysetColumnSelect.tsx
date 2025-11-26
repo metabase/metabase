@@ -52,7 +52,7 @@ export function KeysetColumnSelect({
 
       numericFilterableColumns.forEach((column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        const uniqueKey = Lib.columnKey(column);
+        const uniqueKey = Lib.columnUniqueKey(column);
 
         if (!seenKeys.has(uniqueKey)) {
           seenKeys.add(uniqueKey);
