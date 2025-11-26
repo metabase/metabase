@@ -33,3 +33,12 @@ export const staticVizOverrides = {
   "text-secondary": baseColors.orion[60],
   "text-tertiary": baseColors.orion[40],
 };
+
+// one-off colors for data layers which are not part of Metabase color palette
+//  we got a blessing from the design team to use these colors 😇
+export const dataLayerColors = {
+  hidden: "#B87333",
+  internal: "#CD7F32",
+  published: "#FFD700",
+  default: "#B87333",
+} as const;
