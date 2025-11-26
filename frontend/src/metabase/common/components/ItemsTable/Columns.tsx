@@ -190,7 +190,6 @@ export const Columns = {
   Description: {
     Col: () => (
       <TableColumn
-        style={{ width: "440px" }}
         hideAtContainerBreakpoint="sm"
         containerName="ItemsTableContainer"
       />
@@ -199,6 +198,7 @@ export const Columns = {
       <SortableColumnHeader
         name="description"
         sortingOptions={sortingOptions}
+        hideAtContainerBreakpoint="sm"
         onSortingOptionsChange={onSortingOptionsChange}
       >
         {t`Description`}
