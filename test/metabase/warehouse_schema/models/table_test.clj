@@ -434,12 +434,13 @@
     (is (thrown?
          Exception
          (mt/with-temp [:model/Table _ {:collection_id Integer/MAX_VALUE}]))))
-  (testing "RESTRICT behavior: cannot delete collection if table references it"
+  (testing "deleting a collection unpublishes the tables in it"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Table _ {:is_published true :collection_id coll-id}]
-      (is (thrown?
-           Exception
-           (t2/delete! :model/Collection :id coll-id))))))
+                   :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
+                   :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
+      (t2/delete! :model/Collection :id coll-id)
+      (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
+                                              :id [:in [table-1-id table-2-id]]))))))
 
 (deftest collection-hydration-test
   (testing "hydrating :collection on a table"

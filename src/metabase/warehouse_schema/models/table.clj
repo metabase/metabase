@@ -530,4 +530,4 @@
                   [:= :db.router_database_id nil]
                   [:not= :db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  :collection [:model/Collection [:and [:= :is_published true]  [:= :collection.id :this.collection_id]]]}})
+                  :collection [:model/Collection [:and [:= :this.is_published true]  [:= :collection.id :this.collection_id]]]}})
