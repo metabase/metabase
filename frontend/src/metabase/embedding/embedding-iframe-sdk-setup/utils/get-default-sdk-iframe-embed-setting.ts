@@ -29,6 +29,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
         dashboardId: resourceId,
         drills: true,
         withDownloads: false,
+        withSubscriptions: false,
         withTitle: true,
       }),
     )

@@ -23,6 +23,7 @@ const EMBED_SETTINGS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
   "drills",
   "withTitle",
   "withDownloads",
+  "withSubscriptions",
   "isSaveEnabled",
   "readOnly",
   "layout",
