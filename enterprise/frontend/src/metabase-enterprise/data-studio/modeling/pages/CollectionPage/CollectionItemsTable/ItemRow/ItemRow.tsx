@@ -6,14 +6,14 @@ import { TableRow } from "metabase/browse/components/BrowseTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import type { CollectionItem } from "metabase-types/api";
 
 import { DescriptionCell } from "../DescriptionCell";
 import { MenuCell } from "../MenuCell";
 import { NameCell } from "../NameCell";
-import type { ModelingItem } from "../types";
 
 interface ItemRowProps {
-  item?: ModelingItem;
+  item?: CollectionItem;
 }
 
 export function ItemRow({ item }: ItemRowProps) {

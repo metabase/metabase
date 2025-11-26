@@ -8,13 +8,14 @@ import {
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, type IconName, Skeleton } from "metabase/ui";
+import type { CollectionItem } from "metabase-types/api";
 
-import type { ItemIcon, ModelingItem } from "../types";
+import type { ItemIcon } from "../types";
 
 import S from "./NameCell.module.css";
 
 interface NameCellProps {
-  item?: ModelingItem;
+  item?: CollectionItem;
 }
 
 const CONTAINER_NAME = "ItemsTableContainer";
@@ -27,7 +28,7 @@ function preventDefault(event: MouseEvent) {
   event.preventDefault();
 }
 
-function getItemIcon(item: ModelingItem): ItemIcon {
+function getItemIcon(item: CollectionItem): ItemIcon {
   const entityIcon = entityForObject(item)?.objectSelectors?.getIcon?.(item) as
     | ItemIcon
     | undefined;

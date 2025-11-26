@@ -43,7 +43,7 @@ export function PublishTablesModal({
   const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const defaultPublishCollection =
+  const libraryCollection =
     PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
       type: "library-models",
     });
@@ -110,7 +110,7 @@ export function PublishTablesModal({
   return (
     <CollectionPickerModal
       value={{
-        id: defaultPublishCollection?.id || "root",
+        id: libraryCollection?.id || "root",
         model: "collection",
       }}
       options={{
