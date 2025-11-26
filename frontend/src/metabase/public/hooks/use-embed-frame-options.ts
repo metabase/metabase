@@ -7,7 +7,7 @@ import { isWithinIframe } from "metabase/lib/dom";
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 
 import { DEFAULT_EMBED_DISPLAY_PARAMS } from "../constants";
-import type { EmbeddingHashOptions } from "../lib/types";
+import type { DisplayTheme, EmbeddingHashOptions } from "../lib/types";
 
 export const useEmbedFrameOptions = ({
   location,
@@ -30,7 +30,7 @@ export const useEmbedFrameOptions = ({
     hide_download_button?: boolean | null;
   };
 
-  const [theme, setTheme] = useState<string>(parsedTheme);
+  const [theme, setTheme] = useState<DisplayTheme>(parsedTheme);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- this is a console.error for a deprecated parameter
   const { url: staticEmbedParametersDocsUrl } = useDocsUrl(
