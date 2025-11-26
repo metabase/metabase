@@ -91,7 +91,7 @@ jobs:
         with:
           sparse-checkout: release
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: cd ${{ github.workspace }}/release && pnpm && pnpm build
       - name: Get build dependencies
         uses: actions/github-script@v7
         id: dependencies

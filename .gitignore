@@ -41,7 +41,8 @@ cypress.env.json
 /deploy/artifacts/*
 /docs/**/node_modules
 /docs/**/package.json
-/docs/**/yarn.lock
+/docs/**/pnpm-lock.yaml
+/bin/embedding-sdk/templates/node_modules
 /docs/embedding/sdk/api/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
