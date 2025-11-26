@@ -76,10 +76,10 @@
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
-  (u/delete-file-if-exists! uberjar/uberjar-path)
+  (u/delete-file-if-exists! uberjar/uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
     (uberjar/uberjar {:edition edition})
-    (u/assert-file-exists uberjar/uberjar-path)
+    (u/assert-file-exists uberjar/uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
 (def ^:private all-steps
