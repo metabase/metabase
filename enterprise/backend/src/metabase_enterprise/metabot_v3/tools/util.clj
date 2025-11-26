@@ -115,8 +115,11 @@
   [{:keys [field-id] :as item} expected-prefix columns]
   (if-let [{:keys [model-tag model-id field-index]} (parse-field-id field-id)]
     (do
-      ;; Validate that the field-id has the expected prefix
-      (when-not (str/starts-with? field-id expected-prefix)
+      ;; Validate that the field-id matches the expected prefix
+      ;; Supports both string prefixes (e.g., "t154-") and regex patterns (e.g., #"^.*-(\d+)")
+      (when-not (if (string? expected-prefix)
+                  (str/starts-with? field-id expected-prefix)
+                  (re-matches expected-prefix field-id))
         (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
                         {:agent-error? true
                          :field-id field-id
