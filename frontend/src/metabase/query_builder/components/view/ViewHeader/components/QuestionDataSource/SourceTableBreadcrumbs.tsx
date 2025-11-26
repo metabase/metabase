@@ -30,11 +30,11 @@ export function SourceTableBreadcrumbs({
   const isSubhead = variant === "subhead";
   const hasTableLink = isSubhead || isObjectDetail;
 
-  const { data: table, isFetching } = useGetTableQuery(
+  const { data: table, isLoading } = useGetTableQuery(
     tableId != null ? { id: tableId } : skipToken,
   );
 
-  if (table == null || isFetching) {
+  if (table == null || isLoading) {
     return null;
   }
 
