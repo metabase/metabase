@@ -731,6 +731,17 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
+        collections-containing-tables
+        (->> (when (seq descendant-collection-ids)
+               (t2/query {:select-distinct [:collection_id]
+                          :from :metabase_table
+                          :where [:and
+                                  [:= :is_published true]
+                                  [:= :archived_at nil]
+                                  [:in :collection_id descendant-collection-ids]]}))
+             (map :collection_id)
+             (into #{}))
+
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
                (t2/query {:select-distinct [:collection_id]
@@ -751,7 +762,8 @@
 
         child-type->coll-id-set
         (merge child-type->coll-id-set
-               {:collection collections-containing-collections
+               {:table collections-containing-tables
+                :collection collections-containing-collections
                 :dashboard collections-containing-dashboards})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`

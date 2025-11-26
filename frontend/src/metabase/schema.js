@@ -133,7 +133,6 @@ export const ENTITIES_SCHEMA_MAP = {
   snippets: SnippetSchema,
   snippetCollections: SnippetCollectionSchema,
   documents: DocumentSchema,
-  tables: TableSchema,
 };
 
 export const ObjectUnionSchema = new schema.Union(
