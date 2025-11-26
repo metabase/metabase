@@ -256,6 +256,8 @@ import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import learn_component from "./learn.svg?component";
 import learn_source from "./learn.svg?source";
+import library_component from "./library.svg?component";
+import library_source from "./library.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
@@ -368,8 +370,6 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
-import repository_component from "./repository.svg?component";
-import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
 import return_source from "./return.svg?source";
 import revert_component from "./revert.svg?component";
@@ -1015,6 +1015,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: learn_component,
       source: learn_source,
     },
+    library: {
+      component: library_component,
+      source: library_source,
+    },
     lightbulb: {
       component: lightbulb_component,
       source: lightbulb_source,
@@ -1306,10 +1310,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     refresh_downstream: {
       component: refresh_downstream_component,
       source: refresh_downstream_source,
-    },
-    repository: {
-      component: repository_component,
-      source: repository_source,
     },
     rocket: {
       component: rocket_component,
@@ -1782,7 +1782,7 @@ export type IconName =
   | "reference"
   | "refresh"
   | "refresh_downstream"
-  | "repository"
+  | "library"
   | "rocket"
   | "ruler"
   | "schema"
