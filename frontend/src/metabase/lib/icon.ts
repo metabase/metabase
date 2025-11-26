@@ -78,13 +78,17 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "database" };
   }
 
-  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type)) {
-    case "root":
-      return { name: "repository" };
-    case "models":
-      return { name: "model" };
-    case "metrics":
-      return { name: "metric" };
+  if (item.model === "collection") {
+    switch (
+      PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type as CollectionType)
+    ) {
+      case "root":
+        return { name: "repository" };
+      case "models":
+        return { name: "model" };
+      case "metrics":
+        return { name: "metric" };
+    }
   }
 
   return { name: modelIconMap?.[item.model] ?? "unknown" };
