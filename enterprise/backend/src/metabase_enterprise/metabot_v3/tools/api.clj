@@ -180,7 +180,7 @@
     [:field_id :string]
     [:field_granularity {:optional true}
      [:maybe [:enum {:encode/tool-api-request keyword}
-              "day" "week" "month" "quarter" "year"]]]]
+              "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::query-metric-arguments
