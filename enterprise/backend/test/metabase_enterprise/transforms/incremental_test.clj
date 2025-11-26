@@ -82,7 +82,7 @@
                                 ["TOP 10" ""]
                                 ["" "LIMIT 10"])
         timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
-        query (format "SELECT %s *, %s AS load_timestamp FROM %s [[WHERE %s > {{checkpoint}}]] ORDER BY %s%s"
+        query (format "SELECT %s *, %s AS load_timestamp FROM %s [[WHERE %s > {{checkpoint}}]] ORDER BY %s %s"
                       top-limit
                       timestamp-sql
                       (if schema
