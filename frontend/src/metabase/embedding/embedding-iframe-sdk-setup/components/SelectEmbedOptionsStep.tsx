@@ -262,6 +262,21 @@ const BehaviorSection = () => {
                 />
               )}
             </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+
+            <WithNotAvailableForGuestEmbedsWarning
+              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+            >
+              {({ disabled }) => (
+                <Checkbox
+                  label={t`Allow subscriptions`}
+                  disabled={disabled}
+                  checked={settings.withSubscriptions}
+                  onChange={(e) =>
+                    updateSettings({ withSubscriptions: e.target.checked })
+                  }
+                />
+              )}
+            </WithNotAvailableForGuestEmbedsWarning>
           </Stack>
         ),
       )

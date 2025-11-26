@@ -75,6 +75,7 @@ export type DashboardEmbedOptions = StrictUnion<
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withSubscriptions?: boolean;
 
   // parameters
   initialParameters?: ParameterValues;
