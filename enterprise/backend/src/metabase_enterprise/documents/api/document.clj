@@ -139,6 +139,10 @@
                            {:object-id id
                             :user-id api/*current-user-id*})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Gets existing `Documents`."
   [_route-params
@@ -148,6 +152,10 @@
                                                           [:= :archived false]]})
                       :creator :can_write :is_remote_synced)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."
   [_route-params
@@ -185,11 +193,19 @@
                             :user-id api/*current-user-id*})
     created-document))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
   (api/read-check (get-document document-id)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:document-id"
   "Updates an existing `Document`."
   [{:keys [document-id]} :- [:map
@@ -233,6 +249,10 @@
                                   :user-id api/*current-user-id*}))
         updated-document))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
@@ -276,6 +296,10 @@
         ;; Always select after update to ensure we return what's actually stored
         {:uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:document-id/public-link"
   "Remove the public link for a Document.
 
@@ -326,6 +350,10 @@
     (api/read-check document)
     (api/check-404 (t2/exists? :model/Card :id card-id :document_id document-id :archived false))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:document-id/card/:card-id/query/:export-format"
   "Download query results for a Card embedded in a Document.
 

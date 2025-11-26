@@ -19,6 +19,10 @@
       (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true)]
         dw-tables))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
@@ -28,6 +32,10 @@
     (map #(update % :schema str) tables)
     (filterv mi/can-read? tables)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
   [{:keys [id]} :- [:map

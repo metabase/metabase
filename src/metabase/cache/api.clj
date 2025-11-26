@@ -109,6 +109,10 @@
                        "question" :model/Card)
                      id)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Return cache configuration."
   [_route-params
@@ -126,6 +130,10 @@
   (check-cache-access (first model) id)
   {:data (cache-config/get-list model collection id)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/"
   "Store cache configuration."
   [_route-params
@@ -138,6 +146,10 @@
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/"
   "Delete cache configurations."
   [_route-params
@@ -150,6 +162,10 @@
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/invalidate"
   "Invalidate cache entries.
 
