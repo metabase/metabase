@@ -21,10 +21,10 @@ describe("scenarios > alert", () => {
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook.",
+          "To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.",
         );
 
-        cy.findByText("Set up SMTP")
+        cy.findByText("Set up email")
           .should("be.visible")
           .closest("a")
           .should("have.attr", "href", "/admin/settings/email");

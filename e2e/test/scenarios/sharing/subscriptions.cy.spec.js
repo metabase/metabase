@@ -516,19 +516,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.be.disabled");
     });
 
-    it("should disable subscriptions for non-admin users", () => {
+    it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openSharingMenu();
-      H.sharingMenu()
-        .findByText("Can't send subscriptions")
-        .should("be.visible")
-        .within(() => {
-          cy.findByText("Can't send subscriptions").should("be.visible");
-          cy.findByText("Ask your admin to set up email or Slack").should(
-            "be.visible",
-          );
-        });
+      H.sharingMenu().findByText("Subscriptions").should("be.visible");
     });
   });
 
