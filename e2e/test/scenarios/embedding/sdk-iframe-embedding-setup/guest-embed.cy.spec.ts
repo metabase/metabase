@@ -1,10 +1,20 @@
-import { JWT_SHARED_SECRET } from "e2e/support/helpers";
+import {
+  JWT_SHARED_SECRET,
+  entityPickerModal,
+  getParametersContainer,
+} from "e2e/support/helpers";
 
-import { codeBlock, getEmbedSidebar, visitNewEmbedPage } from "./helpers";
+import {
+  codeBlock,
+  getEmbedSidebar,
+  navigateToEmbedOptionsStep,
+  visitNewEmbedPage,
+} from "./helpers";
 
 const { H } = cy;
 
 const FIRST_QUESTION_NAME = "Question With Params 1";
+const SECOND_QUESTION_NAME = "Question With Params 2";
 
 describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
   beforeEach(() => {
@@ -31,9 +41,47 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
             },
           },
         },
+        enable_embedding: false,
       },
       {
         wrapId: true,
+        idAlias: "question1Id",
+      },
+    );
+
+    H.createNativeQuestion(
+      {
+        name: SECOND_QUESTION_NAME,
+        native: {
+          query: "select {{text}}",
+          "template-tags": {
+            text1: {
+              id: "abc-123",
+              name: "text1",
+              "display-name": "Text1",
+              type: "text",
+              default: null,
+              required: true,
+            },
+            text2: {
+              id: "abc-456",
+              name: "text2",
+              "display-name": "Text2",
+              type: "text",
+              default: null,
+              required: false,
+            },
+          },
+        },
+        enable_embedding: true,
+        embedding_params: {
+          text1: "enabled",
+          state2: "disabled",
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "question2Id",
       },
     );
 
@@ -154,6 +202,75 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         frame.within(() => {
           cy.findByText("Foo Bar Baz").should("be.visible");
         });
+      });
+    });
+
+    it("Properly re-initializes embedding parameters and Guest Embed navbar", () => {
+      cy.get("@question1Id").then((questionId) => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+        });
+
+        navigateToEmbedOptionsStep({
+          experience: "chart",
+          resourceName: FIRST_QUESTION_NAME,
+        });
+
+        cy.button("Unpublish").should("be.visible");
+
+        getParametersContainer()
+          .findByLabelText("Text")
+          .should("contain.text", "Disabled");
+
+        getEmbedSidebar().within(() => {
+          cy.findByText("Back").click();
+
+          cy.findByTestId("embed-browse-entity-button").click();
+        });
+
+        entityPickerModal().within(() => {
+          cy.findByText("Questions").click();
+          cy.findAllByText(SECOND_QUESTION_NAME).first().click();
+        });
+
+        getEmbedSidebar().within(() => {
+          cy.findByText("Next").click();
+        });
+
+        cy.button("Unpublish").should("be.visible");
+
+        getParametersContainer()
+          .findByLabelText("Text1")
+          .should("contain.text", "Editable");
+
+        getParametersContainer()
+          .findByLabelText("Text2")
+          .should("contain.text", "Disabled");
+
+        H.setEmbeddingParameter("Text1", "Locked");
+
+        cy.button("Publish changes").should("be.visible");
+
+        getEmbedSidebar().within(() => {
+          cy.findByText("Back").click();
+
+          cy.findByTestId("embed-browse-entity-button").click();
+        });
+
+        entityPickerModal().within(() => {
+          cy.findByText("Questions").click();
+          cy.findAllByText(FIRST_QUESTION_NAME).first().click();
+        });
+
+        getEmbedSidebar().within(() => {
+          cy.findByText("Next").click();
+        });
+
+        cy.button("Unpublish").should("be.visible");
+
+        getParametersContainer()
+          .findByLabelText("Text")
+          .should("contain.text", "Disabled");
       });
     });
   });
