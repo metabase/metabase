@@ -3,21 +3,15 @@ import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/re
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
-import {
-  type ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type ReactNode, useContext, useMemo, useState } from "react";
 
 import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { parseHashOptions } from "metabase/lib/browser";
 import { mutateColors } from "metabase/lib/colors/colors";
+import { useEmbedFrameOptions } from "metabase/public/hooks";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 import { getThemeOverrides } from "../../../theme";
@@ -122,6 +116,7 @@ const getColorSchemeFromDisplayTheme = (
   displayTheme: DisplayTheme | string | boolean | string[] | undefined,
 ): ResolvedColorScheme | null => {
   switch (displayTheme) {
+    case undefined:
     case "light":
     case "transparent":
       return "light";
@@ -132,27 +127,17 @@ const getColorSchemeFromDisplayTheme = (
   return null;
 };
 
-const getColorSchemeOverride = ({ hash }: Location) => {
-  return getColorSchemeFromDisplayTheme(parseHashOptions(hash).theme);
-};
-
 const useColorSchemeFromHash = ({
   enabled = true,
 }: {
   enabled?: boolean;
 }): ResolvedColorScheme | null => {
-  const [hashScheme, setHashScheme] = useState<ResolvedColorScheme | null>(() =>
-    getColorSchemeOverride(location),
-  );
-  useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-    const onHashChange = () => setHashScheme(getColorSchemeOverride(location));
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, [enabled]);
-  return enabled ? hashScheme : null;
+  const { theme } = useEmbedFrameOptions({
+    location,
+    listenToHashChangeEvents: true,
+  });
+
+  return enabled ? getColorSchemeFromDisplayTheme(theme) : null;
 };
 
 export const ThemeProvider = (props: ThemeProviderProps) => {
