@@ -130,7 +130,7 @@ embedding_sdk_ci: &embedding_sdk_ci
 embedding_sdk_components:
   - *embedding_sdk_ci
   - *sources
-  - "e2e/component/**/*.cy.*.{js,ts}"
+  - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
 
 embedding_sdk_host_sample_apps:
   - *default

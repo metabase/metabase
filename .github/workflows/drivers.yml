@@ -972,12 +972,22 @@ jobs:
             test-args: >-
               :only-tags [:mb/upload-tests]
               :fail-fast? true
-          - name: Redshift (Excluding Upload Tests)
+          - name: Redshift (Excluding Upload Tests) Part 1
             skip: false
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Redshift (Excluding Upload Tests) Part 2
+            skip: false
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
           - name: Redshift Transforms Python Tests
             skip: false
             test-args: >-
