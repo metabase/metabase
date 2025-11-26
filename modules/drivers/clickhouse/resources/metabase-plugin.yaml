@@ -8,13 +8,14 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - merge:
-        - host
-        - group-id: host-and-port
-    - merge:
-        - port
-        - default: 8123
-          group-id: host-and-port
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+          - merge:
+              - port
+              - default: 8123
     - user
     - password
     - name: enable-multiple-db
@@ -61,10 +62,6 @@ driver:
         - placeholder: "connection_timeout=1000&socket_timeout=300000"
     - default-advanced-options
   connection-properties-include-tunnel-config: true
-extra:
-  field-groups:
-    - id: "host-and-port"
-      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.clickhouse
