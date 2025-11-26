@@ -85,11 +85,24 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
+(defn- check-transforms-permission-for-any-db!
+  "Check that the current user has transforms permission for at least one database."
+  []
+  (api/check-403 (transforms.util/current-user-has-any-transforms-permission?)))
+
+(defn- check-transforms-permission-for-db!
+  "Check that the current user has transforms permission for the given database."
+  [database-id]
+  (api/check-403 (transforms.util/current-user-has-transforms-permission-for-db? database-id)))
+
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (api/check-superuser)
-  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
+  (check-transforms-permission-for-any-db!)
+  (let [allowed-db-ids (transforms.util/databases-with-transforms-permission)
+        transforms (cond->> (t2/select :model/Transform {:order-by [[:id :asc]]})
+                     (not api/*is-superuser?*)
+                     (filter #(contains? allowed-db-ids (transforms.i/target-db-id %))))]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -121,7 +134,7 @@
             [:target ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+  (check-transforms-permission-for-db! (transforms.i/target-db-id body))
   (check-database-feature body)
   (check-feature-enabled! body)
   (api/check (not (transforms.util/target-table-exists? body))
@@ -144,13 +157,13 @@
 (defn get-transform
   "Get a specific transform."
   [id]
-  (api/check-superuser)
-  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
-        target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
-    (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator)
-        (u/update-some :last_run transforms.util/localize-run-timestamps)
-        (assoc :table target-table))))
+  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))]
+    (check-transforms-permission-for-db! (transforms.i/target-db-id transform))
+    (let [target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
+      (-> transform
+          (t2/hydrate :last_run :transform_tag_ids :creator)
+          (u/update-some :last_run transforms.util/localize-run-timestamps)
+          (assoc :table target-table)))))
 
 (api.macros/defendpoint :get "/:id"
   "Get a specific transform."
@@ -162,13 +175,13 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        _ (api/check-404 (get id->transform id))
-        global-ordering (transforms.ordering/transform-ordering (vals id->transform))
-        dep-ids (get global-ordering id)
-        dependencies (map id->transform dep-ids)]
-    (t2/hydrate dependencies :creator)))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (check-transforms-permission-for-db! (transforms.i/target-db-id transform))
+    (let [id->transform (t2/select-pk->fn identity :model/Transform)
+          global-ordering (transforms.ordering/transform-ordering (vals id->transform))
+          dep-ids (get global-ordering id)
+          dependencies (map id->transform dep-ids)]
+      (t2/hydrate dependencies :creator))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -186,11 +199,15 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (api/check-superuser)
-  (-> (transform-run/paged-runs (assoc query-params
-                                       :offset (request/offset)
-                                       :limit  (request/limit)))
-      (update :data #(map transforms.util/localize-run-timestamps %))))
+  (check-transforms-permission-for-any-db!)
+  (let [allowed-db-ids (transforms.util/databases-with-transforms-permission)
+        query-params (if api/*is-superuser?*
+                       query-params
+                       (assoc query-params :allowed_db_ids allowed-db-ids))]
+    (-> (transform-run/paged-runs (assoc query-params
+                                         :offset (request/offset)
+                                         :limit  (request/limit)))
+        (update :data #(map transforms.util/localize-run-timestamps %)))))
 
 (api.macros/defendpoint :put "/:id"
   "Update a transform."
@@ -204,7 +221,11 @@
             [:target {:optional true} ::transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+  (let [existing-transform (api/check-404 (t2/select-one :model/Transform id))]
+    (check-transforms-permission-for-db! (transforms.i/target-db-id existing-transform))
+    (when-let [new-target-db-id (transforms.i/target-db-id body)]
+      (when (not= new-target-db-id (transforms.i/target-db-id existing-transform))
+        (check-transforms-permission-for-db! new-target-db-id))))
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -233,8 +254,8 @@
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (check-transforms-permission-for-db! (transforms.i/target-db-id transform))
     (t2/delete! :model/Transform id)
     (events/publish-event! :event/transform-delete
                            {:object transform
@@ -245,29 +266,31 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (transforms.util/delete-target-table-by-id! id)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (check-transforms-permission-for-db! (transforms.i/target-db-id transform))
+    (transforms.util/delete-target-table-by-id! id))
   nil)
 
 (api.macros/defendpoint :post "/:id/cancel"
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        run (api/check-404 (transform-run/running-run-for-transform-id id))]
-    (transform-run-cancelation/mark-cancel-started-run! (:id run))
-    (when (transforms.util/python-transform? transform)
-      (transforms.canceling/cancel-run! (:id run))))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (check-transforms-permission-for-db! (transforms.i/target-db-id transform))
+    (let [run (api/check-404 (transform-run/running-run-for-transform-id id))]
+      (transform-run-cancelation/mark-cancel-started-run! (:id run))
+      (when (transforms.util/python-transform? transform)
+        (transforms.canceling/cancel-run! (:id run)))))
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        _         (check-feature-enabled! transform)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (check-transforms-permission-for-db! (transforms.i/target-db-id transform))
+    (check-feature-enabled! transform))
+  (let [transform (t2/select-one :model/Transform id)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.i/execute! transform {:start-promise start-promise

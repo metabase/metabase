@@ -7,10 +7,12 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -87,6 +89,35 @@
     (and (premium-features/has-feature? :transforms)
          (premium-features/has-feature? :transforms-python))
     (premium-features/has-feature? :transforms)))
+
+(defn current-user-has-transforms-permission-for-db?
+  "Returns true if the current user has transforms permission for the given database."
+  [database-id]
+  (or api/*is-superuser?*
+      (perms/user-has-permission-for-database? api/*current-user-id*
+                                               :perms/transforms
+                                               :yes
+                                               database-id)))
+
+(defn current-user-has-any-transforms-permission?
+  "Returns true if the current user has transforms permission for at least one database."
+  []
+  (or api/*is-superuser?*
+      (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms)))
+
+(defn databases-with-transforms-permission
+  "Returns a set of database IDs the current user has transforms permission for."
+  []
+  (if api/*is-superuser?*
+    (set (t2/select-pks-vec :model/Database))
+    (set (t2/select-fn-set :db_id :model/DataPermissions
+                           {:select [[:p.db_id :db_id]]
+                            :from [[:permissions_group_membership :pgm]]
+                            :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                            :where [:and
+                                    [:= :pgm.user_id api/*current-user-id*]
+                                    [:= :p.perm_type "perms/transforms"]
+                                    [:= :p.perm_value "yes"]]}))))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."

@@ -214,7 +214,14 @@ export const DataPermissionsHelp = () => {
               <Text>
                 {jt`${(
                   <strong key="permission">{t`Manage Database (Pro):`}</strong>
-                )} The group can edit database settings for a given database in the “Database” tab of the Admin settings.`}{" "}
+                )} The group can edit database settings for a given database in the "Database" tab of the Admin settings.`}{" "}
+                {!isAdvancedPermissionsFeatureEnabled &&
+                  getLimitedPermissionAvailabilityMessage()}
+              </Text>
+              <Text>
+                {jt`${(
+                  <strong key="permission">{t`Transforms (Pro):`}</strong>
+                )} The group can create, edit, and run Transforms for a given database.`}{" "}
                 {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
