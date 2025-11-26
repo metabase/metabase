@@ -16,6 +16,11 @@ shared_ci: &shared_ci
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/run-tests.yml"
 
+shared_e2e: &shared_e2e
+  - "e2e/runner/**"
+  - "e2e/snapshot-creators/**"
+  - "e2e/support/**"
+
 frontend_ci: &frontend_ci
   - *shared_ci
   - ".github/workflows/frontend.yml"
@@ -132,6 +137,7 @@ embedding_sdk_components:
   - *default
   - *embedding_sdk_ci
   - *sources
+  - *shared_e2e
   - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
 
 embedding_sdk_host_sample_apps:
@@ -139,8 +145,8 @@ embedding_sdk_host_sample_apps:
   - *embedding_sdk_ci
   - *frontend_sources
   - *backend_sources
+  - *shared_e2e
   - "e2e/embedding-sdk-host-apps/**"
-  - "e2e/runner/embedding-sdk/**"
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
 snowplow: &snowplow
