@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useHasEmailSetup, useSetting } from "metabase/common/hooks";
 import {
   UPSELL_CAMPAIGN_AUTH,
   UPSELL_CAMPAIGN_BEHAVIOR,
@@ -20,6 +20,8 @@ import {
   Radio,
   Stack,
   Text,
+  Tooltip,
+  useHover,
 } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -166,6 +168,8 @@ const AuthenticationSection = () => {
 
 const BehaviorSection = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const hasEmailSetup = useHasEmailSetup();
+  const hoverTarget = useHover();
 
   const behaviorSection = useMemo(() => {
     return match(settings)
@@ -267,14 +271,25 @@ const BehaviorSection = () => {
               campaign={UPSELL_CAMPAIGN_BEHAVIOR}
             >
               {({ disabled }) => (
-                <Checkbox
-                  label={t`Allow subscriptions`}
-                  disabled={disabled}
-                  checked={settings.withSubscriptions}
-                  onChange={(e) =>
-                    updateSettings({ withSubscriptions: e.target.checked })
-                  }
-                />
+                <Flex ref={hoverTarget.ref} align="center" gap="xs">
+                  <Checkbox
+                    disabled={!hasEmailSetup || disabled}
+                    label={t`Allow subscriptions`}
+                    checked={settings.withSubscriptions}
+                    onChange={(e) =>
+                      updateSettings({ withSubscriptions: e.target.checked })
+                    }
+                  />
+                  {!hasEmailSetup && (
+                    <Tooltip
+                      // Allow the tooltip to open when hovering over the whole checkbox line, but positioning it on the info icon
+                      opened={hoverTarget.hovered}
+                      label={t`Please set up email to allow subscriptions`}
+                    >
+                      <Icon name="info" c="var(--mb-color-text-tertiary)" />
+                    </Tooltip>
+                  )}
+                </Flex>
               )}
             </WithNotAvailableForGuestEmbedsWarning>
           </Stack>
@@ -292,7 +307,13 @@ const BehaviorSection = () => {
         ),
       )
       .otherwise(() => null);
-  }, [settings, updateSettings]);
+  }, [
+    hasEmailSetup,
+    hoverTarget.hovered,
+    hoverTarget.ref,
+    settings,
+    updateSettings,
+  ]);
 
   if (behaviorSection === null) {
     return null;

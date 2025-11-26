@@ -169,7 +169,38 @@ describe(suiteTitle, () => {
     codeBlock().should("contain", 'with-subscriptions="false"');
   });
 
-  it("toggles subscriptions for dashboard when email is enabled", () => {
+  it("cannot select subscriptions for dashboard when email is not set up", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .should("not.be.checked")
+      .and("be.disabled")
+      .realHover();
+
+    H.tooltip()
+      .findByText("Please set up email to allow subscriptions")
+      .should("be.visible");
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Subscriptions" })
+      .should("not.exist");
+
+    cy.log("snippet should show subscriptions as false");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
+
+    codeBlock().should("contain", 'with-subscriptions="false"');
+  });
+
+  it("toggles subscriptions for dashboard when email is set up", () => {
     H.setupSMTP();
 
     navigateToEmbedOptionsStep({
@@ -192,9 +223,32 @@ describe(suiteTitle, () => {
       .click()
       .should("be.checked");
 
+    cy.log(
+      "assert that unchecking subscriptions will close the subscription sidebar",
+    );
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByRole("button", { name: "Subscriptions" })
+        .should("be.visible")
+        .click();
+
+      cy.findByRole("heading", { name: "Email this dashboard" }).should(
+        "be.visible",
+      );
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .click()
+      .should("not.be.checked");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Subscriptions" })
-      .should("be.visible");
+      .findByRole("heading", { name: "Email this dashboard" })
+      .should("not.exist");
+
+    cy.log("toggle subscriptions back on");
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .click()
+      .should("be.checked");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
