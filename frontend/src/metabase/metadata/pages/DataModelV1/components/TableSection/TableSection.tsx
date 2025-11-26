@@ -11,8 +11,9 @@ import * as Urls from "metabase/lib/urls";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
-  SortableFieldList,
 } from "metabase/metadata/components";
+import { TableFieldList } from "metabase/metadata/components/TableFieldList";
+import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ResponsiveButton } from "metabase/metadata/pages/shared/ResponsiveButton";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -30,7 +31,6 @@ import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 
-import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
 
@@ -248,16 +248,15 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 
           {isSorting && hasFields && (
-            <SortableFieldList
-              activeFieldKey={fieldId}
-              fields={table.fields ?? []}
-              getFieldKey={getRawTableFieldId}
+            <TableSortableFieldList
+              table={table}
+              activeFieldId={fieldId}
               onChange={handleCustomFieldOrderChange}
             />
           )}
 
           {!isSorting && hasFields && (
-            <FieldList
+            <TableFieldList
               activeFieldId={fieldId}
               getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
               table={table}

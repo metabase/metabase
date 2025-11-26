@@ -13,6 +13,8 @@ import {
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
+import { TableFieldList } from "metabase/metadata/components/TableFieldList";
+import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
 import { ResponsiveButton } from "metabase/metadata/pages/shared/ResponsiveButton";
@@ -34,11 +36,9 @@ import { usePublishTables } from "../../hooks/use-publish-tables";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
-import { TableFieldList } from "./TableFieldList";
 import { TableMetadata } from "./TableMetadata";
 import S from "./TableSection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
-import { TableSortableFieldList } from "./TableSortableFieldList";
 
 interface Props {
   table: Table;
