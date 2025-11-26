@@ -11,6 +11,7 @@ const validModels: CollectionItemModel[] = [
   "card",
   "dataset",
   "metric",
+  "table",
 ];
 
 const getValidCollectionItemModels = (models?: CollectionItemModel[]) =>
