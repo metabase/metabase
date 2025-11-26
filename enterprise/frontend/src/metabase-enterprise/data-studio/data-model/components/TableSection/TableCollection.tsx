@@ -34,8 +34,8 @@ export function TableCollection({ table }: TableCollectionProps) {
           ) : (
             <Box>{t`You don't have access to this collection`}</Box>
           )}
-          <Tooltip label={t`Un-publish`}>
-            <ActionIcon aria-label={t`Un-publish`} onClick={openModal}>
+          <Tooltip label={t`Unpublish`}>
+            <ActionIcon aria-label={t`Unpublish`} onClick={openModal}>
               <FixedSizeIcon name="library" />
             </ActionIcon>
           </Tooltip>

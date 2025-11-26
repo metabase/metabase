@@ -36,7 +36,7 @@ export function UnpublishTablesModal({
       database_ids: Array.from(databases),
     });
     await action.unwrap();
-    sendSuccessToast(t`Un-published successfully`);
+    sendSuccessToast(t`Unpublished successfully`);
     onClose();
   };
 
@@ -51,7 +51,7 @@ export function UnpublishTablesModal({
         <Form>
           <Stack>
             <Text>
-              {t`Un-publishing a table removes it from the collection where it was published.`}
+              {t`Unpublishing a table removes it from the collection where it was published.`}
             </Text>
             <Group wrap="nowrap">
               <Box flex={1}>
@@ -61,7 +61,7 @@ export function UnpublishTablesModal({
               <FormSubmitButton
                 variant="filled"
                 color="error"
-                label={t`Un-publish`}
+                label={t`Unpublish`}
               />
             </Group>
           </Stack>
@@ -78,10 +78,10 @@ function getTitle(
 ) {
   if (schemas.size === 0 && databases.size === 0) {
     return ngettext(
-      msgid`Un-publish this table?`,
-      `Un-publish these ${tables.size} tables?`,
+      msgid`Unpublish this table?`,
+      `Unpublish these ${tables.size} tables?`,
       tables.size,
     );
   }
-  return t`Un-publish these tables?`;
+  return t`Unpublish these tables?`;
 }
