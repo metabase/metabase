@@ -102,18 +102,14 @@ export const cypressWaitAll = function (commands) {
  * Visit a question and wait for its query to load.
  *
  * @param {number|string} questionIdOrAlias
- * @param {() => void} [afterVisit]
  */
-export function visitQuestion(questionIdOrAlias, afterVisit) {
+export function visitQuestion(questionIdOrAlias) {
   if (typeof questionIdOrAlias === "number") {
-    visitQuestionById(questionIdOrAlias);
+    return visitQuestionById(questionIdOrAlias);
   }
 
   if (typeof questionIdOrAlias === "string") {
-    cy.get(questionIdOrAlias).then((id) => {
-      visitQuestionById(id);
-      afterVisit?.(id);
-    });
+    return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
   }
 }
 
@@ -130,6 +126,8 @@ function visitQuestionById(id) {
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
+
+  return cy.wrap(id);
 }
 
 /**

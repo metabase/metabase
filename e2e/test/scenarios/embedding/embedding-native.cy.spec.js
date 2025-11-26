@@ -358,7 +358,7 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
-      H.visitQuestion("@questionId", (id) => {
+      H.visitQuestion("@questionId").then((id) => {
         H.openLegacyStaticEmbeddingModal({
           resource: "question",
           resourceId: id,
