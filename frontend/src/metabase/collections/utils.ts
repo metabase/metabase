@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import {
   type CardType,
   type Collection,
@@ -98,7 +98,7 @@ export function isSyncedCollection(collection: Partial<Collection>): boolean {
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
-  return PLUGIN_LIBRARY.getLibraryCollectionType(collection.type) != null;
+  return PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type) != null;
 }
 
 export function isExamplesCollection(collection: Collection): boolean {
@@ -222,14 +222,17 @@ export function canPlaceEntityInCollection(
   entityType: EntityType,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  return PLUGIN_LIBRARY.canPlaceEntityInCollection(entityType, collectionType);
+  return PLUGIN_DATA_STUDIO.canPlaceEntityInCollection(
+    entityType,
+    collectionType,
+  );
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
   collectionType: CollectionType | null | undefined,
 ): boolean {
-  return PLUGIN_LIBRARY.canPlaceEntityInCollectionOrDescendants(
+  return PLUGIN_DATA_STUDIO.canPlaceEntityInCollectionOrDescendants(
     entityType,
     collectionType,
   );

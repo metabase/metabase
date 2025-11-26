@@ -8,6 +8,7 @@ import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
   type MetabotUserChatMessage,
+  cancelInflightAgentRequests,
   getActiveToolCalls,
   getAgentErrorMessages,
   getDebugMode,
@@ -153,6 +154,10 @@ export const useMetabotAgent = () => {
     [dispatch, getChatContext, metabotRequestId, prepareRetryIfUnsuccesful],
   );
 
+  const cancelRequest = useCallback(() => {
+    dispatch(cancelInflightAgentRequests());
+  }, [dispatch]);
+
   const startNewConversation = useCallback(
     async (message: string) => {
       await resetConversation();
@@ -180,6 +185,7 @@ export const useMetabotAgent = () => {
     startNewConversation,
     submitInput,
     retryMessage,
+    cancelRequest,
     activeToolCalls,
     debugMode,
     profileOverride,

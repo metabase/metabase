@@ -1552,6 +1552,16 @@
   [^bytes bs]
   (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
 
+(defn format-env-key ^String [env-key]
+  (let [[_ header body footer]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+|\\n" "\n") footer)))
+
+(defn priv-key->base64-uri [priv-key]
+  (-> (format-env-key priv-key)
+      u/string-to-bytes
+      bytes->base64-data-uri))
+
 (defn works-after
   "Returns a function which works as `f` except that on the first `n` calls an
   exception is thrown instead.

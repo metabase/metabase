@@ -7,6 +7,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
+import * as Urls from "metabase/lib/urls";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
   FieldOrderPicker,
@@ -31,9 +32,9 @@ import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
+import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableFieldList } from "./TableFieldList";
-import { TableMetadataInfo } from "./TableMetadataInfo";
-import { TableMetadataSettings } from "./TableMetadataSection";
+import { TableMetadata } from "./TableMetadata";
 import { TableModels } from "./TableModels";
 import S from "./TableSection.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
@@ -202,6 +203,7 @@ const TableSectionBase = ({
                   flexGrow: 0,
                   width: 40,
                 }}
+                aria-label={t`Dependency graph`}
               />
             </Box>
           </Tooltip>
@@ -212,12 +214,12 @@ const TableSectionBase = ({
       </Box>
 
       <Box px="lg">
-        <TableMetadataSettings table={table} />
+        <TableAttributesEditSingle table={table} />
       </Box>
 
       <Box px="lg">
         <TableSectionGroup title={t`Metadata`}>
-          <TableMetadataInfo table={table} />
+          <TableMetadata table={table} />
         </TableSectionGroup>
       </Box>
 
@@ -278,21 +280,21 @@ const TableSectionBase = ({
 
           {hasFields && (
             <>
-              <Box display={isSorting ? "block" : "none"}>
+              {isSorting && (
                 <TableSortableFieldList
                   activeFieldId={activeFieldId}
                   table={table}
                   onChange={handleCustomFieldOrderChange}
                 />
-              </Box>
+              )}
 
-              <Box display={!isSorting ? "block" : "none"}>
+              {!isSorting && (
                 <TableFieldList
                   table={table}
                   activeFieldId={activeFieldId}
                   getFieldHref={getFieldHref}
                 />
-              </Box>
+              )}
             </>
           )}
         </Stack>
@@ -308,13 +310,21 @@ const TableSectionBase = ({
 };
 
 function TableLink({ table }: { table: Table }) {
+  const url =
+    Urls.modelToUrl({
+      id: Number(table.id),
+      name: table.name,
+      model: "table",
+      database: { id: table.db_id },
+    }) ?? "#";
+
   return (
     <Tooltip label={t`Go to this table`} position="top">
       <Box>
         {/* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */}
         <Button
           component={Link}
-          to={getQueryBuilderUrl(table)}
+          to={url}
           aria-label={t`Go to this table`}
           leftSection={<Icon name="external" size={16} />}
           style={{
@@ -324,10 +334,6 @@ function TableLink({ table }: { table: Table }) {
       </Box>
     </Tooltip>
   );
-}
-
-function getQueryBuilderUrl(table: Table) {
-  return `/question#?db=${table.db_id}&table=${table.id}`;
 }
 
 export const TableSection = memo(TableSectionBase);

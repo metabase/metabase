@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
-import type { UrlableModel } from "metabase/lib/urls/modelToUrl";
+import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import type { MetabaseProtocolEntityModel } from "metabase-enterprise/metabot/utils/links";
 import type {
@@ -28,11 +28,14 @@ export function buildSearchMenuItems(
       model: result.model,
       display: result.display,
     });
+    const urlableModel = entityToUrlableModel(result, result.model);
+    const href = modelToUrl(urlableModel);
     return {
       icon: iconData.name,
       label: result.name,
       id: result.id,
       model: result.model,
+      href: href || undefined,
       action: () => onSelect(result),
     };
   });
@@ -44,11 +47,14 @@ export function buildRecentsMenuItems(
 ): MenuItem[] {
   return recents.map((recent) => {
     const iconData = getIcon(recent);
+    const urlableModel = entityToUrlableModel(recent, recent.model);
+    const href = modelToUrl(urlableModel);
     return {
       icon: iconData.name,
       label: getName(recent),
       id: recent.id,
       model: recent.model as SuggestionModel,
+      href: href || undefined,
       action: () => onSelect(recent),
     };
   });

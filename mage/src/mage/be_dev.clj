@@ -66,7 +66,9 @@
   `(let [ns# (symbol ~nns)]
      (require ns# :reload)
      (in-ns ns#)
-     (eval (read-string ~(or code "::loaded")))))
+     (eval (read-string ~(if (str/blank? code)
+                           "::loaded"
+                           code)))))
 
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
@@ -83,11 +85,12 @@
     (loop []
       (let [response (->> (bencode/read-bencode in)
                           (walk/postwalk consume))]
+        (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "\n-----")
+        (println)
         (doseq [[k v] response]
           (case k
             "out"   (print v)
-            "err"   (binding [*out* *err*]
-                      (print v))
+            "err"   (binding [*out* *err*] (print v))
             "value" (reset! final-value v)
             nil))                       ; Ignore other keys like session, id, status
 
@@ -97,17 +100,34 @@
         (if (some #{"done"} (get response "status"))
           (some->> @final-value
                    (println "\n=> "))
-          (recur))))))
+          (recur))))
+    @final-value))
+
+(defn nrepl-open?
+  "Checks if an nREPL server is running on the given port (or the port in .nrepl-port if none given)."
+  [& port]
+  (try
+    (let [port (nrepl-port port)
+          s    (java.net.Socket. "localhost" port)]
+      (.close s)
+      true)
+    (catch Exception _ false)))
+
+(defn nrepl-type [& port]
+  (try
+    (let [port (nrepl-port port)
+          type (nrepl-eval "user" "#?(:bb :bb :cljs :cljs :clj :clj)" port)]
+      (keyword type))
+    (catch Exception _ nil)))
 
 (comment
 
-  (nrepl-eval "metabase.logger.core-test" "(do (println :!! hi) hi)" 59498)
+  (nrepl-eval "metabase.logger.core-test" "(do (println :!! 'hi) 'hi)" 7888)
 
-  (nrepl-eval "metabase.logger.core-test" "*ns*")
+  (nrepl-eval "user" "*ns*" 7888)
 
-  (nrepl-eval "dev.migrate" "(do (rollback! :count 1) ::rollback-done)")
-  (nrepl-eval "dev.migrate" "(do (migrate! :up) ::migrate-up-done)")
+  ;; run migrations from the cli:
+  (nrepl-eval "dev.migrate" "(do (rollback! :count 1) ::rollback-done)" 7888)
+  (nrepl-eval "dev.migrate" "(do (migrate! :up) ::migrate-up-done)" 7888)
 
-  (nrepl-eval "dev" "")
-
-  (println code-str))
+  (nrepl-eval "dev" "*ns*" 7888))

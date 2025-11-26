@@ -593,7 +593,7 @@ describe("scenarios > setup (EE)", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore("blank");
     H.resetSnowplow();

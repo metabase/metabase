@@ -1,9 +1,8 @@
-import { IndexRoute } from "react-router";
+import { IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { Route } from "metabase/hoc/Title";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
@@ -77,7 +76,7 @@ export function initializePlugin() {
     ];
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-        <Route title={t`AI`} component={AdminSettingsLayout}>
+        <Route component={AdminSettingsLayout}>
           <IndexRoute component={MetabotPurchasePage} />
         </Route>
       </Route>
@@ -92,7 +91,7 @@ export function initializePlugin() {
     ];
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-        <Route title={t`AI`} component={AdminSettingsLayout}>
+        <Route component={AdminSettingsLayout}>
           <IndexRoute component={MetabotTrialPage} />
         </Route>
       </Route>

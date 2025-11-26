@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.api :as api.collection]
+   [metabase.collections-rest.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]

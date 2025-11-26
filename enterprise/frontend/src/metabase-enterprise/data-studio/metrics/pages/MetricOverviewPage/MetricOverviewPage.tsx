@@ -27,7 +27,7 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%">
+    <Flex direction="column" h="100%" data-testid="metric-overview-page">
       <MetricHeader card={card} />
       <CardOverview card={card} />
     </Flex>

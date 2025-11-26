@@ -158,7 +158,6 @@
                 jdbc/metadata-result))))
        (filter not-inner-mv-table?)
        (tables-set)
-       (map #(assoc % :schema nil))
        (set)))
 
 (defmethod driver/describe-database* :clickhouse

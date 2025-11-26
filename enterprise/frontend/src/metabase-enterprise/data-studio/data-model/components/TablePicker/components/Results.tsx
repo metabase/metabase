@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 import { Link } from "react-router";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
@@ -17,7 +18,7 @@ import {
 } from "metabase/common/hooks/use-number-formatter";
 import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
 import { getUrl } from "metabase/metadata/pages/shared/utils";
-import { Box, Checkbox, Flex, Icon, Skeleton, rem } from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Skeleton, Stack, rem } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -65,6 +66,9 @@ export function TablePickerResults({
       element?.getBoundingClientRect().height ?? ITEM_MIN_HEIGHT,
   });
 
+  const latestItems = useLatest(items);
+  const latestVirtual = useLatest(virtual);
+
   const virtualItems = virtual.getVirtualItems();
 
   const { data: usersData } = useListUsersQuery();
@@ -80,25 +84,26 @@ export function TablePickerResults({
       if (path.tableId === undefined) {
         return;
       }
-      const index = items.findIndex(
+      const index = latestItems.current.findIndex(
         (item) => item.type === "table" && item.value?.tableId === path.tableId,
       );
       if (index === -1) {
         return;
       }
 
-      const visibleIndices = virtual
+      const visibleIndices = latestVirtual.current
         .getVirtualItems()
         .map((virtualItem) => virtualItem.index);
       if (visibleIndices.includes(index)) {
         return;
       }
 
-      virtual.scrollToIndex(index, { align: "start", behavior: "auto" });
+      latestVirtual.current.scrollToIndex(index, {
+        align: "start",
+        behavior: "auto",
+      });
     },
-    // TODO: fix it, avoids unnecessary jumps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path.tableId],
+    [path.tableId, latestItems, latestVirtual],
   );
 
   useEffect(() => {
@@ -157,7 +162,7 @@ export function TablePickerResults({
   };
 
   return (
-    <>
+    <Stack className={S.root} gap={0}>
       <Flex className={S.header} gap="sm" justify="flex-end">
         <Box className={cx(S.headerCell, S.ownerColumn)}>{t`Owner`}</Box>
         <Box className={cx(S.headerCell, S.rowsColumn)}>{t`Rows`}</Box>
@@ -165,7 +170,7 @@ export function TablePickerResults({
           className={cx(S.headerCell, S.publishedColumn)}
         >{t`Published`}</Box>
       </Flex>
-      <Box ref={ref} pb="lg" className={S.results}>
+      <Box ref={ref} className={S.results}>
         <Box style={{ height: virtual.getTotalSize() }}>
           {virtualItems.map(({ start, index }) => {
             const item = items[index];
@@ -193,7 +198,7 @@ export function TablePickerResults({
           })}
         </Box>
       </Box>
-    </>
+    </Stack>
   );
 }
 
@@ -263,13 +268,13 @@ function ElementCheckbox({
 }
 
 function Loading() {
-  const w = 20 + Math.random() * 80;
+  const width = useMemo(() => 100 + Math.random() * 100, []);
 
   return (
     <Skeleton
       data-testid="loading-placeholder"
-      height={rem(12)}
-      width={`${w}%`}
+      height={rem(16)}
+      width={width}
       radius="sm"
     />
   );
@@ -488,6 +493,7 @@ const ResultsItem = ({
       justify="flex-start"
       gap={0}
       w="100%"
+      mih={ITEM_MIN_HEIGHT}
       className={cx(S.item, S[type], {
         [S.active]: isActive,
         [S.selected]: selectedIndex === index,
@@ -496,7 +502,7 @@ const ResultsItem = ({
       data-open={isExpanded}
       tabIndex={disabled ? -1 : 0}
       style={{
-        top: start,
+        transform: `translateY(${start}px)`,
         pointerEvents: disabled ? "none" : undefined,
       }}
       to={getUrl(baseUrl, {
@@ -522,14 +528,7 @@ const ResultsItem = ({
         />
       </Box>
 
-      <Flex
-        align="center"
-        mih={ITEM_MIN_HEIGHT}
-        py="xs"
-        w="100%"
-        pl={indent}
-        gap="sm"
-      >
+      <Flex align="center" py="xs" w="100%" pl={indent} gap="sm">
         <Flex align="flex-start" gap="xs" className={S.content}>
           <Flex align="center" gap="xs">
             <Box className={S.chevronSlot} w={INDENT_OFFSET}>
@@ -585,7 +584,11 @@ const ResultsItem = ({
               {expectedRowsDisplay}
             </Box>
 
-            <Box className={cx(S.column, S.publishedColumn)}>
+            <Box
+              className={cx(S.column, S.publishedColumn)}
+              pl="md"
+              data-testid="table-published"
+            >
               {publishedDisplay}
             </Box>
           </>
@@ -633,10 +636,12 @@ function getExpectedRowsDisplay(
   return formatted;
 }
 
-function getPublishedDisplay(item: FlatItem): string | null {
+function getPublishedDisplay(item: FlatItem): React.ReactNode {
   if (item.type !== "table" || item.isLoading || !item.table) {
     return null;
   }
 
-  return item.table.published_as_model ? t`Yes` : null;
+  return item.table.published_as_model ? (
+    <Icon name="verified_round" aria-label={t`Published`} />
+  ) : null;
 }

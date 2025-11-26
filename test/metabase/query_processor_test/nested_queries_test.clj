@@ -728,7 +728,8 @@
                                             {:segments [{:id         1
                                                          :name       "Segment 1"
                                                          :table-id   (mt/id :venues)
-                                                         :definition (mt/$ids {:filter [:= $venues.price 1]})}]})
+                                                         :definition (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                                                                         (lib/filter (lib/= (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price)) 1)))}]})
                                            (qp.test-util/metadata-provider-with-cards-for-queries
                                             [(mt/mbql-query venues
                                                {:filter [:segment 1]})]))

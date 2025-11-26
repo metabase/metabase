@@ -6,10 +6,11 @@ import type {
   CollectionItemModel,
   DatabaseId,
   RecentItem,
+  Table,
 } from "metabase-types/api";
 
 import type { QuestionPickerItem } from "../QuestionPicker";
-import type { TablePickerValue } from "../TablePicker";
+import type { TablePickerItem, TablePickerValue } from "../TablePicker";
 
 import type {
   DataPickerFolderItem,
@@ -97,11 +98,15 @@ export const isFolderItem = (
   return ["collection", "database", "schema"].includes(item.model);
 };
 
+type OmniPickerModel = CollectionItemModel | TablePickerItem["model"];
+
 export const createShouldShowItem = (
-  models: CollectionItemModel[],
+  models: OmniPickerModel[],
   databaseId?: DatabaseId,
 ) => {
-  return (item: QuestionPickerItem & { database_id?: DatabaseId }) => {
+  return (
+    item: QuestionPickerItem | (TablePickerItem & { database_id?: DatabaseId }),
+  ) => {
     if (item.model === "collection") {
       if (item.id === "root" || item.is_personal) {
         return true;
@@ -110,12 +115,26 @@ export const createShouldShowItem = (
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
-      const hasCards = models.some((model) =>
+      const hasCards = models.some((model: OmniPickerModel) =>
         contents.includes(model as CollectionItemModel),
       );
 
       return hasCards;
     }
+
+    if (!isNullOrUndefined(databaseId) && item.model === "database") {
+      return item.id === databaseId;
+    }
+
+    if (item.model === "table") {
+      const itemDbId = item.database_id ?? (item as unknown as Table).db_id;
+      return isNullOrUndefined(databaseId) || itemDbId === databaseId;
+    }
+
+    if (item.model === "schema") {
+      return isNullOrUndefined(databaseId) || item.dbId === databaseId;
+    }
+
     if (
       (isNullOrUndefined(databaseId) ||
         !hasDatabaseId(item) ||

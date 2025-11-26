@@ -628,7 +628,7 @@ describe("scenarios > organization > timelines > collection", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > collections > timelines", () => {
+describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

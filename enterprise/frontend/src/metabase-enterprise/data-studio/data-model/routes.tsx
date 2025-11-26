@@ -1,9 +1,8 @@
-import { IndexRoute, Redirect } from "react-router";
+import { IndexRoute, Redirect, Route } from "react-router";
 
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
-import { Route } from "metabase/hoc/Title";
 
 import { DataModel } from "./pages/DataModel";
 

@@ -1,6 +1,5 @@
-import { IndexRoute } from "react-router";
+import { IndexRoute, Route } from "react-router";
 
-import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,

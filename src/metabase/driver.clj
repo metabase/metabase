@@ -698,6 +698,9 @@
     ;; Does this driver support splitting strings and extracting a part?
     :split-part
 
+    ;; Does this driver support collation settings on text fields?
+    :collate
+
     ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
     ;; bucketing was specified in the query.
     ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.

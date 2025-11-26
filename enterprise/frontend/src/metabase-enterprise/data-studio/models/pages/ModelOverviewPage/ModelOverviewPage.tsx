@@ -27,7 +27,7 @@ export function ModelOverviewPage({ params }: ModelOverviewPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%">
+    <Flex direction="column" h="100%" data-testid="model-overview-page">
       <ModelHeader card={card} />
       <CardOverview card={card} />
     </Flex>

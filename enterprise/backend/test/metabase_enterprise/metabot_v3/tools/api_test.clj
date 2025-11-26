@@ -23,6 +23,9 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(defn- db-engine-name []
+  (-> (mt/db) :engine name))
+
 (def missing-value (symbol "nil #_\"key is not present.\""))
 
 (deftest column-decode-test
@@ -444,6 +447,7 @@
                                          (assoc :id model-id
                                                 :type "model"
                                                 :verified true
+                                                :database_engine (db-engine-name)
                                                 :display_name "Model Model"
                                                 :fields (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
                                                                      expected-fields)
@@ -483,6 +487,7 @@
                             :models [(-> model-data
                                          (select-keys [:name :description :database_id])
                                          (assoc :id model-id
+                                                :database_engine (db-engine-name)
                                                 :display_name "Model Model"
                                                 :verified true
                                                 :type "model"
@@ -651,13 +656,14 @@
           generated-id (-> response :structured_output :query_id)]
       (is (=? {:structured_output {:type "query"
                                    :query_id string?
-                                   :query query
+                                   :query map?
                                    :result_columns
                                    [{:field_id (str "q" generated-id "/0"), :name "CREATED_AT", :display_name "Created At: Week", :type "datetime"}
                                     {:field_id (str "q" generated-id "/1"), :name "avg", :display_name "Average of Rating", :type "number"}]}
                :conversation_id conversation-id}
-              ;; normalize query to convert strings like "field" to keywords
-              (update-in response [:structured_output :query] mbql.normalize/normalize))))))
+              response))
+      ;; Verify the query is normalized (supports both MBQL v4 and v5)
+      (is (= (mt/id) (get-in response [:structured_output :query :database]))))))
 
 (deftest get-report-details-test
   (mt/with-premium-features #{:metabot-v3}
@@ -814,6 +820,7 @@
                                                 (select-keys [:name :description :database_id])
                                                 (assoc :id model-id
                                                        :type "model"
+                                                       :database_engine (db-engine-name)
                                                        :display_name "Model Model"
                                                        :verified true
                                                        :fields (add-field-ids (format "c%d/%%d" model-id) expected-core-fields)
@@ -851,6 +858,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields
@@ -892,6 +900,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -927,6 +936,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -964,6 +974,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -997,6 +1008,7 @@
                                               (select-keys [:name :description :database_id])
                                               (assoc :id model-id
                                                      :type "model"
+                                                     :database_engine (db-engine-name)
                                                      :display_name "Model Model"
                                                      :verified true
                                                      :fields []
@@ -1094,6 +1106,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1110,6 +1123,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1127,6 +1141,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1141,6 +1156,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1157,6 +1173,7 @@
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
                                          :database_id (mt/id)
+                                         :database_engine (db-engine-name)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"

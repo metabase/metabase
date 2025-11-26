@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import EmptyStateCollection from "assets/img/empty-states/collection.svg";
 import EmptyState from "metabase/common/components/EmptyState";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Center } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -27,7 +27,7 @@ export function CollectionEmptyState({
 }
 
 function getMessages(collection: Collection) {
-  switch (PLUGIN_LIBRARY.getLibraryCollectionType(collection.type)) {
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
     case "models":
       return {
         title: t`No models yet`,

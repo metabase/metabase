@@ -120,29 +120,39 @@ export const CommandSuggestion = forwardRef<
     () => allCommandSections.flatMap((section) => section.items),
     [allCommandSections],
   );
+  const allowedCommandOptions = useMemo(() => {
+    return allCommandOptions.filter(
+      (item) => item.isAllowedAtPosition?.(editor) ?? true,
+    );
+  }, [allCommandOptions, editor]);
 
   // Filter command options based on query when not in link search mode
   const commandOptions = useMemo(() => {
     if (viewMode === "linkTo" || viewMode === "embedQuestion") {
-      return allCommandOptions;
+      return allowedCommandOptions;
     }
 
     if (!query) {
-      return allCommandOptions;
+      return allowedCommandOptions;
     }
 
     const lowerQuery = query.toLowerCase();
-    return allCommandOptions.filter((option) =>
+    return allowedCommandOptions.filter((option) =>
       option.label.toLowerCase().includes(lowerQuery),
     );
-  }, [viewMode, query, allCommandOptions]);
+  }, [viewMode, query, allowedCommandOptions]);
 
   const createQuestionsMenuItems = useCreateQuestionsMenuItems({
     onSelectItem: setNewQuestionType,
   });
 
+  const areChartsAllowed = !editor.isActive("supportingText");
+  const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
+
   const canCreateNewQuestion =
-    createQuestionsMenuItems.length > 0 && viewMode !== "linkTo";
+    createQuestionsMenuItems.length > 0 &&
+    viewMode !== "linkTo" &&
+    areChartsAllowed;
 
   const onSelectLinkEntity = useCallback(
     (item: { id: number | string; model: string }) => {
@@ -174,11 +184,11 @@ export const CommandSuggestion = forwardRef<
     query,
     editor,
     onSelectEntity: onSelectLinkEntity,
-    enabled: true,
+    enabled: canBrowseAll,
     searchModels:
       viewMode === "linkTo" ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
     canFilterSearchModels: false,
-    canBrowseAll: true,
+    canBrowseAll,
     canCreateNewQuestion,
     onTriggerCreateNewQuestion,
   });
@@ -427,15 +437,15 @@ export const CommandSuggestion = forwardRef<
                 </>
               ) : (
                 // When not searching, show sections
-                allCommandSections.map((section, sectionIndex) => {
-                  const filteredItems = section.items.filter((item) =>
-                    commandOptions.includes(item),
-                  );
-                  if (filteredItems.length === 0) {
-                    return null;
-                  }
-
-                  return (
+                allCommandSections
+                  .map((section) => ({
+                    ...section,
+                    items: section.items.filter((item) =>
+                      commandOptions.includes(item),
+                    ),
+                  }))
+                  .filter((section) => section.items.length)
+                  .map((section, sectionIndex) => (
                     <Box key={sectionIndex}>
                       {section.title && sectionIndex > 0 && (
                         <Box>
@@ -451,7 +461,7 @@ export const CommandSuggestion = forwardRef<
                           </Text>
                         </Box>
                       )}
-                      {filteredItems.map((option) => {
+                      {section.items.map((option) => {
                         const index = commandOptions.indexOf(option);
                         return (
                           <CommandMenuItem
@@ -465,8 +475,7 @@ export const CommandSuggestion = forwardRef<
                         );
                       })}
                     </Box>
-                  );
-                })
+                  ))
               )}
             </>
           ) : (
@@ -476,7 +485,9 @@ export const CommandSuggestion = forwardRef<
               </Box>
               {query && (
                 <>
-                  <Divider my="sm" mx="sm" />
+                  {(canCreateNewQuestion || canBrowseAll) && (
+                    <Divider my="sm" mx="sm" />
+                  )}
                   {canCreateNewQuestion && (
                     <CreateNewQuestionFooter
                       isSelected={selectedIndex === 0}
@@ -485,28 +496,30 @@ export const CommandSuggestion = forwardRef<
                     />
                   )}
 
-                  <SearchResultsFooter
-                    isSelected={
-                      selectedIndex ===
-                      getBrowseAllItemIndex(
-                        searchMenuItems.length,
-                        canCreateNewQuestion,
-                      )
-                    }
-                    onMouseEnter={() =>
-                      setSelectedIndex(
+                  {canBrowseAll && (
+                    <SearchResultsFooter
+                      isSelected={
+                        selectedIndex ===
                         getBrowseAllItemIndex(
                           searchMenuItems.length,
                           canCreateNewQuestion,
-                        ),
-                      )
-                    }
-                    onClick={() => {
-                      // Switch to embed mode so selected questions get embedded
-                      setViewMode("embedQuestion");
-                      entityHandlers.openModal();
-                    }}
-                  />
+                        )
+                      }
+                      onMouseEnter={() =>
+                        setSelectedIndex(
+                          getBrowseAllItemIndex(
+                            searchMenuItems.length,
+                            canCreateNewQuestion,
+                          ),
+                        )
+                      }
+                      onClick={() => {
+                        // Switch to embed mode so selected questions get embedded
+                        setViewMode("embedQuestion");
+                        entityHandlers.openModal();
+                      }}
+                    />
+                  )}
                 </>
               )}
             </>

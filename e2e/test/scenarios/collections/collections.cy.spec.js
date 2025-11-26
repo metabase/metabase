@@ -30,7 +30,7 @@ describe("scenarios > collection defaults", () => {
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
-  H.describeWithSnowplow("new collection button", () => {
+  describe("new collection button", () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();

@@ -481,7 +481,7 @@ describe("question moving", () => {
   });
 });
 
-H.describeWithSnowplow("send snowplow question events", () => {
+describe("send snowplow question events", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

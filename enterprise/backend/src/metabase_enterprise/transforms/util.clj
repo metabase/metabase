@@ -128,7 +128,7 @@
 
 (defn sync-target!
   "Sync target of a transform"
-  [target database _run-id]
+  [target database]
   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
   (log/info "Syncing target" (pr-str target) "for transform")
   (activate-table-and-mark-computed! database target))

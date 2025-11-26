@@ -30,7 +30,6 @@ import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
-import { initializePlugin as initializeSemanticLayer } from "./library";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
@@ -42,6 +41,7 @@ import { initializePlugin as initializeSemanticSearch } from "./semantic_search"
 import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeSmtpOverride } from "./smtp-override";
 import { initializePlugin as initializeSnippets } from "./snippets";
+import { initializePlugin as initializeSupport } from "./support";
 import { initializePlugin as initializeTableEditing } from "./table-editing";
 import { initializePlugin as initializeTools } from "./tools";
 import { initializePlugin as initializeTransforms } from "./transforms";
@@ -91,8 +91,8 @@ export function initializePlugins() {
   initializeDependencies?.();
   initializeDocuments?.();
   initializeSemanticSearch?.();
-  initializeSemanticLayer?.();
   initializeTransforms?.();
   initializeTransformsPython?.();
   initializePublicSharing?.();
+  initializeSupport?.();
 }

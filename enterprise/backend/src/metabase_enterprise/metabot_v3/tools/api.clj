@@ -609,6 +609,7 @@
    [:name :string]
    [:display_name :string]
    [:database_id :int]
+   [:database_engine :keyword]
    [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
    [:fields ::columns]
    [:related_tables {:optional true} [:sequential [:ref ::table-result]]]

@@ -311,13 +311,13 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
+(define-premium-feature ^{:added "0.57.1"} enable-support-users?
+  "Should users be allowed to enable support users in-app?"
+  :support-users)
+
 (define-premium-feature ^{:added "0.58.0"} enable-data-studio?
   "Should we enable the Data Studio?"
   :data-studio)
-
-(define-premium-feature ^{:added "0.58.0"} enable-library?
-  "Should we eanble the Library?"
-  :library)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -349,7 +349,6 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :library                        (enable-library?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
    :offer_metabase_ai              (offer-metabase-ai-trial?)
@@ -367,6 +366,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)

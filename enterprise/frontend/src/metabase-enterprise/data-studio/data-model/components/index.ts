@@ -4,6 +4,6 @@ export * from "metabase/metadata/pages/shared/NoDatabasesEmptyState";
 export * from "metabase/metadata/pages/shared/PreviewSection";
 export * from "metabase/metadata/pages/shared/ResponsiveButton";
 export * from "metabase/metadata/pages/shared/SegmentsLink";
-export * from "metabase/metadata/pages/shared/SyncOptionsModal";
+export * from "./SyncOptionsModal";
 export * from "./TablePicker";
 export * from "./TableSection";

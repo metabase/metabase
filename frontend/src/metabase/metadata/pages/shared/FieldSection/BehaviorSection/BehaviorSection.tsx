@@ -124,7 +124,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   };
 
   return (
-    <TitledSection title={t`Behavior`}>
+    <TitledSection>
       <FieldVisibilityPicker
         description={t`Where this field should be displayed`}
         label={t`Visibility`}

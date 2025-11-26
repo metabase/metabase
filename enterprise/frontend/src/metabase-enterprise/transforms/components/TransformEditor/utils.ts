@@ -26,7 +26,8 @@ export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {
         item.model === "metric" ||
         item.model === "table"
       ) {
-        const database = databases.find((db) => db.id === item.database_id);
+        const databaseId = "db_id" in item ? item.db_id : item.database_id;
+        const database = databases.find((db) => db.id === databaseId);
         return !doesDatabaseSupportTransforms(database);
       }
 

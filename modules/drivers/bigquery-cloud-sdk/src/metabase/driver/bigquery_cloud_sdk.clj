@@ -34,6 +34,7 @@
     BigQuery
     BigQuery$DatasetListOption
     BigQuery$JobOption
+    BigQuery$QueryResultsOption
     BigQuery$TableDataListOption
     BigQuery$TableOption
     BigQueryException
@@ -45,6 +46,7 @@
     FieldValueList
     InsertAllRequest
     InsertAllRequest$RowToInsert
+    JobInfo
     QueryJobConfiguration
     Schema
     Table
@@ -698,18 +700,22 @@
   (let [^BigQuery client (database-details->client database-details)
         result-promise (promise)
         request (build-bigquery-request sql parameters)
+        job (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+        job-id (.getJobId job)
         query-future (future
                        ;; ensure the classloader is available within the future.
                        (driver-api/the-classloader)
                        (try
                          (*page-callback*)
-                         (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
-                           (deliver result-promise [:ready result])
-                           (throw (ex-info "Null response from query" {})))
+                         (let [result-options (if *page-size* [(BigQuery$QueryResultsOption/pageSize *page-size*)] [])
+                               result (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
+                           (if result
+                             (deliver result-promise [:ready result])
+                             (throw (ex-info "Null response from query" {}))))
                          (catch Throwable t
                            (deliver result-promise [:error t]))))]
 
-    ;; This `go` is responsible for cancelling the *initial* .query call.
+    ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
       (a/go
@@ -722,7 +728,12 @@
     (let [[status result] @result-promise]
       (case status
         :error  (handle-bigquery-exception result sql parameters)
-        :cancel (throw-cancelled sql parameters)
+        :cancel (try
+                  (.cancel client job-id)
+                  (catch Throwable t
+                    (log/warnf t "Couldn't cancel job %s" job-id))
+                  (finally
+                    (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*

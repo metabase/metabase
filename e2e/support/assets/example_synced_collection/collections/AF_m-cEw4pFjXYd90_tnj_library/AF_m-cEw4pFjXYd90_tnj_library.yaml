@@ -5,7 +5,7 @@ slug: synced_collection
 archive_operation_id: null
 name: Synced Collection
 personal_owner_id: null
-type: remote-synced
+type: null
 is_sample: false
 parent_id: null
 serdes/meta:
@@ -16,3 +16,4 @@ archived_directly: null
 entity_id: AF_m-cEw4pFjXYd90_tnj
 namespace: null
 created_at: '2025-10-23T09:38:19.057632-07:00'
+is_remote_synced: true

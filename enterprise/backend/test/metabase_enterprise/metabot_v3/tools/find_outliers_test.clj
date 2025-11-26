@@ -128,10 +128,11 @@
                                 {:data-source {:query (:query details)
                                                :result-field-id result-field-id}}))
 
-        (assoc-in query-details [:query :query :source-table] Integer/MAX_VALUE)
+        (update query-details :query (fn [query]
+                                       (lib/update-query-stage query 0 #(assoc % :source-table Integer/MAX_VALUE))))
         "Unexpected error running query"
 
-        (m/dissoc-in query-details [:query :query :breakout])
+        (update query-details :query lib/remove-all-breakouts)
         "No temporal dimension found. Outliers can only be detected when a temporal dimension is available.")
       (let [wrong-result-field-id (str result-field-id "99999")]
         (is (= {:output (str "Invalid result_field_id " wrong-result-field-id)}

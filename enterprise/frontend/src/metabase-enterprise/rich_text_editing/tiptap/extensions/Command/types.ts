@@ -1,3 +1,5 @@
+import type { Editor } from "@tiptap/core";
+
 import type { IconName } from "metabase/ui";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 
@@ -6,6 +8,7 @@ export interface CommandOption {
   text?: string;
   label: string;
   command: string;
+  isAllowedAtPosition?: (editor: Editor) => boolean;
 }
 
 export interface CommandSection {

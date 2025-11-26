@@ -20,6 +20,12 @@
   &:hover:not([data-disabled="true"]) {
     background-color: var(--mb-color-background-hover);
   }
+
+  &:focus {
+    outline: none;
+    background-color: var(--mb-color-background-hover);
+    border: none;
+  }
 }
 
 .itemSection {

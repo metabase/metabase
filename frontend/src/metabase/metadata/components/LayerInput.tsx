@@ -36,14 +36,12 @@ export const LayerInput = ({
         position: "bottom-start",
         ...comboboxProps,
       }}
-      data={
-        [
-          { value: "copper", label: t`Copper` },
-          { value: "bronze", label: t`Bronze` },
-          { value: "silver", label: t`Silver` },
-          { value: "gold", label: t`Gold` },
-        ] satisfies Array<{ value: TableDataLayer; label: string }>
-      }
+      data={[
+        { value: "copper" as const, label: t`Copper` },
+        { value: "bronze" as const, label: t`Bronze` },
+        { value: "silver" as const, label: t`Silver` },
+        { value: "gold" as const, label: t`Gold` },
+      ]}
       label={t`Visibility type`}
       renderOption={(item) => {
         const selected = item.option.value === value;

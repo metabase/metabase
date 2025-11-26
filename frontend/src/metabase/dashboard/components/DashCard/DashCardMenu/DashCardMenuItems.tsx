@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";

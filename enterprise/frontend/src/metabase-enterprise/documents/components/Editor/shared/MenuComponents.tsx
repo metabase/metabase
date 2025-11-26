@@ -1,4 +1,4 @@
-import type { DOMAttributes } from "react";
+import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
 import {
@@ -39,11 +39,11 @@ export const MenuItemComponent = ({
 }: {
   item: MenuItem;
   isSelected?: boolean;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
 } & DOMAttributes<HTMLButtonElement>) => (
   <UnstyledButton
     className={S.menuItem}
-    onClick={onClick || item.action}
+    onClick={onClick || (() => item.action())}
     role="option"
     aria-selected={isSelected}
     {...rest}

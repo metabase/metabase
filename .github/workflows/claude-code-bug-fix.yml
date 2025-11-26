@@ -159,15 +159,15 @@ jobs:
           1. **Analyze the issue description and comments** - Understand what the issue is describing
              a. Pay particular attention to reproduction steps and if there's an agreed upon fix.
           2. **Search the codebase** - Use Grep and Glob tools to find relevant files
-          3. **Implement a fix** - Follow existing code patterns and conventions
-          4. **Test the fix** - Run appropriate tests using the commands in CLAUDE.md:
-             - JavaScript/TypeScript: `yarn test-unit path/to/file.unit.spec.js`
-             - Clojure: `clojure -X:dev:test :only namespace/test-name`
-             - Lint: `yarn lint-eslint-pure` for JS/TS, `./bin/mage kondo <file>` for Clojure
+          3. **Implement a fix** - Use the appropriate write skill based on the file types:
+             - Use clojure-write for Clojure/ClojureScript files
+             - Use typescript-write for TypeScript/JavaScript files
+             - Follow the coding standards and patterns in each skill
+          4. **Test the fix** - Run appropriate tests as specified in the skills
           5. **Verify the fix** - Ensure tests pass and code follows conventions
 
           ## Important Guidelines
-          - Follow the development patterns in CLAUDE.md
+          - Use the appropriate write skill for the language you're working in
           - Write failing tests first, then fix them
           - Work in small, testable increments
           - Don't commit changes - leave that for the workflow
@@ -213,15 +213,14 @@ jobs:
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
       - name: Generate Bug Fix with Claude Code
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
-          mode: agent
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
-          direct_prompt: ${{ env.BUG_FIX_PROMPT }}
-          timeout_minutes: "25"
-          allowed_tools: "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
-          disallowed_tools: "Bash(git commit*),Bash(git push*),Bash(gh*)"
+          prompt: ${{ env.BUG_FIX_PROMPT }}
+          claude_args: |
+            --allowedTools "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
+            --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
       - name: Clean up scratchpad directory
         run: |

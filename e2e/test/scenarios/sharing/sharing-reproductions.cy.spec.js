@@ -323,10 +323,10 @@ describe("issue 21559", { tags: "@external" }, () => {
   it("should respect dashboard card visualization (metabase#21559)", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     H.modal().within(() => {
       H.switchToAddMoreData();

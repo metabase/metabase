@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDeepCompareEffect, useLatest } from "react-use";
 import _ from "underscore";
 
@@ -18,7 +18,7 @@ import type {
   TreeNode,
   TreePath,
 } from "../types";
-import { merge, node, rootNode } from "../utils";
+import { merge, node, rootNode, toKey } from "../utils";
 
 /**
  * For the currently view path, fetches the database, schema and table (or any subset that applies to the path).
@@ -46,7 +46,6 @@ export function useTableLoader(path: TreePath) {
       { include_editable_data_model: true },
       true,
     );
-
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
       // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
@@ -148,8 +147,22 @@ export function useTableLoader(path: TreePath) {
     [fetchSchemas, getTables, schemasRef],
   );
 
+  const pendingPathsRef = useRef(new Set<string>());
+
   const load = useCallback(
     async function (path: TreePath) {
+      const key = toKey({
+        databaseId: path.databaseId,
+        schemaName: path.schemaName,
+        tableId: path.tableId,
+      });
+
+      if (pendingPathsRef.current.has(key)) {
+        return;
+      }
+
+      pendingPathsRef.current.add(key);
+
       const { databaseId, schemaName } = path;
       const [databases, schemas, tables] = await Promise.all([
         getDatabases(),
@@ -172,10 +185,14 @@ export function useTableLoader(path: TreePath) {
                 })),
         })),
       );
-      setTree((current) => {
-        const merged = merge(current, newTree);
-        return _.isEqual(current, merged) ? current : merged;
-      });
+      try {
+        setTree((current) => {
+          const merged = merge(current, newTree);
+          return _.isEqual(current, merged) ? current : merged;
+        });
+      } finally {
+        pendingPathsRef.current.delete(key);
+      }
     },
     [getDatabases, getSchemas, getTables],
   );

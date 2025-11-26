@@ -99,29 +99,29 @@ const dataPickerValueMap: Record<
   }
 > = {
   table: {
-    tabIcon: "table",
-    tabDisplayName: "Tables",
+    tabIcon: "folder",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_TABLE,
     itemPickerData: checkNotNull(MOCK_DATABASE.tables).map(
       (table) => table.display_name,
     ),
-    pickerColIdx: 2, // tables are always level 2 in the data picker
+    pickerColIdx: 3, // tables are always level 3 in the data picker
   },
   card: {
     tabIcon: "folder",
-    tabDisplayName: "Collections",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_CARD,
     itemPickerData: ["card"],
   },
   dataset: {
     tabIcon: "folder",
-    tabDisplayName: "Collections",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_MODEL,
     itemPickerData: ["dataset"],
   },
   metric: {
     tabIcon: "folder",
-    tabDisplayName: "Collections",
+    tabDisplayName: "Data",
     recentItem: TEST_RECENT_METRIC,
     itemPickerData: ["metric"],
   },
@@ -339,14 +339,14 @@ describe("Notebook", () => {
 
         expect(await screen.findByTestId("tabs-view")).toBeInTheDocument();
 
-        for (const model of TEST_ENTITY_TYPES) {
-          const { tabDisplayName, tabIcon } = dataPickerValueMap[model];
-
-          await goToDataPickerTab({
-            name: tabDisplayName,
-            iconName: tabIcon,
-          });
-        }
+        await goToDataPickerTab({
+          name: "Data",
+          iconName: "folder",
+        });
+        await goToDataPickerTab({
+          name: "Recents",
+          iconName: "clock",
+        });
       });
     });
 
@@ -398,6 +398,9 @@ describe("Notebook", () => {
 
 const goToEntityModal = async () => {
   await userEvent.click(screen.getByText("Orders"));
+  const popover = await screen.findByTestId("mini-picker");
+  await userEvent.click(await within(popover).findByText("Sample Database"));
+  await userEvent.click(await within(popover).findByText("Browse all"));
 
   expect(screen.getByTestId("entity-picker-modal")).toBeInTheDocument();
 

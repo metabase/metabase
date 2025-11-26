@@ -66,7 +66,6 @@
   enable-remote-sync?
   enable-sandboxes?
   enable-scim?
-  enable-library?
   enable-semantic-search?
   enable-serialization?
   enable-session-timeout-config?
@@ -75,6 +74,7 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-support-users?
   enable-transforms?
   enable-python-transforms?
   enable-upload-management?

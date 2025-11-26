@@ -1,4 +1,4 @@
-import { Route } from "metabase/hoc/Title";
+import { Route } from "react-router";
 
 import { GlossaryPage } from "./pages/GlossaryPage";
 

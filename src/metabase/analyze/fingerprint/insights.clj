@@ -217,8 +217,14 @@
   [from to unit]
   (when (and from to unit)
     ;; Make sure we work for both ascending and descending time series
-    (let [[from to] (sort [from to])]
-      (about= (- to from) (unit->duration unit)))))
+    (let [[from to] (sort [from to])
+          diff      (- to from)]
+      (if (= unit :year)
+        ;; Special handling for years: accept both 365 days (non-leap) and 366 days (leap year),
+        ;; but reject anything less than 365 days
+        (and (>= diff 364.5)
+             (<= diff 366.5))
+        (about= diff (unit->duration unit))))))
 
 (defn- infer-unit
   [from to]

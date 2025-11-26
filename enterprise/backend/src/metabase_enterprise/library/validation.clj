@@ -8,7 +8,7 @@
 (defenterprise check-allowed-content
   "Check if the collection's content matches the allowed content.
   Throws an exception if it does not"
-  :feature :library
+  :feature :data-studio
   [content-type collection-id]
   (when collection-id
     (when-let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
@@ -23,9 +23,9 @@
   true)
 
 (defenterprise check-library-update
-  "Checks that a collection of type `:library` only contains allowed content."
+  "Checks that a collection of type `:data-studio` only contains allowed content."
   metabase-enterprise.library.validation
-  :feature :library
+  :feature :data-studio
   [collection]
   (when (and (contains? #{collection/library-collection-type
                           collection/library-models-collection-type

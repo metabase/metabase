@@ -3,20 +3,34 @@ import { useDeepCompareEffect } from "react-use";
 
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { CollectionItemModel } from "metabase-types/api";
 
 import { DelayedLoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
-import { useEnsureCollectionSelected } from "../../CollectionPicker";
+import {
+  type CollectionPickerItem,
+  type CollectionPickerModel,
+  useEnsureCollectionSelected,
+} from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
+import {
+  type TablePickerItem,
+  type TablePickerStatePath,
+  type TablePickerValue,
+  isTablePickerValue,
+} from "../../TablePicker";
 import { useGetInitialContainer } from "../../hooks";
 import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
 import type {
   QuestionPickerItem,
+  QuestionPickerModel,
   QuestionPickerOptions,
   QuestionPickerStatePath,
 } from "../types";
-import { getQuestionPickerValueModel, isFolder } from "../utils";
+import {
+  getQuestionPickerValueModel,
+  isFolder,
+  isTablePickerFolderOrQuestionPickerFolder,
+} from "../utils";
 
 export const defaultOptions: QuestionPickerOptions = {
   showPersonalCollections: true,
@@ -25,14 +39,16 @@ export const defaultOptions: QuestionPickerOptions = {
 };
 
 interface QuestionPickerProps {
-  initialValue?: Pick<QuestionPickerItem, "model" | "id">;
-  models?: CollectionItemModel[];
+  initialValue?: Pick<QuestionPickerItem, "model" | "id"> | TablePickerValue;
+  models?: QuestionPickerModel[];
   options: QuestionPickerOptions;
   path: QuestionPickerStatePath | undefined;
+  tablesPath?: TablePickerStatePath;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
   onInit: (item: QuestionPickerItem) => void;
   onItemSelect: (item: QuestionPickerItem) => void;
   onPathChange: (path: QuestionPickerStatePath) => void;
+  onTablesPathChange?: (path: TablePickerStatePath) => void;
   shouldDisableItem?: (item: QuestionPickerItem) => boolean;
 }
 
@@ -41,14 +57,19 @@ export const QuestionPicker = ({
   models = ["dataset", "card"],
   options,
   path: pathProp,
+  tablesPath,
   shouldShowItem,
   onInit,
   onItemSelect,
   onPathChange,
+  onTablesPathChange,
   shouldDisableItem,
 }: QuestionPickerProps) => {
   const defaultPath = useMemo(() => {
-    return getStateFromIdPath({ idPath: ["root"], models });
+    return getStateFromIdPath({
+      idPath: ["root"],
+      models: models as CollectionPickerModel[],
+    });
   }, [models]);
   const path = pathProp ?? defaultPath;
 
@@ -59,12 +80,20 @@ export const QuestionPicker = ({
 
   const onFolderSelect = useCallback(
     ({ folder }: { folder: QuestionPickerItem }) => {
-      const newPath = getStateFromIdPath({
-        idPath: getCollectionIdPath(folder, userPersonalCollectionId),
-        models,
-      });
       onItemSelect(folder);
-      onPathChange(newPath);
+
+      //if it's actually a folder
+      if (isFolder(folder, models as QuestionPickerModel[])) {
+        const newPath = getStateFromIdPath({
+          idPath: getCollectionIdPath(
+            folder as CollectionPickerItem,
+            userPersonalCollectionId,
+          ),
+          models: models as CollectionPickerModel[],
+        });
+
+        onPathChange(newPath);
+      }
     },
     [onItemSelect, onPathChange, userPersonalCollectionId, models],
   );
@@ -105,7 +134,7 @@ export const QuestionPicker = ({
 
         const newPath = getStateFromIdPath({
           idPath,
-          models,
+          models: models as CollectionPickerModel[],
         });
 
         // start with the current item selected if we can
@@ -128,7 +157,7 @@ export const QuestionPicker = ({
             { ...currentCollection, model: "collection" },
             userPersonalCollectionId,
           ),
-          models,
+          models: models as CollectionPickerModel[],
         });
 
         // start with the current item selected if we can
@@ -173,14 +202,23 @@ export const QuestionPicker = ({
 
   return (
     <NestedItemPicker
-      isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
+      initialValue={isTablePickerValue(initialValue) ? initialValue : undefined}
+      isFolder={(item: QuestionPickerItem | TablePickerItem) =>
+        isTablePickerFolderOrQuestionPickerFolder(
+          item,
+          models as QuestionPickerModel[],
+        )
+      }
       options={options}
       onFolderSelect={onFolderSelect}
       onItemSelect={handleItemSelect}
+      // @ts-expect-error - CollectionPickerItem and QuestionPickerItem don't mix 😢
       path={path}
       listResolver={CollectionItemPickerResolver}
       shouldShowItem={shouldShowItem}
       shouldDisableItem={shouldDisableItem}
+      tablesPath={tablesPath}
+      onTablesPathChange={onTablesPathChange}
     />
   );
 };

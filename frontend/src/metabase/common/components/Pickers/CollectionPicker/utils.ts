@@ -37,6 +37,11 @@ export const getPathLevelForItem = (
     return 0;
   }
 
+  if (item.model === "table") {
+    // we can ignore this, it's not actually in the collection hierarchy
+    return 0;
+  }
+
   const parentCollectionId =
     item.collection_id ??
     getParentCollectionId(item?.effective_location ?? item?.location);

@@ -30,6 +30,7 @@ type ModelHeaderProps = {
 export function ModelHeader({ card, actions }: ModelHeaderProps) {
   return (
     <PaneHeader
+      data-testid="model-header"
       title={
         card.can_write ? (
           <ModelNameInput card={card} />

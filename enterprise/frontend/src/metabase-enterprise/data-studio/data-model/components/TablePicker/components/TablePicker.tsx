@@ -110,6 +110,7 @@ export function TablePicker({
           <Popover.Target>
             <Tooltip label={t`Filter`}>
               <Button
+                aria-label={t`Filter`}
                 leftSection={
                   <Box pos="relative">
                     <Icon name="filter" />
@@ -143,7 +144,7 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Box style={{ overflow: "auto" }}>
+      <Box mih={0} flex="1 1 auto">
         {deferredQuery === "" && filtersCount === 0 ? (
           <Tree
             path={path}

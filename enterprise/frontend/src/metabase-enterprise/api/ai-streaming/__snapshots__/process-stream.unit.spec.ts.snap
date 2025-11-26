@@ -2,6 +2,7 @@
 
 exports[`processChatResponse should be able to process a valid stream 1`] = `
 {
+  "aborted": false,
   "data": [
     {
       "type": "state",
@@ -88,5 +89,46 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
       "value": "",
     },
   ],
+}
+`;
+
+exports[`processChatResponse should resolve with partial response for aborted requests 1`] = `
+{
+  "aborted": false,
+  "data": [
+    {
+      "type": "state",
+      "value": {
+        "testing": 123,
+      },
+      "version": 1,
+    },
+  ],
+  "history": [
+    {
+      "content": "Partial response",
+      "role": "assistant",
+    },
+  ],
+  "parts": [
+    {
+      "code": "0",
+      "name": "text",
+      "value": "Partial response",
+    },
+    {
+      "code": "2",
+      "name": "data",
+      "value": {
+        "type": "state",
+        "value": {
+          "testing": 123,
+        },
+        "version": 1,
+      },
+    },
+  ],
+  "text": "Partial response",
+  "toolCalls": [],
 }
 `;

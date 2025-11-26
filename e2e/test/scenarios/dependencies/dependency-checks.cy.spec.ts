@@ -6,7 +6,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
+describe("scenarios > dependencies > dependency checks", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });

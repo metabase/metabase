@@ -68,7 +68,15 @@ export function EntitySearchSection({
           key={index}
           item={item}
           isSelected={selectedIndex === index}
-          onClick={() => onItemSelect(index)}
+          onClick={(e) => {
+            // cmd/ctrl+click to open in new tab
+            if ((e.metaKey || e.ctrlKey) && item.href) {
+              e.preventDefault();
+              window.open(item.href, "_blank");
+            } else {
+              onItemSelect(index);
+            }
+          }}
           onMouseEnter={() => onItemHover(index)}
         />
       ))}

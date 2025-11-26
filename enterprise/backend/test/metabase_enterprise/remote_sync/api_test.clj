@@ -162,22 +162,22 @@
 
 ;;; ------------------------------------------------- Export Endpoint -------------------------------------------------
 
-(deftest export-errors-in-production-mode-test
-  (testing "POST /api/ee/remote-sync/export errors when in production sync mode"
-    (mt/with-temporary-setting-values [remote-sync-type :production]
+(deftest export-errors-in-read-only-mode-test
+  (testing "POST /api/ee/remote-sync/export errors when in read-only sync mode"
+    (mt/with-temporary-setting-values [remote-sync-type :read-only]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
         (let [mock-source (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Exports are only allowed when remote-sync-type is set to 'development'"
+              (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-with-default-settings-test
   (testing "POST /api/ee/remote-sync/export succeeds with default settings"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
-      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
@@ -191,8 +191,8 @@
 
 (deftest export-with-custom-branch-and-message-test
   (testing "POST /api/ee/remote-sync/export succeeds with custom branch and message"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
-      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
@@ -207,22 +207,22 @@
 
 (deftest export-requires-superuser-test
   (testing "POST /api/ee/remote-sync/export requires superuser permissions"
-    (mt/with-temporary-setting-values [remote-sync-type :development
+    (mt/with-temporary-setting-values [remote-sync-type :read-write
                                        remote-sync-url "file://repo.git"]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {}))))))
 
 (deftest export-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/export errors when remote sync is disabled"
-    (mt/with-temporary-setting-values [remote-sync-type :development
+    (mt/with-temporary-setting-values [remote-sync-type :read-write
                                        remote-sync-url nil]
       (is (= "Remote sync is not configured."
              (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))
 
 (deftest export-handles-write-errors-test
   (testing "POST /api/ee/remote-sync/export handles write errors"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
-      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
@@ -234,7 +234,7 @@
 
 (deftest export-errors-when-task-already-exists-test
   (testing "POST /api/ee/remote-sync/export errors when task already exists"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
         (let [mock-source (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -246,7 +246,7 @@
 
 (deftest export-errors-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export errors when remote is ahead of the last sync"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                               :ended_at :%now
                                               :version "other-version"}]
@@ -265,7 +265,7 @@
 
 (deftest export-force-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export can force sync when remote is ahead of the last sync"
-    (mt/with-temporary-setting-values [remote-sync-type :development]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                               :ended_at :%now
                                               :version "other-version"}]
@@ -365,7 +365,7 @@
   (testing "GET /api/ee/remote-sync/is-dirty returns false when no remote-synced collections have changes"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection _ {:name "Remote Collection"
-                                          :type "remote-synced"
+                                          :is_remote_synced true
                                           :entity_id "test-collection-1"
                                           :location "/"}]
         (is (= {:is_dirty false}
@@ -375,7 +375,7 @@
   (testing "GET /api/ee/remote-sync/is-dirty returns true when any remote-synced collection has changes"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :entity_id "test-collection-1"
                                                    :location "/"}
                      :model/Card card {:collection_id (:id remote-col)
@@ -398,7 +398,7 @@
   (testing "GET /api/ee/remote-sync/dirty returns empty list when no dirty models"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection _ {:name "Remote Collection"
-                                          :type "remote-synced"
+                                          :is_remote_synced true
                                           :entity_id "test-collection-1"
                                           :location "/"}]
         (is (= {:dirty []}
@@ -408,11 +408,11 @@
   (testing "GET /api/ee/remote-sync/dirty returns all dirty models across remote-synced collections"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col1 {:name "Remote Collection 1"
-                                                    :type "remote-synced"
+                                                    :is_remote_synced true
                                                     :entity_id "test-collection-1"
                                                     :location "/"}
                      :model/Collection remote-col2 {:name "Remote Collection 2"
-                                                    :type "remote-synced"
+                                                    :is_remote_synced true
                                                     :entity_id "test-collection-2"
                                                     :location "/"}
                      :model/Card card1 {:collection_id (:id remote-col1)
@@ -445,11 +445,11 @@
   (testing "GET /api/ee/remote-sync/dirty returns dirty models from nested collections"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :entity_id "test-collection-1"
                                                    :location "/"}
                      :model/Collection nested-col {:name "Nested Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :location (str "/" (:id remote-col) "/")}
                      :model/Card nested-card {:collection_id (:id nested-col)
                                               :name "Nested Card"}
@@ -466,7 +466,7 @@
   (testing "GET /api/ee/remote-sync/dirty deduplicates items"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :entity_id "test-collection-1"
                                                    :location "/"}
                      :model/Card card {:collection_id (:id remote-col)
@@ -493,7 +493,7 @@
       (with-redefs [settings/check-git-settings! (constantly nil)
                     source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-url nil
-                                           remote-sync-type :development]
+                                           remote-sync-type :read-write]
           (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                                  {:remote-sync-url "https://github.com/test/repo.git"
                                                                   :remote-sync-branch "main"})
@@ -501,18 +501,18 @@
             (is (=? {:success true} resp))
             (is (remote-sync.task/successful? task))))))))
 
-(deftest settings-update-triggers-import-in-production-test
-  (testing "PUT /api/ee/remote-sync/settings triggers import when type is production"
+(deftest settings-update-triggers-import-in-read-only-test
+  (testing "PUT /api/ee/remote-sync/settings triggers import when type is read-only"
     (let [mock-main (test-helpers/create-mock-source)]
       (with-redefs [settings/check-git-settings! (constantly nil)
                     source/source-from-settings (constantly mock-main)]
-        (mt/with-temporary-setting-values [remote-sync-type :production
+        (mt/with-temporary-setting-values [remote-sync-type :read-only
                                            remote-sync-branch "main"
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:remote-sync-url "file://repo.git"
-                                                :remote-sync-type :production})
+                                                :remote-sync-type :read-only})
                 task (wait-for-task-completion (:task_id response))]
             (is (=? {:success true} response))
             (is (remote-sync.task/successful? task))))))))
@@ -535,11 +535,11 @@
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"
-                                         remote-sync-type :development]
-        (testing "cannot change to production mode"
-          (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
+                                         remote-sync-type :read-write]
+        (testing "cannot change to read-only mode"
+          (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode."
                  (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                       {:remote-sync-type :production
+                                       {:remote-sync-type :read-only
                                         :remote-sync-branch "main"
                                         :remote-sync-url "https://github.com/test/repo.git"
                                         :remote-sync-token "test-token"}))))))))
@@ -550,7 +550,7 @@
     (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                        remote-sync-token "test-token"
                                        remote-sync-branch "main"
-                                       remote-sync-type :development]
+                                       remote-sync-type :read-write]
       (with-redefs [source/source-from-settings (constantly mock-source)]
         (is (= {:status "success"
                 :message "Branch 'feature-branch' created from 'main'"}
@@ -567,7 +567,7 @@
     (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                        remote-sync-token "test-token"
                                        remote-sync-branch "main"
-                                       remote-sync-type :development]
+                                       remote-sync-type :read-write]
       (mt/with-temp [:model/RemoteSyncObject remote-sync {:model_type "Card"
                                                           :model_id 1
                                                           :status "updated"

@@ -242,9 +242,10 @@ describe("#39152 sharing an unsaved question", () => {
 
   it("should ask the user to save the question before creating a public link", () => {
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("People").click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "People").click();
     });
     H.visualize();
 
@@ -309,7 +310,7 @@ describe("#39152 sharing an unsaved question", () => {
     });
   });
 
-  H.describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
+  describe(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();

@@ -7,7 +7,7 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import NewItemMenu from "metabase/common/components/NewItemMenu";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -84,7 +84,7 @@ const DefaultCollectionEmptyState = ({
 };
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
-  switch (PLUGIN_LIBRARY.getLibraryCollectionType(collection?.type)) {
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection?.type)) {
     case "models":
       return {
         title: t`No models yet`,

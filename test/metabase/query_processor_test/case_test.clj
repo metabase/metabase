@@ -59,8 +59,9 @@
                 (mt/metadata-provider)
                 {:segments [{:id         1
                              :table-id   (mt/id :venues)
-                             :definition {:source-table (mt/id :venues)
-                                          :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]})]
+                             :definition (lib/query (mt/metadata-provider)
+                                                    (mt/mbql-query venues
+                                                      {:filter [:< [:field (mt/id :venues :price) nil] 4]}))}]})]
         (is (= 179.0
                (test-case mp [:sum [:case [[[:segment 1] [:field (mt/id :venues :price) nil]]]]])))))))
 

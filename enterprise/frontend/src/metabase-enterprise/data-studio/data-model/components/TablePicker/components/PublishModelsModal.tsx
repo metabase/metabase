@@ -2,22 +2,19 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { usePublishModelsMutation } from "metabase/api";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
 } from "metabase/common/components/Pickers/CollectionPicker";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
-import * as urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
-import type {
-  DatabaseId,
-  PublishModelsResponse,
-  SchemaId,
-  TableId,
-} from "metabase-types/api";
+import { usePublishModelsMutation } from "metabase-enterprise/api";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+
+import { getPublishSeeItLink } from "../utils";
 
 interface Props {
   tables?: Set<TableId>;
@@ -45,6 +42,11 @@ export function PublishModelsModal({
   const [publishModels] = usePublishModelsMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
+  const defaultPublishCollection =
+    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
+      type: "library-models",
+    });
+
   const handleSubmit = async (collection: CollectionPickerValueItem) => {
     if (!collection) {
       sendErrorToast(t`Please select a collection`);
@@ -67,7 +69,7 @@ export function PublishModelsModal({
       sendSuccessToast(
         t`Published`,
         () => {
-          dispatch(push(getLink(data)));
+          dispatch(push(getPublishSeeItLink(data)));
         },
         t`See it`,
       );
@@ -84,16 +86,19 @@ export function PublishModelsModal({
   if (!isOpen) {
     return null;
   }
+
   if (showPublishInfo && !seenPublishModelsInfo) {
     return (
       <AcknowledgePublishModelsModal
         isOpen={true}
-        handleClose={({ acknowledged }) => {
+        handleSubmit={({ acknowledged }) => {
           if (acknowledged) {
             ackSeenPublishModelsInfo();
           }
           setShowPublishInfo(false);
-          onClose?.();
+        }}
+        handleClose={() => {
+          handleClose();
         }}
       />
     );
@@ -102,7 +107,7 @@ export function PublishModelsModal({
   return (
     <CollectionPickerModal
       value={{
-        id: "root",
+        id: defaultPublishCollection?.id || "root",
         model: "collection",
       }}
       options={{
@@ -123,29 +128,24 @@ export function PublishModelsModal({
   );
 }
 
-function getLink(response: PublishModelsResponse) {
-  if (response.created_count === 1) {
-    return urls.dataStudioModel(response.models[0].id);
-  }
-
-  return urls.dataStudioCollection(response.target_collection.id);
-}
-
 function AcknowledgePublishModelsModal({
   isOpen,
+  handleSubmit,
   handleClose,
 }: {
   isOpen: boolean;
-  handleClose: ({ acknowledged }: { acknowledged: boolean }) => void;
+  handleSubmit: ({ acknowledged }: { acknowledged: boolean }) => void;
+  handleClose: () => void;
 }) {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
+
   return (
     <Modal
       opened={isOpen}
       padding="xl"
       size={rem(512)}
       title={t`What publishing a table does`}
-      onClose={() => handleClose({ acknowledged: isAcknowledged })}
+      onClose={() => handleClose()}
     >
       <Text pt="sm">
         {t`Publishing a table means we'll create a model based on it and save it in the collection you choose so that it’s easy for your end users to find it.`}
@@ -162,7 +162,7 @@ function AcknowledgePublishModelsModal({
           />
         </Box>
         <Button
-          onClick={() => handleClose({ acknowledged: isAcknowledged })}
+          onClick={() => handleSubmit({ acknowledged: isAcknowledged })}
           variant="filled"
         >{t`Got it`}</Button>
       </Group>

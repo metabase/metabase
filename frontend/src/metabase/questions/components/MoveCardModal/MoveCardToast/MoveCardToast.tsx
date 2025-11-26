@@ -41,7 +41,7 @@ function MoveCardToast({ card, destination }: MoveCardToastProps) {
     );
 
   return (
-    <ToastRoot>
+    <ToastRoot data-testid="move-card-toast">
       <StyledIcon name="collection" />
       {match(type)
         .with("question", () => jt`Question moved to ${link}`)

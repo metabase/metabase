@@ -53,8 +53,8 @@
       ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields))))
 
 (mu/defmethod definition :model/Segment
-  [segment :- ::segments.schema/segment]
-  (-> segment :definition :filter lib/->pMBQL))
+  [segment :- [:map [:definition ::segments.schema/segment]]]
+  (-> segment :definition :stages first :filters not-empty))
 
 (defmethod definition :model/Field
   [field]
@@ -71,7 +71,7 @@
   [a b]
   (let [context-a (-> a definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
         context-b (-> b definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
-        overlap (set/intersection context-a context-b)
+        overlap (set/intersection (set context-a) (set context-b))
         min-overlap (min (count context-a) (count context-b))]
     (/ (count overlap)
        (max min-overlap 1))))

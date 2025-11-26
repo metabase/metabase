@@ -1,8 +1,9 @@
 import cx from "classnames";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
 import { getUrl, parseRouteParams } from "metabase/metadata/pages/shared/utils";
@@ -28,12 +29,13 @@ export function SearchNew({
   filters,
   setOnUpdateCallback,
 }: SearchNewProps) {
-  const { selectedTables, setSelectedTables } = useSelection();
+  const { selectedTables, setSelectedTables, selectedItemsCount } =
+    useSelection();
   const routeParams = parseRouteParams(params);
   const { baseUrl } = useContext(DataModelContext);
   const {
     data: tables,
-    isLoading,
+    isLoading: isLoadingTables,
     refetch,
   } = useListTablesQuery({
     term: query,
@@ -50,11 +52,36 @@ export function SearchNew({
     "orphan-only": filters.ownerUserId === "unknown" ? true : undefined,
     "unused-only": filters.unusedOnly === true ? true : undefined,
   });
+  const { data: databases, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery({ include_editable_data_model: true });
+
+  const allowedDatabaseIds = useMemo(
+    () => new Set(databases?.data.map((database) => database.id) ?? []),
+    [databases],
+  );
+
+  const filteredTables = useMemo(() => {
+    if (!tables || allowedDatabaseIds.size === 0) {
+      return [];
+    }
+
+    return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
+  }, [allowedDatabaseIds, tables]);
+
+  const isLoading = isLoadingTables || isLoadingDatabases;
 
   useEffect(() => {
     setOnUpdateCallback(() => refetch);
     return () => setOnUpdateCallback(null);
   }, [refetch, setOnUpdateCallback]);
+
+  const lastSelectedTableIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (selectedItemsCount === 0) {
+      lastSelectedTableIndex.current = null;
+    }
+  }, [selectedItemsCount]);
 
   if (isLoading) {
     return (
@@ -64,7 +91,7 @@ export function SearchNew({
     );
   }
 
-  if (!tables || tables.length === 0) {
+  if (filteredTables.length === 0) {
     return (
       <Box p="xl">
         <Text c="text.2">{t`No tables found`}</Text>
@@ -72,30 +99,58 @@ export function SearchNew({
     );
   }
 
-  function onTableSelect(tableId: TableId) {
-    if (selectedTables.has(tableId)) {
+  const handleTableSelect = (
+    tableId: TableId,
+    tableIndex: number,
+    options?: { isShiftPressed?: boolean },
+  ) => {
+    const isShiftPressed = Boolean(options?.isShiftPressed);
+    const hasRangeAnchor = lastSelectedTableIndex.current != null;
+
+    if (isShiftPressed && hasRangeAnchor) {
+      const anchorIndex = lastSelectedTableIndex.current;
+      if (anchorIndex == null) {
+        return;
+      }
+
+      const start = Math.min(anchorIndex, tableIndex);
+      const end = Math.max(anchorIndex, tableIndex);
+      const rangeTables = filteredTables.slice(start, end + 1);
+
       setSelectedTables((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(tableId);
+        rangeTables.forEach((rangeTable) => {
+          newSet.add(rangeTable.id);
+        });
         return newSet;
       });
-    } else {
-      setSelectedTables((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(tableId);
-        return newSet;
-      });
+
+      lastSelectedTableIndex.current = tableIndex;
+      return;
     }
-  }
+
+    setSelectedTables((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(tableId)) {
+        newSet.delete(tableId);
+      } else {
+        newSet.add(tableId);
+      }
+      return newSet;
+    });
+
+    lastSelectedTableIndex.current = tableIndex;
+  };
 
   return (
-    <Stack>
-      <Stack gap={0} px="lg">
-        {tables.map((table) => {
+    <Stack h="100%" style={{ overflow: "auto" }}>
+      <Stack gap={0}>
+        {filteredTables.map((table, tableIndex) => {
           const breadcrumbs = table.schema
             ? `${table.db?.name} (${table.schema})`
             : table.db?.name;
-          const active =
+          const isActive =
+            selectedItemsCount === 0 &&
             routeParams.databaseId === table.db_id &&
             routeParams.schemaName === table.schema &&
             routeParams.tableId === table.id;
@@ -103,13 +158,15 @@ export function SearchNew({
           return (
             <Flex
               component={Link}
+              aria-selected={isActive}
               className={cx(S.item, {
-                [S.active]: active,
+                [S.active]: isActive,
               })}
               key={table.id}
               data-testid="tree-item"
               data-type="table"
-              p="sm"
+              py="sm"
+              pe="sm"
               align="center"
               gap="sm"
               to={getUrl(baseUrl, {
@@ -122,15 +179,25 @@ export function SearchNew({
               right={0}
             >
               <Checkbox
+                w={40}
                 style={{
                   alignSelf: "flex-start",
+                  justifyContent: "center",
                   position: "relative",
                   top: 4,
+                  display: "flex",
                 }}
                 size="sm"
-                onChange={() => onTableSelect(table.id)}
                 checked={selectedTables.has(table.id)}
-                onClick={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleTableSelect(table.id, tableIndex, {
+                    isShiftPressed: Boolean(
+                      (event.nativeEvent as { shiftKey?: boolean }).shiftKey,
+                    ),
+                  });
+                }}
+                onChange={() => {}}
               />
               <Icon
                 style={{
@@ -139,18 +206,18 @@ export function SearchNew({
                   top: 4,
                 }}
                 name="table2"
-                c={active ? "brand" : "text-light"}
+                c={isActive ? "brand" : "text-light"}
                 size={16}
               />
               <Text
-                c={active ? "brand" : "text-primary"}
+                c={isActive ? "brand" : "text-primary"}
                 fw={500}
                 style={{ flex: 1 }}
               >
                 {table.display_name}
               </Text>
               {breadcrumbs && (
-                <BreadCrumbs active={active} breadcrumbs={breadcrumbs} />
+                <BreadCrumbs active={isActive} breadcrumbs={breadcrumbs} />
               )}
             </Flex>
           );

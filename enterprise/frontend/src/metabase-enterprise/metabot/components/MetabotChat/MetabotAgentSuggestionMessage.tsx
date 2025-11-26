@@ -140,7 +140,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="white"
+      bg="bg-white"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >

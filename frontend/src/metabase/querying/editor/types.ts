@@ -1,5 +1,6 @@
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker/types";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker/types";
+import type { MiniPickerTableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type {
   CardDisplayType,
@@ -22,12 +23,10 @@ export type QueryEditorModalType = "preview-query";
 export type QueryEditorDataPickerItem =
   | DataPickerItem
   | CollectionPickerItem
-  | RecentCollectionItem;
+  | RecentCollectionItem
+  | MiniPickerTableItem;
 
-export type QueryEditorDatabasePickerItem = Omit<
-  Database,
-  "tables" | "schemas"
->;
+export type QueryEditorDatabasePickerItem = Pick<Database, "id">;
 
 export type QueryEditorModalSnippet =
   | NativeQuerySnippet

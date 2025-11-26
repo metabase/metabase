@@ -778,7 +778,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.url().should("match", /\/$/);
     });
 
-    it("can manage members from the people page", { tags: "@flaky" }, () => {
+    it("can manage members from the people page", () => {
       // Open membership select for a user
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName)

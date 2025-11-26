@@ -1,6 +1,6 @@
 const { H } = cy;
 
-H.describeWithSnowplowEE("scenarios > data studio > snippets", () => {
+describe("scenarios > data studio > snippets", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

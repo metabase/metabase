@@ -89,7 +89,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/warn "update-index! called prior to init!")
+      (log/debug "update-index! called prior to init!")
       (semantic.pgvector-api/gate-updates!
        pgvector
        index-metadata
@@ -102,7 +102,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/warn "delete-from-index! called prior to init!")
+      (log/debug "delete-from-index! called prior to init!")
       (semantic.pgvector-api/gate-deletes!
        pgvector
        index-metadata
@@ -132,7 +132,7 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/warn "repair-index! called prior to init!")
+      (log/debug "repair-index! called prior to init!")
       (semantic.repair/with-repair-table!
         pgvector
         (fn [repair-table-name]

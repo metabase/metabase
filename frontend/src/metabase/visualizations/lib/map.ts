@@ -20,6 +20,12 @@ interface TileUrlParams {
   uuid?: string;
   token?: string;
   datasetResult?: Dataset;
+  /**
+   * Indicates whether the tile URL is being generated for a preview embed context.
+   * You probably don't need to set this manually as it defaults to `IS_EMBED_PREVIEW` (it's used for tests).
+   * @default IS_EMBED_PREVIEW
+   */
+  isEmbedPreview?: boolean;
 }
 
 export function getTileUrl(params: TileUrlParams): string {
@@ -35,6 +41,7 @@ export function getTileUrl(params: TileUrlParams): string {
     uuid,
     token,
     datasetResult,
+    isEmbedPreview = IS_EMBED_PREVIEW,
   } = params;
 
   const parameters = datasetResult?.json_query?.parameters ?? [];
@@ -80,6 +87,7 @@ export function getTileUrl(params: TileUrlParams): string {
         coord,
         latField,
         lonField,
+        isEmbedPreview,
         parameters,
       );
     }
@@ -118,6 +126,7 @@ export function getTileUrl(params: TileUrlParams): string {
         coord,
         latField,
         lonField,
+        isEmbedPreview,
         parameters,
       );
     }
@@ -236,6 +245,7 @@ function embedCardTileUrl(
   coord: TileCoordinate,
   latField: string,
   lonField: string,
+  isEmbedPreview: boolean,
   parameters?: unknown[],
 ): string {
   const params = new URLSearchParams({
@@ -245,7 +255,10 @@ function embedCardTileUrl(
   if (parameters && parameters.length > 0) {
     params.set("parameters", JSON.stringify(parameters));
   }
-  return `/api/embed/tiles/card/${token}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
+
+  const endpoint = isEmbedPreview ? "preview_embed" : "embed";
+
+  return `/api/${endpoint}/tiles/card/${token}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
 function embedDashboardTileUrl(
@@ -256,6 +269,7 @@ function embedDashboardTileUrl(
   coord: TileCoordinate,
   latField: string,
   lonField: string,
+  isEmbedPreview: boolean,
   parameters?: unknown[],
 ): string {
   const params = new URLSearchParams({
@@ -265,6 +279,6 @@ function embedDashboardTileUrl(
   if (parameters && parameters.length > 0) {
     params.set("parameters", JSON.stringify(parameters));
   }
-  const endpoint = IS_EMBED_PREVIEW ? "preview_embed" : "embed";
+  const endpoint = isEmbedPreview ? "preview_embed" : "embed";
   return `/api/${endpoint}/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }

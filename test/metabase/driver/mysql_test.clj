@@ -589,7 +589,7 @@
 
 ;;; ------------------------------------------------ Actions related ------------------------------------------------
 
-;; API tests are in [[metabase.actions.api-test]]
+;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (=? {:type :metabase.actions.error/violate-not-null-constraint

@@ -31190,16 +31190,16 @@ msgid "The location of your git repository, e.g. https://github.com/acme-inco/me
 msgstr "Git-arkistosi sijainti, esim. https://github.com/acme-inco/metabase.git"
 
 #: metabase_enterprise/remote_sync/settings.clj:46
-msgid "Git synchronization type - :development or :production"
-msgstr "Git-synkronointityyppi - :development tai :production"
+msgid "Git synchronization type - :read-write or :read-only"
+msgstr "Git-synkronointityyppi - :read-write tai :read-only"
 
 #: metabase_enterprise/remote_sync/settings.clj:62
-msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :production."
-msgstr "Tuodaanko automaattisesti etä-git-arkistosta. Koskee vain, jos remote-sync-type on :production."
+msgid "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only."
+msgstr "Tuodaanko automaattisesti etä-git-arkistosta. Koskee vain, jos remote-sync-type on :read-only."
 
 #: metabase_enterprise/remote_sync/settings.clj:70
-msgid "If remote-sync-type is :production and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
-msgstr "Jos remote-sync-type on :production ja remote-sync-autoimport on true, tämä on taajuus (minuuteissa), jolla tuotavia päivityksiä tarkistetaan. Oletusarvo on 5."
+msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5."
+msgstr "Jos remote-sync-type on :read-only ja remote-sync-autoimport on true, tämä on taajuus (minuuteissa), jolla tuotavia päivityksiä tarkistetaan. Oletusarvo on 5."
 
 #: metabase_enterprise/remote_sync/settings.clj:78
 msgid "The maximum amount of time a remote sync task will be given to complete"

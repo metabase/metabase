@@ -30,7 +30,11 @@ import type {
   ClickObjectDimension,
 } from "metabase-lib/v1/queries/drills/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValues,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 const getMetricColumnData = (
   columns: DatasetColumn[],
@@ -54,6 +58,7 @@ const getMetricColumnData = (
 const getColumnData = (
   columns: ColumnDescriptor[],
   datum: GroupedDatum,
+  rawRows: RowValues[],
   seriesIndex: number,
 ) => {
   return columns
@@ -63,7 +68,7 @@ const getColumnData = (
       let value;
 
       if (isMetric(column)) {
-        const metricSum = datum.rawRows.reduce<number | null>(
+        const metricSum = rawRows.reduce<number | null>(
           (acc, currentRow) => sumMetric(acc, currentRow[index]),
           null,
         );
@@ -101,6 +106,7 @@ const getColumnsData = (
   ];
 
   let metricDatum: MetricDatum;
+  let rawRows: RowValues[];
 
   if ("breakout" in chartColumns && datum.breakout) {
     data.push({
@@ -110,22 +116,26 @@ const getColumnsData = (
     });
 
     metricDatum = datum.breakout[series.seriesKey].metrics;
+    rawRows = datum.breakout[series.seriesKey].rawRows;
   } else {
     metricDatum = datum.metrics;
+    rawRows = datum.rawRows;
   }
 
   data.push(
     ...getMetricColumnData(datasetColumns, metricDatum, visualizationSettings),
   );
 
-  const otherColumnsDescriptiors = getColumnDescriptors(
+  const otherColumnsDescriptors = getColumnDescriptors(
     datasetColumns
       .filter((column) => !data.some((item) => item.col === column))
       .map((column) => column.name),
     datasetColumns,
   );
 
-  data.push(...getColumnData(otherColumnsDescriptiors, datum, seriesIndex));
+  data.push(
+    ...getColumnData(otherColumnsDescriptors, datum, rawRows, seriesIndex),
+  );
   return data;
 };
 

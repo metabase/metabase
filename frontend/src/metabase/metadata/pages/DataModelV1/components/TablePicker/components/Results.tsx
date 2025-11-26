@@ -1,6 +1,12 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
@@ -316,13 +322,13 @@ export function Results({
 }
 
 function Loading() {
-  const w = 20 + Math.random() * 80;
+  const width = useMemo(() => 20 + Math.random() * 80, []);
 
   return (
     <Skeleton
       data-testid="loading-placeholder"
-      height={rem(12)}
-      width={`${w}%`}
+      height={rem(16)}
+      width={`${width}%`}
       radius="sm"
     />
   );

@@ -61,7 +61,7 @@ export const ChartSettingSegmentsEditor = ({
               <td>
                 <TextInput
                   value={segment.label}
-                  placeholder={t`Label for this range (optional)`}
+                  placeholder={t`Optional`}
                   onChange={(e) =>
                     onChangeProperty(index, "label", e.target.value)
                   }

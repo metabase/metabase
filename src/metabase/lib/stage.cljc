@@ -61,10 +61,7 @@
                             :mbql.stage/mbql   :source/card)]
           (not-empty
            (into []
-                 (comp (map (fn [col]
-                              (cond-> (assoc col :lib/source source-type)
-                                (= :source/card source-type) (-> (assoc :lib/card-id source-card)
-                                                                 (dissoc :lib/expression-name)))))
+                 (comp (map #(assoc % :lib/source source-type))
                        ;; do not truncate the desired column aliases coming back from a native query, because if a
                        ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
                        ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]

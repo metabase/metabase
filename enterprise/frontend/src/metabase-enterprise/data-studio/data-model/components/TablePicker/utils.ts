@@ -1,4 +1,6 @@
+import * as Urls from "metabase/lib/urls";
 import { getUrl as getUrl_ } from "metabase/metadata/pages/shared/utils";
+import type { PublishModelsResponse } from "metabase-types/api";
 
 import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
 import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
@@ -247,4 +249,22 @@ export function getFiltersCount(filters: FilterState): number {
   }
 
   return count;
+}
+
+export function getPublishSeeItLink(response: PublishModelsResponse) {
+  if (response.target_collection?.type === "library-models") {
+    if (response.created_count === 1) {
+      return Urls.dataStudioModel(response.models[0].id);
+    } else {
+      return Urls.dataStudioCollection(
+        response.target_collection?.id ?? "root",
+      );
+    }
+  } else {
+    if (response.created_count === 1) {
+      return Urls.model(response.models[0]);
+    } else {
+      return Urls.collection(response.target_collection);
+    }
+  }
 }

@@ -874,9 +874,6 @@
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
-   {:name      :library
-    :available (premium-features/enable-library?)
-    :enabled   (premium-features/enable-library?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
@@ -896,7 +893,10 @@
     :enabled   (premium-features/enable-python-transforms?)}
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
-    :enabled   (premium-features/enable-dependencies?)}])
+    :enabled   (premium-features/enable-dependencies?)}
+   {:name      :support-users
+    :available (premium-features/enable-support-users?)
+    :enabled   (premium-features/enable-support-users?)}])
 
 (defn- snowplow-features
   []

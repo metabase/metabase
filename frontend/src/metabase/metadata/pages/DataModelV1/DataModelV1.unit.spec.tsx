@@ -173,6 +173,7 @@ interface SetupOpts {
   unauthorizedField?: Field;
   waitForDatabase?: boolean;
   waitForTable?: boolean;
+  shouldSkipTableMocks?: boolean;
 }
 
 const OtherComponent = () => {
@@ -193,9 +194,14 @@ async function setup({
   unauthorizedField,
   waitForDatabase = true,
   waitForTable = true,
+  shouldSkipTableMocks = false,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
+
+  if (!shouldSkipTableMocks) {
+    setupTableEndpoints(createPeopleTable());
+  }
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -499,7 +505,6 @@ describe("DataModelV1", () => {
 
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
       await setup();
-      setupTableEndpoints(createPeopleTable());
 
       await userEvent.click(
         await findTablePickerTable(ORDERS_TABLE.display_name),
@@ -572,7 +577,11 @@ describe("DataModelV1", () => {
 
   describe("multi schema database", () => {
     it("should not select the first schema if there are multiple schemas", async () => {
-      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA], waitForTable: false });
+      await setup({
+        databases: [SAMPLE_DB_MULTI_SCHEMA],
+        waitForTable: false,
+        shouldSkipTableMocks: true,
+      });
 
       expect(
         await findTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
@@ -594,6 +603,7 @@ describe("DataModelV1", () => {
       await setup({
         databases: [SAMPLE_DB, SAMPLE_DB_MULTI_SCHEMA],
         waitForTable: false,
+        shouldSkipTableMocks: true,
       });
 
       expect(
@@ -703,12 +713,19 @@ describe("DataModelV1", () => {
         screen.getByRole("button", { name: "Re-scan table" }),
       );
 
+      const calls = fetchMock.callHistory.calls(
+        `path:/api/table/${ORDERS_TABLE.id}/rescan_values`,
+        {
+          method: "POST",
+        },
+      );
+
       await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(
-          fetchMock.callHistory.called(path, { method: "POST" }),
-        ).toBeTruthy();
+        expect(calls.length).toBeGreaterThan(0);
       });
+
+      const lastCall = calls[calls.length - 1];
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
 
     it("should allow to discard field values", async () => {
@@ -727,12 +744,19 @@ describe("DataModelV1", () => {
         }),
       );
 
+      const calls = fetchMock.callHistory.calls(
+        `path:/api/table/${ORDERS_TABLE.id}/discard_values`,
+        {
+          method: "POST",
+        },
+      );
+
       await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(
-          fetchMock.callHistory.called(path, { method: "POST" }),
-        ).toBeTruthy();
+        expect(calls.length).toBeGreaterThan(0);
       });
+
+      const lastCall = calls[calls.length - 1];
+      expect(JSON.parse(lastCall.options.body as string)).toEqual({});
     });
   });
 

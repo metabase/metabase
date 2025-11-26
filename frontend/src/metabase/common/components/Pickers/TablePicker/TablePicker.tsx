@@ -11,8 +11,6 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
 import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
-import { AutoScrollBox } from "../../EntityPicker";
-
 import { DatabaseList } from "./DatabaseList";
 import { SchemaList } from "./SchemaList";
 import { TableList } from "./TableList";
@@ -23,14 +21,14 @@ import type {
   TablePickerStatePath,
   TablePickerValue,
 } from "./types";
-import { generateKey, getDbItem, getSchemaItem, getTableItem } from "./utils";
+import { getDbItem, getSchemaItem, getTableItem } from "./utils";
 
 interface Props {
   /**
    * Limit selection to a particular database
    */
   databaseId?: DatabaseId;
-  path: TablePickerStatePath | undefined;
+  path?: TablePickerStatePath | undefined;
   value: TablePickerValue | undefined;
   onItemSelect: (value: TablePickerItem) => void;
   onPathChange: (path: TablePickerStatePath) => void;
@@ -169,8 +167,15 @@ export const TablePicker = ({
       const hasDbs = !isLoadingDatabases && databases && databases.length > 0;
 
       if (hasDbs && !selectedDbItem) {
-        const firstDatabase = databases[0];
-        const item = getDbItem(databases, firstDatabase.id);
+        const firstDatabase = shouldDisableItem
+          ? databases.find(
+              (db) => !shouldDisableItem({ ...db, model: "database" }),
+            )
+          : databases[0];
+
+        const item = firstDatabase
+          ? getDbItem(databases, firstDatabase.id)
+          : undefined;
 
         if (item) {
           handleFolderSelectRef.current(item);
@@ -183,6 +188,7 @@ export const TablePicker = ({
       databases,
       handleFolderSelectRef,
       selectedDbItem,
+      shouldDisableItem,
     ],
   );
 
@@ -240,54 +246,45 @@ export const TablePicker = ({
   );
 
   return (
-    <AutoScrollBox
-      contentHash={generateKey(
-        selectedDbItem,
-        selectedSchemaItem,
-        selectedTableItem,
+    <Flex h="100%" w="fit-content">
+      {!databaseId && (
+        <DatabaseList
+          databases={databases}
+          error={errorDatabases}
+          isCurrentLevel={
+            schemaName == null || (schemas?.length === 1 && !tableId)
+          }
+          isLoading={isLoadingDatabases}
+          selectedItem={selectedDbItem}
+          onClick={handleFolderSelect}
+          shouldDisableItem={shouldDisableItem}
+        />
       )}
-      data-testid="nested-item-picker"
-    >
-      <Flex h="100%" w="fit-content">
-        {!databaseId && (
-          <DatabaseList
-            databases={databases}
-            error={errorDatabases}
-            isCurrentLevel={
-              schemaName == null || (schemas?.length === 1 && !tableId)
-            }
-            isLoading={isLoadingDatabases}
-            selectedItem={selectedDbItem}
-            onClick={handleFolderSelect}
-            shouldDisableItem={shouldDisableItem}
-          />
-        )}
 
-        {isNotNull(dbId) && (
-          <SchemaList
-            dbId={dbId}
-            dbName={selectedDbItem?.name}
-            error={errorSchemas}
-            isCurrentLevel={!tableId}
-            isLoading={isLoadingSchemas}
-            schemas={isLoadingSchemas ? undefined : schemas}
-            selectedItem={selectedSchemaItem}
-            onClick={handleFolderSelect}
-          />
-        )}
+      {isNotNull(dbId) && (
+        <SchemaList
+          dbId={dbId}
+          dbName={selectedDbItem?.name}
+          error={errorSchemas}
+          isCurrentLevel={!tableId}
+          isLoading={isLoadingSchemas}
+          schemas={isLoadingSchemas ? undefined : schemas}
+          selectedItem={selectedSchemaItem}
+          onClick={handleFolderSelect}
+        />
+      )}
 
-        {isNotNull(schemaName) && (
-          <TableList
-            error={errorTables}
-            isCurrentLevel
-            isLoading={isLoadingTables}
-            selectedItem={selectedTableItem}
-            tables={isLoadingTables ? undefined : tables}
-            onClick={handleTableSelect}
-            shouldDisableItem={shouldDisableItem}
-          />
-        )}
-      </Flex>
-    </AutoScrollBox>
+      {isNotNull(schemaName) && (
+        <TableList
+          error={errorTables}
+          isCurrentLevel
+          isLoading={isLoadingTables}
+          selectedItem={selectedTableItem}
+          tables={isLoadingTables ? undefined : tables}
+          onClick={handleTableSelect}
+          shouldDisableItem={shouldDisableItem}
+        />
+      )}
+    </Flex>
   );
 };

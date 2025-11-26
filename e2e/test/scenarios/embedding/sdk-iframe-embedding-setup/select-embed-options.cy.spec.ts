@@ -14,7 +14,7 @@ const QUESTION_NAME = "Orders, Count";
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

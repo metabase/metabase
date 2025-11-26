@@ -55,7 +55,7 @@
                               :rename                          true
                               :actions                         false
                               :metadata/key-constraints        false
-                              :database-routing                true
+                              :database-routing                false
                               :transforms/python               true
                               :transforms/table                true
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata

@@ -20,7 +20,7 @@ const TARGET_SCHEMA = "Schema A";
 const TARGET_SCHEMA_2 = "Schema B";
 const CUSTOM_SCHEMA = "custom_schema";
 
-H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
+describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -57,8 +57,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         event_detail: "query",
       });
 
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -408,8 +409,9 @@ LIMIT
       H.popover().findByText("Query builder").click();
 
       cy.log("set the query");
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -429,8 +431,9 @@ LIMIT
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
 
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -478,8 +481,9 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       getQueryEditor().button("Save").click();
@@ -512,13 +516,22 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
+
+      H.miniPicker().within(() => {
+        // no sample db in mini picker
+        cy.findByText(/Writable Postgres/).should("be.visible");
+        cy.findByText("Sample Database").should("not.exist");
+      });
+
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Databases").click();
         cy.findAllByTestId("picker-item")
           .contains("Sample Database")
           .should("have.attr", "data-disabled", "true");
         cy.findAllByTestId("picker-item")
-          .contains("Orders")
-          .should("have.attr", "data-disabled", "true");
+          .contains(/Writable Postgres/)
+          .should("not.have.attr", "data-disabled");
       });
     });
 
@@ -526,7 +539,7 @@ LIMIT
       H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
         (tableId) =>
           H.createQuestion({
-            name: "Metric",
+            name: "Animal Metric",
             type: "metric",
             query: {
               "source-table": tableId,
@@ -538,10 +551,17 @@ LIMIT
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
+
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText(/metric/i).should("not.exist");
+      });
+
+      H.miniPickerHeader().click(); // go back
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByText("Collections").click();
         cy.findAllByTestId("picker-item")
-          .contains("Metric")
+          .contains("Animal Metric")
           .should("have.attr", "data-disabled", "true");
       });
     });
@@ -600,8 +620,9 @@ LIMIT
       H.popover().findByText("Query builder").click();
 
       cy.log("build a query with 1 aggregation and 2 breakouts");
-      H.entityPickerModal().within(() => {
+      H.miniPicker().within(() => {
         cy.findByText(DB_NAME).click();
+        cy.findByText(TARGET_SCHEMA).click();
         cy.findByText(SOURCE_TABLE).click();
       });
       H.getNotebookStep("summarize")
@@ -1562,7 +1583,7 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
     getTransformsSidebar().button("Create a transform").click();
     H.popover().findByText("Query builder").click();
 
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
       cy.findByText(DB_NAME).click();
       cy.findByText("Orders").click();
     });
@@ -1716,7 +1737,7 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
   });
 
-  H.describeWithSnowplowEE("runs", () => {
+  describe("runs", () => {
     beforeEach(() => {
       H.resetSnowplow();
     });

@@ -21,9 +21,9 @@
 
   Takes a collection to check for editability.
 
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :development
+  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
   or when the collection is not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :development)
+  (or (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))

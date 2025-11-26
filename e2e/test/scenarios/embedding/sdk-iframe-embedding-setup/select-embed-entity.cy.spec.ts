@@ -21,7 +21,7 @@ const SECOND_QUESTION_NAME = "Orders, Count, Grouped by Created At (year)";
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed entity";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

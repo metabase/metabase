@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { usePageTitle } from "metabase/hooks/use-page-title";
+
 import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
 
 type DependenciesSectionLayoutProps = {
@@ -10,6 +12,8 @@ type DependenciesSectionLayoutProps = {
 export function DependenciesSectionLayout({
   children,
 }: DependenciesSectionLayoutProps) {
+  usePageTitle(t`Dependency graph`);
+
   return (
     <SectionLayout title={<SectionTitle title={t`Dependency graph`} />}>
       {children}

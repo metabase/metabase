@@ -26,7 +26,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "../../components";
-import { EditTableMetadata } from "../../components/TableSection/EditTableMetadata";
+import { TableAttributesEditBulk } from "../../components/TableSection/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";
@@ -125,12 +125,20 @@ function DataModelContent({ params }: Props) {
     !isEmptyStateShown && field && table && isPreviewOpen;
 
   const showBulkTableEdit = hasSelectedItems && !hasOnlyOneTableSelected;
-  const showFieldDetails = field && !showBulkTableEdit && !isEmptyStateShown;
+  const showFieldDetails =
+    fieldId != null && !showBulkTableEdit && !isEmptyStateShown;
   const showTableDetailsSection =
-    metadataTableId && !hasSelectedMoreThanOneTable && !showBulkTableEdit;
+    metadataTableId != null &&
+    !hasSelectedMoreThanOneTable &&
+    !showBulkTableEdit;
 
   return (
-    <Flex bg="accent-gray-light" data-testid="data-model" h="100%">
+    <Flex
+      bg="accent-gray-light"
+      data-testid="data-model"
+      h="100%"
+      style={{ overflow: "auto" }}
+    >
       <Stack
         bg="bg-white"
         className={S.column}
@@ -172,9 +180,10 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <EditTableMetadata />
+            <TableAttributesEditBulk />
           </Stack>
         )}
+
         {showTableDetailsSection && (
           <Stack
             className={S.column}
@@ -203,6 +212,7 @@ function DataModelContent({ params }: Props) {
 
         {showFieldDetails && (
           <Stack
+            bg="white"
             className={S.column}
             flex={COLUMN_CONFIG.field.flex}
             h="100%"

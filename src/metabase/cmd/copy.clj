@@ -114,7 +114,9 @@
     :model/NotificationRecipient
     :model/NotificationCard
     ;; 57+
-    :model/Glossary]
+    :model/Glossary
+    ;; 58+
+    :model/AuthIdentity]
    (when config/ee-available?
      [:model/Sandbox
       :model/ConnectionImpersonation

@@ -67,7 +67,7 @@ export function CollectionPage({ params }: CollectionPageProps) {
   const showEmptyState = items.length === 0;
 
   return (
-    <Flex direction="column" h="100%">
+    <Flex direction="column" h="100%" data-testid="collection-page">
       <PaneHeader
         title={<PanelHeaderTitle>{collection.name}</PanelHeaderTitle>}
       />

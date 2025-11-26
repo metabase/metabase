@@ -23,7 +23,6 @@ export const ResizeNode: Node<{
   name: "resizeNode",
   group: "block",
   content: "(flexContainer | cardEmbed)",
-  atom: true,
   draggable: false,
   selectable: false,
   disableDropCursor: true,

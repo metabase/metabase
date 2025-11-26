@@ -17,7 +17,7 @@ export type ModelSettings = {
   visualizationSettings: ComputedVisualizationSettings;
 };
 type DatasetEditorSettingsSidebarProps = {
-  onUpdateModelSettings: (settings: Partial<ModelSettings>) => void;
+  onUpdateModelSettings: (settings: { display: CardDisplayType }) => void;
   visualizationSettings: ComputedVisualizationSettings;
   display?: CardDisplayType;
 };

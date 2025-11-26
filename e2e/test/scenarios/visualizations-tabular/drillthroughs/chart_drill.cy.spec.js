@@ -245,8 +245,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     // Build a new question off that grouping by City
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.contains("CA People").click();
     });
 
@@ -855,7 +855,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  H.describeWithSnowplow("chart click actions analytics", () => {
+  describe("chart click actions analytics", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.restore();

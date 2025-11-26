@@ -6,6 +6,14 @@ const snippetsSection = () => cy.findByTestId("snippets-section");
 const glossarySection = () => cy.findByTestId("glossary-section");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
+const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
+const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
+const modelOverviewPage = () => cy.findByTestId("model-overview-page");
+const modelQueryEditor = () => cy.findByTestId("model-query-editor");
+const modelFieldsPage = () => cy.findByTestId("model-fields-page");
+const collectionPage = () => cy.findByTestId("collection-page");
+const modelingEmptyPage = () =>
+  cy.findByText("Pick a collection or create a new model or metric");
 
 export const DataStudio = {
   header: () => cy.findByTestId("data-studio-header"),
@@ -60,5 +68,43 @@ export const DataStudio = {
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
+  },
+  Metrics: {
+    overviewPage: metricOverviewPage,
+    queryEditor: metricQueryEditor,
+    nameInput: () => metricQueryEditor().findByPlaceholderText("New metric"),
+    saveButton: () =>
+      metricQueryEditor().findByRole("button", { name: "Save" }),
+    cancelButton: () =>
+      metricQueryEditor().findByRole("button", { name: "Cancel" }),
+    header: () => cy.findByTestId("metric-header"),
+    moreMenu: () => DataStudio.Metrics.header().icon("ellipsis"),
+    overviewTab: () => DataStudio.Metrics.header().findByText("Overview"),
+    definitionTab: () => DataStudio.Metrics.header().findByText("Definition"),
+    dependenciesTab: () =>
+      DataStudio.Metrics.header().findByText("Dependencies"),
+  },
+  Models: {
+    overviewPage: modelOverviewPage,
+    queryEditor: modelQueryEditor,
+    fieldsPage: modelFieldsPage,
+    nameInput: () => modelQueryEditor().findByPlaceholderText("New model"),
+    saveButton: () => modelQueryEditor().findByRole("button", { name: "Save" }),
+    cancelButton: () =>
+      modelQueryEditor().findByRole("button", { name: "Cancel" }),
+    header: () => cy.findByTestId("model-header"),
+    moreMenu: () => DataStudio.Models.header().icon("ellipsis"),
+    overviewTab: () => DataStudio.Models.header().findByText("Overview"),
+    definitionTab: () => DataStudio.Models.header().findByText("Definition"),
+    fieldsTab: () => DataStudio.Models.header().findByText("Fields"),
+    dependenciesTab: () =>
+      DataStudio.Models.header().findByText("Dependencies"),
+  },
+  Modeling: {
+    emptyPage: modelingEmptyPage,
+    collectionPage: collectionPage,
+    collectionTitle: () => collectionPage().findByRole("heading"),
+    metricItem: (name: string) => cy.findByTestId("metric-name").contains(name),
+    modelItem: (name: string) => cy.findByTestId("dataset-name").contains(name),
   },
 };

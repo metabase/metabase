@@ -231,17 +231,24 @@ export function useMultiAutocomplete({
       newFieldValues,
       fieldSelection,
     );
+    const newFieldSelection = {
+      index: fieldSelection.index + newFieldValues.length,
+      length: 0,
+    };
+    const newFilteredOptions = getOptionsWithoutDuplicates(
+      newValues,
+      options,
+      newFieldSelection,
+    );
+
+    setFieldSelection(newFieldSelection);
+    if (newFilteredOptions.length === 0) {
+      setFieldValue("");
+      combobox.closeDropdown();
+      combobox.resetSelectedOption();
+    }
     onChange(newValues);
-    setFieldState({
-      fieldValue: "",
-      fieldSelection: {
-        index: fieldSelection.index + newFieldValues.length,
-        length: 0,
-      },
-    });
     onOptionSubmit?.(value);
-    combobox.closeDropdown();
-    combobox.resetSelectedOption();
   };
 
   const handleWindowKeydownCapture = (event: KeyboardEvent) => {

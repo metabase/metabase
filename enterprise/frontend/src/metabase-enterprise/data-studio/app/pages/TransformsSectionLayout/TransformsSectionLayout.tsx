@@ -2,6 +2,7 @@ import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import * as Urls from "metabase/lib/urls";
 import { Group } from "metabase/ui";
 import {
@@ -20,6 +21,8 @@ export function TransformsSectionLayout({
   location,
   children,
 }: TransformsSectionLayoutProps) {
+  usePageTitle(t`Transforms`);
+
   return (
     <SectionLayout tabs={<DataSectionTabs location={location} />}>
       {children}

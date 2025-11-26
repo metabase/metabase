@@ -1,7 +1,5 @@
 .section {
   overflow: auto;
-  min-width: 20rem;
-  max-width: 50rem;
   border-right: 1px solid var(--mb-color-border);
 }
 

@@ -90,10 +90,10 @@ function shouldInvalidateForCollection(
     return false;
   }
 
-  const oldType = oldCollection?.type;
-  const newType = newCollection.type;
+  const oldSynced = oldCollection?.is_remote_synced ?? false;
+  const newSynced = newCollection.is_remote_synced ?? false;
 
-  return oldType === "remote-synced" || newType === "remote-synced";
+  return oldSynced || newSynced;
 }
 
 function getOriginalDocument(originalState: State, id: number) {
@@ -240,7 +240,7 @@ remoteSyncListenerMiddleware.startListening({
   effect: async (action: PayloadAction<Collection>, { dispatch }) => {
     const collection = action.payload;
 
-    if (collection.type === "remote-synced") {
+    if (collection.is_remote_synced) {
       invalidateRemoteSyncTags(dispatch);
     }
   },
@@ -277,7 +277,7 @@ remoteSyncListenerMiddleware.startListening({
         deleteRequest.id,
       );
 
-      if (collection?.type === "remote-synced") {
+      if (collection?.is_remote_synced) {
         invalidateRemoteSyncTags(dispatch);
       }
     }

@@ -34,7 +34,8 @@
             }
           }
         ]
-      }
+      },
+      { "type": "paragraph" }
     ]
   },
   "card114Query": {

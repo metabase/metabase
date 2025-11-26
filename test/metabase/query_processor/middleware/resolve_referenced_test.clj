@@ -89,6 +89,35 @@
                                                                ::qp.resolve-referenced/card 1)
                    (ex-message e)))))))))
 
+(deftest ^:parallel circular-referencing-tags-and-mbql-queries-test
+  (testing "fails on query with circular referencing sub-queries involving both mbql and native queries #65743"
+    (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                             meta/metadata-provider
+                             [{:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM {{#2}} AS c2"
+                                          :template-tags (card-template-tags [2])}}
+                              {:database (meta/id)
+                               :type     :query
+                               :query    {:source-table "card__1"}}])
+          entrypoint-query  (lib/query
+                             metadata-provider
+                             {:database (meta/id)
+                              :type     :native
+                              :native   {:query         "SELECT * FROM {{#1}}"
+                                         :template-tags (card-template-tags [1])}})]
+      (is (thrown?
+           ExceptionInfo
+           (#'qp.resolve-referenced/check-for-circular-references entrypoint-query)))
+      (try
+        (#'qp.resolve-referenced/check-for-circular-references entrypoint-query)
+        (catch ExceptionInfo e
+          (testing e
+            (is (= (#'qp.resolve-referenced/circular-ref-error entrypoint-query
+                                                               ::qp.resolve-referenced/card 2
+                                                               ::qp.resolve-referenced/card 1)
+                   (ex-message e)))))))))
+
 (defn- make-card-template-tag
   "Helper to create a card template tag with proper display-name"
   [card-id & [tag-name]]

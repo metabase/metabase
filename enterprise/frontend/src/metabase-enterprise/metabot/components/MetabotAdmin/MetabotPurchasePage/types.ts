@@ -5,6 +5,10 @@ export interface IMetabotPurchaseFormFields {
   terms_of_service: boolean;
 }
 
+export interface IPageForNonStoreUserProps {
+  anyStoreUserEmailAddress?: string;
+}
+
 export interface IMetabotRadioProps {
   selected?: boolean;
   value: string;

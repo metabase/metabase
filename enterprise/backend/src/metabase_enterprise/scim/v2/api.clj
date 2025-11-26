@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -251,7 +250,7 @@
       (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
-                       (user/insert-new-user! mb-user)
+                       (t2/insert! :model/User mb-user)
                        (-> (t2/select-one (cons :model/User user-cols)
                                           :email (u/lower-case-en email))
                            mb-user->scim))]

@@ -24,7 +24,7 @@ const CARD_EMBED_ID = "cce109c3-4cec-caf1-a569-89fa15410ae1";
 const FIRST_REACTION_EMOJI = "😀";
 const SECOND_REACTION_EMOJI = "😃";
 
-H.describeWithSnowplowEE("document comments", () => {
+describe("document comments", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

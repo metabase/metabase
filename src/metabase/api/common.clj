@@ -3,7 +3,7 @@
 ;; We use a custom macro called `defendpoint` for defining all endpoints. It's best illustrated with an example:
 ;;
 ;; <pre><code>
-;; (ns metabase.dashboards.api ...)
+;; (ns metabase.dashboards-rest.api ...)
 ;;
 ;; (api/defendpoint :get "/"
 ;;  "Get `Dashboards`. With filter option `f`..."

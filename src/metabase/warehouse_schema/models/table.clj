@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -25,7 +26,7 @@
   Deprecated and will eventually be replaced by data-layer"
   #{:hidden :technical :cruft})
 
-(def ^:private data-sources
+(def data-sources
   "Valid values for data source"
   #{:unknown :ingested :metabase-transform :transform :source-data :upload})
 
@@ -158,7 +159,8 @@
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))}]
+                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
+                  :data_layer   :bronze}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -347,18 +349,21 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
-  (mi/instances-with-hydrated-data
-   tables k
-   #(let [table-ids                (map :id tables)
-          table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
-                                                     :from_entity_type "table"
-                                                     :from_entity_id [:in table-ids]
-                                                     :to_entity_type "transform")
-          transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
-                                     (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
-      (update-vals table-id->transform-id transform-id->transform))
-   :id
-   {:default nil}))
+  (if config/ee-available?
+    (mi/instances-with-hydrated-data
+     tables k
+     #(let [table-ids                (map :id tables)
+            table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
+                                                       :from_entity_type "table"
+                                                       :from_entity_id [:in table-ids]
+                                                       :to_entity_type "transform")
+            transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
+                                       (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
+        (update-vals table-id->transform-id transform-id->transform))
+     :id
+     {:default nil})
+    ;; EE not available, so no transforms
+    tables))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
@@ -483,11 +488,12 @@
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :data_layer :owner_email :owner_user_id]
+               :data_source :owner_email :owner_user_id]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)
                :deactivated_at (serdes/date)
+               :data_layer  (serdes/optional-kw)
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]

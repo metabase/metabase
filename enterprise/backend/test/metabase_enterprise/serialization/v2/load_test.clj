@@ -305,15 +305,15 @@
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! seg1s   (ts/create! :model/Segment :table_id (:id @table1s) :name "Minors"
                                         :definition {:source-table (:id @table1s)
-                                                     :aggregation [[:count]]
-                                                     :filter [:< [:field (:id @field1s) nil] 18]}
+                                                     :filter       [:< [:field (:id @field1s) nil] 18]}
                                         :creator_id (:id @user1s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "exported form is properly converted"
-          (is (= {:source-table ["my-db" nil "customers"]
-                  :aggregation [[:count]]
-                  :filter [:< [:field ["my-db" nil "customers" "age"] nil] 18]}
+          (is (= {:database "my-db"
+                  :query    {:filter       [:< [:field ["my-db" nil "customers" "age"] nil] 18]
+                             :source-table ["my-db" nil "customers"]}
+                  :type     :query}
                  (-> @serialized
                      (by-model "Segment")
                      first
@@ -344,10 +344,11 @@
             (is (not= (:definition @seg1s)
                       (:definition @seg1d)))
             (testing "the Segment's definition is based on the new Database, Table, and Field IDs"
-              (is (= {:source-table (:id @table1d)
-                      :filter       [:< [:field (:id @field1d) nil] 18]
-                      :aggregation  [[:count]]}
-                     (:definition @seg1d))))))))))
+              (is (=? {:lib/type :mbql/query
+                       :stages   [{:source-table (:id @table1d)
+                                   :filters      [[:< {} [:field {} (:id @field1d)] 18]]}]
+                       :database (:id @db1d)}
+                      (:definition @seg1d))))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test

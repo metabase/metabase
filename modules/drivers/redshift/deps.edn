@@ -5,5 +5,5 @@
  {"redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
 
  :deps
- {com.amazon.redshift/redshift-jdbc42 {:mvn/version "2.1.0.34"}
+ {com.amazon.redshift/redshift-jdbc42 {:mvn/version "2.2.0"}
   com.amazonaws/aws-java-sdk-core     {:mvn/version "1.12.792"}}}

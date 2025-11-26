@@ -37,7 +37,7 @@ describe("scenarios - embedding hub", () => {
           "be.visible",
         );
         // Click on the first available table
-        cy.get("[data-testid='picker-item']").first().click();
+        H.entityPickerModalItem(3, "Accounts").click();
       });
 
       cy.log("Should navigate to auto dashboard creation");

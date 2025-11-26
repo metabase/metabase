@@ -1,32 +1,22 @@
 import { t } from "ttag";
 
-import { useDiscardTablesFieldValuesMutation } from "metabase/api";
+import { useDiscardTableFieldValuesMutation } from "metabase/api";
 import { useTemporaryState } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 interface Props {
-  databaseIds?: DatabaseId[];
-  schemaIds?: SchemaId[];
-  tableIds?: TableId[];
+  tableId: TableId;
 }
 
-export const DiscardTableFieldValuesButton = ({
-  databaseIds,
-  schemaIds,
-  tableIds,
-}: Props) => {
-  const [discardTablesFieldValues] = useDiscardTablesFieldValuesMutation();
+export const DiscardTableFieldValuesButton = ({ tableId }: Props) => {
+  const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
   const { sendErrorToast } = useMetadataToasts();
   const [started, setStarted] = useTemporaryState(false, 2000);
 
   const handleClick = async () => {
-    const { error } = await discardTablesFieldValues({
-      database_ids: databaseIds,
-      schema_ids: schemaIds,
-      table_ids: tableIds,
-    });
+    const { error } = await discardTableFieldValues(tableId);
 
     if (error) {
       sendErrorToast(t`Failed to discard values`);

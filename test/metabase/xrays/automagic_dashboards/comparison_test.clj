@@ -1,6 +1,8 @@
 (ns metabase.xrays.automagic-dashboards.comparison-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as c]
@@ -8,10 +10,19 @@
    [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
    [toucan2.core :as t2]))
 
+(defn- pmbql-segment-definition
+  "Create an MBQL5 segment definition"
+  [table-id field-id value]
+  (let [metadata-provider (mt/metadata-provider)
+        table (lib.metadata/table metadata-provider table-id)
+        query (lib/query metadata-provider table)
+        field (lib.metadata/field metadata-provider field-id)]
+    (lib/filter query (lib/> field value))))
+
 (def ^:private segment
   (delay
-    {:table_id   (mt/id :venues)
-     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
+    {:table_id (mt/id :venues)
+     :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
 
 (defn- test-comparison
   [left right]
@@ -33,8 +44,12 @@
 
 (deftest ^:parallel test-2
   (mt/with-temp [:model/Segment {segment1-id :id} @segment
-                 :model/Segment {segment2-id :id} {:table_id   (mt/id :venues)
-                                                   :definition {:filter [:< [:field (mt/id :venues :price) nil] 4]}}]
+                 :model/Segment {segment2-id :id} {:table_id (mt/id :venues)
+                                                   :definition (let [metadata-provider (mt/metadata-provider)
+                                                                     table (lib.metadata/table metadata-provider (mt/id :venues))
+                                                                     query (lib/query metadata-provider table)
+                                                                     field (lib.metadata/field metadata-provider (mt/id :venues :price))]
+                                                                 (lib/filter query (lib/< field 4)))}]
     (mt/with-test-user :rasta
       (with-rollback-only-transaction
         (is (some? (test-comparison (t2/select-one :model/Segment :id segment1-id) (t2/select-one :model/Segment :id segment2-id))))))))
@@ -42,7 +57,7 @@
 (deftest ^:parallel test-3
   (mt/with-test-user :rasta
     (with-rollback-only-transaction
-      (let [q (api.automagic-dashboards/adhoc-query-instance {:query    {:filter       (-> @segment :definition :filter)
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
                                                                          :source-table (mt/id :venues)}
                                                               :type     :query
                                                               :database (mt/id)})]
@@ -50,7 +65,7 @@
 
 (deftest ^:parallel test-4
   (mt/with-temp [:model/Card {card-id :id} {:table_id      (mt/id :venues)
-                                            :dataset_query {:query    {:filter       (-> @segment :definition :filter)
+                                            :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
                                                                        :source-table (mt/id :venues)}
                                                             :type     :query
                                                             :database (mt/id)}}]

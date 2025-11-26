@@ -163,3 +163,88 @@ export const DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS = {
   ],
   type: "doc",
 };
+
+export const DOCUMENT_WITH_SUPPORTING_TEXT = {
+  type: "doc",
+  content: [
+    {
+      type: "resizeNode",
+      attrs: {
+        height: 350,
+        minHeight: 280,
+        _id: "1",
+      },
+      content: [
+        {
+          type: "flexContainer",
+          attrs: {
+            _id: "1a",
+            columnWidths: [33.33333333333333, 66.66666666666666],
+          },
+          content: [
+            {
+              type: "supportingText",
+              attrs: { _id: "1b" },
+              content: [
+                {
+                  type: "paragraph",
+                  attrs: { _id: "1c" },
+                  content: [
+                    {
+                      type: "text",
+                      text: "Lorem ipsum",
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              type: "cardEmbed",
+              attrs: {
+                id: ORDERS_QUESTION_ID,
+                name: null,
+                _id: "2a2",
+              },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "paragraph",
+      content: [
+        {
+          type: "text",
+          text: "Standalone card below",
+        },
+      ],
+      attrs: {
+        _id: "3",
+      },
+    },
+    {
+      type: "resizeNode",
+      attrs: {
+        height: 350,
+        minHeight: 280,
+        _id: "4",
+      },
+      content: [
+        {
+          type: "cardEmbed",
+          attrs: {
+            id: ORDERS_COUNT_QUESTION_ID,
+            name: null,
+            _id: "4a",
+          },
+        },
+      ],
+    },
+    {
+      type: "paragraph",
+      attrs: {
+        _id: "5",
+      },
+    },
+  ],
+};

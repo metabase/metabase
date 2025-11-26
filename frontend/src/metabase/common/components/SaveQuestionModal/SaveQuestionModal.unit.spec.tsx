@@ -8,6 +8,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -119,6 +120,7 @@ const setup = async (
   });
   setupDashboardEndpoints(FOO_DASH);
   setupDashboardEndpoints(BAR_DASH);
+  setupLibraryEndpoints();
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
@@ -595,9 +597,11 @@ describe("SaveQuestionModal", () => {
       expect(
         await screen.findByLabelText(/Which tab should this go on/),
       ).toBeInTheDocument();
-      expect(
-        await screen.findByLabelText(/Which tab should this go on/),
-      ).toHaveValue("Foo Tab 1");
+      await waitFor(async () => {
+        expect(
+          await screen.findByLabelText(/Which tab should this go on/),
+        ).toHaveValue("Foo Tab 1");
+      });
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {

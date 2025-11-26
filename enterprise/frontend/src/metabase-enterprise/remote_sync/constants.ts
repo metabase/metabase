@@ -15,9 +15,9 @@ export const REMOTE_SYNC_SCHEMA = Yup.object({
   [TOKEN_KEY]: Yup.string().nullable().default(null),
   [AUTO_IMPORT_KEY]: Yup.boolean().nullable().default(false),
   [TYPE_KEY]: Yup.string()
-    .oneOf(["production", "development"] as const)
+    .oneOf(["read-only", "read-write"] as const)
     .nullable()
-    .default("production"),
+    .default("read-only"),
   [BRANCH_KEY]: Yup.string().nullable().default("main"),
 });
 

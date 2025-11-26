@@ -87,9 +87,10 @@ describe("scenarios > reference > databases", () => {
 
     it("should sort databases in new UI based question data selection popover", () => {
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByTestId("item-picker-level-0").within(() => {
+        H.entityPickerModalItem(0, "Databases").click();
+        cy.findByTestId("item-picker-level-1").within(() => {
           cy.get("[data-index='0']").should("contain.text", "a");
           cy.get("[data-index='1']").should("contain.text", "b");
           cy.get("[data-index='2']").should("contain.text", "c");
@@ -108,7 +109,7 @@ describe("scenarios > reference > databases", () => {
     );
   });
 
-  H.describeWithSnowplow("x-ray", () => {
+  describe("x-ray", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as(
         "getXrayDashboard",

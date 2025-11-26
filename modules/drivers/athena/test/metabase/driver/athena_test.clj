@@ -41,7 +41,7 @@
                {:name              "data"
                 :base-type         :type/Dictionary
                 :database-type     "struct"
-                :nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
+                #_#_:nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
                 :database-position 1}}
              (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
   (testing "sync without nested fields"

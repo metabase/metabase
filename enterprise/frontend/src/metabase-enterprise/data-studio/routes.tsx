@@ -1,9 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
-import { IndexRoute } from "react-router";
-import { t } from "ttag";
+import { IndexRoute, Route } from "react-router";
 
-import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
@@ -23,7 +21,6 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
-import { canAccessDataStudio } from "./utils";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -32,14 +29,7 @@ export function getDataStudioRoutes(
   CanAccessTransforms: ComponentType,
 ) {
   return (
-    <Route
-      component={CanAccessDataStudio}
-      onEnter={(_state, replace) => {
-        if (!canAccessDataStudio(store.getState())) {
-          replace(Urls.unauthorized());
-        }
-      }}
-    >
+    <Route component={CanAccessDataStudio}>
       <Route path="data-studio" component={DataStudioLayout}>
         <IndexRoute
           onEnter={(_state, replace) => {
@@ -47,22 +37,18 @@ export function getDataStudioRoutes(
           }}
         />
         <Route path="data" component={CanAccessDataModel}>
-          <Route title={t`Data`} component={DataSectionLayout}>
+          <Route component={DataSectionLayout}>
             {getDataStudioMetadataRoutes()}
           </Route>
         </Route>
         {PLUGIN_TRANSFORMS.isEnabled && (
           <Route path="transforms" component={CanAccessTransforms}>
-            <Route title={t`Transforms`} component={TransformsSectionLayout}>
+            <Route component={TransformsSectionLayout}>
               {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
             </Route>
           </Route>
         )}
-        <Route
-          title={t`Modeling`}
-          path="modeling"
-          component={ModelingSectionLayout}
-        >
+        <Route path="modeling" component={ModelingSectionLayout}>
           {getDataStudioModelingRoutes()}
           {getDataStudioModelRoutes()}
           {getDataStudioMetricRoutes()}
@@ -70,11 +56,7 @@ export function getDataStudioRoutes(
           {getDataStudioGlossaryRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route
-            title={t`Dependency graph`}
-            path="dependencies"
-            component={DependenciesSectionLayout}
-          >
+          <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
         )}

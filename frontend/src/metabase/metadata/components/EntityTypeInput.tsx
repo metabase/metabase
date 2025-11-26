@@ -31,6 +31,7 @@ export const EntityTypeInput = ({
     { value: "entity/SubscriptionTable", label: t`Subscription` },
     { value: "entity/EventTable", label: t`Event` },
   ];
+
   return (
     <Select
       comboboxProps={{

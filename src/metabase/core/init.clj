@@ -13,6 +13,7 @@
    [metabase.app-db.init]
    [metabase.appearance.init]
    [metabase.audit-app.init]
+   [metabase.auth-identity.init]
    [metabase.batch-processing.init]
    [metabase.bug-reporting.init]
    [metabase.cache.init]

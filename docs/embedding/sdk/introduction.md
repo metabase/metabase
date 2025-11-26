@@ -26,9 +26,11 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 ## Quickstarts
 
-- [Quickstart](./quickstart.md) (If you have Metabase and an app)
-- [Quickstart CLI](./quickstart-cli.md) (If you have an app, but no Metabase)
-- [Quickstart with sample React app](./quickstart-with-sample-app.md) (If you don't have either)
+The best way to get started with Embedded Analytics SDK depends on what you already have:
+
+- You have an app and a Metabase instance: go to [main quickstart](./quickstart.md)
+- You have an app but no Metabase: go to [quickstart with CLI](./quickstart-cli.md) 
+- You don't have an app: go to [quickstart with a sample React app](./quickstart-with-sample-app.md)
 
 ## Installation
 
@@ -128,6 +130,7 @@ The SDK doesn't support:
 - Official collections
 - Subscriptions
 - Alerts
+- Click behavior with custom destinations to other items in the same Metabase (like to other questions or dashboards)
 - Server-side rendering (SSR)
 
 Other limitations:

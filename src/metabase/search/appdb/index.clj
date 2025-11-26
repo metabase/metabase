@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.index
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -249,17 +250,14 @@
 
 (defn- document->entry [entity]
   (-> entity
-      (select-keys
-       ;; remove attrs that get explicitly aliased below
-       (remove #{:id :created_at :updated_at :native_query}
-               (conj search.spec/attr-columns :model :display_data :legacy_input)))
+      (select-keys (conj search.spec/attr-columns :model :display_data :legacy_input))
+      (set/rename-keys {:id :model_id
+                        :created_at :model_created_at
+                        :updated_at :model_updated_at})
+      (assoc :updated_at :%now)
       (update :display_data json/encode)
       (update :legacy_input json/encode)
-      (assoc
-       :updated_at       :%now
-       :model_id         (:id entity)
-       :model_created_at (:created_at entity)
-       :model_updated_at (:updated_at entity))
+      (dissoc :native_query)
       (merge (specialization/extra-entry-fields entity))))
 
 (defn- table-not-found-exception? [e]

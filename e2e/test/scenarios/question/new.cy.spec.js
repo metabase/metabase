@@ -27,8 +27,7 @@ describe("scenarios > question > new", () => {
       }
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
         cy.findByText("Sample3").should("be.visible");
       });
     });
@@ -39,12 +38,10 @@ describe("scenarios > question > new", () => {
       );
 
       H.startNewQuestion();
-
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-
-        H.entityPickerModalTab("Search").should("not.exist");
-        H.entityPickerModalTab("Collections").click();
+        cy.get("[role='tab']:contains('Search')").should("not.exist");
+        H.entityPickerModalItem(0, "Our analytics").click();
 
         cy.findByPlaceholderText("Search this collection or everywhere…")
           .type("  ")
@@ -57,6 +54,7 @@ describe("scenarios > question > new", () => {
         // should not trigger search for an empty string
         cy.get("@searchQuery").should("have.been.calledOnce");
 
+        cy.get("[role='tab']:contains('Search')").should("be.visible");
         cy.findAllByTestId("result-item").should("not.exist");
         cy.findByText("Everywhere").click();
         cy.findAllByTestId("result-item").should("have.length.at.least", 4);
@@ -76,8 +74,7 @@ describe("scenarios > question > new", () => {
         cy.findByPlaceholderText("Search this collection or everywhere…")
           .clear()
           .blur();
-        H.entityPickerModalTab("Search").should("not.exist");
-        H.tabsShouldBe("Collections", ["Tables", "Collections"]);
+        cy.get("[role='tab']:contains('Search')").should("not.exist");
 
         cy.findByText("Orders, Count").click();
       });
@@ -94,17 +91,19 @@ describe("scenarios > question > new", () => {
       H.notebookButton().should("be.visible");
 
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         // It is now possible to choose another saved question
-        H.entityPickerModalTab("Collections").should(
+        H.entityPickerModalItem(0, "Our analytics").should(
           "have.attr",
-          "aria-selected",
+          "data-active",
           "true",
         );
         cy.findByText("Orders").should("exist");
         cy.findByText("Orders, Count").should("exist");
 
-        H.entityPickerModalTab("Tables").click();
+        H.entityPickerModalItem(0, "Databases").click();
         cy.findByText("Products").click();
       });
       cy.findByTestId("data-step-cell").contains("Products");
@@ -128,8 +127,8 @@ describe("scenarios > question > new", () => {
       });
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         // Note: collection name's first letter is capitalized
         cy.findByText(/foo:bar/i).click();
         cy.findByText("Orders");
@@ -143,10 +142,9 @@ describe("scenarios > question > new", () => {
       });
 
       H.startNewQuestion();
-
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        assertDataPickerEntitySelected(0, "Our analytics");
+        H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("First collection").should("exist");
         cy.findByText("Second collection").should("not.exist");
         cy.findByText("Third collection").should("not.exist");
@@ -169,15 +167,18 @@ describe("scenarios > question > new", () => {
       cy.signOut();
       cy.signIn("nocollection");
       H.startNewQuestion();
-      H.entityPickerModal().findByText("Orders").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Orders").click();
       H.visualize();
       H.saveQuestion("Personal question");
 
       cy.signOut();
       cy.signInAsAdmin();
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("All personal collections").click();
         cy.findByText(H.getPersonalCollectionName(USERS.nocollection)).click();
         cy.findByText("Personal question").click();
@@ -252,9 +253,10 @@ describe("scenarios > question > new", () => {
 
     H.popover().findByText("Question").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Orders").click();
     });
 
     cy.log(
@@ -262,7 +264,8 @@ describe("scenarios > question > new", () => {
     );
 
     cy.findByRole("button", { name: /Orders/ }).click();
-    H.shouldDisplayTabs(["Recents", "Tables", "Collections"]);
+    H.miniPickerHeader().click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModalTab("Recents").click();
     cy.findByRole("dialog", { name: "Pick your starting data" })
       .findByRole("button", { name: /Orders/ })
@@ -360,8 +363,8 @@ describe("scenarios > question > new", () => {
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       cy.findByTestId("qb-header").findByText("Save").click();
@@ -411,8 +414,9 @@ describe("scenarios > question > new", () => {
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
+
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
       cy.findByTestId("qb-header").findByText("Save").click();
@@ -510,8 +514,8 @@ describe("scenarios > question > new", () => {
     });
 
     it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
 
@@ -543,8 +547,8 @@ describe("scenarios > question > new", () => {
     });
 
     it("should show all collections when selecting a dashboard for a question in a public collection", () => {
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
 
@@ -579,8 +583,8 @@ describe("scenarios > question > new", () => {
 
     describe("creating a new dashboard", () => {
       beforeEach(() => {
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("Orders").click();
         });
 
@@ -605,6 +609,7 @@ describe("scenarios > question > new", () => {
       });
 
       it("when selecting a collection", () => {
+        // H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
           H.entityPickerModalItem(1, "Collection in root collection").click();
@@ -712,11 +717,10 @@ describe(
     it("can create a question from the sample database", () => {
       cy.visit("/question/new");
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").should("be.visible");
-        H.entityPickerModalTab("Tables").click();
-
-        H.entityPickerModalItem(2, "Products").click();
+        H.entityPickerModalLevel(0).findByText("Databases").click();
+        H.entityPickerModalItem(3, "Products").click();
       });
 
       // strange: we get different behavior when we go to question/new
@@ -730,8 +734,8 @@ describe(
     it("can create a question from a saved question", () => {
       cy.visit("/question/new");
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(1, "Orders").click();
       });
 
@@ -754,20 +758,19 @@ describe(
 
       cy.visit("/question/notebook");
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Tables", ["Tables", "Collections"]);
-        H.entityPickerModalTab("Collections").should("be.visible");
-        H.entityPickerModalTab("Tables").should("be.visible");
-        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(1, "Orders Model").click();
       });
 
       cy.wait("@recents");
 
       cy.button(/Orders Model/).click();
+      H.miniPickerHeader().click();
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.tabsShouldBe("Collections", ["Recents", "Tables", "Collections"]);
+        H.tabsShouldBe("Collections", ["Recents", "Data"]);
         H.entityPickerModalTab("Recents").click();
         cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });

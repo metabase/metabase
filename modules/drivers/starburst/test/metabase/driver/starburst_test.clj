@@ -18,7 +18,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouses.api :as api.database]
+   [metabase.warehouses-rest.api :as api.database]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import

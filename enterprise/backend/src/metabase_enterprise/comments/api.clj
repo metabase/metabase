@@ -11,7 +11,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.users.api :as api.user]
+   [metabase.users-rest.api :as api.user]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]

@@ -1288,7 +1288,7 @@
                 (= (:lib/source arg) :source/aggregations)))))
 
 (defn ^:export segment-metadata?
-  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
+  "Returns true if arg is an MLv2 segment, ie. has `:lib/type :metadata/segment`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
   format expression clauses."
