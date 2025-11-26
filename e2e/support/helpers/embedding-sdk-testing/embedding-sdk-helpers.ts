@@ -5,7 +5,6 @@ import { USERS } from "e2e/support/cypress_data";
 import {
   AUTH_PROVIDER_URL,
   JWT_SHARED_SECRET,
-  METABASE_INSTANCE_URL,
   activateToken,
   restore,
 } from "e2e/support/helpers";
@@ -65,8 +64,6 @@ export const mockAuthProviderAndJwtSignIn = (
 };
 
 export function signInAsAdminAndEnableEmbeddingSdk() {
-  Cypress.config("baseUrl", METABASE_INSTANCE_URL);
-
   restore();
 
   cy.signInAsAdmin();
