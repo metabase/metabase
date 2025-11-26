@@ -78,8 +78,9 @@
            nil))))
     (not-empty (persistent! @metric-ids))))
 
-(mu/defn all-segment-ids [query]
+(mu/defn all-segment-ids :- [:maybe [:set {:min 1} ::lib.schema.id/segment]]
   "Return a set of all segment IDs anywhere in the query."
+  [query]
   (let [segment-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query
