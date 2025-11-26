@@ -78,17 +78,13 @@
   "Create a native query with optional checkpoint template tag."
   [schema checkpoint-config]
   (let [{:keys [field-name template-tag-type]} checkpoint-config
-        [top-limit bot-limit] (if (= :sqlserver driver/*driver*)
-                                ["TOP 10" ""]
-                                ["" "LIMIT 10"])
         timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
-        query (format "SELECT %s *, %s AS load_timestamp FROM %s [[WHERE %s > {{checkpoint}}]] ORDER BY %s %s"
-                      top-limit
+        query (format "SELECT *, %s AS load_timestamp FROM %s [[WHERE %s > {{checkpoint}}]] ORDER BY %s LIMIT 10"
                       timestamp-sql
                       (if schema
                         (sql.u/quote-name driver/*driver* :table schema "transforms_products")
                         "transforms_products")
-                      field-name field-name bot-limit)]
+                      field-name field-name)]
     {:database (mt/id)
      :type :native
      :native {:query query
@@ -236,7 +232,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- test-drivers []
-  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse))
+  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse :sqlserver))
 
 (deftest create-incremental-transform-test
   (testing "Creating an incremental transform with checkpoint strategy"

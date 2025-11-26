@@ -307,17 +307,21 @@
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [source-incremental-strategy] query-type :type :as source} transform-id]
-  (case (keyword query-type)
-    :query
-    (let [checkpoint (next-checkpoint transform-id)
-          query (:query source)
-          driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
-      (-> query
-          (preprocess-incremental-query source-incremental-strategy checkpoint)
-          massage-sql-query
-          qp.compile/compile
-          (post-process-incremental-query driver source checkpoint)))))
+  [{:keys [id source]}]
+  (let [{:keys [source-incremental-strategy] query-type :type} source]
+    (case (keyword query-type)
+      :query
+      (let [checkpoint (next-checkpoint id)
+            query (:query source)
+            driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
+        (binding [driver/*compile-with-inline-parameters*
+                  (or (= :clickhouse driver)
+                      driver/*compile-with-inline-parameters*)]
+          (-> query
+              (preprocess-incremental-query source-incremental-strategy checkpoint)
+              massage-sql-query
+              qp.compile/compile
+              (post-process-incremental-query driver source checkpoint)))))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."

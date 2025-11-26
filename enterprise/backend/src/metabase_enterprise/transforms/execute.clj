@@ -47,7 +47,7 @@
                               :transform-id   id
                               :transform-type (keyword (:type target))
                               :conn-spec (driver/connection-spec driver database)
-                              :query (transforms.util/compile-source source id)
+                              :query (transforms.util/compile-source transform)
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts (transform-opts transform-details)
