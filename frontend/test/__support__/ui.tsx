@@ -271,18 +271,12 @@ function MaybeRouter({
   children,
   hasRouter,
   history,
-}:
-  | {
-      children: React.ReactElement;
-      hasRouter: false;
-      history?: History;
-    }
-  | {
-      children: React.ReactElement;
-      hasRouter: true;
-      history: History;
-    }): JSX.Element {
-  if (!hasRouter) {
+}: {
+  children: React.ReactElement;
+  hasRouter: boolean;
+  history?: History;
+}): JSX.Element {
+  if (!hasRouter || !history) {
     return children;
   }
   return (
