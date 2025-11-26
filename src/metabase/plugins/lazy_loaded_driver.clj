@@ -33,7 +33,6 @@
     (:group prop)
     ;; Handle nested group structure
     {:type :group
-     :id (:id (:group prop))
      :container-style (:container-style (:group prop))
      :fields (into [] (mapcat #(u/one-or-many (parse-connection-property %))) (:fields (:group prop)))}
 
