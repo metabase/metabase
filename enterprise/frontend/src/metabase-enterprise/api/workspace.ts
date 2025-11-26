@@ -95,6 +95,14 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
     }),
+    archiveWorkspace: builder.mutation<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/archive`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
   }),
 });
 
@@ -107,4 +115,5 @@ export const {
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,
+  useArchiveWorkspaceMutation,
 } = workspaceApi;

@@ -1,10 +1,14 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Anchor,
   Box,
+  Button,
   Group,
   Icon,
   Stack,
@@ -13,6 +17,7 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  useArchiveWorkspaceMutation,
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
@@ -26,10 +31,24 @@ type WorkspacePageProps = {
 
 export function WorkspacePage({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
+  const dispatch = useDispatch();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const [archiveWorkspace, { isLoading: isArchiving }] =
+    useArchiveWorkspaceMutation();
 
   const { data: transforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+
+  const handleArchiveClick = async () => {
+    try {
+      await archiveWorkspace(id).unwrap();
+      sendSuccessToast(t`Workspace archived successfully`);
+      dispatch(push(Urls.workspaceList()));
+    } catch (error) {
+      sendErrorToast(t`Failed to archive workspace`);
+    }
+  };
 
   if (isLoadingWorkspace) {
     return (
@@ -51,14 +70,23 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
 
   return (
     <Stack h="100%">
-      <Title
-        order={2}
+      <Group
         px="lg"
         py="md"
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+        justify="space-between"
       >
-        {workspace.name}
-      </Title>
+        <Title order={2}>{workspace.name}</Title>
+        <Button
+          leftSection={<Icon name="archive" aria-hidden />}
+          onClick={handleArchiveClick}
+          loading={isArchiving}
+          variant="subtle"
+          c="text-dark"
+        >
+          {t`Archive workspace`}
+        </Button>
+      </Group>
       <Group align="flex-start" gap={0} flex="1 1 auto">
         <Box
           w="70%"

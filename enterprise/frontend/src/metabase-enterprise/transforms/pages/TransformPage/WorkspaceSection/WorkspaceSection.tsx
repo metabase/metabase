@@ -11,7 +11,6 @@ import {
   useGetTransformDownstreamMappingQuery,
   useGetTransformUpstreamMappingQuery,
   useGetWorkspaceQuery,
-  useLazyGetWorkspaceContentsQuery,
   useMergeWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
@@ -35,8 +34,6 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
     transform.workspace_id == null ? skipToken : transform.workspace_id,
   );
 
-  const [getWorkspaceContents] = useLazyGetWorkspaceContentsQuery();
-
   const { data: upstreamMapping, isLoading: isLoadingUpstream } =
     useGetTransformUpstreamMappingQuery(
       hasWorkspace ? transform.id : skipToken,
@@ -58,8 +55,7 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
         },
       }).unwrap();
 
-      const { data } = await getWorkspaceContents(workspace.id);
-      const transforms = data?.contents.transforms;
+      const transforms = workspace.contents?.transforms;
 
       if (transforms && transforms.length === 1) {
         const newTransformId = transforms[0].id;
