@@ -126,7 +126,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -137,6 +137,7 @@ describe(suiteTitle, () => {
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow downloads")
@@ -162,10 +163,49 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
-    codeBlock().should("contain", 'with-downloads="true"');
+    codeBlock().should("contain", 'with-subscriptions="false"');
+  });
+
+  it("toggles subscriptions for dashboard when email is enabled", () => {
+    H.setupSMTP();
+
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+    cy.findByLabelText("Existing Metabase session").click();
+
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Subscriptions" })
+      .should("not.exist");
+
+    cy.log("turn on subscriptions");
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .click()
+      .should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Subscriptions" })
+      .should("be.visible");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withSubscriptions=true,withTitle=true,isSaveEnabled=false,theme=default",
+    });
+
+    codeBlock().should("contain", 'with-subscriptions="true"');
   });
 
   it("toggles dashboard title for dashboards", () => {
@@ -198,7 +238,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-title="false"');
@@ -472,7 +512,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
     });
 
     codeBlock().should("contain", '"theme": {');
@@ -541,7 +581,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=custom",
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=custom",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
