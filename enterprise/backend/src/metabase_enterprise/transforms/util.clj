@@ -128,15 +128,10 @@
 
 (defn sync-target!
   "Sync target of a transform"
-  ([transform-id run-id]
-   (let [{:keys [source target]} (t2/select-one :model/Transform transform-id)
-         db (get-in source [:query :database])
-         database (t2/select-one :model/Database db)]
-     (sync-target! target database run-id)))
-  ([target database _run-id]
-   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
-   (log/info "Syncing target" (pr-str target) "for transform")
-   (activate-table-and-mark-computed! database target)))
+  [target database]
+  ;; sync the new table (note that even a failed sync status means that the execution succeeded)
+  (log/info "Syncing target" (pr-str target) "for transform")
+  (activate-table-and-mark-computed! database target))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
@@ -160,16 +155,20 @@
   ([database target {:keys [create?]}]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
-                          (sync/create-table! database (select-keys target [:schema :name]))))]
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority]))))]
      (sync/sync-table! table)
      table)))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
   [database target]
-  (when-let [table (sync-table! database target {:create? true})]
-    (when (or (not (:active table)) (not (= (:data_authority table) :computed)))
-      (t2/update! :model/Table (:id table) {:active true, :data_authority :computed}))))
+  (when-let [table (sync-table! database (assoc target
+                                                :data_authority :computed
+                                                :data_source :metabase-transform)
+                                {:create? true})]
+    (when-not (:active table)
+      (t2/update! :model/Table (:id table) {:active true}))
+    table))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."

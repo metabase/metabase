@@ -263,7 +263,8 @@ describe("issue 38354", { tags: "@external" }, () => {
   it("should be possible to change source database (metabase#38354)", () => {
     H.openNotebook();
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
+      H.miniPickerHeader().click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -681,62 +682,6 @@ describe("issue 42244", () => {
   });
 });
 
-describe("issue 42957", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("does not show collections that contain models from different tabs (metabase#42957)", () => {
-    H.createQuestion({
-      name: "Model",
-      type: "model",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-    });
-
-    H.createCollection({ name: "Collection without models" }).then(
-      ({ body: collection }) => {
-        cy.wrap(collection.id).as("collectionId");
-      },
-    );
-
-    cy.get("@collectionId").then((collectionId) => {
-      H.createQuestion({
-        name: "Question",
-        type: "question",
-        query: {
-          "source-table": ORDERS_ID,
-        },
-        collection_id: collectionId,
-      });
-    });
-
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-
-      // wait for data to load
-      H.entityPickerModalLevel(1).should("contain", "Orders, Count");
-
-      // open filter
-      cy.findByRole("button", { name: /Filter/ }).click();
-    });
-
-    H.popover().findByLabelText("Saved questions").click();
-
-    H.entityPickerModal().within(() => {
-      // close filter
-      cy.findByRole("button", { name: /Filter/ }).click();
-      H.entityPickerModalLevel(1).should(
-        "not.contain",
-        "Collection without models",
-      );
-    });
-  });
-});
-
 describe("issue 40064", () => {
   beforeEach(() => {
     H.restore();
@@ -890,13 +835,13 @@ describe("issue 32020", () => {
     H.startNewQuestion();
 
     cy.log("create joined question manually");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question1Details.name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question2Details.name).click();
     });
     H.popover().findByText("ID").click();
@@ -944,8 +889,8 @@ describe("issue 44071", () => {
   it("should be able to save questions based on another questions without collection access (metabase#44071)", () => {
     cy.visit("/");
     H.newButton("Question").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText(/Personal Collection/).click();
       cy.findByText(questionDetails.name).click();
     });
@@ -1425,21 +1370,22 @@ describe("issue 19894", () => {
 
     H.startNewQuestion();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q1").click();
+    H.miniPicker().should("exist");
+    cy.realType("Q1");
+    H.miniPicker().findByText("Q1").click();
 
     cy.button("Join data").click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q2").click();
+    cy.realType("Q2");
+    H.miniPicker().findByText("Q2").click();
 
     H.popover().findByText("Category").click();
     H.popover().findByText("Category").click();
 
     cy.button("Join data").click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q3").click();
+    cy.realType("Q3");
+    H.miniPicker().findByText("Q3").click();
 
     H.popover().findByText("Category").should("be.visible");
     H.popover().findByText("Count").should("be.visible");
@@ -1600,18 +1546,24 @@ describe("issue 44974", { tags: "@external" }, () => {
         },
       };
 
-      H.createQuestion(questionDetails, {
-        // Visit question to put it in recents
-        visitQuestion: true,
-      });
+      H.createQuestion(questionDetails);
 
       H.openOrdersTable({ mode: "notebook" });
       H.join();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders Model").should("be.visible");
+        cy.findByText(questionDetails.name).should("not.exist");
+      });
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Recents").should("not.exist");
-        H.entityPickerModalTab("Collections").click();
+        cy.findAllByRole("tab").should("not.exist");
+        H.entityPickerModalItem(0, "Our analytics").click();
+        cy.findByText("Orders Model").should("be.visible");
         cy.findByText(questionDetails.name).should("not.exist");
+        cy.button("Close").click();
       });
     });
   });
@@ -2668,7 +2620,8 @@ describe("issue 23449", () => {
     H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByLabelText("Create a new model").click();
     cy.findByRole("link", { name: /Use the notebook editor/ }).click();
-    H.entityPickerModal().findByText("Reviews").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Reviews").click();
 
     cy.log("Remove Body column");
     cy.findByLabelText("Pick columns").click();
@@ -2948,8 +2901,8 @@ describe("Issue 33835", { tags: "@external" }, () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "orders" });
 
     H.startNewQuestion();
-    H.entityPickerModal().findByText("Writable Postgres12").click();
-    H.entityPickerModal().findByText("Orders").click();
+    H.miniPicker().findByText("Writable Postgres12").click();
+    H.miniPicker().findByText("Orders").click();
 
     H.getNotebookStep("summarize")
       .findByText("Pick a function or metric")

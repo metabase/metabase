@@ -141,7 +141,7 @@ describe("scenarios > browse", () => {
       .findByLabelText("Create a new metric")
       .should("be.visible")
       .click();
-    cy.findByTestId("entity-picker-modal").should("be.visible");
+    H.miniPicker().should("be.visible");
 
     H.expectNoBadSnowplowEvents();
     H.expectUnstructuredSnowplowEvent({
