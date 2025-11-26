@@ -81,11 +81,6 @@ export type EngineKey = (typeof engineKeys)[number];
 export type ContainerStyleType = "grid" | "component";
 export type ContainerStyle = [ContainerStyleType, string];
 
-export interface FieldGroupConfig {
-  id: string;
-  "container-style": ContainerStyle;
-}
-
 export interface DatabaseFieldGroup {
   type: "group";
   "container-style": ContainerStyle;
@@ -119,7 +114,6 @@ export interface EngineField {
   options?: EngineFieldOption[];
   "visible-if"?: Record<string, unknown>;
   "treat-before-posting"?: EngineFieldTreatType;
-  "group-id"?: string;
 }
 
 export type EngineFieldType =

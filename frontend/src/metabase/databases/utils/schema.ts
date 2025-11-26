@@ -160,7 +160,7 @@ const isFieldValid = (
   }
 };
 
-export const isFieldVisible = (
+const isFieldVisible = (
   field: EngineField,
   details?: Record<string, unknown>,
 ) => {
