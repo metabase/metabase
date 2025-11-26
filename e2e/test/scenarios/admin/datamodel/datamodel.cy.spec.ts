@@ -1363,7 +1363,7 @@ describe("scenarios > admin > datamodel", () => {
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
         });
-        TableSection.getSyncOptionsButton("Sync options").click();
+        TableSection.getSyncOptionsButton().click();
 
         cy.log("sync table schema");
         H.modal().within(() => {

@@ -259,8 +259,8 @@ function getTableSortOrderInput() {
   return getTableSection().findByRole("radiogroup", { name: "Column order" });
 }
 
-function getTableSyncOptionsButton(buttonText: string = "Sync settings") {
-  return getTableSection().findByRole("button", { name: buttonText });
+function getTableSyncOptionsButton() {
+  return getTableSection().findByRole("button", { name: /Sync/ });
 }
 
 function getTableSectionField(name: string) {
