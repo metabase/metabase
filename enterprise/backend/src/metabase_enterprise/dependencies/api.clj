@@ -466,6 +466,12 @@
                               {:status-code 400
                                :types types}))))
 
+        _ (when query
+            (when (some #{:sandbox} selected-types)
+              (throw (ex-info (tru "Searching by query is not supported for sandboxes")
+                              {:status-code 400
+                               :types types}))))
+
         ;; Define query builders for each entity type
         entity-queries
         {:card {:select [["card" :entity_type]
@@ -478,16 +484,19 @@
                 :from [:report_card]
                 :left-join [:report_dashboard [:= :report_dashboard.id :report_card.dashboard_id]
                             :collection [:= :collection.id :report_card.collection_id]]
-                :where (let [base-where [:not [:exists
-                                               {:select [1]
-                                                :from [:dependency]
-                                                :where [:and
-                                                        [:= :dependency.to_entity_id :report_card.id]
-                                                        [:= :dependency.to_entity_type "card"]]}]]]
-                         (if (seq card-types)
-                           [:and base-where
-                            [:in :report_card.type (mapv name card-types)]]
-                           base-where))}
+                :where (let [unreffed-where [:not [:exists
+                                                   {:select [1]
+                                                    :from [:dependency]
+                                                    :where [:and
+                                                            [:= :dependency.to_entity_id :report_card.id]
+                                                            [:= :dependency.to_entity_type "card"]]}]]
+                             card-types-where (if (seq card-types)
+                                                [:and unreffed-where
+                                                 [:in :report_card.type (mapv name card-types)]]
+                                                unreffed-where)]
+                         (if query
+                           [:and card-types-where [:ilike :report_card.name (str "%" query "%")]]
+                           card-types-where))}
          :table {:select [["table" :entity_type]
                           [:metabase_table.id :entity_id]
                           [(case sort_column
@@ -497,36 +506,45 @@
                              :metabase_table.display_name) :sort_key]]
                  :from [:metabase_table]
                  :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]
-                 :where [:not [:exists
-                               {:select [1]
-                                :from [:dependency]
-                                :where [:and
-                                        [:= :dependency.to_entity_id :metabase_table.id]
-                                        [:= :dependency.to_entity_type "table"]]}]]}
+                 :where (let [unreffed-where [:not [:exists
+                                                    {:select [1]
+                                                     :from [:dependency]
+                                                     :where [:and
+                                                             [:= :dependency.to_entity_id :metabase_table.id]
+                                                             [:= :dependency.to_entity_type "table"]]}]]]
+                          (if query
+                            [:and unreffed-where [:ilike :metabase_table.display_name (str "%" query "%")]]
+                            unreffed-where))}
          :transform {:select [["transform" :entity_type]
                               [:transform.id :entity_id]
                               [(case sort_column
                                  :name :transform.name
                                  :transform.name) :sort_key]]
                      :from [:transform]
-                     :where [:not [:exists
-                                   {:select [1]
-                                    :from [:dependency]
-                                    :where [:and
-                                            [:= :dependency.to_entity_id :transform.id]
-                                            [:= :dependency.to_entity_type "transform"]]}]]}
+                     :where (let [unreffed-where [:not [:exists
+                                                        {:select [1]
+                                                         :from [:dependency]
+                                                         :where [:and
+                                                                 [:= :dependency.to_entity_id :transform.id]
+                                                                 [:= :dependency.to_entity_type "transform"]]}]]]
+                              (if query
+                                [:and unreffed-where [:ilike :transform.name (str "%" query "%")]]
+                                unreffed-where))}
          :snippet {:select [["snippet" :entity_type]
                             [:native_query_snippet.id :entity_id]
                             [(case sort_column
                                :name :native_query_snippet.name
                                :native_query_snippet.name) :sort_key]]
                    :from [:native_query_snippet]
-                   :where [:not [:exists
-                                 {:select [1]
-                                  :from [:dependency]
-                                  :where [:and
-                                          [:= :dependency.to_entity_id :native_query_snippet.id]
-                                          [:= :dependency.to_entity_type "snippet"]]}]]}
+                   :where (let [unreffed-where [:not [:exists
+                                                      {:select [1]
+                                                       :from [:dependency]
+                                                       :where [:and
+                                                               [:= :dependency.to_entity_id :native_query_snippet.id]
+                                                               [:= :dependency.to_entity_type "snippet"]]}]]]
+                            (if query
+                              [:and unreffed-where [:ilike :native_query_snippet.name (str "%" query "%")]]
+                              unreffed-where))}
          :dashboard {:select [["dashboard" :entity_type]
                               [:report_dashboard.id :entity_id]
                               [(case sort_column
@@ -536,12 +554,15 @@
                                  :report_dashboard.name) :sort_key]]
                      :from [:report_dashboard]
                      :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]
-                     :where [:not [:exists
-                                   {:select [1]
-                                    :from [:dependency]
-                                    :where [:and
-                                            [:= :dependency.to_entity_id :report_dashboard.id]
-                                            [:= :dependency.to_entity_type "dashboard"]]}]]}
+                     :where (let [unreffed-where [:not [:exists
+                                                        {:select [1]
+                                                         :from [:dependency]
+                                                         :where [:and
+                                                                 [:= :dependency.to_entity_id :report_dashboard.id]
+                                                                 [:= :dependency.to_entity_type "dashboard"]]}]]]
+                              (if query
+                                [:and unreffed-where [:ilike :report_dashboard.name (str "%" query "%")]]
+                                unreffed-where))}
          :document {:select [["document" :entity_type]
                              [:document.id :entity_id]
                              [(case sort_column
@@ -551,12 +572,15 @@
                                 :document.name) :sort_key]]
                     :from [:document]
                     :left-join [:collection [:= :collection.id :document.collection_id]]
-                    :where [:not [:exists
-                                  {:select [1]
-                                   :from [:dependency]
-                                   :where [:and
-                                           [:= :dependency.to_entity_id :document.id]
-                                           [:= :dependency.to_entity_type "document"]]}]]}
+                    :where (let [unreffed-where [:not [:exists
+                                                       {:select [1]
+                                                        :from [:dependency]
+                                                        :where [:and
+                                                                [:= :dependency.to_entity_id :document.id]
+                                                                [:= :dependency.to_entity_type "document"]]}]]]
+                             (if query
+                               [:and unreffed-where [:ilike :document.name (str "%" query "%")]]
+                               unreffed-where))}
          :sandbox {:select [["sandbox" :entity_type]
                             [:sandboxes.id :entity_id]
                             [(case sort_column
@@ -640,7 +664,6 @@
                                      :data (->> (select-keys entity (unreferenced-items-keys entity-type-kw))
                                                 (m/map-vals format-subentity))})))
                               paginated-ids)]
-    ;; TODO: Apply search query filtering
     {:data paginated-items
      :limit limit
      :offset offset
