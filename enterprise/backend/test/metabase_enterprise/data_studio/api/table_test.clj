@@ -19,19 +19,34 @@
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-table"
                                                {:table_ids             [(mt/id :users) (mt/id :venues)]
                                                 :target_collection_id  collection-id})]
-            (try
-              (is (= 2 (:created_count response)))
-              (is (= 2 (count (:tables response))))
-              (testing "tables have correct attributes"
-                (is (= #{(mt/id :users) (mt/id :venues)}
-                       (set (map :id (:tables response))))))
-              (testing "symlinks are hydrated on tables"
-                (doseq [table (:tables response)]
-                  (is (= collection-id (:id (:collection table))))))
-              (finally
-                (testing "unpublishing"
-                  (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/unpublish-table"
-                                        {:table_ids [(mt/id :users) (mt/id :venues)]}))))))))))
+            (is (= 2 (:created_count response)))
+            (is (= 2 (count (:tables response))))
+            (testing "tables have correct attributes"
+              (is (= #{(mt/id :users) (mt/id :venues)}
+                     (set (map :id (:tables response))))))
+            (testing "symlinks are hydrated on tables"
+              (doseq [table (:tables response)]
+                (is (= collection-id (:id (:collection table))))))
+            (testing "collection_id and is_published are set"
+              (is (=? [{:display_name "Users"
+                        :collection_id collection-id
+                        :is_published true}
+                       {:display_name "Venues"
+                        :collection_id collection-id
+                        :is_published true}]
+                      (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+            (testing "unpublishing"
+              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/unpublish-table"
+                                    {:table_ids [(mt/id :venues)]})
+              (is (=? {:display_name "Venues"
+                       :collection_id nil
+                       :is_published false}
+                      (t2/select-one :model/Table (mt/id :venues)))))))
+        (testing "deleting the collection unpublishes"
+          (is (=? {:display_name "Users"
+                   :collection_id nil
+                   :is_published false}
+                  (t2/select-one :model/Table (mt/id :users)))))))))
 
 ;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
 
