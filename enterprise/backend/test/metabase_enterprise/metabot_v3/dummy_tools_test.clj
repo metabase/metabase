@@ -133,3 +133,27 @@
             (is (map? (:query output)))
             (is (= (mt/id) (get-in output [:query :database])))
             (is (sequential? (:result-columns output)))))))))
+
+(deftest related-tables-exclude-implicitly-joinable-fields-test
+  (testing "Related tables should only include fields from the table itself, not implicitly joinable fields"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [orders-id (mt/id :orders)
+              products-id (mt/id :products)
+              ;; Get expected field count for Products table (without implicitly joinable fields)
+              products-query (lib/query (mt/metadata-provider) (mt/mbql-query products))
+              expected-products-field-count (count (lib/visible-columns products-query -1 {:include-implicitly-joinable? false}))
+              ;; Get Orders table details with related tables
+              result (dummy-tools/get-table-details {:table-id orders-id})
+              output (:structured-output result)
+              related-tables (:related_tables output)
+              products-related (first (filter #(= products-id (:id %)) related-tables))]
+
+          (testing "Orders table has Products as a related table"
+            (is (some? products-related)))
+
+          (testing "Related Products table has correct number of fields (excluding implicitly joinable fields)"
+            (is (= expected-products-field-count
+                   (count (:fields products-related)))
+                (str "Products related table should have " expected-products-field-count
+                     " fields (only its own fields, not implicitly joinable fields)"))))))))
