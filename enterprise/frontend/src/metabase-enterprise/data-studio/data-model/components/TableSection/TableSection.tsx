@@ -1,5 +1,4 @@
 import { memo, useContext, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -7,6 +6,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
@@ -184,28 +184,25 @@ const TableSectionBase = ({
             flex="1"
             onClick={() => setIsCreateModelsModalOpen(true)}
             p="sm"
-            leftSection={<Icon name="add_folder" />}
+            leftSection={<Icon name="library" />}
             style={{
               width: "100%",
             }}
           >{t`Publish`}</Button>
           <Tooltip label={t`Dependency graph`}>
-            <Box /* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */
-            >
-              <Button
-                component={Link}
-                to={dependencyGraph({
-                  entry: { id: Number(table.id), type: "table" },
-                })}
-                p="sm"
-                leftSection={<Icon name="network" />}
-                style={{
-                  flexGrow: 0,
-                  width: 40,
-                }}
-                aria-label={t`Dependency graph`}
-              />
-            </Box>
+            <Button
+              component={ForwardRefLink}
+              to={dependencyGraph({
+                entry: { id: Number(table.id), type: "table" },
+              })}
+              p="sm"
+              leftSection={<Icon name="network" />}
+              style={{
+                flexGrow: 0,
+                width: 40,
+              }}
+              aria-label={t`Dependency graph`}
+            />
           </Tooltip>
           <Box style={{ flexGrow: 0, width: 40 }}>
             <TableLink table={table} />
@@ -322,18 +319,15 @@ function TableLink({ table }: { table: Table }) {
 
   return (
     <Tooltip label={t`Go to this table`} position="top">
-      <Box>
-        {/* wrapping with a Box because Tooltip does not work for <Button component={Link} /> */}
-        <Button
-          component={Link}
-          to={url}
-          aria-label={t`Go to this table`}
-          leftSection={<Icon name="external" size={16} />}
-          style={{
-            width: "100%",
-          }}
-        />
-      </Box>
+      <Button
+        component={ForwardRefLink}
+        to={url}
+        aria-label={t`Go to this table`}
+        leftSection={<Icon name="external" size={16} />}
+        style={{
+          width: "100%",
+        }}
+      />
     </Tooltip>
   );
 }
