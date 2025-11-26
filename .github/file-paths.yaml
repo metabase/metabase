@@ -11,9 +11,13 @@ shared_specs: &shared_specs
   - "test/**/*.cljc"
   - "test/**/*.cljs"
 
-frontend_ci: &frontend_ci
+shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
+  - ".github/workflows/run-tests.yml"
+
+frontend_ci: &frontend_ci
+  - *shared_ci
   - ".github/workflows/frontend.yml"
 
 frontend_configs: &frontend_configs
@@ -71,8 +75,7 @@ frontend_loki_ci: &frontend_loki_ci
   - ".storybook/**"
 
 backend_ci: &backend_ci
-  - ".github/actions/prepare-frontend/**"
-  - ".github/actions/prepare-backend/**"
+  - *shared_ci
   - ".github/actions/test-driver/**"
   - ".github/workflows/backend.yml"
   - ".github/workflows/drivers.yml"
@@ -112,8 +115,7 @@ sources: &sources
   - *backend_sources
 
 e2e_ci: &e2e_ci
-  - ".github/actions/prepare-frontend/**"
-  - ".github/actions/prepare-backend/**"
+  - *shared_ci
   - ".github/actions/prepare-uberjar-artifact/**"
   - ".github/actions/e2e-prepare-containers/**"
   - ".github/actions/prepare-cypress/**"
@@ -123,8 +125,7 @@ e2e_specs: &e2e_specs
   - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
 embedding_sdk_ci: &embedding_sdk_ci
-  - ".github/actions/prepare-frontend/**"
-  - ".github/actions/prepare-backend/**"
+  - *shared_ci
   - ".github/workflows/embedding-sdk*.yml"
 
 embedding_sdk_components:
