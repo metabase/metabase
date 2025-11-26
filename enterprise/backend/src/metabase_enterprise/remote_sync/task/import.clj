@@ -19,7 +19,7 @@
 (defn- auto-import!
   []
   (when (and (settings/remote-sync-enabled)
-             (= :production (settings/remote-sync-type))
+             (= :read-only (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
     (let [branch (settings/remote-sync-branch)
           source (source/source-from-settings branch)

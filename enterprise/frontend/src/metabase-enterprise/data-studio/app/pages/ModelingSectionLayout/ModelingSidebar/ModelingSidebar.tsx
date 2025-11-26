@@ -26,6 +26,7 @@ export function ModelingSidebar({
     useListCollectionsTreeQuery({
       "exclude-other-user-collections": true,
       "exclude-archived": true,
+      "include-library": true,
     });
 
   const { hasDataAccess, hasNativeWrite } = useMemo(() => {

@@ -14,6 +14,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import CollectionOptionsButton from "./components/CollectionOptionsButton";
 import CollectionRow from "./components/CollectionRow";
+import { MoveSnippetModal } from "./components/MoveSnippetModal";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
 import { SnippetCollectionMenu } from "./components/SnippetCollectionMenu";
 import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
@@ -31,6 +32,7 @@ export function initializePlugin() {
     PLUGIN_SNIPPET_FOLDERS.CollectionMenu = SnippetCollectionMenu;
     PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
       SnippetCollectionPermissionsModal;
+    PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
     PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
       icon: "folder",
       name: t`New folder`,

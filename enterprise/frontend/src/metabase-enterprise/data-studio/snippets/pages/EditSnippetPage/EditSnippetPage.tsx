@@ -97,7 +97,14 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   return (
     <>
-      <Stack pos="relative" w="100%" h="100%" bg="bg-white" gap={0}>
+      <Stack
+        pos="relative"
+        w="100%"
+        h="100%"
+        bg="bg-white"
+        gap={0}
+        data-testid="edit-snippet-page"
+      >
         <SnippetHeader
           snippet={snippet}
           actions={
@@ -118,6 +125,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               extensions={extensions}
               height="100%"
               className={S.editor}
+              data-testid="snippet-editor"
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,

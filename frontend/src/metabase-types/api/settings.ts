@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { CurrencyStyle } from "metabase/lib/formatting";
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
@@ -331,7 +331,7 @@ export const tokenFeatures = [
   "transforms",
   "transforms-python",
   "data_studio",
-  "library",
+  "support-users",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -653,7 +653,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "production" | "development" | null;
+  "remote-sync-type"?: "read-only" | "read-write" | null;
   "remote-sync-auto-import"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;

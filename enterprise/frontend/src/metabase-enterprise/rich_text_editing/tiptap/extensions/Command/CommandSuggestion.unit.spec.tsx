@@ -121,6 +121,8 @@ const setup = ({
     commands: {
       focus: jest.fn(),
     },
+    schema: { nodes: {} },
+    isActive: jest.fn(),
   };
 
   setupSearchEndpoints(SEARCH_ITEMS);
@@ -352,6 +354,8 @@ describe("CommandSuggestion", () => {
       commands: {
         focus: jest.fn(),
       },
+      schema: { nodes: {} },
+      isActive: jest.fn(),
     };
 
     renderWithProviders(
@@ -391,6 +395,8 @@ describe("CommandSuggestion", () => {
       commands: {
         focus: jest.fn(),
       },
+      schema: { nodes: {} },
+      isActive: jest.fn(),
     };
 
     renderWithProviders(

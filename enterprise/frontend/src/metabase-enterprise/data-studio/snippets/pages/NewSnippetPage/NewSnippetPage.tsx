@@ -82,7 +82,14 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   return (
     <>
-      <Stack pos="relative" w="100%" h="100%" bg="bg-white" gap={0}>
+      <Stack
+        pos="relative"
+        w="100%"
+        h="100%"
+        bg="bg-white"
+        gap={0}
+        data-testid="new-snippet-page"
+      >
         <PaneHeader
           title={
             <PaneHeaderInput
@@ -90,7 +97,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               placeholder={t`New SQL snippet`}
               maxLength={SNIPPET_NAME_MAX_LENGTH}
               isOptional
-              onChange={setName}
+              onContentChange={setName}
             />
           }
           actions={
@@ -111,6 +118,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               extensions={extensions}
               height="100%"
               className={S.editor}
+              data-testid="snippet-editor"
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,

@@ -1,0 +1,5 @@
+:global(.dragging-supportingText) {
+  .dropCursor {
+    display: none;
+  }
+}

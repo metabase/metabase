@@ -65,6 +65,8 @@ export const BrowseNavSection = ({
           </Tooltip>
         ) : undefined
       }
+      role="section"
+      aria-label={t`Data`}
     >
       {hasDataAccess &&
         (!isEmbeddingIframe || entityTypes.includes("table")) && (

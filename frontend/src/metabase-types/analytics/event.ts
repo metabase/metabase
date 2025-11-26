@@ -3,7 +3,7 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
-import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModel/types";
+import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModelV1/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
@@ -314,6 +314,11 @@ export type DocumentPrintEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DocumentAddSupportingTextEvent = ValidateEvent<{
+  event: "document_add_supporting_text";
+  target_id: number | null;
+}>;
+
 export type DatabaseHelpClickedEvent = ValidateEvent<{
   event: "database_help_clicked";
   triggered_from: "admin" | "setup";
@@ -534,6 +539,7 @@ export type SimpleEvent =
   | TransformCreateEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
+  | DocumentAddSupportingTextEvent
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent

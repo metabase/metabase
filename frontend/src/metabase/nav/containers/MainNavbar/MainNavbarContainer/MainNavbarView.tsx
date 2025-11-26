@@ -24,7 +24,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_DATA_STUDIO, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Bookmark } from "metabase-types/api";
 
@@ -85,7 +85,7 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
-  const showSyncGroup = useSetting("remote-sync-type") === "development";
+  const showSyncGroup = useSetting("remote-sync-type") === "read-write";
 
   const [
     addDataModalOpened,
@@ -233,8 +233,8 @@ export function MainNavbarView({
             />
           )}
 
-          {PLUGIN_LIBRARY.isEnabled && (
-            <PLUGIN_LIBRARY.NavbarLibrarySection
+          {PLUGIN_DATA_STUDIO.isEnabled && (
+            <PLUGIN_DATA_STUDIO.NavbarLibrarySection
               collections={collections}
               selectedId={collectionItem?.id}
               onItemSelect={onItemSelect}
@@ -263,6 +263,8 @@ export function MainNavbarView({
                     </ActionIcon>
                   </Tooltip>
                 }
+                role="section"
+                aria-label={t`Collections`}
               >
                 <Tree
                   data={regularCollections}

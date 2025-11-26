@@ -14,7 +14,7 @@ import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 
-H.describeWithSnowplowEE("documents", () => {
+describe("documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -101,7 +101,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     H.navigationSidebar()
-      .findByRole("tab", { name: "Bookmarks" })
+      .findByRole("section", { name: "Bookmarks" })
       .findByText("Test Document")
       .click();
 
@@ -927,9 +927,9 @@ H.describeWithSnowplowEE("documents", () => {
       H.commandSuggestionItem(/New Question/).click();
 
       cy.log("Create a simple query in the notebook editor");
-      cy.findByTestId("entity-picker-modal").within(() => {
-        H.entityPickerModalTab("Tables").click();
-        H.entityPickerModalItem(2, "Orders").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").click();
       });
 
       cy.log("Save and use the new question");
@@ -1099,10 +1099,10 @@ H.describeWithSnowplowEE("documents", () => {
       H.commandSuggestionItem(/New Question/).click();
 
       cy.log("Create a time series query with Orders table");
-      cy.findByRole("dialog", { name: "Pick your starting data" }).should(
-        "be.visible",
-      );
-      H.entityPickerModalItem(2, "Orders").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").click();
+      });
 
       H.addSummaryField({ metric: "Sum of ...", field: "Total" });
       H.addSummaryGroupingField({ field: "Created At" });
@@ -1217,7 +1217,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.commandSuggestionItem(/New SQL query/).should("not.exist");
 
       cy.log("Verify notebook modal opens automatically");
-      cy.findByRole("dialog", { name: "Pick your starting data" }).should(
+      cy.findByRole("dialog", { name: "Create new question" }).should(
         "be.visible",
       );
     });

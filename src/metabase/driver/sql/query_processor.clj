@@ -1290,6 +1290,9 @@
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (driver-api/match-one (nth (:aggregation *inner-query*) index)
+    [:aggregation-options ag (options :guard driver-api/qp.add.desired-alias)]
+    (->honeysql driver (h2x/identifier :field-alias (driver-api/qp.add.desired-alias options)))
+
     [:aggregation-options ag (options :guard driver-api/qp.add.source-alias)]
     (->honeysql driver (h2x/identifier :field-alias (driver-api/qp.add.source-alias options)))
 
@@ -1590,7 +1593,7 @@
     [::cast-to-text field]
     field))
 
-(mu/defn- maybe-cast-uuid-for-text-compare
+(mu/defn maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]

@@ -30,6 +30,7 @@ type MetricHeaderProps = {
 export function MetricHeader({ card, actions }: MetricHeaderProps) {
   return (
     <PaneHeader
+      data-testid="metric-header"
       title={
         card.can_write ? (
           <MetricNameInput card={card} />

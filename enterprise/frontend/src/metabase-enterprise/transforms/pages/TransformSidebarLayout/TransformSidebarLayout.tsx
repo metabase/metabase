@@ -49,7 +49,7 @@ export const TransformSidebarLayout = ({
           )}
         </>
       )}
-      <Box data-testid="transforms-content" flex={1}>
+      <Box data-testid="transforms-content" flex={1} miw={0}>
         {children}
       </Box>
     </Flex>

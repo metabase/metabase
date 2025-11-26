@@ -29,7 +29,8 @@
 
 (defn recent-views
   ([user-id] (recent-views user-id [:views]))
-  ([user-id context] (:recents (recent-views/get-recents user-id context))))
+  ([user-id context] (recent-views user-id context {}))
+  ([user-id context options] (:recents (recent-views/get-recents user-id context options))))
 
 (deftest simple-get-list-card-test
   (mt/with-temp
@@ -598,3 +599,56 @@
              (map #(select-keys % [:id])
                   (mt/with-test-user :rasta
                     (recent-views (mt/user->id :rasta) [:selections :views]))))))))
+
+(deftest models-filtering-test
+  (mt/with-test-user :rasta
+    (mt/with-temp
+      [:model/Collection {coll-id :id} {:name "my coll"}
+       :model/Database   {db-id :id}   {}
+       :model/Card       {card-id :id} {:type "question" :name "card" :collection_id coll-id :database_id db-id}
+       :model/Card       {model-id :id} {:type "model" :name "model" :collection_id coll-id :database_id db-id}
+       :model/Dashboard  {dash-id :id} {:name "dash" :collection_id coll-id}
+       :model/Table      {table-id :id} {:name "table" :db_id db-id}]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :view)
+      (testing "no filter returns all model types"
+        (is (= #{:card :dataset :dashboard :table}
+               (->> (recent-views (mt/user->id :rasta))
+                    (map :model)
+                    set))))
+      (testing "filter to only cards"
+        (is (= #{:card}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card]})
+                    (map :model)
+                    set))))
+      (testing "filter to only models (aka datasets)"
+        (is (= #{:dataset}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:dataset]})
+                    (map :model)
+                    set))))
+      (testing "filter to cards and dashboards"
+        (is (= #{:card :dashboard}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card :dashboard]})
+                    (map :model)
+                    set))))
+      (testing "filter to only tables"
+        (is (= #{:table}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:table]})
+                    (map :model)
+                    set)))))))
+
+(deftest include-metadata-test
+  (mt/with-test-user :rasta
+    (mt/with-temp
+      [:model/Collection {coll-id :id} {:name "my coll"}
+       :model/Database   {db-id :id}   {}
+       :model/Card       {card-id :id} {:type "question" :name "card" :collection_id coll-id :database_id db-id}]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+      (testing "by default, result_metadata is not included"
+        (is (not (contains? (first (recent-views (mt/user->id :rasta)))
+                            :result_metadata))))
+      (testing "with include-metadata? true, result_metadata is included"
+        (is (contains? (first (recent-views (mt/user->id :rasta) [:views] {:include-metadata? true}))
+                       :result_metadata))))))

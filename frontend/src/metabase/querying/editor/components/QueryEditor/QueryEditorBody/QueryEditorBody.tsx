@@ -9,10 +9,10 @@ import NativeQueryEditor, {
   type SelectionRange,
 } from "metabase/query_builder/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   NativeQuerySnippet,
@@ -51,7 +51,7 @@ type QueryEditorBodyProps = {
   isResultDirty: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
-  shouldDisableDatabase?: (database: Database) => boolean;
+  shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
@@ -99,8 +99,8 @@ export function QueryEditorBody({
   const editorHeight = useInitialEditorHeight(isNative);
 
   const dataPickerOptions = useMemo(
-    () => ({ shouldDisableItem }),
-    [shouldDisableItem],
+    () => ({ shouldDisableItem, shouldDisableDatabase }),
+    [shouldDisableItem, shouldDisableDatabase],
   );
 
   const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(

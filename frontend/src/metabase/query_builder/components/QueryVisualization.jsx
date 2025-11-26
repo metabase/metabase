@@ -32,6 +32,7 @@ export default function QueryVisualization(props) {
     isObjectDetail,
     isResultDirty,
     isNativeEditorOpen,
+    isDirtyStateShownForError,
     result,
     maxTableRows = HARD_ROW_LIMIT,
   } = props;
@@ -43,8 +44,9 @@ export default function QueryVisualization(props) {
     isResultDirty &&
     isRunnable &&
     !isRunning &&
+    !isNativeEditorOpen &&
     (result?.error == null ||
-      !isNativeEditorOpen ||
+      isDirtyStateShownForError ||
       result.error_type === SERVER_ERROR_TYPES.missingRequiredParameter);
 
   return (

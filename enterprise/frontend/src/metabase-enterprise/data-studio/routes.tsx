@@ -1,11 +1,8 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
-import { IndexRoute } from "react-router";
-import { t } from "ttag";
+import { IndexRoute, Route } from "react-router";
 
-import { Route } from "metabase/hoc/Title";
 import * as Urls from "metabase/lib/urls";
-import { getDataStudioMetadataRoutes } from "metabase/metadata/routes";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -18,6 +15,7 @@ import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
+import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
@@ -39,22 +37,18 @@ export function getDataStudioRoutes(
           }}
         />
         <Route path="data" component={CanAccessDataModel}>
-          <Route title={t`Data`} component={DataSectionLayout}>
+          <Route component={DataSectionLayout}>
             {getDataStudioMetadataRoutes()}
           </Route>
         </Route>
         {PLUGIN_TRANSFORMS.isEnabled && (
           <Route path="transforms" component={CanAccessTransforms}>
-            <Route title={t`Transforms`} component={TransformsSectionLayout}>
+            <Route component={TransformsSectionLayout}>
               {PLUGIN_TRANSFORMS.getDataStudioTransformRoutes()}
             </Route>
           </Route>
         )}
-        <Route
-          title={t`Modeling`}
-          path="modeling"
-          component={ModelingSectionLayout}
-        >
+        <Route path="modeling" component={ModelingSectionLayout}>
           {getDataStudioModelingRoutes()}
           {getDataStudioModelRoutes()}
           {getDataStudioMetricRoutes()}
@@ -62,11 +56,7 @@ export function getDataStudioRoutes(
           {getDataStudioGlossaryRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route
-            title={t`Dependency graph`}
-            path="dependencies"
-            component={DependenciesSectionLayout}
-          >
+          <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
           </Route>
         )}

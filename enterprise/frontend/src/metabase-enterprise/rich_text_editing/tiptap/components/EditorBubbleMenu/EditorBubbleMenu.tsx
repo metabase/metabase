@@ -41,6 +41,7 @@ const DEFAULT_ALLOWED_FORMATTING: FormattingOptions = {
 interface EditorBubbleMenuProps {
   editor: TiptapEditor;
   disallowedNodes: string[];
+  disallowedFullySelectedNodes?: string[];
   allowedFormatting?: FormattingOptions;
   options?: BubbleMenuOptions["options"];
   className?: string;
@@ -49,6 +50,7 @@ interface EditorBubbleMenuProps {
 export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
   disallowedNodes,
+  disallowedFullySelectedNodes,
   allowedFormatting = DEFAULT_ALLOWED_FORMATTING,
   options,
   className,
@@ -123,8 +125,13 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
 
         // Check if selection contains any disallowed nodes
         let hasDisallowedNode = false;
-        state.doc.nodesBetween(from, to, (node) => {
-          if (disallowedNodes.includes(node.type.name)) {
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if (disallowedFullySelectedNodes?.includes(node.type.name)) {
+            if (from <= pos && to >= pos + node.nodeSize) {
+              hasDisallowedNode = true;
+              return false;
+            }
+          } else if (disallowedNodes.includes(node.type.name)) {
             hasDisallowedNode = true;
             return false; // Stop traversing
           }

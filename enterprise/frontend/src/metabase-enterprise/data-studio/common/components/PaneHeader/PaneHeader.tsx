@@ -70,6 +70,7 @@ type PaneHeaderInputProps = {
   maxLength?: number;
   isOptional?: boolean;
   onChange?: (value: string) => void;
+  onContentChange?: (value: string) => void;
 };
 
 export function PaneHeaderInput({
@@ -78,6 +79,7 @@ export function PaneHeaderInput({
   maxLength,
   isOptional,
   onChange,
+  onContentChange,
 }: PaneHeaderInputProps) {
   return (
     <EditableText
@@ -92,6 +94,7 @@ export function PaneHeaderInput({
       bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
       isOptional={isOptional}
       onChange={onChange}
+      onContentChange={onContentChange}
     />
   );
 }

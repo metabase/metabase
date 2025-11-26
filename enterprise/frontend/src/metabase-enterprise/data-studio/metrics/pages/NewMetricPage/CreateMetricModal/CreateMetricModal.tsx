@@ -123,6 +123,7 @@ function getInitialValues(
     description: null,
     collection_id: null,
     result_metadata: null,
+    resultMetadata: null,
     ...defaultValues,
   };
 }

@@ -70,7 +70,7 @@
 
 ;; Kooky that I have to write this, but I do. Make sure people keep tests in order -- I don't want to find any more 52
 ;; tests sandwiched between 48 tests.
-(deftest ^:parallel order-your-migration-tests-test
+(deftest order-your-migration-tests-test
   (testing "Migrations tests should be grouped together by major version and those major versions should be in order"
     (let [versions (migrations-versions)]
       (is (= (sort versions)
@@ -2723,7 +2723,7 @@
 ;;; 53+ tests should go below this line please <3
 ;;;
 
-(deftest migrate-download-results-perms-test
+(deftest ^:mb/old-migrations-test migrate-download-results-perms-test
   (testing "Download results are set to no if view-data for a table is blocked"
     (impl/test-migrations "v52.2025-05-28T00:00:01" [migrate!]
       (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database) {:details   "{}"
@@ -2746,7 +2746,7 @@
         (migrate!)
         (is (t2/exists? :model/DataPermissions :table_id table-id-1 :perm_value "no"))))))
 
-(deftest chinese-site-locale-migration-test
+(deftest ^:mb/old-migrations-test chinese-site-locale-migration-test
   (testing "Site locale is migrated from zh to zh_CN"
     (impl/test-migrations "v54.2025-03-17T18:52:44" [migrate!]
       (t2/delete! (t2/table-name :model/Setting) :key "site-locale")
@@ -2754,10 +2754,117 @@
       (migrate!)
       (is (= "zh_CN" (t2/select-one-fn :value (t2/table-name :model/Setting) :key "site-locale"))))))
 
-(deftest chinese-user-locale-migration-test
+(deftest ^:mb/old-migrations-test chinese-user-locale-migration-test
   (testing "Site locale is migrated from zh to zh_CN"
     (impl/test-migrations "v54.2025-03-17T18:52:59" [migrate!]
       (let [user-id (:id (create-raw-user! (mt/random-email)))]
         (t2/update! (t2/table-name :model/User) user-id {:locale "zh"})
         (migrate!)
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
+
+(deftest migrate-password-auth-test
+  (testing "Migration v58.2025-11-04T23:10:03: Migrate password authentication to auth_identity table"
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:11"] [migrate!]
+      ;; Insert users with password auth before migration
+      (t2/query-one {:insert-into :core_user
+                     :values      [{:first_name    "Password"
+                                    :last_name     "User"
+                                    :email         "password@example.com"
+                                    :date_joined   :%now
+                                    :password      "hashed_password"
+                                    :password_salt "salt123"}
+                                   {:first_name    "NoPassword"
+                                    :last_name     "User"
+                                    :email         "nopass@example.com"
+                                    :date_joined   :%now
+                                    :password      nil
+                                    :password_salt nil}]})
+      (migrate!)
+      ;; Verify password user has auth_identity
+      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
+                                      :from   [[:core_user :u]]
+                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                      :where  [:in :u.email ["password@example.com" "nopass@example.com"]]
+                                      :order-by [[:u.id :asc]]})]
+        (is (= [{:first_name "Password" :provider "password"}
+                {:first_name "NoPassword" :provider nil}]
+               results))))))
+
+(deftest migrate-ldap-auth-test-2
+  (testing "Migration v58.2025-11-04T23:10:04: Migrate LDAP authentication to auth_identity table"
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:12"] [migrate!]
+      ;; Insert users with LDAP auth before migration (using sso_source='ldap' from current schema)
+      (t2/query-one {:insert-into :core_user
+                     :values      [{:first_name    "LDAP"
+                                    :last_name     "User"
+                                    :email         "ldap@example.com"
+                                    :date_joined   :%now
+                                    :sso_source    "ldap"
+                                    :login_attributes "{\"dn\":\"cn=user,dc=example,dc=com\"}"}
+                                   {:first_name    "NoLDAP"
+                                    :last_name     "User"
+                                    :email         "noldap@example.com"
+                                    :date_joined   :%now
+                                    :sso_source    nil}]})
+      (migrate!)
+      ;; Verify LDAP user has auth_identity
+      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
+                                      :from   [[:core_user :u]]
+                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                      :where  [:in :u.email ["ldap@example.com" "noldap@example.com"]]
+                                      :order-by [[:u.id :asc]]})]
+        (is (= [{:first_name "LDAP" :provider "ldap"}
+                {:first_name "NoLDAP" :provider nil}]
+               results))))))
+
+(deftest migrate-google-sso-auth-test
+  (testing "Migration v58.2025-11-04T23:10:05: Migrate Google SSO authentication to auth_identity table"
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:13"] [migrate!]
+      ;; Insert users with Google SSO before migration
+      (t2/query-one {:insert-into :core_user
+                     :values      [{:first_name    "Google"
+                                    :last_name     "User"
+                                    :email         "google@example.com"
+                                    :date_joined   :%now
+                                    :sso_source    "google"}
+                                   {:first_name    "NoSSO"
+                                    :last_name     "User"
+                                    :email         "nosso@example.com"
+                                    :date_joined   :%now
+                                    :sso_source    nil}]})
+      (migrate!)
+      ;; Verify Google user has auth_identity
+      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
+                                      :from   [[:core_user :u]]
+                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                      :where  [:in :u.email ["google@example.com" "nosso@example.com"]]
+                                      :order-by [[:u.id :asc]]})]
+        (is (= [{:first_name "Google" :provider "google"}
+                {:first_name "NoSSO" :provider nil}]
+               results))))))
+
+(deftest migrate-saml-jwt-auth-test
+  (testing "Migration v58.2025-11-04T23:10:06: Migrate SAML and JWT authentication to auth_identity table"
+    (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:14"] [migrate!]
+      ;; Insert users with SAML and JWT before migration
+      (t2/query-one {:insert-into :core_user
+                     :values      [{:first_name    "SAML"
+                                    :last_name     "User"
+                                    :email         "saml@example.com"
+                                    :date_joined   :%now
+                                    :sso_source    "saml"}
+                                   {:first_name    "JWT"
+                                    :last_name     "User"
+                                    :email         "jwt@example.com"
+                                    :date_joined   :%now
+                                    :sso_source    "jwt"}]})
+      (migrate!)
+      ;; Verify SAML and JWT users have auth_identity
+      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
+                                      :from   [[:core_user :u]]
+                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                      :where  [:in :u.email ["saml@example.com" "jwt@example.com"]]
+                                      :order-by [[:u.id :asc]]})]
+        (is (= [{:first_name "SAML" :provider "saml"}
+                {:first_name "JWT" :provider "jwt"}]
+               results))))))

@@ -14,7 +14,7 @@ const { H } = cy;
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > embed parameters";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

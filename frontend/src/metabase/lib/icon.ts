@@ -1,5 +1,5 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
@@ -31,6 +31,7 @@ export type ObjectWithModel = {
   location?: Collection["location"];
   effective_location?: Collection["location"];
   is_personal?: boolean;
+  is_remote_synced?: boolean;
 };
 
 export const modelIconMap: Record<IconModel, IconName> = {
@@ -71,7 +72,11 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "person" };
   }
 
-  switch (PLUGIN_LIBRARY.getLibraryCollectionType(item.type)) {
+  if (item.model === "collection" && item.id === "databases") {
+    return { name: "database" };
+  }
+
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type)) {
     case "root":
       return { name: "repository" };
     case "models":
