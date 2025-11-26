@@ -4,6 +4,8 @@ import { getEmbedSidebar, visitNewEmbedPage } from "./helpers";
 
 const { H } = cy;
 
+const FIRST_QUESTION_NAME = "Question With Params 1";
+
 describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
   beforeEach(() => {
     H.restore();
@@ -14,6 +16,27 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
 
+    H.createNativeQuestion(
+      {
+        name: FIRST_QUESTION_NAME,
+        native: {
+          query: "select {{text}}",
+          "template-tags": {
+            text: {
+              id: "abc-123",
+              name: "text",
+              "display-name": "Text",
+              type: "text",
+              default: null,
+            },
+          },
+        },
+      },
+      {
+        wrapId: true,
+      },
+    );
+
     H.mockEmbedJsToDevServer();
   });
 
@@ -22,10 +45,12 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
   });
 
   describe("Happy path", () => {
-    it("Navigates through the guest-embed flow and opens a page with guest embed", () => {
+    it("Navigates through the guest-embed flow for a question and opens its embed page", () => {
       visitNewEmbedPage();
 
       H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
+
+      H.waitForSimpleEmbedIframesToLoad();
 
       // Experience step
       getEmbedSidebar().within(() => {
@@ -40,7 +65,17 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       // Entity selection step
       getEmbedSidebar().within(() => {
-        cy.findByText("Next").click(); // Entity selection step
+        cy.findByTestId("embed-browse-entity-button").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Select a chart").should("be.visible");
+        cy.findByText("Questions").click();
+        cy.findByText(FIRST_QUESTION_NAME).click();
+      });
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Next").click();
       });
 
       H.expectUnstructuredSnowplowEvent({
@@ -60,6 +95,29 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       H.publishChanges("card");
       cy.button("Unpublish").should("be.visible");
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Get code").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_options_completed",
+        event_detail:
+          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest_embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":1,"locked":0,"enabled":0},theme=default',
+      });
+
+      // Get code step
+      getEmbedSidebar().within(() => {
+        cy.findAllByText(/Copy code/)
+          .first()
+          .click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_code_copied",
+        event_detail:
+          "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed",
+      });
     });
   });
 });
