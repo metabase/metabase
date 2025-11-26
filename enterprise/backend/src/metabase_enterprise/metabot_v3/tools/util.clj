@@ -101,6 +101,12 @@
   (let [index (resolve-column-index field-id field-id-prefix)]
     (assoc item :column (nth columns index))))
 
+(defn get-database
+  "Get the `fields` of the database with ID `id`."
+  [id & fields]
+  (-> (t2/select-one (into [:model/Database :id] fields) id)
+      api/read-check))
+
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
