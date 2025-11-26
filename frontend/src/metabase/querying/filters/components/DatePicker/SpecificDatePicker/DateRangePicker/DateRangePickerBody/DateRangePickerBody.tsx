@@ -85,6 +85,7 @@ export function DateRangePickerBody({
         <DateInput
           className={S.FlexDateInput}
           value={startDate}
+          valueFormat="LL"
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
@@ -93,6 +94,7 @@ export function DateRangePickerBody({
         <DateInput
           className={S.FlexDateInput}
           value={endDate}
+          valueFormat="LL"
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
           onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
