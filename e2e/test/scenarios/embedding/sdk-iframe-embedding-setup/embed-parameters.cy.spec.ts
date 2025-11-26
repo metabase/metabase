@@ -22,6 +22,7 @@ describe(suiteTitle, () => {
     H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", false);
     H.mockEmbedJsToDevServer();
   });
 
@@ -39,10 +40,6 @@ describe(suiteTitle, () => {
         dashboardDetails: {
           name: "Dashboard with Parameters",
           parameters: DASHBOARD_PARAMETERS,
-          embedding_params: {
-            id: "enabled",
-            product_id: "enabled",
-          },
         },
       }).then(({ body: card }) => {
         H.editDashboardCard(card, {
@@ -59,10 +56,6 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Existing Metabase session").click();
       });
 
       getEmbedSidebar().within(() => {
@@ -92,10 +85,6 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Existing Metabase session").click();
       });
 
       cy.log("set default value for id");
@@ -138,10 +127,6 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Existing Metabase session").click();
       });
 
       cy.log("hide both parameters");
@@ -197,10 +182,6 @@ describe(suiteTitle, () => {
       });
 
       getEmbedSidebar().within(() => {
-        cy.findByLabelText("Existing Metabase session").click();
-      });
-
-      getEmbedSidebar().within(() => {
         cy.findByText("Parameters").should("be.visible");
         cy.findByLabelText("ID").should("be.visible");
       });
@@ -245,10 +226,6 @@ describe(suiteTitle, () => {
       });
 
       getEmbedSidebar().within(() => {
-        cy.findByLabelText("Existing Metabase session").click();
-      });
-
-      getEmbedSidebar().within(() => {
         cy.findByText(
           "Parameters are not available for this dashboard.",
         ).should("be.visible");
@@ -259,10 +236,6 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Orders, Count",
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Existing Metabase session").click();
       });
 
       getEmbedSidebar().within(() => {
