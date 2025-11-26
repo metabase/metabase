@@ -18,9 +18,18 @@
 (def ^:private class-dir
   (u/filename u/project-root-directory "target" "classes"))
 
-(def uberjar-filename
-  "Target filename for the Metabase uberjar."
-  (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
+(def ^:private uberjar-dir
+  "Canonical directory for all uberjar builds."
+  (u/filename u/project-root-directory "target" "uberjar"))
+
+(def ^:private uberjar-filename
+  "The uberjar filename that can be customized via the MB_JAR_FILENAME env var."
+  (or (System/getenv "MB_JAR_FILENAME")
+      "metabase.jar"))
+
+(def uberjar-path
+  "Target path for the Metabase uberjar."
+  (u/filename uberjar-dir uberjar-filename))
 
 (defn- do-with-duration-ms [thunk f]
   (let [timer      (u/start-timer)
@@ -51,7 +60,7 @@
 (defn- clean! []
   (u/step "Clean"
     (delete! class-dir)
-    (delete! uberjar-filename)))
+    (delete! uberjar-path)))
 
 ;; this topo sort order stuff is required for stuff to work correctly... I copied it from my Cloverage PR
 ;; https://github.com/cloverage/cloverage/pull/303
@@ -135,7 +144,7 @@
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
       (b/uber {:class-dir         class-dir
-               :uber-file         uberjar-filename
+               :uber-file         uberjar-path
                ;; merge Log4j2Plugins.dat files. (#50721)
                :conflict-handlers log4j2-conflict-handler
                :basis             basis
@@ -164,7 +173,7 @@
   to do it by hand for the time being."
   []
   (u/step "Update META-INF/MANIFEST.MF"
-    (u/with-open-jar-file-system [fs "target/uberjar/metabase.jar"]
+    (u/with-open-jar-file-system [fs uberjar-path]
       (let [manifest-path (u/get-path-in-filesystem fs "META-INF" "MANIFEST.MF")]
         (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
                                                                                     StandardOpenOption/TRUNCATE_EXISTING]))]
@@ -184,5 +193,4 @@
         (copy-resources! basis)
         (create-uberjar! basis)
         (update-manifest!))
-      (u/announce "Built target/uberjar/metabase.jar in %.1f seconds."
-                  (/ duration-ms 1000.0)))))
+      (u/announce "Built %s in %.1f seconds." uberjar-path (/ duration-ms 1000.0)))))
