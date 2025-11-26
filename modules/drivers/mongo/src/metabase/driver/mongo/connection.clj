@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
+   [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
@@ -92,7 +93,12 @@
 (defn do-with-mongo-client
   "Implementation of [[with-mongo-client]]."
   [thunk database]
-  (let [db-details (mongo.db/details-normalized database)]
+  (let [db-details-original (mongo.db/details-normalized database)
+        ;; Apply connection detail overrides if present
+        db-id           (u/the-id database)
+        db-details      (if-let [detail-update-fn (get driver/*overridden-connection-details* db-id)]
+                          (detail-update-fn db-details-original)
+                          db-details-original)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
       (let [client (mongo.util/mongo-client (db-details->mongo-client-settings details-with-tunnel))]
         (log/debug (u/format-color 'cyan "Opened new MongoClient."))
