@@ -7,17 +7,18 @@ driver:
   display-name: Druid
   lazy-load: true
   connection-properties:
-    - merge:
-        - host
-        - placeholder: http://localhost
-          required: true
-          group-id: host-and-port
-    - merge:
-        - port
-        - display-name: Broker node port
-          placeholder: 8082
-          required: true
-          group-id: host-and-port
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - placeholder: http://localhost
+                required: true
+          - merge:
+              - port
+              - display-name: Broker node port
+                placeholder: 8082
+                required: true
     - cloud-ip-address-info
     - ssh-tunnel
     - advanced-options-start
@@ -39,10 +40,6 @@ driver:
       visible-if:
         auth-enabled: true
     - default-advanced-options
-extra:
-  field-groups:
-    - id: "host-and-port"
-      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.druid
