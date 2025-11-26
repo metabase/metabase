@@ -152,6 +152,7 @@ const SdkIframeEmbedView = ({
           dashboardId={settings.dashboardId}
           withTitle={settings.withTitle}
           withDownloads={settings.withDownloads}
+          withSubscriptions={settings.withSubscriptions}
           initialParameters={settings.initialParameters}
           hiddenParameters={settings.hiddenParameters}
           drillThroughQuestionHeight="100%"

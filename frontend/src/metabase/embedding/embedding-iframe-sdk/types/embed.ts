@@ -57,6 +57,7 @@ export interface DashboardEmbedOptions {
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withSubscriptions?: boolean;
 
   // parameters
   initialParameters?: ParameterValues;

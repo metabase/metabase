@@ -78,6 +78,14 @@ const BehaviorSection = () => {
                 updateSettings({ withDownloads: e.target.checked })
               }
             />
+
+            <Checkbox
+              label={t`Allow subscriptions`}
+              checked={settings.withSubscriptions}
+              onChange={(e) =>
+                updateSettings({ withSubscriptions: e.target.checked })
+              }
+            />
           </Stack>
         ),
       )

@@ -168,6 +168,7 @@ export const SdkIframeEmbedPreview = () => {
             drills: s.drills,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
+            "with-subscriptions": s.withSubscriptions,
             "initial-parameters": s.initialParameters
               ? JSON.stringify(s.initialParameters)
               : undefined,
