@@ -100,7 +100,7 @@
                                {:search-model "table",
                                 :fields
                                 #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
-                                  :visibility_type :view_count :created_at :updated_at}
+                                  :visibility_type :view_count :created_at :updated_at :collection_id}
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table", :fields #{:name :router_database_id}, :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
@@ -108,8 +108,12 @@
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
+
                                                 :archived_directly :location :namespace :created_at}
-                                :where        [:= :updated.id :this.id]}}}
+                                :where        [:= :updated.id :this.id]}
+                               {:search-model "table"
+                                :fields       nil
+                                :where        [:= :updated.id :this.collection_id]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))
