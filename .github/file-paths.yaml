@@ -125,6 +125,7 @@ embedding_sdk_ci: &embedding_sdk_ci
   - ".github/workflows/embedding-sdk*.yml"
 
 embedding_sdk_components:
+  - *default
   - *embedding_sdk_ci
   - *sources
   - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
