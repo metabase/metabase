@@ -30,7 +30,7 @@ describe("issue 29943", () => {
     getHeaderCell(2, "Custom").should("exist");
 
     const tableHeaderAlias = "customHeader";
-    H.tableHeaderColumn("Custom").as("customHeader");
+    H.tableHeaderColumn("Custom").as(tableHeaderAlias);
     H.moveDnDKitElementByAlias(`@${tableHeaderAlias}`, { horizontal: -100 });
 
     getHeaderCell(1, "Custom").should("exist");
