@@ -60,7 +60,7 @@ export const DeleteGroupMappingModal = ({
       onClose={onHide}
       size="lg"
     >
-      <Stack gap="md">
+      <Stack gap="md" mt="md">
         <Text>{subtitle}</Text>
         <Text fw={500}>{whatShouldHappenText}</Text>
 
