@@ -36,7 +36,6 @@
 (deftest fetch-public-document-test
   (testing "GET /api/public/document/:uuid"
     (testing "Can fetch a public Document via EE public sharing routes"
-      (mt/
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
                                                                               :document (documents.test-util/text->prose-mirror-ast "Public test content")})]
@@ -95,7 +94,6 @@
 (deftest get-public-document-errors-test
   (testing "GET /api/public/document/:uuid"
     (testing "Cannot fetch a public Document if public sharing is disabled"
-      (mt/
         (mt/with-temporary-setting-values [enable-public-sharing false]
           (mt/with-temp [:model/Document document (document-with-public-link {})]
             (is (= "API endpoint does not exist."
@@ -124,7 +122,6 @@
 (deftest fetch-public-document-card-test
   (testing "GET /api/public/document/:uuid/card/:card-id"
     (testing "Can run query for card embedded in public document"
-      (mt/
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (mt/with-temp [:model/Document document (document-with-public-link {})
                          :model/Card card {:name "Test Card"
