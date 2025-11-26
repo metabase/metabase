@@ -35,18 +35,47 @@ function createGridContainer(gridTemplateColumns: string) {
   return GridContainerWrapper;
 }
 
-export function getContainer(containerStyle: ContainerStyle) {
+// Cache for container components to prevent remounting on rerenders
+const containerCache = new Map<
+  string,
+  React.ComponentType<{ children: React.ReactNode }>
+>();
+
+function getCacheKey(containerStyle: ContainerStyle): string {
+  if (typeof containerStyle === "string") {
+    return containerStyle;
+  }
   const [type, value] = containerStyle;
+  return `${type}:${value}`;
+}
 
-  if (type === "grid") {
-    return createGridContainer(value);
+export function getContainer(containerStyle: ContainerStyle) {
+  const cacheKey = getCacheKey(containerStyle);
+
+  // Return cached component if it exists
+  if (containerCache.has(cacheKey)) {
+    return containerCache.get(cacheKey)!;
   }
 
-  if (type === "component") {
-    return containers[value] ?? Box;
+  let Container: React.ComponentType<{ children: React.ReactNode }>;
+
+  if (typeof containerStyle === "string") {
+    Container = Box;
+  } else {
+    const [type, value] = containerStyle;
+
+    if (type === "grid") {
+      Container = createGridContainer(value);
+    } else if (type === "component") {
+      Container = containers[value] ?? Box;
+    } else {
+      Container = Box;
+    }
   }
 
-  return Box;
+  // Cache the component for future use
+  containerCache.set(cacheKey, Container);
+  return Container;
 }
 
 const containers: Record<
