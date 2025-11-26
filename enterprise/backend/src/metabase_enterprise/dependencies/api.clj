@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.api
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
@@ -397,13 +398,13 @@
                              (= (-> % :data :type) dependent_card_type))))))))
 
 (def ^:private unreferenced-items-keys
-  {:table [:name :display_name :db_id :schema :db]
+  {:table [:name :display_name :db_id :schema :db :view_count]
    :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
           :collection :dashboard :creator :last-edit-info]
    :snippet [:name]
    :transform [:name :table :creator]
-   :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection]
-   :document [:name :creator_id :created_at :collection_id :creator :collection]
+   :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
+   :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
    :sandbox [:table :table_id]})
 
 (def ^:private unreferenced-items-args
@@ -448,12 +449,24 @@
         selected-types (if (sequential? types) types [types])
         card-types (if (sequential? card_types) card_types [card_types])
 
+        _ (when (= sort_column :view_count)
+            (when (some #{:sandbox :transform :snippet} selected-types)
+              (throw (ex-info (tru "Sorting by view_count is only supported for cards, tables, dashboards and documents")
+                              {:status-code 400
+                               :selected_types selected-types})))
+            (when (and (some #{:card} selected-types)
+                       (some #{:model :metric} card-types))
+              (throw (ex-info (tru "Sorting by view_count is only supported for questions")
+                              {:status-code 400
+                               :card_types card-types}))))
+
         ;; Define query builders for each entity type
         entity-queries
         {:card {:select [["card" :entity_type]
                          [:report_card.id :entity_id]
                          [(case sort_column
                             :name :report_card.name
+                            :view_count :report_card.view_count
                             :report_card.name) :sort_key]]
                 :from [:report_card]
                 :where (let [base-where [:not [:exists
@@ -470,6 +483,7 @@
                           [:metabase_table.id :entity_id]
                           [(case sort_column
                              :name :metabase_table.display_name
+                             :view_count :metabase_table.view_count
                              :metabase_table.display_name) :sort_key]]
                  :from [:metabase_table]
                  :where [:not [:exists
@@ -506,6 +520,7 @@
                               [:report_dashboard.id :entity_id]
                               [(case sort_column
                                  :name :report_dashboard.name
+                                 :view_count :report_dashboard.view_count
                                  :report_dashboard.name) :sort_key]]
                      :from [:report_dashboard]
                      :where [:not [:exists
@@ -518,6 +533,7 @@
                              [:document.id :entity_id]
                              [(case sort_column
                                 :name :document.name
+                                :view_count :document.view_count
                                 :document.name) :sort_key]]
                     :from [:document]
                     :where [:not [:exists
@@ -610,7 +626,7 @@
                                                 (m/map-vals format-subentity))})))
                               paginated-ids)]
     ;; TODO: Apply search query filtering
-    ;; TODO: Implement :location and :view_count sorting
+    ;; TODO: Implement :location sorting
     {:data paginated-items
      :limit limit
      :offset offset
