@@ -6,7 +6,12 @@
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
-   [metabase.search.in-place.filter :as search.in-place.filter]))
+   [metabase.search.in-place.filter :as search.in-place.filter]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]))
+
+(use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
+                                  (search.tu/with-new-search-if-available (thunk)))))
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))
@@ -78,6 +83,7 @@
 
 (def kitchen-sink-filter-context
   {:archived?                    true
+   :collection                   5
    :created-at                   "2024-10-01"
    :created-by                   [123]
    :include-dashboard-questions? true
@@ -134,6 +140,7 @@
                       [:in :search_index.last_editor_id [321]]
                       [:= :search_index.non_temporal_dim_ids "[1]"]
                       [:= :search_index.has_temporal_dim true]
-                      [:in :search_index.display_type ["line"]]}}
+                      [:in :search_index.display_type ["line"]]
+                      [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

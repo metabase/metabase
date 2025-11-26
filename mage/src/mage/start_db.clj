@@ -97,6 +97,9 @@
    "--name" container-name
    (str "mongo:" resolved-version)])
 
+(defn- app-db? [db]
+  (contains? #{:postgres :mysql :mariadb} db))
+
 (defn- start-db!
   [database version resolved-version port]
   (let [container-name (->container-name database version)
@@ -107,10 +110,11 @@
     (apply shell/sh cmd)
     (println (c/cyan (format "Started %s %s on port %s\n" (name database) (name version) port)))
     (println)
-    (let [deps-edn-alias (->deps-edn-alias database version)]
-      (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
-      (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
-      (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'")))))
+    (when (app-db? database)
+      (let [deps-edn-alias (->deps-edn-alias database version)]
+        (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
+        (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
+        (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))))
 
 (defn- usage
   [{:keys [db-info]}]
