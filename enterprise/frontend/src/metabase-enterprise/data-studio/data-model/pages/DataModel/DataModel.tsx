@@ -15,6 +15,7 @@ import {
 } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 
 import {
   FieldSection,
@@ -62,8 +63,11 @@ function DataModelContent({ params }: Props) {
     schemaName,
     tableId: queryTableId,
   } = parseRouteParams(params);
-  const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+  const {
+    data: databasesData,
+    error: databasesError,
+    isLoading: isLoadingDatabases,
+  } = useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -82,7 +86,7 @@ function DataModelContent({ params }: Props) {
 
   const {
     data: table,
-    error,
+    error: tableError,
     isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
   const fieldsByName = useMemo(() => {
@@ -91,8 +95,17 @@ function DataModelContent({ params }: Props) {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
+
+  const {
+    data: libraryCollection,
+    isLoading: isLoadingLibrary,
+    error: libraryError,
+  } = useGetLibraryCollectionQuery();
+
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
+  const error = databasesError ?? tableError ?? libraryError;
+  const hasLibrary = libraryCollection != null;
 
   useWindowEvent(
     "keydown",
@@ -180,7 +193,7 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <TableAttributesEditBulk />
+            <TableAttributesEditBulk hasLibrary={hasLibrary} />
           </Stack>
         )}
 
@@ -203,6 +216,7 @@ function DataModelContent({ params }: Props) {
                   key={table.id}
                   table={table}
                   activeFieldId={fieldId}
+                  hasLibrary={hasLibrary}
                   onSyncOptionsClick={openSyncModal}
                 />
               )}

@@ -30,7 +30,7 @@ import {
 } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
-import { PublishTablesModal } from "../TablePicker/components/PublishTablesModal";
+import { usePublishTables } from "../../hooks/use-publish-tables";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
@@ -43,12 +43,14 @@ import { TableSortableFieldList } from "./TableSortableFieldList";
 interface Props {
   table: Table;
   activeFieldId?: FieldId;
+  hasLibrary: boolean;
   onSyncOptionsClick: () => void;
 }
 
 const TableSectionBase = ({
   table,
   activeFieldId,
+  hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
   const [updateTable] = useUpdateTableMutation();
@@ -60,7 +62,7 @@ const TableSectionBase = ({
   const { baseUrl } = useContext(DataModelContext);
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
-  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
+  const { acknowledgeModal, isPublishing, handlePublish } = usePublishTables();
 
   const getFieldHref = (fieldId: FieldId) => {
     return getUrl(baseUrl, {
@@ -172,13 +174,13 @@ const TableSectionBase = ({
         <Group justify="stretch" gap="sm">
           <Button
             flex="1"
-            onClick={() => setIsCreateModelsModalOpen(true)}
             p="sm"
             leftSection={<Icon name="library" />}
             style={{
               width: "100%",
             }}
-            disabled={table.is_published}
+            disabled={!hasLibrary || table.is_published || isPublishing}
+            onClick={() => handlePublish({ table_ids: [table.id] })}
           >
             {table.is_published ? t`Published` : t`Publish`}
           </Button>
@@ -301,12 +303,7 @@ const TableSectionBase = ({
           )}
         </Stack>
       </Box>
-
-      <PublishTablesModal
-        tables={new Set([table.id])}
-        isOpen={isCreateModelsModalOpen}
-        onClose={() => setIsCreateModelsModalOpen(false)}
-      />
+      {acknowledgeModal}
     </Stack>
   );
 };

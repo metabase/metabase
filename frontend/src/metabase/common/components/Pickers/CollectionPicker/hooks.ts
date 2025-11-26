@@ -11,11 +11,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type {
-  Collection,
-  CollectionItemModel,
-  Dashboard,
-} from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
@@ -92,7 +88,7 @@ export const useRootCollectionPickerItems = (
         can_write: true,
         location: "/",
         here: ["collection"],
-        below: ["table" as CollectionItemModel],
+        below: ["table"],
       });
     }
 

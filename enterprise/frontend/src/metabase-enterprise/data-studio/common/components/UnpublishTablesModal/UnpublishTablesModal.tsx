@@ -36,7 +36,7 @@ export function UnpublishTablesModal({
       database_ids: Array.from(databases),
     });
     await action.unwrap();
-    sendSuccessToast(t`Unpublished successfully`);
+    sendSuccessToast(t`Unpublished`);
     onUnpublish?.();
     onClose();
   };
@@ -52,7 +52,7 @@ export function UnpublishTablesModal({
         <Form>
           <Stack>
             <Text>
-              {t`Unpublishing a table removes it from the collection where it was published.`}
+              {t`This will remove this table from the Library. Any queries that use this table will still work.`}
             </Text>
             <Group wrap="nowrap">
               <Box flex={1}>

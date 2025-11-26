@@ -17,21 +17,27 @@ import type {
   UserId,
 } from "metabase-types/api";
 
+import { usePublishTables } from "../../hooks/use-publish-tables";
 import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
 import { SyncOptionsModal } from "../SyncOptionsModal";
-import { PublishTablesModal } from "../TablePicker/components/PublishTablesModal";
 
 import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
-export function TableAttributesEditBulk() {
+type TableAttributesEditBulkProps = {
+  hasLibrary: boolean;
+};
+
+export function TableAttributesEditBulk({
+  hasLibrary,
+}: TableAttributesEditBulkProps) {
   const {
     selectedTables,
     selectedSchemas,
     selectedDatabases,
     selectedItemsCount,
   } = useSelection();
-  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
+  const { acknowledgeModal, isPublishing, handlePublish } = usePublishTables();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
   const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
@@ -149,13 +155,22 @@ export function TableAttributesEditBulk() {
             </Box>
             <Box flex={1}>
               <Button
-                onClick={() => setIsCreateModelsModalOpen(true)}
                 p="sm"
                 leftSection={<Icon name="add_folder" />}
                 style={{
                   width: "100%",
                 }}
-              >{t`Publish`}</Button>
+                disabled={!hasLibrary || isPublishing}
+                onClick={() =>
+                  handlePublish({
+                    table_ids: Array.from(selectedTables),
+                    schema_ids: Array.from(selectedSchemas),
+                    database_ids: Array.from(selectedDatabases),
+                  })
+                }
+              >
+                {t`Publish`}
+              </Button>
             </Box>
           </Group>
         </Box>
@@ -235,13 +250,7 @@ export function TableAttributesEditBulk() {
         </Box>
       </Stack>
 
-      <PublishTablesModal
-        tables={selectedTables}
-        schemas={selectedSchemas}
-        databases={selectedDatabases}
-        isOpen={isCreateModelsModalOpen}
-        onClose={() => setIsCreateModelsModalOpen(false)}
-      />
+      {acknowledgeModal}
 
       <SyncOptionsModal
         isOpen={isSyncModalOpen}

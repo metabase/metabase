@@ -20,24 +20,14 @@ interface SearchNewProps {
   query: string;
   params: RouteParams;
   filters: FilterState;
-  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function SearchNew({
-  query,
-  params,
-  filters,
-  setOnUpdateCallback,
-}: SearchNewProps) {
+export function SearchNew({ query, params, filters }: SearchNewProps) {
   const { selectedTables, setSelectedTables, selectedItemsCount } =
     useSelection();
   const routeParams = parseRouteParams(params);
   const { baseUrl } = useContext(DataModelContext);
-  const {
-    data: tables,
-    isLoading: isLoadingTables,
-    refetch,
-  } = useListTablesQuery({
+  const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
     term: query,
     "data-layer": filters.dataLayer ?? undefined,
     "data-source":
@@ -69,12 +59,6 @@ export function SearchNew({
   }, [allowedDatabaseIds, tables]);
 
   const isLoading = isLoadingTables || isLoadingDatabases;
-
-  useEffect(() => {
-    setOnUpdateCallback(() => refetch);
-    return () => setOnUpdateCallback(null);
-  }, [refetch, setOnUpdateCallback]);
-
   const lastSelectedTableIndex = useRef<number | null>(null);
 
   useEffect(() => {
