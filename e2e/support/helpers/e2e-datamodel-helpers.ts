@@ -260,7 +260,7 @@ function getTableSortOrderInput() {
 }
 
 function getTableSyncOptionsButton() {
-  return getTableSection().findByRole("button", { name: "Sync" });
+  return getTableSection().findByRole("button", { name: /Sync settings/ });
 }
 
 function getTableSectionField(name: string) {
