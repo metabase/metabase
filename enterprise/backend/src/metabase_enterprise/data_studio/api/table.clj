@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -13,6 +13,7 @@
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -109,24 +110,21 @@
   "Create a model for each of selected tables"
   [_route-params
    _query-params
-   {:keys [target_collection_id]
-    :as   body}
-   :- [:merge
-       ::table-selectors
-       [:map
-        [:target_collection_id [:maybe [:or pos-int? [:= "library"]]]]]]]
+   body :- ::table-selectors]
   (api/check-superuser)
-  (let [target-collection (cond
-                            (= "library" target_collection_id) (api/check-403 (collections/remote-synced-collection))
-                            (nil? target_collection_id)        nil
-                            :else                              (api/check-404 (t2/select-one :model/Collection target_collection_id)))
+  (let [target-collection (api/let-404 [colls (seq (t2/select :model/Collection
+                                                              :type collection/library-models-collection-type
+                                                              {:limit 2}))]
+                            (if (next colls)
+                              (throw (ex-info (tru "Multiple library-models collections found.")
+                                              {:status-code 409}))
+                              (first colls)))
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         updated-count     (-> (t2/query {:update (t2/table-name :model/Table)
                                          :set    {:collection_id (:id target-collection)
                                                   :is_published  true}
                                          :where  where})
                               first)]
-
     {:created_count     updated-count
      :tables            (t2/hydrate (t2/select :model/Table :active true {:where where}) :collection)
      :target_collection target-collection}))

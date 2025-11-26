@@ -1968,4 +1968,31 @@
       [:model/Table {root-table :id} {:name "Root Published Searchable" :is_published true :collection_id nil}]
       (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Root Published Searchable")]
         (is (some #(= root-table (:id %)) (:data results))
-            "Root published table should appear in search results")))))
+            "Root published table should appear in search results"))))
+  (testing "Published tables appear as collection items, unpublished as database items"
+    (mt/with-temp
+      [:model/Database   {db-id :id}       {:name "Context Test DB"}
+       :model/Collection {coll-id :id}     {:name "Context Test Collection" :location "/"}
+       :model/Table      {pub-table :id}   {:name "ContextTestTablePub"
+                                            :db_id db-id
+                                            :is_published true
+                                            :collection_id coll-id}
+       :model/Table      {unpub-table :id} {:name "ContextTestTableUnpub"
+                                            :db_id db-id
+                                            :is_published false}]
+      (let [results (mt/user-http-request :crowberto :get 200 "search"
+                                          :q "Context" :models "table")
+            our-result (->> (filter (comp #{pub-table unpub-table} :id) (:data results))
+                            (sort-by :id))]
+        (testing "each table appears once"
+          (is (=? [{:id pub-table
+                    :model "table"
+                    :name "ContextTestTablePub"
+                    :collection {:id coll-id}
+                    :database_name "Context Test DB"}
+                   {:id unpub-table
+                    :model "table"
+                    :name "ContextTestTableUnpub"
+                    :collection {:id nil}
+                    :database_name "Context Test DB"}]
+                  our-result)))))))
