@@ -42,7 +42,7 @@
             (is (partial= {:name "Public Test Document"
                            :document (documents.test-util/text->prose-mirror-ast "Public test content")
                            :id (:id document)}
-                          (mt/client :get 200 (str "public/document/" (:public_uuid document)))))))))))
+                          (mt/client :get 200 (str "public/document/" (:public_uuid document))))))))))
 
 (deftest public-document-returns-only-safe-fields-test
   (testing "GET /api/public/document/:uuid should only return safe fields"
@@ -59,7 +59,7 @@
             (testing "Should not include sensitive fields"
               (is (not (contains? result :public_uuid)))
               (is (not (contains? result :made_public_by_id)))
-              (is (not (contains? result :collection_id))))))))))
+              (is (not (contains? result :collection_id)))))))))
 
 (deftest public-document-hydrates-cards-test
   (testing "GET /api/public/document/:uuid hydrates cards for public access"
@@ -89,7 +89,7 @@
 
             (testing "cards do not include sensitive fields"
               (is (not (contains? (get-in result [:cards card1-id]) :collection_id)))
-              (is (not (contains? (get-in result [:cards card1-id]) :creator_id))))))))))
+              (is (not (contains? (get-in result [:cards card1-id]) :creator_id)))))))))
 
 (deftest get-public-document-errors-test
   (testing "GET /api/public/document/:uuid"
@@ -102,7 +102,7 @@
     (testing "Returns 404 if the Document doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (is (= "Not found."
-               (mt/client :get 404 (str "public/document/" (random-uuid)))))))))
+               (mt/client :get 404 (str "public/document/" (random-uuid))))))))
 
 (deftest public-document-not-accessible-when-archived-test
   (testing "GET /api/public/document/:uuid should not work for archived documents"
@@ -115,7 +115,7 @@
             (testing "Document is not accessible after archiving"
               (t2/update! :model/Document (:id document) {:archived true})
               (is (= "Not found."
-                     (mt/client :get 404 (str "public/document/" uuid)))))))))))
+                     (mt/client :get 404 (str "public/document/" uuid))))))))))
 
 ;;; ------------------------------ GET /api/public/document/:uuid/card/:card-id ---------------------------------------
 
@@ -129,7 +129,7 @@
                                            :document_id (:id document)}]
             (let [result (mt/client :get 202 (format "public/document/%s/card/%d" (:public_uuid document) (:id card)))]
               (is (some? result))
-              (is (= "completed" (:status result))))))))))
+              (is (= "completed" (:status result)))))))))
 
 (deftest public-document-card-validates-association-test
   (testing "GET /api/public/document/:uuid/card/:card-id validates card is associated with document"
@@ -138,7 +138,7 @@
                        :model/Card card {:name "Unassociated Card"
                                          :dataset_query (mt/mbql-query venues {:limit 5})}]
           (is (= "Not found."
-                 (mt/client :get 404 (format "public/document/%s/card/%d" (:public_uuid document) (:id card))))))))))
+                 (mt/client :get 404 (format "public/document/%s/card/%d" (:public_uuid document) (:id card)))))))))
 
 ;;; ----------------------- POST /api/public/document/:uuid/card/:card-id/:export-format -------------------------------
 
@@ -162,4 +162,4 @@
                                                                   (:public_uuid document)
                                                                   (:id card))
                                                     {})]
-              (is (= 200 (:status response))))))))))
+              (is (= 200 (:status response)))))))))
