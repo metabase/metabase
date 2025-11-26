@@ -2,6 +2,7 @@ import type {
   CardId,
   CollectionId,
   NativeQuerySnippetId,
+  TableId,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -29,6 +30,14 @@ export function dataStudioData() {
 
 export function dataStudioModeling() {
   return `${ROOT_URL}/modeling`;
+}
+
+export function dataStudioTable(tableId: TableId) {
+  return `${dataStudioModeling()}/tables/${tableId}`;
+}
+
+export function dataStudioTableDependencies(tableId: TableId) {
+  return `${dataStudioTable(tableId)}/dependencies`;
 }
 
 export type NewDataStudioQueryModelParams = {
