@@ -13,22 +13,25 @@
 
 (deftest publish-table-test
   (mt/with-premium-features #{:data-studio}
-    (testing "POST /api/ee/data-studio/table/publish-table"
+    (testing "POST /api/ee/data-studio/table/(un)publish-table"
       (testing "sets collection_id in tables for the selection"
         (mt/with-temp [:model/Collection {collection-id :id} {}]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-table"
                                                {:table_ids             [(mt/id :users) (mt/id :venues)]
                                                 :target_collection_id  collection-id})]
-            (is (= 2 (:created_count response)))
-            (is (= 2 (count (:tables response))))
-            (testing "tables have correct attributes"
-              (is (= #{(mt/id :users) (mt/id :venues)}
-                     (set (map :id (:tables response))))))
-            (testing "symlinks are hydrated on tables"
-              (doseq [table (:tables response)]
-                (is (= collection-id (:id (:collection table)))))))
-          (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/unpublish-table"
-                                {:table_ids [(mt/id :users) (mt/id :venues)]}))))))
+            (try
+              (is (= 2 (:created_count response)))
+              (is (= 2 (count (:tables response))))
+              (testing "tables have correct attributes"
+                (is (= #{(mt/id :users) (mt/id :venues)}
+                       (set (map :id (:tables response))))))
+              (testing "symlinks are hydrated on tables"
+                (doseq [table (:tables response)]
+                  (is (= collection-id (:id (:collection table))))))
+              (finally
+                (testing "unpublishing"
+                  (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/unpublish-table"
+                                        {:table_ids [(mt/id :users) (mt/id :venues)]}))))))))))
 
 ;: TODO (Ngoc 31/10/2025): test publish model to library mark the library as dirty
 

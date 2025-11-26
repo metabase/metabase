@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
@@ -1944,6 +1945,14 @@
        :model/Table      _                 {:name "Root Published Table" :is_published true :collection_id nil}]
       (testing "Filter by parent collection returns published tables in that collection and descendants"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+          (is (=? {:collection {:authority_level nil, :id parent-coll, :name nil, :type nil}
+                   :database_id (mt/id)
+                   :id table-1
+                   :model "table"
+                   :name "Published Table"
+                   :table_id table-1
+                   :table_name "Published Table"}
+                  (m/find-first (comp #{table-1} :id) (:data results))))
           (is (contains? (set (map :id (:data results))) table-1)
               "Published table in parent collection should be included")
           (is (contains? (set (map :id (:data results))) table-2)
