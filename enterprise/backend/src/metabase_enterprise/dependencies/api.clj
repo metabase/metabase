@@ -460,6 +460,12 @@
                               {:status-code 400
                                :card_types card-types}))))
 
+        _ (when (= sort_column :location)
+            (when (some #{:sandbox :transform :snippet} selected-types)
+              (throw (ex-info (tru "Sorting by location is only supported for cards, tables, dashboards and documents")
+                              {:status-code 400
+                               :types types}))))
+
         ;; Define query builders for each entity type
         entity-queries
         {:card {:select [["card" :entity_type]
@@ -467,8 +473,11 @@
                          [(case sort_column
                             :name :report_card.name
                             :view_count :report_card.view_count
+                            :location [:coalesce :report_dashboard.name :collection.name]
                             :report_card.name) :sort_key]]
                 :from [:report_card]
+                :left-join [:report_dashboard [:= :report_dashboard.id :report_card.dashboard_id]
+                            :collection [:= :collection.id :report_card.collection_id]]
                 :where (let [base-where [:not [:exists
                                                {:select [1]
                                                 :from [:dependency]
@@ -484,8 +493,10 @@
                           [(case sort_column
                              :name :metabase_table.display_name
                              :view_count :metabase_table.view_count
+                             :location [:concat :metabase_database.name "/" [:coalesce :metabase_table.schema ""]]
                              :metabase_table.display_name) :sort_key]]
                  :from [:metabase_table]
+                 :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]
                  :where [:not [:exists
                                {:select [1]
                                 :from [:dependency]
@@ -521,8 +532,10 @@
                               [(case sort_column
                                  :name :report_dashboard.name
                                  :view_count :report_dashboard.view_count
+                                 :location :collection.name
                                  :report_dashboard.name) :sort_key]]
                      :from [:report_dashboard]
+                     :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]
                      :where [:not [:exists
                                    {:select [1]
                                     :from [:dependency]
@@ -534,8 +547,10 @@
                              [(case sort_column
                                 :name :document.name
                                 :view_count :document.view_count
+                                :location :collection.name
                                 :document.name) :sort_key]]
                     :from [:document]
+                    :left-join [:collection [:= :collection.id :document.collection_id]]
                     :where [:not [:exists
                                   {:select [1]
                                    :from [:dependency]
@@ -626,7 +641,6 @@
                                                 (m/map-vals format-subentity))})))
                               paginated-ids)]
     ;; TODO: Apply search query filtering
-    ;; TODO: Implement :location sorting
     {:data paginated-items
      :limit limit
      :offset offset
