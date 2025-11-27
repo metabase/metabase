@@ -28,17 +28,16 @@ const options = {
 process.env = unBooleanify(options);
 
 const missingTokens = [
-  "MB_ALL_FEATURES_TOKEN",
-  "MB_STARTER_CLOUD_TOKEN",
-  "MB_PRO_CLOUD_TOKEN",
-  "MB_PRO_SELF_HOSTED_TOKEN",
+  "CYPRESS_MB_ALL_FEATURES_TOKEN",
+  "CYPRESS_MB_STARTER_CLOUD_TOKEN",
+  "CYPRESS_MB_PRO_CLOUD_TOKEN",
+  "CYPRESS_MB_PRO_SELF_HOSTED_TOKEN",
 ].filter((token) => !process.env[token]);
 
 if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
   printBold(
     `⚠️ Missing tokens: ${missingTokens.join(", ")}. Either set them or run with MB_EDITION=oss`,
   );
-  process.exit(FAILURE_EXIT_CODE);
 }
 
 printBold(`Running Cypress with options:
