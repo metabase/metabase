@@ -398,7 +398,7 @@
                              (= (-> % :data :type) dependent_card_type))))))))
 
 (defn- unreferenced-entity-queries [sort_column card-types query]
-  {:card {:select [["card" :entity_type]
+  {:card {:select [[[:inline "card"] :entity_type]
                    [:report_card.id :entity_id]
                    [(case sort_column
                       :name :report_card.name
@@ -413,7 +413,7 @@
                                               :from [:dependency]
                                               :where [:and
                                                       [:= :dependency.to_entity_id :report_card.id]
-                                                      [:= :dependency.to_entity_type "card"]]}]]
+                                                      [:= :dependency.to_entity_type [:inline "card"]]]}]]
                        card-types-where (if (seq card-types)
                                           [:and unreffed-where
                                            [:in :report_card.type (mapv name card-types)]]
@@ -421,7 +421,7 @@
                    (if query
                      [:and card-types-where [:ilike :report_card.name (str "%" query "%")]]
                      card-types-where))}
-   :table {:select [["table" :entity_type]
+   :table {:select [[[:inline "table"] :entity_type]
                     [:metabase_table.id :entity_id]
                     [(case sort_column
                        :name :metabase_table.display_name
@@ -435,11 +435,11 @@
                                                :from [:dependency]
                                                :where [:and
                                                        [:= :dependency.to_entity_id :metabase_table.id]
-                                                       [:= :dependency.to_entity_type "table"]]}]]]
+                                                       [:= :dependency.to_entity_type [:inline "table"]]]}]]]
                     (if query
                       [:and unreffed-where [:ilike :metabase_table.display_name (str "%" query "%")]]
                       unreffed-where))}
-   :transform {:select [["transform" :entity_type]
+   :transform {:select [[[:inline "transform"] :entity_type]
                         [:transform.id :entity_id]
                         [(case sort_column
                            :name :transform.name
@@ -450,11 +450,11 @@
                                                    :from [:dependency]
                                                    :where [:and
                                                            [:= :dependency.to_entity_id :transform.id]
-                                                           [:= :dependency.to_entity_type "transform"]]}]]]
+                                                           [:= :dependency.to_entity_type [:inline "transform"]]]}]]]
                         (if query
                           [:and unreffed-where [:ilike :transform.name (str "%" query "%")]]
                           unreffed-where))}
-   :snippet {:select [["snippet" :entity_type]
+   :snippet {:select [[[:inline "snippet"] :entity_type]
                       [:native_query_snippet.id :entity_id]
                       [(case sort_column
                          :name :native_query_snippet.name
@@ -465,11 +465,11 @@
                                                  :from [:dependency]
                                                  :where [:and
                                                          [:= :dependency.to_entity_id :native_query_snippet.id]
-                                                         [:= :dependency.to_entity_type "snippet"]]}]]]
+                                                         [:= :dependency.to_entity_type [:inline "snippet"]]]}]]]
                       (if query
                         [:and unreffed-where [:ilike :native_query_snippet.name (str "%" query "%")]]
                         unreffed-where))}
-   :dashboard {:select [["dashboard" :entity_type]
+   :dashboard {:select [[[:inline "dashboard"] :entity_type]
                         [:report_dashboard.id :entity_id]
                         [(case sort_column
                            :name :report_dashboard.name
@@ -483,11 +483,11 @@
                                                    :from [:dependency]
                                                    :where [:and
                                                            [:= :dependency.to_entity_id :report_dashboard.id]
-                                                           [:= :dependency.to_entity_type "dashboard"]]}]]]
+                                                           [:= :dependency.to_entity_type [:inline "dashboard"]]]}]]]
                         (if query
                           [:and unreffed-where [:ilike :report_dashboard.name (str "%" query "%")]]
                           unreffed-where))}
-   :document {:select [["document" :entity_type]
+   :document {:select [[[:inline "document"] :entity_type]
                        [:document.id :entity_id]
                        [(case sort_column
                           :name :document.name
@@ -501,11 +501,11 @@
                                                   :from [:dependency]
                                                   :where [:and
                                                           [:= :dependency.to_entity_id :document.id]
-                                                          [:= :dependency.to_entity_type "document"]]}]]]
+                                                          [:= :dependency.to_entity_type [:inline "document"]]]}]]]
                        (if query
                          [:and unreffed-where [:ilike :document.name (str "%" query "%")]]
                          unreffed-where))}
-   :sandbox {:select [["sandbox" :entity_type]
+   :sandbox {:select [[[:inline "sandbox"] :entity_type]
                       [:sandboxes.id :entity_id]
                       [(case sort_column
                          :name [:cast :sandboxes.id :text]
@@ -516,7 +516,7 @@
                             :from [:dependency]
                             :where [:and
                                     [:= :dependency.to_entity_id :sandboxes.id]
-                                    [:= :dependency.to_entity_type "sandbox"]]}]]}})
+                                    [:= :dependency.to_entity_type [:inline "sandbox"]]]}]]}})
 
 (defn- entities-by-type [ids-by-type]
   {:card (when-let [card-ids (seq (map :entity_id (get ids-by-type "card")))]
