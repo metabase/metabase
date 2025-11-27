@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
@@ -39,13 +38,6 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
       }),
     [plugins],
   );
-
-  const dispatch = useSdkDispatch();
-  useEffect(() => {
-    if (!props.withSubscriptions) {
-      dispatch(setDashboardSubscriptionSidebarOpen(false));
-    }
-  }, [dispatch, props.withSubscriptions]);
 
   return (
     <SdkDashboard
