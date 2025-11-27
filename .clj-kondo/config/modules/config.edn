@@ -1998,8 +1998,8 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features
            permissions
+           premium-features
            request}}
 
   enterprise/llm
