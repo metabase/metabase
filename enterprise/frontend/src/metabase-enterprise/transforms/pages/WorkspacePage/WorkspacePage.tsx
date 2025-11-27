@@ -29,6 +29,7 @@ import type {
 
 import { MetabotTab } from "./MetabotTab";
 import { TransformEditor } from "./TransformEditor";
+import styles from "./WorkspacePage.module.css";
 
 type WorkspacePageProps = {
   params: {
@@ -81,7 +82,7 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
   }
 
   return (
-    <Stack h="100%">
+    <Stack h="100%" gap={0}>
       <Group
         px="lg"
         py="md"
@@ -118,8 +119,12 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
               }
             }}
           >
-            <Box flex="0 0 auto" px="md">
-              <Tabs.List>
+            <Box
+              flex="0 0 auto"
+              px="md"
+              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+            >
+              <Tabs.List className={styles.tabsPanel}>
                 <Tabs.Tab value="setup">{t`Setup`}</Tabs.Tab>
                 {isMetabotAvailable && (
                   <Tabs.Tab value="metabot">{t`Metabot`}</Tabs.Tab>
@@ -151,7 +156,10 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
         </Box>
         <Box style={{ flex: 1 }}>
           <Tabs defaultValue="code">
-            <Box px="md">
+            <Box
+              px="md"
+              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+            >
               <Tabs.List>
                 <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
               </Tabs.List>

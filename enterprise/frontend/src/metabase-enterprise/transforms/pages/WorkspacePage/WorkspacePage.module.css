@@ -1,0 +1,8 @@
+.tabsPanel {
+  &::before {
+    display: none;
+  }
+  & > button {
+    border-radius: 0;
+  }
+}
