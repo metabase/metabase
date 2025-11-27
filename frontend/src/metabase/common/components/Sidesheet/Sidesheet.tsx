@@ -40,7 +40,7 @@ export function Sidesheet({
   size = "sm",
   children,
   removeBodyPadding,
-  withOverlay,
+  withOverlay = true,
   overlayProps,
   closeOnEscape = true,
 }: SidesheetProps) {
