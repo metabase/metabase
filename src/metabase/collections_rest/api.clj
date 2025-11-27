@@ -693,8 +693,7 @@
             :t.description
             :t.collection_id
             [:t.db_id :database_id]
-            ;; trick MySQL into returning a true boolean
-            [[:case [:= :t.archived_at nil] [:inline false] :else [:inline true]] :archived]
+            [[:!= :t.archived_at nil] :archived]
             [(h2x/literal "table") :model]]
    :from   [[:metabase_table :t]]
    :where  [:and
@@ -799,6 +798,10 @@
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
             update-personal-collection)))))
+
+(defmethod post-process-collection-children :table
+  [_ _ _collection rows]
+  (map #(update % :archived api/bit->boolean) rows))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
