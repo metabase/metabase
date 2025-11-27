@@ -73,6 +73,7 @@
          :display_name (lib/display-name query column)
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
+                      :database_type (:database-type column)
                       :semantic_type semantic-type
                       :field_values (:field-values column)
                       :table_reference (:table-reference column)))))

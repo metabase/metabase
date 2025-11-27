@@ -299,6 +299,9 @@
    [:name :string]
    [:type [:maybe ::field-type]]
    [:description {:optional true} [:maybe :string]]
+   [:database_type {:optional true
+                    :decode/tool-api-response #(some-> % name u/->snake_case_en)}
+    [:maybe :string]]
    [:semantic_type {:optional true
                     :decode/tool-api-response #(some-> % name u/->snake_case_en)}
     [:maybe :string]]
