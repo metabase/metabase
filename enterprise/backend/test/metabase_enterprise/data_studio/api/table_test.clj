@@ -78,28 +78,28 @@
                      :model/Table    {table-2-id :id} {:db_id db-id}]
 
         (testing "updating data_layer syncs to visibility_type for all tables"
-        ;; Update two tables to gold, which should sync to nil visibility_type
+        ;; Update two tables to internal, which should sync to nil visibility_type
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                 {:table_ids  [table-1-id table-2-id]
-                                 :data_layer "gold"})
-          (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
+                                 :data_layer "internal"})
+          (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
           (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))
-          (is (= :gold (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
+          (is (= :internal (t2/select-one-fn :data_layer :model/Table :id table-2-id)))
           (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-2-id))))
 
-        (testing "updating data_layer to copper syncs to hidden visibility_type"
-        ;; Update one table back to copper, which should sync to :hidden
+        (testing "updating data_layer to hidden syncs to hidden visibility_type"
+        ;; Update one table back to hidden, which should sync to :hidden
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                 {:table_ids  [table-1-id]
-                                 :data_layer "copper"})
-          (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
+                                 :data_layer "hidden"})
+          (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
           (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
 
         (testing "cannot update both visibility_type and data_layer at once"
           (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/edit"
                                 {:table_ids        [table-1-id]
                                  :visibility_type  "hidden"
-                                 :data_layer "copper"}))))))
+                                 :data_layer       "hidden"}))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
@@ -315,51 +315,43 @@
         (testing "empty selectors returns no tables"
           (is (= nil (selectors->table-ids {}))))))))
 
-(deftest trigger-sync-on-data-layer-change-from-copper-test
+(deftest trigger-sync-on-data-layer-change-from-hidden-test
   (mt/with-premium-features #{:data-studio}
-    (testing "Changing data_layer from copper to another value triggers sync"
-      (mt/with-temp [:model/Database {db-id :id}      {}
-                     :model/Table    {copper-1 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {copper-2 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {copper-3 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {copper-4 :id}   {:db_id db-id, :data_layer :copper}
-                     :model/Table    {gold-1 :id}     {:db_id db-id, :data_layer :gold}
-                     :model/Table    {gold-2 :id}     {:db_id db-id, :data_layer :gold}]
+    (testing "Changing data_layer from hidden to another value triggers sync"
+      (mt/with-temp [:model/Database {db-id :id}       {}
+                     :model/Table    {hidden-1 :id}    {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {hidden-2 :id}    {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {hidden-3 :id}    {:db_id db-id, :data_layer :hidden}
+                     :model/Table    {internal-1 :id}  {:db_id db-id, :data_layer :internal}
+                     :model/Table    {published-1 :id} {:db_id db-id, :data_layer :published}]
         (let [synced-ids (atom #{})]
           (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables (fn [tables] (reset! synced-ids (set (map :id tables))))]
-            (testing "Changing from copper to gold triggers sync"
+            (testing "Changing from hidden to published triggers sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [copper-1 copper-2]
-                                     :data_layer "gold"})
-              (is (= #{copper-1 copper-2} @synced-ids)))
+                                    {:table_ids  [hidden-1 hidden-2]
+                                     :data_layer "published"})
+              (is (= #{hidden-1 hidden-2} @synced-ids)))
 
-            (testing "Changing from copper to silver triggers sync"
+            (testing "Changing from hidden to internal triggers sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [copper-3]
-                                     :data_layer "silver"})
-              (is (= #{copper-3} @synced-ids)))
+                                    {:table_ids  [hidden-3]
+                                     :data_layer "internal"})
+              (is (= #{hidden-3} @synced-ids)))
 
-            (testing "Changing from copper to bronze triggers sync"
+            (testing "Not changing from hidden does not trigger sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [copper-4]
-                                     :data_layer "bronze"})
-              (is (= #{copper-4} @synced-ids)))
-
-            (testing "Not changing from copper does not trigger sync"
-              (reset! synced-ids #{})
-              (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [gold-1]
-                                     :data_layer "silver"})
+                                    {:table_ids  [internal-1]
+                                     :data_layer "published"})
               (is (= #{} @synced-ids)))
 
-            (testing "Changing to copper does not trigger sync"
+            (testing "Changing to hidden does not trigger sync"
               (reset! synced-ids #{})
               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
-                                    {:table_ids  [gold-2]
-                                     :data_layer "copper"})
+                                    {:table_ids  [published-1]
+                                     :data_layer "hidden"})
               (is (= #{} @synced-ids)))))))))
 
 (deftest bulk-edit-test
@@ -378,15 +370,15 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "ee/data-studio/table/edit"
                                        {:database_ids [clojure jvm]
-                                        :data_layer   "copper"}))))
+                                        :data_layer   "hidden"}))))
 
         (testing "simple happy path updating with db ids"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/edit"
                                 {:database_ids   [clojure jvm]
-                                 :data_layer     "copper"
+                                 :data_layer     "hidden"
                                  :data_authority "authoritative"
                                  :data_source    "ingested"})
-          (is (= #{:copper} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
+          (is (= #{:hidden} (t2/select-fn-set :data_layer :model/Table :db_id [:in [clojure jvm]])))
           (is (= #{:authoritative} (t2/select-fn-set :data_authority :model/Table :db_id [:in [clojure jvm]])))
           (is (= #{:ingested} (t2/select-fn-set :data_source :model/Table :db_id [:in [clojure jvm]]))))
 
@@ -395,13 +387,13 @@
                                 {:database_ids  [clojure]
                                  :table_ids     [classes]
                                  :schema_ids    [(format "%d:jre" jvm)]
-                                 :data_layer    "silver"})
-          (is (= {vars       :silver
-                  namespaces :silver
-                  beans      :copper
-                  classes    :silver
-                  gc         :silver
-                  jit        :silver}
+                                 :data_layer    "internal"})
+          (is (= {vars       :internal
+                  namespaces :internal
+                  beans      :hidden
+                  classes    :internal
+                  gc         :internal
+                  jit        :internal}
                  (t2/select-pk->fn :data_layer :model/Table :db_id [:in [clojure jvm]]))))
 
         (testing "can update owner_email"
