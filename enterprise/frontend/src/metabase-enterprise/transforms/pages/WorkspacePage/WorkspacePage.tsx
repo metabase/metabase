@@ -43,6 +43,7 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [archiveWorkspace, { isLoading: isArchiving }] =
     useArchiveWorkspaceMutation();
+  const [tab, setTab] = useState<string>("setup");
 
   const { data: transforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
@@ -110,6 +111,12 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
             display="flex"
             h="100%"
             style={{ flexDirection: "column" }}
+            value={tab}
+            onChange={(tab) => {
+              if (tab) {
+                setTab(tab);
+              }
+            }}
           >
             <Box flex="0 0 auto" px="md">
               <Tabs.List>
@@ -172,9 +179,10 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                             <Text
                               style={{ cursor: "pointer" }}
                               variant="inline"
-                              onClick={() =>
-                                setActiveTransform(transform as Transform)
-                              }
+                              onClick={() => {
+                                setTab("transform");
+                                setActiveTransform(transform as Transform);
+                              }}
                               c={
                                 activeTransform?.id === transform.id
                                   ? "var(--mb-color-primary)"
@@ -204,9 +212,10 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                           color: "var(--mb-color-primary)",
                         }}
                         variant="subtle"
-                        onClick={() =>
-                          setActiveTransform(transform as Transform)
-                        }
+                        onClick={() => {
+                          setTab("transform");
+                          setActiveTransform(transform as Transform);
+                        }}
                         c={
                           activeTransform?.id === transform.id
                             ? "var(--mb-color-brand)"
