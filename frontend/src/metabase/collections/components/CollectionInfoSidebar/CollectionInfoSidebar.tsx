@@ -9,6 +9,7 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
+import { useToast } from "metabase/common/hooks";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
@@ -22,6 +23,7 @@ export const CollectionInfoSidebar = ({
   collection: Collection;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }) => {
+  const [sendToast] = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
   useMount(() => {
@@ -33,11 +35,18 @@ export const CollectionInfoSidebar = ({
 
   const handleChangeDescription = useCallback(
     (description: string) => {
+      if (description?.length > 255) {
+        sendToast({
+          message: t`Description must be 255 characters or less`,
+          icon: "warning",
+        });
+        return;
+      }
       onUpdateCollection(collection, {
         description: description.trim() || null,
       });
     },
-    [collection, onUpdateCollection],
+    [collection, onUpdateCollection, sendToast],
   );
   const description = collection.description?.trim() || null;
   const canWrite = collection.can_write;
@@ -59,6 +68,7 @@ export const CollectionInfoSidebar = ({
                 description={description}
                 onChange={handleChangeDescription}
                 canWrite={canWrite}
+                maxLength={255}
               />
             </Stack>
             <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay
