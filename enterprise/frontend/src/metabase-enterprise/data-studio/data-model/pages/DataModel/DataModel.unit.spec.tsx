@@ -24,7 +24,7 @@ import {
   within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import { getUrl } from "metabase/metadata/pages/shared/utils";
+import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
@@ -186,8 +186,6 @@ const OtherComponent = () => {
   );
 };
 
-const BASE_URL = "/admin/datamodel";
-
 async function setup({
   databases = [SAMPLE_DB],
   fieldValues = SAMPLE_DB_FIELD_VALUES,
@@ -241,7 +239,7 @@ async function setup({
     </>,
     {
       withRouter: true,
-      initialRoute: initialRoute ?? getUrl(BASE_URL, params),
+      initialRoute: initialRoute ?? Urls.dataStudioData(params),
     },
   );
 

@@ -1,4 +1,4 @@
-import { memo, useContext, useState } from "react";
+import { memo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -17,8 +17,6 @@ import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton/
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
-import { getUrl } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Box,
@@ -59,14 +57,13 @@ const TableSectionBase = ({
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const { baseUrl } = useContext(DataModelContext);
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const { publishConfirmationModal, isPublishing, handlePublish } =
     usePublishTables();
 
   const getFieldHref = (fieldId: FieldId) => {
-    return getUrl(baseUrl, {
+    return Urls.dataStudioData({
       databaseId: table.db_id,
       schemaName: table.schema,
       tableId: table.id,

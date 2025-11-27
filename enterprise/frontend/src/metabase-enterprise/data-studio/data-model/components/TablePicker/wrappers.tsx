@@ -1,15 +1,13 @@
-import { useCallback, useContext, useEffect, useState } from "react";
-import { push, replace } from "react-router-redux";
+import { useCallback, useEffect, useState } from "react";
+import { replace } from "react-router-redux";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
-import { getLocation } from "metabase/selectors/routing";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 
 import type { RouteParams } from "../../pages/DataModel/types";
 
 import { TablePicker } from "./components";
-import type { ChangeOptions, TreePath } from "./types";
-import { getUrl } from "./utils";
+import type { TreePath } from "./types";
 
 type Props = TreePath & {
   params: RouteParams;
@@ -18,9 +16,6 @@ type Props = TreePath & {
 export function RouterTablePicker({ params, ...props }: Props) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
-  const location = useSelector(getLocation);
-  const { baseUrl } = useContext(DataModelContext);
-  const isSegments = location.pathname?.startsWith(`${baseUrl}/segment`);
   const {
     databaseId: propDatabaseId,
     schemaName: propSchemaName,
@@ -28,7 +23,7 @@ export function RouterTablePicker({ params, ...props }: Props) {
   } = props;
 
   const onChange = useCallback(
-    (value: TreePath, options?: ChangeOptions) => {
+    (value: TreePath) => {
       setValue(value);
 
       // Update URL only when either opening a table or no table has been opened yet.
@@ -36,17 +31,10 @@ export function RouterTablePicker({ params, ...props }: Props) {
       const canUpdateUrl = value.tableId != null || propTableId == null;
 
       if (canUpdateUrl) {
-        if (options?.isAutomatic) {
-          // prevent auto-navigation from table-picker when Segments tab is open
-          if (!isSegments) {
-            dispatch(replace(getUrl(baseUrl, value)));
-          }
-        } else {
-          dispatch(push(getUrl(baseUrl, value)));
-        }
+        dispatch(replace(Urls.dataStudioData(value)));
       }
     },
-    [dispatch, baseUrl, isSegments, propTableId],
+    [dispatch, propTableId],
   );
 
   useEffect(() => {

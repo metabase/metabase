@@ -1,5 +1,3 @@
-import { getUrl as getUrl_ } from "metabase/metadata/pages/shared/utils";
-
 import { type NodeSelection, isItemSelected } from "./bulk-selection.utils";
 import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
@@ -16,16 +14,6 @@ import type {
 
 export function hasChildren(type: ItemType): boolean {
   return type !== "table";
-}
-
-export function getUrl(baseUrl: string, value: TreePath) {
-  return getUrl_(baseUrl, {
-    fieldId: undefined,
-    tableId: undefined,
-    databaseId: undefined,
-    schemaName: undefined,
-    ...value,
-  });
 }
 
 // Returns a new state object with all the nodes along the path expanded.

@@ -1,12 +1,12 @@
 import cx from "classnames";
-import { useContext, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
-import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
-import { getUrl, parseRouteParams } from "metabase/metadata/pages/shared/utils";
+import * as Urls from "metabase/lib/urls";
+import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Checkbox, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
@@ -26,7 +26,6 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
   const { selectedTables, setSelectedTables, selectedItemsCount } =
     useSelection();
   const routeParams = parseRouteParams(params);
-  const { baseUrl } = useContext(DataModelContext);
   const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
     term: query,
     "data-layer": filters.dataLayer ?? undefined,
@@ -153,7 +152,7 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
               pe="sm"
               align="center"
               gap="sm"
-              to={getUrl(baseUrl, {
+              to={Urls.dataStudioData({
                 databaseId: table.db_id,
                 schemaName: table.schema,
                 tableId: table.id,
