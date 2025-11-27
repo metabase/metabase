@@ -4,10 +4,9 @@ import dedent from "ts-dedent";
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import { createLibraryWithItems } from "e2e/support/test-library-data";
 import type {
   CardType,
-  CollectionItem,
   PythonTransformTableAliases,
   TransformTagId,
 } from "metabase-types/api";
@@ -89,19 +88,7 @@ describe("scenarios > admin > transforms", () => {
     });
 
     it("should not show you the library in the mini picker when building transforms (uxw-2403)", () => {
-      H.createLibrary().then(({ body }) => {
-        cy.request(`/api/collection/${body.id}/items`).then(
-          ({ body: { data: children } }) => {
-            const modelsCollection = children.find(
-              (c: CollectionItem) => c.type === "library-models",
-            ) as CollectionItem;
-
-            cy.request("PUT", `/api/card/${ORDERS_MODEL_ID}`, {
-              collection_id: modelsCollection.id,
-            });
-          },
-        );
-      });
+      createLibraryWithItems();
 
       visitTransformListPage();
       getTransformsSidebar().button("Create a transform").click();
@@ -121,7 +108,7 @@ describe("scenarios > admin > transforms", () => {
         cy.findByText("Our analytics").should("not.exist");
         cy.findByText("Browse all").should("exist");
         cy.findByText("Data").click();
-        cy.findByText("Orders Model").should("exist");
+        cy.findByText("Trusted Orders Model").should("exist");
       });
     });
 
