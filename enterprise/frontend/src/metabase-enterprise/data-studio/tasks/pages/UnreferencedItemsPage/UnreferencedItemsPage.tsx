@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Box, Flex, Icon, Loader, Stack, Text, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Text, TextInput } from "metabase/ui";
 import { useGetUnreferencedItemsQuery } from "metabase-enterprise/api";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type {
@@ -10,13 +10,13 @@ import type {
   UnreferencedItemSortDirection,
 } from "metabase-types/api";
 
+import { TableSkeleton } from "../../components/TableSkeleton";
 import {
   TasksFilterButton,
   type TasksFilterState,
   getFilterApiParams,
 } from "../../components/TasksFilterButton";
 
-import { TableSkeleton } from "./TableSkeleton";
 import { UnreferencedItemsTable } from "./UnreferencedItemsTable";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -100,7 +100,7 @@ export function UnreferencedItemsPage() {
       ) : !data || data.data.length === 0 ? (
         <ListEmptyState label={t`No unreferenced items found`} />
       ) : (
-        <Box flex={1} mih={0} pos="relative">
+        <Box flex={1} mih={0}>
           <UnreferencedItemsTable
             items={data.data}
             sortColumn={sortColumn}
@@ -112,18 +112,8 @@ export function UnreferencedItemsPage() {
               pageSize: PAGE_SIZE,
               onPageChange: setPageIndex,
             }}
+            isFetching={isFetching}
           />
-          {isFetching && (
-            <Flex
-              pos="absolute"
-              inset={0}
-              align="center"
-              justify="center"
-              bg="color-mix(in srgb, var(--mb-color-bg-white) 60%, transparent)"
-            >
-              <Loader size="lg" />
-            </Flex>
-          )}
         </Box>
       )}
     </Stack>

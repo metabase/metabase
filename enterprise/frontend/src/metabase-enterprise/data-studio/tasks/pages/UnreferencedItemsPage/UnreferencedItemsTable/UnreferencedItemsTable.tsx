@@ -1,17 +1,10 @@
-import { useElementSize } from "@mantine/hooks";
-import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { BaseCell } from "metabase/data-grid";
-import { DataGrid } from "metabase/data-grid/components/DataGrid/DataGrid";
-import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type { ColumnOptions } from "metabase/data-grid/types";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
-import { Anchor, Box, Flex, Icon } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
   CardDependencyNode,
@@ -26,7 +19,11 @@ import type {
   UnreferencedItemSortDirection,
 } from "metabase-types/api";
 
-import S from "./UnreferencedItemsTable.module.css";
+import {
+  EntityCell,
+  TasksTable,
+  TextCell,
+} from "../../../components/TasksTable";
 
 interface UnreferencedItemsTableProps {
   items: UnreferencedItem[];
@@ -39,6 +36,7 @@ interface UnreferencedItemsTableProps {
     pageSize: number;
     onPageChange: (pageIndex: number) => void;
   };
+  isFetching?: boolean;
 }
 
 type CardItem = Omit<CardDependencyNode, "dependents_count">;
@@ -211,10 +209,6 @@ function formatDate(dateString: string | null): string {
   return String(getFormattedTime(dateString, "minute"));
 }
 
-const ROW_HEIGHT = 48;
-
-const centeredCellStyles = { alignItems: "center" } as const;
-
 const COLUMN_ID_TO_SORT_COLUMN: Partial<
   Record<string, UnreferencedItemSortColumn>
 > = {
@@ -228,50 +222,22 @@ export function UnreferencedItemsTable({
   sortDirection,
   onSortChange,
   pagination,
+  isFetching,
 }: UnreferencedItemsTableProps) {
-  const getSortDirectionForColumn = useCallback(
-    (columnId: string): "asc" | "desc" | undefined => {
-      const apiColumn = COLUMN_ID_TO_SORT_COLUMN[columnId];
-      if (apiColumn && apiColumn === sortColumn) {
-        return sortDirection;
-      }
-      return undefined;
-    },
-    [sortColumn, sortDirection],
-  );
-
   const columns: ColumnOptions<UnreferencedItem, string>[] = useMemo(
     () => [
       {
         id: "entity",
         name: t`Entity`,
         accessorFn: (item) => getItemName(item),
-        sortDirection: getSortDirectionForColumn("entity"),
         cell: ({ row }) => {
           const item = row.original;
-          const url = getItemUrl(item);
-          const name = getItemName(item);
-          const icon = getItemIcon(item);
           return (
-            <BaseCell style={centeredCellStyles}>
-              {url ? (
-                <Anchor href={url} className={S.cellContent}>
-                  <Flex align="center" gap="sm">
-                    <Icon name={icon} className={S.iconNoShrink} />
-                    <Ellipsified>{name}</Ellipsified>
-                  </Flex>
-                </Anchor>
-              ) : (
-                <Flex align="center" gap="sm" className={S.cellContent}>
-                  <Icon
-                    name={icon}
-                    c="text-medium"
-                    className={S.iconNoShrink}
-                  />
-                  <Ellipsified>{name}</Ellipsified>
-                </Flex>
-              )}
-            </BaseCell>
+            <EntityCell
+              name={getItemName(item)}
+              icon={getItemIcon(item)}
+              url={getItemUrl(item)}
+            />
           );
         },
       },
@@ -279,31 +245,19 @@ export function UnreferencedItemsTable({
         id: "creator",
         name: t`Creator`,
         accessorFn: (item) => getCreatorName(item) ?? "-",
-        cell: ({ getValue }) => (
-          <BaseCell style={centeredCellStyles}>
-            <Ellipsified>{String(getValue())}</Ellipsified>
-          </BaseCell>
-        ),
+        cell: ({ getValue }) => <TextCell value={String(getValue())} />,
       },
       {
         id: "lastModified",
         name: t`Last modified`,
         accessorFn: (item) => formatDate(getLastModifiedDate(item)),
-        cell: ({ getValue }) => (
-          <BaseCell style={centeredCellStyles}>
-            <Ellipsified>{String(getValue())}</Ellipsified>
-          </BaseCell>
-        ),
+        cell: ({ getValue }) => <TextCell value={String(getValue())} />,
       },
       {
         id: "lastModifiedBy",
         name: t`Last modified by`,
         accessorFn: (item) => getLastModifiedByName(item) ?? "-",
-        cell: ({ getValue }) => (
-          <BaseCell style={centeredCellStyles}>
-            <Ellipsified>{String(getValue())}</Ellipsified>
-          </BaseCell>
-        ),
+        cell: ({ getValue }) => <TextCell value={String(getValue())} />,
       },
       {
         id: "runs",
@@ -313,56 +267,24 @@ export function UnreferencedItemsTable({
           return count != null ? String(count) : "-";
         },
         align: "right",
-        sortDirection: getSortDirectionForColumn("runs"),
         cell: ({ getValue }) => (
-          <BaseCell align="right" style={centeredCellStyles}>
-            <Ellipsified>{String(getValue())}</Ellipsified>
-          </BaseCell>
+          <TextCell value={String(getValue())} align="right" />
         ),
       },
     ],
-    [getSortDirectionForColumn],
-  );
-
-  const { ref: containerRef, width: containerWidth } = useElementSize();
-
-  const theme = useMemo(() => ({ fontSize: "14px", headerHeight: 58 }), []);
-
-  const tableProps = useDataGridInstance({
-    data: items,
-    columnsOptions: columns,
-    defaultRowHeight: ROW_HEIGHT,
-    theme,
-    minGridWidth: containerWidth || undefined,
-    pageSize: pagination?.pageSize,
-    total: pagination?.total,
-    pageIndex: pagination?.pageIndex,
-    onPageChange: pagination?.onPageChange,
-  });
-
-  const handleHeaderCellClick = useCallback(
-    (_event: React.MouseEvent<HTMLDivElement>, columnId?: string) => {
-      if (!columnId || !onSortChange) {
-        return;
-      }
-      const apiColumn = COLUMN_ID_TO_SORT_COLUMN[columnId];
-      if (apiColumn) {
-        onSortChange(apiColumn);
-      }
-    },
-    [onSortChange],
+    [],
   );
 
   return (
-    <Box
-      ref={containerRef}
-      h="100%"
-      bd="1px solid var(--mb-color-border)"
-      className={S.tableContainer}
-    >
-      {containerWidth > 0 ? (
-        <DataGrid {...tableProps} onHeaderCellClick={handleHeaderCellClick} />
-      ) : null}
-    </Box>
+    <TasksTable
+      data={items}
+      columns={columns}
+      sortColumn={sortColumn}
+      sortDirection={sortDirection}
+      columnIdToSortColumn={COLUMN_ID_TO_SORT_COLUMN}
+      onSortChange={onSortChange}
+      pagination={pagination}
+      isFetching={isFetching}
+    />
   );
 }
