@@ -26,6 +26,7 @@ import type {
   WorkspaceContentItem,
 } from "metabase-types/api";
 
+import { MetabotTab } from "./MetabotTab";
 import { TransformEditor } from "./TransformEditor";
 
 type WorkspacePageProps = {
@@ -100,25 +101,39 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
           w="70%"
           h="100%"
           style={{ borderRight: "1px solid var(--mb-color-border)" }}
+          pos="relative"
         >
-          <Tabs defaultValue="setup">
-            <Box px="md">
+          <Tabs
+            defaultValue="setup"
+            display="flex"
+            h="100%"
+            style={{ flexDirection: "column" }}
+          >
+            <Box flex="0 0 auto" px="md">
               <Tabs.List>
                 <Tabs.Tab value="setup">{t`Setup`}</Tabs.Tab>
+                <Tabs.Tab value="metabot">{t`Metabot`}</Tabs.Tab>
                 <Tabs.Tab value="transform">{t`Transform`}</Tabs.Tab>
               </Tabs.List>
             </Box>
-            <Tabs.Panel value="transform" p="md">
-              {activeTransform ? (
-                <TransformEditor
-                  source={activeTransform.source as DraftTransformSource}
-                />
-              ) : (
-                <Text c="text-medium">
-                  {t`Select a transform on the right.`}
-                </Text>
-              )}
-            </Tabs.Panel>
+
+            <Box flex={1} mih={0}>
+              <Tabs.Panel value="metabot" h="100%">
+                <MetabotTab />
+              </Tabs.Panel>
+
+              <Tabs.Panel value="transform" h="100%">
+                {activeTransform ? (
+                  <TransformEditor
+                    source={activeTransform.source as DraftTransformSource}
+                  />
+                ) : (
+                  <Text c="text-medium">
+                    {t`Select a transform on the right.`}
+                  </Text>
+                )}
+              </Tabs.Panel>
+            </Box>
           </Tabs>
         </Box>
         <Box style={{ flex: 1 }}>

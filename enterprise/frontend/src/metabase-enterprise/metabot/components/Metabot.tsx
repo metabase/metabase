@@ -3,6 +3,7 @@ import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
+import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { getUser } from "metabase/selectors/user";
 import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
@@ -55,7 +56,14 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
   return (
     <ErrorBoundary errorComponent={() => null}>
-      <MetabotChat config={config} />
+      <Sidebar
+        isOpen={visible}
+        side="right"
+        width="30rem"
+        aria-hidden={!visible}
+      >
+        <MetabotChat config={config} />
+      </Sidebar>
     </ErrorBoundary>
   );
 };
