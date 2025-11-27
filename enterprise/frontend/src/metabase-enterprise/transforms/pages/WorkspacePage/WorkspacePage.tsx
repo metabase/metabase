@@ -1,12 +1,11 @@
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  Anchor,
   Box,
   Button,
   Group,
@@ -21,7 +20,13 @@ import {
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import type { WorkspaceContentItem } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  WorkspaceContentItem,
+} from "metabase-types/api";
+
+import { TransformEditor } from "./TransformEditor";
 
 type WorkspacePageProps = {
   params: {
@@ -50,6 +55,11 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
     }
   };
 
+  const workspaceTransforms = (workspace as any)?.contents?.transforms ?? [];
+  const [activeTransform, setActiveTransform] = useState<
+    Transform | undefined
+  >();
+
   if (isLoadingWorkspace) {
     return (
       <Box p="lg">
@@ -61,12 +71,10 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
   if (!workspace) {
     return (
       <Box p="lg">
-        <Text>{t`Workspace not found`}</Text>
+        <Text c="text-dark">{t`Workspace not found`}</Text>
       </Box>
     );
   }
-
-  const workspaceTransforms = (workspace as any)?.contents?.transforms ?? [];
 
   return (
     <Stack h="100%">
@@ -97,8 +105,20 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
             <Box px="md">
               <Tabs.List>
                 <Tabs.Tab value="setup">{t`Setup`}</Tabs.Tab>
+                <Tabs.Tab value="transform">{t`Transform`}</Tabs.Tab>
               </Tabs.List>
             </Box>
+            <Tabs.Panel value="transform" p="md">
+              {activeTransform ? (
+                <TransformEditor
+                  source={activeTransform.source as DraftTransformSource}
+                />
+              ) : (
+                <Text c="text-medium">
+                  {t`Select a transform on the right.`}
+                </Text>
+              )}
+            </Tabs.Panel>
           </Tabs>
         </Box>
         <Box style={{ flex: 1 }}>
@@ -111,7 +131,12 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
             <Tabs.Panel value="code" p="md">
               <Stack h="100%">
                 {workspaceTransforms.length === 0 ? null : (
-                  <Stack gap="md">
+                  <Stack
+                    gap="md"
+                    style={{
+                      borderBottom: "1px solid var(--mb-color-border)",
+                    }}
+                  >
                     <Stack gap={0}>
                       <Text fw={600}>{t`Workspace Transforms`}</Text>
                       {workspaceTransforms.map(
@@ -123,27 +148,27 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                             gap="sm"
                           >
                             <Icon name="sun" size={12} />
-                            <Anchor
-                              component={ForwardRefLink}
-                              to={Urls.transform(transform.id)}
-                              fw={500}
+                            <Text
+                              style={{ cursor: "pointer" }}
+                              variant="inline"
+                              onClick={() =>
+                                setActiveTransform(transform as Transform)
+                              }
+                              c={
+                                activeTransform?.id === transform.id
+                                  ? "var(--mb-color-primary)"
+                                  : "text-dark"
+                              }
                             >
                               {transform.name}
-                            </Anchor>
+                            </Text>
                           </Group>
                         ),
                       )}
                     </Stack>
                   </Stack>
                 )}
-                <Stack
-                  py="md"
-                  dir="column"
-                  style={{
-                    borderTop: "1px solid var(--mb-color-border)",
-                  }}
-                  gap="sm"
-                >
+                <Stack py="md" dir="column" gap="sm">
                   {transforms.map((transform: WorkspaceContentItem) => (
                     <Group
                       justify="flex-start"
@@ -152,13 +177,23 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                       gap="sm"
                     >
                       <Icon name="sun" size={12} />
-                      <Anchor
-                        component={ForwardRefLink}
-                        to={Urls.transform(transform.id)}
-                        fw={500}
+                      <Text
+                        style={{
+                          cursor: "pointer",
+                          color: "var(--mb-color-primary)",
+                        }}
+                        variant="subtle"
+                        onClick={() =>
+                          setActiveTransform(transform as Transform)
+                        }
+                        c={
+                          activeTransform?.id === transform.id
+                            ? "var(--mb-color-brand)"
+                            : "text-dark"
+                        }
                       >
                         {transform.name}
-                      </Anchor>
+                      </Text>
                     </Group>
                   ))}
                 </Stack>

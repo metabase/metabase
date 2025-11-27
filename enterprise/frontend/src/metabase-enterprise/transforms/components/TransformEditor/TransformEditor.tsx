@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useSelector } from "metabase/lib/redux";
 import {
   QueryEditor,
+  type QueryEditorUiOptions,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -11,9 +12,10 @@ import type { Database, QueryTransformSource } from "metabase-types/api";
 
 import { getEditorOptions } from "./utils";
 
-type TransformEditorProps = {
+export type TransformEditorProps = {
   source: QueryTransformSource;
   uiState: QueryEditorUiState;
+  uiOptions?: QueryEditorUiOptions;
   proposedSource: QueryTransformSource | undefined;
   databases: Database[];
   onChangeSource: (source: QueryTransformSource) => void;
@@ -27,6 +29,7 @@ export function TransformEditor({
   proposedSource,
   databases,
   uiState,
+  uiOptions,
   onChangeSource,
   onChangeUiState,
   onAcceptProposed,
@@ -44,7 +47,10 @@ export function TransformEditor({
         : undefined,
     [proposedSource, metadata],
   );
-  const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
+  const mergedUiOptions = useMemo(
+    () => ({ ...getEditorOptions(databases), ...uiOptions }),
+    [databases, uiOptions],
+  );
 
   const handleQueryChange = (query: Lib.Query) => {
     onChangeSource({ type: "query", query: Lib.toJsQuery(query) });
@@ -54,7 +60,7 @@ export function TransformEditor({
     <QueryEditor
       query={query}
       uiState={uiState}
-      uiOptions={uiOptions}
+      uiOptions={mergedUiOptions}
       proposedQuery={proposedQuery}
       onChangeQuery={handleQueryChange}
       onChangeUiState={onChangeUiState}

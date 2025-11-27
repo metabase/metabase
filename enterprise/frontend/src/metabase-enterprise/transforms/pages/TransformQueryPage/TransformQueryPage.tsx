@@ -13,7 +13,10 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import {
+  getInitialUiState,
+  type QueryEditorUiOptions,
+} from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
 import {
@@ -22,9 +25,17 @@ import {
 } from "metabase-enterprise/api";
 import { PaneHeaderActions } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import * as Lib from "metabase-lib";
-import type { Database, Transform } from "metabase-types/api";
+import type {
+  Database,
+  DraftTransformSource,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
-import { TransformEditor } from "../../components/TransformEditor";
+import {
+  TransformEditor,
+  type TransformEditorProps,
+} from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
@@ -95,6 +106,7 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const [uiState, setUiState] = useState(getInitialUiState);
+  console.log(uiState);
   const metadata = useSelector(getMetadata);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -171,31 +183,17 @@ function TransformQueryPageBody({
           }
           hasMenu={!isDirty}
         />
-        {source.type === "python" ? (
-          <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "python" ? proposedSource : undefined
-            }
-            isDirty={isDirty}
-            onChangeSource={setSourceAndRejectProposed}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        ) : (
-          <TransformEditor
-            source={source}
-            proposedSource={
-              proposedSource?.type === "query" ? proposedSource : undefined
-            }
-            uiState={uiState}
-            databases={databases}
-            onChangeSource={setSourceAndRejectProposed}
-            onChangeUiState={setUiState}
-            onAcceptProposed={acceptProposed}
-            onRejectProposed={rejectProposed}
-          />
-        )}
+        <TransformQueryPageEditor
+          source={source}
+          proposedSource={proposedSource}
+          isDirty={isDirty}
+          uiState={uiState}
+          databases={databases}
+          setSourceAndRejectProposed={setSourceAndRejectProposed}
+          setUiState={setUiState}
+          acceptProposed={acceptProposed}
+          rejectProposed={rejectProposed}
+        />
       </Stack>
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
@@ -211,5 +209,63 @@ function TransformQueryPageBody({
         onConfirm={rejectProposed}
       />
     </>
+  );
+}
+
+export type TransformQueryPageEditorUiState = ReturnType<
+  typeof getInitialUiState
+>;
+
+export type TransformQueryPageEditorProps = {
+  source: DraftTransformSource;
+  proposedSource?: DraftTransformSource;
+  isDirty: boolean;
+  uiState: TransformQueryPageEditorUiState;
+  databases: Database[];
+  setSourceAndRejectProposed: (source: DraftTransformSource) => void;
+  setUiState: (uiState: TransformQueryPageEditorUiState) => void;
+  acceptProposed: () => void;
+  rejectProposed: () => void;
+  uiOptions?: TransformEditorProps["uiOptions"];
+};
+
+export function TransformQueryPageEditor({
+  source,
+  proposedSource,
+  isDirty,
+  uiState,
+
+  uiOptions,
+  databases,
+  setSourceAndRejectProposed,
+  setUiState,
+  acceptProposed,
+  rejectProposed,
+}: TransformQueryPageEditorProps) {
+  return source.type === "python" ? (
+    <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+      source={source}
+      proposedSource={
+        proposedSource?.type === "python" ? proposedSource : undefined
+      }
+      isDirty={isDirty}
+      onChangeSource={setSourceAndRejectProposed}
+      onAcceptProposed={acceptProposed}
+      onRejectProposed={rejectProposed}
+    />
+  ) : (
+    <TransformEditor
+      source={source}
+      proposedSource={
+        proposedSource?.type === "query" ? proposedSource : undefined
+      }
+      uiState={uiState}
+      uiOptions={uiOptions}
+      databases={databases}
+      onChangeSource={setSourceAndRejectProposed}
+      onChangeUiState={setUiState}
+      onAcceptProposed={acceptProposed}
+      onRejectProposed={rejectProposed}
+    />
   );
 }
