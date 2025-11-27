@@ -17,9 +17,10 @@ import {
 let tempSampleDBDir: string | null = null;
 
 // if you want to change these, set them as environment variables in your shell
-const userOptions = {
+const options = {
   CYPRESS_TESTING_TYPE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
+  BUILD_BACKEND: false,
   BACKEND_PORT: BACKEND_PORT, // override with MB_JETTY_PORT in your env
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
@@ -28,18 +29,6 @@ const userOptions = {
   QUIET: false,
   TZ: "UTC",
   ...booleanify(process.env),
-};
-
-const derivedOptions = {
-  BUILD_JAR: userOptions.BACKEND_PORT === 4000,
-  START_BACKEND: userOptions.BACKEND_PORT === 4000,
-  MB_SNOWPLOW_AVAILABLE: true,
-  MB_SNOWPLOW_URL: "http://localhost:9090",
-};
-
-const options = {
-  ...derivedOptions,
-  ...userOptions,
 };
 
 process.env = unBooleanify(options);
@@ -61,10 +50,9 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 printBold(`Running Cypress with options:
   - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
   - MB_EDITION           : ${options.MB_EDITION}
-  - BUILD_JAR            : ${options.BUILD_JAR}
+  - BUILD_BACKEND        : ${options.BUILD_BACKEND}
   - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
   - BACKEND_PORT         : ${options.BACKEND_PORT}
-  - START_BACKEND        : ${options.START_BACKEND}
   - OPEN_UI              : ${options.OPEN_UI}
   - SHOW_BACKEND_LOGS    : ${options.SHOW_BACKEND_LOGS}
   - TZ                   : ${options.TZ}
@@ -77,34 +65,32 @@ const init = async () => {
   printBold("⏳ Starting containers");
   shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
 
-  if (options.BUILD_JAR) {
+  if (options.BUILD_BACKEND) {
     printBold("⏳ Building backend");
     shell("./bin/build-backend-for-test");
 
-    if (options.START_BACKEND) {
-      const isBackendRunning = shell(
-        `lsof -ti:${options.BACKEND_PORT} || echo ""`,
-        { quiet: true },
+    const isBackendRunning = shell(
+      `lsof -ti:${options.BACKEND_PORT} || echo ""`,
+      { quiet: true },
+    );
+    if (isBackendRunning) {
+      printBold(
+        "⚠️ Your backend is already running, you may want to kill pid " +
+          isBackendRunning,
       );
-      if (isBackendRunning) {
-        printBold(
-          "⚠️ Your backend is already running, you may want to kill pid " +
-            isBackendRunning,
-        );
-        process.exit(FAILURE_EXIT_CODE);
-      }
-
-      // Use a temporary copy of the sample db so it won't use and lock the db used for local development
-      tempSampleDBDir = path.join(
-        os.tmpdir(),
-        `metabase-sample-db-e2e-${process.pid}`,
-      );
-      fs.mkdirSync(tempSampleDBDir, { recursive: true });
-      process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = tempSampleDBDir;
-
-      printBold("⏳ Starting backend");
-      await CypressBackend.start("target/uberjar/metabase-backend.jar");
+      process.exit(FAILURE_EXIT_CODE);
     }
+
+    // Use a temporary copy of the sample db so it won't use and lock the db used for local development
+    tempSampleDBDir = path.join(
+      os.tmpdir(),
+      `metabase-sample-db-e2e-${process.pid}`,
+    );
+    fs.mkdirSync(tempSampleDBDir, { recursive: true });
+    process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = tempSampleDBDir;
+
+    printBold("⏳ Starting backend");
+    await CypressBackend.start("target/uberjar/metabase-backend.jar");
   } else {
     printBold(
       `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT}. Make sure your metabase instance is running with an h2 app db and the following environment variables:
@@ -151,7 +137,7 @@ const init = async () => {
 };
 
 const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
-  if (options.BUILD_JAR) {
+  if (options.BUILD_BACKEND) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
   }
