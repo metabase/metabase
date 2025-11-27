@@ -196,9 +196,19 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               style={{ borderBottom: "1px solid var(--mb-color-border)" }}
             >
               <Tabs.List className={styles.tabsPanel}>
-                <Tabs.Tab value="setup">{t`Setup`}</Tabs.Tab>
+                <Tabs.Tab value="setup">
+                  <Group gap="xs">
+                    <Icon name="database" aria-hidden />
+                    {t`Setup`}
+                  </Group>
+                </Tabs.Tab>
                 {isMetabotAvailable && (
-                  <Tabs.Tab value="metabot">{t`Metabot`}</Tabs.Tab>
+                  <Tabs.Tab value="metabot">
+                    <Group gap="xs">
+                      <Icon name="message_circle" aria-hidden />
+                      {t`Agent Chat`}
+                    </Group>
+                  </Tabs.Tab>
                 )}
                 {openedTransforms.map((transform, index) => (
                   <Tabs.Tab
@@ -208,17 +218,20 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                       setActiveTransform(transform);
                     }}
                   >
-                    {transform.name}
-                    <ActionIcon size="1rem" p="0" ml="xs">
-                      <Icon
-                        name="close"
-                        size={10}
-                        aria-hidden
-                        onClick={(event) =>
-                          handleCloseClick(event, transform, index)
-                        }
-                      />
-                    </ActionIcon>
+                    <Group gap="xs">
+                      <Icon name="pivot_table" aria-hidden />
+                      {transform.name}
+                      <ActionIcon size="1rem" p="0" ml="xs">
+                        <Icon
+                          name="close"
+                          size={10}
+                          aria-hidden
+                          onClick={(event) =>
+                            handleCloseClick(event, transform, index)
+                          }
+                        />
+                      </ActionIcon>
+                    </Group>
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
