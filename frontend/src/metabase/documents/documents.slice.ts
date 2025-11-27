@@ -12,8 +12,12 @@ import type {
   Document,
   VisualizationSettings,
 } from "metabase-types/api";
+import type {
+  CardEmbedRef,
+  DocumentsState,
+  MentionCacheItem,
+} from "metabase-types/store/documents";
 
-import type { CardEmbedRef } from "./components/Editor/types";
 import { getMentionsCacheKey } from "./utils/mentionsUtils";
 
 let nextDraftCardId = -1;
@@ -25,24 +29,6 @@ export const loadMetadataForDocumentCard = createAsyncThunk(
     await dispatch(loadMetadataForCard(cardForMetadata));
   },
 );
-
-interface MentionCacheItem {
-  entityId: string;
-  model: string;
-  name: string;
-}
-
-export interface DocumentsState {
-  selectedEmbedIndex: number | null;
-  cardEmbeds: CardEmbedRef[];
-  currentDocument: Document | null;
-  draftCards: Record<number, Card>;
-  mentionsCache: Record<string, MentionCacheItem>;
-  isCommentSidebarOpen: boolean;
-  childTargetId: string | undefined;
-  hoveredChildTargetId: string | undefined;
-  hasUnsavedChanges: boolean;
-}
 
 export const initialState: DocumentsState = {
   selectedEmbedIndex: null,

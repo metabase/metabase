@@ -1,7 +1,7 @@
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { useEffect } from "react";
 
-import type { CardEmbedRef } from "../types";
+import type { CardEmbedRef } from "metabase-types/store/documents";
 
 /**
  * Extracts all question references from the editor document.

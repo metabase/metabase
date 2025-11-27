@@ -10,7 +10,6 @@ import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
-import type { DocumentsStoreState } from "metabase/documents/types";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
 import { useSelector, useStore } from "metabase/lib/redux";
@@ -40,10 +39,11 @@ import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/sh
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
+import type { State } from "metabase-types/store";
+import type { CardEmbedRef } from "metabase-types/store/documents";
 
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
-import type { CardEmbedRef } from "./types";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -58,7 +58,7 @@ const BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES: string[] = [
 ];
 
 const getMetabotPromptSerializer =
-  (getState: () => DocumentsStoreState): PromptSerializer =>
+  (getState: () => State): PromptSerializer =>
   (node) => {
     const payload: ReturnType<PromptSerializer> = { instructions: "" };
     return node.content.content.reduce((acc, child) => {

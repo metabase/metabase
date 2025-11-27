@@ -3,10 +3,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { Card, CardId } from "metabase-types/api";
 
 import { initialState } from "./documents.slice";
-import type { DocumentsStoreState } from "./types";
 
-export const getDocumentsState = (state: DocumentsStoreState) =>
-  state.plugins?.documents || initialState;
+export const getDocumentsState = (state) => state.documents || initialState;
 
 export const getSelectedQuestionId = createSelector(
   getDocumentsState,
@@ -52,15 +50,15 @@ export const getDraftCards = createSelector(
 
 // Get a specific draft card by ID
 export const getDraftCardById = createSelector(
-  [getDraftCards, (_state: DocumentsStoreState, cardId: number) => cardId],
+  [getDraftCards, (_state, cardId: number) => cardId],
   (draftCards, cardId) => draftCards[cardId],
 );
 
 export const getCardWithDraft = createSelector(
   [
     getDraftCards,
-    (_state: DocumentsStoreState, cardId: CardId) => cardId,
-    (_state: DocumentsStoreState, _cardId: CardId, card?: Card) => card,
+    (_state, cardId: CardId) => cardId,
+    (_state, _cardId: CardId, card?: Card) => card,
   ],
   (draftCards, cardId, card) => {
     const draftCard = draftCards[cardId];

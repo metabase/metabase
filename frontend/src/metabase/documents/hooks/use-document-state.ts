@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDispatch } from "metabase/lib/redux";
 import type { DocumentContent } from "metabase-types/api";
+import type { CardEmbedRef } from "metabase-types/store/documents";
 
-import type { CardEmbedRef } from "../components/Editor/types";
 import { setCardEmbeds, setIsCommentSidebarOpen } from "../documents.slice";
 
 export function useDocumentState(documentData?: {
