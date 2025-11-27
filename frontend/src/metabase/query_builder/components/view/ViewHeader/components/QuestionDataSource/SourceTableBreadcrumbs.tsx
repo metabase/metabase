@@ -58,7 +58,7 @@ export function SourceTableBreadcrumbs({
         <HeadBreadcrumbs.Badge
           key="collection"
           to={Urls.collection(collection)}
-          icon="table"
+          icon="repository"
           inactiveColor="text-light"
         >
           {collection.name}
