@@ -207,7 +207,7 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(await screen.findByText("John Doe")).toBeInTheDocument();
     });
 
-    it(`should show pulse list view after creating the first subscription by a admin user ${testScenarioCondition} (EMB-1060)`, async () => {
+    it(`should show pulse list view after creating the first subscription by an admin user ${testScenarioCondition} (EMB-1060)`, async () => {
       const user = {
         firstName: "Admin",
         lastName: "User",
