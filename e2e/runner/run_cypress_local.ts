@@ -20,7 +20,6 @@ const options = {
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
   QA_DB_ENABLED: true,
-  QUIET: false,
   TZ: "UTC",
   ...booleanify(process.env),
 };
