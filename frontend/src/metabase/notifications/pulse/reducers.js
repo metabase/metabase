@@ -2,9 +2,6 @@ import { handleActions } from "redux-actions";
 
 import {
   CANCEL_EDITING_PULSE,
-  FETCH_PULSE_CARD_PREVIEW,
-  FETCH_PULSE_FORM_INPUT,
-  FETCH_PULSE_LIST_BY_DASHBOARD_ID,
   SAVE_EDITING_PULSE,
   SET_EDITING_PULSE,
   UPDATE_EDITING_PULSE,
@@ -20,29 +17,4 @@ export const editingPulse = handleActions(
     [CANCEL_EDITING_PULSE]: { next: () => DEFAULT_EDITING_PULSE },
   },
   DEFAULT_EDITING_PULSE,
-);
-
-export const formInput = handleActions(
-  {
-    [FETCH_PULSE_FORM_INPUT]: { next: (state, { payload }) => payload },
-  },
-  {},
-);
-
-export const cardPreviews = handleActions(
-  {
-    [FETCH_PULSE_CARD_PREVIEW]: {
-      next: (state, { payload }) => ({ ...state, [payload.id]: payload }),
-    },
-  },
-  {},
-);
-
-export const pulseList = handleActions(
-  {
-    [FETCH_PULSE_LIST_BY_DASHBOARD_ID]: {
-      next: (state, { payload }) => payload,
-    },
-  },
-  [],
 );
