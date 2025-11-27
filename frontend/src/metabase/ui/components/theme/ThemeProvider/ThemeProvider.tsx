@@ -19,18 +19,15 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PUT } from "metabase/lib/api";
 import { parseHashOptions } from "metabase/lib/browser";
+import type {
+  ColorScheme,
+  ResolvedColorScheme,
+} from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
-import { useSelector } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import { getSetting, getSettingsLoading } from "metabase/selectors/settings";
 
 import { getThemeOverrides } from "../../../theme";
-import {
-  type ColorScheme,
-  ColorSchemeProvider,
-  useColorScheme,
-} from "../ColorSchemeProvider";
-import type { ResolvedColorScheme } from "../ColorSchemeProvider/ColorSchemeProvider";
+import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
@@ -46,6 +43,8 @@ interface ThemeProviderProps {
   theme?: MantineThemeOverride;
 
   displayTheme?: DisplayTheme | string;
+
+  initialColorScheme?: ColorScheme | undefined;
 }
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
@@ -171,17 +170,6 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
-  const savedColorScheme = useSelector((state) =>
-    getSetting(state, "color-scheme"),
-  );
-  const isLoadingSettings = useSelector(getSettingsLoading);
-
-  const defaultColorScheme = ["light", "dark", "auto"].includes(
-    savedColorScheme as ColorScheme,
-  )
-    ? (savedColorScheme as "light" | "dark" | "auto")
-    : undefined;
-
   const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
     await PUT("/api/setting/:key")({
       key: "color-scheme",
@@ -189,14 +177,9 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     });
   }, []);
 
-  if (isLoadingSettings) {
-    // waiting for user to load
-    return null;
-  }
-
   return (
     <ColorSchemeProvider
-      defaultColorScheme={defaultColorScheme}
+      defaultColorScheme={props.initialColorScheme}
       forceColorScheme={forceColorScheme}
       onUpdateColorScheme={handleUpdateColorScheme}
     >
