@@ -2,8 +2,18 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Box, Button, Flex, Icon, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import { useGetUnreferencedItemsQuery } from "metabase-enterprise/api";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type {
   UnreferencedItemSortColumn,
   UnreferencedItemSortDirection,
@@ -21,7 +31,7 @@ export function UnreferencedItemsPage() {
   const [sortDirection, setSortDirection] =
     useState<UnreferencedItemSortDirection>();
 
-  const { data, isLoading, error } = useGetUnreferencedItemsQuery({
+  const { data, isLoading, isFetching, error } = useGetUnreferencedItemsQuery({
     query: debouncedSearch || undefined,
     sort_column: sortColumn,
     sort_direction: sortDirection,
@@ -62,19 +72,28 @@ export function UnreferencedItemsPage() {
         </Button>
       </Flex>
       {isLoading ? (
-        <TableSkeleton />
+        <TableSkeleton columnWidths={[0.5, 0.125, 0.125, 0.125, 0.125]} />
       ) : !data || data.data.length === 0 ? (
-        <Box p="lg">
-          <Text c="text-medium">{t`No unreferenced items found`}</Text>
-        </Box>
+        <ListEmptyState label={t`No unreferenced items found`} />
       ) : (
-        <Box flex={1} mih={0}>
+        <Box flex={1} mih={0} pos="relative">
           <UnreferencedItemsTable
             items={data.data}
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSortChange={handleSortChange}
           />
+          {isFetching && (
+            <Flex
+              pos="absolute"
+              inset={0}
+              align="center"
+              justify="center"
+              bg="color-mix(in srgb, var(--mb-color-bg-white) 60%, transparent)"
+            >
+              <Loader size="lg" />
+            </Flex>
+          )}
         </Box>
       )}
     </Stack>
