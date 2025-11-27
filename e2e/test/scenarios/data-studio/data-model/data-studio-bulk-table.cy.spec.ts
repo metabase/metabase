@@ -104,8 +104,8 @@ describe("bulk table operations", () => {
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
-    TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
-    TablePicker.getTable("Feedback").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Products").find('input[type="checkbox"]').check();
     cy.findByRole("button", { name: /Publish/ }).click();
     cy.findByLabelText("Don’t show this to me again").check();
     cy.findByRole("button", { name: /Got it/ }).click();
@@ -115,8 +115,8 @@ describe("bulk table operations", () => {
       cy.findByRole("button", { name: /Go to Data/ }).click();
     });
 
-    H.DataStudio.Modeling.tableItem("Accounts").should("be.visible");
-    H.DataStudio.Modeling.tableItem("Feedback").should("be.visible");
+    H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
+    H.DataStudio.Modeling.tableItem("Products").should("be.visible");
   });
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {

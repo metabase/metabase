@@ -114,8 +114,11 @@ export const DataStudio = {
     emptyPage: modelingEmptyPage,
     collectionPage: collectionPage,
     collectionTitle: () => collectionPage().findByRole("heading"),
-    metricItem: (name: string) => cy.findByTestId("metric-name").contains(name),
-    modelItem: (name: string) => cy.findByTestId("dataset-name").contains(name),
-    tableItem: (name: string) => cy.findByTestId("table-name").contains(name),
+    metricItem: (name: string) =>
+      cy.findAllByTestId("metric-name").contains(name),
+    modelItem: (name: string) =>
+      cy.findAllByTestId("dataset-name").contains(name),
+    tableItem: (name: string) =>
+      cy.findAllByTestId("table-name").contains(name),
   },
 };
