@@ -221,8 +221,21 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Callback when row selection is changed */
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 
-  /** Items per page. Undefined disables pagination. */
+  /** Items per page. Enables pagination when provided. */
   pageSize?: number;
+
+  /**
+   * Total number of items across all pages.
+   * When provided along with pageIndex and onPageChange, enables server-side
+   * pagination where the component expects pre-paginated data.
+   */
+  total?: number;
+
+  /** Current page index (0-based). Required for server-side pagination. */
+  pageIndex?: number;
+
+  /** Callback when page changes. Required for server-side pagination. */
+  onPageChange?: (pageIndex: number) => void;
 
   /** Callback when a column is resized. */
   onColumnResize?: (columnName: string, width: number) => void;
@@ -298,6 +311,9 @@ export interface DataGridInstance<TData> {
   selection: DataGridSelection;
   enableRowVirtualization: boolean;
   enablePagination: boolean;
+  paginationTotal?: number;
+  paginationPageIndex?: number;
+  onPaginationChange?: (pageIndex: number) => void;
   theme?: DataGridTheme;
   getTotalHeight: () => number;
   getVisibleRows: () => MaybeVirtualRow<TData>[];

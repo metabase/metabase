@@ -23,6 +23,7 @@ import { TableSkeleton } from "./TableSkeleton";
 import { UnreferencedItemsTable } from "./UnreferencedItemsTable";
 
 const SEARCH_DEBOUNCE_MS = 300;
+const PAGE_SIZE = 20;
 
 export function UnreferencedItemsPage() {
   const [searchValue, setSearchValue] = useState("");
@@ -30,15 +31,19 @@ export function UnreferencedItemsPage() {
   const [sortColumn, setSortColumn] = useState<UnreferencedItemSortColumn>();
   const [sortDirection, setSortDirection] =
     useState<UnreferencedItemSortDirection>();
+  const [pageIndex, setPageIndex] = useState(0);
 
   const { data, isLoading, isFetching, error } = useGetUnreferencedItemsQuery({
     query: debouncedSearch || undefined,
     sort_column: sortColumn,
     sort_direction: sortDirection,
+    limit: PAGE_SIZE,
+    offset: pageIndex * PAGE_SIZE,
   });
 
   const handleSortChange = useCallback(
     (column: UnreferencedItemSortColumn) => {
+      setPageIndex(0);
       if (sortColumn === column) {
         setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
       } else {
@@ -47,6 +52,14 @@ export function UnreferencedItemsPage() {
       }
     },
     [sortColumn],
+  );
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchValue(e.currentTarget.value);
+      setPageIndex(0);
+    },
+    [],
   );
 
   if (error) {
@@ -64,7 +77,7 @@ export function UnreferencedItemsPage() {
           flex={1}
           placeholder={t`Search...`}
           value={searchValue}
-          onChange={(e) => setSearchValue(e.currentTarget.value)}
+          onChange={handleSearchChange}
           leftSection={<Icon name="search" />}
         />
         <Button variant="default" leftSection={<Icon name="filter" />}>
@@ -82,6 +95,12 @@ export function UnreferencedItemsPage() {
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSortChange={handleSortChange}
+            pagination={{
+              total: data.total,
+              pageIndex,
+              pageSize: PAGE_SIZE,
+              onPageChange: setPageIndex,
+            }}
           />
           {isFetching && (
             <Flex

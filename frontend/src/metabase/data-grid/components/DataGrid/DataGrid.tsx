@@ -70,6 +70,9 @@ export const DataGrid = function DataGrid<TData>({
   classNames,
   styles,
   enablePagination,
+  paginationTotal,
+  paginationPageIndex,
+  onPaginationChange,
   showRowsCount,
   getTotalHeight,
   getVisibleRows,
@@ -406,6 +409,9 @@ export const DataGrid = function DataGrid<TData>({
           <Footer
             table={table}
             enablePagination={enablePagination}
+            paginationTotal={paginationTotal}
+            paginationPageIndex={paginationPageIndex}
+            onPaginationChange={onPaginationChange}
             showRowsCount={showRowsCount}
             rowsTruncated={rowsTruncated}
             style={styles?.footer}

@@ -33,6 +33,12 @@ interface UnreferencedItemsTableProps {
   sortColumn?: UnreferencedItemSortColumn;
   sortDirection?: UnreferencedItemSortDirection;
   onSortChange?: (column: UnreferencedItemSortColumn) => void;
+  pagination?: {
+    total: number;
+    pageIndex: number;
+    pageSize: number;
+    onPageChange: (pageIndex: number) => void;
+  };
 }
 
 type CardItem = Omit<CardDependencyNode, "dependents_count">;
@@ -216,6 +222,7 @@ export function UnreferencedItemsTable({
   sortColumn,
   sortDirection,
   onSortChange,
+  pagination,
 }: UnreferencedItemsTableProps) {
   const getSortDirectionForColumn = useCallback(
     (columnId: string): "asc" | "desc" | undefined => {
@@ -315,12 +322,17 @@ export function UnreferencedItemsTable({
   const { ref: containerRef, width: containerWidth } = useElementSize();
 
   const theme = useMemo(() => ({ fontSize: "14px", headerHeight: 58 }), []);
+
   const tableProps = useDataGridInstance({
     data: items,
     columnsOptions: columns,
     defaultRowHeight: ROW_HEIGHT,
     theme,
     minGridWidth: containerWidth || undefined,
+    pageSize: pagination?.pageSize,
+    total: pagination?.total,
+    pageIndex: pagination?.pageIndex,
+    onPageChange: pagination?.onPageChange,
   });
 
   const handleHeaderCellClick = useCallback(
