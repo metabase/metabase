@@ -23,36 +23,27 @@ const config: StorybookConfig = {
     "storybook-addon-pseudo-states",
   ],
 
-  framework: {
-    name: "@storybook/react-webpack5",
-    options: {},
-  },
-  typescript: {
-    reactDocgen: "react-docgen-typescript",
-  },
+  framework: { name: "@storybook/react-webpack5", options: {} },
+  typescript: { reactDocgen: "react-docgen-typescript" },
 
   webpackFinal: (config) => {
     return {
       ...config,
       resolve: {
         ...config.resolve,
-        alias: {
-          ...config.resolve?.alias,
-          ...appConfig.resolve.alias,
-        },
+        alias: { ...config.resolve?.alias, ...appConfig.resolve.alias },
         extensions: appConfig.resolve.extensions,
+        fallback: {
+          ...config.resolve?.fallback,
+          // Use node-libs-browser's util since we have a workspace package named 'util'
+          util: require.resolve("node-libs-browser/node_modules/util/"),
+        },
       },
       plugins: [
         ...(config.plugins ?? []),
-        new MiniCssExtractPlugin({
-          ignoreOrder: true,
-        }),
-        new webpack.ProvidePlugin({
-          Buffer: ["buffer", "Buffer"],
-        }),
-        new webpack.EnvironmentPlugin({
-          IS_EMBEDDING_SDK: "false",
-        }),
+        new MiniCssExtractPlugin({ ignoreOrder: true }),
+        new webpack.ProvidePlugin({ Buffer: ["buffer", "Buffer"] }),
+        new webpack.EnvironmentPlugin({ IS_EMBEDDING_SDK: "false" }),
       ],
       module: {
         ...config.module,
