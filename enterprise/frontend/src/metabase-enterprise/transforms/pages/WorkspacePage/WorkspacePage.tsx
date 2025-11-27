@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -37,6 +38,7 @@ type WorkspacePageProps = {
 
 export function WorkspacePage({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
+  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [archiveWorkspace, { isLoading: isArchiving }] =
@@ -112,15 +114,19 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
             <Box flex="0 0 auto" px="md">
               <Tabs.List>
                 <Tabs.Tab value="setup">{t`Setup`}</Tabs.Tab>
-                <Tabs.Tab value="metabot">{t`Metabot`}</Tabs.Tab>
+                {isMetabotAvailable && (
+                  <Tabs.Tab value="metabot">{t`Metabot`}</Tabs.Tab>
+                )}
                 <Tabs.Tab value="transform">{t`Transform`}</Tabs.Tab>
               </Tabs.List>
             </Box>
 
             <Box flex={1} mih={0}>
-              <Tabs.Panel value="metabot" h="100%">
-                <MetabotTab />
-              </Tabs.Panel>
+              {isMetabotAvailable && (
+                <Tabs.Panel value="metabot" h="100%">
+                  <MetabotTab />
+                </Tabs.Panel>
+              )}
 
               <Tabs.Panel value="transform" h="100%">
                 {activeTransform ? (
