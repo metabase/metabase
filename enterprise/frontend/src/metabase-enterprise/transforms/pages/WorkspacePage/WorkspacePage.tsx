@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -30,14 +30,18 @@ import type {
 import { MetabotTab } from "./MetabotTab";
 import { TransformEditor } from "./TransformEditor";
 import styles from "./WorkspacePage.module.css";
+import {
+  WorkspaceProvider,
+  type WorkspaceTransform,
+  useWorkspace,
+} from "./WorkspaceProvider";
 
 type WorkspacePageProps = {
   params: {
     workspaceId: string;
   };
 };
-
-export function WorkspacePage({ params }: WorkspacePageProps) {
+function WorkspacePageContent({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const dispatch = useDispatch();
@@ -50,6 +54,14 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
 
+  const {
+    openedTransforms,
+    activeTransform,
+    setActiveTransform,
+    addOpenedTransform,
+    removeOpenedTransform,
+  } = useWorkspace();
+
   const handleArchiveClick = async () => {
     try {
       await archiveWorkspace(id).unwrap();
@@ -59,11 +71,40 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
       sendErrorToast(t`Failed to archive workspace`);
     }
   };
-
   const workspaceTransforms = (workspace as any)?.contents?.transforms ?? [];
-  const [activeTransform, setActiveTransform] = useState<
-    Transform | undefined
-  >();
+
+  const handleCloseClick = useCallback(
+    (event: React.MouseEvent, transform: WorkspaceTransform, index: number) => {
+      event.stopPropagation();
+
+      const isActive = activeTransform?.id === transform.id;
+      const remaining = openedTransforms.filter(
+        (item) => item.id !== transform.id,
+      );
+
+      removeOpenedTransform(transform.id);
+
+      if (!isActive) {
+        return;
+      }
+
+      const fallback = remaining[index - 1] ?? remaining[index] ?? undefined;
+      setActiveTransform(fallback);
+
+      if (fallback) {
+        setTab(String(fallback.id));
+      } else {
+        setTab("setup");
+      }
+    },
+    [
+      activeTransform,
+      removeOpenedTransform,
+      setActiveTransform,
+      setTab,
+      openedTransforms,
+    ],
+  );
 
   if (isLoadingWorkspace) {
     return (
@@ -129,7 +170,26 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                 {isMetabotAvailable && (
                   <Tabs.Tab value="metabot">{t`Metabot`}</Tabs.Tab>
                 )}
-                <Tabs.Tab value="transform">{t`Transform`}</Tabs.Tab>
+                {openedTransforms.map((transform, index) => (
+                  <Tabs.Tab
+                    key={transform.id}
+                    value={String(transform.id)}
+                    onClick={() => {
+                      setActiveTransform(transform);
+                    }}
+                  >
+                    {transform.name}
+                    <Icon
+                      name="close"
+                      size={10}
+                      aria-hidden
+                      style={{ marginLeft: 8 }}
+                      onClick={(event) =>
+                        handleCloseClick(event, transform, index)
+                      }
+                    />
+                  </Tabs.Tab>
+                ))}
               </Tabs.List>
             </Box>
 
@@ -140,15 +200,15 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                 </Tabs.Panel>
               )}
 
-              <Tabs.Panel value="transform" h="100%">
-                {activeTransform ? (
-                  <TransformEditor
-                    source={activeTransform.source as DraftTransformSource}
-                  />
-                ) : (
+              <Tabs.Panel value={String(activeTransform?.id)} h="100%">
+                {openedTransforms.length === 0 || !activeTransform ? (
                   <Text c="text-medium">
                     {t`Select a transform on the right.`}
                   </Text>
+                ) : (
+                  <TransformEditor
+                    source={activeTransform.source as DraftTransformSource}
+                  />
                 )}
               </Tabs.Panel>
             </Box>
@@ -188,8 +248,15 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                               style={{ cursor: "pointer" }}
                               variant="inline"
                               onClick={() => {
-                                setTab("transform");
-                                setActiveTransform(transform as Transform);
+                                setTab(String(transform.id));
+                                const workspaceTransform: WorkspaceTransform = {
+                                  id: transform.id as number,
+                                  name: transform.name as string,
+                                  source: (transform as Transform).source,
+                                };
+
+                                addOpenedTransform(workspaceTransform);
+                                setActiveTransform(workspaceTransform);
                               }}
                               c={
                                 activeTransform?.id === transform.id
@@ -221,8 +288,15 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                         }}
                         variant="subtle"
                         onClick={() => {
-                          setTab("transform");
-                          setActiveTransform(transform as Transform);
+                          setTab(String(transform.id));
+                          const availableTransform: WorkspaceTransform = {
+                            id: transform.id as number,
+                            name: transform.name as string,
+                            source: (transform as Transform).source,
+                          };
+
+                          addOpenedTransform(availableTransform);
+                          setActiveTransform(availableTransform);
                         }}
                         c={
                           activeTransform?.id === transform.id
@@ -243,3 +317,11 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
     </Stack>
   );
 }
+
+export const WorkspacePage = ({ params }: WorkspacePageProps) => {
+  return (
+    <WorkspaceProvider>
+      <WorkspacePageContent params={params} />
+    </WorkspaceProvider>
+  );
+};
