@@ -37,7 +37,7 @@ describe("bulk table operations", () => {
       "GET",
       `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
     ).as("getSchema");
-    cy.intercept("POST", "/api/ee/data-studio/table/publish-model").as(
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-table").as(
       "publishTables",
     );
   });
@@ -151,6 +151,7 @@ describe("bulk table operations", () => {
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");
+    H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12")
@@ -171,11 +172,7 @@ describe("bulk table operations", () => {
 
     cy.findByRole("button", { name: /Publish/ }).click();
     cy.findByRole("button", { name: /Got it/ }).click();
-    H.pickEntity({
-      tab: "Collections",
-      path: ["Our analytics"],
-    });
-    cy.findByRole("button", { name: /Publish here/ }).click();
+    cy.wait("@publishTables");
 
     TablePicker.getDatabase("Writable Postgres12").click();
 
