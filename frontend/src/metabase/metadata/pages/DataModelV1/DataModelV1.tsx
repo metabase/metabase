@@ -16,16 +16,13 @@ import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import {
   FieldSection,
+  FieldValuesModal,
   PreviewSection,
   type PreviewType,
   SyncOptionsModal,
   TableSection,
 } from "../../components";
-import {
-  FieldValuesModal,
-  NoDatabasesEmptyState,
-  trackMetadataChange,
-} from "../shared";
+import { NoDatabasesEmptyState, trackMetadataChange } from "../shared";
 
 import S from "./DataModel.module.css";
 import { RouterTablePicker, SegmentsLink } from "./components";

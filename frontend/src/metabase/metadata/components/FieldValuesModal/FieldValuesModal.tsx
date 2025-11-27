@@ -1,19 +1,26 @@
 import { t } from "ttag";
 
-import {
-  DiscardFieldValuesButton,
-  RescanFieldButton,
-} from "metabase/metadata/components";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Modal, Stack, Text, rem } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
-interface Props {
+import { DiscardFieldValuesButton } from "../DiscardFieldValuesButton";
+import { RescanFieldButton } from "../RescanFieldButton";
+
+type FieldValuesModalProps = {
   fieldId: FieldId;
   isOpen: boolean;
   onClose: () => void;
-}
+};
 
-export const FieldValuesModal = ({ fieldId, isOpen, onClose }: Props) => {
+export const FieldValuesModal = ({
+  fieldId,
+  isOpen,
+  onClose,
+}: FieldValuesModalProps) => {
+  const applicationName = useSelector(getApplicationName);
+
   return (
     <Modal
       opened={isOpen}
@@ -24,8 +31,7 @@ export const FieldValuesModal = ({ fieldId, isOpen, onClose }: Props) => {
     >
       <Stack gap="md" pt="sm">
         <Text c="text-secondary" size="sm">
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */}
-          {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
+          {t`${applicationName} can scan the values in this table to enable checkbox filters in dashboards and questions.`}
         </Text>
 
         <RescanFieldButton fieldId={fieldId} />

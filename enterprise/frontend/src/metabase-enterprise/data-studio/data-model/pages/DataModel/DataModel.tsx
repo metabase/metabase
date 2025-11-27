@@ -9,6 +9,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { trackMetadataChange } from "metabase/metadata/pages/shared";
 import {
   getTableMetadataQuery,
   parseRouteParams,
@@ -240,15 +241,16 @@ function DataModelContent({ params }: Props) {
               {field && table && databaseId != null && (
                 <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                   <FieldSection
-                    databaseId={databaseId}
-                    field={field}
                     /**
                      * Make sure internal component state is reset when changing fields.
                      * This is to avoid state mix-up with optimistic updates.
                      */
                     key={getRawTableFieldId(field)}
+                    field={field}
                     parent={parentField}
                     table={table}
+                    getFieldHref={(_fieldId) => ""}
+                    onTrackMetadataChange={trackMetadataChange}
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}
                   />
@@ -273,14 +275,11 @@ function DataModelContent({ params }: Props) {
           >
             <PreviewSection
               className={S.preview}
-              databaseId={databaseId}
               field={field}
-              fieldId={fieldId}
-              previewType={previewType}
               table={table}
-              tableId={metadataTableId}
-              onClose={closePreview}
+              previewType={previewType}
               onPreviewTypeChange={setPreviewType}
+              onClose={closePreview}
             />
           </Box>
         )}

@@ -8,6 +8,7 @@ export * from "./FieldOrderPicker";
 export * from "./FieldValuesTypePicker";
 export * from "./FieldVisibilityPicker";
 export * from "./FieldSection";
+export * from "./FieldValuesModal";
 export * from "./FkTargetPicker";
 export * from "./LabeledValue";
 export * from "./LayerInput";
