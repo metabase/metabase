@@ -197,14 +197,14 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             >
               <Tabs.List className={styles.tabsPanel}>
                 <Tabs.Tab value="setup">
-                  <Group gap="xs">
+                  <Group gap="xs" wrap="nowrap">
                     <Icon name="database" aria-hidden />
                     {t`Setup`}
                   </Group>
                 </Tabs.Tab>
                 {isMetabotAvailable && (
                   <Tabs.Tab value="metabot">
-                    <Group gap="xs">
+                    <Group gap="xs" wrap="nowrap">
                       <Icon name="message_circle" aria-hidden />
                       {t`Agent Chat`}
                     </Group>
@@ -218,7 +218,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                       setActiveTransform(transform);
                     }}
                   >
-                    <Group gap="xs">
+                    <Group gap="xs" wrap="nowrap">
                       <Icon name="pivot_table" aria-hidden />
                       {transform.name}
                       <ActionIcon size="1rem" p="0" ml="xs">
