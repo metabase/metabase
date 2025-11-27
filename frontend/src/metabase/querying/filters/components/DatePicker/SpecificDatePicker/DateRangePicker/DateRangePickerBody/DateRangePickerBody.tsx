@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { DEFAULT_DATE_STYLE } from "metabase/lib/formatting/datetime-utils";
 import type { DatesRangeValue } from "metabase/ui";
 import {
   DateInput,
@@ -20,12 +21,14 @@ interface DateRangePickerBodyProps {
   value: [Date, Date];
   hasTime: boolean;
   onChange: (value: [Date, Date]) => void;
+  valueFormat?: string;
 }
 
 export function DateRangePickerBody({
   value,
   hasTime,
   onChange,
+  valueFormat = DEFAULT_DATE_STYLE,
 }: DateRangePickerBodyProps) {
   const [startDate, endDate] = value;
   const [inProgressDateRange, setInProgressDateRange] =
@@ -85,7 +88,7 @@ export function DateRangePickerBody({
         <DateInput
           className={S.FlexDateInput}
           value={startDate}
-          valueFormat="LL"
+          valueFormat={valueFormat}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
@@ -94,7 +97,7 @@ export function DateRangePickerBody({
         <DateInput
           className={S.FlexDateInput}
           value={endDate}
-          valueFormat="LL"
+          valueFormat={valueFormat}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
           onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
