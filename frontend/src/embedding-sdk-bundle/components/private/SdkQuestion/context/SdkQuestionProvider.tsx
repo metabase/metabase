@@ -76,7 +76,6 @@ export const SdkQuestionProvider = ({
 
   useEffect(() => {
     if (isGuestEmbed && token) {
-      console.log("isGuestEmbed", isGuestEmbed, token);
       PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
     }
   }, [isGuestEmbed, token]);
