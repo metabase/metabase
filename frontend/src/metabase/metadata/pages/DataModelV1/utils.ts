@@ -19,7 +19,7 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
 
 export function getUrl(params: ParsedRouteParams): string {
   const { databaseId, schemaName, tableId, fieldId } = params;
-  const schemaId = `${databaseId}:${schemaName}`;
+  const schemaId = `${databaseId}:${encodeURIComponent(schemaName ?? "")}`;
 
   if (
     databaseId != null &&

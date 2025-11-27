@@ -8,13 +8,6 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import * as Urls from "metabase/lib/urls";
-import {
-  FieldOrderPicker,
-  NameDescriptionInput,
-  ResponsiveButton,
-  TableFieldList,
-  TableSortableFieldList,
-} from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
@@ -28,20 +21,28 @@ import {
 } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
-import type { RouteParams } from "../../types";
-import { getUrl, parseRouteParams } from "../../utils";
+import { FieldOrderPicker } from "../FieldOrderPicker";
+import { NameDescriptionInput } from "../NameDescriptionInput";
+import { ResponsiveButton } from "../ResponsiveButton";
+import { TableFieldList } from "../TableFieldList";
+import { TableSortableFieldList } from "../TableSortableFieldList";
 
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
 
-interface Props {
-  params: RouteParams;
+type TableSectionBaseProps = {
   table: Table;
+  fieldId: FieldId | undefined;
+  getFieldHref: (fieldId: FieldId) => string;
   onSyncOptionsClick: () => void;
-}
+};
 
-const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
-  const { fieldId, ...parsedParams } = parseRouteParams(params);
+const TableSectionBase = ({
+  table,
+  fieldId,
+  getFieldHref,
+  onSyncOptionsClick,
+}: TableSectionBaseProps) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
@@ -237,7 +238,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
                 showIconWithLabel={false}
                 onClick={() => setIsSorting(false)}
                 onRequestWidth={setDoneButtonWidth}
-              >{t`Done`}</ResponsiveButton>
+              >
+                {t`Done`}
+              </ResponsiveButton>
             )}
           </Group>
         </Group>
@@ -257,9 +260,9 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
           {!isSorting && hasFields && (
             <TableFieldList
-              activeFieldId={fieldId}
-              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
               table={table}
+              activeFieldId={fieldId}
+              getFieldHref={getFieldHref}
             />
           )}
         </Stack>

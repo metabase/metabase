@@ -31,7 +31,7 @@ import {
 } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
-import { getTableMetadataQuery, parseRouteParams } from "./utils";
+import { getTableMetadataQuery, getUrl, parseRouteParams } from "./utils";
 
 interface Props {
   children?: ReactNode;
@@ -40,7 +40,8 @@ interface Props {
 }
 
 export const DataModelV1 = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const parsedParams = parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
@@ -153,8 +154,11 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                      * This is to avoid state mix-up with optimistic updates.
                      */
                     key={table.id}
-                    params={params}
+                    fieldId={fieldId}
                     table={table}
+                    getFieldHref={(fieldId) =>
+                      getUrl({ ...parsedParams, fieldId })
+                    }
                     onSyncOptionsClick={openSyncModal}
                   />
                 )}
