@@ -86,5 +86,7 @@ function TableModal({ table, modalType, onClose }: TableModalProps) {
           onClose={onClose}
         />
       );
+    default:
+      return null;
   }
 }
