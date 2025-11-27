@@ -10,7 +10,7 @@ title: Data Editing
 
 ### Sync settings
 
-Clicking the _Sync settings_ button opens a popover that allows you to perform the following operations on your database table:
+Clicking the **Sync settings** button opens a popover that allows you to perform the following operations on your database table:
 
 - **Re-sync schema** scans the database table again for any changes you've made to the table's schema since the last sync.
 - **Scan field values** scans the actual values in your table to populate filters on dashboards.
@@ -50,7 +50,6 @@ Search options
 
 Filter by visibility type, owner, and source
 
-Click Apply to apply the filter and see the result
+Click **Apply** to apply the filter and see the result
 
-### Multi-select databases and tables 
-
+### Multi-select databases and tables
