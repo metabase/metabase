@@ -5,8 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.validation :as perms.validation]
-   [metabase.request.session :as request.session]
+   [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -22,7 +21,7 @@
   (api/check-400 (not (collections/library-collection)) "Library already exists")
   ;; Library creation requires admin-level collection permissions which the user may not have,
   ;; but we've verified they have data-studio permission above, so we run as admin
-  (request.session/as-admin
+  (request/as-admin
     (collections/create-library-collection!)))
 
 (defn- add-here-and-below [collection]

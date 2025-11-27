@@ -1998,7 +1998,8 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features}}
+           premium-features
+           request}}
 
   enterprise/llm
   {:team "Metabot"
