@@ -30,6 +30,7 @@ import {
 
 type PythonDataPickerProps = {
   database?: DatabaseId;
+  canChangeDatabase?: boolean;
   tables: PythonTransformTableAliases;
   onChange: (
     database: number,
@@ -42,6 +43,7 @@ export function PythonDataPicker({
   database,
   tables,
   onChange,
+  canChangeDatabase,
 }: PythonDataPickerProps) {
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
@@ -150,22 +152,24 @@ export function PythonDataPicker({
       className={S.dataPicker}
       data-testid="python-data-picker"
     >
-      <Box>
-        <Text fw="bold">{t`Source database`}</Text>
-        <Text size="sm" c="text-light" mb="sm">
-          {t`Select the database that contains your source data.`}
-        </Text>
+      {canChangeDatabase && (
+        <Box>
+          <Text fw="bold">{t`Source database`}</Text>
+          <Text size="sm" c="text-light" mb="sm">
+            {t`Select the database that contains your source data.`}
+          </Text>
 
-        <DatabaseDataSelector
-          className={S.databaseSelector}
-          selectedDatabaseId={database}
-          setDatabaseFn={handleDatabaseChange}
-          databases={databases?.data ?? []}
-          databaseIsDisabled={(database: Database) =>
-            !hasFeature(database, "transforms/python")
-          }
-        />
-      </Box>
+          <DatabaseDataSelector
+            className={S.databaseSelector}
+            selectedDatabaseId={database}
+            setDatabaseFn={handleDatabaseChange}
+            databases={databases?.data ?? []}
+            databaseIsDisabled={(database: Database) =>
+              !hasFeature(database, "transforms/python")
+            }
+          />
+        </Box>
+      )}
       {database && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>

@@ -245,6 +245,7 @@ export function TransformQueryPageEditor({
   return source.type === "python" ? (
     <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
       source={source}
+      uiOptions={uiOptions}
       proposedSource={
         proposedSource?.type === "python" ? proposedSource : undefined
       }
