@@ -176,6 +176,9 @@ describe("InfoText", () => {
     it("shows table's schema", async () => {
       await setup({
         model: "table",
+        resultProps: {
+          collection: createMockCollection({ id: undefined, name: undefined }),
+        },
       });
 
       const databaseLink = screen.getByText("Database Name");
