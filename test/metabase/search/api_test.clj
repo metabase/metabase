@@ -1944,7 +1944,7 @@
        :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
        :model/Table      {table-4 :id}     {:name "Root Published Table" :is_published true :collection_id nil}]
       (testing "Global search"
-        (let [results (mt/user-http-request :crowberto :get 200 "search" :q "published")]
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Table")]
           (is (=? [{:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
                     :database_id (mt/id)
                     :id table-1
