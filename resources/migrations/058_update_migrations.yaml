@@ -1953,6 +1953,12 @@ databaseChangeLog:
       id: v58.2025-11-27T10:00:00
       author: christruter
       comment: Add collection_id column to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: collection_id
       changes:
         - addColumn:
             tableName: transform
@@ -1972,6 +1978,11 @@ databaseChangeLog:
       id: v58.2025-11-27T10:00:01
       author: christruter
       comment: Add index on transform.collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_transform_collection_id
       changes:
         - createIndex:
             tableName: transform
@@ -1988,6 +1999,11 @@ databaseChangeLog:
       id: v58.2025-11-27T10:00:02
       author: christruter
       comment: Add foreign key constraint from transform.collection_id to collection
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_transform_collection_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
