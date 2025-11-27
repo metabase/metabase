@@ -449,7 +449,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior - jwt attributes"
     cy.signOut();
   });
 
-  it("should substitute JWT user attributes from in click behavior link templates (metabase#65942)", () => {
+  it("should substitute JWT user attribute in click behavior link templates (metabase#65942)", () => {
     const jwtAttributeValue = "attribute_value";
 
     cy.task<string>("signJwt", {
