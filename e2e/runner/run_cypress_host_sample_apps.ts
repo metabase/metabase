@@ -1,52 +1,41 @@
-import { BACKEND_PORT } from "./constants/backend-port";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import runCypress from "./cypress-node-js-runner";
-import { booleanify, printBold, unBooleanify } from "./cypress-runner-utils";
+import { booleanify, printBold } from "./cypress-runner-utils";
 import { startHostAppContainers } from "./embedding-sdk/host-apps/start-host-app-containers";
 import { startSampleAppContainers } from "./embedding-sdk/sample-apps/start-sample-app-containers";
 import { resolveSdkE2EConfig } from "./resolve-sdk-e2e-config";
 
 // if you want to change these, set them as environment variables in your shell
-const userOptions = {
-  SDK_TEST_SUITE: undefined, // one of the many sample-app, or host-app Embedding SDK suites
-  BACKEND_PORT: BACKEND_PORT, // override with MB_JETTY_PORT in your env
+const options = {
+  SDK_TEST_SUITE: "vite-6-host-app-e2e", // one of the many sample-app, or host-app Embedding SDK suites
   OPEN_UI: true,
   ...booleanify(process.env),
 };
 
-const options = {
-  ...userOptions,
-};
-
-process.env = unBooleanify(options);
-
 printBold(`Running Cypress with options:
   - SDK_TEST_SUITE       : ${options.SDK_TEST_SUITE}
-  - BACKEND_PORT         : ${options.BACKEND_PORT}
   - OPEN_UI              : ${options.OPEN_UI}
 `);
 
 const init = async () => {
-  if (options.SDK_TEST_SUITE) {
-    switch (options.SDK_TEST_SUITE) {
-      case "metabase-nodejs-react-sdk-embedding-sample-e2e":
-      case "metabase-nextjs-sdk-embedding-sample-e2e":
-      case "shoppy-e2e":
-        await startSampleAppContainers(options.SDK_TEST_SUITE);
-        break;
+  switch (options.SDK_TEST_SUITE) {
+    case "metabase-nodejs-react-sdk-embedding-sample-e2e":
+    case "metabase-nextjs-sdk-embedding-sample-e2e":
+    case "shoppy-e2e":
+      await startSampleAppContainers(options.SDK_TEST_SUITE);
+      break;
 
-      case "vite-6-host-app-e2e":
-      case "next-15-app-router-host-app-e2e":
-      case "next-15-pages-router-host-app-e2e":
-      case "angular-20-host-app-e2e":
-        await startHostAppContainers(options.SDK_TEST_SUITE);
-        break;
-    }
-
-    printBold("⏳ Starting Sample/Host App Cypress Tests");
-    const config = resolveSdkE2EConfig(options.SDK_TEST_SUITE);
-    await runCypress(config);
+    case "vite-6-host-app-e2e":
+    case "next-15-app-router-host-app-e2e":
+    case "next-15-pages-router-host-app-e2e":
+    case "angular-20-host-app-e2e":
+      await startHostAppContainers(options.SDK_TEST_SUITE);
+      break;
   }
+
+  printBold("⏳ Starting Sample/Host App Cypress Tests");
+  const config = resolveSdkE2EConfig(options.SDK_TEST_SUITE);
+  await runCypress(config);
 };
 
 init()
