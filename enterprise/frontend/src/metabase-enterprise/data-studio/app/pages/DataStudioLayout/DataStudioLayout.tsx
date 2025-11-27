@@ -1,4 +1,5 @@
 import cx from "classnames";
+import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -354,7 +355,7 @@ function WorkspacesSection({
       </UnstyledButton>
 
       {isWorkspacesExpanded && (
-        <Stack gap="0.75rem" pl="0">
+        <>
           <UnstyledButton
             className={S.newWorkspaceButton}
             onClick={handleOpenCreateModal}
@@ -369,62 +370,33 @@ function WorkspacesSection({
               </Text>
             </Flex>
           </UnstyledButton>
+          <Stack gap="0.75rem" style={{ overflowY: "auto", maxHeight: "50vh" }}>
+            {isLoading ? (
+              <>
+                <Skeleton height={80} radius="md" />
+                <Skeleton height={80} radius="md" />
+              </>
+            ) : workspaces.length === 0 ? (
+              <Text c="text-secondary" size="xs" px="0.5rem">
+                {t`No workspaces yet`}
+              </Text>
+            ) : (
+              workspaces.map((workspace) => {
+                const isSelected =
+                  pathname === Urls.dataStudioWorkspace(workspace.id);
 
-          {isLoading ? (
-            <>
-              <Skeleton height={80} radius="md" />
-              <Skeleton height={80} radius="md" />
-            </>
-          ) : workspaces.length === 0 ? (
-            <Text c="text-secondary" size="xs" px="0.5rem">
-              {t`No workspaces yet`}
-            </Text>
-          ) : (
-            workspaces.map((workspace) => {
-              const isSelected =
-                pathname === Urls.dataStudioWorkspace(workspace.id);
-              const updatedAt = new Date(workspace.updated_at);
-              const now = new Date();
-              const diffMs = now.getTime() - updatedAt.getTime();
-              const diffMins = Math.floor(diffMs / 60000);
-              const diffHours = Math.floor(diffMs / 3600000);
-              const diffDays = Math.floor(diffMs / 86400000);
-
-              let timeAgo;
-              if (diffMins < 1) {
-                timeAgo = t`Just now`;
-              } else if (diffMins < 60) {
-                timeAgo = `${diffMins}m ago`;
-              } else if (diffHours < 24) {
-                timeAgo = `${diffHours}h ago`;
-              } else {
-                timeAgo = `${diffDays}d ago`;
-              }
-
-              return (
-                <UnstyledButton
-                  key={workspace.id}
-                  className={cx(S.workspaceItem, { [S.selected]: isSelected })}
-                  onClick={() => handleOpenWorkspace(workspace.id)}
-                  p="md"
-                  bdrs="md"
-                >
-                  <Stack gap="xs">
-                    <Flex align="center" gap="xs">
-                      <Icon name="git_branch" size={16} />
-                      <Text size="sm" fw={600} truncate>
-                        {workspace.name}
-                      </Text>
-                    </Flex>
-                    <Text size="xs" c="text-secondary">
-                      {timeAgo}
-                    </Text>
-                  </Stack>
-                </UnstyledButton>
-              );
-            })
-          )}
-        </Stack>
+                return (
+                  <WorkspaceItem
+                    key={workspace.id}
+                    workspace={workspace}
+                    isSelected={isSelected}
+                    onOpen={handleOpenWorkspace}
+                  />
+                );
+              })
+            )}
+          </Stack>
+        </>
       )}
 
       <Modal
@@ -523,5 +495,33 @@ function DataStudioNavToggle({
         <FixedSizeIcon name={isNavExpanded ? "chevronleft" : "chevronright"} />
       </UnstyledButton>
     </Tooltip>
+  );
+}
+
+interface WorkspaceItemProps {
+  workspace: { id: number; name: string; updated_at: string };
+  isSelected: boolean;
+  onOpen: (workspaceId: number) => void;
+}
+
+function WorkspaceItem({ workspace, isSelected, onOpen }: WorkspaceItemProps) {
+  const timeAgo = dayjs(workspace.updated_at).fromNow();
+
+  return (
+    <UnstyledButton
+      className={cx(S.workspaceItem, { [S.selected]: isSelected })}
+      onClick={() => onOpen(workspace.id)}
+      p="0.75rem"
+      bdrs="md"
+    >
+      <Stack gap="xs">
+        <Text size="sm" fw={600} truncate>
+          {workspace.name}
+        </Text>
+        <Text size="xs" c="text-secondary" truncate>
+          {t`Updated ${timeAgo}`}
+        </Text>
+      </Stack>
+    </UnstyledButton>
   );
 }
