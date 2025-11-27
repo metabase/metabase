@@ -2,24 +2,25 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
+import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
 import type {
   Field,
   FieldFormattingSettings as FieldSettings,
 } from "metabase-types/api";
 
-import { trackMetadataChange } from "../analytics";
+import { TitledSection } from "../../TitledSection";
 
 interface Props {
   field: Field;
+  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
 }
 
-const FormattingSectionBase = ({ field }: Props) => {
+const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -37,7 +38,7 @@ const FormattingSectionBase = ({ field }: Props) => {
     if (error) {
       sendErrorToast(t`Failed to update formatting of ${field.display_name}`);
     } else {
-      trackMetadataChange("formatting");
+      onTrackMetadataChange("formatting");
 
       sendSuccessToast(
         t`Formatting of ${field.display_name} updated`,

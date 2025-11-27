@@ -2,11 +2,6 @@ import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import {
-  CoercionStrategyPicker,
-  LabeledValue,
-  TitledSection,
-} from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canCoerceFieldType,
@@ -14,19 +9,26 @@ import {
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Box, Flex, Group, Stack, Switch, rem } from "metabase/ui";
+import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
 import type { Field } from "metabase-types/api";
 
-import { trackMetadataChange } from "../../analytics";
+import { CoercionStrategyPicker } from "../../CoercionStrategyPicker";
+import { LabeledValue } from "../../LabeledValue";
+import { TitledSection } from "../../TitledSection";
 
 import S from "./DataSection.module.css";
 import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?component";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
-interface Props {
+type DataSectionBaseProps = {
   field: Field;
-}
+  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+};
 
-const DataSectionBase = ({ field }: Props) => {
+const DataSectionBase = ({
+  field,
+  onTrackMetadataChange,
+}: DataSectionBaseProps) => {
   const id = getRawTableFieldId(field);
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
@@ -90,7 +92,7 @@ const DataSectionBase = ({ field }: Props) => {
           : t`Failed to update casting for ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("type_casting");
+      onTrackMetadataChange("type_casting");
 
       sendSuccessToast(
         field.coercion_strategy == null

@@ -2,12 +2,6 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
-import {
-  FieldValuesTypePicker,
-  FieldVisibilityPicker,
-  UnfoldJsonPicker,
-} from "metabase/metadata/components";
-import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canFieldUnfoldJson,
@@ -15,6 +9,7 @@ import {
   isFieldJsonUnfolded,
 } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
 import type {
   DatabaseId,
   Field,
@@ -22,16 +17,24 @@ import type {
   FieldVisibilityType,
 } from "metabase-types/api";
 
-import { trackMetadataChange } from "../../analytics";
+import { FieldValuesTypePicker } from "../../FieldValuesTypePicker";
+import { FieldVisibilityPicker } from "../../FieldVisibilityPicker";
+import { TitledSection } from "../../TitledSection";
+import { UnfoldJsonPicker } from "../../UnfoldJsonPicker";
 
 import { RemappingPicker } from "./RemappingPicker";
 
-interface Props {
-  databaseId: DatabaseId;
+type BehaviorSectionBaseProps = {
   field: Field;
-}
+  databaseId: DatabaseId;
+  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+};
 
-const BehaviorSectionBase = ({ databaseId, field }: Props) => {
+const BehaviorSectionBase = ({
+  field,
+  databaseId,
+  onTrackMetadataChange,
+}: BehaviorSectionBaseProps) => {
   const id = getRawTableFieldId(field);
   const { data: database } = useGetDatabaseQuery({
     id: databaseId,
@@ -49,7 +52,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       visibility_type: visibilityType,
     });
 
-    trackMetadataChange("visibility_change");
+    onTrackMetadataChange("visibility_change");
 
     if (error) {
       sendErrorToast(t`Failed to update visibility of ${field.display_name}`);
@@ -73,7 +76,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       has_field_values: hasFieldValues,
     });
 
-    trackMetadataChange("filtering_change");
+    onTrackMetadataChange("filtering_change");
 
     if (error) {
       sendErrorToast(t`Failed to update filtering of ${field.display_name}`);
@@ -106,7 +109,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           : t`Failed to disable JSON unfolding for ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("json_unfolding");
+      onTrackMetadataChange("json_unfolding");
 
       sendSuccessToast(
         jsonUnfolding
@@ -145,6 +148,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
           field={field}
           label={t`Display values`}
+          onTrackMetadataChange={onTrackMetadataChange}
         />
       )}
 

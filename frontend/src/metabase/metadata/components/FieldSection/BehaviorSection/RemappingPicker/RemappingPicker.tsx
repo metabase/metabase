@@ -24,9 +24,8 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
+import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
 import type { Database, Field, FieldId } from "metabase-types/api";
-
-import { trackMetadataChange } from "../../../analytics";
 
 import {
   type ChangeOptions,
@@ -48,17 +47,19 @@ import {
   is403Error,
 } from "./utils";
 
-interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+type RemappingPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
   database: Database;
   field: Field;
-}
+  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+};
 
 export const RemappingPicker = ({
-  comboboxProps,
   database,
   field,
+  comboboxProps,
+  onTrackMetadataChange,
   ...props
-}: Props) => {
+}: RemappingPicker) => {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const [hasChanged, setHasChanged] = useState(false);
@@ -131,7 +132,7 @@ export const RemappingPicker = ({
         t`Failed to update display values of ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("display_values");
+      onTrackMetadataChange("display_values");
       sendSuccessToast(
         t`Display values of ${field.display_name} updated`,
         async () => {

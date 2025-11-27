@@ -3,39 +3,41 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  NameDescriptionInput,
-  ResponsiveButton,
-} from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, Field, Table } from "metabase-types/api";
+import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { Field, FieldId, Table } from "metabase-types/api";
+
+import { NameDescriptionInput } from "../NameDescriptionInput";
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
-import { FormattingSection } from "./FormattingSection";
-import { MetadataSection } from "./MetadataSection";
+import { FormattingSection } from "./FormattingSection/FormattingSection";
+import { MetadataSection } from "./MetadataSection/MetadataSection";
 import { useResponsiveButtons } from "./hooks";
 
-interface Props {
-  databaseId: DatabaseId;
+type FieldSectionBaseProps = {
   field: Field;
   table: Table;
   parent?: Field;
+  getFieldHref: (fieldId: FieldId) => string;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
-}
+  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+};
 
 const FieldSectionBase = ({
-  databaseId,
   field,
   parent,
   table,
+  getFieldHref,
   onFieldValuesClick,
   onPreviewClick,
-}: Props) => {
+  onTrackMetadataChange,
+}: FieldSectionBaseProps) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -138,10 +140,25 @@ const FieldSectionBase = ({
       </Stack>
 
       <Stack gap="xl" px="lg">
-        <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} table={table} />
-        <BehaviorSection databaseId={databaseId} field={field} />
-        <FormattingSection field={field} />
+        <DataSection
+          field={field}
+          onTrackMetadataChange={onTrackMetadataChange}
+        />
+        <MetadataSection
+          field={field}
+          table={table}
+          getFieldHref={getFieldHref}
+          onTrackMetadataChange={onTrackMetadataChange}
+        />
+        <BehaviorSection
+          field={field}
+          databaseId={table.db_id}
+          onTrackMetadataChange={onTrackMetadataChange}
+        />
+        <FormattingSection
+          field={field}
+          onTrackMetadataChange={onTrackMetadataChange}
+        />
       </Stack>
     </Stack>
   );

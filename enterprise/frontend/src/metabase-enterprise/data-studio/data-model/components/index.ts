@@ -1,4 +1,4 @@
-export * from "metabase/metadata/pages/shared/FieldSection";
+export * from "../../../../../../../frontend/src/metabase/metadata/components/FieldSection";
 export * from "metabase/metadata/pages/shared/FieldValuesModal";
 export * from "metabase/metadata/pages/shared/NoDatabasesEmptyState";
 export * from "metabase/metadata/pages/shared/PreviewSection";

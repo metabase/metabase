@@ -5,14 +5,12 @@ import _ from "underscore";
 
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isEntityName } from "metabase-lib/v1/types/utils/isa";
-import type { Field, Table } from "metabase-types/api";
-
-import { getUrl } from "../utils";
+import type { Field, FieldId, Table } from "metabase-types/api";
 
 export function getSemanticTypeError(
   table: Table,
   field: Field,
-  baseUrl: string,
+  getFieldHref: (fieldId: FieldId) => string,
 ): ReactNode | undefined {
   if (!isEntityName(field)) {
     return undefined;
@@ -38,12 +36,7 @@ export function getSemanticTypeError(
       {entityNameFields.map((field, index) => {
         const parentName = field.nfc_path?.[0] ?? "";
         const parentField = fieldsByName[parentName];
-        const href = getUrl(baseUrl, {
-          databaseId: table.db_id,
-          schemaName: table.schema,
-          tableId: table.id,
-          fieldId: getRawTableFieldId(field),
-        });
+        const href = getFieldHref(getRawTableFieldId(field));
 
         return (
           <Fragment key={index}>

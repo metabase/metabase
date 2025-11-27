@@ -1,43 +1,46 @@
-import { memo, useContext, useMemo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import {
   useListDatabaseIdFieldsQuery,
   useUpdateFieldMutation,
 } from "metabase/api";
-import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
-import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DatabaseId, Field, Table } from "metabase-types/api";
+import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { Field, FieldId, Table } from "metabase-types/api";
 
-import { DataModelContext } from "../DataModelContext";
-import { trackMetadataChange } from "../analytics";
-
-import { getSemanticTypeError } from "./utils";
+import { SemanticTypeAndTargetPicker } from "../../SemanticTypeAndTargetPicker";
+import { TitledSection } from "../../TitledSection";
+import { getSemanticTypeError } from "../utils";
 
 type Patch = Partial<
   Pick<Field, "settings" | "semantic_type" | "fk_target_field_id">
 >;
 
-interface Props {
-  databaseId: DatabaseId;
+type MetadataSectionBaseProps = {
   field: Field;
   table: Table;
-}
+  getFieldHref: (fieldId: FieldId) => string;
+  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+};
 
-const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
+const MetadataSectionBase = ({
+  field,
+  table,
+  getFieldHref,
+  onTrackMetadataChange,
+}: MetadataSectionBaseProps) => {
   const id = getRawTableFieldId(field);
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
-    id: databaseId,
+    id: table.db_id,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
-  const { baseUrl } = useContext(DataModelContext);
   const semanticTypeError = useMemo(() => {
-    return getSemanticTypeError(table, field, baseUrl);
-  }, [table, field, baseUrl]);
+    return getSemanticTypeError(table, field, getFieldHref);
+  }, [table, field, getFieldHref]);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
@@ -49,7 +52,7 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
         t`Failed to update semantic type of ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("semantic_type_change");
+      onTrackMetadataChange("semantic_type_change");
 
       sendSuccessToast(
         t`Semantic type of ${field.display_name} updated`,

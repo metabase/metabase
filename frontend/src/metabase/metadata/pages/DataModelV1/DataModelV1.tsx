@@ -14,12 +14,13 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
+import { FieldSection, TableSection } from "../../components";
 import {
-  FieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
+  trackMetadataChange,
 } from "../shared";
 
 import S from "./DataModel.module.css";
@@ -27,7 +28,6 @@ import {
   RouterTablePicker,
   SegmentsLink,
   SyncOptionsModal,
-  TableSection,
 } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
@@ -181,17 +181,20 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                 {field && table && (
                   <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                     <FieldSection
-                      databaseId={databaseId}
-                      field={field}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
                       key={getRawTableFieldId(field)}
-                      parent={parentField}
+                      field={field}
                       table={table}
+                      parent={parentField}
+                      getFieldHref={(fieldId) =>
+                        getUrl({ ...parsedParams, fieldId })
+                      }
                       onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
+                      onTrackMetadataChange={trackMetadataChange}
                     />
                   </Box>
                 )}
