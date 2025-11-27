@@ -23,7 +23,6 @@ export type HeaderButtonProps = {
   hasModelActionsEnabled: boolean;
   dashboard: Dashboard;
   canManageSubscriptions: boolean;
-  formInput: any;
   isAdmin: boolean;
   openSettingsSidebar: () => void;
 } & DashboardHeaderButtonRowProps;

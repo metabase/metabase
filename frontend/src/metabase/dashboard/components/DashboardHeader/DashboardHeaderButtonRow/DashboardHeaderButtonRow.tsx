@@ -15,7 +15,6 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
@@ -29,7 +28,6 @@ export const DashboardHeaderButtonRow = ({
 }: {
   dashboardActionKeys?: DashboardActionKey[] | null;
 } & DashboardHeaderButtonRowProps) => {
-  const formInput = useSelector(getPulseFormInput);
   const isAdmin = useSelector(getUserIsAdmin);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
@@ -66,7 +64,6 @@ export const DashboardHeaderButtonRow = ({
             isAnalyticsDashboard,
             dashboard,
             canManageSubscriptions,
-            formInput,
             isAdmin,
             isPublic,
             openSettingsSidebar,

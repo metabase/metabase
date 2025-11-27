@@ -16,7 +16,6 @@ import { ObjectUnionSchema } from "metabase/schema";
 import Actions from "./actions";
 import Collections from "./collections";
 import Dashboards from "./dashboards";
-import Pulses from "./pulses";
 import Questions from "./questions";
 import Segments from "./segments";
 import SnippetCollections from "./snippet-collections";
@@ -171,7 +170,6 @@ export default createEntity({
       Actions.actionShouldInvalidateLists(action) ||
       Collections.actionShouldInvalidateLists(action) ||
       Dashboards.actionShouldInvalidateLists(action) ||
-      Pulses.actionShouldInvalidateLists(action) ||
       Questions.actionShouldInvalidateLists(action) ||
       Segments.actionShouldInvalidateLists(action) ||
       Snippets.actionShouldInvalidateLists(action) ||

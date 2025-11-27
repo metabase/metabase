@@ -1,11 +1,31 @@
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
-import {
-  type Card,
-  type Dashboard,
-  isVirtualCardDisplayType,
+import type {
+  ActionParametersMapping,
+  Card,
+  Dashboard,
+  DashboardId,
+  DashboardParameterMapping,
+  VirtualDashCardParameterMapping,
 } from "metabase-types/api";
+import { isVirtualCardDisplayType } from "metabase-types/api";
 
-const cardsFromDashboard = (dashboard?: Dashboard) => {
+export type SubscriptionCard = Partial<
+  Pick<Card, "id" | "collection_id" | "description" | "name">
+> &
+  Pick<Card, "display"> & {
+    include_csv: boolean;
+    include_xls: boolean;
+    dashboard_card_id: number;
+    dashboard_id: DashboardId;
+    parameter_mappings:
+      | DashboardParameterMapping[]
+      | ActionParametersMapping[]
+      | VirtualDashCardParameterMapping[]
+      | null
+      | undefined;
+  };
+
+const cardsFromDashboard = (dashboard?: Dashboard): SubscriptionCard[] => {
   if (dashboard === undefined) {
     return [];
   }
@@ -26,8 +46,10 @@ const cardsFromDashboard = (dashboard?: Dashboard) => {
   }));
 };
 
-export const getSupportedCardsForSubscriptions = (dashboard?: Dashboard) => {
+export const getSupportedCardsForSubscriptions = (
+  dashboard?: Dashboard,
+): SubscriptionCard[] => {
   return cardsFromDashboard(dashboard).filter(
-    (card: Pick<Card, "display">) => !isVirtualCardDisplayType(card.display),
+    (card) => !isVirtualCardDisplayType(card.display),
   );
 };

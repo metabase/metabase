@@ -2,15 +2,18 @@ import type { JSX, ReactNode } from "react";
 import { useMemo } from "react";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { skipToken, useListNotificationsQuery } from "metabase/api";
-import Pulses from "metabase/entities/pulses";
+import {
+  skipToken,
+  useListNotificationsQuery,
+  useListSubscriptionsQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
 } from "metabase/selectors/user";
-import type { Alert } from "metabase-types/api";
 
 import {
   navigateToArchive,
@@ -20,12 +23,10 @@ import {
 import { NotificationList } from "../../components/NotificationList";
 
 interface NotificationsAppProps {
-  pulses: Alert[];
   children?: ReactNode;
 }
 
-const NotificationsAppInner = ({
-  pulses,
+export const NotificationsApp = ({
   children,
 }: NotificationsAppProps): JSX.Element | null => {
   const user = useSelector(getUser);
@@ -33,13 +34,26 @@ const NotificationsAppInner = ({
 
   const dispatch = useDispatch();
 
-  const { data: questionNotifications = [] } = useListNotificationsQuery(
+  const {
+    data: questionNotifications = [],
+    isLoading: isLoadingNotifications,
+    error: notificationsError,
+  } = useListNotificationsQuery(
     user
       ? {
           creator_or_recipient_id: user.id,
           include_inactive: false,
         }
       : skipToken,
+  );
+
+  const {
+    data: pulses = [],
+    isLoading: isLoadingPulses,
+    error: pulsesError,
+  } = useListSubscriptionsQuery(
+    { creator_or_recipient: true },
+    { refetchOnMountOrArgChange: true },
   );
 
   const items = useMemo(() => {
@@ -71,22 +85,21 @@ const NotificationsAppInner = ({
     return null;
   }
 
+  const isLoading = isLoadingNotifications || isLoadingPulses;
+  const error = notificationsError || pulsesError;
+
   return (
-    <NotificationList
-      listItems={items}
-      user={user}
-      canManageSubscriptions={canManageSubscriptions}
-      onHelp={onHelp}
-      onUnsubscribe={onUnsubscribe}
-      onArchive={onArchive}
-    >
-      {children}
-    </NotificationList>
+    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      <NotificationList
+        listItems={items}
+        user={user}
+        canManageSubscriptions={canManageSubscriptions}
+        onHelp={onHelp}
+        onUnsubscribe={onUnsubscribe}
+        onArchive={onArchive}
+      >
+        {children}
+      </NotificationList>
+    </LoadingAndErrorWrapper>
   );
 };
-
-export const NotificationsApp = Pulses.loadList({
-  // Load all pulses the current user is a creator or recipient of
-  query: () => ({ creator_or_recipient: true }),
-  reload: true,
-})(NotificationsAppInner);

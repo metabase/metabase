@@ -83,6 +83,13 @@ export const subscriptionApi = Api.injectEndpoints({
       }),
       providesTags: () => provideSubscriptionChannelListTags(),
     }),
+    testSubscription: builder.mutation<void, CreateSubscriptionRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/pulse/test",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -93,4 +100,5 @@ export const {
   useUpdateSubscriptionMutation,
   useUnsubscribeMutation,
   useGetChannelInfoQuery,
+  useTestSubscriptionMutation,
 } = subscriptionApi;

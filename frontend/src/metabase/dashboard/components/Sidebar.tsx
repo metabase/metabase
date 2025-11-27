@@ -6,7 +6,7 @@ import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import S from "./Sidebar.module.css";
 
 interface SidebarProps {
-  children: ReactNode;
+  children?: ReactNode;
   onClose?: () => void;
   onCancel?: () => void;
   onRemove?: () => void;
