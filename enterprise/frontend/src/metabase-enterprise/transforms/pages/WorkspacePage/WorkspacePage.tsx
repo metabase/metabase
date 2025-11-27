@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -23,11 +24,7 @@ import {
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import type {
-  DraftTransformSource,
-  Transform,
-  WorkspaceContentItem,
-} from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { MetabotTab } from "./MetabotTab";
 import { TransformEditor } from "./TransformEditor";
@@ -80,7 +77,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       sendErrorToast(t`Failed to archive workspace`);
     }
   };
-  const workspaceTransforms = (workspace as any)?.contents?.transforms ?? [];
+  const workspaceTransforms = useMemo(
+    () =>
+      transforms.filter((t) =>
+        workspace?.contents?.transforms?.find((x) => x.id === t.id),
+      ),
+    [transforms, workspace],
+  );
 
   const handleCloseClick = useCallback(
     (event: React.MouseEvent, transform: WorkspaceTransform, index: number) => {
@@ -228,7 +231,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             </Box>
           </Tabs>
         </Box>
-        <Box style={{ flex: "1 0 auto" }}>
+        <Box style={{ flex: "1 0 auto", width: "30%" }}>
           <Tabs defaultValue="code">
             <Box
               px="md"
@@ -249,71 +252,69 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   >
                     <Stack gap={0}>
                       <Text fw={600}>{t`Workspace Transforms`}</Text>
-                      {workspaceTransforms.map(
-                        (transform: WorkspaceContentItem) => (
-                          <Group
-                            justify="flex-start"
-                            align="center"
-                            key={transform.id}
-                            gap="sm"
-                            wrap="nowrap"
-                          >
-                            <Icon name="sun" size={12} />
-                            <Text
-                              style={{ cursor: "pointer" }}
-                              variant="inline"
-                              onClick={() => {
-                                setTab(String(transform.id));
-                                const workspaceTransform: WorkspaceTransform = {
-                                  id: transform.id as number,
-                                  name: transform.name as string,
-                                  source: (transform as Transform).source,
-                                };
+                      {workspaceTransforms.map((transform) => (
+                        <Group
+                          justify="flex-start"
+                          align="center"
+                          key={transform.id}
+                          gap="sm"
+                          wrap="nowrap"
+                          onClick={() => {
+                            setTab(String(transform.id));
+                            const workspaceTransform: WorkspaceTransform = {
+                              id: transform.id as number,
+                              name: transform.name as string,
+                              source: (transform as Transform).source,
+                            };
 
-                                addOpenedTransform(workspaceTransform);
-                                setActiveTransform(workspaceTransform);
-                              }}
-                              c={
-                                activeTransform?.id === transform.id
-                                  ? "var(--mb-color-primary)"
-                                  : "text-dark"
-                              }
-                            >
-                              {transform.name}
-                            </Text>
-                          </Group>
-                        ),
-                      )}
+                            addOpenedTransform(workspaceTransform);
+                            setActiveTransform(workspaceTransform);
+                          }}
+                        >
+                          <Icon name="sun" size={12} />
+                          <Ellipsified
+                            style={{ cursor: "pointer" }}
+                            variant="inline"
+                            c={
+                              activeTransform?.id === transform.id
+                                ? "var(--mb-color-primary)"
+                                : "text-dark"
+                            }
+                          >
+                            {transform.name}
+                          </Ellipsified>
+                        </Group>
+                      ))}
                     </Stack>
                   </Stack>
                 )}
                 <Stack py="md" dir="column" gap="sm">
-                  {transforms.map((transform: WorkspaceContentItem) => (
+                  {transforms.map((transform) => (
                     <Group
                       justify="flex-start"
                       align="center"
                       key={transform.id}
                       gap="sm"
                       wrap="nowrap"
+                      onClick={() => {
+                        setTab(String(transform.id));
+                        const availableTransform: WorkspaceTransform = {
+                          id: transform.id as number,
+                          name: transform.name as string,
+                          source: (transform as Transform).source,
+                        };
+
+                        addOpenedTransform(availableTransform);
+                        setActiveTransform(availableTransform);
+                      }}
                     >
                       <Icon name="sun" size={12} />
-                      <Text
+                      <Ellipsified
                         style={{
                           cursor: "pointer",
                           color: "var(--mb-color-primary)",
                         }}
                         variant="subtle"
-                        onClick={() => {
-                          setTab(String(transform.id));
-                          const availableTransform: WorkspaceTransform = {
-                            id: transform.id as number,
-                            name: transform.name as string,
-                            source: (transform as Transform).source,
-                          };
-
-                          addOpenedTransform(availableTransform);
-                          setActiveTransform(availableTransform);
-                        }}
                         c={
                           activeTransform?.id === transform.id
                             ? "var(--mb-color-brand)"
@@ -321,7 +322,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                         }
                       >
                         {transform.name}
-                      </Text>
+                      </Ellipsified>
                     </Group>
                   ))}
                 </Stack>
