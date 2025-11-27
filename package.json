@@ -384,7 +384,6 @@
       "aws-sdk",
       "core-js",
       "core-js-pure",
-      "deasync",
       "lmdb",
       "msgpackr-extract",
       "msw",
@@ -395,6 +394,7 @@
       "@parcel/watcher",
       "@swc/core",
       "cypress",
+      "deasync",
       "esbuild"
     ]
   },
