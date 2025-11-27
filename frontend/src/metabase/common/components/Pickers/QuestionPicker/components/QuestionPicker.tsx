@@ -63,7 +63,7 @@ export const QuestionPicker = ({
 }: QuestionPickerProps) => {
   const defaultPath = useMemo(() => {
     return getStateFromIdPath({
-      idPath: ["root"],
+      idPath: [],
       models,
     });
   }, [models]);

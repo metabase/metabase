@@ -195,7 +195,9 @@ export const DataPickerModal = ({
       DataPickerItem
     >[] = [];
 
-    if (!hasNestedQueriesEnabled) {
+    const hasOnlyTableModels =
+      models != null && models.length === 1 && models[0] === "table";
+    if (hasOnlyTableModels || !hasNestedQueriesEnabled) {
       computedTabs.push({
         id: "tables-tab",
         displayName: t`Tables`,
