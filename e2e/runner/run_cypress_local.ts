@@ -20,19 +20,17 @@ let tempSampleDBDir: string | null = null;
 const userOptions = {
   CYPRESS_TESTING_TYPE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  START_CONTAINERS: true,
-  STOP_CONTAINERS: false,
   BACKEND_PORT: BACKEND_PORT, // override with MB_JETTY_PORT in your env
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
+  QA_DB_ENABLED: true,
   QUIET: false,
   TZ: "UTC",
   ...booleanify(process.env),
 };
 
 const derivedOptions = {
-  QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
   MB_SNOWPLOW_AVAILABLE: true,
@@ -63,8 +61,6 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 printBold(`Running Cypress with options:
   - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
   - MB_EDITION           : ${options.MB_EDITION}
-  - START_CONTAINERS     : ${options.START_CONTAINERS}
-  - STOP_CONTAINERS      : ${options.STOP_CONTAINERS}
   - BUILD_JAR            : ${options.BUILD_JAR}
   - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
   - BACKEND_PORT         : ${options.BACKEND_PORT}
@@ -78,10 +74,8 @@ const init = async () => {
   const cliArguments = process.argv.slice(2);
   const userOverrides = await parseArguments(cliArguments);
 
-  if (options.START_CONTAINERS) {
-    printBold("⏳ Starting containers");
-    shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
-  }
+  printBold("⏳ Starting containers");
+  shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
 
   if (options.BUILD_JAR) {
     printBold("⏳ Building backend");
@@ -176,10 +170,9 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
     }
   }
 
-  if (options.STOP_CONTAINERS) {
-    printBold("⏳ Stopping containers");
-    shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml down");
-  }
+  printBold(
+    "🧹 Containers are running in background. If you wish to stop them, run:\n`docker compose -f ./e2e/test/scenarios/docker-compose.yml down`",
+  );
 
   typeof exitCode === "number"
     ? process.exit(exitCode)
