@@ -17,6 +17,15 @@ export const setSharing = (isSharing: boolean) => (dispatch: Dispatch) => {
   }
 };
 
+export const closeSidebarIfSubscriptionsSidebarOpen =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const state = getState();
+    const isSharing = getIsSharing(state);
+    if (isSharing) {
+      dispatch(closeSidebar());
+    }
+  };
+
 export const toggleSharing = () => (dispatch: Dispatch, getState: GetState) => {
   const state = getState();
   const isSharing = getIsSharing(state);
