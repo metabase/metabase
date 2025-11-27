@@ -78,7 +78,12 @@
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
                        [:raw [:like field pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]]))
-        pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+        pattern    (some-> term
+                           (str/replace "\\" "\\\\")
+                           (str/replace "_" "\\_")
+                           (str/replace "%" "\\%")
+                           (str/replace "*" "%")
+                           (cond-> (not (str/ends-with? term "%")) (str "%")))
         where      (cond-> [:and [:= :active true]]
                      (not (str/blank? term)) (conj [:or
                                                     (like :name pattern)
