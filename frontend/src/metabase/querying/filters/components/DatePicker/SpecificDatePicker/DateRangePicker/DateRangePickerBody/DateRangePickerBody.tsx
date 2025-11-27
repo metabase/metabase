@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { DEFAULT_DATE_STYLE } from "metabase/lib/formatting/datetime-utils";
 import type { DatesRangeValue } from "metabase/ui";
 import {
   DateInput,
@@ -28,7 +27,7 @@ export function DateRangePickerBody({
   value,
   hasTime,
   onChange,
-  valueFormat = DEFAULT_DATE_STYLE,
+  valueFormat = "LL",
 }: DateRangePickerBodyProps) {
   const [startDate, endDate] = value;
   const [inProgressDateRange, setInProgressDateRange] =

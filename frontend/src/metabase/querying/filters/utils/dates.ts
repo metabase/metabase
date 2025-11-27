@@ -3,10 +3,6 @@ import { match } from "ts-pattern";
 import { c, msgid, ngettext, t } from "ttag";
 
 import {
-  DEFAULT_DATETIME_STYLE,
-  DEFAULT_DATE_STYLE,
-} from "metabase/lib/formatting/datetime-utils";
-import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_TRUNCATION_UNITS,
@@ -328,8 +324,8 @@ export function getDateFilterDisplayName(
 
 function formatDate(date: Date, hasTime: boolean) {
   return hasTime
-    ? dayjs(date).format(DEFAULT_DATETIME_STYLE)
-    : dayjs(date).format(DEFAULT_DATE_STYLE);
+    ? dayjs(date).format("MMMM D, YYYY hh:mm A")
+    : dayjs(date).format("MMMM D, YYYY");
 }
 
 function formatMonth(month: number, year: number) {
