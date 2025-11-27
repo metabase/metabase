@@ -14,6 +14,7 @@ import {
   type PermissionSectionConfig,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import { getSchemasPermission } from "metabase/admin/permissions/utils/graph";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 export const TRANSFORMS_PERMISSION_OPTIONS = {
@@ -48,6 +49,34 @@ const getTransformsPermission = (
   getIn(permissions, [groupId, databaseId, DataPermission.TRANSFORMS]) ??
   TRANSFORMS_PERMISSION_OPTIONS.no.value;
 
+const hasFullViewDataAccess = (viewDataValue: DataPermissionValue): boolean => {
+  return viewDataValue === DataPermissionValue.UNRESTRICTED;
+};
+
+const hasFullCreateQueriesAccess = (
+  createQueriesValue: DataPermissionValue,
+): boolean => {
+  return (
+    createQueriesValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE ||
+    createQueriesValue === DataPermissionValue.QUERY_BUILDER
+  );
+};
+
+const getTransformsDisabledTooltip = (
+  isAdmin: boolean,
+  hasRequiredPermissions: boolean,
+): string | null => {
+  if (isAdmin) {
+    return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+  }
+
+  if (!hasRequiredPermissions) {
+    return t`Transforms require unrestricted View data and Create queries access for all tables in this database`;
+  }
+
+  return null;
+};
+
 export const buildTransformsPermission = (
   entityId: EntityId,
   groupId: number,
@@ -60,11 +89,30 @@ export const buildTransformsPermission = (
     return null;
   }
 
-  const value = getTransformsPermission(
+  const viewDataValue = getSchemasPermission(
     permissions,
     groupId,
-    entityId.databaseId,
+    entityId,
+    DataPermission.VIEW_DATA,
   );
+
+  const createQueriesValue = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
+
+  const hasRequiredPermissions =
+    hasFullViewDataAccess(viewDataValue) &&
+    hasFullCreateQueriesAccess(createQueriesValue);
+
+  const isDisabled = isAdmin || !hasRequiredPermissions;
+
+  const value = hasRequiredPermissions
+    ? getTransformsPermission(permissions, groupId, entityId.databaseId)
+    : TRANSFORMS_PERMISSION_OPTIONS.no.value;
+
   const defaultGroupValue = getTransformsPermission(
     permissions,
     defaultGroup.id,
@@ -95,11 +143,14 @@ export const buildTransformsPermission = (
     permission: DataPermission.TRANSFORMS,
     type: DataPermissionType.TRANSFORMS,
     value,
-    isDisabled: isAdmin,
+    isDisabled,
     isHighlighted: isAdmin,
     warning,
     confirmations,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: getTransformsDisabledTooltip(
+      isAdmin,
+      hasRequiredPermissions,
+    ),
     options: [
       TRANSFORMS_PERMISSION_OPTIONS.no,
       TRANSFORMS_PERMISSION_OPTIONS.yes,
