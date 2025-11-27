@@ -7,6 +7,7 @@ import {
   setupDatabaseIdFieldsEndpoints,
   setupDatabasesEndpoints,
   setupFieldsValuesEndpoints,
+  setupLibraryEndpoints,
   setupTableEndpoints,
   setupTableSearchEndpoint,
   setupTablesBulkEndpoints,
@@ -181,7 +182,7 @@ const OtherComponent = () => {
   return (
     <>
       <span>Another route</span>
-      <Link to="admin/datamodel">Link to Data Model</Link>
+      <Link to="data-studio/data">Link to Data Model</Link>
     </>
   );
 };
@@ -204,6 +205,7 @@ async function setup({
     key: "seen-publish-tables-info",
     value: false,
   });
+  setupLibraryEndpoints();
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -218,8 +220,8 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notAdmin" component={OtherComponent} />
-      <Route path="admin/datamodel">
+      <Route path="notData" component={OtherComponent} />
+      <Route path="data-studio/data">
         <IndexRedirect to="database" />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />
@@ -645,7 +647,7 @@ describe("DataModel", () => {
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
         const { history } = await setup({
-          initialRoute: "notAdmin",
+          initialRoute: "notData",
           waitForDatabase: false,
           waitForTable: false,
         });
