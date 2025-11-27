@@ -114,7 +114,7 @@
                                                 :archived_directly :location :namespace :created_at}
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
-                                :fields       nil
+                                :fields       #{:authority_level :name :type :location}
                                 :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
