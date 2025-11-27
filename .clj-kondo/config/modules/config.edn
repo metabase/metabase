@@ -2176,6 +2176,7 @@
            app-db
            appearance
            collections
+           config
            logger
            models
            plugins
