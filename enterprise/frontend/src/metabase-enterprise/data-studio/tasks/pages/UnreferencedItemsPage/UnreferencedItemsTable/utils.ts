@@ -7,7 +7,7 @@ import type { UnreferencedItem } from "metabase-types/api";
 export function getItemName(item: UnreferencedItem): string {
   switch (item.type) {
     case "sandbox":
-      return item.data.table?.display_name ?? null;
+      return item.data.table?.display_name ?? "";
     case "table":
       return item.data.display_name ?? item.data.name;
     case "card":
