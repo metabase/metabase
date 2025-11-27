@@ -109,7 +109,7 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
               </Tabs.List>
             </Box>
             <Tabs.Panel value="code" p="md">
-              <Stack>
+              <Stack h="100%">
                 {workspaceTransforms.length === 0 ? null : (
                   <Stack gap="md">
                     <Stack gap={0}>
@@ -134,32 +134,34 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
                         ),
                       )}
                     </Stack>
-                    <Stack
-                      py="md"
-                      dir="column"
-                      style={{ borderTop: "1px solid var(--mb-color-border)" }}
-                      gap="sm"
-                    >
-                      {transforms.map((transform: WorkspaceContentItem) => (
-                        <Group
-                          justify="flex-start"
-                          align="center"
-                          key={transform.id}
-                          gap="sm"
-                        >
-                          <Icon name="sun" size={12} />
-                          <Anchor
-                            component={ForwardRefLink}
-                            to={Urls.transform(transform.id)}
-                            fw={500}
-                          >
-                            {transform.name}
-                          </Anchor>
-                        </Group>
-                      ))}
-                    </Stack>
                   </Stack>
                 )}
+                <Stack
+                  py="md"
+                  dir="column"
+                  style={{
+                    borderTop: "1px solid var(--mb-color-border)",
+                  }}
+                  gap="sm"
+                >
+                  {transforms.map((transform: WorkspaceContentItem) => (
+                    <Group
+                      justify="flex-start"
+                      align="center"
+                      key={transform.id}
+                      gap="sm"
+                    >
+                      <Icon name="sun" size={12} />
+                      <Anchor
+                        component={ForwardRefLink}
+                        to={Urls.transform(transform.id)}
+                        fw={500}
+                      >
+                        {transform.name}
+                      </Anchor>
+                    </Group>
+                  ))}
+                </Stack>
               </Stack>
             </Tabs.Panel>
           </Tabs>
