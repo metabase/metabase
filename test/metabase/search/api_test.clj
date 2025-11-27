@@ -1942,10 +1942,43 @@
        :model/Table      {table-1 :id}     {:name "Published Table" :is_published true :collection_id parent-coll}
        :model/Table      {table-2 :id}     {:name "Child Published Table" :is_published true :collection_id child-coll}
        :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
-       :model/Table      _                 {:name "Root Published Table" :is_published true :collection_id nil}]
+       :model/Table      {table-4 :id}     {:name "Root Published Table" :is_published true :collection_id nil}]
+      (testing "Global search"
+        (let [results (mt/user-http-request :crowberto :get 200 "search" :q "published")]
+          (is (=? [{:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
+                    :database_id (mt/id)
+                    :id table-1
+                    :model "table"
+                    :name "Published Table"
+                    :table_id table-1
+                    :table_name "Published Table"}
+                   {:collection {:authority_level nil, :id child-coll, :name "Child Collection", :type nil}
+                    :database_id (mt/id)
+                    :id table-2
+                    :model "table"
+                    :name "Child Published Table"
+                    :table_id table-2
+                    :table_name "Child Published Table"}
+                   {#_#_:collection nil
+                    :database_id (mt/id)
+                    :id table-3
+                    :model "table"
+                    :name "Unpublished Table"
+                    :table_id table-3
+                    :table_name "Unpublished Table"}
+                   {#_#_:collection {:authority_level nil, :id "root", :name "Our analytics", :type nil}
+                    :database_id (mt/id)
+                    :id table-4
+                    :model "table"
+                    :name "Root Published Table"
+                    :table_id table-4
+                    :table_name "Root Published Table"}]
+                  (->> (:data results)
+                       (filter (comp #{table-1 table-2 table-3 table-4} :id))
+                       (sort-by :id))))))
       (testing "Filter by parent collection returns published tables in that collection and descendants"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-          (is (=? {:collection {:authority_level nil, :id parent-coll, :name nil, :type nil}
+          (is (=? {:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
                    :database_id (mt/id)
                    :id table-1
                    :model "table"
