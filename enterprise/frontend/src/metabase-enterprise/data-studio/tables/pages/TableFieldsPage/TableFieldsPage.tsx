@@ -60,8 +60,8 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
   return (
     <Flex direction="column" h="100%" data-testid="table-overview-page">
       <TableHeader table={table} />
-      <Flex bg="accent-gray-light" flex={1}>
-        <Stack className={S.column} flex="8 1 0" miw={320} maw={640}>
+      <Flex className={S.body} flex={1} bg="accent-gray-light">
+        <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
           <TableSection
             table={table}
             fieldId={fieldId}
@@ -72,7 +72,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
           />
         </Stack>
         {field != null && (
-          <Stack className={S.column} flex="9 1 0" miw={320} maw={680}>
+          <Stack className={S.column} flex="9 1 0" miw={320} maw={680} mih={0}>
             <FieldSection
               field={field}
               table={table}
