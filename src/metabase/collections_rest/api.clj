@@ -693,7 +693,8 @@
             :t.description
             :t.collection_id
             [:t.db_id :database_id]
-            [[:not= :t.archived_at nil] :archived]
+            ;; trick MySQL into returning a true boolean
+            [[:case [:= :t.archived_at nil] [:inline false] :else [:inline true]] :archived]
             [(h2x/literal "table") :model]]
    :from   [[:metabase_table :t]]
    :where  [:and
