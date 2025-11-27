@@ -32,10 +32,7 @@ import {
   saveEditingPulse,
   updateEditingPulse,
 } from "metabase/notifications/pulse/actions";
-import {
-  getEditingPulse,
-  getPulseFormInput,
-} from "metabase/notifications/pulse/selectors";
+import { getEditingPulse } from "metabase/notifications/pulse/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
 
@@ -96,7 +93,6 @@ const getEditingPulseWithDefaults = (state, props) => {
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
-  formInput: getPulseFormInput(state, props),
   user: getUser(state),
 });
 
