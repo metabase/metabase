@@ -397,28 +397,6 @@
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
 
-(def ^:private unreferenced-items-keys
-  {:table [:name :display_name :db_id :schema :db :view_count]
-   :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
-          :collection :dashboard :creator :last-edit-info]
-   :snippet [:name]
-   :transform [:name :table :creator]
-   :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
-   :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
-   :sandbox [:table :table_id]})
-
-(def ^:private unreferenced-items-args
-  [:map
-   [:types {:optional true} [:or
-                             (ms/enum-decode-keyword (vec (keys entity-model)))
-                             [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
-   [:card_types {:optional true} [:or
-                                  (ms/enum-decode-keyword [:question :model :metric])
-                                  [:sequential (ms/enum-decode-keyword [:question :model :metric])]]]
-   [:query {:optional true} :string]
-   [:sort_column {:optional true} (ms/enum-decode-keyword [:name :location :view_count])]
-   [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
-
 (defn- unreferenced-entity-queries [sort_column card-types query]
   {:card {:select [["card" :entity_type]
                    [:report_card.id :entity_id]
@@ -580,6 +558,28 @@
                   (t2/hydrate [:table :db :fields])
                   (->> (map (fn [sandbox] [(:id sandbox) sandbox]))
                        (into {}))))})
+
+(def ^:private unreferenced-items-keys
+  {:table [:name :display_name :db_id :schema :db :view_count]
+   :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
+          :collection :dashboard :creator :last-edit-info]
+   :snippet [:name]
+   :transform [:name :table :creator]
+   :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
+   :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
+   :sandbox [:table :table_id]})
+
+(def ^:private unreferenced-items-args
+  [:map
+   [:types {:optional true} [:or
+                             (ms/enum-decode-keyword (vec (keys entity-model)))
+                             [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
+   [:card_types {:optional true} [:or
+                                  (ms/enum-decode-keyword [:question :model :metric])
+                                  [:sequential (ms/enum-decode-keyword [:question :model :metric])]]]
+   [:query {:optional true} :string]
+   [:sort_column {:optional true} (ms/enum-decode-keyword [:name :location :view_count])]
+   [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
 
 (defn- validate-unreferenced-items-params
   [sort_column query selected-types card-types]
