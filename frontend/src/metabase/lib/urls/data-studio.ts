@@ -106,3 +106,15 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 export function newDataStudioSnippet() {
   return `${dataStudioModeling()}/snippets/new`;
 }
+
+export function dataStudioTasks() {
+  return `${ROOT_URL}/tasks`;
+}
+
+export function dataStudioTasksBroken() {
+  return `${dataStudioTasks()}/broken`;
+}
+
+export function dataStudioTasksUnreferenced() {
+  return `${dataStudioTasks()}/unreferenced`;
+}
