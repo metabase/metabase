@@ -29,7 +29,7 @@ export function TasksSectionLayout({
         <Box px="lg" py="md" bg="bg-light">
           <TasksSectionTabs location={location} />
         </Box>
-        <Box flex={1} mih={0}>
+        <Box flex={1} mih={0} bg="bg-light">
           {children}
         </Box>
       </Stack>
