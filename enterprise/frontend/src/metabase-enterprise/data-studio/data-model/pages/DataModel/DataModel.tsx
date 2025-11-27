@@ -9,6 +9,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import * as Urls from "metabase/lib/urls";
 import { trackMetadataChange } from "metabase/metadata/pages/shared";
 import {
   getTableMetadataQuery,
@@ -58,12 +59,13 @@ function DataModelContent({ params }: Props) {
     selectedTables,
     hasSelectedMoreThanOneTable,
   } = useSelection();
+  const parsedParams = parseRouteParams(params);
   const {
     databaseId,
     fieldId,
     schemaName,
     tableId: queryTableId,
-  } = parseRouteParams(params);
+  } = parsedParams;
   const {
     data: databasesData,
     error: databasesError,
@@ -249,7 +251,9 @@ function DataModelContent({ params }: Props) {
                     field={field}
                     parent={parentField}
                     table={table}
-                    getFieldHref={(_fieldId) => ""}
+                    getFieldHref={(fieldId) =>
+                      Urls.dataStudioData({ ...parsedParams, fieldId })
+                    }
                     onTrackMetadataChange={trackMetadataChange}
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}

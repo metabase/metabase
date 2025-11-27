@@ -1,7 +1,10 @@
 import type {
   CardId,
   CollectionId,
+  DatabaseId,
+  FieldId,
   NativeQuerySnippetId,
+  SchemaName,
   TableId,
 } from "metabase-types/api";
 
@@ -24,8 +27,39 @@ export function dataStudio() {
   return ROOT_URL;
 }
 
-export function dataStudioData() {
-  return `${ROOT_URL}/data`;
+type DataStudioDataParams = {
+  databaseId?: DatabaseId;
+  schemaName?: SchemaName | null;
+  tableId?: TableId;
+  fieldId?: FieldId;
+};
+
+export function dataStudioData({
+  databaseId,
+  schemaName,
+  tableId,
+  fieldId,
+}: DataStudioDataParams = {}) {
+  const parts = [ROOT_URL, "data"];
+
+  if (databaseId != null) {
+    parts.push("database", String(databaseId));
+
+    if (schemaName != null) {
+      const schemaId = `${databaseId}:${encodeURIComponent(schemaName)}`;
+      parts.push("schema", schemaId);
+
+      if (tableId != null) {
+        parts.push("table", String(tableId));
+
+        if (fieldId != null) {
+          parts.push("field", String(fieldId));
+        }
+      }
+    }
+  }
+
+  return parts.join("/");
 }
 
 export function dataStudioModeling() {
