@@ -34,13 +34,12 @@
 (defn- table-field-stats
   [table-id agent-field-id limit]
   (try
-    (let [field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
-          index (metabot-v3.tools.u/resolve-column-index agent-field-id field-id-prefix)
-          query (metabot-v3.tools.u/table-query table-id)]
+    (let [query (metabot-v3.tools.u/table-query table-id)]
       (if query
-        (if-let [col (nth (lib/visible-columns query) index nil)]
-          {:structured-output (field-statistics col limit)}
-          {:output (str "No field found with ID " agent-field-id)})
+        (let [field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
+              visible-cols (lib/visible-columns query)
+              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
+          {:structured-output (field-statistics col limit)})
         {:output (str "No table found with ID " table-id)}))
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
@@ -48,13 +47,12 @@
 (defn- card-field-stats
   [card-id agent-field-id limit card-type]
   (try
-    (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix card-id)
-          index (metabot-v3.tools.u/resolve-column-index agent-field-id field-id-prefix)
-          query (metabot-v3.tools.u/card-query card-id)]
+    (let [query (metabot-v3.tools.u/card-query card-id)]
       (if query
-        (if-let [col (nth (lib/visible-columns query) index nil)]
-          {:structured-output (field-statistics col limit)}
-          {:output (str "No field found with ID " agent-field-id)})
+        (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix card-id)
+              visible-cols (lib/visible-columns query)
+              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
+          {:structured-output (field-statistics col limit)})
         {:output (str "No " card-type " found with ID " card-id)}))
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
@@ -62,13 +60,12 @@
 (defn- metric-field-stats
   [metric-id agent-field-id limit]
   (try
-    (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
-          index (metabot-v3.tools.u/resolve-column-index agent-field-id field-id-prefix)
-          query (metabot-v3.tools.u/metric-query metric-id)]
+    (let [query (metabot-v3.tools.u/metric-query metric-id)]
       (if query
-        (if-let [col (nth (lib/filterable-columns query) index nil)]
-          {:structured-output (field-statistics col limit)}
-          {:output (str "No field found with ID " agent-field-id)})
+        (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
+              filterable-cols (lib/filterable-columns query)
+              col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix filterable-cols))]
+          {:structured-output (field-statistics col limit)})
         {:output (str "No metric found with ID " metric-id)}))
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))

@@ -469,7 +469,7 @@
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part})
+    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part :collate})
 
 (mr/def ::StringExpressionArg
   [:multi
@@ -600,6 +600,10 @@
   text      [:ref ::StringExpressionArg]
   delimiter [:string {:min 1}]
   position  [:ref ::IntGreaterThanZeroOrNumericExpression])
+
+(defclause collate
+  s [:ref ::StringExpressionArg]
+  collation :string)
 
 (defclause length
   s [:ref ::StringExpressionArg])
@@ -1202,7 +1206,7 @@
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case if host domain
-          subdomain path month-name quarter-name day-name text split-part))
+          subdomain path month-name quarter-name day-name text split-part collate))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -1230,12 +1234,19 @@
    [:value    [:ref ::value]]
    [:else     [:ref ::FieldOrExpressionRef]]])
 
+(mr/def ::AggregationArg
+  "Schema for the argument to an aggregation clause like `:sum`.
+
+  Strings are allowed as literals here, unlike at the top level as `::Expressions`, so `::FieldOrExpressionDef` is
+  not enough. However, nested aggregations are not allowed here, so we can't use `::ExpressionArg` either. (#66199)"
+  [:or ::FieldOrExpressionDef :string])
+
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
 
 ;; cum-sum and cum-count are SUGAR because they're implemented in middleware. The clauses are swapped out with
 ;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
-(defclause count,     field (optional [:ref ::FieldOrExpressionRef]))
-(defclause cum-count, field (optional [:ref ::FieldOrExpressionRef]))
+(defclause count,     field (optional [:ref ::AggregationArg]))
+(defclause cum-count, field (optional [:ref ::AggregationArg]))
 
 ;; technically aggregations besides count can also accept expressions as args, e.g.
 ;;
@@ -1245,18 +1256,18 @@
 ;;
 ;;    SUM(field_1 + field_2)
 
-(defclause avg,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause cum-sum,  field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause distinct, field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause sum,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause min,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause max,      field-or-expression [:ref ::FieldOrExpressionDef])
+(defclause avg,      field-or-expression [:ref ::AggregationArg])
+(defclause cum-sum,  field-or-expression [:ref ::AggregationArg])
+(defclause distinct, field-or-expression [:ref ::AggregationArg])
+(defclause sum,      field-or-expression [:ref ::AggregationArg])
+(defclause min,      field-or-expression [:ref ::AggregationArg])
+(defclause max,      field-or-expression [:ref ::AggregationArg])
 
 (defclause distinct-where
-  field-or-expression [:ref ::FieldOrExpressionDef], pred [:ref ::Filter])
+  field-or-expression [:ref ::AggregationArg], pred [:ref ::Filter])
 
 (defclause sum-where
-  field-or-expression [:ref ::FieldOrExpressionDef], pred [:ref ::Filter])
+  field-or-expression [:ref ::AggregationArg], pred [:ref ::Filter])
 
 (defclause count-where
   pred [:ref ::Filter])
@@ -1265,16 +1276,16 @@
   pred [:ref ::Filter])
 
 (defclause stddev
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::AggregationArg])
 
 (defclause var
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::AggregationArg])
 
 (defclause median
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::AggregationArg])
 
 (defclause percentile
-  field-or-expression [:ref ::FieldOrExpressionDef], percentile [:ref ::NumericExpressionArg])
+  field-or-expression [:ref ::AggregationArg], percentile [:ref ::NumericExpressionArg])
 
 ;;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric

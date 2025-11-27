@@ -318,6 +318,23 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
       cy.wait("@dashcardDownload").then((interception) => {
         expect(interception.response?.statusCode).to.equal(200);
+
+        cy.log(
+          "content-disposition is allowed in cross-origin requests (metabase#61708)",
+        );
+        expect(
+          interception.response?.headers?.["access-control-expose-headers"],
+        ).to.include("Content-Disposition");
+
+        cy.log(
+          "question name is prefixed in the downloaded file name (metabase#61708)",
+        );
+        expect(
+          interception.response?.headers?.["content-disposition"],
+        ).to.include('filename="orders_');
+        expect(
+          interception.response?.headers?.["content-disposition"],
+        ).not.to.include('filename="query_result_');
       });
     });
   });

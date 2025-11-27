@@ -7,6 +7,7 @@ import type {
 
 export const DataModel = {
   visit,
+  visitDataStudio,
   get: getDataModel,
   TablePicker: {
     get: getTablePicker,
@@ -32,6 +33,7 @@ export const DataModel = {
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
     getSortableField: getTableSectionSortableField,
     getSortableFields: getTableSectionSortableFields,
+    getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
   },
   FieldSection: {
@@ -64,19 +66,24 @@ export const DataModel = {
   },
 };
 
+const DEFAULT_BASE_PATH = "/admin/datamodel";
+
 function visit({
   databaseId,
   schemaId,
   tableId,
   fieldId,
   skipWaiting = false,
+  basePath,
 }: {
   databaseId?: DatabaseId;
   fieldId?: FieldId;
   schemaId?: SchemaId;
   tableId?: TableId;
   skipWaiting?: boolean;
+  basePath?: string;
 } = {}) {
+  const normalizedBasePath = getNormalizedBasePath(basePath);
   cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
   cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
@@ -94,7 +101,7 @@ function visit({
     fieldId != null
   ) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
+      `${normalizedBasePath}/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
     );
 
     if (!skipWaiting) {
@@ -112,7 +119,7 @@ function visit({
 
   if (databaseId != null && schemaId != null && tableId != null) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
+      `${normalizedBasePath}/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
     );
 
     if (!skipWaiting) {
@@ -128,7 +135,7 @@ function visit({
   }
 
   if (databaseId != null && schemaId != null) {
-    cy.visit(`/admin/datamodel/database/${databaseId}/schema/${schemaId}`);
+    cy.visit(`${normalizedBasePath}/database/${databaseId}/schema/${schemaId}`);
 
     if (!skipWaiting) {
       cy.wait([
@@ -141,7 +148,7 @@ function visit({
   }
 
   if (databaseId != null) {
-    cy.visit(`/admin/datamodel/database/${databaseId}`);
+    cy.visit(`${normalizedBasePath}/database/${databaseId}`);
 
     if (!skipWaiting) {
       cy.wait([
@@ -154,8 +161,23 @@ function visit({
     return;
   }
 
-  cy.visit("/admin/datamodel");
+  cy.visit(normalizedBasePath);
   cy.wait(["@datamodel/visit/databases"]);
+}
+
+function visitDataStudio(options?: Parameters<typeof visit>[0]) {
+  visit({ ...options, basePath: "/data-studio/data" });
+}
+
+function getNormalizedBasePath(path?: string) {
+  const resolvedPath = path ?? DEFAULT_BASE_PATH;
+  if (resolvedPath.length === 0) {
+    return DEFAULT_BASE_PATH;
+  }
+
+  return resolvedPath.endsWith("/")
+    ? resolvedPath.slice(0, resolvedPath.length - 1)
+    : resolvedPath;
 }
 
 function getDataModel() {
@@ -226,31 +248,35 @@ function getTableDescriptionInput() {
 }
 
 function getTableSortButton() {
-  return getTableSection().button(/Sorting/);
+  return getTableSection().findByRole("button", { name: "Sorting" });
 }
 
 function getTableSortDoneButton() {
-  return getTableSection().button(/Done/);
+  return getTableSection().findByRole("button", { name: "Done" });
 }
 
 function getTableSortOrderInput() {
-  return getTableSection().findByLabelText("Column order");
+  return getTableSection().findByRole("radiogroup", { name: "Column order" });
 }
 
 function getTableSyncOptionsButton() {
-  return getTableSection().button(/Sync options/);
+  return getTableSection().findByRole("button", { name: /Sync/ });
 }
 
 function getTableSectionField(name: string) {
-  return getTableSection().findByLabelText(name);
+  return getTableSection().findByRole("listitem", { name });
 }
 
 function getTableSectionSortableField(name: string) {
-  return getTableSection().findByLabelText(name);
+  return getTableSection().findByRole("listitem", { name });
 }
 
 function getTableSectionSortableFields() {
   return getTableSection().findAllByRole("listitem");
+}
+
+function getTableSectionVisibilityTypeInput() {
+  return getTableSection().findByRole("textbox", { name: "Visibility type" });
 }
 
 function getTableSectionFieldNameInput(name: string) {

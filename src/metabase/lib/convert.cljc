@@ -571,7 +571,7 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date
-             :concat :substring :replace :regex-match-first :split-part
+             :concat :substring :replace :regex-match-first :split-part :collate
              :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 

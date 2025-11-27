@@ -16,12 +16,20 @@ import type {
 export const getCollectionIdPath = (
   collection: Pick<
     CollectionPickerItem,
-    "id" | "location" | "is_personal" | "effective_location" | "model"
+    "id" | "location" | "is_personal" | "effective_location" | "model" | "type"
   >,
   userPersonalCollectionId?: CollectionId,
 ): CollectionId[] => {
   if (collection.id === null || collection.id === "root") {
     return ["root"];
+  }
+
+  if (collection.id === "databases") {
+    return ["databases"];
+  }
+
+  if (collection.type === "library") {
+    return [collection.id];
   }
 
   if (collection.id === PERSONAL_COLLECTIONS.id) {
@@ -42,9 +50,13 @@ export const getCollectionIdPath = (
     (collection.id === userPersonalCollectionId ||
       pathFromRoot.includes(userPersonalCollectionId));
 
+  const isInSemanticLayerCollection = collection?.type?.includes("library");
+
   const id = collection.model === "collection" ? collection.id : -collection.id;
 
   if (isInUserPersonalCollection) {
+    return [...pathFromRoot, id];
+  } else if (isInSemanticLayerCollection) {
     return [...pathFromRoot, id];
   } else if (collection.is_personal) {
     return ["personal", ...pathFromRoot, id];
