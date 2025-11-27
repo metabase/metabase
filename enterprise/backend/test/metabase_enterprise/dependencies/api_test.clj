@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
@@ -697,3 +699,252 @@
                                                            :type "card")]
                         (is (empty? (:edges response))
                             "Should have no edges when table is filtered out")))))))))))))
+
+(deftest ^:sequential unreferenced-items-test
+  (testing "GET /api/ee/dependencies/unreferenced"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (testing "only unreferenced questions are returned"
+          (mt/with-temp [:model/Card {referenced-card-id :id} {:name "Referenced Card - unreftest"
+                                                               :type :question
+                                                               :dataset_query (lib/query mp products)}
+                         :model/Card {unreffed-card-id :id} {:name "Unreferenced Card - unreftest"
+                                                             :type :question
+                                                             :dataset_query (->> referenced-card-id
+                                                                                 (lib.metadata/card mp)
+                                                                                 (lib/query mp))}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&card_types=question&query=unreftest")]
+              (is (=? {:data [{:id unreffed-card-id
+                               :type "card"
+                               :data {:name "Unreferenced Card - unreftest"}}]
+                       :limit 50
+                       :offset 0
+                       :total 1
+                       :sort_column "name"
+                       :sort_direction "asc"}
+                      response)))))
+        (testing "only unreferenced tables are returned"
+          (mt/with-temp [:model/Table {unreffed-table-id :id} {:name "Unreferenced Table - unreftest"}
+                         :model/Table {referenced-table-id :id} {:name "Referenced Table - unreftest"}
+                         :model/Card _card {:name "Referencing Card"
+                                            :type :question
+                                            :dataset_query (lib/query mp (lib.metadata/table mp referenced-table-id))}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=table&query=unreftest")]
+              (is (=? {:data [{:id unreffed-table-id
+                               :type "table"
+                               :data {:name "Unreferenced Table - unreftest"}}]
+                       :limit 50
+                       :offset 0
+                       :total 1
+                       :sort_column "name"
+                       :sort_direction "asc"}
+                      response)))))
+        (testing "only unreferenced transforms are returned"
+          (mt/with-temp [:model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
+                                                                       :source {:type :query
+                                                                                :query (lib/query mp products)}
+                                                                       :target {:schema "PUBLIC"
+                                                                                :name "unreferenced_transform_table"}}
+                         :model/Transform {referenced-transform-id :id} {:name "Referenced Transform - unreftest"
+                                                                         :source {:type :query
+                                                                                  :query (lib/query mp products)}
+                                                                         :target {:schema "PUBLIC"
+                                                                                  :name "referenced_transform_table"}}
+                         :model/Table _ {:name "referenced_transform_table"
+                                         :db_id (mt/id)
+                                         :schema "PUBLIC"}]
+            (events/publish-event! :event/transform-run-complete
+                                   {:object {:db-id (mt/id)
+                                             :output-schema "PUBLIC"
+                                             :output-table "referenced_transform_table"
+                                             :transform-id referenced-transform-id}})
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=transform&query=unreftest")]
+              (is (=? {:data [{:id unreffed-transform-id
+                               :type "transform"
+                               :data {:name "Unreferenced Transform - unreftest"}}]
+                       :limit 50
+                       :offset 0
+                       :total 1
+                       :sort_column "name"
+                       :sort_direction "asc"}
+                      response)))))
+        (testing "only unreferenced snippets are returned"
+          (mt/with-temp [:model/NativeQuerySnippet {unreffed-snippet-id :id} {:name "Unreferenced Snippet - unreftest"
+                                                                              :content "WHERE ID > 10"}
+                         :model/NativeQuerySnippet {referenced-snippet-id :id snippet-name :name} {:name "Referenced Snippet - unreftest"
+                                                                                                   :content "WHERE ID > 20"}]
+            (let [tag-name (str "snippet: " snippet-name)
+                  native-query (-> (lib/native-query mp (format "SELECT * FROM PRODUCTS %s" (str "{{" tag-name "}}")))
+                                   (lib/with-template-tags {tag-name {:name tag-name
+                                                                      :display-name (str "Snippet: " snippet-name)
+                                                                      :type :snippet
+                                                                      :snippet-name snippet-name
+                                                                      :snippet-id referenced-snippet-id}}))]
+              (mt/with-temp [:model/Card _card {:name "Card using snippet"
+                                                :type :question
+                                                :dataset_query native-query}]
+                (while (#'dependencies.backfill/backfill-dependencies!))
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=snippet&query=unreftest")]
+                  (is (=? {:data [{:id unreffed-snippet-id
+                                   :type "snippet"
+                                   :data {:name "Unreferenced Snippet - unreftest"}}]
+                           :limit 50
+                           :offset 0
+                           :total 1
+                           :sort_column "name"
+                           :sort_direction "asc"}
+                          response)))))))
+        (testing "only unreferenced dashboards are returned"
+          (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {:name "Unreferenced Dashboard - unreftest"}
+                         :model/Dashboard {referenced-dashboard-id :id} {:name "Referenced Dashboard - unreftest"}
+                         :model/Document _ {:name "Document with dashboard link"
+                                            :dependency_analysis_version 0
+                                            :document {:type "doc"
+                                                       :content [{:type "paragraph"
+                                                                  :content [{:type "smartLink"
+                                                                             :attrs {:entityId referenced-dashboard-id
+                                                                                     :model "dashboard"}}]}]}
+                                            :content_type "application/json+vnd.prose-mirror"}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=dashboard&query=unreftest")]
+              (is (=? {:data [{:id unreffed-dashboard-id
+                               :type "dashboard"
+                               :data {:name "Unreferenced Dashboard - unreftest"}}]
+                       :limit 50
+                       :offset 0
+                       :total 1
+                       :sort_column "name"
+                       :sort_direction "asc"}
+                      response)))))
+        (testing "only unreferenced documents are returned"
+          (mt/with-temp [:model/Document {referenced-document-id :id} {:name "Referenced Document - unreftest"}
+                         :model/Document {unreffed-document-id :id} {:name "Unreferenced Document - unreftest"
+                                                                     :document {:type "doc"
+                                                                                :content [{:type "paragraph"
+                                                                                           :content [{:type "smartLink"
+                                                                                                      :attrs {:entityId referenced-document-id
+                                                                                                              :model "document"}}]}]}
+                                                                     :content_type "application/json+vnd.prose-mirror"}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=document&query=unreftest")]
+              (is (=? {:data [{:id unreffed-document-id
+                               :type "document"
+                               :data {:name "Unreferenced Document - unreftest"}}]
+                       :limit 50
+                       :offset 0
+                       :total 1
+                       :sort_column "name"
+                       :sort_direction "asc"}
+                      response)))))
+        (testing "unreferenced sandboxes are returned"
+          (mt/with-premium-features #{:dependencies :sandboxes}
+            (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Sandbox Group - unreftest"}
+                           :model/Card {sandbox-card-id :id} {:name "Sandbox Card - unreftest"
+                                                              :type :question
+                                                              :dataset_query (lib/query mp products)}
+                           :model/Sandbox {sandbox-id :id} {:group_id group-id
+                                                            :table_id (mt/id :products)
+                                                            :card_id sandbox-card-id}]
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=sandbox")]
+                (is (=? {:data [{:id sandbox-id
+                                 :type "sandbox"
+                                 :data {:table {:name "PRODUCTS"}}}]
+                         :limit 50
+                         :offset 0
+                         :total 1
+                         :sort_column "name"
+                         :sort_direction "asc"}
+                        response))))))
+        (testing "unreferenced models and metrics are filtered by card_types and pagination"
+          (mt/with-temp [:model/Card {unreffed-model-id :id} {:name "A - Unreferenced Model - cardtype"
+                                                              :type :model
+                                                              :dataset_query (lib/query mp products)}
+                         :model/Card {unreffed-metric-id :id} {:name "B - Unreferenced Metric - cardtype"
+                                                               :type :metric
+                                                               :dataset_query (lib/query mp products)}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (testing "filtering by model only"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&card_types=model&query=cardtype")]
+                (is (=? {:data [{:id unreffed-model-id
+                                 :type "card"
+                                 :data {:name "A - Unreferenced Model - cardtype"
+                                        :type "model"}}]
+                         :limit 50
+                         :offset 0
+                         :total 1
+                         :sort_column "name"
+                         :sort_direction "asc"}
+                        response))))
+            (testing "filtering by metric only"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&card_types=metric&query=cardtype")]
+                (is (=? {:data [{:id unreffed-metric-id
+                                 :type "card"
+                                 :data {:name "B - Unreferenced Metric - cardtype"
+                                        :type "metric"}}]
+                         :limit 50
+                         :offset 0
+                         :total 1
+                         :sort_column "name"
+                         :sort_direction "asc"}
+                        response))))
+            (testing "filtering by model and metric as the default card types"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&query=cardtype")]
+                (is (=? {:data [{:id unreffed-model-id
+                                 :type "card"
+                                 :data {:name "A - Unreferenced Model - cardtype"
+                                        :type "model"}}
+                                {:id unreffed-metric-id
+                                 :type "card"
+                                 :data {:name "B - Unreferenced Metric - cardtype"
+                                        :type "metric"}}]
+                         :limit 50
+                         :offset 0
+                         :total 2
+                         :sort_column "name"
+                         :sort_direction "asc"}
+                        response))))
+            (testing "limit works"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&limit=1&query=cardtype")]
+                (is (=? {:data [{:id unreffed-model-id
+                                 :type "card"
+                                 :data {:name "A - Unreferenced Model - cardtype"
+                                        :type "model"}}]
+                         :limit 1
+                         :offset 0
+                         :total 2
+                         :sort_column "name"
+                         :sort_direction "asc"}
+                        response))))
+            (testing "offset works"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&offset=1&query=cardtype")]
+                (is (=? {:data [{:id unreffed-metric-id
+                                 :type "card"
+                                 :data {:name "B - Unreferenced Metric - cardtype"
+                                        :type "metric"}}]
+                         :limit 50
+                         :offset 1
+                         :total 2
+                         :sort_column "name"
+                         :sort_direction "asc"}
+                        response))))
+            (testing "sort descending order by name works"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/unreferenced-items?types=card&sort_direction=desc&query=cardtype")]
+                (is (=? {:data [{:id unreffed-metric-id
+                                 :type "card"
+                                 :data {:name "B - Unreferenced Metric - cardtype"
+                                        :type "metric"}}
+                                {:id unreffed-model-id
+                                 :type "card"
+                                 :data {:name "A - Unreferenced Model - cardtype"
+                                        :type "model"}}]
+                         :limit 50
+                         :offset 0
+                         :total 2
+                         :sort_column "name"
+                         :sort_direction "desc"}
+                        response))))))))))
