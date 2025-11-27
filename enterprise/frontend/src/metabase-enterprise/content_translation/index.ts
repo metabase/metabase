@@ -15,6 +15,10 @@ import {
  * Initialize content translation plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  console.log(
+    "has content translation feature",
+    hasPremiumFeature("content_translation"),
+  );
   if (hasPremiumFeature("content_translation")) {
     const getDictionaryBasePath = `/api/ee/content-translation/dictionary`;
 
