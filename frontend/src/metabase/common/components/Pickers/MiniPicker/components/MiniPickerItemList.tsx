@@ -86,7 +86,7 @@ function RootItemList() {
   }
   if (
     libraryCollection &&
-    _.intersection(libraryCollection.below, models).length &&
+    _.intersection(models, libraryCollection.below || []).length &&
     shouldShowLibrary
   ) {
     return (
