@@ -1,0 +1,66 @@
+diff --git a/node_modules/html2canvas-pro/dist/html2canvas-pro.js b/node_modules/html2canvas-pro/dist/html2canvas-pro.js
+index 86a610e..c74cc94 100644
+--- a/node_modules/html2canvas-pro/dist/html2canvas-pro.js
++++ b/node_modules/html2canvas-pro/dist/html2canvas-pro.js
+@@ -802,6 +802,7 @@
+             : undefined;
+         return [indicies, classTypes, forbiddenBreakpoints];
+     };
++    var nonceAttributeValue
+     var Break = /** @class */ (function () {
+         function Break(codePoints, lineBreak, start, end) {
+             this.codePoints = codePoints;
+@@ -6060,6 +6061,11 @@
+             documentClone.write(serializeDoctype(document.doctype) + "<html></html>");
+             // Chrome scrolls the parent document for some reason after the write to the cloned window???
+             restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
++
++            if (isStyleElement(documentClone.documentElement) && nonceAttributeValue) {
++              documentClone.documentElement.setAttribute('nonce', nonceAttributeValue);
++            }
++
+             documentClone.replaceChild(documentClone.adoptNode(this.documentElement), documentClone.documentElement);
+             documentClone.close();
+             return iframeLoad;
+@@ -6188,6 +6194,11 @@
+                 (!isScriptElement(child) &&
+                     !child.hasAttribute(IGNORE_ATTRIBUTE) &&
+                     (typeof this.options.ignoreElements !== 'function' || !this.options.ignoreElements(child)))) {
++
++              if (isStyleElement(child) && nonceAttributeValue) {
++                  child.setAttribute('nonce', nonceAttributeValue);
++                }
++
+                 if (!this.options.copyStyles || !isElementNode(child) || !isStyleElement(child)) {
+                     clone.appendChild(this.cloneNode(child, copyStyles));
+                 }
+@@ -6464,6 +6475,9 @@
+         var document = body.ownerDocument;
+         if (document) {
+             var style = document.createElement('style');
++            if (nonceAttributeValue) {
++                style.setAttribute('nonce', nonceAttributeValue);
++            }
+             style.textContent = styles;
+             body.appendChild(style);
+         }
+@@ -8570,6 +8584,7 @@
+ 
+     var html2canvas = function (element, options) {
+         if (options === void 0) { options = {}; }
++        nonceAttributeValue = options.nonce
+         return renderElement(element, options);
+     };
+     if (typeof window !== 'undefined') {
+diff --git a/node_modules/html2canvas-pro/dist/types/index.d.ts b/node_modules/html2canvas-pro/dist/types/index.d.ts
+index c481902..60b03fe 100644
+--- a/node_modules/html2canvas-pro/dist/types/index.d.ts
++++ b/node_modules/html2canvas-pro/dist/types/index.d.ts
+@@ -5,6 +5,7 @@ export declare type Options = CloneOptions & WindowOptions & RenderOptions & Con
+     backgroundColor: string | null;
+     foreignObjectRendering: boolean;
+     removeContainer?: boolean;
++    nonce?: string;
+ };
+ declare const html2canvas: (element: HTMLElement, options?: Partial<Options>) => Promise<HTMLCanvasElement>;
+ export default html2canvas;
