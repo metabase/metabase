@@ -96,7 +96,9 @@ export function UnreferencedItemsPage() {
         <TasksFilterButton value={filters} onChange={handleFilterChange} />
       </Flex>
       {isLoading ? (
-        <TableSkeleton columnWidths={[0.5, 0.125, 0.125, 0.125, 0.125]} />
+        <TableSkeleton
+          columnWidths={[0.34, 0.11, 0.11, 0.11, 0.11, 0.11, 0.11]}
+        />
       ) : !data || data.data.length === 0 ? (
         <ListEmptyState label={t`No unreferenced items found`} />
       ) : (

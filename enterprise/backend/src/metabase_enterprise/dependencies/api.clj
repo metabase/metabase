@@ -526,10 +526,17 @@
                (->> (map (fn [card] [(:id card) card]))
                     (into {}))))
    :table (when-let [table-ids (seq (map :entity_id (get ids-by-type "table")))]
-            (-> (t2/select :model/Table :id [:in table-ids])
-                (t2/hydrate :db)
-                (->> (map (fn [table] [(:id table) table]))
-                     (into {}))))
+            (let [tables    (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
+                  owner-ids (into #{} (keep :owner_user_id tables))
+                  id->owner (when (seq owner-ids)
+                              (t2/select-pk->fn identity
+                                                [:model/User :id :email :first_name :last_name]
+                                                :id [:in owner-ids]))]
+              (into {}
+                    (map (fn [table]
+                           [(:id table)
+                            (assoc table :owner (get id->owner (:owner_user_id table)))]))
+                    tables)))
    :transform (when-let [transform-ids (seq (map :entity_id (get ids-by-type "transform")))]
                 (-> (t2/select :model/Transform :id [:in transform-ids])
                     (t2/hydrate :creator :table-with-db-and-fields)
@@ -559,7 +566,7 @@
                        (into {}))))})
 
 (def ^:private unreferenced-items-keys
-  {:table [:name :display_name :db_id :schema :db :view_count]
+  {:table [:name :display_name :db_id :schema :db :view_count :owner]
    :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
           :collection :dashboard :creator :last-edit-info]
    :snippet [:name]
