@@ -1999,6 +1999,7 @@
    :uses #{api
            collections
            premium-features
+           permissions
            request}}
 
   enterprise/llm
