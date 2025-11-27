@@ -33,6 +33,7 @@ import { useResponsiveButtons } from "./hooks";
 type TableSectionBaseProps = {
   table: Table;
   fieldId: FieldId | undefined;
+  withName?: boolean;
   getFieldHref: (fieldId: FieldId) => string;
   onSyncOptionsClick: () => void;
 };
@@ -40,6 +41,7 @@ type TableSectionBaseProps = {
 const TableSectionBase = ({
   table,
   fieldId,
+  withName,
   getFieldHref,
   onSyncOptionsClick,
 }: TableSectionBaseProps) => {
@@ -157,31 +159,33 @@ const TableSectionBase = ({
         px="lg"
         top={0}
       >
-        <NameDescriptionInput
-          description={table.description ?? ""}
-          descriptionPlaceholder={t`Give this table a description`}
-          name={table.display_name}
-          nameIcon="table2"
-          nameMaxLength={254}
-          namePlaceholder={t`Give this table a name`}
-          nameRightSection={
-            <Tooltip label={t`Go to this table`} position="top">
-              <ActionIcon
-                component={Link}
-                to={Urls.queryBuilderTable(table.id, table.db_id)}
-                variant="subtle"
-                color="text-light"
-                size="sm"
-                mr="sm"
-                aria-label={t`Go to this table`}
-              >
-                <Icon name="external" size={16} />
-              </ActionIcon>
-            </Tooltip>
-          }
-          onNameChange={handleNameChange}
-          onDescriptionChange={handleDescriptionChange}
-        />
+        {withName && (
+          <NameDescriptionInput
+            description={table.description ?? ""}
+            descriptionPlaceholder={t`Give this table a description`}
+            name={table.display_name}
+            nameIcon="table2"
+            nameMaxLength={254}
+            namePlaceholder={t`Give this table a name`}
+            nameRightSection={
+              <Tooltip label={t`Go to this table`} position="top">
+                <ActionIcon
+                  component={Link}
+                  to={Urls.queryBuilderTable(table.id, table.db_id)}
+                  variant="subtle"
+                  color="text-light"
+                  size="sm"
+                  mr="sm"
+                  aria-label={t`Go to this table`}
+                >
+                  <Icon name="external" size={16} />
+                </ActionIcon>
+              </Tooltip>
+            }
+            onNameChange={handleNameChange}
+            onDescriptionChange={handleDescriptionChange}
+          />
+        )}
 
         <Group
           align="center"

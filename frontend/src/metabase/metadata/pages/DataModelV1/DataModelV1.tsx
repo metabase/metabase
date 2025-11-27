@@ -152,6 +152,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                     key={table.id}
                     table={table}
                     fieldId={fieldId}
+                    withName
                     getFieldHref={(fieldId) =>
                       getUrl({ ...parsedParams, fieldId })
                     }
