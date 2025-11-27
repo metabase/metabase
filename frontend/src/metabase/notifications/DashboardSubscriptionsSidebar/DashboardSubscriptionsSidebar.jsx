@@ -75,19 +75,17 @@ const cardsToPulseCards = (cards, pulseCards) => {
 const getEditingPulseWithDefaults = (state, props) => {
   const pulse = getEditingPulse(state);
   const dashboardWrapper = state.dashboard;
-  if (!pulse.name) {
-    pulse.name = dashboardWrapper.dashboards[dashboardWrapper.dashboardId].name;
-  }
-  if (!pulse.dashboard_id) {
-    pulse.dashboard_id =
-      dashboardWrapper.dashboards[dashboardWrapper.dashboardId].id;
-  }
-  pulse.cards = cardsToPulseCards(
-    getSupportedCardsForSubscriptions(props.dashboard),
-    pulse.cards,
-  );
+  const dashboard = dashboardWrapper.dashboards[dashboardWrapper.dashboardId];
 
-  return pulse;
+  return {
+    ...pulse,
+    name: pulse.name || dashboard.name,
+    dashboard_id: pulse.dashboard_id || dashboard.id,
+    cards: cardsToPulseCards(
+      getSupportedCardsForSubscriptions(props.dashboard),
+      pulse.cards,
+    ),
+  };
 };
 
 const mapStateToProps = (state, props) => ({
