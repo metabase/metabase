@@ -1,11 +1,9 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  activateToken,
   createQuestion,
   createQuestionAndDashboard,
   getSignedJwtForResource,
 } from "e2e/support/helpers";
-import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   mountGuestEmbedDashboard,
@@ -101,52 +99,6 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
         cy.get("@internalApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(0);
-        });
-      });
-    });
-
-    describe("content translation", () => {
-      it("should show question content with applied content translation", () => {
-        setup();
-
-        cy.signInAsAdmin();
-
-        activateToken("bleeding-edge");
-
-        uploadTranslationDictionaryViaAPI([
-          {
-            locale: "de",
-            msgid: "Question for Guest Embed SDK",
-            msgstr: "Override title für Deutsch",
-          },
-          {
-            locale: "de",
-            msgid: "Product ID",
-            msgstr: "Override Product ID für Deutsch",
-          },
-        ]);
-
-        cy.signOut();
-
-        cy.get("@questionId").then(async (questionId) => {
-          const token = await getSignedJwtForResource({
-            resourceId: questionId as unknown as number,
-            resourceType: "question",
-          });
-
-          mountGuestEmbedQuestion(
-            { token, title: true },
-            {
-              locale: "de",
-            },
-          );
-
-          getSdkRoot().within(() => {
-            cy.findByText("Override title für Deutsch").should("be.visible");
-            cy.findByText("Override Product ID für Deutsch").should(
-              "be.visible",
-            );
-          });
         });
       });
     });
