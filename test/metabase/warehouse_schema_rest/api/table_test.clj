@@ -1184,19 +1184,17 @@
         (is (true?
              (deref sync-called? timeout :sync-never-called)))))))
 
-;; DEMOWARE bulk-editing APIS
 (deftest ^:parallel list-table-filtering-test
   (testing "term filtering"
-
     (is (=? [{:display_name "Users"}]
-            (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "USE" "Use"))
+            (->> (mt/user-http-request :crowberto :get 200 "table" :term "Use")
                  (filter #(= (:db_id %) (mt/id)))           ; prevent stray tables from affecting unit test results
                  (map #(select-keys % [:display_name])))))
 
     (testing "wildcard"
       (is (=? [{:display_name "Users"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "*S*RS" "*S*rs"))
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results1
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "*S*rs")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
                    (map #(select-keys % [:display_name])))))))
   (testing "filter composition"
     (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
