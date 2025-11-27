@@ -1,10 +1,12 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import type { Card, CardId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { initialState } from "./documents.slice";
 
-export const getDocumentsState = (state) => state.documents || initialState;
+export const getDocumentsState = (state: State) =>
+  state.documents || initialState;
 
 export const getSelectedQuestionId = createSelector(
   getDocumentsState,

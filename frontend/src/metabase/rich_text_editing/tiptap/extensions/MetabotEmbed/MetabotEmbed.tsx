@@ -22,8 +22,6 @@ import { getCurrentDocument } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api/metabot";
-import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
 import { wrapCardEmbed } from "../shared/layout";
@@ -153,7 +151,7 @@ export const MetabotComponent = memo(
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
-    const [queryMetabot] = useLazyMetabotGenerateContentQuery();
+    const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
     const isMetabotEnabled = PLUGIN_METABOT.isEnabled();
 
     const handleRunMetabot = async () => {
@@ -330,7 +328,9 @@ export const MetabotComponent = memo(
               {isLoading ? (
                 <Text
                   flex={1}
-                  className={MetabotThinkingStyles.toolCallStarted}
+                  className={
+                    PLUGIN_METABOT.MetabotThinkingStyles.toolCallStarted
+                  }
                 >
                   {t`Working on it...`}
                 </Text>

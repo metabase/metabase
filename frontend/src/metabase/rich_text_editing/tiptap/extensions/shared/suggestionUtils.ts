@@ -5,7 +5,7 @@ import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuC
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
-import type { MetabaseProtocolEntityModel } from "metabase-enterprise/metabot/utils/links";
+import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import type {
   Database,
   MentionableUser,

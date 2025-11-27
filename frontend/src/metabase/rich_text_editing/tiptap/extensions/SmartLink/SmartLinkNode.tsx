@@ -28,12 +28,12 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
-import { Icon } from "metabase/ui";
-import { useGetTransformQuery } from "metabase-enterprise/api";
 import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,
-} from "metabase-enterprise/metabot/utils/links";
+} from "metabase/metabot/utils/links";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { Icon } from "metabase/ui";
 import type {
   Card,
   CardDisplayType,
@@ -317,8 +317,8 @@ export const useEntityData = (
     },
   );
 
-  const transformQuery = useGetTransformQuery(entityId!, {
-    skip: !entityId || model !== "transform",
+  const transformQuery = PLUGIN_TRANSFORMS.useGetTransformQuery(entityId!, {
+    skip: !PLUGIN_TRANSFORMS.isEnabled || !entityId || model !== "transform",
   });
 
   const actionQuery = useGetActionQuery(

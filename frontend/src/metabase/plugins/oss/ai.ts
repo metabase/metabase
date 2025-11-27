@@ -67,6 +67,8 @@ type PluginMetabotType = {
   MetabotAdminAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
+  useLazyMetabotGenerateContentQuery: any;
+  MetabotThinkingStyles: { [key: string]: string };
 };
 
 const getDefaultMetabotContextValue = (): MetabotContext => ({
@@ -120,6 +122,8 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   MetabotAdminAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
+  useLazyMetabotGenerateContentQuery: () => [],
+  MetabotThinkingStyles: {},
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 
