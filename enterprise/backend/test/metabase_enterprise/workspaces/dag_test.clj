@@ -76,6 +76,7 @@
                                                                                       :type     :native
                                                                                       :native   {:query "SELECT 1"}})}
                                                                    :target {:type     "table"
+                                                                            :database (mt/id)
                                                                             :schema   "public"
                                                                             :name     (str "test_table_" (kw->id tx))}})]
                        [tx id]))]
