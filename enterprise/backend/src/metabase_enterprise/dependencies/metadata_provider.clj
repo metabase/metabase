@@ -246,7 +246,6 @@
   mp)
 
 (defmethod add-override :segment [^OverridingMetadataProvider mp _entity-type _id _updates]
-  ;; TODO(rileythomp, 2025-11-25): Update this if necessary
   mp)
 
 (defn all-overrides

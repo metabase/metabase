@@ -387,23 +387,22 @@
                                                                     :definition {:filter [:> [:field price-field-id nil] 50]}}]
           (testing "creating a segment creates dependency to its table"
             (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
-            (is (=? #{{:from_entity_type :segment
-                       :from_entity_id segment-id
-                       :to_entity_type :table
-                       :to_entity_id products-id}}
-                    (into #{} (map #(dissoc % :id)
-                                   (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
+            (is (= #{{:from_entity_type :segment
+                      :from_entity_id segment-id
+                      :to_entity_type :table
+                      :to_entity_id products-id}}
+                   (into #{} (map #(dissoc % :id)
+                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
           (testing "updating segment definition recalculates dependencies"
             (t2/update! :model/Segment segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
             (let [updated-segment (t2/select-one :model/Segment :id segment-id)]
               (events/publish-event! :event/segment-update {:object updated-segment :user-id api/*current-user-id*})
-              ;; Should still depend on products table
-              (is (=? #{{:from_entity_type :segment
-                         :from_entity_id segment-id
-                         :to_entity_type :table
-                         :to_entity_id products-id}}
-                      (into #{} (map #(dissoc % :id)
-                                     (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))
+              (is (= #{{:from_entity_type :segment
+                        :from_entity_id segment-id
+                        :to_entity_type :table
+                        :to_entity_id products-id}}
+                     (into #{} (map #(dissoc % :id)
+                                    (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))
           (testing "deleting segment removes all dependencies"
             (t2/delete! :model/Segment segment-id)
             (events/publish-event! :event/segment-delete {:object segment :user-id api/*current-user-id*})
@@ -423,16 +422,16 @@
                                                                                :query {:source-table products-id
                                                                                        :filter [:segment segment-id]}}}]
               (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
-              (is (=? #{{:from_entity_type :card
-                         :from_entity_id card-id
-                         :to_entity_type :segment
-                         :to_entity_id segment-id}
-                        {:from_entity_type :card
-                         :from_entity_id card-id
-                         :to_entity_type :table
-                         :to_entity_id products-id}}
-                      (into #{} (map #(dissoc % :id)
-                                     (t2/select :model/Dependency :from_entity_id card-id :from_entity_type :card))))))))))))
+              (is (= #{{:from_entity_type :card
+                        :from_entity_id card-id
+                        :to_entity_type :segment
+                        :to_entity_id segment-id}
+                       {:from_entity_type :card
+                        :from_entity_id card-id
+                        :to_entity_type :table
+                        :to_entity_id products-id}}
+                     (into #{} (map #(dissoc % :id)
+                                    (t2/select :model/Dependency :from_entity_id card-id :from_entity_type :card))))))))))))
 
 (deftest segment-dependency-calculation-error-handling-test
   (testing "When segment dependency calculation throws an error, it should be logged and the version should still be updated"

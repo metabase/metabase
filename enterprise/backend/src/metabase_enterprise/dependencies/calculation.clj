@@ -136,5 +136,4 @@
   "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
   [{:keys [table_id definition] :as _segment}]
   {:segment (or (lib/all-segment-ids definition) #{})
-   :table (cond-> #{}
-            table_id (conj table_id))})
+   :table (if table_id #{table_id} #{})})
