@@ -178,6 +178,60 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       expect(setSharing).toHaveBeenCalledWith(false);
     });
+
+    /**
+     * Isn't needed for EMB-1060 but I added it for completeness.
+     */
+    it(`should show pulse list view after creating the first subscription by a non-admin user ${testScenarioCondition}`, async () => {
+      const user = {
+        firstName: "John",
+        lastName: "Doe",
+      };
+      setup({
+        isEmbeddingSdk: true,
+        email: true,
+        slack,
+        currentUser: user,
+        pulseListDelay: 100,
+      });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+
+      // Create the first subscription
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(await screen.findByText("John Doe")).toBeInTheDocument();
+    });
+
+    it(`should show pulse list view after creating the first subscription by a admin user ${testScenarioCondition} (EMB-1060)`, async () => {
+      const user = {
+        firstName: "Admin",
+        lastName: "User",
+      };
+      setup({
+        isAdmin: true,
+        isEmbeddingSdk: true,
+        email: true,
+        slack,
+        currentUser: user,
+        pulseListDelay: 100,
+      });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+
+      // Create the first subscription
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(await screen.findByText("Admin User")).toBeInTheDocument();
+    });
   });
 
   describe("Slack Subscription sidebar", () => {

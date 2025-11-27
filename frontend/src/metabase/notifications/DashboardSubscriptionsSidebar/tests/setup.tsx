@@ -7,6 +7,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
+import { getNextId } from "__support__/utils";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -91,28 +92,27 @@ type SetupOpts = {
   isEmbeddingSdk?: boolean;
   setSharing?: (sharing: boolean) => void;
   pulses?: (Partial<Pulse> & { id: number })[];
+  currentUser?: {
+    firstName: string;
+    lastName: string;
+  };
+  pulseListDelay?: number;
 };
 
-export function setup(
-  {
-    email,
-    slack,
-    tokenFeatures = {},
-    hasEnterprisePlugins = false,
-    isAdmin = false,
-    dashcards = defaultDashcards,
-    parameters = defaultParameters,
-    isEmbeddingSdk = false,
-    setSharing,
-    pulses = [],
-  }: SetupOpts = {
-    email: true,
-    slack: true,
-    tokenFeatures: {},
-    hasEnterprisePlugins: false,
-    isAdmin: false,
-  },
-) {
+export function setup({
+  email = true,
+  slack = true,
+  tokenFeatures = {},
+  hasEnterprisePlugins = false,
+  isAdmin = false,
+  dashcards = defaultDashcards,
+  parameters = defaultParameters,
+  isEmbeddingSdk = false,
+  setSharing,
+  pulses = [],
+  currentUser,
+  pulseListDelay = 0,
+}: SetupOpts = {}) {
   const dashboard = createMockDashboard({
     dashcards,
     parameters,
@@ -167,6 +167,16 @@ export function setup(
     url: `path:/api/pulse`,
     query: { dashboard_id: dashboard.id },
     response: () => pulses,
+    // Delay is crucial to reproduce (EMB-1060), otherwise, the state updates too fast which isn't realistic
+    delay: pulseListDelay,
+  });
+
+  // Mock POST that updates the GET response
+  fetchMock.post("path:/api/pulse", ({ options }) => {
+    const body = JSON.parse(options.body as string);
+    const newPulse = { ...body, id: getNextId() } as Pulse & { id: number };
+    pulses.push(newPulse);
+    return newPulse;
   });
 
   fetchMock.post("path:/api/pulse/test", 200);
@@ -186,6 +196,8 @@ export function setup(
       storeInitialState: createMockState({
         settings: storeSettings,
         currentUser: createMockUser({
+          first_name: currentUser?.firstName,
+          last_name: currentUser?.lastName,
           is_superuser: isAdmin,
         }),
         dashboard: createDashboardState(dashboard, dashcards),
