@@ -2,6 +2,7 @@ import {
   findRequests,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
   setupUpdateSettingEndpoint,
@@ -39,6 +40,7 @@ export const setup = (options?: {
   );
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
+  setupNotificationChannelsEndpoints({});
 
   renderWithProviders(
     <SdkIframeEmbedSetupModal

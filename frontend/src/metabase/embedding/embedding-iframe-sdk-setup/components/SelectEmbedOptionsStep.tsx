@@ -2,8 +2,19 @@ import { useCallback, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useHasEmailSetup } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
+import {
+  Card,
+  Checkbox,
+  Divider,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+  useHover,
+} from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
@@ -23,6 +34,8 @@ export const SelectEmbedOptionsStep = () => {
 
 const BehaviorSection = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const hasEmailSetup = useHasEmailSetup();
+  const hoverTarget = useHover();
 
   const behaviorSection = useMemo(() => {
     return match(settings)
@@ -78,6 +91,26 @@ const BehaviorSection = () => {
                 updateSettings({ withDownloads: e.target.checked })
               }
             />
+
+            <Flex ref={hoverTarget.ref} align="center" gap="xs">
+              <Checkbox
+                disabled={!hasEmailSetup}
+                label={t`Allow subscriptions`}
+                checked={settings.withSubscriptions}
+                onChange={(e) =>
+                  updateSettings({ withSubscriptions: e.target.checked })
+                }
+              />
+              {!hasEmailSetup && (
+                <Tooltip
+                  // Allow the tooltip to open when hovering over the whole checkbox line, but positioning it on the info icon
+                  opened={hoverTarget.hovered}
+                  label={t`Please set up email to allow subscriptions`}
+                >
+                  <Icon name="info" c="var(--mb-color-text-tertiary)" />
+                </Tooltip>
+              )}
+            </Flex>
           </Stack>
         ),
       )
@@ -89,7 +122,13 @@ const BehaviorSection = () => {
         />
       ))
       .otherwise(() => null);
-  }, [settings, updateSettings]);
+  }, [
+    hasEmailSetup,
+    hoverTarget.hovered,
+    hoverTarget.ref,
+    settings,
+    updateSettings,
+  ]);
 
   if (behaviorSection === null) {
     return null;

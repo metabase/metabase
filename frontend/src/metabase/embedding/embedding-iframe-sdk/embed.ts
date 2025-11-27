@@ -488,6 +488,7 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
   "with-title",
   "with-downloads",
+  "with-subscriptions",
   "drills",
   "initial-parameters",
   "hidden-parameters",
