@@ -399,8 +399,8 @@
                        (var-get (requiring-resolve 'metabase.collections.models.collection/library-metrics-collection-type))]
         library-collections (t2/select :model/Collection :type [:in library-types])]
     (when (seq library-collections)
-      (log/debug (format "Granting library collection permissions to group %s for %d collections"
-                         group-id (count library-collections)))
+      (log/debugf "Granting library collection permissions to group %s for %d collections"
+                  group-id (count library-collections))
       (doseq [coll library-collections]
         (grant-collection-readwrite-permissions! group-id coll)))))
 
