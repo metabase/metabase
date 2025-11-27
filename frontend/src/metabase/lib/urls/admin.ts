@@ -1,5 +1,6 @@
 import type {
   DatabaseId,
+  FieldId,
   SchemaName,
   TableId,
   UserId,
@@ -45,27 +46,39 @@ export function editDatabase(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/edit`;
 }
 
-export function dataModel() {
-  return `/admin/datamodel`;
-}
+type DataModelParams = {
+  databaseId?: DatabaseId;
+  schemaName?: SchemaName | null;
+  tableId?: TableId;
+  fieldId?: FieldId;
+};
 
-export function dataModelDatabase(databaseId: DatabaseId) {
-  return `${dataModel()}/database/${databaseId}`;
-}
+export function dataModel({
+  databaseId,
+  schemaName,
+  tableId,
+  fieldId,
+}: DataModelParams = {}) {
+  const parts = ["/admin/datamodel"];
 
-export function dataModelSchema(
-  databaseId: DatabaseId,
-  schema: SchemaName | null,
-) {
-  return `${dataModelDatabase(databaseId)}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}`;
-}
+  if (databaseId != null) {
+    parts.push("database", String(databaseId));
 
-export function dataModelTable(
-  databaseId: DatabaseId,
-  schema: SchemaName | null,
-  tableId: TableId,
-) {
-  return `${dataModelSchema(databaseId, schema)}/table/${tableId}`;
+    if (schemaName != null) {
+      const schemaId = `${databaseId}:${encodeURIComponent(schemaName)}`;
+      parts.push("schema", schemaId);
+
+      if (tableId != null) {
+        parts.push("table", String(tableId));
+
+        if (fieldId != null) {
+          parts.push("field", String(fieldId));
+        }
+      }
+    }
+  }
+
+  return parts.join("/");
 }
 
 export function uploadsSettings() {

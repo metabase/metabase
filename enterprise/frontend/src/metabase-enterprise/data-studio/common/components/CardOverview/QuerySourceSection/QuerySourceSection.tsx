@@ -64,7 +64,9 @@ function TableSourcePath({ tableId }: TableSourcePathProps) {
     const pathParts: SourcePathPart[] = [];
     pathParts.push({
       name: table.db.name,
-      url: table.db.is_audit ? undefined : Urls.dataModelDatabase(table.db_id),
+      url: table.db.is_audit
+        ? undefined
+        : Urls.dataModel({ databaseId: table.db_id }),
     });
 
     if (table.schema) {
@@ -72,7 +74,10 @@ function TableSourcePath({ tableId }: TableSourcePathProps) {
         name: table.schema,
         url: table.db.is_audit
           ? undefined
-          : Urls.dataModelSchema(table.db_id, table.schema),
+          : Urls.dataModel({
+              databaseId: table.db_id,
+              schemaName: table.schema,
+            }),
       });
     }
 
@@ -80,7 +85,11 @@ function TableSourcePath({ tableId }: TableSourcePathProps) {
       name: table.display_name,
       url: table.db.is_audit
         ? undefined
-        : Urls.dataModelTable(table.db_id, table.schema, table.id),
+        : Urls.dataModel({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+            tableId: table.id,
+          }),
     });
 
     return pathParts;
