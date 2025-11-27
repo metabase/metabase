@@ -53,7 +53,6 @@
                                 check-outs))
         transforms (filter transform? all-ids)
         tables     (filter table? all-ids)
-        ;; Create mock tables
         table-ids  (u/for-map [t tables]
                      [t (t2/insert-returning-pk! :model/Table
                                                  {:db_id  (mt/id)
@@ -71,36 +70,35 @@
                                                                                       :type     :query
                                                                                       :query    {:source-table (first parent-tables)
                                                                                                  :joins        (for [pt (rest parent-tables)]
-                                                                                                                 {:type         :inner
-                                                                                                                  :source-table pt
-                                                                                                                  :on           [:= [:field 0 0] [:field 0 0]]})}}
+                                                                                                                 {:source-table pt
+                                                                                                                  :condition    [:= 1 1]})}}
                                                                                      {:database (mt/id)
                                                                                       :type     :native
                                                                                       :native   {:query "SELECT 1"}})}
-                                                                   :target {:type   "table"
-                                                                            :schema "public"
-                                                                            :name   (str "test_table_" (kw->id tx))}})]
-                       [tx id]))
-        id-map     (merge tx-ids table-ids)]
-    ;; Create dependencies
-    (doseq [[child parents] dependencies
-            :let [child-id (id-map child)]
-            parent parents
-            :let [parent-id (id-map parent)]]
-      (deps/replace-dependencies!
-       (kw->type child) child-id
-       {(kw->type parent) #{parent-id}}))
-    id-map))
+                                                                   :target {:type     "table"
+                                                                            :schema   "public"
+                                                                            :name     (str "test_table_" (kw->id tx))}})]
+                       [tx id]))]
+
+    ;; TODO This is a workaround for the dependency between transforms and their output only being inserted on run.
+    ;;      We will need to do something about this when we mirror as well - ideally the deps module would "just work"
+    (doseq [[tx-kw tx-id] tx-ids]
+      (t2/insert! :model/Dependency
+                  {:from_entity_type "table"
+                   :from_entity_id   (table-ids (keyword (str "t" (kw->id tx-kw))))
+                   :to_entity_type   "transform"
+                   :to_entity_id     tx-id}))
+
+    (merge tx-ids table-ids)))
 
 (defn- translate-result
   "Translate result from real IDs back to shorthand notation for easier comparison."
   [result id-map]
-  (let [reverse-map (into {} (map (fn [[k v]] [v k]) id-map))
-        translate   (fn [{:keys [id]}]
-                      (get reverse-map id))]
+  (let [reverse-map (u/for-map [[k v] id-map] [v k])
+        translate   (fn [{:keys [id]}] (get reverse-map id))]
     (-> (reduce (fn [m k] (update m k #(set (map translate %))))
                 result
-                [:check-outs :inputs :outputs :transforms :entities])
+                [:check-outs :inputs :outputs :transforms])
         (update :dependencies
                 (fn [deps]
                   (into {}
@@ -213,19 +211,20 @@
       (testing "graph built from shorthand matches abstract solver"
         (let [shorthand  {:check-outs   #{:x2, :x4}
                           :dependencies {:x1 [:t0]
-                                         :x2 [:x1, :t0]
+                                         :x2 [:x1, :t10]
                                          :x3 [:x2, :t8]
                                          :x4 [:x3]
-                                         :x5 [:x4, :x2, :t9]}}
+                                         :x5 [:x2, :x4, :t9]}}
               id-map     (create-test-graph! (dag-abstract/expand-shorthand shorthand))
               result     (ws.dag/path-induced-subgraph {:transforms (mapv id-map (:check-outs shorthand))})
               translated (translate-result result id-map)]
           (is (=? {:check-outs   #{:x2, :x4}
                    :transforms   #{:x2, :x3, :x4}
-                   :inputs       #{:t0, :t1, :t8}
+                   :inputs       #{:t0, :t1, :t8, :t10}
                    :outputs      #{:t2, :t3, :t4}
-                   :dependencies {:x2 #{:x1 :t0}
-                                  :x3 #{:x2 :t8}
+                   ;; Dependencies outside the subgraph are not listed
+                   :dependencies {:x2 #{}
+                                  :x3 #{:x2}
                                   :x4 #{:x3}}}
                   translated)))))))
 

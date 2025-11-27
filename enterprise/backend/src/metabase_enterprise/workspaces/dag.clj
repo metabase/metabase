@@ -150,6 +150,15 @@
 
 (defn- transform? [entity] (= :transform (:type entity)))
 
+;; TODO avoid copying this from metabase-enterprise.transforms.models.transform (for now)
+(defn- extract-transform-db-id
+  "Return the database ID from transform source; else nil."
+  [source]
+  (case (:type source)
+    :query (get-in source [:query :database])
+    :python (source :source-database)
+    nil))
+
 (defn- fetch-dependent-tables
   "Fetch tables that are the output targets of the given transforms.
    Returns tables with their IDs if they exist in the database, or with :id nil if they don't exist yet.
@@ -158,14 +167,14 @@
   (when (seq entities)
     (let [transform-ids (map :id (filter transform? entities))
           transforms    (when (seq transform-ids)
-                          (t2/select [:model/Transform :target] :id [:in transform-ids]))]
+                          (t2/select [:model/Transform :source :target] :id [:in transform-ids]))]
       (vec
-       (for [{:keys [target]} transforms, :when target]
+       (for [{:keys [source target]} transforms, :when target]
          (case (:type target)
            "table"
            ;; Note: id will be nil if the table has not been created yet
            {:id     (t2/select-one-pk :model/Table
-                                      :db_id (:database target)
+                                      :db_id (extract-transform-db-id source)
                                       :schema (:schema target)
                                       :name (:name target))
             :schema (:schema target)
@@ -220,5 +229,8 @@
      :dependencies (into (ordered-map/ordered-map)
                          (keep (fn [entity]
                                  (when-not (table? entity)
-                                   [entity (vec (get deps-map entity []))])))
+                                   [entity (vec (map #(if (table? %)
+                                                        (first (get deps-map % []))
+                                                        %)
+                                                     (get deps-map entity [])))])))
                          sorted)}))
