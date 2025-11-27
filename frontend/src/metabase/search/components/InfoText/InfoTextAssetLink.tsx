@@ -132,7 +132,7 @@ export const InfoTextAssetLink = ({
   result,
   showLinks = true,
 }: InfoTextAssetLinkProps) => {
-  if (result.model === "table") {
+  if (result.model === "table" && result.collection == null) {
     return <InfoTextTablePath showLinks={showLinks} result={result} />;
   }
 
