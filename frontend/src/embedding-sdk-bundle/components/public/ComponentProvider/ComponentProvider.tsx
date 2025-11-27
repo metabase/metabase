@@ -41,10 +41,7 @@ function useInitPlugins() {
     (state) => state.settings.values["token-features"],
   );
 
-  console.log("init plugins", tokenFeatures);
-
   useEffect(() => {
-    console.log("hasInitializedPlugins", hasInitializedPlugins);
     if (hasInitializedPlugins || !tokenFeatures) {
       return;
     }
