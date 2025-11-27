@@ -10,7 +10,6 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { trackMetadataChange } from "metabase/metadata/pages/shared";
 import {
   getTableMetadataQuery,
   parseRouteParams,
@@ -254,7 +253,7 @@ function DataModelContent({ params }: Props) {
                     getFieldHref={(fieldId) =>
                       Urls.dataStudioData({ ...parsedParams, fieldId })
                     }
-                    onTrackMetadataChange={trackMetadataChange}
+                    onTrackMetadataChange={() => undefined}
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}
                   />

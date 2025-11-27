@@ -23,6 +23,10 @@ function getTabs(table: Table): PaneHeaderTab[] {
     label: t`Overview`,
     to: Urls.dataStudioTable(table.id),
   });
+  tabs.push({
+    label: t`Fields`,
+    to: Urls.dataStudioTableFields(table.id),
+  });
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({

@@ -70,6 +70,11 @@ export function dataStudioTable(tableId: TableId) {
   return `${dataStudioModeling()}/tables/${tableId}`;
 }
 
+export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
+  const baseUrl = `${dataStudioModeling()}/tables/${tableId}/fields`;
+  return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
+}
+
 export function dataStudioTableDependencies(tableId: TableId) {
   return `${dataStudioTable(tableId)}/dependencies`;
 }

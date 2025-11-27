@@ -150,8 +150,8 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                      * This is to avoid state mix-up with optimistic updates.
                      */
                     key={table.id}
-                    fieldId={fieldId}
                     table={table}
+                    fieldId={fieldId}
                     getFieldHref={(fieldId) =>
                       getUrl({ ...parsedParams, fieldId })
                     }
@@ -188,8 +188,8 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                       getFieldHref={(fieldId) =>
                         getUrl({ ...parsedParams, fieldId })
                       }
-                      onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
+                      onFieldValuesClick={openFieldValuesModal}
                       onTrackMetadataChange={trackMetadataChange}
                     />
                   </Box>
