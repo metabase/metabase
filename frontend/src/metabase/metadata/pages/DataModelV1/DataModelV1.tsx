@@ -14,12 +14,15 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
-import { FieldSection, TableSection } from "../../components";
+import {
+  FieldSection,
+  PreviewSection,
+  type PreviewType,
+  TableSection,
+} from "../../components";
 import {
   FieldValuesModal,
   NoDatabasesEmptyState,
-  PreviewSection,
-  type PreviewType,
   trackMetadataChange,
 } from "../shared";
 
@@ -217,14 +220,11 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
             >
               <PreviewSection
                 className={S.preview}
-                databaseId={databaseId}
                 field={field}
-                fieldId={fieldId}
-                previewType={previewType}
                 table={table}
-                tableId={tableId}
-                onClose={closePreview}
+                previewType={previewType}
                 onPreviewTypeChange={setPreviewType}
+                onClose={closePreview}
               />
             </Box>
           )}

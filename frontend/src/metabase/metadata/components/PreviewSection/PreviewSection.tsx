@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Box,
@@ -12,13 +13,7 @@ import {
   Text,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatabaseId,
-  Field,
-  FieldId,
-  Table,
-  TableId,
-} from "metabase-types/api";
+import type { Field, Table } from "metabase-types/api";
 
 import { FilteringPreview } from "./FilteringPreview";
 import { ObjectDetailPreview } from "./ObjectDetailPreview";
@@ -27,29 +22,26 @@ import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
 import { getPreviewTypeData } from "./utils";
 
-interface Props {
+type PreviewSectionBaseProps = {
   className?: string;
-  databaseId: DatabaseId;
   field: Field;
-  fieldId: FieldId;
-  previewType: PreviewType;
   table: Table;
-  tableId: TableId;
-  onClose: () => void;
+  previewType: PreviewType;
   onPreviewTypeChange: (value: PreviewType) => void;
-}
+  onClose: () => void;
+};
 
 const PreviewSectionBase = ({
   className,
-  databaseId,
   field,
-  fieldId,
-  previewType,
   table,
-  tableId,
-  onClose,
+  previewType,
   onPreviewTypeChange,
-}: Props) => {
+  onClose,
+}: PreviewSectionBaseProps) => {
+  const fieldId = getRawTableFieldId(field);
+  const tableId = table.id;
+  const databaseId = table.db_id;
   const data = useMemo(() => getPreviewTypeData(), []);
   const pkFields = useMemo(
     () => table.fields?.filter((field) => isPK(field)) ?? [],
