@@ -35,7 +35,7 @@ declare global {
 }
 
 const SdkIframeEmbedPreviewInner = () => {
-  const { settings, guestEmbedSignedTokenForPreview } =
+  const { experience, settings, guestEmbedSignedTokenForPreview } =
     useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -124,6 +124,13 @@ const SdkIframeEmbedPreviewInner = () => {
     }
   }, [settings.componentName]);
 
+  const attributes = buildEmbedAttributes({
+    experience,
+    settings,
+    token: guestEmbedSignedTokenForPreview,
+    wrapWithQuotes: false,
+  });
+
   return (
     <Card
       className={S.EmbedPreviewIframe}
@@ -136,60 +143,19 @@ const SdkIframeEmbedPreviewInner = () => {
       {match(settings)
         .with(
           { componentName: "metabase-question", template: "exploration" },
-          (s) =>
-            createElement(
-              "metabase-question",
-              buildEmbedAttributes({
-                experience: "exploration",
-                settings: s,
-                token: guestEmbedSignedTokenForPreview,
-                wrapWithQuotes: false,
-              }),
-            ),
+          () => createElement("metabase-question", attributes),
         )
-        .with({ componentName: "metabase-question" }, (s) =>
-          createElement(
-            "metabase-question",
-            buildEmbedAttributes({
-              experience: "chart",
-              settings: s,
-              token: guestEmbedSignedTokenForPreview,
-              wrapWithQuotes: false,
-            }),
-          ),
+        .with({ componentName: "metabase-question" }, () =>
+          createElement("metabase-question", attributes),
         )
-        .with({ componentName: "metabase-dashboard" }, (s) =>
-          createElement(
-            "metabase-dashboard",
-            buildEmbedAttributes({
-              experience: "dashboard",
-              settings: s,
-              token: guestEmbedSignedTokenForPreview,
-              wrapWithQuotes: false,
-            }),
-          ),
+        .with({ componentName: "metabase-dashboard" }, () =>
+          createElement("metabase-dashboard", attributes),
         )
-        .with({ componentName: "metabase-browser" }, (s) =>
-          createElement(
-            "metabase-browser",
-            buildEmbedAttributes({
-              experience: "browser",
-              settings: s,
-              token: guestEmbedSignedTokenForPreview,
-              wrapWithQuotes: false,
-            }),
-          ),
+        .with({ componentName: "metabase-browser" }, () =>
+          createElement("metabase-browser", attributes),
         )
-        .with({ componentName: "metabase-metabot" }, (s) =>
-          createElement(
-            "metabase-metabot",
-            buildEmbedAttributes({
-              experience: "metabot",
-              settings: s,
-              token: guestEmbedSignedTokenForPreview,
-              wrapWithQuotes: false,
-            }),
-          ),
+        .with({ componentName: "metabase-metabot" }, () =>
+          createElement("metabase-metabot", attributes),
         )
         .exhaustive()}
 

@@ -69,7 +69,7 @@ export const useEmbeddingParameters = ({
   // The resource?.id dependency ensures this re-runs when switching resources.
   useEffect(() => {
     if (
-      resource &&
+      resource?.id &&
       !hasInitializedRef.current &&
       settings.isGuestEmbed &&
       initialEmbeddingParameters !== null
@@ -81,7 +81,7 @@ export const useEmbeddingParameters = ({
     initialEmbeddingParameters,
     onEmbeddingParametersChange,
     settings.isGuestEmbed,
-    resource,
+    resource?.id,
   ]);
 
   return {

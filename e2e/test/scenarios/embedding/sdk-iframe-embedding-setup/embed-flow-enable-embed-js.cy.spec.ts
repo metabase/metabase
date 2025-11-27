@@ -1,4 +1,4 @@
-import { embedModalEmbeddingControlCard } from "e2e/support/helpers";
+import { embedModalEnableEmbeddingCard } from "e2e/support/helpers";
 
 import { getEmbedSidebar } from "./helpers";
 
@@ -55,7 +55,7 @@ describe(
           cy.findByText("New embed").click();
         });
 
-      embedModalEmbeddingControlCard().within(() => {
+      embedModalEnableEmbeddingCard().within(() => {
         cy.findByText(cardText).should("exist");
       });
 
@@ -103,7 +103,7 @@ describe(
           cy.findByText("New embed").click();
         });
 
-      embedModalEmbeddingControlCard().within(() => {
+      embedModalEnableEmbeddingCard().within(() => {
         cy.findByText("Agree to the usage conditions to continue.").should(
           "exist",
         );

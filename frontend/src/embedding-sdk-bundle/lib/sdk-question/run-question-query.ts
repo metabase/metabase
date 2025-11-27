@@ -1,10 +1,10 @@
+import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-guest-embed-filtered-parameters";
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValuesMap } from "metabase-types/api";
 
 interface RunQuestionQueryParams {
@@ -43,12 +43,9 @@ export async function runQuestionQuerySdk(
   let queryResults;
 
   if (shouldRunCardQuery({ question, isGuestEmbed })) {
-    const parameters = getParameterValuesBySlug(
-      question.card().parameters,
+    const filteredParameters = getGuestEmbedFilteredParameters(
+      question,
       parameterValues,
-    );
-    const filteredParameters = Object.fromEntries(
-      Object.entries(parameters).filter(([_key, value]) => value !== null),
     );
 
     queryResults = await runQuestionQuery(question, {

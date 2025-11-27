@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 
-import { EmbeddingControlCard } from "./EmbeddingControlCard";
+import { EnableEmbeddingCard } from "./EnableEmbeddingCard";
 
 export const EnableEmbeddedAnalyticsCard = () => {
   const { isSimpleEmbeddingEnabled, isSimpleEmbeddingTermsAccepted } =
     useSdkIframeEmbedSetupContext();
 
   return (
-    <EmbeddingControlCard
+    <EnableEmbeddingCard
       embeddingType="Embedded Analytics JS"
       isEnabled={isSimpleEmbeddingEnabled}
       termsAccepted={isSimpleEmbeddingTermsAccepted}

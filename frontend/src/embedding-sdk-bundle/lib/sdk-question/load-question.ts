@@ -54,6 +54,7 @@ export const loadQuestionSdk =
       : resolvedCard;
 
     if (!isGuestEmbed) {
+      // We don't have a `metadata` endpoint for static/guest embeds
       await dispatch(loadMetadataForCard(card, { token }));
     }
 

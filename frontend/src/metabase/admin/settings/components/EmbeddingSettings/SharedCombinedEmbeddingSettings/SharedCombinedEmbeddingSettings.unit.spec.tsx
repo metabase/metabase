@@ -47,10 +47,10 @@ describe("SharedCombinedEmbeddingSettings", () => {
   it("should toggle static embedding on", async () => {
     await setup({ enabled: false });
 
-    await screen.findByText("Enable unauthenticated embeds");
+    await screen.findByText("Guest embeds");
 
     const toggle = screen.getByRole("switch", {
-      name: /Enable unauthenticated embeds toggle/i,
+      name: /Guest embeds toggle/i,
     });
 
     await userEvent.click(toggle);
@@ -74,9 +74,7 @@ describe("SharedCombinedEmbeddingSettings", () => {
 
   it("should hide embeddable dashboards and cards when embedding is disabled", async () => {
     await setup({ enabled: false });
-    expect(
-      await screen.findByText("Enable unauthenticated embeds"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Guest embeds")).toBeInTheDocument();
     expect(screen.queryByText("Manage embeds")).not.toBeInTheDocument();
   });
 

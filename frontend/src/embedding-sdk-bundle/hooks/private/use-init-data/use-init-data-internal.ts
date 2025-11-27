@@ -109,7 +109,7 @@ export const useInitDataInternal = ({
     }
 
     if (isGuestEmbed) {
-      dispatch(initGuestEmbed({ isGuestEmbed }));
+      dispatch(initGuestEmbed());
     } else {
       dispatch(initAuth({ ...authConfig, isLocalHost }));
     }

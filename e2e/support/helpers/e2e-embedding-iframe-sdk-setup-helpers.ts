@@ -1,11 +1,11 @@
 export const embedModalContent = () =>
   cy.findByTestId("sdk-iframe-embed-setup-modal-content");
 
-export const embedModalEmbeddingControlCard = () =>
-  cy.findByTestId("embedding-control-card");
+export const embedModalEnableEmbeddingCard = () =>
+  cy.findByTestId("enable-embedding-card");
 
 export const embedModalEnableEmbedding = () =>
-  embedModalEmbeddingControlCard().within(() => {
+  embedModalEnableEmbeddingCard().within(() => {
     cy.findByText(/(Agree and (continue|enable)|Enable)/).click();
   });
 

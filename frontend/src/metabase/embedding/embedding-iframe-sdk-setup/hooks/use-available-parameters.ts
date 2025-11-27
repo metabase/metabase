@@ -21,6 +21,8 @@ export const useAvailableParameters = ({
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
+  // We need initial available parameters to display the `discard changes` button
+  // and reset user selected parameters back to initial parameters
   const initialAvailableParametersRef = useRef<Parameter[] | null>(null);
   const prevResourceId = usePrevious(resource?.id);
 

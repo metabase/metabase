@@ -25,7 +25,7 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
   const disabled = !!settings.isGuestEmbed;
 
   const upgradeUrl = useSelector((state) =>
-    getUpgradeUrl(state, { utm_content: "admin_permissions" }),
+    getUpgradeUrl(state, { utm_content: "embedding-page" }),
   );
 
   return (

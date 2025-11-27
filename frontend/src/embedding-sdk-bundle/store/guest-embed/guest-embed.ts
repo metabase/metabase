@@ -2,13 +2,9 @@ import { overrideRequestsForGuestEmbeds } from "embedding-sdk-bundle/lib/overrid
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 
-export const initGuestEmbed = createAsyncThunk(
+export const initGuestEmbed = createAsyncThunk<void, undefined>(
   "sdk/token/INIT_GUEST_EMBED",
-  async ({ isGuestEmbed }: { isGuestEmbed?: boolean | null }, { dispatch }) => {
-    if (!isGuestEmbed) {
-      return;
-    }
-
+  async (_: any, { dispatch }) => {
     overrideRequestsForGuestEmbeds();
     await dispatch(refreshSiteSettings());
   },

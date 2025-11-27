@@ -146,12 +146,10 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the Unauthenticated embedding toggle when token features are missing", () => {
+  it("shows the Guest Embeds toggle when token features are missing", () => {
     setup({ tokenFeatures: { embedding_simple: false } });
 
-    expect(
-      screen.getByText("Enable unauthenticated embeds"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Guest embeds")).toBeInTheDocument();
   });
 });
 

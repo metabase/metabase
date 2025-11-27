@@ -25,7 +25,7 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
       return {
         entityId: null,
         token: null,
-        tokenError: t`Passed id cannot be a JWT token.`,
+        tokenError: t`JWT tokens cannot be passed as id. Use the token prop instead.`,
       };
     }
 
