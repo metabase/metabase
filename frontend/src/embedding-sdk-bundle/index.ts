@@ -9,11 +9,6 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";
 
-// Import the EE plugins required by the embedding sdk.
-import { initializePlugins } from "sdk-ee-plugins";
-
-initializePlugins();
-
 // Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
 import "sdk-specific-imports";
 
