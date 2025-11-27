@@ -392,12 +392,20 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   it("should allow searching dashboard parameters in preview embed modal", () => {
+    cy.intercept(
+      "GET",
+      "api/preview_embed/dashboard/*",
+      cy.spy().as("previewEmbedSpy"),
+    ).as("previewEmbed");
+
     H.visitDashboard("@dashboardId");
 
     H.openStaticEmbeddingModal({
       activeTab: "parameters",
       previewMode: "preview",
     });
+
+    cy.wait("@previewEmbed");
 
     H.modal().within(() => {
       // Set the Name parameter to enabled so we can test searching
@@ -409,6 +417,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
 
     H.popover().findByText("Editable").click();
+    cy.wait("@previewEmbed");
 
     // Test the preview iframe parameter search functionality
     H.getIframeBody().within(() => {
