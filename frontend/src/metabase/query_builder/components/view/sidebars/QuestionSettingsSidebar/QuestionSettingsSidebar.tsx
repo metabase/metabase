@@ -1,13 +1,14 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import { useEffect } from "react";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { useStackedModals } from "metabase/common/hooks";
+// import { useStackedModals } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { onCloseQuestionSettings } from "metabase/query_builder/actions";
-import { Stack } from "metabase/ui";
+import { Stack, useModalsStack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { ModelCacheManagementSection } from "../ModelCacheManagementSection";
@@ -31,26 +32,35 @@ export const QuestionSettingsSidebar = ({
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionSettings());
 
-  const { getModalProps, currentModal, close, open } = useStackedModals({
-    modals: ["default", "caching"],
-    defaultOpened: "default",
-    withOverlay: true,
-  });
+  // const { getModalProps, currentModal, close, open } = useStackedModals({
+  //   modals: ["default", "caching"],
+  //   defaultOpened: "default",
+  //   withOverlay: true,
+  // });
 
-  const defaultModalProps = getModalProps("default");
-  const cachingModalProps = getModalProps("caching");
+  const modals = useModalsStack(["default", "caching"]);
+
+  useEffect(() => {
+    modals.open("default");
+  }, []);
+
+  // const defaultModalProps = getModalProps("default");
+  // const cachingModalProps = getModalProps("caching");
+
+  const currentModal = modals.state.caching ? "caching" : "default";
 
   return (
     <>
       <Sidesheet
         title={getTitle(question)}
-        isOpen={defaultModalProps.isOpen}
+        isOpen={modals.state.default}
         onClose={handleClose}
-        withOverlay={defaultModalProps.withOverlay}
-        overlayProps={defaultModalProps.overlayProps}
-        closeOnEscape={defaultModalProps.closeOnEscape}
+        withOverlay={!modals.state.caching}
+        overlayProps={undefined}
+        closeOnEscape={!modals.state.caching}
         data-testid="question-settings-sidebar"
       >
+        <div>This is using useModalsStack from Mantine</div>
         {question.type() === "model" && (
           <SidesheetCard title={t`Caching`}>
             <ModelCacheManagementSection model={question} />
@@ -63,25 +73,24 @@ export const QuestionSettingsSidebar = ({
               <PLUGIN_CACHING.SidebarCacheSection
                 model="question"
                 item={question}
-                setPage={() => open("caching")}
+                setPage={() => modals.open("caching")}
                 key={currentModal}
               />
             </Stack>
           </SidesheetCard>
         )}
       </Sidesheet>
-      {currentModal === "caching" && (
-        <PLUGIN_CACHING.SidebarCacheForm
-          item={question}
-          model="question"
-          isOpen={cachingModalProps.isOpen}
-          onClose={handleClose}
-          withOverlay={cachingModalProps.withOverlay}
-          overlayProps={cachingModalProps.overlayProps}
-          onBack={() => close("caching")}
-          pt="md"
-        />
-      )}
+
+      <PLUGIN_CACHING.SidebarCacheForm
+        item={question}
+        model="question"
+        isOpen={modals.state.caching}
+        onClose={handleClose}
+        withOverlay={true}
+        overlayProps={undefined}
+        onBack={() => modals.close("caching")}
+        pt="md"
+      />
     </>
   );
 };

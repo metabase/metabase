@@ -1,4 +1,9 @@
-export { rem, useCombobox, useMantineTheme } from "@mantine/core";
+export {
+  rem,
+  useCombobox,
+  useMantineTheme,
+  useModalsStack,
+} from "@mantine/core";
 export type {
   FloatingPosition,
   MantineSize,
