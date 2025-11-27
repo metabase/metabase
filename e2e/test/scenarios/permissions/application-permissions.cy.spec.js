@@ -272,6 +272,97 @@ describe("scenarios > admin > permissions > application", () => {
         cy.findByLabelText("Open in Data Studio").should("not.exist");
       });
     });
+
+    describe("library collection write access", () => {
+      it("grants write access when non-admin creates the library", () => {
+        cy.visit("/admin/permissions/application");
+        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Create a question as admin first");
+        H.createQuestion({
+          name: "Question to become model",
+          query: { "source-table": ORDERS_ID },
+        }).then(({ body }) => {
+          cy.wrap(body.id).as("questionId");
+        });
+
+        cy.signInAsNormalUser();
+
+        cy.log("Non-admin creates the library - should get write access");
+        H.createLibrary().then((response) => {
+          const modelsCollection = response.body.effective_children?.find(
+            (child) => child.name === "Data",
+          );
+          cy.wrap(modelsCollection.id).as("modelsCollectionId");
+        });
+
+        cy.log("Non-admin should be able to move question to library as model");
+        cy.get("@questionId").then((questionId) => {
+          cy.get("@modelsCollectionId").then((collectionId) => {
+            cy.request("PUT", `/api/card/${questionId}`, {
+              type: "model",
+              collection_id: collectionId,
+            });
+          });
+        });
+
+        cy.log("Verify permissions show Curate for All Users on library");
+        cy.signInAsAdmin();
+        cy.get("@modelsCollectionId").then((collectionId) => {
+          cy.visit(`/admin/permissions/collections/${collectionId}`);
+        });
+        H.assertPermissionForItem("All Users", 0, "Curate");
+      });
+
+      it("grants write access to existing library when data studio permission is granted", () => {
+        cy.log("Admin creates library first");
+        H.createLibrary().then((response) => {
+          const modelsCollection = response.body.effective_children?.find(
+            (child) => child.name === "Data",
+          );
+          cy.wrap(modelsCollection.id).as("modelsCollectionId");
+        });
+
+        cy.log("Create a question as admin");
+        H.createQuestion({
+          name: "Question to become model",
+          query: { "source-table": ORDERS_ID },
+        }).then(({ body }) => {
+          cy.wrap(body.id).as("questionId");
+        });
+
+        cy.log("Grant data studio permission to All Users");
+        cy.visit("/admin/permissions/application");
+        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Verify permissions show Curate for All Users on library");
+        cy.get("@modelsCollectionId").then((collectionId) => {
+          cy.visit(`/admin/permissions/collections/${collectionId}`);
+        });
+        H.assertPermissionForItem("All Users", 0, "Curate");
+
+        cy.log("Non-admin should be able to move question to library as model");
+        cy.signInAsNormalUser();
+        cy.get("@questionId").then((questionId) => {
+          cy.get("@modelsCollectionId").then((collectionId) => {
+            cy.request("PUT", `/api/card/${questionId}`, {
+              type: "model",
+              collection_id: collectionId,
+            });
+          });
+        });
+
+        cy.log("Verify model was created in the library");
+        cy.get("@questionId").then((questionId) => {
+          H.visitModel(questionId);
+        });
+        cy.findByLabelText("Open in Data Studio").should("be.visible");
+      });
+    });
   });
 });
 
