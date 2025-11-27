@@ -1,7 +1,3 @@
-import fs from "fs";
-import os from "os";
-import path from "path";
-
 import { BACKEND_PORT } from "./constants/backend-port";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import runCypress from "./cypress-node-js-runner";
@@ -13,8 +9,6 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
-
-let tempSampleDBDir: string | null = null;
 
 // if you want to change these, set them as environment variables in your shell
 const options = {
@@ -82,12 +76,7 @@ const init = async () => {
     }
 
     // Use a temporary copy of the sample db so it won't use and lock the db used for local development
-    tempSampleDBDir = path.join(
-      os.tmpdir(),
-      `metabase-sample-db-e2e-${process.pid}`,
-    );
-    fs.mkdirSync(tempSampleDBDir, { recursive: true });
-    process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = tempSampleDBDir;
+    process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = "e2e/tmp"; // already .gitignored
 
     printBold("⏳ Starting backend");
     await CypressBackend.start("target/uberjar/metabase-backend.jar");
@@ -140,20 +129,6 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
   if (options.BUILD_BACKEND) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
-  }
-
-  // Add cleanup for the temporary sample database directory
-  if (tempSampleDBDir) {
-    try {
-      fs.rmSync(tempSampleDBDir, { recursive: true, force: true });
-      printBold(
-        `🗑️ Cleaned up temporary sample database directory: ${tempSampleDBDir}`,
-      );
-    } catch (e) {
-      console.error(
-        `Error cleaning up temporary sample database directory: ${e}`,
-      );
-    }
   }
 
   printBold(
