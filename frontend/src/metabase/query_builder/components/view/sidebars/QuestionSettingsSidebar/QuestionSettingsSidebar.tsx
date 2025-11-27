@@ -47,7 +47,6 @@ export const QuestionSettingsSidebar = ({
   // const defaultModalProps = getModalProps("default");
   // const cachingModalProps = getModalProps("caching");
 
-  const currentModal = modals.state.caching ? "caching" : "default";
 
   return (
     <>
@@ -55,7 +54,7 @@ export const QuestionSettingsSidebar = ({
         title={getTitle(question)}
         isOpen={modals.state.default}
         onClose={handleClose}
-        withOverlay={!modals.state.caching}
+        withOverlay={true}
         overlayProps={undefined}
         closeOnEscape={!modals.state.caching}
         data-testid="question-settings-sidebar"
@@ -74,7 +73,6 @@ export const QuestionSettingsSidebar = ({
                 model="question"
                 item={question}
                 setPage={() => modals.open("caching")}
-                key={currentModal}
               />
             </Stack>
           </SidesheetCard>
@@ -87,7 +85,7 @@ export const QuestionSettingsSidebar = ({
         isOpen={modals.state.caching}
         onClose={handleClose}
         withOverlay={true}
-        overlayProps={undefined}
+        overlayProps={{ bg: "transparent" }}
         onBack={() => modals.close("caching")}
         pt="md"
       />
