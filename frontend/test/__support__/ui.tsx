@@ -281,7 +281,7 @@ function MaybeRouter({
   }
   return (
     <HistoryProvider history={history}>
-      <RouterProvider>{children}</RouterProvider>;
+      <RouterProvider>{children}</RouterProvider>
     </HistoryProvider>
   );
 }
