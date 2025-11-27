@@ -4,17 +4,16 @@ import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import {
+  FieldEmptyState,
   FieldSection,
   FieldValuesModal,
   PreviewSection,
@@ -230,21 +229,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
               justify="center"
               miw={rem(EMPTY_STATE_MIN_WIDTH)}
             >
-              <Box maw={rem(320)} p="xl">
-                <EmptyState
-                  illustrationElement={<img src={EmptyDashboardBot} />}
-                  title={
-                    table
-                      ? t`Edit the table and fields`
-                      : t`Start by selecting data to model`
-                  }
-                  message={
-                    table
-                      ? t`Select a field to edit its name, description, formatting, and more.`
-                      : t`Browse your databases to find the table you’d like to edit.`
-                  }
-                />
-              </Box>
+              <FieldEmptyState hasTable={table != null} />
             </Flex>
           )}
         </>
