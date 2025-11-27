@@ -15,6 +15,7 @@ import {
 } from "metabase/metadata/components";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
+import { trackMetadataChange } from "../../analytics";
 import { TableHeader } from "../../components/TableHeader";
 
 import S from "./TableFieldsPage.module.css";
@@ -81,7 +82,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               }
               onPreviewClick={togglePreview}
               onFieldValuesClick={openFieldValuesModal}
-              onTrackMetadataChange={() => undefined}
+              onTrackMetadataChange={trackMetadataChange}
             />
           </Stack>
         )}

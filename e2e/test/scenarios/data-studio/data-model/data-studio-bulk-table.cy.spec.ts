@@ -19,12 +19,6 @@ interface Table {
   id: number;
 }
 
-interface PublishModelResponse {
-  models: {
-    id: number;
-  }[];
-}
-
 describe("bulk table operations", () => {
   beforeEach(() => {
     H.restore();
@@ -44,7 +38,7 @@ describe("bulk table operations", () => {
       `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
     ).as("getSchema");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-model").as(
-      "publishModel",
+      "publishTables",
     );
   });
 
@@ -106,6 +100,7 @@ describe("bulk table operations", () => {
   it("allows publishing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");
+    H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
@@ -114,25 +109,14 @@ describe("bulk table operations", () => {
     cy.findByRole("button", { name: /Publish/ }).click();
     cy.findByLabelText("Don’t show this to me again").check();
     cy.findByRole("button", { name: /Got it/ }).click();
-
-    H.pickEntity({
-      tab: "Collections",
-      path: ["Our analytics"],
-    });
-    cy.findByRole("button", { name: /Publish here/ }).click();
-
-    cy.wait<PublishModelResponse>("@publishModel").then(({ response }) => {
-      expect(response?.body.created_count).to.eq(2);
-    });
-
+    cy.wait("@publishTables");
     H.undoToast().within(() => {
       cy.findByText("Published").should("be.visible");
-      cy.findByRole("button", { name: /See it/ }).click();
+      cy.findByRole("button", { name: /Go to Data/ }).click();
     });
 
-    cy.findByTestId("collection-caption").within(() => {
-      cy.findByText("Our analytics").should("be.visible");
-    });
+    H.DataStudio.Modeling.tableItem("Accounts").should("be.visible");
+    H.DataStudio.Modeling.tableItem("Feedback").should("be.visible");
   });
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
