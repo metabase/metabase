@@ -13,11 +13,11 @@ import {
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
+import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton/ResponsiveButton";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
-import { ResponsiveButton } from "metabase/metadata/pages/shared/ResponsiveButton";
 import { getUrl } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {

@@ -2,7 +2,7 @@ export * from "metabase/metadata/pages/shared/FieldSection";
 export * from "metabase/metadata/pages/shared/FieldValuesModal";
 export * from "metabase/metadata/pages/shared/NoDatabasesEmptyState";
 export * from "metabase/metadata/pages/shared/PreviewSection";
-export * from "metabase/metadata/pages/shared/ResponsiveButton";
+export * from "metabase/metadata/components/ResponsiveButton/ResponsiveButton";
 export * from "metabase/metadata/pages/shared/SegmentsLink";
 export * from "./SyncOptionsModal";
 export * from "./TablePicker";

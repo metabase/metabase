@@ -3,14 +3,15 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { NameDescriptionInput } from "metabase/metadata/components";
+import {
+  NameDescriptionInput,
+  ResponsiveButton,
+} from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
-
-import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
