@@ -9,6 +9,7 @@ import type { Document } from "./document";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
+import type { UserInfo } from "./user";
 
 export type DependencyId = number;
 export type DependencyType =
@@ -35,14 +36,28 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   dependents_count?: DependentsCount | null;
 };
 
+export type TableOwnerInfo = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name"
+>;
+
 export type TableDependencyNodeData = Pick<
   Table,
-  "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
->;
+  | "name"
+  | "display_name"
+  | "description"
+  | "db_id"
+  | "schema"
+  | "db"
+  | "fields"
+  | "view_count"
+> & {
+  owner?: TableOwnerInfo | null;
+};
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table"
+  "name" | "description" | "table" | "creator" | "last_run"
 >;
 
 export type CardDependencyNodeData = Pick<
@@ -185,7 +200,49 @@ export type UnreferencedItemCardType = "question" | "model" | "metric";
 export type UnreferencedItemSortColumn = "name" | "location" | "view_count";
 export type UnreferencedItemSortDirection = "asc" | "desc";
 
-export type UnreferencedItem = Omit<DependencyNode, "dependents_count">;
+type UnreferencedNode<TType extends DependencyType, TData> = {
+  id: DependencyId;
+  type: TType;
+  data: TData;
+};
+
+export type UnreferencedTableItem = UnreferencedNode<
+  "table",
+  TableDependencyNodeData
+>;
+export type UnreferencedTransformItem = UnreferencedNode<
+  "transform",
+  TransformDependencyNodeData
+>;
+export type UnreferencedCardItem = UnreferencedNode<
+  "card",
+  CardDependencyNodeData
+>;
+export type UnreferencedSnippetItem = UnreferencedNode<
+  "snippet",
+  SnippetDependencyNodeData
+>;
+export type UnreferencedDashboardItem = UnreferencedNode<
+  "dashboard",
+  DashboardDependencyNodeData
+>;
+export type UnreferencedDocumentItem = UnreferencedNode<
+  "document",
+  DocumentDependencyNodeData
+>;
+export type UnreferencedSandboxItem = UnreferencedNode<
+  "sandbox",
+  SandboxDependencyNodeData
+>;
+
+export type UnreferencedItem =
+  | UnreferencedTableItem
+  | UnreferencedTransformItem
+  | UnreferencedCardItem
+  | UnreferencedSnippetItem
+  | UnreferencedDashboardItem
+  | UnreferencedDocumentItem
+  | UnreferencedSandboxItem;
 
 export type GetUnreferencedItemsRequest = {
   types?: DependencyType | DependencyType[];
