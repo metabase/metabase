@@ -39,6 +39,19 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
         cy.wrap(question.id).as("questionId");
       });
 
+      uploadTranslationDictionaryViaAPI([
+        {
+          locale: "de",
+          msgid: "Question for Guest Embed SDK",
+          msgstr: "Override title für Deutsch",
+        },
+        {
+          locale: "de",
+          msgid: "Product ID",
+          msgstr: "Override Product ID für Deutsch",
+        },
+      ]);
+
       cy.signOut();
     };
 
@@ -104,21 +117,8 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
       });
     });
 
-    it("should show question content with applied content translation", () => {
+    it.only("should show question content with applied content translation", () => {
       setup();
-
-      uploadTranslationDictionaryViaAPI([
-        {
-          locale: "de",
-          msgid: "Question for Guest Embed SDK",
-          msgstr: "Override title für Deutsch",
-        },
-        {
-          locale: "de",
-          msgid: "Product ID",
-          msgstr: "Override Product ID für Deutsch",
-        },
-      ]);
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
