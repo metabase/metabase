@@ -9,7 +9,7 @@ import {
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import { Box, Flex, Group, Stack, Switch, rem } from "metabase/ui";
-import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Field } from "metabase-types/api";
 
 import { CoercionStrategyPicker } from "../../CoercionStrategyPicker";
@@ -22,7 +22,7 @@ import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
 type DataSectionBaseProps = {
   field: Field;
-  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+  onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 const DataSectionBase = ({

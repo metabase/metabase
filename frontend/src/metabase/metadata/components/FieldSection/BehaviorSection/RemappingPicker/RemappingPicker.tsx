@@ -24,7 +24,7 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
-import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
 import {
@@ -50,7 +50,7 @@ import {
 type RemappingPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
   database: Database;
   field: Field;
-  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+  onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 export const RemappingPicker = ({

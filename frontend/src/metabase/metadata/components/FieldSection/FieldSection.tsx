@@ -7,7 +7,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { NameDescriptionInput } from "../NameDescriptionInput";
@@ -26,7 +26,7 @@ type FieldSectionBaseProps = {
   getFieldHref: (fieldId: FieldId) => string;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
-  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+  onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 const FieldSectionBase = ({

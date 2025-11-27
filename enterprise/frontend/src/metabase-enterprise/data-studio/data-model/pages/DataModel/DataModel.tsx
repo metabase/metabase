@@ -18,6 +18,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 
+import { trackMetadataChange } from "../../analytics";
 import {
   FieldSection,
   FieldValuesModal,
@@ -253,7 +254,7 @@ function DataModelContent({ params }: Props) {
                     getFieldHref={(fieldId) =>
                       Urls.dataStudioData({ ...parsedParams, fieldId })
                     }
-                    onTrackMetadataChange={() => undefined}
+                    onTrackMetadataChange={trackMetadataChange}
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}
                   />

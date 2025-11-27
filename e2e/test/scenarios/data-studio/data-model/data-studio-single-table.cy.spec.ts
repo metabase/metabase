@@ -9,12 +9,6 @@ interface MetadataResponse {
   view_count: number;
 }
 
-interface PublishModelResponse {
-  models: {
-    id: number;
-  }[];
-}
-
 describe("Table editing", () => {
   beforeEach(() => {
     H.restore();
@@ -34,8 +28,8 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("POST", "/api/ee/data-studio/table/publish-model").as(
-      "publishModel",
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-table").as(
+      "publishTables",
     );
   });
 
@@ -71,6 +65,7 @@ describe("Table editing", () => {
     () => {
       H.restore("mysql-8");
       H.activateToken("bleeding-edge");
+      H.createLibrary();
       H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
@@ -78,44 +73,22 @@ describe("Table editing", () => {
       // Shows publish model information modal
       cy.findByRole("button", { name: /Publish/ }).click();
       cy.findByRole("button", { name: /Got it/ }).click();
-      H.modal().within(() => {
-        cy.findByRole("button", { name: /Cancel/ }).click();
+
+      cy.wait("@publishTables");
+      H.undoToast().within(() => {
+        cy.findByText("Published").should("be.visible");
+        cy.findByRole("button", { name: /Go to Data/ }).click();
       });
 
-      // Don't show this again, info should not be shown later
-      cy.findByRole("button", { name: /Publish/ }).click();
-      cy.findByLabelText("Don’t show this to me again").check();
-      cy.findByRole("button", { name: /Got it/ }).click();
-      H.modal().within(() => {
-        cy.findByRole("button", { name: /Cancel/ }).click();
-      });
-
-      cy.findByRole("button", { name: /Publish/ }).click();
-      H.pickEntity({
-        tab: "Collections",
-        path: ["Our analytics"],
-      });
-      cy.findByRole("button", { name: /Publish here/ }).click();
-
-      cy.wait<PublishModelResponse>("@publishModel").then(() => {
-        H.undoToast().within(() => {
-          cy.findByText("Published").should("be.visible");
-          cy.findByRole("button", { name: /See it/ }).click();
-        });
-        cy.findByTestId("head-crumbs-container").within(() => {
-          cy.findByText("Our analytics").should("be.visible");
-          cy.findByText("Model based on ORDERS").should("be.visible");
-        });
-      });
-
-      // Should not show info modal again
-      cy.go("back");
-
-      cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().within(() => {
-        cy.findByText("Pick the collection to publish this table in").should(
-          "be.visible",
-        );
+      H.DataStudio.Modeling.tableItem("Orders").click();
+      H.DataStudio.Tables.moreMenu().click();
+      H.popover()
+        .findByRole("menuitem", { name: /View/ })
+        .invoke("removeAttr", "target")
+        .click();
+      cy.findByTestId("head-crumbs-container").within(() => {
+        cy.findByText("Data").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
       });
     },
   );

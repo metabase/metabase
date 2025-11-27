@@ -9,7 +9,7 @@ import {
   isFieldJsonUnfolded,
 } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type {
   DatabaseId,
   Field,
@@ -27,7 +27,7 @@ import { RemappingPicker } from "./RemappingPicker";
 type BehaviorSectionBaseProps = {
   field: Field;
   databaseId: DatabaseId;
-  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+  onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 const BehaviorSectionBase = ({

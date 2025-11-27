@@ -407,7 +407,7 @@ export type LearnAboutDataClickedEvent = ValidateEvent<{
   event: "learn_about_our_data_clicked";
 }>;
 
-export type MetadataEditAnalyticsDetail =
+export type MetadataEditEventDetail =
   | "type_casting"
   | "semantic_type_change"
   | "visibility_change"
@@ -416,10 +416,12 @@ export type MetadataEditAnalyticsDetail =
   | "json_unfolding"
   | "formatting";
 
+export type MetadataEditEventTriggeredFrom = "admin" | "data_studio";
+
 export type MetadataEditEvent = ValidateEvent<{
   event: "metadata_edited";
-  event_detail: MetadataEditAnalyticsDetail;
-  triggered_from: "admin";
+  event_detail: MetadataEditEventDetail;
+  triggered_from: MetadataEditEventTriggeredFrom;
 }>;
 
 export type BookmarkTableEvent = ValidateEvent<{

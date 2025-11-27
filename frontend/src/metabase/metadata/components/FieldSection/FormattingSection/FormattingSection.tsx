@@ -7,7 +7,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
-import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type {
   Field,
   FieldFormattingSettings as FieldSettings,
@@ -17,7 +17,7 @@ import { TitledSection } from "../../TitledSection";
 
 interface Props {
   field: Field;
-  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+  onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 }
 
 const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {

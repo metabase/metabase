@@ -8,7 +8,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { MetadataEditAnalyticsDetail } from "metabase-types/analytics";
+import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { SemanticTypeAndTargetPicker } from "../../SemanticTypeAndTargetPicker";
@@ -23,7 +23,7 @@ type MetadataSectionBaseProps = {
   field: Field;
   table: Table;
   getFieldHref: (fieldId: FieldId) => string;
-  onTrackMetadataChange: (detail: MetadataEditAnalyticsDetail) => void;
+  onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 const MetadataSectionBase = ({
