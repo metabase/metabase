@@ -7,8 +7,10 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
+  ActionIcon,
   Box,
   Button,
+  Flex,
   Group,
   Icon,
   Stack,
@@ -163,7 +165,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               }
             }}
           >
-            <Box
+            <Flex
+              wrap="nowrap"
               flex="0 0 auto"
               px="md"
               style={{ borderBottom: "1px solid var(--mb-color-border)" }}
@@ -182,19 +185,20 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     }}
                   >
                     {transform.name}
-                    <Icon
-                      name="close"
-                      size={10}
-                      aria-hidden
-                      style={{ marginLeft: 8 }}
-                      onClick={(event) =>
-                        handleCloseClick(event, transform, index)
-                      }
-                    />
+                    <ActionIcon size="1rem" p="0" ml="xs">
+                      <Icon
+                        name="close"
+                        size={10}
+                        aria-hidden
+                        onClick={(event) =>
+                          handleCloseClick(event, transform, index)
+                        }
+                      />
+                    </ActionIcon>
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-            </Box>
+            </Flex>
 
             <Box flex={1} mih={0}>
               {isMetabotAvailable && (

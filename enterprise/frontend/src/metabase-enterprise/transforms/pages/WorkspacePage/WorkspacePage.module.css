@@ -1,4 +1,13 @@
 .tabsPanel {
+  display: flex;
+    flex-wrap: nowrap;
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   &::before {
     display: none;
   }
