@@ -1,26 +1,20 @@
-import { useEffect, useState } from "react";
+import type { Location } from "history";
+import { useEffect } from "react";
 
-// Importing specifically metabase/common/hooks/use-docs-url to avoid circular dependency
-import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
+import { useDocsUrl } from "metabase/common/hooks";
 import { parseHashOptions } from "metabase/lib/browser";
 import { isWithinIframe } from "metabase/lib/dom";
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 
 import { DEFAULT_EMBED_DISPLAY_PARAMS } from "../constants";
-import type { DisplayTheme, EmbeddingHashOptions } from "../lib/types";
+import type { EmbeddingHashOptions } from "../lib/types";
 
-export const useEmbedFrameOptions = ({
-  location,
-  listenToHashChangeEvents = false,
-}: {
-  location: { hash: string };
-  listenToHashChangeEvents?: boolean;
-}) => {
+export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
   const {
     background = true,
     bordered = isWithinIframe(),
     titled = DEFAULT_EMBED_DISPLAY_PARAMS.titled,
-    theme: parsedTheme = DEFAULT_EMBED_DISPLAY_PARAMS.theme,
+    theme = DEFAULT_EMBED_DISPLAY_PARAMS.theme,
     hide_parameters = DEFAULT_EMBED_DISPLAY_PARAMS.hideParameters,
     hide_download_button = null,
     downloads = DEFAULT_EMBED_DISPLAY_PARAMS.downloadsEnabled,
@@ -29,8 +23,6 @@ export const useEmbedFrameOptions = ({
     // this parameter is not supported anymore, but we access it in this hook to log an error
     hide_download_button?: boolean | null;
   };
-
-  const [theme, setTheme] = useState<DisplayTheme>(parsedTheme);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- this is a console.error for a deprecated parameter
   const { url: staticEmbedParametersDocsUrl } = useDocsUrl(
@@ -53,27 +45,6 @@ export const useEmbedFrameOptions = ({
   const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
     downloads,
   });
-
-  useEffect(() => {
-    if (listenToHashChangeEvents) {
-      const onHashChange = () => {
-        const { theme: newTheme } = parseHashOptions(
-          window.location.hash,
-        ) as EmbeddingHashOptions;
-
-        // Update only if the theme has changed
-        if (newTheme !== theme) {
-          setTheme(newTheme);
-        }
-      };
-
-      window.addEventListener("hashchange", onHashChange);
-
-      return () => {
-        window.removeEventListener("hashchange", onHashChange);
-      };
-    }
-  }, [listenToHashChangeEvents, location.hash, theme]);
 
   return {
     background,
