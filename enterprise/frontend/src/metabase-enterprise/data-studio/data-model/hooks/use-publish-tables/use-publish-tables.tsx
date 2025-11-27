@@ -47,6 +47,7 @@ export function usePublishTables() {
   };
 
   const handleAcknowledgeSubmit = async (isAcknowledged: boolean) => {
+    closeModal();
     if (isAcknowledged) {
       ackSeenPublishTablesInfo();
     }
