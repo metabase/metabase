@@ -131,10 +131,7 @@ const init = async () => {
 
     printBold("⏳ Generating app db snapshots");
     process.env.OPEN_UI = "false";
-    await runCypress(
-      { configFile: "e2e/support/cypress-snapshots.config.js" },
-      cleanup,
-    );
+    await runCypress({ configFile: "e2e/support/cypress-snapshots.config.js" });
     process.env.OPEN_UI = `${options.OPEN_UI}`;
   } else {
     printBold("Skipping snapshot generation, beware of stale snapshot caches");
@@ -166,26 +163,22 @@ const init = async () => {
 
     printBold("⏳ Starting Sample/Host App Cypress Tests");
     const config = resolveSdkE2EConfig(options.SDK_TEST_SUITE);
-    await runCypress(config, cleanup);
+    await runCypress(config);
   }
 
   if (options.CYPRESS_TESTING_TYPE === "component") {
     printBold("⏳ Starting Cypress SDK component tests");
-    await runCypress(
-      {
-        configFile:
-          "e2e/support/cypress-embedding-sdk-component-test.config.js",
-        testingType: "component",
-      },
-      cleanup,
-    );
+    await runCypress({
+      configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
+      testingType: "component",
+    });
   }
 
   if (options.CYPRESS_TESTING_TYPE === "e2e") {
     const config = { configFile: "e2e/support/cypress.config.js" };
 
     printBold("⏳ Starting Cypress");
-    await runCypress({ ...config, ...userOverrides }, cleanup);
+    await runCypress({ ...config, ...userOverrides });
   }
 };
 
