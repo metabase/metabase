@@ -57,7 +57,7 @@ export function LibrarySection({
       <>
         <ModelingSidebarSection
           title={t`Library`}
-          icon="library"
+          icon="repository"
           onClick={openModal}
         />
         {isModalOpened && (
