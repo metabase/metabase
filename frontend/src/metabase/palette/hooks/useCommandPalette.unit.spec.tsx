@@ -80,6 +80,20 @@ describe("useCommandPalette", () => {
         await screen.findByText("Bar Database (My Schema)"),
       ).toBeInTheDocument();
     });
+
+    it("should should include the collection name in table search results when the table is published to a collection", async () => {
+      const mockSearchResult = Search.wrapEntity(
+        createMockSearchResult({
+          model: "table",
+          collection: createMockCollection({ id: 1, name: "Data" }),
+          database_name: "Bar Database",
+          table_schema: "My Schema",
+        }),
+      );
+      setup(getSearchResultSubtext(mockSearchResult));
+
+      expect(await screen.findByText("Data")).toBeInTheDocument();
+    });
   });
 
   describe("getRecentItemSubtext", () => {
