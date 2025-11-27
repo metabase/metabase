@@ -107,7 +107,7 @@ function DataModelContent({ params }: Props) {
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
   const error = databasesError ?? tableError ?? libraryError;
-  const hasLibrary = libraryCollection != null;
+  const hasLibrary = libraryCollection?.id != null;
 
   useWindowEvent(
     "keydown",

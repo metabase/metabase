@@ -24,12 +24,14 @@ export function TableCollection({ table }: TableCollectionProps) {
       <TableSectionGroup title={t`This table has been published`}>
         <Group justify="space-between" wrap="nowrap">
           {collection != null ? (
-            <Link
+            <Box
               className={S.link}
+              component={Link}
               to={Urls.dataStudioCollection(collection.id)}
+              fw="bold"
             >
               {collection.name}
-            </Link>
+            </Box>
           ) : (
             <Box>{t`You don't have access to this collection`}</Box>
           )}

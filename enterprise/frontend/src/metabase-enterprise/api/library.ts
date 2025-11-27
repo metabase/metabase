@@ -1,7 +1,7 @@
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { listTag, tag } from "./tags";
+import { idTag, listTag, tag } from "./tags";
 
 export const libraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -17,7 +17,10 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/library`,
         method: "GET",
       }),
-      providesTags: () => [tag("library-collection")],
+      providesTags: (collection) => [
+        ...(collection ? [idTag("collection", collection.id)] : []),
+        tag("library-collection"),
+      ],
     }),
   }),
 });
