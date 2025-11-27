@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { BaseCell } from "metabase/data-grid";
 import { DataGrid } from "metabase/data-grid/components/DataGrid/DataGrid";
@@ -175,7 +176,17 @@ function getLastModifiedDate(item: UnreferencedItem): string | null {
   return null;
 }
 
-function getViewCount(item: UnreferencedItem): number | null {
+function getLastModifiedByName(item: UnreferencedItem): string | null {
+  if (isCardItem(item) || isDashboardItem(item)) {
+    const lastEdit = item.data["last-edit-info"];
+    if (lastEdit) {
+      return `${lastEdit.first_name} ${lastEdit.last_name}`;
+    }
+  }
+  return null;
+}
+
+function getRunCount(item: UnreferencedItem): number | null {
   if (isCardItem(item) || isDashboardItem(item) || isDocumentItem(item)) {
     return item.data.view_count ?? null;
   }
@@ -186,8 +197,7 @@ function formatDate(dateString: string | null): string {
   if (!dateString) {
     return "-";
   }
-  const date = new Date(dateString);
-  return date.toLocaleDateString();
+  return String(getFormattedTime(dateString, "minute"));
 }
 
 const ROW_HEIGHT = 48;
@@ -198,7 +208,7 @@ const COLUMN_ID_TO_SORT_COLUMN: Partial<
   Record<string, UnreferencedItemSortColumn>
 > = {
   entity: "name",
-  viewCount: "view_count",
+  runs: "view_count",
 };
 
 export function UnreferencedItemsTable({
@@ -254,8 +264,8 @@ export function UnreferencedItemsTable({
         },
       },
       {
-        id: "owner",
-        name: t`Entity Owner`,
+        id: "creator",
+        name: t`Creator`,
         accessorFn: (item) => getCreatorName(item) ?? "-",
         cell: ({ getValue }) => (
           <BaseCell style={centeredCellStyles}>
@@ -274,14 +284,24 @@ export function UnreferencedItemsTable({
         ),
       },
       {
-        id: "viewCount",
-        name: t`Views`,
+        id: "lastModifiedBy",
+        name: t`Last modified by`,
+        accessorFn: (item) => getLastModifiedByName(item) ?? "-",
+        cell: ({ getValue }) => (
+          <BaseCell style={centeredCellStyles}>
+            <Ellipsified>{String(getValue())}</Ellipsified>
+          </BaseCell>
+        ),
+      },
+      {
+        id: "runs",
+        name: t`Runs`,
         accessorFn: (item) => {
-          const count = getViewCount(item);
+          const count = getRunCount(item);
           return count != null ? String(count) : "-";
         },
         align: "right",
-        sortDirection: getSortDirectionForColumn("viewCount"),
+        sortDirection: getSortDirectionForColumn("runs"),
         cell: ({ getValue }) => (
           <BaseCell align="right" style={centeredCellStyles}>
             <Ellipsified>{String(getValue())}</Ellipsified>

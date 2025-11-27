@@ -16,9 +16,10 @@ export function TableSkeleton() {
       <Stack gap={0}>
         <Flex h={58} px="md" align="center" gap="xl">
           <Skeleton h={14} w="15%" />
+          <Skeleton h={14} w="10%" />
           <Skeleton h={14} w="12%" />
           <Skeleton h={14} w="10%" />
-          <Skeleton h={14} w="8%" />
+          <Skeleton h={14} w="6%" />
         </Flex>
         {Array.from({ length: SKELETON_ROWS_COUNT }).map((_, i) => (
           <Flex
@@ -29,6 +30,7 @@ export function TableSkeleton() {
             gap="xl"
             className={S.row}
           >
+            <Skeleton h={14} natural />
             <Skeleton h={14} natural />
             <Skeleton h={14} natural />
             <Skeleton h={14} natural />
