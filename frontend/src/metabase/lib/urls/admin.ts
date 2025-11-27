@@ -102,7 +102,7 @@ export function newDataModelSegment() {
 }
 
 export function dataModelSegment(segmentId: SegmentId) {
-  return `/admin/datamodel/segment/${segmentId};`;
+  return `/admin/datamodel/segment/${segmentId}`;
 }
 
 export function dataModelSegmentRevisions(segmentId: SegmentId) {
