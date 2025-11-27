@@ -311,7 +311,7 @@
             (reduce (fn [acc [filter model]]
                       (update acc filter set/union #{model}))
                     {})))
-      (update :collection disj "table" "database")
+      (update :collection disj "database")
       (update :collection conj "indexed-entity")))
 
 ;; ------------------------------------------------------------------------------------------------;;
