@@ -694,7 +694,7 @@
             :t.collection_id
             [:t.db_id :database_id]
             ;; trick MySQL into returning a true boolean
-            [[:if [:not= :t.archived_at nil] [:inline true] [:inline false]] :archived]
+            [[:if [:= :t.archived_at nil] [:inline false] [:inline true]] :archived]
             [(h2x/literal "table") :model]]
    :from   [[:metabase_table :t]]
    :where  [:and
