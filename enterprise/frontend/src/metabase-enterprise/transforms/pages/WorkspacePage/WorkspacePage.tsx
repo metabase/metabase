@@ -158,6 +158,9 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               if (tab) {
                 setTab(tab);
               }
+              if (tab === "setup" || (tab === "metabot" && activeTransform)) {
+                setActiveTransform(undefined);
+              }
             }}
           >
             <Box
