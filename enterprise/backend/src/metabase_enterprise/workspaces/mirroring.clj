@@ -31,13 +31,14 @@
                         (assert (= "table" (:type target)) "We only support mirroring transforms that target tables.")
                         (assert (= database-id (:database target)) "Unexpected target database for transform.")
                         (merge transform
-                               {:workspace_id (:id workspace)
+                               {:workspace_id  (:id workspace)
+                                :collection_id (:collection_id workspace)
                                 ;; TODO (Chris 2025-11-19) remap source table (when necessary)
                                 #_#_:source {}
-                                :target       {:type     "table"
-                                               :database database-id
-                                               :schema   (first new-s+n)
-                                               :name     (second new-s+n)}}))
+                                :target        {:type     "table"
+                                                :database database-id
+                                                :schema   (first new-s+n)
+                                                :name     (second new-s+n)}}))
         mirror        (t2/insert-returning-instance! :model/Transform mirror)
         graph-node    (assoc transform :mapping (select-keys mirror [:id :name]))
         _             (t2/insert! :model/WorkspaceMappingTransform
