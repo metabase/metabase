@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -34,7 +35,6 @@ import {
   type WorkspaceTransform,
   useWorkspace,
 } from "./WorkspaceProvider";
-import { useListDatabasesQuery } from "metabase/api";
 
 type WorkspacePageProps = {
   params: {
@@ -59,7 +59,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const sourceDb = databases?.data.find(
     (db) => db.id === workspace?.database_id,
   );
-  console.log({ allTransforms, sourceDb });
+
   const transforms = useMemo(
     () =>
       allTransforms.filter((t) => {
@@ -86,7 +86,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     try {
       await archiveWorkspace(id).unwrap();
       sendSuccessToast(t`Workspace archived successfully`);
-      dispatch(push(Urls.workspaceList()));
+      dispatch(push(Urls.dataStudioWorkspaceList()));
     } catch (error) {
       sendErrorToast(t`Failed to archive workspace`);
     }

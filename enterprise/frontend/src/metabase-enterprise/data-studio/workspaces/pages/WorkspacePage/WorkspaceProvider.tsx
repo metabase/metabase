@@ -24,16 +24,16 @@ interface WorkspaceProviderProps {
 }
 
 export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
-  const [openedTransforms, setOpenedTransforms] = useState<WorkspaceTransform[]>(
-    [],
-  );
+  const [openedTransforms, setOpenedTransforms] = useState<
+    WorkspaceTransform[]
+  >([]);
   const [activeTransform, setActiveTransform] = useState<
     WorkspaceTransform | undefined
   >();
 
   const addOpenedTransform = (transform: WorkspaceTransform) => {
-    setOpenedTransforms(prev => {
-      const exists = prev.some(item => item.id === transform.id);
+    setOpenedTransforms((prev) => {
+      const exists = prev.some((item) => item.id === transform.id);
       if (exists) {
         return prev;
       }
@@ -43,7 +43,9 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
   };
 
   const removeOpenedTransform = (transformId: number) => {
-    setOpenedTransforms(prev => prev.filter(item => item.id !== transformId));
+    setOpenedTransforms((prev) =>
+      prev.filter((item) => item.id !== transformId),
+    );
   };
 
   const value = useMemo(

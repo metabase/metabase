@@ -94,7 +94,9 @@ export function WorkspaceSection({ transform }: WorkspaceSectionProps) {
               <Icon name="folder" aria-hidden />
               <Text>
                 {t`This is part of`}{" "}
-                <Anchor href={Urls.workspace(transform.workspace_id!)}>
+                <Anchor
+                  href={Urls.dataStudioWorkspace(transform.workspace_id!)}
+                >
                   {workspace?.name ?? t`Workspace ${transform.workspace_id}`}
                 </Anchor>
               </Text>

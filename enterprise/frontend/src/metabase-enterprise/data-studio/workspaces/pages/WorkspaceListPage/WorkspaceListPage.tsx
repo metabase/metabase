@@ -30,7 +30,7 @@ export function WorkspaceListPage() {
               <Group justify="space-between">
                 <Anchor
                   component={ForwardRefLink}
-                  to={Urls.workspace(workspace.id)}
+                  to={Urls.dataStudioWorkspace(workspace.id)}
                   fw={500}
                 >
                   {workspace.name}

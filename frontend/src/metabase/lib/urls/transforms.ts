@@ -7,14 +7,12 @@ import type {
   TransformRunMethod,
   TransformRunStatus,
   TransformTagId,
-  WorkspaceId,
 } from "metabase-types/api";
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
 const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
 const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
-const WORKSPACES_ROOT_URL = `${TRANSFORMS_ROOT_URL}/workspaces`;
 
 export type TransformPythonLibraryParams = {
   path: string;
@@ -124,12 +122,4 @@ export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {
   return `/question#?db=${databaseId}&table=${tableId}`;
-}
-
-export function workspaceList() {
-  return WORKSPACES_ROOT_URL;
-}
-
-export function workspace(workspaceId: WorkspaceId) {
-  return `${WORKSPACES_ROOT_URL}/${workspaceId}`;
 }

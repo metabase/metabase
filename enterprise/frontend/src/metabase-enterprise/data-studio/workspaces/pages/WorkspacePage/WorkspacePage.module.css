@@ -2,16 +2,18 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: nowrap;
-    overflow: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 
-    &::-webkit-scrollbar {
-      display: none;
-    }
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
   &::before {
     display: none;
   }
+
   & > button {
     border-radius: 0;
   }

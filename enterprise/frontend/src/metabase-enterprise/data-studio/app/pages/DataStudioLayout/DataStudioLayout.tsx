@@ -98,7 +98,7 @@ function DataStudioNav({
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
   const isDataTab = pathname.startsWith(Urls.dataStudioData());
-  const isWorkspacePage = pathname.startsWith(Urls.workspaceList());
+  const isWorkspacePage = pathname.startsWith(Urls.dataStudioWorkspaceList());
   const isTransformsTab =
     pathname.startsWith(Urls.transformList()) && !isWorkspacePage;
   const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
@@ -259,7 +259,7 @@ function WorkspacesSection({
 
   const handleOpenWorkspace = useCallback(
     (workspaceId: number) => {
-      dispatch(push(Urls.workspace(workspaceId)));
+      dispatch(push(Urls.dataStudioWorkspace(workspaceId)));
     },
     [dispatch],
   );
@@ -307,7 +307,7 @@ function WorkspacesSection({
     sendErrorToast,
   ]);
 
-  const isWorkspaceListPage = pathname === Urls.workspaceList();
+  const isWorkspaceListPage = pathname === Urls.dataStudioWorkspaceList();
 
   if (!isNavExpanded) {
     // In collapsed mode, show only an icon button with tooltip
@@ -320,7 +320,7 @@ function WorkspacesSection({
         <UnstyledButton
           className={cx(S.tab, { [S.selected]: isWorkspaceListPage })}
           component={ForwardRefLink}
-          to={Urls.workspaceList()}
+          to={Urls.dataStudioWorkspaceList()}
           p="0.75rem"
           bdrs="md"
         >
@@ -381,7 +381,8 @@ function WorkspacesSection({
             </Text>
           ) : (
             workspaces.map((workspace) => {
-              const isSelected = pathname === Urls.workspace(workspace.id);
+              const isSelected =
+                pathname === Urls.dataStudioWorkspace(workspace.id);
               const updatedAt = new Date(workspace.updated_at);
               const now = new Date();
               const diffMs = now.getTime() - updatedAt.getTime();

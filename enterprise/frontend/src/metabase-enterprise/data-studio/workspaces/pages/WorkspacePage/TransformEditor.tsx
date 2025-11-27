@@ -1,12 +1,11 @@
 import { useState } from "react";
 import _ from "underscore";
 
-import type { DraftTransformSource } from "metabase-types/api";
-
 import {
   TransformQueryPageEditor,
   type TransformQueryPageEditorUiState,
-} from "../TransformQueryPage/TransformQueryPage";
+} from "metabase-enterprise/transforms/pages/TransformQueryPage/TransformQueryPage";
+import type { DraftTransformSource } from "metabase-types/api";
 
 type TransformEditorProps = {
   source: DraftTransformSource;
@@ -43,4 +42,3 @@ function getInitialUiStateForTransform() {
     modalType: null,
   } as TransformQueryPageEditorUiState;
 }
-
