@@ -37,8 +37,9 @@ export const CollectionInfoSidebar = ({
     (description: string) => {
       if (description?.length > 255) {
         sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "var(--mb-color-warning)",
           message: t`Description must be 255 characters or less`,
-          icon: "warning",
         });
         return;
       }
