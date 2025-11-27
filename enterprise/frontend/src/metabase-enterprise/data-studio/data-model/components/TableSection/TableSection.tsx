@@ -173,18 +173,23 @@ const TableSectionBase = ({
 
       <Box px="lg">
         <Group justify="stretch" gap="sm">
-          <Button
-            flex="1"
-            p="sm"
-            leftSection={<Icon name="publish" />}
-            style={{
-              width: "100%",
-            }}
-            disabled={!hasLibrary || table.is_published || isPublishing}
-            onClick={() => handlePublish({ table_ids: [table.id] })}
+          <Tooltip
+            label={t`You can publish tables once Library is created.`}
+            disabled={hasLibrary}
           >
-            {table.is_published ? t`Published` : t`Publish`}
-          </Button>
+            <Button
+              flex="1"
+              p="sm"
+              leftSection={<Icon name="publish" />}
+              style={{
+                width: "100%",
+              }}
+              disabled={!hasLibrary || table.is_published || isPublishing}
+              onClick={() => handlePublish({ table_ids: [table.id] })}
+            >
+              {table.is_published ? t`Published` : t`Publish`}
+            </Button>
+          </Tooltip>
           <Button
             flex="1"
             leftSection={<Icon name="settings" />}

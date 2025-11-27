@@ -9,7 +9,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Title, Tooltip } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type {
@@ -149,32 +149,42 @@ export function TableAttributesEditBulk({
         <Box px="lg">
           <Group gap="sm">
             <Box flex={1}>
-              <Button
-                p="sm"
-                w="100%"
-                disabled={!hasLibrary || isPublishing}
-                leftSection={<Icon name="publish" />}
-                onClick={() =>
-                  handlePublish({
-                    table_ids: Array.from(selectedTables),
-                    schema_ids: Array.from(selectedSchemas),
-                    database_ids: Array.from(selectedDatabases),
-                  })
-                }
+              <Tooltip
+                label={t`You can publish tables once Library is created.`}
+                disabled={hasLibrary}
               >
-                {t`Publish`}
-              </Button>
+                <Button
+                  p="sm"
+                  w="100%"
+                  disabled={!hasLibrary || isPublishing}
+                  leftSection={<Icon name="publish" />}
+                  onClick={() =>
+                    handlePublish({
+                      table_ids: Array.from(selectedTables),
+                      schema_ids: Array.from(selectedSchemas),
+                      database_ids: Array.from(selectedDatabases),
+                    })
+                  }
+                >
+                  {t`Publish`}
+                </Button>
+              </Tooltip>
             </Box>
             <Box flex={1}>
-              <Button
-                p="sm"
-                w="100%"
-                disabled={!hasLibrary}
-                leftSection={<Icon name="unpublish" />}
-                onClick={openUnpublishModal}
+              <Tooltip
+                label={t`You can publish tables once Library is created.`}
+                disabled={hasLibrary}
               >
-                {t`Unpublish`}
-              </Button>
+                <Button
+                  p="sm"
+                  w="100%"
+                  disabled={!hasLibrary}
+                  leftSection={<Icon name="unpublish" />}
+                  onClick={openUnpublishModal}
+                >
+                  {t`Unpublish`}
+                </Button>
+              </Tooltip>
             </Box>
             <Box flex={1}>
               <Button
