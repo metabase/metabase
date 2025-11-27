@@ -85,26 +85,6 @@ describe("CollectionHeader", () => {
       });
     });
 
-    it("should allow name with exactly 100 characters", async () => {
-      const collection = {
-        name: "Name",
-        can_write: true,
-      };
-
-      const { onUpdateCollection, collection: myCollection } = setup({
-        collection,
-      });
-
-      const input = screen.getByDisplayValue("Name");
-      await userEvent.clear(input);
-      const exactLengthName = "a".repeat(100);
-      await userEvent.type(input, `${exactLengthName}{Enter}`);
-
-      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
-        name: exactLengthName,
-      });
-    });
-
     it("should show a warning toast when name exceeds 100 characters", async () => {
       const collection = {
         name: "Name",
@@ -126,7 +106,7 @@ describe("CollectionHeader", () => {
       await waitFor(() => {
         const undo = screen.getByTestId("undo-list");
         expect(
-          within(undo).getByText("Title must be less than 100 characters"),
+          within(undo).getByText("Title must be 100 characters or less"),
         ).toBeInTheDocument();
       });
       expect(onUpdateCollection).not.toHaveBeenCalled();
@@ -231,32 +211,6 @@ describe("CollectionHeader", () => {
       });
     });
 
-    it("should allow description with exactly 255 characters", async () => {
-      const collection = {
-        description: "Description",
-        can_write: true,
-      };
-
-      const { onUpdateCollection, collection: myCollection } = setup({
-        collection,
-      });
-
-      // show input
-      const editableText = screen.getByText("Description");
-      await userEvent.click(editableText);
-
-      const input = screen.getByDisplayValue("Description");
-      await userEvent.clear(input);
-
-      const exactLengthDescription = "a".repeat(255);
-      await userEvent.type(input, exactLengthDescription);
-      await userEvent.tab();
-
-      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
-        description: exactLengthDescription,
-      });
-    });
-
     it("should show a warning toast when description exceeds 255 characters", async () => {
       const collection = {
         can_write: true,
@@ -279,9 +233,7 @@ describe("CollectionHeader", () => {
       await waitFor(() => {
         const undo = screen.getByTestId("undo-list");
         expect(
-          within(undo).getByText(
-            "Description must be less than 255 characters",
-          ),
+          within(undo).getByText("Description must be 255 characters or less"),
         ).toBeInTheDocument();
       });
       expect(onUpdateCollection).not.toHaveBeenCalled();

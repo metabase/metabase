@@ -39,7 +39,7 @@ export const CollectionCaption = ({
     (name: string) => {
       if (name.length > 100) {
         sendToast({
-          message: t`Title must be less than 100 characters`,
+          message: t`Title must be 100 characters or less`,
           icon: "warning",
         });
         return;
@@ -53,7 +53,7 @@ export const CollectionCaption = ({
     (description: string) => {
       if (description?.length > 255) {
         sendToast({
-          message: t`Description must be less than 255 characters`,
+          message: t`Description must be 255 characters or less`,
           icon: "warning",
         });
         return;

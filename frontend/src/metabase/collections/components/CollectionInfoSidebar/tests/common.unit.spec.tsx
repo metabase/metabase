@@ -53,6 +53,27 @@ describe("CollectionInfoSidebar (OSS)", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should truncate description if it exceeds 255 characters", async () => {
+    setup({
+      collection: {
+        ...regularCollection,
+        description: "Test Description",
+      },
+    });
+
+    const editableText = screen.getByText("Test Description");
+    await userEvent.click(editableText);
+
+    const input = screen.getByDisplayValue("Test Description");
+    await userEvent.clear(input);
+
+    const longDescription = "a".repeat(256);
+    await userEvent.type(input, longDescription);
+    await userEvent.tab();
+
+    expect(input).toHaveValue(longDescription.slice(0, 255));
+  });
+
   it("should show a warning toast when description exceeds 255 characters", async () => {
     setup({
       collection: {
