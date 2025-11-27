@@ -13,7 +13,7 @@ import {
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
-import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton/ResponsiveButton";
+import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
