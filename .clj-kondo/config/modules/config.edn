@@ -1324,6 +1324,7 @@
            metabase.sync.core
            metabase.sync.init
            metabase.sync.schedules
+           metabase.sync.sync-metadata.tables
            metabase.sync.task.sync-databases
            metabase.sync.util}
    :uses #{analyze
@@ -2298,6 +2299,7 @@
            driver
            models
            request
+           sync
            system
            util}}}
 
