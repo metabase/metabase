@@ -43,12 +43,12 @@ describe("useStackedModals", () => {
     render(<TestComponent />);
 
     // First should open by default (after mount)
-    await screen.findByText("First");
+    expect(screen.getByText("First")).toBeInTheDocument();
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
 
     // Open the second modal
     await userEvent.click(screen.getByText("Open second"));
-    await screen.findByText("Second");
+    expect(screen.getByText("Second")).toBeInTheDocument();
 
     // Press Escape – only the top (second) should close
     await userEvent.keyboard("{Escape}");

@@ -40,7 +40,7 @@ describe("useConfirmOnRouteLeave", () => {
   };
 
   // Shared happy path for remaining on the /b route after an attempted exit
-  const navigateToBAndTriggerBack = async (history: History) => {
+  const navigateToBAndTriggerBack = (history: History) => {
     // Navigate to /b to create a history entry to go back from
     act(() => history.push("/b"));
 
@@ -50,30 +50,29 @@ describe("useConfirmOnRouteLeave", () => {
 
     // Simulate browser back, which should trigger confirmation and roll URL forward
     act(() => history.goBack());
-    return history;
   };
 
-  it("shows confirmation on browser back and stays on the same route when clicking 'No' (URL unchanged)", async () => {
+  it("shows confirmation on browser back and stays on the same route when clicking 'No' (URL unchanged)", () => {
     const { history } = setup();
     // Do not confirm
     confirmResult.mockReturnValue(false);
 
     // try to leave a page
-    await navigateToBAndTriggerBack(history);
+    navigateToBAndTriggerBack(history);
 
     // We must still be on the same route and URL
     expect(screen.getByText("Page B")).toBeInTheDocument();
     expect(history.getCurrentLocation().pathname).toBe("/b");
   });
 
-  it("navigates to the previous route when clicking 'Yes' in the confirmation", async () => {
+  it("navigates to the previous route when clicking 'Yes' in the confirmation", () => {
     const { history } = setup();
 
     // Do confirm
     confirmResult.mockReturnValue(true);
 
     // try to leave a page
-    await navigateToBAndTriggerBack(history);
+    navigateToBAndTriggerBack(history);
 
     // We should navigate to /a
     expect(screen.getByText("Page A")).toBeInTheDocument();
