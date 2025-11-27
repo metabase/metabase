@@ -2,12 +2,19 @@
 
 import PropTypes from "prop-types";
 import { Component } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  useGetChannelInfoQuery,
+  useListSubscriptionsQuery,
+  useTestSubscriptionMutation,
+  useUpdateSubscriptionMutation,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
-import Pulses from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
   cleanPulse,
@@ -22,9 +29,7 @@ import { NewPulseSidebar } from "metabase/notifications/NewPulseSidebar";
 import PulsesListSidebar from "metabase/notifications/PulsesListSidebar";
 import {
   cancelEditingPulse,
-  fetchPulseFormInput,
   saveEditingPulse,
-  testPulse,
   updateEditingPulse,
 } from "metabase/notifications/pulse/actions";
 import {
@@ -71,7 +76,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
 };
 
 const getEditingPulseWithDefaults = (state, props) => {
-  const pulse = getEditingPulse(state, props);
+  const pulse = getEditingPulse(state);
   const dashboardWrapper = state.dashboard;
   if (!pulse.name) {
     pulse.name = dashboardWrapper.dashboards[dashboardWrapper.dashboardId].name;
@@ -99,9 +104,6 @@ const mapDispatchToProps = {
   updateEditingPulse,
   saveEditingPulse,
   cancelEditingPulse,
-  fetchPulseFormInput,
-  setPulseArchived: Pulses.actions.setArchived,
-  testPulse,
 };
 
 class DashboardSubscriptionsSidebarInner extends Component {
@@ -115,7 +117,6 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
-    fetchPulseFormInput: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
     initialCollectionId: PropTypes.number,
     isAdmin: PropTypes.bool,
@@ -131,7 +132,6 @@ class DashboardSubscriptionsSidebarInner extends Component {
   };
 
   componentDidMount() {
-    this.props.fetchPulseFormInput();
     this.fetchUsers();
   }
 
@@ -472,24 +472,55 @@ class DashboardSubscriptionsSidebarInner extends Component {
   }
 }
 
-const DashboardSubscriptionsSidebarConnected = _.compose(
-  Pulses.loadList({
-    query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
+const DashboardSubscriptionsSidebarConnected = connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(DashboardSubscriptionsSidebarInner);
 
 export default function DashboardSubscriptionsSidebar() {
   const { dashboard, setSharing } = useDashboardContext();
 
+  const [sendToast] = useToast();
+
+  const { data: pulses, isLoading: pulsesLoading } = useListSubscriptionsQuery(
+    { dashboard_id: dashboard?.id },
+    { skip: !dashboard?.id },
+  );
+  const { data: formInput } = useGetChannelInfoQuery();
+  const [updateSubscription] = useUpdateSubscriptionMutation();
+  const [testSubscription] = useTestSubscriptionMutation();
+
   if (!dashboard) {
     return null;
   }
 
+  const handleArchive = async (pulse) => {
+    const result = await updateSubscription({
+      ...pulse,
+      archived: true,
+    });
+    sendToast(
+      result.error
+        ? { message: t`Failed to delete` }
+        : {
+            subject: t`subscription`,
+            verb: t`deleted`,
+            action: () => updateSubscription({ id: pulse.id, archived: false }),
+          },
+    );
+  };
+
+  const handleTestPulse = (pulse) => {
+    return testSubscription(pulse).unwrap();
+  };
+
   return (
     <DashboardSubscriptionsSidebarConnected
       dashboard={dashboard}
+      pulses={pulsesLoading ? undefined : pulses}
+      formInput={formInput}
+      testPulse={handleTestPulse}
+      setPulseArchived={handleArchive}
       onCancel={() => setSharing(false)}
     />
   );

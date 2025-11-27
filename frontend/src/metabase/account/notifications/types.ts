@@ -1,7 +1,7 @@
-import type { Alert, Notification } from "metabase-types/api";
+import type { DashboardSubscription, Notification } from "metabase-types/api";
 
 export type DashboardAlertListItem = {
-  item: Alert;
+  item: DashboardSubscription;
   type: "pulse";
 };
 

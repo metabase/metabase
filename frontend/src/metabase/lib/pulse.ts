@@ -15,6 +15,7 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
+  DashboardSubscription,
   Pulse,
   PulseParameter,
   ScheduleSettings,
@@ -338,7 +339,10 @@ export const getRecipientsCount = (
     .reduce((total, channel) => total + (channel.recipients?.length || 0), 0);
 };
 
-export const canArchiveLegacyAlert = (item: Alert, user: User): boolean => {
+export const canArchiveLegacyAlert = (
+  item: Alert | DashboardSubscription,
+  user: User,
+): boolean => {
   const recipients = item.channels.flatMap((channel) => {
     if (channel.recipients) {
       return channel.recipients.map((recipient) => recipient.id);

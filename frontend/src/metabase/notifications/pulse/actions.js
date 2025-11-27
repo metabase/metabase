@@ -2,7 +2,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import Pulses from "metabase/entities/pulses";
+import { subscriptionApi } from "metabase/api";
 import {
   NEW_PULSE_TEMPLATE,
   createChannel,
@@ -11,7 +11,6 @@ import {
 import { createThunkAction } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
-import { PulseApi } from "metabase/services";
 
 import { getEditingPulse, getPulseFormInput } from "./selectors";
 
@@ -34,18 +33,20 @@ export const setEditingPulse = createThunkAction(
     return async function (dispatch, getState) {
       if (id != null) {
         try {
-          return Pulses.HACK_getObjectFromAction(
-            await dispatch(Pulses.actions.fetch({ id })),
-          );
+          return await dispatch(
+            subscriptionApi.endpoints.getSubscription.initiate(id),
+          ).unwrap();
         } catch (e) {
           console.error(e);
           dispatch(setErrorPage(e));
         }
       } else {
         // HACK: need a way to wait for form_input to finish loading
+        const fetchChannelInfo =
+          subscriptionApi.endpoints.getChannelInfo.initiate;
         const channels =
           getPulseFormInput(getState()).channels ||
-          (await PulseApi.form_input()).channels;
+          (await dispatch(fetchChannelInfo()).unwrap()).channels;
         const defaultChannelSpec = getDefaultChannel(channels);
         return {
           ...NEW_PULSE_TEMPLATE,
@@ -71,13 +72,13 @@ export const saveEditingPulse = createThunkAction(
 
       try {
         if (isEdit) {
-          return Pulses.HACK_getObjectFromAction(
-            await dispatch(Pulses.actions.update(editingPulse)),
-          );
+          return await dispatch(
+            subscriptionApi.endpoints.updateSubscription.initiate(editingPulse),
+          ).unwrap();
         } else {
-          return Pulses.HACK_getObjectFromAction(
-            await dispatch(Pulses.actions.create(editingPulse)),
-          );
+          return await dispatch(
+            subscriptionApi.endpoints.createSubscription.initiate(editingPulse),
+          ).unwrap();
         }
       } catch (error) {
         const errorMessage = getActionErrorMessage(error);
@@ -99,25 +100,20 @@ export const saveEditingPulse = createThunkAction(
 );
 
 export const testPulse = createThunkAction(TEST_PULSE, function (pulse) {
-  return async function (dispatch, getState) {
-    return await PulseApi.test(pulse);
+  return async function (dispatch) {
+    return await dispatch(
+      subscriptionApi.endpoints.testSubscription.initiate(pulse),
+    ).unwrap();
   };
 });
 
 export const fetchPulseFormInput = createThunkAction(
   FETCH_PULSE_FORM_INPUT,
   function () {
-    return async function (dispatch, getState) {
-      return await PulseApi.form_input();
-    };
-  },
-);
-
-export const fetchPulseCardPreview = createThunkAction(
-  FETCH_PULSE_CARD_PREVIEW,
-  function (id) {
-    return async function (dispatch, getState) {
-      return await PulseApi.preview_card({ id: id });
+    return async function (dispatch) {
+      return await dispatch(
+        subscriptionApi.endpoints.getChannelInfo.initiate(),
+      ).unwrap();
     };
   },
 );
@@ -125,8 +121,10 @@ export const fetchPulseCardPreview = createThunkAction(
 export const fetchPulsesByDashboardId = createThunkAction(
   FETCH_PULSE_LIST_BY_DASHBOARD_ID,
   function (dashboard_id) {
-    return async function (dispatch, getState) {
-      return await PulseApi.list({ dashboard_id: dashboard_id });
+    return async function (dispatch) {
+      return await dispatch(
+        subscriptionApi.endpoints.listSubscriptions.initiate({ dashboard_id }),
+      ).unwrap();
     };
   },
 );

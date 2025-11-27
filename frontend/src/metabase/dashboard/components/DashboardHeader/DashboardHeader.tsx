@@ -1,8 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { useGetChannelInfoQuery, useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import {
   cancelEditingDashboard,
@@ -17,7 +16,6 @@ import {
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex, Loader } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
@@ -36,9 +34,8 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
 
   const dispatch = useDispatch();
 
-  useMount(() => {
-    dispatch(fetchPulseFormInput());
-  });
+  // Prefetch channel info for subscriptions sidebar
+  useGetChannelInfoQuery();
 
   const isEditing = useSelector(getIsEditing);
   const isDirty = useSelector(getIsDirty);
