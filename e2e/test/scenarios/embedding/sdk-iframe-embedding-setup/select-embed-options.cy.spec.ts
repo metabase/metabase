@@ -106,7 +106,7 @@ describe(suiteTitle, () => {
         "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true",
     });
 
-    codeBlock().should("contain", 'with-subscriptions="true"');
+    codeBlock().should("contain", 'with-downloads="true"');
   });
 
   it("cannot select subscriptions for dashboard when email is not set up", () => {
@@ -303,7 +303,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,isSaveEnabled=false",
+        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true,isSaveEnabled=false",
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -417,7 +417,7 @@ describe(suiteTitle, () => {
         event: "embed_wizard_options_completed",
         event_detail:
           experience === "chart"
-            ? "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=true"
+            ? "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true"
             : "settings=custom,theme=default,auth=user_session,isSaveEnabled=true",
       });
 
