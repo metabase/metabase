@@ -37,7 +37,7 @@ export function SharedCombinedEmbeddingSettings({
   const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
 
   const upgradeUrl = useSelector((state) =>
-    getUpgradeUrl(state, { utm_content: "admin_permissions" }),
+    getUpgradeUrl(state, { utm_content: "embedding-settings" }),
   );
 
   const dependentSettingKeys: EmbeddingSettingKey[] = useMemo(
@@ -49,7 +49,7 @@ export function SharedCombinedEmbeddingSettings({
   return (
     <>
       <EmbeddingSettingsCard
-        title={t`Enable unauthenticated embeds`}
+        title={t`Guest embeds`}
         description={t`A secure way to embed charts and dashboards when you don’t want to offer ad-hoc querying or chart drill-through.`}
         settingKey="enable-embedding-static"
         actionButton={<NewEmbedButton />}

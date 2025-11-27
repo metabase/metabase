@@ -4,7 +4,7 @@ import { useMount } from "react-use";
 import { useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
-import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-paramers";
+import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,

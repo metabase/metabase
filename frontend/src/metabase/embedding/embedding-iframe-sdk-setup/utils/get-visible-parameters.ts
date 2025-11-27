@@ -1,6 +1,12 @@
 import type { SqlParameterValues } from "embedding-sdk-bundle/types";
 import type { ParameterValues } from "metabase-types/api";
 
+const getNormalizedParameters = <
+  TParameters extends ParameterValues | SqlParameterValues,
+>(
+  parameters: TParameters,
+) => (Object.keys(parameters).length > 0 ? parameters : undefined);
+
 export const getVisibleParameters = <
   TParameters extends ParameterValues | SqlParameterValues,
 >(
@@ -12,7 +18,7 @@ export const getVisibleParameters = <
   }
 
   if (!lockedParameters?.length) {
-    return parameters;
+    return getNormalizedParameters(parameters);
   }
 
   const filteredParameters = Object.fromEntries(
@@ -21,9 +27,5 @@ export const getVisibleParameters = <
     ),
   ) as TParameters;
 
-  if (Object.keys(filteredParameters).length === 0) {
-    return undefined;
-  }
-
-  return filteredParameters;
+  return getNormalizedParameters(filteredParameters);
 };

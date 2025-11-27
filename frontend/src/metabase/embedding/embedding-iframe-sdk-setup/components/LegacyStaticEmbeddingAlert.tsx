@@ -46,7 +46,7 @@ export const LegacyStaticEmbeddingAlert = () => {
         </Box>
 
         <Stack>
-          <Text key="legacy-static-embedding-alert" c="text-primary" lh="lg">
+          <Text c="text-primary" lh="lg">
             {t`This embed uses the legacy static embedding method. The controls shown are for the new embedding method, which is recommended.`}
           </Text>
 

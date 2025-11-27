@@ -175,7 +175,7 @@ describe("Embed JS modal display", () => {
 
       H.openSharingMenu("Embed");
 
-      H.embedModalEmbeddingControlCard().within(() => {
+      H.embedModalEnableEmbeddingCard().within(() => {
         cy.findByText(/Embedded Analytics JS/).should("be.visible");
       });
     });
@@ -196,7 +196,7 @@ describe("Embed JS modal display", () => {
 
           H.openSharingMenu("Embed");
 
-          H.embedModalEmbeddingControlCard().within(() => {
+          H.embedModalEnableEmbeddingCard().within(() => {
             cy.findByText(/guest embeds/).should("be.visible");
           });
         });

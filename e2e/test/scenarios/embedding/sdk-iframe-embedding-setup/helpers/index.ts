@@ -36,7 +36,7 @@ export const visitNewEmbedPage = () => {
 
   cy.get("body").then(($body) => {
     const isEmbeddingDisabled =
-      $body.find('[data-testid="embedding-control-card"]').length > 0;
+      $body.find('[data-testid="enable-embedding-card"]').length > 0;
 
     if (isEmbeddingDisabled) {
       embedModalEnableEmbedding();

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 
-import { EmbeddingControlCard } from "./EmbeddingControlCard";
+import { EnableEmbeddingCard } from "./EnableEmbeddingCard";
 
 export const EnableGuestEmbedsCard = () => {
   const {
@@ -16,7 +16,7 @@ export const EnableGuestEmbedsCard = () => {
   }
 
   return (
-    <EmbeddingControlCard
+    <EnableEmbeddingCard
       embeddingType="Guest embeds"
       isEnabled={isGuestEmbedsEnabled}
       termsAccepted={isGuestEmbedsTermsAccepted}

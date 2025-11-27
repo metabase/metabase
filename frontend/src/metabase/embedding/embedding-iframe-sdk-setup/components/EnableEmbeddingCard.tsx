@@ -15,7 +15,7 @@ interface EmbeddingControlCardProps {
   errorMessage: string;
 }
 
-export const EmbeddingControlCard = ({
+export const EnableEmbeddingCard = ({
   embeddingType,
   isEnabled,
   termsAccepted,
@@ -85,7 +85,7 @@ export const EmbeddingControlCard = ({
   const { title, buttonCaption } = data;
 
   return (
-    <Card p="md" mb="md" data-testid="embedding-control-card">
+    <Card p="md" mb="md" data-testid="enable-embedding-card">
       <Stack gap={0}>
         <Text fz="md" c="text-dark">
           {title}

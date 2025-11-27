@@ -37,26 +37,15 @@ export const buildEmbedAttributes = ({
       const questionSettings = settings as SdkIframeQuestionEmbedSettings;
 
       return {
-        ...(isGuestEmbed
-          ? {
-              token,
-              initialSqlParameters: getVisibleParameters(
-                questionSettings.initialSqlParameters,
-                questionSettings.lockedParameters,
-              ),
-            }
-          : {
-              questionId: questionSettings?.questionId,
-              isSaveEnabled: questionSettings?.isSaveEnabled,
-              initialSqlParameters: questionSettings.initialSqlParameters,
-              hiddenParameters: questionSettings.hiddenParameters?.length
-                ? questionSettings.hiddenParameters
-                : undefined,
-            }),
-        withTitle: questionSettings.withTitle,
-        drills: questionSettings.drills,
-        withDownloads: questionSettings.withDownloads,
-        template: questionSettings.targetCollection,
+        ...questionSettings,
+        token,
+        initialSqlParameters: getVisibleParameters(
+          questionSettings.initialSqlParameters,
+          questionSettings.lockedParameters,
+        ),
+        hiddenParameters: questionSettings.hiddenParameters?.length
+          ? questionSettings.hiddenParameters
+          : undefined,
         entityTypes: questionSettings.entityTypes?.length
           ? questionSettings.entityTypes
           : undefined,
@@ -66,38 +55,27 @@ export const buildEmbedAttributes = ({
       const explorationSettings = settings as ExplorationEmbedOptions;
 
       return {
+        ...explorationSettings,
         questionId: "new" as const,
-        targetCollection: explorationSettings.targetCollection,
         entityTypes: explorationSettings.entityTypes?.length
           ? explorationSettings.entityTypes
           : undefined,
-        ...(!isGuestEmbed && {
-          isSaveEnabled: explorationSettings.isSaveEnabled,
-        }),
-      } as QuestionEmbedOptions;
+        template: undefined,
+      } as unknown as ExplorationEmbedOptions;
     })
     .with("dashboard", () => {
       const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
 
       return {
-        ...(isGuestEmbed
-          ? {
-              token,
-              initialParameters: getVisibleParameters(
-                dashboardSettings.initialParameters,
-                dashboardSettings.lockedParameters,
-              ),
-            }
-          : {
-              dashboardId: settings?.dashboardId,
-              initialParameters: dashboardSettings.initialParameters,
-              hiddenParameters: dashboardSettings.hiddenParameters?.length
-                ? dashboardSettings.hiddenParameters
-                : undefined,
-            }),
-        withTitle: dashboardSettings.withTitle,
-        drills: dashboardSettings.drills,
-        withDownloads: dashboardSettings.withDownloads,
+        ...dashboardSettings,
+        token,
+        initialParameters: getVisibleParameters(
+          dashboardSettings.initialParameters,
+          dashboardSettings.lockedParameters,
+        ),
+        hiddenParameters: dashboardSettings.hiddenParameters?.length
+          ? dashboardSettings.hiddenParameters
+          : undefined,
       } as DashboardEmbedOptions;
     })
     .otherwise(() => settings);
