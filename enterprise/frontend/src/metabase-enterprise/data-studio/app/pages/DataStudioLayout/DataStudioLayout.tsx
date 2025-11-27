@@ -16,12 +16,14 @@ import {
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
+  ActionIcon,
   Box,
   Button,
   FixedSizeIcon,
   Flex,
   Icon,
   type IconName,
+  Menu,
   Modal,
   Select,
   Skeleton,
@@ -32,11 +34,12 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import {
+  useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
 import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
-import type { Database } from "metabase-types/api";
+import type { Database, WorkspaceId } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
 
@@ -226,7 +229,6 @@ function WorkspacesSection({
   isExpanded: isNavExpanded,
 }: WorkspacesSectionProps) {
   const dispatch = useDispatch();
-  const { sendErrorToast } = useMetadataToasts();
   const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
@@ -277,6 +279,8 @@ function WorkspacesSection({
     setSelectedDatabaseId(null);
   }, []);
 
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+
   const handleCreateWorkspace = useCallback(async () => {
     if (!selectedDatabaseId) {
       sendErrorToast(t`Please select a database`);
@@ -307,6 +311,17 @@ function WorkspacesSection({
     handleOpenWorkspace,
     sendErrorToast,
   ]);
+
+  const [archiveWorkspace] = useArchiveWorkspaceMutation();
+  const handleWorkspaceArchive = async (id: WorkspaceId) => {
+    try {
+      await archiveWorkspace(id).unwrap();
+      sendSuccessToast(t`Workspace archived successfully`);
+      dispatch(push(Urls.dataStudioWorkspaceList()));
+    } catch (error) {
+      sendErrorToast(t`Failed to archive workspace`);
+    }
+  };
 
   const isWorkspaceListPage = pathname === Urls.dataStudioWorkspaceList();
 
@@ -391,6 +406,7 @@ function WorkspacesSection({
                     workspace={workspace}
                     isSelected={isSelected}
                     onOpen={handleOpenWorkspace}
+                    archiveWorkspace={handleWorkspaceArchive}
                   />
                 );
               })
@@ -501,11 +517,24 @@ function DataStudioNavToggle({
 interface WorkspaceItemProps {
   workspace: { id: number; name: string; updated_at: string };
   isSelected: boolean;
-  onOpen: (workspaceId: number) => void;
+  onOpen: (workspaceId: WorkspaceId) => void;
+  archiveWorkspace: (workspaceId: WorkspaceId) => Promise<void>;
 }
 
-function WorkspaceItem({ workspace, isSelected, onOpen }: WorkspaceItemProps) {
+function WorkspaceItem({
+  workspace,
+  isSelected,
+  onOpen,
+  archiveWorkspace,
+}: WorkspaceItemProps) {
   const timeAgo = dayjs(workspace.updated_at).fromNow();
+  const handleArchive = () => {
+    archiveWorkspace(workspace.id);
+  };
+
+  const handleDelete = () => {
+    archiveWorkspace(workspace.id);
+  };
 
   return (
     <UnstyledButton
@@ -514,14 +543,43 @@ function WorkspaceItem({ workspace, isSelected, onOpen }: WorkspaceItemProps) {
       p="0.75rem"
       bdrs="md"
     >
-      <Stack gap="xs">
-        <Text size="sm" fw={600} truncate>
-          {workspace.name}
-        </Text>
-        <Text size="xs" c="text-secondary" truncate>
-          {t`Updated ${timeAgo}`}
-        </Text>
-      </Stack>
+      <Flex align="flex-start" justify="space-between" gap="xs">
+        <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
+          <Text size="sm" fw={600} truncate>
+            {workspace.name}
+          </Text>
+          <Text size="xs" c="text-secondary" truncate>
+            {t`Updated ${timeAgo}`}
+          </Text>
+        </Stack>
+        <Menu position="right" withinPortal>
+          <Menu.Target>
+            <ActionIcon
+              className={S.workspaceMenuButton}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              size="sm"
+              variant="subtle"
+            >
+              <Icon name="ellipsis" size={16} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <Menu.Item
+              leftSection={<Icon name="archive" />}
+              onClick={handleArchive}
+            >
+              {t`Archive`}
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              onClick={handleDelete}
+            >
+              {t`Move to trash`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Flex>
     </UnstyledButton>
   );
 }

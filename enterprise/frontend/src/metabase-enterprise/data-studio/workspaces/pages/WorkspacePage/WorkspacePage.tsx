@@ -1,17 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   ActionIcon,
   Box,
-  Button,
   Flex,
   Group,
   Icon,
@@ -21,7 +16,6 @@ import {
   Title,
 } from "metabase/ui";
 import {
-  useArchiveWorkspaceMutation,
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
@@ -44,10 +38,6 @@ type WorkspacePageProps = {
 function WorkspacePageContent({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
-  const dispatch = useDispatch();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const [archiveWorkspace, { isLoading: isArchiving }] =
-    useArchiveWorkspaceMutation();
   const [tab, setTab] = useState<string>("setup");
 
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
@@ -82,15 +72,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     removeOpenedTransform,
   } = useWorkspace();
 
-  const handleArchiveClick = async () => {
-    try {
-      await archiveWorkspace(id).unwrap();
-      sendSuccessToast(t`Workspace archived successfully`);
-      dispatch(push(Urls.dataStudioWorkspaceList()));
-    } catch (error) {
-      sendErrorToast(t`Failed to archive workspace`);
-    }
-  };
   const workspaceTransforms = useMemo(
     () =>
       transforms.filter((t) =>
@@ -157,15 +138,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         justify="space-between"
       >
         <Title order={2}>{workspace.name}</Title>
-        <Button
-          leftSection={<Icon name="archive" aria-hidden />}
-          onClick={handleArchiveClick}
-          loading={isArchiving}
-          variant="subtle"
-          c="text-dark"
-        >
-          {t`Archive workspace`}
-        </Button>
       </Group>
       <Group align="flex-start" gap={0} flex="1 1 auto" wrap="nowrap">
         <Box

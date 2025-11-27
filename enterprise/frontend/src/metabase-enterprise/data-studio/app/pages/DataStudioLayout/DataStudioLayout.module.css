@@ -67,15 +67,38 @@
     border-color: var(--mb-color-border-dark);
   }
 
+  &:hover .workspaceMenuButton {
+    opacity: 1;
+  }
+
   &.selected {
     background-color: var(--mb-color-brand-lighter);
     border-color: var(--mb-color-brand);
     color: var(--mb-color-brand);
   }
 
+  &.selected .workspaceMenuButton {
+    opacity: 1;
+  }
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+}
+
+.workspaceMenuButton {
+  color: var(--mb-color-text-secondary);
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--mb-color-bg-medium);
+    color: var(--mb-color-text-primary);
   }
 }
 
