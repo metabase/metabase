@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import type React from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -19,12 +20,17 @@ import type {
   TableDependencyNode,
   TransformDependencyNode,
   UnreferencedItem,
+  UnreferencedItemSortColumn,
+  UnreferencedItemSortDirection,
 } from "metabase-types/api";
 
 import S from "./UnreferencedItemsTable.module.css";
 
 interface UnreferencedItemsTableProps {
   items: UnreferencedItem[];
+  sortColumn?: UnreferencedItemSortColumn;
+  sortDirection?: UnreferencedItemSortDirection;
+  onSortChange?: (column: UnreferencedItemSortColumn) => void;
 }
 
 type CardItem = Omit<CardDependencyNode, "dependents_count">;
@@ -187,13 +193,37 @@ const ROW_HEIGHT = 48;
 
 const centeredCellStyles = { alignItems: "center" } as const;
 
-export function UnreferencedItemsTable({ items }: UnreferencedItemsTableProps) {
+const COLUMN_ID_TO_SORT_COLUMN: Partial<
+  Record<string, UnreferencedItemSortColumn>
+> = {
+  entity: "name",
+  viewCount: "view_count",
+};
+
+export function UnreferencedItemsTable({
+  items,
+  sortColumn,
+  sortDirection,
+  onSortChange,
+}: UnreferencedItemsTableProps) {
+  const getSortDirectionForColumn = useCallback(
+    (columnId: string): "asc" | "desc" | undefined => {
+      const apiColumn = COLUMN_ID_TO_SORT_COLUMN[columnId];
+      if (apiColumn && apiColumn === sortColumn) {
+        return sortDirection;
+      }
+      return undefined;
+    },
+    [sortColumn, sortDirection],
+  );
+
   const columns: ColumnOptions<UnreferencedItem, string>[] = useMemo(
     () => [
       {
         id: "entity",
         name: t`Entity`,
         accessorFn: (item) => getItemName(item),
+        sortDirection: getSortDirectionForColumn("entity"),
         cell: ({ row }) => {
           const item = row.original;
           const url = getItemUrl(item);
@@ -223,16 +253,6 @@ export function UnreferencedItemsTable({ items }: UnreferencedItemsTableProps) {
         },
       },
       {
-        id: "type",
-        name: t`Type`,
-        accessorFn: (item) => item.type,
-        cell: ({ getValue }) => (
-          <BaseCell style={centeredCellStyles}>
-            <Ellipsified>{String(getValue())}</Ellipsified>
-          </BaseCell>
-        ),
-      },
-      {
         id: "owner",
         name: t`Entity Owner`,
         accessorFn: (item) => getCreatorName(item) ?? "-",
@@ -260,6 +280,7 @@ export function UnreferencedItemsTable({ items }: UnreferencedItemsTableProps) {
           return count != null ? String(count) : "-";
         },
         align: "right",
+        sortDirection: getSortDirectionForColumn("viewCount"),
         cell: ({ getValue }) => (
           <BaseCell align="right" style={centeredCellStyles}>
             <Ellipsified>{String(getValue())}</Ellipsified>
@@ -267,7 +288,7 @@ export function UnreferencedItemsTable({ items }: UnreferencedItemsTableProps) {
         ),
       },
     ],
-    [],
+    [getSortDirectionForColumn],
   );
 
   const tableProps = useDataGridInstance({
@@ -276,13 +297,30 @@ export function UnreferencedItemsTable({ items }: UnreferencedItemsTableProps) {
     defaultRowHeight: ROW_HEIGHT,
   });
 
+  const handleHeaderCellClick = useCallback(
+    (_event: React.MouseEvent<HTMLDivElement>, columnId?: string) => {
+      if (!columnId || !onSortChange) {
+        return;
+      }
+      const apiColumn = COLUMN_ID_TO_SORT_COLUMN[columnId];
+      if (apiColumn) {
+        onSortChange(apiColumn);
+      }
+    },
+    [onSortChange],
+  );
+
   return (
     <Box
       h="100%"
       bd="1px solid var(--mb-color-border)"
       className={S.tableContainer}
     >
-      <DataGrid {...tableProps} theme={{ fontSize: "14px" }} />
+      <DataGrid
+        {...tableProps}
+        theme={{ fontSize: "14px" }}
+        onHeaderCellClick={handleHeaderCellClick}
+      />
     </Box>
   );
 }
