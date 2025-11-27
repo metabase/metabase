@@ -52,14 +52,32 @@
   [ctx node]
   (boolean (seq (direct-dependencies ctx node))))
 
-(defn schema+table->schema+table-outputs-remapping
+(defn transform-node->remapped-target-rf
+  [ctx acc transform-dep-node]
+  (let [transform-data (transform-node->data ctx transform-dep-node)
+        {:keys [schema name]} (:target transform-data)
+        k [schema name]
+        v (get-in ctx [:src-schema+table->dst->schema+table k])]
+    (assoc acc k v)))
+
+(defn transform-node->src->dst-remapping
   [ctx transform-node]
-  (not-empty
-   (let [deps (direct-dependencies ctx transform-node)
-         deps-ids (map :id deps)
-         src-output-id->dst-output (:src-output-id->dst-output ctx)
-         src-id->schema+table (-> (get-in ctx [:data :id->output-table])
-                                  (update-vals (juxt :schema :name)))]
-     (-> (select-keys src-output-id->dst-output deps-ids)
-         (update-keys src-id->schema+table)
-         (update-vals (juxt :schema :name))))))
+  (let [transform-deps-nodes (direct-dependencies ctx transform-node)]
+    (assert (every? (comp #{:transform} :type) transform-deps-nodes))
+    (reduce
+     (partial transform-node->remapped-target-rf ctx)
+     {}
+     transform-deps-nodes)))
+
+;; for when :dependencies hold table-nodes, now we go with transform nodes
+#_(defn schema+table->schema+table-outputs-remapping
+    [ctx transform-node]
+    (not-empty
+     (let [deps (direct-dependencies ctx transform-node)
+           deps-ids (map :id deps)
+           src-output-id->dst-output (:src-output-id->dst-output ctx)
+           src-id->schema+table (-> (get-in ctx [:data :id->output-table])
+                                    (update-vals (juxt :schema :name)))]
+       (-> (select-keys src-output-id->dst-output deps-ids)
+           (update-keys src-id->schema+table)
+           (update-vals (juxt :schema :name))))))

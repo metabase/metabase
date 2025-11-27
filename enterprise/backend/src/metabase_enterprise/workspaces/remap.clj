@@ -35,7 +35,9 @@
 
 (defn- native-mappings
   [transform-node ctx]
-  (ws.ctx/schema+table->schema+table-outputs-remapping ctx transform-node))
+  (ws.ctx/transform-node->src->dst-remapping ctx transform-node)
+  ;; for when :dependencies hold table-nodes, now we go with transform nodes
+  #_(ws.ctx/schema+table->schema+table-outputs-remapping ctx transform-node))
 
 (defn- remap-sql-tables
   [sql-str macaw-mappings]
