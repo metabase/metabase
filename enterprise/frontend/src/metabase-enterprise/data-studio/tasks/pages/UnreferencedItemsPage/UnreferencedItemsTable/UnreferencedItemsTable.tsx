@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -291,12 +292,15 @@ export function UnreferencedItemsTable({
     [getSortDirectionForColumn],
   );
 
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+
   const theme = useMemo(() => ({ fontSize: "14px" }), []);
   const tableProps = useDataGridInstance({
     data: items,
     columnsOptions: columns,
     defaultRowHeight: ROW_HEIGHT,
     theme,
+    minGridWidth: containerWidth || undefined,
   });
 
   const handleHeaderCellClick = useCallback(
@@ -314,6 +318,7 @@ export function UnreferencedItemsTable({
 
   return (
     <Box
+      ref={containerRef}
       h="100%"
       bd="1px solid var(--mb-color-border)"
       className={S.tableContainer}
