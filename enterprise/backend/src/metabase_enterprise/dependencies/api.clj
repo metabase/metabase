@@ -1,6 +1,5 @@
 (ns metabase-enterprise.dependencies.api
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
