@@ -157,7 +157,12 @@ function getItemIcon(item: UnreferencedItem): IconName {
 }
 
 function getCreatorName(item: UnreferencedItem): string | null {
-  if (isCardItem(item) || isDashboardItem(item) || isDocumentItem(item)) {
+  if (
+    isCardItem(item) ||
+    isDashboardItem(item) ||
+    isDocumentItem(item) ||
+    isTransformItem(item)
+  ) {
     const { creator } = item.data;
     if (creator) {
       return (

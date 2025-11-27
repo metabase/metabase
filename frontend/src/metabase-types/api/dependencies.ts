@@ -42,7 +42,7 @@ export type TableDependencyNodeData = Pick<
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table"
+  "name" | "description" | "table" | "creator"
 >;
 
 export type CardDependencyNodeData = Pick<
