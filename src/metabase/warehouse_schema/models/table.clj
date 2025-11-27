@@ -518,16 +518,20 @@
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
-   :render-terms {:initial-sync-status true
-                  :table-id            :id
-                  :table-description   :description
-                  :table-name          :name
-                  :table-schema        :schema
-                  :database-name       :db.name}
+   :render-terms {:initial-sync-status        true
+                  :table-id                   :id
+                  :table-description          :description
+                  :table-name                 :name
+                  :table-schema               :schema
+                  :database-name              :db.name
+                  :collection-authority_level :collection.authority_level
+                  :collection-location        :collection.location
+                  :collection-name            :collection.name
+                  :collection-type            :collection.type}
    :where        [:and
                   :active
                   [:= :visibility_type nil]
                   [:= :db.router_database_id nil]
                   [:not= :db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  :collection [:model/Collection [:and [:= :this.is_published true]  [:= :collection.id :this.collection_id]]]}})
+                  :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
