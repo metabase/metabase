@@ -291,10 +291,12 @@ export function UnreferencedItemsTable({
     [getSortDirectionForColumn],
   );
 
+  const theme = useMemo(() => ({ fontSize: "14px" }), []);
   const tableProps = useDataGridInstance({
     data: items,
     columnsOptions: columns,
     defaultRowHeight: ROW_HEIGHT,
+    theme,
   });
 
   const handleHeaderCellClick = useCallback(
@@ -316,11 +318,7 @@ export function UnreferencedItemsTable({
       bd="1px solid var(--mb-color-border)"
       className={S.tableContainer}
     >
-      <DataGrid
-        {...tableProps}
-        theme={{ fontSize: "14px" }}
-        onHeaderCellClick={handleHeaderCellClick}
-      />
+      <DataGrid {...tableProps} onHeaderCellClick={handleHeaderCellClick} />
     </Box>
   );
 }
