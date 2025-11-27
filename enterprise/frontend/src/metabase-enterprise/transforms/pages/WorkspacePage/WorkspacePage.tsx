@@ -34,6 +34,7 @@ import {
   type WorkspaceTransform,
   useWorkspace,
 } from "./WorkspaceProvider";
+import { useListDatabasesQuery } from "metabase/api";
 
 type WorkspacePageProps = {
   params: {
@@ -49,15 +50,28 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     useArchiveWorkspaceMutation();
   const [tab, setTab] = useState<string>("setup");
 
+  const { data: databases = { data: [] } } = useListDatabasesQuery({});
+
   const { data: allTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+
+  const sourceDb = databases?.data.find(
+    (db) => db.id === workspace?.database_id,
+  );
+  console.log({ allTransforms, sourceDb });
   const transforms = useMemo(
     () =>
-      allTransforms.filter(
-        (t) => t.source_type === "native" || t.source_type === "python",
-      ),
-    [allTransforms],
+      allTransforms.filter((t) => {
+        if (t.source_type === "python") {
+          return t.source["source-database"] === sourceDb?.id;
+        }
+        if (t.source_type === "native") {
+          return t.source.query.database === sourceDb?.id;
+        }
+        return false;
+      }),
+    [allTransforms, sourceDb],
   );
 
   const {
@@ -211,6 +225,14 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             </Flex>
 
             <Box flex={1} mih={0}>
+              <Tabs.Panel value="setup" h="100%" p="md">
+                <Stack gap={0}>
+                  <Title order={4}>{t`Source: `}</Title>
+                  <Title order={3}>
+                    <code>{sourceDb?.name}</code>
+                  </Title>
+                </Stack>
+              </Tabs.Panel>
               {isMetabotAvailable && (
                 <Tabs.Panel value="metabot" h="100%">
                   <MetabotTab />
