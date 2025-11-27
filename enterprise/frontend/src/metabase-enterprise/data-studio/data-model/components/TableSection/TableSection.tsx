@@ -296,7 +296,7 @@ const TableSectionBase = ({
 
               <Box
                 style={{
-                  display: !isSorting ? "block" : "none",
+                  display: isSorting ? "none" : "block",
                 }}
                 aria-hidden={isSorting}
               >
