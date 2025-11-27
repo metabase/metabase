@@ -94,13 +94,10 @@
    [:database_id {:optional true} :int]
    [:upstream {:optional true} ::entity-map]])
 
-(def ^:private AddEntities
+(def ^:private ModifyEntities
   [:map
-   [:upstream ::entity-map]])
-
-(def ^:private RemoveEntities
-  [:map
-   [:downstream ::entity-map]])
+   [:add_upstream {:optional true} ::entity-map]
+   [:remove_downstream {:optional true} ::entity-map]])
 
 (def ^:private Workspace
   [:map
@@ -155,18 +152,17 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
-(defn- check-transform-enabled!
-  [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (transforms.i/target-db-id transform))
-                                (deferred-tru "The target database cannot be found."))
-        feature (transforms.util/required-database-feature transform)]
-    (api/check (transforms.util/check-feature-enabled transform)
-               [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
+(defn- check-transforms-enabled!
+  [db-id]
+  (let [database (api/check-400 (t2/select-one :model/Database db-id)
+                                (deferred-tru "The target database cannot be found."))]
+    (api/check (transforms.util/check-feature-enabled nil)
+               [402 (deferred-tru "Premium features required for transforms are not enabled.")])
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (driver.u/supports? (:engine database) feature database)
+    (api/check-400 (driver.u/supports? (:engine database) :transforms/table database)
                    (deferred-tru "The database does not support the requested transform target type."))
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
@@ -204,7 +200,17 @@
   {:name \"a\" :database_id 2 :upstream {:transforms [1 2 3]}}"
   [_route-params
    _query-params
-   body :- CreateWorkspace]
+   {:keys [database_id upstream] :as body} :- CreateWorkspace]
+
+  (check-transforms-enabled! database_id)
+
+  (when-let [transform-ids (seq (get upstream :transforms []))]
+    (let [workspace-transforms (t2/select-fn-set :id :model/Transform
+                                                 :id [:in transform-ids]
+                                                 :workspace_id [:not= nil])]
+      (when (seq workspace-transforms)
+        (api/check-400 false "Cannot add transforms that belong to another workspace"))))
+
   (-> (ws.common/create-workspace! api/*current-user-id* body)
       ws->response))
 
@@ -264,7 +270,7 @@
   {:nodes []
    :edges []})
 
-(api.macros/defendpoint :post "/:id/add-entities"
+(api.macros/defendpoint :post "/:id/contents"
   :- [:map [:contents [:map-of ::entity-grouping [:sequential ::downstream-entity]]]]
   "Add upstream entities to workspace by mirroring them into the workspace's isolated environment.
 
@@ -272,39 +278,34 @@
   Returns the workspace's updated contents."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   body :- AddEntities]
+   body :- ModifyEntities]
+
+  (api/check-400 (nil? (:remove_downstream body)) "Not implemented yet")
+
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        upstream  (:upstream body)]
+        upstream  (:add_upstream body)]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot add entities to an archived workspace")
 
-    ;; Check entities are not already in workspace
     (when-let [transform-ids (seq (get upstream :transforms []))]
-      (let [already-mapped (t2/select-fn-set :upstream_id :model/WorkspaceMappingTransform
-                                             :workspace_id id
-                                             :upstream_id [:in transform-ids])]
-        (when (seq already-mapped)
-          (api/check-400 false (str "Transforms " (str/join ", " (sort already-mapped)) " are already in workspace")))))
+      (let [workspace-transforms (t2/select-fn-set :id :model/Transform
+                                                   :id [:in transform-ids]
+                                                   :workspace_id [:not= nil])]
+        (when (seq workspace-transforms)
+          (api/check-400 false "Cannot add transforms that belong to another workspace"))))
 
-    ;; Check entities belong to workspace database
-    (let [graph     (ws.dag/path-induced-subgraph upstream)
-          table-ids (seq (keep :id (concat (:inputs graph) (:outputs graph))))
-          db-ids    (when table-ids (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-          db-id     (first db-ids)]
+    (let [existing-upstream-ids (t2/select-fn-set :upstream_id :model/WorkspaceMappingTransform
+                                                  :workspace_id id)
+          combined-upstream     (update upstream :transforms #(into (vec existing-upstream-ids) %))
+          graph                 (ws.dag/path-induced-subgraph combined-upstream)
+          table-ids             (seq (keep :id (concat (:inputs graph) (:outputs graph))))
+          db-ids                (when table-ids (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+          db-id                 (first db-ids)]
       (when db-id
         (api/check-400 (= db-id (:database_id workspace)) "All entities must belong to the workspace's database")))
 
     (ws.common/add-entities! workspace upstream)
 
     {:contents (:contents (t2/hydrate (t2/select-one :model/Workspace :id id) :contents))}))
-
-(api.macros/defendpoint :post "/:id/remove-entities"
-  :- [:map [:success ms/BooleanValue]]
-  "Remove entities from workspace"
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   body :- RemoveEntities]
-  (let [_ [id body]] ;; TODO stub
-    1))
 
 (api.macros/defendpoint :post "/:id/transform"
   "Create a new transform directly within a workspace.
@@ -327,13 +328,18 @@
     (api/check-400 (= target-db-id workspace-db-id)
                    (deferred-tru "Transform target database must match workspace database"))
 
-    (check-transform-enabled! body)
-
     (api/check (transforms.util/check-feature-enabled body)
                [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
-    (api/check (not (transforms.util/target-table-exists? body))
-               403
-               (deferred-tru "A table with that name already exists."))
+
+    (let [target-schema   (get-in body [:target :schema])
+          target-name     (get-in body [:target :name])
+          existing-target (some (fn [tx]
+                                  (let [t (:target tx)]
+                                    (and (= (:schema t) target-schema)
+                                         (= (:name t) target-name))))
+                                (t2/select :model/Transform :workspace_id id))]
+      (api/check-400 (not existing-target)
+                     (deferred-tru "Another transform in this workspace already targets that table.")))
 
     (ws.common/create-transform! workspace body api/*current-user-id*)))
 
