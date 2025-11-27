@@ -12,6 +12,7 @@ import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
+import { MetabotChat } from "./components/MetabotChat";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
@@ -38,6 +39,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
     PLUGIN_METABOT.isEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
+    PLUGIN_METABOT.MetabotChat = MetabotChat;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
     PLUGIN_METABOT.getAdminPaths = () => [
