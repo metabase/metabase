@@ -68,6 +68,8 @@ export const ComponentProviderInternal = ({
 }: ComponentProviderInternalProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
 
+  console.log("Component provider render", hasInitializedPlugins);
+
   // The main call of useInitData happens in the MetabaseProvider
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
