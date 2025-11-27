@@ -509,6 +509,7 @@
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived      false
+                  ;; For published tables with no collection, we want to show "root" as the collection id
                   :collection-id true
                   :creator-id    false
                   :database-id   :db_id
@@ -526,7 +527,12 @@
                   :database-name              :db.name
                   :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
-                  :collection-name            :collection.name
+                  ;; For published tables with no collection, show "Our analytics" as the collection name
+                  :collection-name            [:coalesce :collection.name
+                                               [:case
+                                                [:and :this.is_published
+                                                 [:= :this.collection_id nil]] [:inline "Our analytics"]
+                                                :else nil]]
                   :collection-type            :collection.type}
    :where        [:and
                   :active
