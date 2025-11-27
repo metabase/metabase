@@ -2,6 +2,7 @@ import type {
   DatabaseId,
   FieldId,
   SchemaName,
+  SegmentId,
   TableId,
   UserId,
 } from "metabase-types/api";
@@ -79,6 +80,33 @@ export function dataModel({
   }
 
   return parts.join("/");
+}
+
+export type DataModelSegmentsParams = {
+  tableId?: TableId;
+};
+
+export function dataModelSegments({ tableId }: DataModelSegmentsParams = {}) {
+  const params = new URLSearchParams();
+  if (tableId != null) {
+    params.set("table", String(tableId));
+  }
+
+  const baseUrl = "/admin/datamodel/segments";
+  const queryString = params.toString();
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+}
+
+export function newDataModelSegment() {
+  return "/admin/datamodel/segment/create";
+}
+
+export function dataModelSegment(segmentId: SegmentId) {
+  return `/admin/datamodel/segment/${segmentId};`;
+}
+
+export function dataModelSegmentRevisions(segmentId: SegmentId) {
+  return `${dataModelSegment(segmentId)}/revisions`;
 }
 
 export function uploadsSettings() {
