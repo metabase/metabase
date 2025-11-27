@@ -355,7 +355,9 @@ export function UnreferencedItemsTable({
       bd="1px solid var(--mb-color-border)"
       className={S.tableContainer}
     >
-      <DataGrid {...tableProps} onHeaderCellClick={handleHeaderCellClick} />
+      {containerWidth > 0 ? (
+        <DataGrid {...tableProps} onHeaderCellClick={handleHeaderCellClick} />
+      ) : null}
     </Box>
   );
 }
