@@ -30,7 +30,7 @@ export const createMockSdkState = ({
     metabaseInstanceUrl: "",
     metabaseInstanceVersion: null,
     isGuestEmbed: false,
-    loginStatus: createMockLoginStatusState(),
+    initStatus: createMockLoginStatusState(),
     token: createMockTokenState(),
     usageProblem: null,
     plugins: {},

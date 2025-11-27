@@ -10,10 +10,12 @@ export const getIsGuestEmbedRaw = (state: SdkStoreState) =>
 export const getIsGuestEmbed = (state: SdkStoreState) =>
   Boolean(state.sdk?.isGuestEmbed);
 
-export const getLoginStatus = (state: SdkStoreState) => state.sdk?.loginStatus;
+export const getInitStatus = (state: SdkStoreState) => state.sdk?.initStatus;
+
+export const getLoginStatus = (state: SdkStoreState) => state.sdk?.initStatus;
 
 export const getIsInitialized = (state: SdkStoreState) =>
-  getLoginStatus(state).status !== "uninitialized";
+  getInitStatus(state).status !== "uninitialized";
 
 export const getIsLoggedIn = (state: SdkStoreState) =>
   getLoginStatus(state).status === "success";

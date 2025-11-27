@@ -89,6 +89,7 @@ export type {
   ChartColor,
   CreateDashboardValues,
   EntityTypeFilterKeys,
+  InitializationStatus,
   LoginStatus,
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,

@@ -31,7 +31,7 @@ export const setupSdkState = ({
   tokenFeatures = createMockTokenFeatures({ embedding_sdk: true }),
   settingDefinitions = [],
   sdkState = createMockSdkState({
-    loginStatus: createMockLoginStatusState({ status: "success" }),
+    initStatus: createMockLoginStatusState({ status: "success" }),
   }),
   ...stateOpts
 }: {

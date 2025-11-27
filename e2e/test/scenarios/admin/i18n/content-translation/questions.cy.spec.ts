@@ -1,8 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 
 import { germanFieldNames } from "./constants";
-import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 

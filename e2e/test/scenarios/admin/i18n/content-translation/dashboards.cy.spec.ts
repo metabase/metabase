@@ -7,6 +7,7 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 import {
   ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
@@ -22,7 +23,6 @@ import {
   germanFieldNames,
   germanFieldValues,
 } from "./constants";
-import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
 const { H } = cy;
 

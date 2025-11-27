@@ -1,6 +1,11 @@
 import path from "path";
 
 import {
+  getCSVWithHeaderRow,
+  uploadTranslationDictionaryViaAPI,
+} from "e2e/support/helpers/e2e-content-translation-helpers";
+
+import {
   germanFieldNames,
   invalidLocaleXX,
   multipleInvalidLocales,
@@ -11,9 +16,7 @@ import {
 import {
   assertOnlyTheseTranslationsAreStored,
   generateLargeCSV,
-  getCSVWithHeaderRow,
   uploadTranslationDictionary,
-  uploadTranslationDictionaryViaAPI,
 } from "./helpers/e2e-content-translation-helpers";
 
 const { H } = cy;
