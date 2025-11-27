@@ -20,10 +20,12 @@
   [ws-id]
   (let [[ws-graph ws-schema] (t2/select-one-fn (juxt :graph :schema) :model/Workspace :id ws-id)
         spec (driver.conn/connection-details->spec :postgres (:details (mt/db)))
+        output-ids (-> ws-graph :outputs (->> (map :id)))
         dup-tables-ids (into #{}
                              (map #(-> % :mapping :id))
                              (-> ws-graph :outputs))]
     (t2/delete! :model/Table :id [:in dup-tables-ids])
+    (t2/delete! :model/Table :id [:in output-ids])
     (t2/delete! :model/Workspace :id ws-id)
     (jdbc/execute! spec (format "DROP SCHEMA IF EXISTS %s CASCADE" ws-schema))))
 
