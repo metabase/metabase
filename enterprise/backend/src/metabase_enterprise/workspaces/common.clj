@@ -109,9 +109,12 @@
         (recur (inc attempt))
         (let [workspace (:workspace result)]
           (ws.isolation/ensure-database-isolation! workspace database)
-          (let [graph (ws.mirroring/mirror-entities! workspace database graph)]
-            (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
-            (assoc workspace :graph graph)))))))
+          ;; temp hack to avoid running mirror and failing if there are no checkouts
+          (if (not-empty (:check-outs graph))
+            (let [graph (ws.mirroring/mirror-entities! workspace database graph)]
+              (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
+              (assoc workspace :graph graph))
+            (assoc workspace :graph {})))))))
 
 ;; TODO internal: test!
 (defn create-workspace!
