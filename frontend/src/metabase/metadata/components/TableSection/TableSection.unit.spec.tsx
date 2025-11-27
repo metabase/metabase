@@ -1,22 +1,17 @@
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Table } from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
-
-import type { RouteParams } from "../../pages/DataModelV1/types";
 
 import { TableSection } from "./TableSection";
 
 type SetupOpts = {
   table?: Table;
-  params?: RouteParams;
+  fieldId?: FieldId;
 };
 
-function setup({
-  table = createMockTable(),
-  params = createMockRouteParams(),
-}: SetupOpts = {}) {
+function setup({ table = createMockTable(), fieldId }: SetupOpts = {}) {
   const onSyncOptionsClick = jest.fn();
 
   renderWithProviders(
@@ -25,7 +20,9 @@ function setup({
       component={() => (
         <TableSection
           table={table}
-          params={params}
+          fieldId={fieldId}
+          withName
+          getFieldHref={(fieldId) => `/field/${fieldId}`}
           onSyncOptionsClick={onSyncOptionsClick}
         />
       )}
@@ -34,16 +31,6 @@ function setup({
   );
 
   return { onSyncOptionsClick };
-}
-
-function createMockRouteParams(opts?: Partial<RouteParams>): RouteParams {
-  return {
-    databaseId: "1",
-    schemaId: "1:public",
-    tableId: "1",
-    fieldId: "1",
-    ...opts,
-  };
 }
 
 describe("TableSection", () => {

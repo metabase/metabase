@@ -203,7 +203,7 @@ async function setup({
   setupTablesBulkEndpoints();
   setupUsersEndpoints([createMockUserListResult()]);
   setupUserAcknowledgementEndpoints({
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: false,
   });
 

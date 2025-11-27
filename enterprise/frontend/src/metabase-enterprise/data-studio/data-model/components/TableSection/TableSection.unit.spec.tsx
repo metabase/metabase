@@ -23,7 +23,7 @@ function setup({ table = createMockTable() }: SetupOpts = {}) {
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: true,
   });
 

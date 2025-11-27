@@ -161,7 +161,7 @@ function setup({
   setupUsersEndpoints([currentUser]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: false,
   });
 
