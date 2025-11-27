@@ -294,7 +294,7 @@ export function UnreferencedItemsTable({
 
   const { ref: containerRef, width: containerWidth } = useElementSize();
 
-  const theme = useMemo(() => ({ fontSize: "14px" }), []);
+  const theme = useMemo(() => ({ fontSize: "14px", headerHeight: 58 }), []);
   const tableProps = useDataGridInstance({
     data: items,
     columnsOptions: columns,

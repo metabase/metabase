@@ -14,7 +14,7 @@ export function TableSkeleton() {
       className={S.container}
     >
       <Stack gap={0}>
-        <Flex h={36} px="md" align="center" gap="xl">
+        <Flex h={58} px="md" align="center" gap="xl">
           <Skeleton h={14} w="15%" />
           <Skeleton h={14} w="12%" />
           <Skeleton h={14} w="10%" />
