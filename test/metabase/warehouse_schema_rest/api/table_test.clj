@@ -418,7 +418,7 @@
                             {:display_name     "Userz"
                              :description      "What a nice table!"
                              :data_source      "transform"
-                             :data_layer       "copper"
+                             :data_layer       "hidden"
                              :owner_email      "bob@org.com"
                              :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
@@ -434,7 +434,7 @@
                :display_name    "Userz"
                :is_writable     nil
                :data_source      "transform"
-               :data_layer       "copper"
+               :data_layer       "hidden"
                ;; exclusive later (not now)
                :owner_email      "bob@org.com"
                :owner_user_id    (mt/user->id :crowberto)})
@@ -1290,9 +1290,24 @@
         (is (=? [{:display_name "Products2"}]
                 (list-tables :term "P" :data-layer "gold")))
 
+<<<<<<< HEAD
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
                 (list-tables :term "P" :data-layer "bronze")))))))
+=======
+      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "published"})
+      (is (=? [{:display_name "Products2"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "published")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))
+
+      (testing "empty filter"
+        (is (=? [{:display_name "People"}
+                 {:display_name "Products"}]
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "internal")
+                     (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
+                     (map #(select-keys % [:display_name])))))))))
+>>>>>>> ad9a4466556 (Replace data-source medallion with internal,published,hidden)
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"
@@ -1300,20 +1315,20 @@
       (testing "updating visibility_type syncs to data_layer"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:visibility_type "hidden"})
-        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+        (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
 
       (testing "updating data_layer syncs to visibility_type"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                              {:data_layer "gold"})
-        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+                              {:data_layer "internal"})
+        (is (= :internal (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
         (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
 
       (testing "cannot update both visibility_type and data_layer at once"
         (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
                                      {:visibility_type  "hidden"
-                                      :data_layer "copper"})))))))
+                                      :data_layer "hidden"})))))))
 
 (deftest unused-only-filter-test
   (mt/with-premium-features #{:dependencies}
