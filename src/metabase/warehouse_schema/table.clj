@@ -20,7 +20,7 @@
   [table]
   (-> table
       (update :db dissoc :router_database_id)
-      (update :collection nil-if-unreadable)
+      (m/update-existing :collection nil-if-unreadable)
       (update :schema str)))
 
 (defn- format-fields-for-response [resp]
