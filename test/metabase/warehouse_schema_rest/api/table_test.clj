@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
