@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -52,9 +52,16 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     useArchiveWorkspaceMutation();
   const [tab, setTab] = useState<string>("setup");
 
-  const { data: transforms = [] } = useListTransformsQuery({});
+  const { data: allTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+  const transforms = useMemo(
+    () =>
+      allTransforms.filter(
+        (t) => t.source_type === "native" || t.source_type === "python",
+      ),
+    [allTransforms],
+  );
 
   const {
     openedTransforms,
@@ -143,7 +150,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           {t`Archive workspace`}
         </Button>
       </Group>
-      <Group align="flex-start" gap={0} flex="1 1 auto">
+      <Group align="flex-start" gap={0} flex="1 1 auto" wrap="nowrap">
         <Box
           w="70%"
           h="100%"
@@ -221,13 +228,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             </Box>
           </Tabs>
         </Box>
-        <Box style={{ flex: 1 }}>
+        <Box style={{ flex: "1 0 auto" }}>
           <Tabs defaultValue="code">
             <Box
               px="md"
               style={{ borderBottom: "1px solid var(--mb-color-border)" }}
             >
-              <Tabs.List>
+              <Tabs.List className={styles.tabsPanel}>
                 <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
               </Tabs.List>
             </Box>
@@ -249,6 +256,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                             align="center"
                             key={transform.id}
                             gap="sm"
+                            wrap="nowrap"
                           >
                             <Icon name="sun" size={12} />
                             <Text
@@ -286,6 +294,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                       align="center"
                       key={transform.id}
                       gap="sm"
+                      wrap="nowrap"
                     >
                       <Icon name="sun" size={12} />
                       <Text
