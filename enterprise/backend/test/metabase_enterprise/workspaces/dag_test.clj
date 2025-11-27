@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.dag-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.dependencies.models.dependency :as deps]
@@ -48,7 +49,8 @@
 
    NOTE: Caller should wrap in mt/with-model-cleanup for proper cleanup."
   [{:keys [check-outs dependencies]}]
-  (let [all-ids    (set (concat (keys dependencies)
+  (let [schema     (str/replace (str (random-uuid)) "-" "_")
+        all-ids    (set (concat (keys dependencies)
                                 (mapcat val dependencies)
                                 check-outs))
         transforms (filter transform? all-ids)
@@ -56,7 +58,7 @@
         table-ids  (u/for-map [t tables]
                      [t (t2/insert-returning-pk! :model/Table
                                                  {:db_id  (mt/id)
-                                                  :schema "public"
+                                                  :schema schema
                                                   :name   (str "test_table_" (kw->id t))
                                                   :active true})])
         ;; Create transforms that reference their input tables
@@ -77,7 +79,7 @@
                                                                                       :native   {:query "SELECT 1"}})}
                                                                    :target {:type     "table"
                                                                             :database (mt/id)
-                                                                            :schema   "public"
+                                                                            :schema   schema
                                                                             :name     (str "test_table_" (kw->id tx))}})]
                        [tx id]))]
 
