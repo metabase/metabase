@@ -2,16 +2,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import {
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Box, Flex, Icon, Loader, Stack, Text, TextInput } from "metabase/ui";
 import { useGetUnreferencedItemsQuery } from "metabase-enterprise/api";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type {
@@ -19,11 +10,23 @@ import type {
   UnreferencedItemSortDirection,
 } from "metabase-types/api";
 
+import {
+  TasksFilterButton,
+  type TasksFilterState,
+  getFilterApiParams,
+} from "../../components/TasksFilterButton";
+
 import { TableSkeleton } from "./TableSkeleton";
 import { UnreferencedItemsTable } from "./UnreferencedItemsTable";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const PAGE_SIZE = 20;
+
+const INITIAL_FILTER_STATE: TasksFilterState = {
+  entityTypes: [],
+  creatorIds: [],
+  lastModifiedByIds: [],
+};
 
 export function UnreferencedItemsPage() {
   const [searchValue, setSearchValue] = useState("");
@@ -32,6 +35,10 @@ export function UnreferencedItemsPage() {
   const [sortDirection, setSortDirection] =
     useState<UnreferencedItemSortDirection>();
   const [pageIndex, setPageIndex] = useState(0);
+  const [filters, setFilters] =
+    useState<TasksFilterState>(INITIAL_FILTER_STATE);
+
+  const filterApiParams = getFilterApiParams(filters);
 
   const { data, isLoading, isFetching, error } = useGetUnreferencedItemsQuery({
     query: debouncedSearch || undefined,
@@ -39,6 +46,7 @@ export function UnreferencedItemsPage() {
     sort_direction: sortDirection,
     limit: PAGE_SIZE,
     offset: pageIndex * PAGE_SIZE,
+    ...filterApiParams,
   });
 
   const handleSortChange = useCallback(
@@ -62,6 +70,11 @@ export function UnreferencedItemsPage() {
     [],
   );
 
+  const handleFilterChange = useCallback((newFilters: TasksFilterState) => {
+    setFilters(newFilters);
+    setPageIndex(0);
+  }, []);
+
   if (error) {
     return (
       <Box p="lg">
@@ -80,9 +93,7 @@ export function UnreferencedItemsPage() {
           onChange={handleSearchChange}
           leftSection={<Icon name="search" />}
         />
-        <Button variant="default" leftSection={<Icon name="filter" />}>
-          {t`Filter`}
-        </Button>
+        <TasksFilterButton value={filters} onChange={handleFilterChange} />
       </Flex>
       {isLoading ? (
         <TableSkeleton columnWidths={[0.5, 0.125, 0.125, 0.125, 0.125]} />
