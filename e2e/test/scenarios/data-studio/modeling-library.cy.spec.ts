@@ -38,18 +38,18 @@ describe("scenarios > data studio > modeling > library", () => {
 
     cy.log("Verify empty state shows on library root");
     H.DataStudio.Modeling.collectionPage().within(() => {
-      cy.findByText("No models or metrics yet").should("be.visible");
+      cy.findByText("No tables or metrics yet").should("be.visible");
       cy.findByText(
-        "Models and metrics in this collection will appear here.",
+        "Tables and metrics in this collection will appear here.",
       ).should("be.visible");
     });
 
     cy.log("Select Data collection and verify it's empty");
     H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
 
-    cy.log("Verify no models yet message");
+    cy.log("Verify no tables or models yet message");
     H.DataStudio.Modeling.collectionPage().within(() => {
-      cy.findByText("No models yet").should("be.visible");
+      cy.findByText("No tables or models yet").should("be.visible");
     });
   });
 });
