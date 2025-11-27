@@ -214,7 +214,7 @@ function setupCollectionWithErrorById({
   error: string;
   status?: number;
 }) {
-  fetchMock.get(/api\/collection\/\d+|root/, {
+  fetchMock.get(/api\/collection\/\d+|root$/, {
     body: error,
     status,
   });

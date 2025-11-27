@@ -41,7 +41,10 @@ describe("library", () => {
       collectionItems: [LIBRARY_MODELS_COLELCTION, LIBRARY_METRICS_COLELCTION],
     });
 
-    setup({}, createMockTokenFeatures({ data_studio: true }));
+    setup(
+      {},
+      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+    );
 
     expect(await screen.findByText("metrics")).toBeInTheDocument();
     expect(await screen.findByText("data")).toBeInTheDocument();
@@ -60,7 +63,10 @@ describe("library", () => {
       ],
     });
 
-    setup({}, createMockTokenFeatures({ data_studio: true }));
+    setup(
+      {},
+      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+    );
 
     expect(await screen.findByText("data")).toBeInTheDocument();
     expect(screen.queryByText("metrics")).not.toBeInTheDocument();
@@ -75,7 +81,7 @@ describe("library", () => {
 
     setup(
       { shouldShowLibrary: false },
-      createMockTokenFeatures({ data_studio: true }),
+      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
     );
 
     expect(await screen.findByText("Mini Db")).toBeInTheDocument();

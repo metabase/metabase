@@ -1,5 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
@@ -32,7 +33,10 @@ const collectionItemModels = [
 
 export const setup = async (
   props: Partial<MiniPickerProps> = {},
-  tokenFeatures: TokenFeatures | null = null,
+  {
+    tokenFeatures = null,
+    hasAccessToRoot = true,
+  }: { tokenFeatures?: TokenFeatures | null; hasAccessToRoot?: boolean } = {},
 ) => {
   const onChangeSpy = jest.fn();
   const onCloseSpy = jest.fn();
@@ -111,6 +115,16 @@ export const setup = async (
     ],
   });
   setupDatabasesEndpoints([db, db2, db3]);
+
+  const ROOT_COLLECTION = createMockCollection({
+    id: "root",
+    name: "Our analytics",
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [ROOT_COLLECTION],
+    error: hasAccessToRoot ? undefined : "You can't do that Ryan",
+  });
 
   setupCollectionItemsEndpoint({
     collection: createMockCollection({ id: "root", name: "Our analytics" }),
