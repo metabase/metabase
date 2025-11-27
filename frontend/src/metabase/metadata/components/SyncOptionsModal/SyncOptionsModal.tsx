@@ -1,20 +1,23 @@
 import { t } from "ttag";
 
-import {
-  DiscardTableFieldValuesButton,
-  RescanTableFieldsButton,
-  SyncTableSchemaButton,
-} from "metabase/metadata/components";
 import { Modal, Stack, Text, rem } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
-interface Props {
+import { DiscardTableFieldValuesButton } from "../DiscardTableFieldValuesButton";
+import { RescanTableFieldsButton } from "../RescanTableFieldsButton";
+import { SyncTableSchemaButton } from "../SyncTableSchemaButton";
+
+type SyncOptionsModalProps = {
   isOpen: boolean;
   tableId: TableId;
   onClose: () => void;
-}
+};
 
-export const SyncOptionsModal = ({ isOpen, tableId, onClose }: Props) => {
+export const SyncOptionsModal = ({
+  isOpen,
+  tableId,
+  onClose,
+}: SyncOptionsModalProps) => {
   return (
     <Modal
       opened={isOpen}

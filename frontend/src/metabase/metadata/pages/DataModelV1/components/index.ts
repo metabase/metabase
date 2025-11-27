@@ -1,3 +1,2 @@
 export * from "../../shared/SegmentsLink";
-export * from "./SyncOptionsModal";
 export * from "./TablePicker";

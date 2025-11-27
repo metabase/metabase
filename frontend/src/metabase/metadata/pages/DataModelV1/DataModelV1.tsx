@@ -18,6 +18,7 @@ import {
   FieldSection,
   PreviewSection,
   type PreviewType,
+  SyncOptionsModal,
   TableSection,
 } from "../../components";
 import {
@@ -27,11 +28,7 @@ import {
 } from "../shared";
 
 import S from "./DataModel.module.css";
-import {
-  RouterTablePicker,
-  SegmentsLink,
-  SyncOptionsModal,
-} from "./components";
+import { RouterTablePicker, SegmentsLink } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, getUrl, parseRouteParams } from "./utils";
