@@ -5,7 +5,10 @@ import { mountSdkContent } from "./component-embedding-sdk-helpers";
 
 export function mountGuestEmbedQuestion(
   extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
-  { shouldAssertCardQuery }: { shouldAssertCardQuery?: boolean } = {
+  {
+    shouldAssertCardQuery,
+    locale,
+  }: { shouldAssertCardQuery?: boolean; locale?: string } = {
     shouldAssertCardQuery: true,
   },
 ) {
@@ -14,7 +17,7 @@ export function mountGuestEmbedQuestion(
   cy.intercept("GET", "/api/embed/pivot/card/*/query*").as("getCardPivotQuery");
 
   mountSdkContent(<StaticQuestion {...extraProps} />, {
-    sdkProviderProps: { isGuestEmbed: true },
+    sdkProviderProps: { isGuestEmbed: true, locale },
   });
 
   if (shouldAssertCardQuery) {

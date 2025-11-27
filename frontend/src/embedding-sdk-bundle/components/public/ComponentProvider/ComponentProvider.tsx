@@ -79,11 +79,11 @@ export const ComponentProviderInternal = ({
     isLocalHost,
   });
 
+  useInitPlugins();
+
   useEffect(() => {
     reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
   }, [reduxStore, isGuestEmbed]);
-
-  useInitPlugins();
 
   useEffect(() => {
     if (fontFamily) {

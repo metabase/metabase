@@ -1,5 +1,40 @@
 import type { JSX, ReactNode } from "react";
 
+/**
+ * @inline
+ */
+export type InitializationStatusUninitialized = {
+  status: "uninitialized";
+};
+
+/**
+ * @inline
+ */
+export type InitializationStatusSuccess = {
+  status: "success";
+};
+
+/**
+ * @inline
+ */
+export type InitializationStatusLoading = {
+  status: "loading";
+};
+
+/**
+ * @inline
+ */
+export type InitializationStatusError = {
+  status: "error";
+  error: Error;
+};
+
+export type InitializationStatus =
+  | InitializationStatusUninitialized
+  | InitializationStatusSuccess
+  | InitializationStatusLoading
+  | InitializationStatusError;
+
 export type { ButtonProps } from "metabase/ui";
 export type {
   ChartColor,

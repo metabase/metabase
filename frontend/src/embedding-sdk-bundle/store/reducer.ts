@@ -11,6 +11,7 @@ import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 import { initAuth, refreshTokenAsync } from "./auth";
+import { initGuestEmbed } from "./guest-embed";
 const SET_IS_GUEST_EMBED = "sdk/SET_IS_GUEST_EMBED";
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
@@ -60,7 +61,7 @@ const initialState: SdkState = {
     loading: false,
     error: null,
   },
-  loginStatus: { status: "uninitialized" },
+  initStatus: { status: "uninitialized" },
   error: null,
   plugins: null,
   eventHandlers: null,
@@ -85,20 +86,33 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(refreshTokenAsync.rejected, (state, action) => {
     const error = action.error as Error;
-    state.loginStatus = { status: "error", error };
+    state.initStatus = { status: "error", error };
   });
 
   builder.addCase(initAuth.pending, (state) => {
-    state.loginStatus = { status: "loading" };
+    state.initStatus = { status: "loading" };
   });
 
   builder.addCase(initAuth.fulfilled, (state) => {
-    state.loginStatus = { status: "success" };
+    state.initStatus = { status: "success" };
   });
 
   builder.addCase(initAuth.rejected, (state, action) => {
     const error = action.error as Error;
-    state.loginStatus = { status: "error", error };
+    state.initStatus = { status: "error", error };
+  });
+
+  builder.addCase(initGuestEmbed.pending, (state) => {
+    state.initStatus = { status: "loading" };
+  });
+
+  builder.addCase(initGuestEmbed.fulfilled, (state) => {
+    state.initStatus = { status: "success" };
+  });
+
+  builder.addCase(initGuestEmbed.rejected, (state, action) => {
+    const error = action.error as Error;
+    state.initStatus = { status: "error", error };
   });
 
   builder.addCase(setLoaderComponent, (state, action) => {

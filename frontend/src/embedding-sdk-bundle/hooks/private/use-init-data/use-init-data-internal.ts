@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { overrideRequestsForGuestEmbeds } from "embedding-sdk-bundle/lib/override-requests-for-guest-embeds";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
+import { initGuestEmbed } from "embedding-sdk-bundle/store/guest-embed";
 import {
   setFetchRefreshTokenFn,
   setMetabaseClientUrl,
@@ -18,7 +18,6 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -59,8 +58,8 @@ export const useInitDataInternal = ({
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
 
-  const isAuthUninitialized = () =>
-    reduxStore.getState().sdk.loginStatus.status === "uninitialized";
+  const isDataUninitialized = () =>
+    reduxStore.getState().sdk.initStatus.status === "uninitialized";
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
 
@@ -105,12 +104,13 @@ export const useInitDataInternal = ({
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
-    if (isGuestEmbed) {
-      overrideRequestsForGuestEmbeds();
-      dispatch(refreshSiteSettings());
+    if (!isDataUninitialized()) {
+      return;
     }
 
-    if (!isGuestEmbed && isAuthUninitialized()) {
+    if (isGuestEmbed) {
+      dispatch(initGuestEmbed({ isGuestEmbed }));
+    } else {
       dispatch(initAuth({ ...authConfig, isLocalHost }));
     }
   });
