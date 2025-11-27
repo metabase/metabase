@@ -316,7 +316,7 @@
                             nil
 
                             (let [curr-hash (get @database-id->jdbc-spec-hash database-id)]
-                              (when (and (not @has-override?)  (some? curr-hash) (not= curr-hash details-hash))
+                              (when (and (not has-override?) (some? curr-hash) (not= curr-hash details-hash))
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match

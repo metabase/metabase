@@ -868,7 +868,7 @@
        (.setAutoCommit conn false)
        (try
          (let [result (doall (for [[sql params] queries]
-                               (create-and-execute-statement! driver conn sql params)))]
+                               (create-and-execute-statement! driver conn #p sql params)))]
            (.commit conn)
            result)
          (catch Throwable t
