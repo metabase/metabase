@@ -420,10 +420,10 @@ LIMIT
         cy.findByLabelText("Table name").type(SOURCE_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
-        cy.findByText("A table with that name already exists.").should(
-          "be.visible",
-        );
       });
+      H.undoToast()
+        .findByText("A table with that name already exists.")
+        .should("be.visible");
     });
 
     it("should be able to create a new schema when saving a transform", () => {
@@ -1012,14 +1012,14 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.targetTab().click();
       getTransformsContent()
-        .findByText("Edit this table’s metadata")
+        .findByText("Edit this table's metadata")
         .should("not.exist");
 
       cy.log("after table creation");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().findByText("Edit this table’s metadata").click();
+      getTransformsContent().findByText("Edit this table's metadata").click();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
       cy.wait("@updateField");
