@@ -233,7 +233,8 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- AddEntities]
-  1)
+  (let [_ [id body]] ;; TODO stub
+    1))
 
 (api.macros/defendpoint :post "/:id/remove-entities"
   :- [:map [:success ms/BooleanValue]]
@@ -241,7 +242,8 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- RemoveEntities]
-  1)
+  (let [_ [id body]] ;; TODO stub
+    1))
 
 (api.macros/defendpoint :get "/mapping/transform/:id/downstream"
   :- [:map
