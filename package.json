@@ -384,7 +384,24 @@
       "unset-value": "2.0.1",
       "webpack-dev-middleware": "^5.3.4",
       "webpack-dev-server": "^5.2.1"
-    }
+    },
+    "ignoredBuiltDependencies": [
+      "aws-sdk",
+      "core-js",
+      "core-js-pure",
+      "deasync",
+      "lmdb",
+      "msgpackr-extract",
+      "msw",
+      "postinstall-postinstall",
+      "sharp"
+    ],
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@swc/core",
+      "cypress",
+      "esbuild"
+    ]
   },
   "scripts": {
     "mage": "./bin/mage",
