@@ -2,6 +2,7 @@ import type { DatetimeUnit } from "metabase-types/api/query";
 
 export const DEFAULT_TIME_STYLE = "h:mm A";
 export const DEFAULT_DATE_STYLE = "LL";
+export const DEFAULT_DATETIME_STYLE = `${DEFAULT_DATE_STYLE} ${DEFAULT_TIME_STYLE}`;
 
 const UNITS_WITH_HOUR = ["default", "minute", "hour", "hour-of-day"] as const;
 const UNITS_WITH_DAY = ["default", "minute", "hour", "day", "week"] as const;
