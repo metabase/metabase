@@ -3,7 +3,6 @@ import { useState } from "react";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createOrdersTable,
@@ -32,14 +31,11 @@ function TestComponent({
 
   return (
     <PreviewSection
-      databaseId={table.db_id}
       field={field}
-      fieldId={getRawTableFieldId(field)}
-      previewType={previewType}
       table={table}
-      tableId={field.table_id}
-      onClose={jest.fn()}
+      previewType={previewType}
       onPreviewTypeChange={handlePreviewTypeChange}
+      onClose={jest.fn()}
     />
   );
 }

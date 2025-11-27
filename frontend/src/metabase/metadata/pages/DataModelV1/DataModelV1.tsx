@@ -9,6 +9,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
@@ -27,7 +28,7 @@ import S from "./DataModel.module.css";
 import { RouterTablePicker, SegmentsLink } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
-import { getTableMetadataQuery, getUrl, parseRouteParams } from "./utils";
+import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
   children?: ReactNode;
@@ -154,7 +155,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                     fieldId={fieldId}
                     withName
                     getFieldHref={(fieldId) =>
-                      getUrl({ ...parsedParams, fieldId })
+                      Urls.dataModel({ ...parsedParams, fieldId })
                     }
                     onSyncOptionsClick={openSyncModal}
                   />
@@ -187,7 +188,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                       table={table}
                       parent={parentField}
                       getFieldHref={(fieldId) =>
-                        getUrl({ ...parsedParams, fieldId })
+                        Urls.dataModel({ ...parsedParams, fieldId })
                       }
                       onPreviewClick={togglePreview}
                       onFieldValuesClick={openFieldValuesModal}

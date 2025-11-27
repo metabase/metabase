@@ -1,5 +1,3 @@
-import { getUrl as getUrl_ } from "../../utils";
-
 import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
   DatabaseNode,
@@ -14,16 +12,6 @@ import type {
 
 export function hasChildren(type: ItemType): boolean {
   return type !== "table";
-}
-
-export function getUrl(value: TreePath) {
-  return getUrl_({
-    fieldId: undefined,
-    tableId: undefined,
-    databaseId: undefined,
-    schemaName: undefined,
-    ...value,
-  });
 }
 
 // Returns a new state object with all the nodes along the path expanded.
