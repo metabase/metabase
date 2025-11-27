@@ -26,6 +26,7 @@ export type Document = {
   public_uuid?: string | null;
   made_public_by_id?: UserId | null;
   cards?: Record<number, Card>; // Map of card ID -> card metadata, hydrated for public documents
+  view_count?: number;
 };
 
 export type GetDocumentRequest = { id: DocumentId };

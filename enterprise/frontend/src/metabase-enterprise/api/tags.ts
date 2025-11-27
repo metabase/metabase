@@ -15,6 +15,7 @@ import type {
   DependencyGraph,
   DependencyNode,
   DocumentDependencyNode,
+  GetUnreferencedItemsResponse,
   PythonLibrary,
   SandboxDependencyNode,
   SnippetDependencyNode,
@@ -25,6 +26,7 @@ import type {
   TransformJob,
   TransformRun,
   TransformTag,
+  UnreferencedItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -290,5 +292,83 @@ export function provideSupportAccessGrantListTags(
   return [
     listTag("support-access-grant"),
     ...grants.flatMap(provideSupportAccessGrantTags),
+  ];
+}
+
+function provideUnreferencedItemTags(
+  item: UnreferencedItem,
+): TagDescription<EnterpriseTagType>[] {
+  switch (item.type) {
+    case "card":
+      return [
+        idTag("card", item.id),
+        ...(item.data.creator != null
+          ? provideUserTags(item.data.creator)
+          : []),
+        ...(item.data["last-edit-info"] != null
+          ? provideUserTags(item.data["last-edit-info"])
+          : []),
+        ...(item.data.collection != null
+          ? provideCollectionTags(item.data.collection)
+          : []),
+        ...(item.data.dashboard != null
+          ? [idTag("dashboard", item.data.dashboard.id)]
+          : []),
+      ];
+    case "table":
+      return [
+        idTag("table", item.id),
+        ...(item.data.db != null ? provideDatabaseTags(item.data.db) : []),
+      ];
+    case "transform":
+      return [
+        idTag("transform", item.id),
+        ...(item.data.table != null ? provideTableTags(item.data.table) : []),
+      ];
+    case "snippet":
+      return [idTag("snippet", item.id)];
+    case "dashboard":
+      return [
+        idTag("dashboard", item.id),
+        ...(item.data.creator != null
+          ? provideUserTags(item.data.creator)
+          : []),
+        ...(item.data["last-edit-info"] != null
+          ? provideUserTags(item.data["last-edit-info"])
+          : []),
+        ...(item.data.collection != null
+          ? provideCollectionTags(item.data.collection)
+          : []),
+      ];
+    case "document":
+      return [
+        idTag("document", item.id),
+        ...(item.data.creator != null
+          ? provideUserTags(item.data.creator)
+          : []),
+        ...(item.data.collection != null
+          ? provideCollectionTags(item.data.collection)
+          : []),
+      ];
+    case "sandbox":
+      return [
+        idTag("sandbox", item.id),
+        ...(item.data.table != null ? provideTableTags(item.data.table) : []),
+      ];
+  }
+}
+
+export function provideUnreferencedItemsResponseTags(
+  response: GetUnreferencedItemsResponse,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("card"),
+    listTag("table"),
+    listTag("transform"),
+    listTag("snippet"),
+    listTag("dashboard"),
+    listTag("document"),
+    listTag("sandbox"),
+    ...response.data.flatMap(provideUnreferencedItemTags),
   ];
 }

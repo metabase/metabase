@@ -6,6 +6,8 @@ import type {
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
+  GetUnreferencedItemsRequest,
+  GetUnreferencedItemsResponse,
   ListNodeDependentsRequest,
 } from "metabase-types/api";
 
@@ -13,6 +15,7 @@ import { EnterpriseApi } from "./api";
 import {
   provideDependencyGraphTags,
   provideDependencyNodeListTags,
+  provideUnreferencedItemsResponseTags,
 } from "./tags";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
@@ -70,6 +73,18 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
+    getUnreferencedItems: builder.query<
+      GetUnreferencedItemsResponse,
+      GetUnreferencedItemsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/unreferenced-items",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideUnreferencedItemsResponseTags(response) : [],
+    }),
   }),
 });
 
@@ -79,4 +94,5 @@ export const {
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,
+  useGetUnreferencedItemsQuery,
 } = dependencyApi;

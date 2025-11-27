@@ -61,9 +61,8 @@ export type CardDependencyNodeData = Pick<
   | "created_at"
   | "last-edit-info"
   | "moderation_reviews"
-> & {
-  view_count?: number | null;
-};
+  | "view_count"
+>;
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
@@ -80,16 +79,18 @@ export type DashboardDependencyNodeData = Pick<
   | "collection_id"
   | "collection"
   | "moderation_reviews"
-> & {
-  view_count?: number | null;
-};
+  | "view_count"
+>;
 
 export type DocumentDependencyNodeData = Pick<
   Document,
-  "name" | "created_at" | "creator" | "collection_id" | "collection"
-> & {
-  view_count?: number | null;
-};
+  | "name"
+  | "created_at"
+  | "creator"
+  | "collection_id"
+  | "collection"
+  | "view_count"
+>;
 
 export type SandboxDependencyNodeData = {
   table_id: TableId;
@@ -179,3 +180,28 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
+
+export type UnreferencedItemCardType = "question" | "model" | "metric";
+export type UnreferencedItemSortColumn = "name" | "location" | "view_count";
+export type UnreferencedItemSortDirection = "asc" | "desc";
+
+export type UnreferencedItem = Omit<DependencyNode, "dependents_count">;
+
+export type GetUnreferencedItemsRequest = {
+  types?: DependencyType | DependencyType[];
+  card_types?: UnreferencedItemCardType | UnreferencedItemCardType[];
+  query?: string;
+  sort_column?: UnreferencedItemSortColumn;
+  sort_direction?: UnreferencedItemSortDirection;
+  limit?: number;
+  offset?: number;
+};
+
+export type GetUnreferencedItemsResponse = {
+  data: UnreferencedItem[];
+  limit: number;
+  offset: number;
+  total: number;
+  sort_column: UnreferencedItemSortColumn;
+  sort_direction: UnreferencedItemSortDirection;
+};
