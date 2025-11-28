@@ -225,7 +225,8 @@
          card-sandbox->query
          table-sandbox->query) metadata-providerable sandbox)
       (ensure-native-queries-have-metadata card-id)
-      (assoc-in [:middleware :disable-remaps?] true)
+      ;; Don't disable remaps here - FK remaps are needed for implicit joins in the outer query to work correctly.
+      ;; See #65726: Aggregating over an implicitly joined column with FK display value remapping breaks with RCLS.
       preprocess-query))
 
 (defn- project-only-columns-from-original-table
