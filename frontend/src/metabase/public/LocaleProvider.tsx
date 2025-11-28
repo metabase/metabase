@@ -64,9 +64,14 @@ export const LocaleProvider = ({
         isLocaleLoading,
       }}
     >
-      {/* The `DatesProvider` wrapping the app is not re-rendered when the locale changes
-      so we need to wrap the children in another `DatesProvider` to ensure the locale is updated */}
-      <DatesProvider>
+      {/*
+        The `DatesProvider` wrapping the app is not re-rendered when the locale
+        changes so we need to wrap the children in another `DatesProvider` to
+        ensure the locale is updated. key is passed as locale is loaded
+        asynchronously and we need to re-render the provider when locale is
+        loaded
+         */}
+      <DatesProvider key={contextLocale}>
         {/* note: we may show a loader here while loading, this would prevent race
         conditions and things being rendered for some time with the wrong locale
         downside is that it would make the initial load slower */}
