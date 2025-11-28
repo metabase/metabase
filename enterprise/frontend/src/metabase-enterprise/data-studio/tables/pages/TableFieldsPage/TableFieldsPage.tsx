@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
-import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -14,6 +13,7 @@ import {
   TableSection,
 } from "metabase/metadata/components";
 import { Box, Center, Flex, Stack } from "metabase/ui";
+import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { trackMetadataChange } from "../../analytics";
 import { TableHeader } from "../../components/TableHeader";
@@ -32,13 +32,7 @@ type TableFieldsPageProps = {
 export function TableFieldsPage({ params }: TableFieldsPageProps) {
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
-  const {
-    data: table,
-    isLoading,
-    error,
-  } = useGetTableQueryMetadataQuery(
-    tableId != null ? { id: tableId } : skipToken,
-  );
+  const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =

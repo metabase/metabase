@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Center, Flex } from "metabase/ui";
+import { useLoadTableWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-table-with-metadata";
 
 import { TableHeader } from "../../components/TableHeader";
 
@@ -22,13 +22,7 @@ export function TableDependenciesPage({
   children,
 }: TableDependenciesPageProps) {
   const tableId = Urls.extractEntityId(params.tableId);
-  const {
-    data: table,
-    isLoading,
-    error,
-  } = useGetTableQueryMetadataQuery(
-    tableId != null ? { id: tableId } : skipToken,
-  );
+  const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
 
   if (isLoading || error != null || table == null) {
     return (
