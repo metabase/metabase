@@ -4,10 +4,14 @@ import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
+import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -37,6 +41,7 @@ const DashboardActionMenuInner = ({
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
+  const dispatch = useDispatch();
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
@@ -47,6 +52,16 @@ const DashboardActionMenuInner = ({
     dashboard ?? undefined,
     refreshDashboard,
   );
+
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
+  const isDashboardSubscriptionSidebarOpen = useSelector(
+    getIsDashboardSubscriptionSidebarOpen,
+  );
+
+  const toggleSubscriptionSidebar = () =>
+    dispatch(
+      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
+    );
 
   // solely for the dependency list below, so we don't ever have an undefined
   const pathname = location?.pathname ?? "";
@@ -86,6 +101,16 @@ const DashboardActionMenuInner = ({
             onClick={onResetFilters}
           >
             {t`Reset all filters`}
+          </Menu.Item>
+        )}
+
+        {canManageSubscriptions && (
+          <Menu.Item
+            data-testid="dashboard-subscription-menu-item"
+            leftSection={<Icon name="subscription" />}
+            onClick={toggleSubscriptionSidebar}
+          >
+            {t`Subscriptions`}
           </Menu.Item>
         )}
 
