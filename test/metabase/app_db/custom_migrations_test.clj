@@ -25,7 +25,6 @@
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -2697,92 +2696,3 @@
           (migrate! :down 56)
           ;; assert pre conditions
           (assert-pre-conditions))))))
-
-(deftest delete-internal-user-most-recent-card-revisions-test
-  (testing "Migration v57.2025-11-28T00:00:00: delete most-recent Card revisions made by internal user"
-    (impl/test-migrations ["v57.2025-11-28T00:00:00"] [migrate!]
-      (let [regular-user-id (->> {:first_name "Regular"
-                                  :last_name "User"
-                                  :email "regular@example.com"
-                                  :password "superstrong"
-                                  :date_joined :%now}
-                                 (t2/insert-returning-pks! :core_user)
-                                 (first))
-            card-id (->> {:name "Test Card"
-                          :created_at :%now
-                          :updated_at :%now
-                          :creator_id regular-user-id
-                          :database_id 1
-                          :dataset_query "{}"
-                          :display "table"
-                          :visualization_settings "{}"}
-                         (t2/insert-returning-pks! :report_card)
-                         (first))
-            older-revision-id (->> {:model "Card"
-                                    :model_id card-id
-                                    :user_id regular-user-id
-                                    :object "{}"
-                                    :timestamp :%now
-                                    :most_recent false}
-                                   (t2/insert-returning-pks! :model/Revision)
-                                   (first))
-            bad-revision-id (->> {:model "Card"
-                                  :model_id card-id
-                                  :user_id config/internal-mb-user-id
-                                  :object "{}"
-                                  :timestamp :%now
-                                  :most_recent true}
-                                 (t2/insert-returning-pks! :model/Revision)
-                                 (first))]
-        (testing "before migration, bad revision exists and is most_recent"
-          (is (some? (t2/select-one :model/Revision :id bad-revision-id)))
-          (is (true? (:most_recent (t2/select-one :revision :id bad-revision-id))))
-          (is (false? (:most_recent (t2/select-one :revision :id older-revision-id)))))
-        (migrate!)
-        (testing "after migration, bad revision is deleted and older revision is promoted to most_recent"
-          (is (nil? (t2/select-one :revision :id bad-revision-id)))
-          (is (true? (:most_recent (t2/select-one :revision :id older-revision-id)))))))))
-
-(deftest delete-internal-user-card-update-audit-log-entries-test
-  (testing "Migration v57.2025-11-28T00:00:01: delete most-recent card-update audit log entries made by internal user"
-    (impl/test-migrations ["v57.2025-11-28T00:00:01"] [migrate!]
-      (let [regular-user-id (->> {:first_name "Regular"
-                                  :last_name "User"
-                                  :email "regular@example.com"
-                                  :password "superstrong"
-                                  :date_joined :%now}
-                                 (t2/insert-returning-pks! :core_user)
-                                 (first))
-            card-id (->> {:name "Test Card"
-                          :created_at :%now
-                          :updated_at :%now
-                          :creator_id regular-user-id
-                          :database_id 1
-                          :dataset_query "{}"
-                          :display "table"
-                          :visualization_settings "{}"}
-                         (t2/insert-returning-pks! :report_card)
-                         (first))
-            older-entry-id (->> {:topic "card-update"
-                                 :model "Card"
-                                 :model_id card-id
-                                 :user_id regular-user-id
-                                 :details "{}"
-                                 :timestamp :%now}
-                                (t2/insert-returning-pks! :model/AuditLog)
-                                (first))
-            bad-entry-id (->> {:topic "card-update"
-                               :model "Card"
-                               :model_id card-id
-                               :user_id config/internal-mb-user-id
-                               :details "{}"
-                               :timestamp :%now}
-                              (t2/insert-returning-pks! :model/AuditLog)
-                              (first))]
-        (testing "before migration, bad audit log entry exists"
-          (is (some? (t2/select-one :audit_log :id bad-entry-id)))
-          (is (some? (t2/select-one :audit_log :id older-entry-id))))
-        (migrate!)
-        (testing "after migration, bad audit log entry is deleted and older audit log entry is kept"
-          (is (nil? (t2/select-one :audit_log :id bad-entry-id)))
-          (is (some? (t2/select-one :audit_log :id older-entry-id))))))))

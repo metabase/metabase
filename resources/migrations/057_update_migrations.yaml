@@ -2604,24 +2604,6 @@ databaseChangeLog:
             path: instance_analytics_views/content/v5/h2-content.sql
             relativeToChangelogFile: true
 
-  - changeSet:
-      id: v57.2025-11-28T00:00:00
-      author: rileythompson
-      comment: Delete Card revisions mistakenly created by internal user during dependency backfill (issue 66365)
-      validCheckSum: ANY
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.DeleteInternalUserMostRecentCardRevisions"
-
-  - changeSet:
-      id: v57.2025-11-28T00:00:01
-      author: rileythompson
-      comment: Delete audit log entries for card-update events mistakenly created by internal user during dependency backfill (issue 66365)
-      validCheckSum: ANY
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.DeleteInternalUserCardUpdateAuditLogEntries"
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
