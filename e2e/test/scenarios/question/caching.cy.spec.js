@@ -64,6 +64,40 @@ describe("scenarios > question > caching", () => {
     });
   });
 
+  /**
+   * @note There is a similar test for closing the cache form when it's dirty
+   * It's in the Cypress describe block labeled "scenarios > dashboard > caching"
+   */
+  it("should guard closing caching form if it's dirty on different actions", () => {
+    interceptPerformanceRoutes();
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    openSidebarCacheStrategyForm("question");
+
+    cacheStrategySidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
+      durationRadioButton().click();
+    });
+    [
+      // clicking on cross button
+      () => cy.findByRole("button", { name: /Close/i }).click(),
+      // ESC button
+      () => cy.get("body").type("{esc}"),
+      // click outside
+      () => cy.findByTestId("modal-overlay").click({ force: true }),
+      // clicking on title with back icon on it
+      () => cy.findByRole("button", { name: /Caching settings/i }).click(),
+      // browser's back button
+      () => cy.go("back"),
+      // browser's forward button
+      () => cy.go("forward"),
+    ].forEach((action) => {
+      action();
+      cy.findByTestId("confirm-modal").should("be.visible");
+      cacheStrategySidesheet().should("be.visible");
+    });
+  });
+
   it("can click 'Clear cache' for a question", () => {
     interceptPerformanceRoutes();
     H.visitQuestion(ORDERS_QUESTION_ID);

@@ -1,13 +1,13 @@
+import { useMount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { useStackedModals } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { onCloseQuestionSettings } from "metabase/query_builder/actions";
-import { Stack } from "metabase/ui";
+import { Stack, useModalsStack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { ModelCacheManagementSection } from "../ModelCacheManagementSection";
@@ -31,24 +31,26 @@ export const QuestionSettingsSidebar = ({
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionSettings());
 
-  const { getModalProps, currentModal, close, open } = useStackedModals({
-    modals: ["default", "caching"],
-    defaultOpened: "default",
-    withOverlay: true,
-  });
+  const { open, state, close } = useModalsStack(["default", "caching"]);
 
-  const defaultModalProps = getModalProps("default");
-  const cachingModalProps = getModalProps("caching");
+  const currentModal: keyof typeof state = state.caching
+    ? "caching"
+    : "default";
+
+  useMount(() => {
+    // the modal is not rendered until it is "open"
+    // but we want to set it open after it mounts to get
+    // pretty animations
+    open("default");
+  });
 
   return (
     <>
       <Sidesheet
         title={getTitle(question)}
-        isOpen={defaultModalProps.isOpen}
+        isOpen={state.default}
         onClose={handleClose}
-        withOverlay={defaultModalProps.withOverlay}
-        overlayProps={defaultModalProps.overlayProps}
-        closeOnEscape={defaultModalProps.closeOnEscape}
+        closeOnEscape={currentModal === "default"}
         data-testid="question-settings-sidebar"
       >
         {question.type() === "model" && (
@@ -74,10 +76,9 @@ export const QuestionSettingsSidebar = ({
         <PLUGIN_CACHING.SidebarCacheForm
           item={question}
           model="question"
-          isOpen={cachingModalProps.isOpen}
+          isOpen={state.caching}
           onClose={handleClose}
-          withOverlay={cachingModalProps.withOverlay}
-          overlayProps={cachingModalProps.overlayProps}
+          overlayProps={{ bg: "transparent" }}
           onBack={() => close("caching")}
           pt="md"
         />

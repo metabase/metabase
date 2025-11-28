@@ -19,7 +19,7 @@ export const SidebarCacheForm = ({
   model,
   isOpen,
   onClose,
-  withOverlay,
+  withOverlay = true,
   overlayProps,
   onBack,
   ...stackProps

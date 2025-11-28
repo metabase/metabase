@@ -1,25 +1,31 @@
 import { useCallback } from "react";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { useStackedModals } from "metabase/common/hooks";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Switch } from "metabase/ui";
+import { Switch, useModalsStack } from "metabase/ui";
 import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 
 export function DashboardSettingsSidebar() {
   const { dashboard, closeSidebar } = useDashboardContext();
+  const { open, state, close } = useModalsStack(["default", "caching"]);
 
-  const { getModalProps, currentModal, close, open } = useStackedModals({
-    modals: ["default", "caching"],
-    defaultOpened: "default",
-    withOverlay: true,
+  const currentModal: keyof typeof state = state.caching
+    ? "caching"
+    : "default";
+
+  useMount(() => {
+    // the modal is not rendered until it is "open"
+    // but we want to set it open after it mounts to get
+    // pretty animations
+    open("default");
   });
 
   if (!dashboard) {
@@ -27,31 +33,24 @@ export function DashboardSettingsSidebar() {
   }
 
   if (currentModal === "caching") {
-    const { isOpen, withOverlay, overlayProps } = getModalProps("caching");
     return (
       <PLUGIN_CACHING.SidebarCacheForm
         item={dashboard as CacheableDashboard}
         model="dashboard"
-        isOpen={isOpen}
+        isOpen={state.caching}
         onClose={closeSidebar}
-        withOverlay={withOverlay}
-        overlayProps={overlayProps}
         onBack={() => close("caching")}
         pt="md"
       />
     );
   }
-  const { isOpen, closeOnEscape, withOverlay, overlayProps } =
-    getModalProps("default");
 
   return (
     <ErrorBoundary>
       <Sidesheet
-        isOpen={isOpen}
+        isOpen={state.default}
         onClose={closeSidebar}
-        withOverlay={withOverlay}
-        overlayProps={overlayProps}
-        closeOnEscape={closeOnEscape}
+        closeOnEscape={currentModal === "default"}
         title={t`Dashboard settings`}
         data-testid="dashboard-settings-sidebar"
       >
