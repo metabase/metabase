@@ -1,2 +1,2 @@
-export * from "../../shared/SegmentsLink";
+export * from "./SegmentsLink";
 export * from "./TablePicker";
