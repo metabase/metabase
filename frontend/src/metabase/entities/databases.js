@@ -111,7 +111,6 @@ const Databases = createEntity({
   objectSelectors: {
     getName: (db) => db && db.name,
     getUrl: (db) => db && Urls.browseDatabase(db),
-    getIcon: (db) => ({ name: "database" }),
     getColor: (db) => color("database"),
   },
 

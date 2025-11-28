@@ -22,7 +22,6 @@ const TEST_RESULT_QUESTION = createWrappedSearchResult({
   name: "My Item",
   model: "card",
   description: "My Item Description",
-  getIcon: () => ({ name: "table" }),
 });
 
 const TEST_RESULT_COLLECTION = createWrappedSearchResult({

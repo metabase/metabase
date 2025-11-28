@@ -8,7 +8,6 @@ import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import { PLUGIN_ENTITIES } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { BookmarkSchema } from "metabase/schema";
 
@@ -77,9 +76,6 @@ const Bookmarks = createEntity({
       }
     },
   },
-  objectSelectors: {
-    getIcon,
-  },
 
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object) {
@@ -144,40 +140,6 @@ const Bookmarks = createEntity({
     return state;
   },
 });
-
-function getEntityFor(type) {
-  const entities = {
-    card: Questions,
-    collection: Collections,
-    dashboard: Dashboards,
-    document: PLUGIN_ENTITIES.entities["documents"],
-    transform: PLUGIN_ENTITIES.entities["transforms"],
-  };
-
-  return entities[type];
-}
-
-function getIcon(bookmark) {
-  const bookmarkEntity = getEntityFor(bookmark.type);
-
-  if (bookmarkEntity.name === "questions") {
-    return bookmarkEntity.objectSelectors.getIcon({
-      ...bookmark,
-      /**
-       * Questions.objectSelectors.getIcon works with Card instances.
-       * In order to reuse it we need to map Bookmark["card_type"] to Card["type"]
-       * because Bookmark["type"] is something else.
-       */
-      type: bookmark.type === "card" ? bookmark.card_type : bookmark.type,
-    });
-  }
-
-  return bookmarkEntity.objectSelectors.getIcon(bookmark);
-}
-
-export function isModelBookmark(bookmark) {
-  return bookmark.type === "card" && bookmark.card_type === "model";
-}
 
 export const getOrderedBookmarks = createSelector(
   [Bookmarks.selectors.getList],
