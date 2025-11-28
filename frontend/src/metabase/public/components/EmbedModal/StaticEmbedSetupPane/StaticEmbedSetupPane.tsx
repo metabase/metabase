@@ -34,7 +34,7 @@ import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { getDefaultDisplayOptions } from "./config";
 import { getDefaultEmbeddingParams } from "./lib/get-default-embedding-params";
-import { getHasSettingsChanges } from "./lib/get-has-settings-changes";
+import { getHasParamsChanged } from "./lib/get-has-params-changed";
 import { getLockedPreviewParameters } from "./lib/get-locked-preview-parameters";
 import { EMBED_MODAL_TABS } from "./tabs";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
@@ -63,7 +63,6 @@ export const StaticEmbedSetupPane = ({
   const initialEmbeddingParams = getDefaultEmbeddingParams(
     resource,
     resourceParameters,
-    { getAllParams: true },
   );
   const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
     initialEmbeddingParams,
@@ -114,7 +113,7 @@ export const StaticEmbedSetupPane = ({
     ({ id }) => id === selectedServerCodeOptionId,
   );
 
-  const hasSettingsChanges = getHasSettingsChanges({
+  const hasParamsChanged = getHasParamsChanged({
     initialEmbeddingParams,
     embeddingParams,
   });
@@ -153,7 +152,6 @@ export const StaticEmbedSetupPane = ({
       embeddingParams,
       setEmbeddingParams,
       exampleDashboardId,
-      getAllParamsOnDiscard: false,
     });
 
   const getServerEmbedCodePane = (variant: EmbedCodePaneVariant) => {
@@ -221,7 +219,7 @@ export const StaticEmbedSetupPane = ({
         <EmbedModalContentStatusBar
           resourceType={resourceType}
           isPublished={resource.enable_embedding}
-          hasSettingsChanges={hasSettingsChanges}
+          hasSettingsChanges={hasParamsChanged}
           onSave={handleSave}
           onUnpublish={handleUnpublish}
           onDiscard={handleDiscard}

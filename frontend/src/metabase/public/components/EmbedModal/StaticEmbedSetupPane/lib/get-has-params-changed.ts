@@ -14,7 +14,7 @@ function getNonDisabledEmbeddingParams(
   }, {} as EmbeddingParameters);
 }
 
-export function getHasSettingsChanges({
+export function getHasParamsChanged({
   initialEmbeddingParams,
   embeddingParams,
 }: {

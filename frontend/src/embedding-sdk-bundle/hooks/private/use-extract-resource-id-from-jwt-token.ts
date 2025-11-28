@@ -2,36 +2,36 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { SdkEntityToken } from "embedding-sdk-bundle/types";
-import { extractEntityIdFromJwtToken, isJWT } from "metabase/lib/utils";
+import { extractResourceIdFromJwtToken, isJWT } from "metabase/lib/utils";
 
-export const useExtractEntityIdFromJwtToken = <TEntityId>({
+export const useExtractResourceIdFromJwtToken = <TEntityId>({
   isGuestEmbed,
-  entityId,
+  resourceId,
   token,
 }: {
   isGuestEmbed: boolean;
-  entityId: TEntityId | undefined;
+  resourceId: TEntityId | undefined;
   token: SdkEntityToken | undefined;
 }): {
-  entityId: TEntityId | null;
+  resourceId: TEntityId | null;
   token: SdkEntityToken | null;
   tokenError?: string;
 } => {
   return useMemo<{
-    entityId: TEntityId | null;
+    resourceId: TEntityId | null;
     token: SdkEntityToken | null;
   }>(() => {
-    if (isJWT(entityId)) {
+    if (isJWT(resourceId)) {
       return {
-        entityId: null,
+        resourceId: null,
         token: null,
         tokenError: t`JWT tokens cannot be passed as id. Use the token prop instead.`,
       };
     }
 
-    if (isGuestEmbed && entityId) {
+    if (isGuestEmbed && resourceId) {
       return {
-        entityId: null,
+        resourceId: null,
         token: null,
         tokenError: t`A valid JWT token is required to be passed in guest embeds mode.`,
       };
@@ -40,7 +40,7 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
     if (token) {
       if (!isGuestEmbed) {
         return {
-          entityId: null,
+          resourceId: null,
           token: null,
           tokenError: t`Passing a token is only allowed for guest embeds mode.`,
         };
@@ -48,25 +48,25 @@ export const useExtractEntityIdFromJwtToken = <TEntityId>({
 
       if (!isJWT(token)) {
         return {
-          entityId: null,
+          resourceId: null,
           token: null,
           tokenError: t`Passed token is not a valid JWT token.`,
         };
       }
 
-      return { entityId: extractEntityIdFromJwtToken(token), token };
+      return { resourceId: extractResourceIdFromJwtToken(token), token };
     }
 
-    if (entityId) {
+    if (resourceId) {
       return {
-        entityId,
+        resourceId,
         token: null,
       };
     }
 
     return {
-      entityId: null,
+      resourceId: null,
       token: null,
     };
-  }, [entityId, isGuestEmbed, token]);
+  }, [resourceId, isGuestEmbed, token]);
 };

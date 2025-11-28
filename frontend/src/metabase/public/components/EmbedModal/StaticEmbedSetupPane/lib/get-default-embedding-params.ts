@@ -9,7 +9,6 @@ import type {
 export function getDefaultEmbeddingParams(
   resource: EmbedResource,
   resourceParameters: EmbedResourceParameter[],
-  { getAllParams }: { getAllParams: boolean },
 ): EmbeddingParameters {
   const validSlugs = resourceParameters.map((param) => param.slug);
   const validSlugsAsDisabledParams = validSlugs.reduce((acc, slug) => {
@@ -19,7 +18,7 @@ export function getDefaultEmbeddingParams(
   }, {} as EmbeddingParameters);
 
   const resourceEmbeddingParams = {
-    ...(getAllParams && validSlugsAsDisabledParams),
+    ...validSlugsAsDisabledParams,
     ...(resource.embedding_params || {}),
   };
   // We first pick only dashboard parameters with valid slugs

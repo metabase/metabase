@@ -122,6 +122,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assert.deepEqual(request.body.embedding_params, {
           id: "locked",
           name: "enabled",
+          source: "disabled",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -174,6 +177,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assert.deepEqual(request.body.embedding_params, {
           name: "disabled",
           id: "disabled",
+          source: "disabled",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -261,7 +267,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       // "enabled" must be set by default for required params.
       H.publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
           name: "enabled",
+          source: "disabled",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -291,8 +301,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.setEmbeddingParameter("Source", "Locked");
       H.publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
           name: "enabled",
           source: "locked",
+          user_id: "disabled",
+          not_used: "disabled",
         });
       });
 
@@ -668,8 +681,11 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     H.setEmbeddingParameter("Source", "Locked");
     H.publishChanges("dashboard", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
+        id: "disabled",
         source: "locked",
         name: "enabled",
+        user_id: "disabled",
+        not_used: "disabled",
       });
     });
 
