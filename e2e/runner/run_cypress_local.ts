@@ -18,7 +18,6 @@ const options = {
   BACKEND_PORT: BACKEND_PORT, // override with MB_JETTY_PORT in your env
   OPEN_UI: true,
   GENERATE_SNAPSHOTS: true,
-  TZ: "UTC",
   ...booleanify(process.env),
 };
 
@@ -44,7 +43,6 @@ printBold(`Running Cypress with options:
   - BUILD_BACKEND        : ${options.BUILD_BACKEND}
   - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
   - OPEN_UI              : ${options.OPEN_UI}
-  - TZ                   : ${options.TZ}
 `);
 
 const init = async () => {
