@@ -4,7 +4,6 @@ import {
   createQuestionAndDashboard,
   getSignedJwtForResource,
 } from "e2e/support/helpers";
-import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   mountGuestEmbedDashboard,
@@ -17,11 +16,11 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 1000;
 
-describe("scenarios > embedding-sdk > guest-embed-happy-path-ee", () => {
+describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
   describe("question", () => {
     const setup = ({ display }: { display?: Card["display"] } = {}) => {
       signInAsAdminAndSetupGuestEmbedding({
-        token: "pro-cloud",
+        token: "starter",
       });
 
       createQuestion({
@@ -70,46 +69,36 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path-ee", () => {
       });
     });
 
-    describe("content translation", () => {
-      it("should show question content with applied content translation", () => {
-        setup();
+    it("should show content of a question with `pivot table` type for unauthorized user", () => {
+      setup({ display: "pivot" });
 
-        cy.signInAsAdmin();
+      cy.intercept("/api/card/pivot/*/query*").as("internalApiRequest");
 
-        uploadTranslationDictionaryViaAPI([
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+        });
+
+        mountGuestEmbedQuestion(
+          { token },
           {
-            locale: "de",
-            msgid: "Question for Guest Embed SDK",
-            msgstr: "Override title für Deutsch",
+            shouldAssertCardQuery: false,
           },
-          {
-            locale: "de",
-            msgid: "Product ID",
-            msgstr: "Override Product ID für Deutsch",
-          },
-        ]);
+        );
 
-        cy.signOut();
+        cy.wait("@getCardPivotQuery");
 
-        cy.get("@questionId").then(async (questionId) => {
-          const token = await getSignedJwtForResource({
-            resourceId: questionId as unknown as number,
-            resourceType: "question",
-          });
+        getSdkRoot().within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByText("Max of Quantity").should("be.visible");
+        });
 
-          mountGuestEmbedQuestion(
-            { token, title: true },
-            {
-              locale: "de",
-            },
-          );
+        // Wait for requests
+        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
 
-          getSdkRoot().within(() => {
-            cy.findByText("Override title für Deutsch").should("be.visible");
-            cy.findByText("Override Product ID für Deutsch").should(
-              "be.visible",
-            );
-          });
+        cy.get("@internalApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length(0);
         });
       });
     });
@@ -163,6 +152,33 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path-ee", () => {
         getSdkRoot().within(() => {
           cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
           cy.findByText("Sample Question").should("be.visible");
+        });
+
+        // Wait for requests
+        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
+
+        cy.get("@internalApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length(0);
+        });
+      });
+    });
+
+    it("should show dashboard content with a pivot card for unauthorized user", () => {
+      cy.intercept("/api/user/*").as("internalApiRequest");
+      cy.intercept("/api/dashboard/*").as("internalApiRequest");
+
+      setup({ display: "pivot" });
+
+      cy.get("@dashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+        });
+
+        mountGuestEmbedDashboard({ token });
+
+        getSdkRoot().within(() => {
+          cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
         });
 
         // Wait for requests
