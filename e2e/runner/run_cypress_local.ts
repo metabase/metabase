@@ -19,7 +19,6 @@ const options = {
   OPEN_UI: true,
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
-  QA_DB_ENABLED: true,
   TZ: "UTC",
   ...booleanify(process.env),
 };
@@ -93,7 +92,12 @@ const init = async () => {
 
     printBold("⏳ Generating app db snapshots");
     process.env.OPEN_UI = "false";
-    await runCypress({ configFile: "e2e/support/cypress-snapshots.config.js" });
+    await runCypress({
+      configFile: "e2e/support/cypress-snapshots.config.js",
+      ...(options.CYPRESS_TESTING_TYPE === "component" && {
+        env: { grepTags: "-@external" }, // component tests do not need QA DB snapshots for now
+      }),
+    });
     process.env.OPEN_UI = `${options.OPEN_UI}`;
   } else {
     printBold("Skipping snapshot generation, beware of stale snapshot caches");

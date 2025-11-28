@@ -62,7 +62,10 @@ jobs:
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        # Component tests do not need QA database snapshots so we skip them by ommitting the @external tag
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+           --env grepTags="-@external"
 
       # Has to be run after the app db snapshot is made, as it is not compatible with React 19
       - name: Change React version to ${{ matrix.react-version }}
