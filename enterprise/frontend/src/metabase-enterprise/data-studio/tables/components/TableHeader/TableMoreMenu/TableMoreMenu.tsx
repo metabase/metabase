@@ -1,3 +1,4 @@
+import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -14,7 +15,7 @@ type TableMoreMenuProps = {
 export function TableMoreMenu({ table }: TableMoreMenuProps) {
   const dispatch = useDispatch();
   const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables({
-    onUnpublish: () => dispatch(Urls.dataStudioModeling()),
+    onUnpublish: () => dispatch(push(Urls.dataStudioModeling())),
   });
 
   return (
