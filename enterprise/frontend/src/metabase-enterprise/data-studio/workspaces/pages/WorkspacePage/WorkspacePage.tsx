@@ -22,7 +22,7 @@ import type { DraftTransformSource } from "metabase-types/api";
 
 import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
-import { TransformEditor } from "./TransformEditor";
+import { TransformTab } from "./TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
   WorkspaceProvider,
@@ -35,6 +35,7 @@ type WorkspacePageProps = {
     workspaceId: string;
   };
 };
+
 function WorkspacePageContent({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
@@ -230,7 +231,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     {t`Select a transform on the right.`}
                   </Text>
                 ) : (
-                  <TransformEditor
+                  <TransformTab
                     source={activeTransform.source as DraftTransformSource}
                   />
                 )}
