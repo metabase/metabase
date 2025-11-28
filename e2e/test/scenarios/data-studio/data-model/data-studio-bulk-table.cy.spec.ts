@@ -40,6 +40,9 @@ describe("bulk table operations", () => {
     cy.intercept("POST", "/api/ee/data-studio/table/publish-table").as(
       "publishTables",
     );
+    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-table").as(
+      "unpublishTables",
+    );
   });
 
   it("syncing multiple tables", { tags: ["@external"] }, () => {
@@ -97,25 +100,48 @@ describe("bulk table operations", () => {
     });
   });
 
-  it("allows publishing multiple tables", { tags: ["@external"] }, () => {
-    H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
-    cy.signInAsAdmin();
-    H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
-    TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
-    TablePicker.getTable("Products").find('input[type="checkbox"]').check();
-    cy.findByRole("button", { name: /Publish/ }).click();
-    H.modal().button("Create my Library and publish").click();
-    cy.wait("@publishTables");
-    H.undoToast().within(() => {
-      cy.findByText("Published").should("be.visible");
-      cy.findByRole("button", { name: /Go to Data/ }).click();
-    });
+  it(
+    "allows publishing and unpublishing multiple tables",
+    { tags: ["@external"] },
+    () => {
+      H.restore("postgres-writable");
+      H.activateToken("bleeding-edge");
+      cy.signInAsAdmin();
+      H.DataModel.visitDataStudio();
 
-    H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
-    H.DataStudio.Modeling.tableItem("Products").should("be.visible");
-  });
+      cy.log("select multiple tables");
+      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getTable("Orders").findByRole("checkbox").check();
+      TablePicker.getTable("Products").findByRole("checkbox").check();
+      TablePicker.getTable("Reviews").findByRole("checkbox").check();
+
+      cy.log("publish the tables and verify they are published");
+      cy.findByRole("button", { name: /Publish/ }).click();
+      H.modal().button("Create my Library and publish").click();
+      cy.wait("@publishTables");
+      H.undoToast().within(() => {
+        cy.findByText("Published").should("be.visible");
+        cy.findByRole("button", { name: /Go to Data/ }).click();
+      });
+      H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
+      H.DataStudio.Modeling.tableItem("Products").should("be.visible");
+      cy.go("back");
+
+      cy.log("unpublish some tables and verify they are unpublished");
+      TablePicker.getTable("Orders").findByRole("checkbox").check();
+      TablePicker.getTable("Products").findByRole("checkbox").check();
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().button("Unpublish").click();
+      cy.wait("@unpublishTables");
+      H.DataStudio.nav().findByLabelText("Modeling").click();
+      H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
+      H.DataStudio.Modeling.collectionPage().within(() => {
+        cy.findByText("Reviews").should("be.visible");
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Products").should("not.exist");
+      });
+    },
+  );
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");

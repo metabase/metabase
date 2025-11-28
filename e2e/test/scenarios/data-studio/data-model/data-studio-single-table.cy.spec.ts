@@ -55,7 +55,9 @@ describe("Table editing", () => {
       cy.findByLabelText("Dependencies").should("have.text", "0");
       cy.findByLabelText("Dependents").should("have.text", "0");
 
-      cy.findByRole("link", { name: "Dependency graph" }).click();
+      H.DataModel.TableSection.get()
+        .findByRole("link", { name: "Dependency graph" })
+        .click();
       cy.findByRole("heading", { name: "Dependency graph" }).should(
         "be.visible",
       );
@@ -72,12 +74,10 @@ describe("Table editing", () => {
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
-      cy.log("publish the table");
+      cy.log("publish the table and verify it's published");
       cy.findByRole("button", { name: /Publish/ }).click();
       H.modal().button("Create my Library and publish").click();
       cy.wait("@publishTables");
-
-      cy.log("verify it's published");
       H.undoToast().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
@@ -85,12 +85,10 @@ describe("Table editing", () => {
       H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
       cy.go("back");
 
-      cy.log("unpublish the table");
+      cy.log("unpublish the table and verify it's unpublished");
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().button("Unpublish").click();
       cy.wait("@unpublishTables");
-
-      cy.log("verify it's unpublished");
       H.DataStudio.nav().findByLabelText("Modeling").click();
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
       H.DataStudio.Modeling.collectionPage()
