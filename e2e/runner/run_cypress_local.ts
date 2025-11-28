@@ -14,7 +14,7 @@ import {
 const options = {
   CYPRESS_TESTING_TYPE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  BUILD_BACKEND: false,
+  BUILD_BACKEND: true,
   BACKEND_PORT: BACKEND_PORT, // override with MB_JETTY_PORT in your env
   OPEN_UI: true,
   GENERATE_SNAPSHOTS: true,
