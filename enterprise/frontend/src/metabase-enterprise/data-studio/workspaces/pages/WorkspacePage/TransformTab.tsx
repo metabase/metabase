@@ -30,7 +30,7 @@ export const TransformTab = ({ isSaved, transform, workspaceId }: Props) => {
   };
 
   return (
-    <Stack gap={0}>
+    <Stack gap={0} h="100%">
       <Group
         flex="0 0 auto"
         justify="space-between"
