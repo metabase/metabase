@@ -14,11 +14,11 @@ const UPSELL_CARD_WIDTH = 252;
 export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
   mode,
   children,
-  shouldWrap,
+  enableTooltip,
 }: {
   mode?: TooltipWarningMode;
   children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
-  shouldWrap: boolean;
+  enableTooltip: boolean;
 }) => {
   const { settings } = useSdkIframeEmbedSetupContext();
 
@@ -31,7 +31,7 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
   return (
     <TooltipWarning
       mode={mode}
-      shouldWrap={shouldWrap}
+      enableTooltip={enableTooltip}
       icon={<UpsellGem />}
       warning={
         <UpsellCard

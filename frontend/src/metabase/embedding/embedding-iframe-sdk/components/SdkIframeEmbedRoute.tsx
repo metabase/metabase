@@ -175,7 +175,7 @@ const SdkIframeEmbedView = ({
         },
       )
       .with(
-        // Embedding based on a questionId (Metabase Account auth type) with default/enabled drills
+        // Embedding based on a dashboardId (Metabase Account auth type) with default/enabled drills
         {
           componentName: "metabase-dashboard",
           dashboardId: P.nonNullable,

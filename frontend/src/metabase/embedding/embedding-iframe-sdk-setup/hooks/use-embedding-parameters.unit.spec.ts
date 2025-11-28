@@ -539,11 +539,9 @@ describe("useEmbeddingParameters", () => {
       rerender({ resource: mockCard });
 
       expect(result.current.initialEmbeddingParameters).toBeTruthy();
-      expect(mockGetDefaultEmbeddingParams).toHaveBeenCalledWith(
-        mockCard,
-        [mockParameter1],
-        { getAllParams: true },
-      );
+      expect(mockGetDefaultEmbeddingParams).toHaveBeenCalledWith(mockCard, [
+        mockParameter1,
+      ]);
     });
 
     it("should reinitialize embedding parameters when resource id changes for guest embeds", () => {
