@@ -81,5 +81,7 @@ export async function setup({
     );
   });
 
-  await screen.findByText("SDK for React");
+  if (hasEnterprisePlugins) {
+    await screen.findByText("SDK for React");
+  }
 }
