@@ -1944,7 +1944,7 @@
        :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
        :model/Table      {table-4 :id}     {:name "Root Published Table" :is_published true :collection_id nil}]
       (testing "Global search"
-        (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Table")]
+        (let [results (mt/user-http-request :crowberto :get 200 "search")]
           (is (=? [{:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
                     :database_id (mt/id)
                     :id table-1
@@ -1959,14 +1959,13 @@
                     :name "Child Published Table"
                     :table_id table-2
                     :table_name "Child Published Table"}
-                   {#_#_:collection nil
-                    :database_id (mt/id)
+                   {:database_id (mt/id)
                     :id table-3
                     :model "table"
                     :name "Unpublished Table"
                     :table_id table-3
                     :table_name "Unpublished Table"}
-                   {#_#_:collection {:authority_level nil, :id "root", :name "Our analytics", :type nil}
+                   {:collection {:authority_level nil, :id "root", :name "Our analytics", :type nil}
                     :database_id (mt/id)
                     :id table-4
                     :model "table"
