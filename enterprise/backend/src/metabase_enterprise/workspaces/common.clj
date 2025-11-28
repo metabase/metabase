@@ -103,9 +103,16 @@
                             (throw e))))]
       (if (:retry result)
         (recur (inc attempt))
-        (let [workspace (:workspace result)]
-          (ws.isolation/ensure-database-isolation! workspace database)
-          (let [graph (ws.mirroring/mirror-entities! workspace database graph)]
+        (let [workspace (:workspace result)
+              schema+details (ws.isolation/ensure-database-isolation! workspace database)
+              workspace      (merge workspace schema+details)]
+          (let [graph        (ws.mirroring/mirror-entities! workspace database graph)
+                input-tables (when-let [table-ids (->> (:inputs graph)
+                                                       (filter #(= :table (:type %)))
+                                                       (map :id)
+                                                       seq)]
+                               (t2/select :model/Table :id [:in table-ids]))]
+            (ws.isolation/grant-read-access-to-tables! database workspace input-tables)
             (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
             (assoc workspace :graph graph)))))))
 
