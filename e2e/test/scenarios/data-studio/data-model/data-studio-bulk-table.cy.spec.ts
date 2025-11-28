@@ -49,14 +49,14 @@ describe("bulk table operations", () => {
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
       const tables = response?.body ?? [];
-      const accountTableId = getTableId(tables, "Accounts");
-      const feedbackTableId = getTableId(tables, "Feedback");
+      const accountTableId = getTableId(tables, "Orders");
+      const feedbackTableId = getTableId(tables, "Products");
 
       cy.wrap([accountTableId, feedbackTableId]).as("tableIds");
     });
 
-    TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
-    TablePicker.getTable("Feedback").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Products").find('input[type="checkbox"]').check();
     cy.findByRole("heading", { name: /2 tables selected/ });
 
     cy.findByRole("button", { name: /Sync settings/ }).click();
@@ -123,8 +123,8 @@ describe("bulk table operations", () => {
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
-    TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
-    TablePicker.getTable("Feedback").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
+    TablePicker.getTable("Products").find('input[type="checkbox"]').check();
 
     H.selectHasValue("Owner", "").click();
     H.selectDropdown().contains("Bobby Tables").click();
@@ -138,10 +138,10 @@ describe("bulk table operations", () => {
     H.selectHasValue("Source", "").click();
     H.selectDropdown().contains("Ingested").click();
     H.undoToastList().should("have.length", 4);
-    TablePicker.getTable("Accounts")
+    TablePicker.getTable("Orders")
       .findByTestId("table-owner")
       .should("have.text", "Bobby Tables");
-    TablePicker.getTable("Feedback")
+    TablePicker.getTable("Products")
       .findByTestId("table-owner")
       .should("have.text", "Bobby Tables");
   });
