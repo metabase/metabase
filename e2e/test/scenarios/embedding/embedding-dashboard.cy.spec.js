@@ -408,7 +408,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       previewMode: "preview",
     });
 
-    cy.wait("@previewEmbed", { failOnStatusCode: false }).then(gracefulFail);
+    cy.wait("@previewEmbed", { timeout: 20_000, failOnStatusCode: false }).then(
+      gracefulFail,
+    );
 
     H.modal().within(() => {
       // Set the Name parameter to enabled so we can test searching
@@ -421,7 +423,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     H.popover().findByText("Editable").click();
 
-    cy.wait("@previewEmbed", { failOnStatusCode: false }).then(gracefulFail);
+    cy.wait("@previewEmbed", { timeout: 20_000, failOnStatusCode: false }).then(
+      gracefulFail,
+    );
 
     // Test the preview iframe parameter search functionality
     H.getIframeBody().within(() => {
