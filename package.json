@@ -385,7 +385,9 @@
       "webpack-dev-middleware": "^5.3.4",
       "webpack-dev-server": "^5.2.1",
       "html2canvas-pro": "1.5.0",
-      "kbar": "0.1.0-beta.45"
+      "kbar": "0.1.0-beta.45",
+      "@swc/core": "1.13.5",
+      "@swc/plugin-emotion": "11.1.0"
     },
     "ignoredBuiltDependencies": [
       "aws-sdk",
