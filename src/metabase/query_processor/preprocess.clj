@@ -87,6 +87,8 @@
    #'desugar/desugar
    #'qp.add-default-temporal-unit/add-default-temporal-unit
    #'qp.add-implicit-joins/add-implicit-joins
+   ;; this needs to get called twice because add-implicit-joins can add a join with a source-card
+   #'fetch-source-query/resolve-source-cards
    #'resolve-joins/resolve-joins
    #'fix-bad-field-id-refs/fix-bad-field-id-refs
    #'qp.remove-inactive-field-refs/remove-inactive-field-refs

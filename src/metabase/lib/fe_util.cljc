@@ -823,11 +823,15 @@
 (defn- query-dependents-foreign-keys
   [metadata-providerable columns]
   (for [column columns
-        :let [fk-target-field-id (:fk-target-field-id column)]
-        :when (and fk-target-field-id (lib.types.isa/foreign-key? column))]
-    (if-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
-      {:type :table, :id (:table-id fk-target-field)}
-      {:type :field, :id fk-target-field-id})))
+        :let [fk-target-field-id (:fk-target-field-id column)
+              fk-target-card-id (:fk-target-card-id column)]
+        :when (and (or fk-target-field-id fk-target-card-id)
+                   (lib.types.isa/foreign-key? column))]
+    (if fk-target-card-id
+      {:type :card, :id fk-target-card-id}
+      (if-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
+        {:type :table, :id (:table-id fk-target-field)}
+        {:type :field, :id fk-target-field-id}))))
 
 (defn- query-dependents
   [metadata-providerable query-or-join]

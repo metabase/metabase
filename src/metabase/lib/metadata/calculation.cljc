@@ -692,29 +692,39 @@
         existing-table-ids (into #{} (comp (remove (comp remap-target-ids :id))
                                            (map :table-id))
                                  cols)
-        fk-fields (into [] (filter (every-pred :fk-target-field-id (comp number? :id))) cols)
+        fk-fields (into []
+                        (filter #(or (:fk-target-field-id %)
+                                     (:fk-target-column-name %)))
+                        cols)
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
         target-fields (into []
                             (comp (map (fn [{source-field-id :id
-                                             :keys [fk-target-field-id]
+                                             :keys [fk-target-field-id fk-target-column-name fk-target-card-id]
                                              :as   source}]
-                                         (-> (id->target-fields fk-target-field-id)
-                                             (assoc ::fk-field-id   source-field-id
-                                                    ::fk-field-name (lib.field.util/inherited-column-name source)
-                                                    ::fk-join-alias (:metabase.lib.join/join-alias source)))))
-                                  (remove #(contains? existing-table-ids (:table-id %))))
+                                         {::table-id (when fk-target-field-id
+                                                       (:table-id (id->target-fields fk-target-field-id)))
+                                          ::card-id fk-target-card-id
+                                          ::fk-field-id   source-field-id
+                                          ::fk-field-name (lib.field.util/inherited-column-name source)
+                                          ::fk-join-alias (:metabase.lib.join/join-alias source)
+                                          ::fk-card-id (:lib/card-id source)}))
+                                  (remove #(contains? existing-table-ids (::table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
-                                   query :metadata/table (into #{} (map :table-id) target-fields)))]
+                                   query :metadata/table (into #{} (keep ::table-id) target-fields)))
+        id->card (m/index-by :id (lib.metadata/bulk-metadata
+                                  query :metadata/card (into #{} (keep ::card-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias]}]
-                    (let [table (id->table table-id)]
+          (mapcat (fn [{::keys [table-id card-id fk-field-id fk-field-name fk-join-alias fk-card-id]}]
+                    (let [table (or (id->table table-id)
+                                    (id->card card-id))]
                       (for [field (returned-columns query stage-number table)]
                         (m/assoc-some field
                                       :fk-field-id              fk-field-id
                                       :fk-field-name            fk-field-name
                                       :fk-join-alias            fk-join-alias
+                                      :fk-card-id               fk-card-id
                                       :lib/source               :source/implicitly-joinable
                                       :lib/source-column-alias  (:name field))))))
           target-fields)))

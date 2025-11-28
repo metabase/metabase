@@ -114,7 +114,8 @@
                              (m/find-first #(and (= (:id %) fk-field-id)
                                                  (= (lib.field.util/inherited-column-name %) fk-field-name)
                                                  (= (lib.join.util/current-join-alias %) fk-join-alias)
-                                                 (:fk-target-field-id %))))]
+                                                 (or (:fk-target-field-id %)
+                                                     (:fk-target-column-name %)))))]
      (let [fk-info (lib.metadata.calculation/display-info query stage-number fk-column)]
        ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
        ;; "ID" dropped instead.
