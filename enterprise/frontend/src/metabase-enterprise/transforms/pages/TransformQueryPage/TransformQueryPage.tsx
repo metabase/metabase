@@ -106,7 +106,6 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const [uiState, setUiState] = useState(getInitialUiState);
-  console.log(uiState);
   const metadata = useSelector(getMetadata);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();

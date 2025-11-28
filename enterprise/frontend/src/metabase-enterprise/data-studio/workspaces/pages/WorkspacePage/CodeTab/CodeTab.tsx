@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Stack, Text } from "metabase/ui";
@@ -21,12 +22,18 @@ export const CodeTab = ({
   onTransformClick,
 }: CodeTabProps) => {
   const { editedTransforms } = useWorkspace();
+  const availableTransforms = useMemo(() => {
+    return transforms.filter((transform) => {
+      return !workspaceTransforms.some((t) => t.id === transform.id);
+    });
+  }, [workspaceTransforms, transforms]);
 
   return (
-    <Stack h="100%">
+    <Stack h="100%" gap={0}>
       {workspaceTransforms.length > 0 && (
         <Stack
           gap="xs"
+          pb="sm"
           style={{
             borderBottom: "1px solid var(--mb-color-border)",
           }}
@@ -36,22 +43,24 @@ export const CodeTab = ({
             {workspaceTransforms.map((transform) => (
               <TransformListItem
                 key={transform.id}
-                name={transform.name as string}
+                name={transform.name}
+                icon="pivot_table"
+                fw={600}
                 isActive={activeTransformId === transform.id}
-                isEdited={editedTransforms.has(transform.id as number)}
+                isEdited={editedTransforms.has(transform.id)}
                 onClick={() => onTransformClick(transform)}
               />
             ))}
           </Stack>
         </Stack>
       )}
-      <Stack py="md" gap="xs">
-        {transforms.map((transform) => (
+      <Stack py="sm" gap="xs">
+        {availableTransforms.map((transform) => (
           <TransformListItem
             key={transform.id}
-            name={transform.name as string}
+            name={transform.name}
             isActive={activeTransformId === transform.id}
-            isEdited={editedTransforms.has(transform.id as number)}
+            isEdited={editedTransforms.has(transform.id)}
             onClick={() => onTransformClick(transform)}
           />
         ))}
