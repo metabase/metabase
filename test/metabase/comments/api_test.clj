@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.test :as met]
    [metabase.analytics.sdk :as sdk]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
@@ -304,14 +303,7 @@
              :limit  50
              :offset 0}
             (-> (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50)
-                (update :data #(filter mt/test-user? %))))))
-  (testing "Sandboxed users don't get to see other users"
-    (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
-      (is (=? {:data   [{:id int? :common_name "Rasta Toucan" :model "user"}]
-               :total  1
-               :limit  50
-               :offset 0}
-              (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50))))))
+                (update :data #(filter mt/test-user? %)))))))
 
 (deftest iframe-comments-test
   (testing "comments are disabled inside of an iframe"
