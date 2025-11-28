@@ -106,7 +106,7 @@ export function getMetabaseConfigSnippet({
   );
 
   const cleanedConfig = {
-    ..._.omit(config, ["isGuestEmbed", "useExistingUserSession"]),
+    ..._.omit(config, ["isGuest", "useExistingUserSession"]),
 
     // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),
