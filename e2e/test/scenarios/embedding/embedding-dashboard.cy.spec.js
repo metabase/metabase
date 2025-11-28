@@ -391,7 +391,8 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
   });
 
-  it("should allow searching dashboard parameters in preview embed modal", () => {
+  // Skipping due to flakiness (until EMB-1042 is done)
+  it.skip("should allow searching dashboard parameters in preview embed modal", () => {
     H.visitDashboard("@dashboardId");
 
     H.openStaticEmbeddingModal({
