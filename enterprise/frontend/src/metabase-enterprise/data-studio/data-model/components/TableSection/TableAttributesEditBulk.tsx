@@ -9,7 +9,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Icon, Stack, Title, Tooltip } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
 import { usePublishTables } from "metabase-enterprise/data-studio/common/hooks/use-publish-tables";
 import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
@@ -39,7 +39,7 @@ export function TableAttributesEditBulk({
     selectedItemsCount,
   } = useSelection();
   const { publishConfirmationModal, isPublishing, handlePublish } =
-    usePublishTables();
+    usePublishTables({ hasLibrary });
   const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
@@ -145,59 +145,44 @@ export function TableAttributesEditBulk({
 
         <Box px="lg">
           <Group gap="sm">
-            <Box flex={1}>
-              <Tooltip
-                label={t`You can publish tables once Library is created.`}
-                disabled={hasLibrary}
-              >
-                <Button
-                  p="sm"
-                  w="100%"
-                  disabled={!hasLibrary || isPublishing}
-                  leftSection={<Icon name="publish" />}
-                  onClick={() =>
-                    handlePublish({
-                      databaseIds: Array.from(selectedDatabases),
-                      schemaIds: Array.from(selectedSchemas),
-                      tableIds: Array.from(selectedTables),
-                    })
-                  }
-                >
-                  {t`Publish`}
-                </Button>
-              </Tooltip>
-            </Box>
-            <Box flex={1}>
-              <Tooltip
-                label={t`You can publish tables once Library is created.`}
-                disabled={hasLibrary}
-              >
-                <Button
-                  p="sm"
-                  w="100%"
-                  disabled={!hasLibrary}
-                  leftSection={<Icon name="unpublish" />}
-                  onClick={() =>
-                    handleUnpublish({
-                      databaseIds: Array.from(selectedDatabases),
-                      schemaIds: Array.from(selectedSchemas),
-                      tableIds: Array.from(selectedTables),
-                    })
-                  }
-                >
-                  {t`Unpublish`}
-                </Button>
-              </Tooltip>
-            </Box>
-            <Box flex={1}>
+            <Button
+              flex={1}
+              p="sm"
+              disabled={isPublishing}
+              leftSection={<Icon name="publish" />}
+              onClick={() =>
+                handlePublish({
+                  databaseIds: Array.from(selectedDatabases),
+                  schemaIds: Array.from(selectedSchemas),
+                  tableIds: Array.from(selectedTables),
+                })
+              }
+            >
+              {t`Publish`}
+            </Button>
+            {hasLibrary && (
               <Button
-                leftSection={<Icon name="settings" />}
-                w="100%"
-                onClick={openSyncModal}
+                flex={1}
+                p="sm"
+                leftSection={<Icon name="unpublish" />}
+                onClick={() =>
+                  handleUnpublish({
+                    databaseIds: Array.from(selectedDatabases),
+                    schemaIds: Array.from(selectedSchemas),
+                    tableIds: Array.from(selectedTables),
+                  })
+                }
               >
-                {t`Sync settings`}
+                {t`Unpublish`}
               </Button>
-            </Box>
+            )}
+            <Button
+              flex={1}
+              leftSection={<Icon name="settings" />}
+              onClick={openSyncModal}
+            >
+              {t`Sync settings`}
+            </Button>
           </Group>
         </Box>
 

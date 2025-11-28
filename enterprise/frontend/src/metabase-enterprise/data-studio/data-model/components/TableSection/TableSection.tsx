@@ -60,7 +60,7 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const { publishConfirmationModal, isPublishing, handlePublish } =
-    usePublishTables();
+    usePublishTables({ hasLibrary });
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -170,23 +170,18 @@ const TableSectionBase = ({
 
       <Box px="lg">
         <Group justify="stretch" gap="sm">
-          <Tooltip
-            label={t`You can publish tables once Library is created.`}
-            disabled={hasLibrary}
+          <Button
+            flex="1"
+            p="sm"
+            leftSection={<Icon name="publish" />}
+            style={{
+              width: "100%",
+            }}
+            disabled={table.is_published || isPublishing}
+            onClick={() => handlePublish({ tableIds: [table.id] })}
           >
-            <Button
-              flex="1"
-              p="sm"
-              leftSection={<Icon name="publish" />}
-              style={{
-                width: "100%",
-              }}
-              disabled={!hasLibrary || table.is_published || isPublishing}
-              onClick={() => handlePublish({ tableIds: [table.id] })}
-            >
-              {table.is_published ? t`Published` : t`Publish`}
-            </Button>
-          </Tooltip>
+            {table.is_published ? t`Published` : t`Publish`}
+          </Button>
           <Button
             flex="1"
             leftSection={<Icon name="settings" />}

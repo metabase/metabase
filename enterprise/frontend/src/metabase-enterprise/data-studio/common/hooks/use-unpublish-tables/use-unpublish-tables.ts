@@ -5,7 +5,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUnpublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
-export type UnpublishTablesInput = {
+export type UseUnpublishTablesRequest = {
   databaseIds?: DatabaseId[];
   schemaIds?: SchemaId[];
   tableIds?: TableId[];
@@ -16,7 +16,7 @@ export function useUnpublishTables() {
   const { show: showModal, modalContent } = useConfirmation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const handleUnpublish = (input: UnpublishTablesInput) => {
+  const handleUnpublish = (input: UseUnpublishTablesRequest) => {
     showModal({
       title: getTitle(input),
       message: getMessage(input),
@@ -43,7 +43,7 @@ function getTitle({
   databaseIds = [],
   schemaIds = [],
   tableIds = [],
-}: UnpublishTablesInput) {
+}: UseUnpublishTablesRequest) {
   if (databaseIds.length === 0 && schemaIds.length === 0) {
     return ngettext(
       msgid`Unpublish this table?`,
@@ -58,7 +58,7 @@ function getMessage({
   databaseIds = [],
   schemaIds = [],
   tableIds = [],
-}: UnpublishTablesInput) {
+}: UseUnpublishTablesRequest) {
   if (
     databaseIds.length === 0 &&
     schemaIds.length === 0 &&

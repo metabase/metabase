@@ -7,10 +7,11 @@ import { isLibraryCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ModelingSidebarSection } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarSection";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { CreateLibraryModal } from "./CreateLibraryModal";
+import { ModelingSidebarSection } from "../ModelingSidebarSection";
+
 import { LibraryCollectionTree } from "./LibraryCollectionTree";
 
 export type LibrarySectionProps = {
@@ -60,9 +61,11 @@ export function LibrarySection({
           icon="repository"
           onClick={openModal}
         />
-        {isModalOpened && (
-          <CreateLibraryModal onCreate={handleCreate} onClose={closeModal} />
-        )}
+        <CreateLibraryModal
+          isOpened={isModalOpened}
+          onCreate={handleCreate}
+          onClose={closeModal}
+        />
       </>
     );
   }

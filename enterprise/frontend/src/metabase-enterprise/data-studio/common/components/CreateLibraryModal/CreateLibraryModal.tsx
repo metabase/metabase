@@ -10,6 +10,7 @@ import {
   Group,
   List,
   Modal,
+  Stack,
   Text,
   Title,
 } from "metabase/ui";
@@ -17,14 +18,47 @@ import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
 type CreateLibraryModalProps = {
+  isOpened: boolean;
+  withPublishInfo?: boolean;
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
 export function CreateLibraryModal({
+  isOpened,
+  withPublishInfo,
   onCreate,
   onClose,
 }: CreateLibraryModalProps) {
+  return (
+    <Modal title={<ModalTitle />} opened={isOpened} onClose={onClose}>
+      <ModalBody
+        withPublishInfo={withPublishInfo}
+        onCreate={onCreate}
+        onClose={onClose}
+      />
+    </Modal>
+  );
+}
+
+function ModalTitle() {
+  return (
+    <Group gap="sm">
+      <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
+        <FixedSizeIcon name="repository" />
+      </Center>
+      <Title order={3}>{t`Create your Library`}</Title>
+    </Group>
+  );
+}
+
+type ModalBodyProps = {
+  withPublishInfo?: boolean;
+  onCreate: (collection: Collection) => void;
+  onClose: () => void;
+};
+
+function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
   const [createLibrary] = useCreateLibraryMutation();
 
   const handleSubmit = async () => {
@@ -33,27 +67,21 @@ export function CreateLibraryModal({
   };
 
   return (
-    <Modal
-      title={
-        <Group gap="sm">
-          <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
-            <FixedSizeIcon name="repository" />
-          </Center>
-          <Title order={3}>{t`Create your Library`}</Title>
-        </Group>
-      }
-      opened
-      onClose={onClose}
-    >
-      <FormProvider initialValues={{}} onSubmit={handleSubmit}>
-        <Form>
-          <FocusTrap.InitialFocus />
+    <FormProvider initialValues={{}} onSubmit={handleSubmit}>
+      <Form>
+        <FocusTrap.InitialFocus />
+        <Stack gap="sm">
+          {withPublishInfo && (
+            <Text>
+              {t`Publishing a table means placing it in a collection in the Library so that it’s easy for your end users to find and use it in their explorations.`}
+            </Text>
+          )}
           <Text>
             {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
           </Text>
-          <List mt="sm" spacing="sm">
+          <List spacing="sm">
             <ListItem
-              title={t`Models`}
+              title={t`Tables`}
               description={t`Cleaned, pre-transformed data sources ready for exploring`}
             />
             <ListItem
@@ -69,18 +97,20 @@ export function CreateLibraryModal({
               description={t`Default to reliable sources your data team prescribes`}
             />
           </List>
-          <Group mt="xl" gap="sm">
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-            <Button variant="filled" type="submit">
-              {t`Create my Library`}
-            </Button>
-          </Group>
-        </Form>
-      </FormProvider>
-    </Modal>
+        </Stack>
+        <Group mt="xl" gap="sm">
+          <Box flex={1}>
+            <FormErrorMessage />
+          </Box>
+          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+          <Button variant="filled" type="submit">
+            {withPublishInfo
+              ? t`Create my Library and publish`
+              : t`Create my Library`}
+          </Button>
+        </Group>
+      </Form>
+    </FormProvider>
   );
 }
 
