@@ -229,7 +229,7 @@ describe("scenarios > notebook > data source", () => {
       cy.log("verify the picker when nothing is selected");
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Data").click();
+        H.entityPickerModalLevel(0).findByText("Library").click();
         cy.findByText("Orders").click();
       });
 
@@ -237,7 +237,7 @@ describe("scenarios > notebook > data source", () => {
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Data").click();
-        H.entityPickerModalLevel(0).findByText("Data").click();
+        H.entityPickerModalLevel(0).findByText("Library").click();
         cy.findByText("Products").click();
       });
 
