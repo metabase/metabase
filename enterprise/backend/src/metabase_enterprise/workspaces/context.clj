@@ -15,11 +15,12 @@
 
 (defn- fetch-graph-tables
   [table-ids]
-  (let [id->table (into {}
-                        (t2/select-fn->fn :id identity [:model/Table :id :schema :name]
-                                          :id [:in table-ids]))]
-    (assert (= (count table-ids) (count id->table)))
-    id->table))
+  (when (seq table-ids)
+    (let [id->table (into {}
+                          (t2/select-fn->fn :id identity [:model/Table :id :schema :name]
+                                            :id [:in table-ids]))]
+      (assert (= (count table-ids) (count id->table)))
+      id->table)))
 
 (defn- fetch-graph-resources
   [graph]
