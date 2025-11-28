@@ -188,13 +188,9 @@
                                             :workspace_id  (:id workspace)})
                                (assoc hydrated-output :mapping isolated-table)))))))
 
-#_(ngoc/with-tc (init-workspace-database-isolation! database workspace))
-
 (defn ensure-database-isolation!
   "Wrapper around the driver method, to make migrations easier in future."
   [workspace database]
-  (def workspace workspace)
-  (def database database)
   ;; TODO: Make this check the ws existence aka fail closed ~atm
   (let [{:keys [schema database_details]} (init-workspace-database-isolation! database workspace)]
     (t2/update! :model/Workspace (:id workspace) {:schema           schema
