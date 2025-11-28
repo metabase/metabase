@@ -392,12 +392,8 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   it("should allow searching dashboard parameters in preview embed modal", () => {
-    cy.intercept("GET", "api/preview_embed/dashboard/*", (request) => {
-      request.continue((response) => {
-        if (response.statusMessage !== "OK") {
-          console.error("Network failure:", response);
-        }
-      });
+    cy.intercept("GET", "api/preview_embed/dashboard/*", (req) => {
+      req.continue();
     }).as("previewEmbed");
 
     H.visitDashboard("@dashboardId");
