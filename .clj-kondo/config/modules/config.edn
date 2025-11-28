@@ -2259,14 +2259,12 @@
            audit-app
            auth-identity
            collections
-           collections-rest
            events
            models
            permissions
            premium-features
            request
            settings
-           tenants
            util}}
 
   enterprise/transforms

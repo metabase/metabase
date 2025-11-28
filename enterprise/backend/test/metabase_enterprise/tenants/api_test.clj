@@ -301,7 +301,7 @@
                                  (map #(-> %
                                            (select-keys [:id :children])
                                            (update :children simplify-children))))))]
-          (let [res (mt/user-http-request :rasta :get 200 "collection/tree" :namespace (name collection/shared-tenant-ns))]
+          (let [res (mt/user-http-request :crowberto :get 200 "collection/tree" :namespace (name collection/shared-tenant-ns))]
             (is (= #{{:id parent-id
                       :children #{{:id coll-id :children #{}}}}
                      {:id other-rooty-id
@@ -310,11 +310,11 @@
           (is (= #{{:id non-tenant-coll-id
                     :children #{}}}
                  (simplify-children
-                  (mt/user-http-request :rasta :get 200 "collection/tree"))
+                  (mt/user-http-request :crowberto :get 200 "collection/tree"))
                  (simplify-children
-                  (mt/user-http-request :rasta :get 200 "collection/tree")))))))
+                  (mt/user-http-request :crowberto :get 200 "collection/tree")))))))
     (mt/with-temporary-setting-values [use-tenants false]
-      (let [res (mt/user-http-request :rasta :get 200 "collection/tree" :namespace (name collection/shared-tenant-ns))]
+      (let [res (mt/user-http-request :crowberto :get 200 "collection/tree" :namespace (name collection/shared-tenant-ns))]
         (is (= [] res))))))
 
 (deftest root-collection-items-does-not-include-tenant-collections
