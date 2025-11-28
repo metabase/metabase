@@ -145,20 +145,20 @@
                 (is (=? {:contents {:transforms #(>= (count %) 2)}}
                         (mt/user-http-request :crowberto :post 200
                                               (str "ee/workspace/" workspace-id "/contents")
-                                              {:add_upstream {:transforms [second-tx-id]}}))))
+                                              {:add {:transforms [second-tx-id]}}))))
 
               (testing "Cannot add duplicate entities"
                 (is (= "Transforms 1 are already in workspace"
                        (mt/user-http-request :crowberto :post 400
                                              (str "ee/workspace/" workspace-id "/contents")
-                                             {:add_upstream {:transforms [first-tx-id]}}))))
+                                             {:add {:transforms [first-tx-id]}}))))
 
               (testing "Cannot add entities to archived workspace"
                 (t2/update! :model/Workspace workspace-id {:archived_at (java.time.OffsetDateTime/now)})
                 (is (= "Cannot add entities to an archived workspace"
                        (mt/user-http-request :crowberto :post 400
                                              (str "ee/workspace/" workspace-id "/contents")
-                                             {:add_upstream {:transforms [second-tx-id]}})))))))))))
+                                             {:add {:transforms [second-tx-id]}})))))))))))
 
 (deftest add-entities-requires-superuser-test
   (testing "POST /api/ee/workspace/:id/add requires superuser"
@@ -166,7 +166,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403
                                    (str "ee/workspace/" (:id workspace) "/contents")
-                                   {:add_upstream {:transforms [1]}}))))))
+                                   {:add {:transforms [1]}}))))))
 
 (deftest add-entities-no-nested-branching-test
   (testing "Cannot add transforms that belong to another workspace (no nested branching)"
@@ -177,7 +177,7 @@
       (is (= "Cannot add transforms that belong to another workspace"
              (mt/user-http-request :crowberto :post 400
                                    (str "ee/workspace/" (:id workspace-2) "/contents")
-                                   {:add_upstream {:transforms [(:id transform)]}}))))))
+                                   {:add {:transforms [(:id transform)]}}))))))
 
 (deftest create-workspace-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

@@ -96,8 +96,8 @@
 
 (def ^:private ModifyEntities
   [:map
-   [:add_upstream {:optional true} ::entity-map]
-   [:remove_downstream {:optional true} ::entity-map]])
+   [:add {:optional true} ::entity-map]
+   [:remove {:optional true} ::entity-map]])
 
 (def ^:private Workspace
   [:map
@@ -275,15 +275,17 @@
   "Add upstream entities to workspace by mirroring them into the workspace's isolated environment.
 
   The entities and their dependencies will be mirrored into the workspace.
-  Returns the workspace's updated contents."
+  Returns the workspace's updated contents.
+
+  Removal is not implemented yet."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ModifyEntities]
 
-  (api/check-400 (nil? (:remove_downstream body)) "Not implemented yet")
+  (api/check-400 (nil? (:remove body)) "Not implemented yet")
 
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        upstream  (:add_upstream body)]
+        upstream  (:add body)]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot add entities to an archived workspace")
 
     (when-let [transform-ids (seq (get upstream :transforms []))]
