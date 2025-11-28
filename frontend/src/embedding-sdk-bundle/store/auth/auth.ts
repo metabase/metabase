@@ -26,6 +26,7 @@ export const initAuth = createAsyncThunk(
       preferredAuthMethod,
       apiKey,
       isLocalHost,
+      jwtProviderUrl,
     }: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
@@ -35,6 +36,7 @@ export const initAuth = createAsyncThunk(
         preferredAuthMethod,
         apiKey,
         isLocalHost,
+        jwtProviderUrl,
       },
       { dispatch },
     );
@@ -47,13 +49,18 @@ export const refreshTokenAsync = createAsyncThunk(
     {
       metabaseInstanceUrl,
       preferredAuthMethod,
-    }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
+      jwtProviderUrl,
+    }: Pick<
+      MetabaseAuthConfig,
+      "metabaseInstanceUrl" | "preferredAuthMethod"
+    > & { jwtProviderUrl?: string },
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     return await PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync(
       {
         metabaseInstanceUrl,
         preferredAuthMethod,
+        jwtProviderUrl,
       },
       { getState },
     );

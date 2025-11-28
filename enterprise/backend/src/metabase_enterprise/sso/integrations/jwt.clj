@@ -87,10 +87,16 @@
       (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-simple)))
       (throw-simple-embedding-disabled)
 
+      ;; [POC] Modular embedding with JWT but NO hash - allow for performance testing
+      ;; Only works when hash is completely absent, not when hash is invalid
+      (and is-modular-embedding? jwt (not (get-in request [:headers "x-metabase-sdk-jwt-hash"])))
+      (generate-response-token (:session result) (:jwt-data result))
+
+      ;; Modular embedding with JWT and valid hash - return JSON session token
       (and is-modular-embedding? (token-utils/has-token request))
       (generate-response-token (:session result) (:jwt-data result))
 
-      ;; JWT provided - use auth-identity/login!
+;; JWT provided - use auth-identity/login!
       jwt
       (request/set-session-cookies request
                                    (response/redirect (:redirect-url result))

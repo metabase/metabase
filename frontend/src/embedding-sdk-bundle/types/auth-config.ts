@@ -24,6 +24,13 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
+  /**
+   * [POC] Direct URL to the JWT provider endpoint.
+   * When provided, skips the initial /auth/sso request to discover the provider URL.
+   * This is used for performance testing to measure the time savings of removing the discovery request.
+   */
+  jwtProviderUrl?: string;
+
   apiKey?: never;
 };
 
