@@ -38,7 +38,7 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
 
   renderWithProviders(<GuestEmbedsSettings />);
 
-  await screen.findByText("Guest embeds"); // breadcrumb
+  expect(await screen.findAllByText("Guest embeds")).toHaveLength(2); // Title + Card
 };
 
 describe("GuestEmbedsSettings", () => {
