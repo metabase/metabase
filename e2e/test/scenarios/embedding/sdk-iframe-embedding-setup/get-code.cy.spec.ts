@@ -71,7 +71,7 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
         event_detail:
-          "experience=dashboard,snippetType=frontend,authType=user-session",
+          "experience=dashboard,snippetType=frontend,auth=user-session",
       });
     });
   });
@@ -93,7 +93,7 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
         event_detail:
-          "experience=dashboard,snippetType=frontend,authType=user-session",
+          "experience=dashboard,snippetType=frontend,auth=user-session",
       });
     });
   });
@@ -117,7 +117,7 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
-        event_detail: "experience=dashboard,snippetType=frontend,authType=sso",
+        event_detail: "experience=dashboard,snippetType=frontend,auth=sso",
       });
     });
   });
