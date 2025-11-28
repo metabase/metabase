@@ -81,7 +81,13 @@ function DataStudioNav({
   const isDependenciesTab = pathname.startsWith(Urls.dependencyGraph());
 
   return (
-    <Stack className={S.nav} h="100%" p="0.75rem" justify="space-between">
+    <Stack
+      className={S.nav}
+      h="100%"
+      p="0.75rem"
+      justify="space-between"
+      data-testid="data-studio-nav"
+    >
       <Stack gap="0.75rem">
         {canAccessDataModel && (
           <DataStudioTab
@@ -142,6 +148,7 @@ function DataStudioTab({ label, icon, to, isSelected }: DataStudioTabProps) {
         to={to}
         p="0.75rem"
         bdrs="md"
+        aria-label={label}
       >
         <FixedSizeIcon name={icon} display="block" />
       </Box>

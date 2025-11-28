@@ -18,6 +18,7 @@ const collectionPage = () => cy.findByTestId("collection-page");
 
 export const DataStudio = {
   header: () => cy.findByTestId("data-studio-header"),
+  nav: () => cy.findByTestId("data-studio-nav"),
   transformsButton: () => DataStudio.header().findByText("Transforms"),
   jobsButton: () => DataStudio.header().findByText("Jobs"),
   runsButton: () => DataStudio.header().findByText("Runs"),

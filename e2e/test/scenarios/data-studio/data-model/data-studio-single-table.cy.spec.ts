@@ -31,6 +31,9 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/ee/data-studio/table/publish-table").as(
       "publishTables",
     );
+    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-table").as(
+      "unpublishTables",
+    );
   });
 
   it("should display metadata information", { tags: ["@external"] }, () => {
@@ -60,7 +63,7 @@ describe("Table editing", () => {
   });
 
   it(
-    "should publish single table to a collection",
+    "should publish a single table to a collection and unpublish",
     { tags: ["@external"] },
     () => {
       H.restore("mysql-8");
@@ -69,26 +72,30 @@ describe("Table editing", () => {
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
-      // Shows publish model information modal
+      cy.log("publish the table");
       cy.findByRole("button", { name: /Publish/ }).click();
       H.modal().button("Create my Library and publish").click();
-
       cy.wait("@publishTables");
+
+      cy.log("verify it's published");
       H.undoToast().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
       });
+      H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
+      cy.go("back");
 
-      H.DataStudio.Modeling.tableItem("Orders").click();
-      H.DataStudio.Tables.moreMenu().click();
-      H.popover()
-        .findByRole("menuitem", { name: /View/ })
-        .invoke("removeAttr", "target")
-        .click();
-      cy.findByTestId("head-crumbs-container").within(() => {
-        cy.findByText("Data").should("be.visible");
-        cy.findByText("Orders").should("be.visible");
-      });
+      cy.log("unpublish the table");
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().button("Unpublish").click();
+      cy.wait("@unpublishTables");
+
+      cy.log("verify it's unpublished");
+      H.DataStudio.nav().findByLabelText("Modeling").click();
+      H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
+      H.DataStudio.Modeling.collectionPage()
+        .findByText("No tables or models yet")
+        .should("be.visible");
     },
   );
 
