@@ -10,15 +10,27 @@ interface Props {
 }
 
 export const TransformTab = ({ source }: Props) => {
+  const handleRun = () => {};
+
+  const handleSave = () => {};
+
   return (
     <Stack gap={0}>
       <Group flex="0 0 auto" justify="space-between" p="md">
         <Group>{t`Output table input?`}</Group>
 
         <Group>
-          <Button leftSection={<Icon name="play" />} size="sm">{t`Run`}</Button>
+          <Button
+            leftSection={<Icon name="play" />}
+            size="sm"
+            onClick={handleRun}
+          >{t`Run`}</Button>
 
-          <Button size="sm" variant="filled">{t`Save`}</Button>
+          <Button
+            size="sm"
+            variant="filled"
+            onClick={handleSave}
+          >{t`Save`}</Button>
         </Group>
       </Group>
 
