@@ -67,20 +67,6 @@ interface TasksFilterButtonProps {
 }
 
 export function TasksFilterButton({ value, onChange }: TasksFilterButtonProps) {
-  const entityTypeOptions = useMemo(
-    () => [
-      { value: "question", label: t`Question` },
-      { value: "model", label: t`Model` },
-      { value: "metric", label: t`Metric` },
-      { value: "table", label: t`Table` },
-      { value: "transform", label: t`Transform` },
-      { value: "dashboard", label: t`Dashboard` },
-      { value: "document", label: t`Document` },
-      { value: "snippet", label: t`Snippet` },
-      { value: "sandbox", label: t`Sandbox` },
-    ],
-    [],
-  );
   const [opened, { open, close }] = useDisclosure(false);
   const [localState, setLocalState] = useState<TasksFilterState>(value);
 
@@ -98,20 +84,11 @@ export function TasksFilterButton({ value, onChange }: TasksFilterButtonProps) {
   }, [usersData]);
 
   const hasActiveFilters =
-    value.entityTypes.length > 0 ||
-    value.creatorIds.length > 0 ||
-    value.lastModifiedByIds.length > 0;
+    value.creatorIds.length > 0 || value.lastModifiedByIds.length > 0;
 
   const handleOpen = () => {
     setLocalState(value);
     open();
-  };
-
-  const handleEntityTypeChange = (values: string[]) => {
-    setLocalState((prev) => ({
-      ...prev,
-      entityTypes: values as EntityTypeFilterValue[],
-    }));
   };
 
   const handleCreatorChange = (values: string[]) => {
@@ -155,16 +132,6 @@ export function TasksFilterButton({ value, onChange }: TasksFilterButtonProps) {
       </Popover.Target>
       <Popover.Dropdown p="lg" w={340}>
         <Stack gap="lg">
-          <MultiSelect
-            label={t`Entity type`}
-            placeholder={t`Pick one or more types`}
-            data={entityTypeOptions}
-            value={localState.entityTypes}
-            onChange={handleEntityTypeChange}
-            clearable
-            comboboxProps={{ withinPortal: false }}
-          />
-
           <MultiSelect
             label={t`Creator`}
             placeholder={t`Pick one or more people`}

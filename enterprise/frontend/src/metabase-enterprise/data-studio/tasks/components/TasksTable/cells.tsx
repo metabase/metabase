@@ -45,3 +45,22 @@ export function EntityCell({ name, icon, url }: EntityCellProps) {
     </BaseCell>
   );
 }
+
+interface LinkCellProps {
+  value: string;
+  url?: string | null;
+}
+
+export function LinkCell({ value, url }: LinkCellProps) {
+  return (
+    <BaseCell style={centeredCellStyles}>
+      {url ? (
+        <Anchor href={url}>
+          <Ellipsified>{value}</Ellipsified>
+        </Anchor>
+      ) : (
+        <Ellipsified>{value}</Ellipsified>
+      )}
+    </BaseCell>
+  );
+}

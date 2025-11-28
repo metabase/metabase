@@ -145,7 +145,7 @@
           :collection :collection_id :dashboard :dashboard_id
           :moderation_reviews]
    :snippet [:name :description]
-   :transform [:name :description :creator :table]
+   :transform [:name :description :creator :table :last_run]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
                :collection :collection_id
@@ -329,7 +329,7 @@
                                                  (->> (map collection.root/hydrate-root-collection))
                                                  (revisions/with-last-edit-info :card))
                        (= entity-type :table) (t2/hydrate :fields :db)
-                       (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields)
+                       (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields :last_run)
                        (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal] :moderation_reviews)
                                                       (->> (map collection.root/hydrate-root-collection))
                                                       (revisions/with-last-edit-info :dashboard))
@@ -530,7 +530,7 @@
                   owner-ids (into #{} (keep :owner_user_id tables))
                   id->owner (when (seq owner-ids)
                               (t2/select-pk->fn identity
-                                                [:model/User :id :email :first_name :last_name]
+                                                [:model/User :id :email :first_name :last_name :common_name]
                                                 :id [:in owner-ids]))]
               (into {}
                     (map (fn [table]
@@ -539,7 +539,7 @@
                     tables)))
    :transform (when-let [transform-ids (seq (map :entity_id (get ids-by-type "transform")))]
                 (-> (t2/select :model/Transform :id [:in transform-ids])
-                    (t2/hydrate :creator :table-with-db-and-fields)
+                    (t2/hydrate :creator :table-with-db-and-fields :last_run)
                     (->> (map (fn [transform] [(:id transform) transform]))
                          (into {}))))
    :snippet (when-let [snippet-ids (seq (map :entity_id (get ids-by-type "snippet")))]
@@ -570,7 +570,7 @@
    :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
           :collection :dashboard :creator :last-edit-info]
    :snippet [:name]
-   :transform [:name :table :creator]
+   :transform [:name :table :creator :last_run :target]
    :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
    :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
    :sandbox [:table :table_id]})

@@ -38,7 +38,7 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
 
 export type TableOwnerInfo = Pick<
   UserInfo,
-  "id" | "email" | "first_name" | "last_name"
+  "id" | "email" | "first_name" | "last_name" | "common_name"
 >;
 
 export type TableDependencyNodeData = Pick<
@@ -57,7 +57,7 @@ export type TableDependencyNodeData = Pick<
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table" | "creator" | "last_run"
+  "name" | "description" | "table" | "creator" | "last_run" | "target"
 >;
 
 export type CardDependencyNodeData = Pick<
