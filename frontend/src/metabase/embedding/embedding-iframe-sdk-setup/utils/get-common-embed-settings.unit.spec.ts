@@ -9,6 +9,12 @@ jest.mock("metabase/plugins", () => ({
   },
 }));
 
+const mockIsFeatureEnabled = (enabled: boolean) => {
+  (
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled as jest.Mock
+  ).mockReturnValue(enabled);
+};
+
 describe("getCommonEmbedSettings", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -16,125 +22,132 @@ describe("getCommonEmbedSettings", () => {
 
   describe("when simple embed feature is available (Enterprise)", () => {
     beforeEach(() => {
-      (
-        PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled as jest.Mock
-      ).mockReturnValue(true);
+      mockIsFeatureEnabled(true);
     });
 
-    describe("with guest embeds enabled and state.isGuestEmbed is true", () => {
-      it("should return guest embed settings for dashboard experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: true, useExistingUserSession: false },
-          experience: "dashboard" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: true,
-        });
-
-        expect(result).toEqual({
-          isGuest: true,
+    describe("with guest embeds enabled and state.isGuest is true", () => {
+      it.each<{
+        experience: SdkIframeEmbedSetupExperience;
+        useExistingUserSession: boolean;
+        expected: Record<string, unknown>;
+      }>([
+        {
+          experience: "dashboard",
           useExistingUserSession: false,
-          drills: false,
-          hiddenParameters: [],
-        });
-      });
-
-      it("should return guest embed settings for chart experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: true, useExistingUserSession: false },
-          experience: "chart" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: true,
-        });
-
-        expect(result).toEqual({
-          isGuest: true,
+          expected: {
+            isGuest: true,
+            useExistingUserSession: false,
+            drills: false,
+            hiddenParameters: [],
+          },
+        },
+        {
+          experience: "chart",
           useExistingUserSession: false,
-          drills: false,
-          hiddenParameters: [],
-        });
-      });
-
-      it("should return guest embed settings for exploration experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: true, useExistingUserSession: true },
-          experience: "exploration" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: true,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
+          expected: {
+            isGuest: true,
+            useExistingUserSession: false,
+            drills: false,
+            hiddenParameters: [],
+          },
+        },
+        {
+          experience: "exploration",
           useExistingUserSession: true,
-          hiddenParameters: [],
-        });
-      });
-
-      it("should return guest embed settings for browser experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: true, useExistingUserSession: true },
-          experience: "browser" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: true,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
+          expected: {
+            isGuest: false,
+            useExistingUserSession: true,
+            hiddenParameters: [],
+          },
+        },
+        {
+          experience: "browser",
           useExistingUserSession: true,
-          hiddenParameters: [],
-        });
-      });
-
-      it("should return guest embed settings for metabot experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: true, useExistingUserSession: true },
-          experience: "metabot" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: true,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
+          expected: {
+            isGuest: false,
+            useExistingUserSession: true,
+            hiddenParameters: [],
+          },
+        },
+        {
+          experience: "metabot",
           useExistingUserSession: true,
-          hiddenParameters: [],
-        });
-      });
+          expected: {
+            isGuest: false,
+            useExistingUserSession: true,
+            hiddenParameters: [],
+          },
+        },
+      ])(
+        "should return correct settings for $experience experience",
+        ({ experience, useExistingUserSession, expected }) => {
+          const result = getCommonEmbedSettings({
+            state: { isGuest: true, useExistingUserSession },
+            experience,
+            isGuestEmbedsEnabled: true,
+          });
+
+          expect(result).toEqual(expected);
+        },
+      );
     });
 
     describe("with guest embeds disabled", () => {
-      it("should return non-guest settings for dashboard experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: true },
-          experience: "dashboard" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: false,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
+      it.each<{
+        experience: SdkIframeEmbedSetupExperience;
+        useExistingUserSession: boolean;
+        expected: Record<string, unknown>;
+      }>([
+        {
+          experience: "dashboard",
           useExistingUserSession: true,
-          drills: true,
-        });
-      });
-
-      it("should return non-guest settings for chart experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: false },
-          experience: "chart" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: false,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
+          expected: {
+            isGuest: false,
+            useExistingUserSession: true,
+            drills: true,
+          },
+        },
+        {
+          experience: "chart",
           useExistingUserSession: false,
-          drills: true,
-          hiddenParameters: [],
-        });
-      });
+          expected: {
+            isGuest: false,
+            useExistingUserSession: false,
+            drills: true,
+            hiddenParameters: [],
+          },
+        },
+        {
+          experience: "exploration",
+          useExistingUserSession: true,
+          expected: {
+            isGuest: false,
+            useExistingUserSession: true,
+          },
+        },
+      ])(
+        "should return non-guest settings for $experience experience",
+        ({ experience, useExistingUserSession, expected }) => {
+          const result = getCommonEmbedSettings({
+            state: { isGuest: false, useExistingUserSession },
+            experience,
+            isGuestEmbedsEnabled: false,
+          });
+
+          expect(result).toEqual(expected);
+        },
+      );
 
       it("should reset hiddenParameters for chart but not for dashboard in non-guest mode", () => {
         const chartResult = getCommonEmbedSettings({
           state: { isGuest: false, useExistingUserSession: true },
-          experience: "chart" as SdkIframeEmbedSetupExperience,
+          experience: "chart",
           isGuestEmbedsEnabled: false,
         });
 
         const dashboardResult = getCommonEmbedSettings({
           state: { isGuest: false, useExistingUserSession: true },
-          experience: "dashboard" as SdkIframeEmbedSetupExperience,
+          experience: "dashboard",
           isGuestEmbedsEnabled: false,
         });
 
@@ -142,23 +155,10 @@ describe("getCommonEmbedSettings", () => {
         expect(dashboardResult).not.toHaveProperty("hiddenParameters");
       });
 
-      it("should return non-guest settings for exploration experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: true },
-          experience: "exploration" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: false,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
-          useExistingUserSession: true,
-        });
-      });
-
       it("should handle undefined state", () => {
         const result = getCommonEmbedSettings({
           state: undefined,
-          experience: "dashboard" as SdkIframeEmbedSetupExperience,
+          experience: "dashboard",
           isGuestEmbedsEnabled: false,
         });
 
@@ -170,127 +170,120 @@ describe("getCommonEmbedSettings", () => {
       });
     });
 
-    describe("with guest embeds enabled but state.isGuestEmbed is false", () => {
-      it("should return non-guest settings for dashboard experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: true },
-          experience: "dashboard" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: true,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
+    describe("with guest embeds enabled but state.isGuest is false", () => {
+      it.each<{
+        experience: SdkIframeEmbedSetupExperience;
+        useExistingUserSession: boolean;
+        expected: Record<string, unknown>;
+      }>([
+        {
+          experience: "dashboard",
           useExistingUserSession: true,
-          drills: true,
-        });
-      });
-
-      it("should return non-guest settings for exploration experience", () => {
-        const result = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: false },
-          experience: "exploration" as SdkIframeEmbedSetupExperience,
-          isGuestEmbedsEnabled: true,
-        });
-
-        expect(result).toEqual({
-          isGuest: false,
+          expected: {
+            isGuest: false,
+            useExistingUserSession: true,
+            drills: true,
+          },
+        },
+        {
+          experience: "exploration",
           useExistingUserSession: false,
-        });
-      });
+          expected: {
+            isGuest: false,
+            useExistingUserSession: false,
+          },
+        },
+      ])(
+        "should return non-guest settings for $experience experience",
+        ({ experience, useExistingUserSession, expected }) => {
+          const result = getCommonEmbedSettings({
+            state: { isGuest: false, useExistingUserSession },
+            experience,
+            isGuestEmbedsEnabled: true,
+          });
+
+          expect(result).toEqual(expected);
+        },
+      );
     });
   });
 
   describe("when simple embed feature is not available (OSS)", () => {
     beforeEach(() => {
-      (
-        PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled as jest.Mock
-      ).mockReturnValue(false);
+      mockIsFeatureEnabled(false);
     });
 
-    it("should return guest embed settings with drills=false for dashboard experience", () => {
-      const result = getCommonEmbedSettings({
-        state: { isGuest: false, useExistingUserSession: true },
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
-        isGuestEmbedsEnabled: false,
-      });
+    it.each<{
+      experience: SdkIframeEmbedSetupExperience;
+      expected: Record<string, unknown>;
+    }>([
+      {
+        experience: "dashboard",
+        expected: {
+          isGuest: true,
+          useExistingUserSession: false,
+          drills: false,
+          withDownloads: true,
+          hiddenParameters: [],
+        },
+      },
+      {
+        experience: "chart",
+        expected: {
+          isGuest: true,
+          useExistingUserSession: false,
+          drills: false,
+          withDownloads: true,
+          hiddenParameters: [],
+        },
+      },
+      {
+        experience: "exploration",
+        expected: {
+          isGuest: false,
+          useExistingUserSession: true,
+          hiddenParameters: [],
+        },
+      },
+      {
+        experience: "browser",
+        expected: {
+          isGuest: false,
+          useExistingUserSession: true,
+          hiddenParameters: [],
+        },
+      },
+      {
+        experience: "metabot",
+        expected: {
+          isGuest: false,
+          useExistingUserSession: true,
+          hiddenParameters: [],
+        },
+      },
+    ])(
+      "should return correct settings for $experience experience",
+      ({ experience, expected }) => {
+        const result = getCommonEmbedSettings({
+          state: { isGuest: false, useExistingUserSession: false },
+          experience,
+          isGuestEmbedsEnabled: false,
+        });
 
-      expect(result).toEqual({
-        isGuest: true,
-        useExistingUserSession: false,
-        drills: false,
-        withDownloads: true,
-        hiddenParameters: [],
-      });
-    });
+        expect(result).toEqual(expected);
+      },
+    );
 
-    it("should return guest embed settings with drills=false for chart experience", () => {
-      const result = getCommonEmbedSettings({
-        state: { isGuest: false, useExistingUserSession: true },
-        experience: "chart" as SdkIframeEmbedSetupExperience,
-        isGuestEmbedsEnabled: false,
-      });
-
-      expect(result).toEqual({
-        isGuest: true,
-        useExistingUserSession: false,
-        drills: false,
-        withDownloads: true,
-        hiddenParameters: [],
-      });
-    });
-
-    it("should return non-guest settings for exploration experience", () => {
-      const result = getCommonEmbedSettings({
-        state: { isGuest: false, useExistingUserSession: true },
-        experience: "exploration" as SdkIframeEmbedSetupExperience,
-        isGuestEmbedsEnabled: false,
-      });
-
-      expect(result).toEqual({
-        isGuest: false,
-        useExistingUserSession: true,
-        hiddenParameters: [],
-      });
-    });
-
-    it("should return non-guest settings for browser experience", () => {
-      const result = getCommonEmbedSettings({
-        state: { isGuest: false, useExistingUserSession: false },
-        experience: "browser" as SdkIframeEmbedSetupExperience,
-        isGuestEmbedsEnabled: false,
-      });
-
-      expect(result).toEqual({
-        isGuest: false,
-        useExistingUserSession: true,
-        hiddenParameters: [],
-      });
-    });
-
-    it("should return non-guest settings for metabot experience", () => {
-      const result = getCommonEmbedSettings({
-        state: { isGuest: false, useExistingUserSession: false },
-        experience: "metabot" as SdkIframeEmbedSetupExperience,
-        isGuestEmbedsEnabled: false,
-      });
-
-      expect(result).toEqual({
-        isGuest: false,
-        useExistingUserSession: true,
-        hiddenParameters: [],
-      });
-    });
-
-    it("should ignore isGuestEmbedsEnabled parameter and always enable guest embeds for dashboard/chart", () => {
+    it("should ignore isGuestEmbedsEnabled parameter for dashboard/chart", () => {
       const resultWithTrue = getCommonEmbedSettings({
         state: { isGuest: false, useExistingUserSession: false },
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         isGuestEmbedsEnabled: true,
       });
 
       const resultWithFalse = getCommonEmbedSettings({
         state: { isGuest: false, useExistingUserSession: false },
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         isGuestEmbedsEnabled: false,
       });
 
@@ -304,20 +297,20 @@ describe("getCommonEmbedSettings", () => {
       });
     });
 
-    it("should force withDownloads=true for dashboard/chart when feature is not available", () => {
+    it("should force withDownloads=true for dashboard/chart", () => {
       const result = getCommonEmbedSettings({
         state: undefined,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         isGuestEmbedsEnabled: true,
       });
 
       expect(result).toHaveProperty("withDownloads", true);
     });
 
-    it("should handle undefined state in OSS mode", () => {
+    it("should handle undefined state", () => {
       const result = getCommonEmbedSettings({
         state: undefined,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         isGuestEmbedsEnabled: false,
       });
 

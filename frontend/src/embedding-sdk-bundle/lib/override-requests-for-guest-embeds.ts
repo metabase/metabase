@@ -74,10 +74,10 @@ type RequestData = {
  * matchUrlPattern("/api/card/:id/query", "/api/card/123/query") // returns true
  * matchUrlPattern("/api/card/:id/query", "/api/card/123/edit") // returns false
  */
-function matchUrlPattern(pattern: string, url: string): boolean {
+export function matchUrlPattern(pattern: string, url: string): boolean {
   const regexString = pattern
     .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
-    .replace(/\\:([a-zA-Z0-9_]+)/g, "([^/]+)");
+    .replace(/:([a-zA-Z0-9_]+)/g, "([^/]+)");
 
   const regex = new RegExp(`^${regexString}$`);
 
