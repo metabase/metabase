@@ -95,7 +95,7 @@
    [:upstream {:optional true} ::entity-map]])
 
 (def ^:private ModifyEntities
-  [:map
+  [:map {:closed true}
    [:add {:optional true} ::entity-map]
    [:remove {:optional true} ::entity-map]])
 
