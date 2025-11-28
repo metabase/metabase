@@ -100,15 +100,13 @@ describe("bulk table operations", () => {
   it("allows publishing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");
-    H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
     cy.findByRole("button", { name: /Publish/ }).click();
-    cy.findByLabelText("Don’t show this to me again").check();
-    cy.findByRole("button", { name: /Publish/ }).click();
+    H.modal().button("Create my Library and publish").click();
     cy.wait("@publishTables");
     H.undoToast().within(() => {
       cy.findByText("Published").should("be.visible");
@@ -171,7 +169,7 @@ describe("bulk table operations", () => {
     H.selectDropdown().contains("Ingested").click();
 
     cy.findByRole("button", { name: /Publish/ }).click();
-    cy.findByRole("button", { name: /Publish/ }).click();
+    H.modal().button("Publish").click();
     cy.wait("@publishTables");
 
     TablePicker.getDatabase("Writable Postgres12").click();
