@@ -22,11 +22,6 @@ export const EmbeddingSdkSettings = () => {
   const isEE = isEEBuild();
   const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
 
-  const { url: switchMetabaseBinariesUrl } = useDocsUrl(
-    "paid-features/activating-the-enterprise-edition",
-    { utm: utmTags },
-  );
-
   const implementJwtUrl = useDocsUrl("embedding/sdk/authentication", {
     utm: utmTags,
   });
@@ -41,16 +36,6 @@ export const EmbeddingSdkSettings = () => {
     utmTags,
   );
 
-  const SwitchBinariesLink = (
-    <ExternalLink
-      key="switch-metabase-binaries"
-      href={switchMetabaseBinariesUrl}
-      className={cx(CS.link, CS.textBold)}
-    >
-      {t`switch Metabase binaries`}
-    </ExternalLink>
-  );
-
   const ImplementJwtLink = (
     <ExternalLink
       key="implement-jwt"
@@ -62,18 +47,9 @@ export const EmbeddingSdkSettings = () => {
   );
 
   const apiKeyBannerText = match({
-    needsToSwitchBinaries: !isEE,
     needsToUpgrade: !isReactSdkFeatureAvailable,
     needsToImplementJwt: isReactSdkFeatureAvailable,
   })
-    .with(
-      { needsToSwitchBinaries: true },
-      () =>
-        c(
-          "{0} is the link to switch binaries. {1} is the link to upsell the SDK. {2} is the link to implement JWT or SAML authentication.",
-        )
-          .jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
-    )
     .with(
       { needsToUpgrade: true },
       () =>
@@ -89,6 +65,10 @@ export const EmbeddingSdkSettings = () => {
           .jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${ImplementJwtLink}.`,
     )
     .otherwise(() => null);
+
+  if (!isEE) {
+    return null;
+  }
 
   return (
     <EmbeddingSettingsCard
