@@ -201,20 +201,6 @@ export function getSchemaChildrenTableIds(schema: TreeNode) {
     .map((child) => child.value.tableId);
 }
 
-export function getParentSchemaTables(item: FlatItem, allItems: FlatItem[]) {
-  const parentSchema = getParentSchema(item, allItems);
-
-  if (!parentSchema) {
-    return [];
-  }
-
-  return allItems.filter((item) => {
-    return (
-      item.type === "table" && getSchemaId(parentSchema) === getSchemaId(item)
-    );
-  });
-}
-
 export function areTablesSelected(
   schema: FlatItem,
   allItems: TreeNode[],
