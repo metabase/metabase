@@ -22,15 +22,16 @@
 
 (defn- entities [entity-type ids]
   (let [t2-model       (type->t2-model entity-type)
+        t2-table       (t2/table-name t2-model)
         mapping        (t2/table-name (type->mapping entity-type))]
-    (->> (t2/select [t2-model :id :name (field mapping :upstream_id)]
-                    (field (t2/table-name t2-model) :workspace_id) [:in ids]
-                    {:join [mapping [:= (field mapping :downstream_id) (field (t2/table-name t2-model) :id)]]})
+    (->> (t2/select [t2-model :id :name (field t2-table :workspace_id) (field mapping :upstream_id)]
+                    (field t2-table :workspace_id) [:in ids]
+                    {:left-join [mapping [:= (field mapping :downstream_id) (field t2-table :id)]]})
          (mapv (fn [e] (assoc e :type entity-type))))))
 
 (defn- ws-contents [ids]
   (fn []
-    (->> (keep #(entities % ids) (keys type->grouping))
+    (->> (mapcat #(entities % ids) (keys type->grouping))
          (reduce (fn [acc e]
                    (update-in acc [(:workspace_id e) (type->grouping (:type e))] (fnil conj []) e))
                  {}))))

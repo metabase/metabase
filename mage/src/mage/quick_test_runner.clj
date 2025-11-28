@@ -90,7 +90,6 @@
   (or (first
        (keep (fn [suffix]
                (let [file-path (str partial-file-path suffix)]
-
                  (cond (str/starts-with? maybe-ns "metabase.")
                        ;; src/metabase/...
                        (let [path (str "src/" file-path)]
@@ -98,8 +97,10 @@
 
                        (str/starts-with? maybe-ns "metabase-enterprise.")
                        ;; enterprise/backend/src/metabase_enterprise/...
-                       (let [path (str "enterprise/backend/" file-path)]
-                         (and (fs/exists? (str u/project-root-directory "/" path)) path)))))
+                       (or (let [path (str "enterprise/backend/src/" file-path)]
+                             (and (fs/exists? (str u/project-root-directory "/" path)) path))
+                           (let [path (str "enterprise/backend/test/" file-path)]
+                             (and (fs/exists? (str u/project-root-directory "/" path)) path))))))
              [".clj" ".cljc" ".bb"]))
       (throw
        (ex-info "" {:mage/error (str "Could not find a file for namespace: "

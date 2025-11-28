@@ -1,11 +1,14 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- extract-suffix-number
@@ -49,7 +52,7 @@
     (let [graph        (ws.dag/path-induced-subgraph upstream)
           db-ids       (when-let [table-ids (seq (keep :id (concat (:inputs graph) (:outputs graph))))]
                          (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-          _            (assert (= 1 (count db-ids)) "All inputs and outputs must belong to the same database.")]
+          _            (assert (<= (count db-ids) 1) "All inputs and outputs must belong to the same database.")]
       ;; One reason this is here, is that I don't want the DAG module to have the single-DWH assumption.
       (assoc graph :db_id (first db-ids)))))
 
@@ -133,6 +136,73 @@
         _        (assert db-id "Was not given and could not infer a database_id for the workspace.")
         database (api/check-500 (t2/select-one :model/Database :id db-id))]
     (create-workspace-with-unique-name! creator-id db-id database ws-name graph 5)))
+
+(defn- rebuild-workspace-graph!
+  "Rebuild the workspace graph from scratch based on all upstream transforms.
+   Returns the new graph."
+  [workspace-id]
+  (let [all-upstream-ids (t2/select-fn-vec :upstream_id :model/WorkspaceMappingTransform
+                                           :workspace_id workspace-id)
+        graph            (build-graph {:transforms all-upstream-ids})
+        ;; Add from-scratch transforms (those created directly in workspace, not mirrored)
+        ;; These have workspace_id set but no entry in WorkspaceMappingTransform
+        mirrored-ids     (t2/select-fn-set :downstream_id :model/WorkspaceMappingTransform
+                                           :workspace_id workspace-id)
+        from-scratch-txs (->> (t2/select [:model/Transform :id] :workspace_id workspace-id
+                                         {:where (if (seq mirrored-ids)
+                                                   [:not [:in :id mirrored-ids]]
+                                                   true)})
+                              (mapv #(assoc % :type :transform)))
+        graph            (update graph :transforms into from-scratch-txs)]
+    (t2/update! :model/Workspace workspace-id {:graph graph})
+    graph))
+
+(defn add-entities!
+  "Add upstream entities to an existing workspace by mirroring them.
+   Returns the workspace with updated graph."
+  [workspace upstream]
+  (let [new-graph (ws.dag/path-induced-subgraph upstream)
+        database  (t2/select-one :model/Database (:database_id workspace))]
+    (t2/with-transaction [_]
+      (ws.mirroring/mirror-entities! workspace database new-graph)
+      (let [graph (rebuild-workspace-graph! (:id workspace))]
+        (assoc workspace :graph graph)))))
+
+(defn create-transform!
+  "Create a new transform directly within a workspace.
+   Returns the created transform with hydrated tag_ids and creator."
+  [workspace body creator-id]
+  (u/prog1
+    (t2/with-transaction [_]
+      (let [workspace-id    (:id workspace)
+            workspace-db-id (:database_id workspace)
+            database        (t2/select-one :model/Database workspace-db-id)
+            tag-ids         (:tag_ids body)
+            body            (assoc-in body [:target :database] workspace-db-id)
+            transform       (t2/insert-returning-instance!
+                             :model/Transform
+                             (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                    :creator_id creator-id
+                                    :workspace_id workspace-id))]
+        (when (seq tag-ids)
+          (transforms/update-transform-tags! (:id transform) tag-ids))
+
+        ;; Create isolated output table for the new transform
+        (let [target    (:target transform)
+              new-graph {:db_id      workspace-db-id
+                         :transforms [transform]
+                         :inputs     []
+                         :outputs    [{:id     nil
+                                       :schema (:schema target)
+                                       :name   (:name target)}]
+                         :check-outs []}]
+          (ws.isolation/create-isolated-output-tables! workspace database new-graph))
+
+        ;; Rebuild the full graph from scratch
+        (rebuild-workspace-graph! workspace-id)
+
+        (t2/hydrate transform :transform_tag_ids :creator)))
+    (events/publish-event! :event/transform-create {:object <> :user-id creator-id})))
 
 #_:clj-kondo/ignore
 (comment
