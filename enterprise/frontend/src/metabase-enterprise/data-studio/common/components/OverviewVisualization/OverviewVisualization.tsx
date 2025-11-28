@@ -45,6 +45,7 @@ export function OverviewVisualization({ card }: OverviewVisualizationProps) {
         question={question}
         result={data}
         rawSeries={rawSeries}
+        queryBuilderMode="dataset" // disable the object details column
         isRunnable={false}
         isRunning={isLoading}
         isDirty

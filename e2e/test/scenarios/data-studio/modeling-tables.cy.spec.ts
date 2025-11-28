@@ -84,11 +84,13 @@ describe("scenarios > data studio > modeling > tables", () => {
   });
 
   describe("fields", () => {
-    it("should be able to modify fields", () => {
+    it("should be able to rename fields", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
 
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.tableHeaderColumn("Total").should("be.visible");
+
       H.DataStudio.Tables.fieldsTab().click();
       H.DataModel.TableSection.clickField("Total");
       H.DataModel.FieldSection.getNameInput()
@@ -96,6 +98,9 @@ describe("scenarios > data studio > modeling > tables", () => {
         .type("Total changed")
         .blur();
       H.undoToast().findByText("Name of Total updated").should("be.visible");
+
+      H.DataStudio.Tables.overviewTab().click();
+      H.tableHeaderColumn("Total changed").should("be.visible");
     });
   });
 

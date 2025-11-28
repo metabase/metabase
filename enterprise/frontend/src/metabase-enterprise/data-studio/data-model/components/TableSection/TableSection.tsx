@@ -174,9 +174,6 @@ const TableSectionBase = ({
             flex="1"
             p="sm"
             leftSection={<Icon name="publish" />}
-            style={{
-              width: "100%",
-            }}
             disabled={table.is_published || isPublishing}
             onClick={() => handlePublish({ tableIds: [table.id] })}
           >
@@ -186,9 +183,6 @@ const TableSectionBase = ({
             flex="1"
             leftSection={<Icon name="settings" />}
             onClick={onSyncOptionsClick}
-            style={{
-              width: "100%",
-            }}
           >
             {t`Sync settings`}
           </Button>
