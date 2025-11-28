@@ -16,7 +16,8 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users])
   (:import
-   (java.sql SQLException)))
+   (java.sql SQLException)
+   (org.postgresql.util PSQLState)))
 
 (deftest ^:parallel exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"
@@ -166,6 +167,30 @@
              (-> (fn [] (throw (ex-info nil {})))
                  (catch-exceptions)
                  :error))))))
+
+(deftest ^:parallel query-canceled-exception-test
+  (testing "Should not log errors for query cancellations"
+    (let [log-messages    (atom [])
+          postgres-cancel (SQLException. "canceling statement due to user request"
+                                         (.getState PSQLState/QUERY_CANCELED))]
+      (with-redefs [log/errorf (fn [fmt & args]
+                                 (swap! log-messages conj (apply format fmt args)))]
+        (testing "PostgreSQL query cancellation should not be logged as an error"
+          ;; Reset log messages
+          (reset! log-messages [])
+          (driver/with-driver :postgres
+            (catch-exceptions (fn [] (throw postgres-cancel))))
+          ;; No error messages should have been logged
+          (is (empty? @log-messages)))
+
+        (testing "Regular exceptions should still be logged"
+          ;; Reset log messages  
+          (reset! log-messages [])
+          (driver/with-driver :postgres
+            (catch-exceptions (fn [] (throw (Exception. "Regular error")))))
+          ;; Should have logged an error message
+          (is (= 1 (count @log-messages)))
+          (is (re-find #"Error processing query: Regular error" (first @log-messages))))))))
 
 (deftest permissions-test
   (mt/with-temp-copy-of-db
