@@ -222,17 +222,24 @@
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
-      (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (case (keyword card-type)
-                                                        :model :dataset
-                                                        :metric :metric
-                                                        :card) conj collection-id))
-                                        {:dataset #{}
-                                         :metric  #{}
-                                         :card    #{}}
-                                        (t2/reducible-query {:select-distinct [:collection_id :type]
-                                                             :from            [:report_card]
-                                                             :where           [:= :archived false]}))
+      (let [collection-type-ids (merge (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                                                 (update acc (case (keyword card-type)
+                                                               :model :dataset
+                                                               :metric :metric
+                                                               :card) conj collection-id))
+                                               {:dataset #{}
+                                                :metric  #{}
+                                                :card    #{}}
+                                               (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                                    :from            [:report_card]
+                                                                    :where           [:= :archived false]}))
+                                       {:table (->> (t2/query {:select-distinct [:collection_id]
+                                                               :from :metabase_table
+                                                               :where [:and
+                                                                       [:= :is_published true]
+                                                                       [:= :archived_at nil]]})
+                                                    (map :collection_id)
+                                                    (into #{}))})
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
