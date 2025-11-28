@@ -228,7 +228,7 @@ const getPublicDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/public/document/${documentUuid}/card/${cardId}/${type}`,
+  url: `/api/public/document/${documentUuid}/card/${cardId}/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,

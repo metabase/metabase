@@ -552,6 +552,9 @@ describe("documents", () => {
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.activateToken("bleeding-edge");
+        H.visitDocument("@documentId");
+
         H.documentContent().click();
         H.addToDocument("/", false);
 
@@ -1018,7 +1021,6 @@ describe("documents", () => {
 
       cy.log("Trigger command menu and navigate to 'Chart' item");
       H.addToDocument("/", false);
-      cy.realPress("{downarrow}");
       H.commandSuggestionItem("Chart").should(
         "have.attr",
         "aria-selected",
