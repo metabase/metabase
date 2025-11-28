@@ -39,12 +39,28 @@ export function createMockPythonTransformSource({
 export function createMockTransformTarget(
   opts?: Partial<TransformTarget>,
 ): TransformTarget {
-  return {
-    type: "table",
+  const base = {
+    type: "table" as const,
     name: "Table",
     schema: null,
     database: 1,
+  };
+
+  if (opts?.type === "table-incremental") {
+    return {
+      ...base,
+      ...opts,
+      type: "table-incremental",
+      "target-incremental-strategy": opts["target-incremental-strategy"] ?? {
+        type: "append",
+      },
+    };
+  }
+
+  return {
+    ...base,
     ...opts,
+    type: "table",
   };
 }
 

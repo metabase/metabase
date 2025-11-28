@@ -1024,11 +1024,18 @@
 
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
-  (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (macaw/parsed-query query)
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (macaw/parsed-query sql-query)
         ^PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(Table. table-name)])
-    [(str parsed-query)]))
+    [(str parsed-query) sql-params]))
+
+(defmethod driver/compile-insert :sqlserver
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
+    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]

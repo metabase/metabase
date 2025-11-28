@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { isSyncInProgress } from "metabase/lib/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -17,6 +17,14 @@ const DatabaseStatus = (props: DatabaseStatusProps): JSX.Element | null => {
   const databases = getDatabases(props);
   const isActive = databases.some(isSyncInProgress);
   const isVisible = useStatusVisibility(isActive);
+
+  useEffect(() => {
+    if (isVisible) {
+      document.body.classList.add("sync-status-visible");
+    } else {
+      document.body.classList.remove("sync-status-visible");
+    }
+  }, [isVisible]);
 
   if (isVisible) {
     return <DatabaseStatusContent databases={databases} />;

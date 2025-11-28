@@ -180,7 +180,7 @@
     [:field_id :string]
     [:field_granularity {:optional true}
      [:maybe [:enum {:encode/tool-api-request keyword}
-              "day" "week" "month" "quarter" "year"]]]]
+              "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::query-metric-arguments
@@ -299,6 +299,9 @@
    [:name :string]
    [:type [:maybe ::field-type]]
    [:description {:optional true} [:maybe :string]]
+   [:database_type {:optional true
+                    :decode/tool-api-response #(some-> % name u/->snake_case_en)}
+    [:maybe :string]]
    [:semantic_type {:optional true
                     :decode/tool-api-response #(some-> % name u/->snake_case_en)}
     [:maybe :string]]
@@ -613,6 +616,7 @@
    [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
    [:fields ::columns]
    [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
+   [:related_by {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:metrics {:optional true} [:sequential ::basic-metric]]])
 

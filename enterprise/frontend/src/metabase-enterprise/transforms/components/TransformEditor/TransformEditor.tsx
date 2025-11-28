@@ -53,7 +53,13 @@ export function TransformEditor({
   );
 
   const handleQueryChange = (query: Lib.Query) => {
-    onChangeSource({ type: "query", query: Lib.toJsQuery(query) });
+    const newSource: QueryTransformSource = {
+      ...source,
+      type: "query",
+      query: Lib.toJsQuery(query),
+    };
+
+    onChangeSource(newSource);
   };
 
   return (
