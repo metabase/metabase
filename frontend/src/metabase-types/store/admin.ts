@@ -34,6 +34,8 @@ export interface AdminState {
     originalDataPermissions: GroupsPermissions;
     collectionPermissions: CollectionPermissions;
     originalCollectionPermissions: CollectionPermissions;
+    tenantCollectionPermissions: CollectionPermissions;
+    originalTenantCollectionPermissions: CollectionPermissions;
     saveError?: string;
     isHelpReferenceOpen: boolean;
     hasRevisionChanged: {

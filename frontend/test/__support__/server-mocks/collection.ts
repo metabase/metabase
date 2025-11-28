@@ -59,39 +59,31 @@ export function setupCollectionsEndpoints({
 
   // Smart collection tree endpoint with query parameter support
   // Uses overwriteRoutes to override the simple handlers above
-  fetchMock.get(
-    {
-      url: "path:/api/collection/tree",
-      name: "collection-tree",
-      overwriteRoutes: true,
-    },
-    (uri) => {
-      const url = new URL(uri);
-      const excludeArchived =
-        url.searchParams.get("exclude-archived") === "true";
-      const includeTenantCollections =
-        url.searchParams.get("include-tenant-collections") === "true";
+  fetchMock.get("path:/api/collection/tree", (uri: string) => {
+    const url = new URL(uri, "http://localhost");
+    const excludeArchived = url.searchParams.get("exclude-archived") === "true";
+    const includeTenantCollections =
+      url.searchParams.get("include-tenant-collections") === "true";
 
-      return collections.filter((collection) => {
-        // Filter out archived collections if requested
-        if (excludeArchived && collection.archived) {
-          return false;
-        }
+    return collections.filter((collection) => {
+      // Filter out archived collections if requested
+      if (excludeArchived && collection.archived) {
+        return false;
+      }
 
-        // Filter by tenant collection status
-        const isTenantCollection =
-          collection.namespace === "shared-tenant-collection";
+      // Filter by tenant collection status
+      const isTenantCollection =
+        collection.namespace === "shared-tenant-collection";
 
-        if (includeTenantCollections) {
-          // When include-tenant-collections=true, return ONLY tenant collections
-          return isTenantCollection;
-        } else {
-          // When include-tenant-collections=false/undefined, return ONLY non-tenant collections
-          return !isTenantCollection;
-        }
-      });
-    },
-  );
+      if (includeTenantCollections) {
+        // When include-tenant-collections=true, return ONLY tenant collections
+        return isTenantCollection;
+      } else {
+        // When include-tenant-collections=false/undefined, return ONLY non-tenant collections
+        return !isTenantCollection;
+      }
+    });
+  });
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
