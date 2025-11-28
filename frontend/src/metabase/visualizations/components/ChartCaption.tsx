@@ -64,6 +64,7 @@ const ChartCaption = ({
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
       width={width}
       titleMenuItems={titleMenuItems}
+      visualizationType={card.display}
     />
   );
 };
