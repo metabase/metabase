@@ -75,7 +75,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("workspace", id)]),
+        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
     }),
     getTransformUpstreamMapping: builder.query<
       TransformUpstreamMapping,

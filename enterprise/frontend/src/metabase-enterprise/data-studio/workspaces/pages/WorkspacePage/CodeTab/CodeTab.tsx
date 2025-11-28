@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { checkNotNull } from "metabase/lib/types";
 import { Stack, Text } from "metabase/ui";
+import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { useWorkspace } from "../WorkspaceProvider";
@@ -24,7 +26,10 @@ export const CodeTab = ({
   const { editedTransforms } = useWorkspace();
   const availableTransforms = useMemo(() => {
     return transforms.filter((transform) => {
-      return !workspaceTransforms.some((t) => t.id === transform.id);
+      return (
+        transform.workspace_id == null &&
+        !workspaceTransforms.some((t) => t.id === transform.id)
+      );
     });
   }, [workspaceTransforms, transforms]);
 
@@ -48,17 +53,25 @@ export const CodeTab = ({
         >
           <Stack gap={0}>
             <Text fw={600}>{t`Workspace Transforms`}</Text>
-            {workspaceTransforms.map((transform) => (
-              <TransformListItem
-                key={transform.id}
-                name={transform.name}
-                icon="pivot_table"
-                fw={600}
-                isActive={activeTransformId === transform.id}
-                isEdited={editedTransforms.has(transform.id)}
-                onClick={() => handleTransformClick(transform)}
-              />
-            ))}
+            {workspaceTransforms.map((transform) => {
+              return (
+                <TransformListItem
+                  key={transform.id}
+                  name={transform.name}
+                  icon="pivot_table"
+                  fw={600}
+                  isActive={activeTransformId === transform.id}
+                  isEdited={
+                    editedTransforms.has(transform.id) &&
+                    !isSameSource(
+                      checkNotNull(editedTransforms.get(transform.id)?.source),
+                      transform.source,
+                    )
+                  }
+                  onClick={() => handleTransformClick(transform)}
+                />
+              );
+            })}
           </Stack>
         </Stack>
       )}

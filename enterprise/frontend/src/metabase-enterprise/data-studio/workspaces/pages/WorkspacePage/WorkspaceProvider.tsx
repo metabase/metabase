@@ -19,6 +19,7 @@ export interface EditedTransform {
 export interface WorkspaceContextValue {
   openedTransforms: Transform[];
   activeTransform: Transform | undefined;
+  activeEditedTransform: EditedTransform | undefined;
   setActiveTransform: (transform: Transform | undefined) => void;
   addOpenedTransform: (transform: Transform) => void;
   removeOpenedTransform: (transformId: number) => void;
@@ -73,10 +74,15 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
     });
   };
 
+  const activeEditedTransform = activeTransform
+    ? (editedTransforms.get(activeTransform.id) ?? activeTransform)
+    : activeTransform;
+
   const value = useMemo(
     () => ({
       openedTransforms,
       activeTransform,
+      activeEditedTransform,
       setActiveTransform,
       addOpenedTransform,
       removeOpenedTransform,
@@ -84,7 +90,12 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
       setEditedTransform,
       removeEditedTransform,
     }),
-    [openedTransforms, activeTransform, editedTransforms],
+    [
+      openedTransforms,
+      activeTransform,
+      activeEditedTransform,
+      editedTransforms,
+    ],
   );
 
   return (

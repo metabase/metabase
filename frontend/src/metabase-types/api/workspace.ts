@@ -34,8 +34,11 @@ export type WorkspaceListResponse = {
 export type WorkspaceContentItem = WorkspaceTransformItem;
 
 export type WorkspaceTransformItem = {
+  type: "transform";
   id: TransformId;
   name: string;
+  upstream_id: TransformId;
+  workspace_id: WorkspaceId;
 };
 
 export type WorkspaceContents = {
@@ -67,10 +70,10 @@ export type WorkspaceMergeResponse = {
 
 export type WorkspaceUpdateContentsRequest = {
   id: WorkspaceId;
-  add_upstream?: {
+  add?: {
     transforms?: TransformId[];
   };
-  remove_downstream?: {
+  remove?: {
     transforms?: TransformId[];
   };
 };

@@ -48,7 +48,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     (db) => db.id === workspace?.database_id,
   );
 
-  const transforms = useMemo(
+  const dbTransforms = useMemo(
     () =>
       allTransforms.filter((t) => {
         if (t.source_type === "python") {
@@ -65,6 +65,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const {
     openedTransforms,
     activeTransform,
+    activeEditedTransform,
     setActiveTransform,
     addOpenedTransform,
     removeOpenedTransform,
@@ -72,11 +73,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   } = useWorkspace();
 
   const workspaceTransforms = useMemo(
-    () =>
-      transforms.filter((t) =>
-        workspace?.contents?.transforms?.find((x) => x.id === t.id),
-      ),
-    [transforms, workspace],
+    () => dbTransforms.filter((transform) => transform.workspace_id === id),
+    [dbTransforms, id],
   );
 
   const handleTransformChange = useCallback(
@@ -235,15 +233,21 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               )}
 
               <Tabs.Panel value={String(activeTransform?.id)} h="100%">
-                {openedTransforms.length === 0 || !activeTransform ? (
+                {openedTransforms.length === 0 ||
+                !activeTransform ||
+                !activeEditedTransform ? (
                   <Text c="text-medium">
                     {t`Select a transform on the right.`}
                   </Text>
                 ) : (
                   <TransformTab
                     transform={activeTransform}
-                    onChange={handleTransformChange}
+                    editedTransform={activeEditedTransform}
                     workspaceId={id}
+                    onChange={handleTransformChange}
+                    onOpenTransform={(transformId) =>
+                      setTab(String(transformId))
+                    }
                   />
                 )}
               </Tabs.Panel>
@@ -263,7 +267,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             <Tabs.Panel value="code" p="md">
               <CodeTab
                 workspaceTransforms={workspaceTransforms}
-                transforms={transforms}
+                transforms={dbTransforms}
                 activeTransformId={activeTransform?.id}
                 onTransformClick={(transform) => {
                   setTab(String(transform.id));

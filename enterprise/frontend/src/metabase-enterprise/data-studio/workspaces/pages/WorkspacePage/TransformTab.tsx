@@ -2,41 +2,76 @@ import { t } from "ttag";
 
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import {
-  useGetWorkspaceContentsQuery,
+  useLazyGetTransformQuery,
+  useUpdateTransformMutation,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
 import type {
   DraftTransformSource,
   Transform,
+  TransformId,
   WorkspaceId,
 } from "metabase-types/api";
 
 import { TransformEditor } from "./TransformEditor";
+import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
 
 interface Props {
+  editedTransform: EditedTransform;
   transform: Transform;
-  onChange: (source: DraftTransformSource) => void;
   workspaceId: WorkspaceId;
+  onChange: (source: DraftTransformSource) => void;
+  onOpenTransform: (transformId: TransformId) => void;
 }
 
-export const TransformTab = ({ transform, workspaceId, onChange }: Props) => {
-  const { data } = useGetWorkspaceContentsQuery(workspaceId);
+export const TransformTab = ({
+  editedTransform,
+  transform,
+  workspaceId,
+  onChange,
+  onOpenTransform,
+}: Props) => {
+  const [getTransform] = useLazyGetTransformQuery();
+  const [updateTransform] = useUpdateTransformMutation();
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
 
-  const isSaved = data?.contents.transforms.some((t) => t.id === transform.id);
+  const { addOpenedTransform, removeOpenedTransform, setActiveTransform } =
+    useWorkspace();
+
+  const isSaved = transform.workspace_id === workspaceId;
 
   const handleRun = () => {};
 
-  const handleSave = () => {
-    if (!isSaved) {
-      updateWorkspaceContents({
+  const handleSave = async () => {
+    if (isSaved) {
+      updateTransform({
+        id: transform.id,
+        source: editedTransform.source,
+      });
+    } else {
+      const response = await updateWorkspaceContents({
         id: workspaceId,
-        add_upstream: {
+        add: {
           transforms: [transform.id],
         },
       });
-    } else {
-      window.alert("TODO");
+
+      const newTransform = response.data?.contents.transforms.find(
+        (t) => t.upstream_id === transform.id,
+      );
+      const newTransformId = newTransform?.id;
+
+      if (newTransformId != null) {
+        // TODO: remove when backend adds contents hydration to previous request
+        const newTransform = await getTransform(newTransformId).unwrap();
+
+        if (newTransform) {
+          addOpenedTransform(newTransform);
+          removeOpenedTransform(transform.id);
+          setActiveTransform(newTransform);
+          onOpenTransform(newTransform.id);
+        }
+      }
     }
   };
 
@@ -51,11 +86,13 @@ export const TransformTab = ({ transform, workspaceId, onChange }: Props) => {
         <Group>{t`Output table input?`}</Group>
 
         <Group>
-          <Button
-            leftSection={<Icon name="play" />}
-            size="sm"
-            onClick={handleRun}
-          >{t`Run`}</Button>
+          {isSaved && (
+            <Button
+              leftSection={<Icon name="play" />}
+              size="sm"
+              onClick={handleRun}
+            >{t`Run`}</Button>
+          )}
 
           <Button
             size="sm"
@@ -65,12 +102,14 @@ export const TransformTab = ({ transform, workspaceId, onChange }: Props) => {
         </Group>
       </Group>
 
-      <Box flex="1">
-        <TransformEditor
-          source={transform.source as DraftTransformSource}
-          onChange={onChange}
-        />
-      </Box>
+      {editedTransform && (
+        <Box flex="1">
+          <TransformEditor
+            source={editedTransform.source}
+            onChange={onChange}
+          />
+        </Box>
+      )}
     </Stack>
   );
 };
