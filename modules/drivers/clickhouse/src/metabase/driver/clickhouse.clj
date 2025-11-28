@@ -19,8 +19,9 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
-  (:import  [com.clickhouse.client.api.query QuerySettings]
-            [java.sql SQLException]))
+  (:import
+   (com.clickhouse.client.api.query QuerySettings)
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -339,3 +340,7 @@
   [_driver _database _table]
   (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
   #{})
+
+(defmethod driver/table-known-to-not-exist? :clickhouse
+  [_driver e]
+  (instance? SQLException e))
