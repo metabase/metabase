@@ -1,0 +1,33 @@
+entity type,name,id,term_0,term_1,term_2,term_3
+dashboard,Webinars performance,https://stats.metabase.com/dashboard/894-webinars-performance,webinar performance,webinar metrics,marketing events kpis,lead generation
+dashboard,Metabase Business,https://stats.metabase.com/dashboard/1907-metabase-business,metabase business,revenue metrics,company financial performance,arr growth
+dashboard,Engineering Goals 2025,https://stats.metabase.com/dashboard/3091-engineering-goals-2025,engineering goals,eng quality goals,engineering kpi tracking,team performance metrics
+dashboard,Customer Health,https://stats.metabase.com/dashboard/1980-customer-health,customer health,customer success metrics,support ticket analysis dashboard,engagement analytics
+dashboard,Person overview,https://stats.metabase.com/dashboard/2105-person-overview,person overview,user behavior tracking,user activity log,user engagement metrics
+dashboard,Admin features,https://stats.metabase.com/dashboard/3625-admin-features,admin features,usage of admin features,cloud instance admin settings,usage of saml and jwt auth
+dashboard,Task performance per database,https://stats.metabase.com/dashboard/968-task-performance-per-database-cloud,database task performance,database sync duration,database performance,fingerprinting and scanning performance
+question,General NPS Survey,https://stats.metabase.com/question/25211-general-nps-survey,nps survey,nps raw data,customer satisfaction survey,nps comments
+question,Bug Goals per Team,https://stats.metabase.com/question/25623-bug-goals-per-team,bug goals per team,closed bugs per team,bug goals,monthly bug goal
+question,Bugs with No Team!,https://stats.metabase.com/question/26365-bugs-with-no-team,bugs with no team,unassigned bugs,orphan bugs,bugs missing teams
+question,PA Leads,https://stats.metabase.com/question/14345-pa-leads,pa leads,pa new leads,product advocate leads,pa leads growth
+question,Total Employees,https://stats.metabase.com/question/11693-total-employees,total employees,count of employees,number of employees,metabase employees
+question,Company Gross Margin,https://stats.metabase.com/question/17438-company-gross-margin,company gross margin,margin,business margin,margin per month
+model,Monthly Revenue (Account),https://stats.metabase.com/model/7291-monthly-revenue-account,monthly revenue,revenue per account,accounts data,revenue growth per customer
+model,Ticket,https://stats.metabase.com/model/6759-ticket,ticket,customer interaction data,tickets,tickets model
+model,Issue,https://stats.metabase.com/model/6113-issue,issue,github issues,feature requests,bugs
+model,Hosted Instance,https://stats.metabase.com/model/6155-hosted-instance,instance,hosted instance,running instances,cloud instances
+model,Setting,https://stats.metabase.com/model/6144-setting,setting,hosted instances settings,cloud instance settings,hosted instance options
+model,Simple Event,https://stats.metabase.com/model/19616-simple-event,simple event,product analytics events,product events,user behavior events
+table,ORDERS,https://stats.metabase.com/question#?db=1&table=1,orders,sample orders,example orders,sales
+table,ms_token_check,https://stats.metabase.com/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoyNiwidHlwZSI6InF1ZXJ5IiwicXVlcnkiOnsic291cmNlLXRhYmxlIjozNjE3N319LCJkaXNwbGF5IjoidGFibGUiLCJ2aXN1YWxpemF0aW9uX3NldHRpbmdzIjp7fX0=,token check,token check rows,token check table,token metrics
+table,hm_hosted_instance,https://stats.metabase.com/question#?db=45&table=8382,hosted instance,hosted instance data,hosted instance table,cloud instance table
+table,deal_history,https://stats.metabase.com/question#?db=26&table=35377,deal history,deals,deals data,pipedrive deals
+table,task_history,https://stats.metabase.com/question#?db=12&table=5550,task history,metabase tasks,system tasks,quartz logs
+table,refund,https://stats.metabase.com/question#?db=26&table=11463,refund,stripe refunds,chargebacks,refund table
+database,Analytics Data Warehouse,https://stats.metabase.com/browse/databases/26-analytics-data-warehouse,analytics data warehouse,analytics dw,dw,data warehouse
+database,Sample Database,https://stats.metabase.com/browse/databases/1-sample-database,sample database,sample dataset,example database,sample tables
+database,Horror Show,https://stats.metabase.com/browse/databases/19-horror-show-test,horror show,horror db,huge database,db with fake tables
+collection,Engineering,https://stats.metabase.com/collection/201-engineering,engineering,engineering objects,eng questions,eng content
+collection,Product,https://stats.metabase.com/collection/200-product,product,product questions,product content,product metrics
+collection,Metabase Store,https://stats.metabase.com/collection/617-metabase-store,metabase store,store questions and dashboards,store metrics,store content
+collection,Product Events,https://stats.metabase.com/collection/1329-product-events,product events,snowplow events,all events,events data

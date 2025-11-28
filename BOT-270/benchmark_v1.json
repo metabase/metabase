@@ -1,0 +1,487 @@
+[
+  {
+    "search_texts": [
+      {
+        "term0": "webinar performance",
+        "term1": "webinar metrics",
+        "term2": "marketing events kpis",
+        "term3": "lead generation"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 894,
+        "model": "dashboard"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "metabase business",
+        "term1": "revenue metrics",
+        "term2": "company financial performance",
+        "term3": "arr growth"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 1907,
+        "model": "dashboard"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "engineering goals",
+        "term1": "eng quality goals",
+        "term2": "engineering kpi tracking",
+        "term3": "team performance metrics"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 3091,
+        "model": "dashboard"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "customer health",
+        "term1": "customer success metrics",
+        "term2": "support ticket analysis dashboard",
+        "term3": "engagement analytics"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 1980,
+        "model": "dashboard"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "person overview",
+        "term1": "user behavior tracking",
+        "term2": "user activity log",
+        "term3": "user engagement metrics"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 2105,
+        "model": "dashboard"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "admin features",
+        "term1": "usage of admin features",
+        "term2": "cloud instance admin settings",
+        "term3": "usage of saml and jwt auth"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 3625,
+        "model": "dashboard"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "database task performance",
+        "term1": "database sync duration",
+        "term2": "database performance",
+        "term3": "fingerprinting and scanning performance"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 968,
+        "model": "dashboard"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "nps survey",
+        "term1": "nps raw data",
+        "term2": "customer satisfaction survey",
+        "term3": "nps comments"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 25211,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "bug goals per team",
+        "term1": "closed bugs per team",
+        "term2": "bug goals",
+        "term3": "monthly bug goal"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 25623,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "bugs with no team",
+        "term1": "unassigned bugs",
+        "term2": "orphan bugs",
+        "term3": "bugs missing teams"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 26365,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "pa leads",
+        "term1": "pa new leads",
+        "term2": "product advocate leads",
+        "term3": "pa leads growth"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 14345,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "total employees",
+        "term1": "count of employees",
+        "term2": "number of employees",
+        "term3": "metabase employees"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 11693,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "company gross margin",
+        "term1": "margin",
+        "term2": "business margin",
+        "term3": "margin per month"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 17438,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "ticket",
+        "term1": "customer interaction data",
+        "term2": "accounts data",
+        "term3": "revenue growth per customer"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 6759,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "monthly revenue",
+        "term1": "revenue per account",
+        "term2": "tickets",
+        "term3": "tickets model"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 7291,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "instance",
+        "term1": "hosted instance",
+        "term2": "feature requests",
+        "term3": "bugs"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 6155,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "setting",
+        "term1": "hosted instances settings",
+        "term2": "running instances",
+        "term3": "cloud instances"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 6144,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "simple event",
+        "term1": "product analytics events",
+        "term2": "cloud instance settings",
+        "term3": "hosted instance options"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 19616,
+        "model": "card"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "orders",
+        "term1": "sample orders",
+        "term2": "product events",
+        "term3": "user behavior events"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 1,
+        "model": "table",
+        "database_id": 1
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "hosted instance",
+        "term1": "hosted instance data",
+        "term2": "example orders",
+        "term3": "sales"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 8382,
+        "model": "table",
+        "database_id": 45
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "deal history",
+        "term1": "deals",
+        "term2": "token check table",
+        "term3": "token metrics"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 35377,
+        "model": "table",
+        "database_id": 26
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "task history",
+        "term1": "metabase tasks",
+        "term2": "hosted instance table",
+        "term3": "cloud instance table"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 5550,
+        "model": "table",
+        "database_id": 12
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "refund",
+        "term1": "stripe refunds",
+        "term2": "deals data",
+        "term3": "pipedrive deals"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 11463,
+        "model": "table",
+        "database_id": 26
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "analytics data warehouse",
+        "term1": "analytics dw",
+        "term2": "system tasks",
+        "term3": "quartz logs"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 26,
+        "model": "database"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "sample database",
+        "term1": "sample dataset",
+        "term2": "chargebacks",
+        "term3": "refund table"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 1,
+        "model": "database"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "horror show",
+        "term1": "horror db",
+        "term2": "dw",
+        "term3": "data warehouse"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 19,
+        "model": "database"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "engineering",
+        "term1": "engineering objects",
+        "term2": "example database",
+        "term3": "sample tables"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 201,
+        "model": "collection"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "product",
+        "term1": "product questions",
+        "term2": "huge database",
+        "term3": "db with fake tables"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 200,
+        "model": "collection"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "metabase store",
+        "term1": "store questions and dashboards",
+        "term2": "eng questions",
+        "term3": "eng content"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 617,
+        "model": "collection"
+      }
+    ]
+  },
+  {
+    "search_texts": [
+      {
+        "term0": "product events",
+        "term1": "snowplow events",
+        "term2": "product content",
+        "term3": "product metrics"
+      }
+    ],
+    "relevant": [
+      {
+        "id": 1329,
+        "model": "collection"
+      }
+    ]
+  }
+]
