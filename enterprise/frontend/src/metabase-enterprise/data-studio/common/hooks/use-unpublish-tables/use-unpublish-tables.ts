@@ -31,7 +31,7 @@ export function useUnpublishTables({
         const { error } = await unpublishTables({
           database_ids: input.databaseIds,
           schema_ids: input.schemaIds,
-          table_ids: input.schemaIds,
+          table_ids: input.tableIds,
         });
         if (error) {
           sendErrorToast(t`Failed to unpublish tables`);

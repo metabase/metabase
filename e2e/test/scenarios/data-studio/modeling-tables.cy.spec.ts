@@ -36,6 +36,21 @@ describe("scenarios > data studio > modeling > tables", () => {
         cy.findByText("Orders").should("be.visible");
       });
     });
+
+    it("should be able to unpublish a table", () => {
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+
+      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.DataStudio.Tables.moreMenu().click();
+      H.popover().findByText("Unpublish").click();
+      H.modal().findByText("Unpublish").click();
+      H.DataStudio.Modeling.emptyPage().should("be.visible");
+      H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
+      H.DataStudio.Modeling.collectionPage()
+        .findByText("No tables or models yet")
+        .should("be.visible");
+    });
   });
 
   describe("overview", () => {

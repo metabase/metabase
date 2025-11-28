@@ -6,7 +6,7 @@ import { Center } from "metabase/ui";
 
 export function ModelingEmptyPage() {
   return (
-    <Center h="100%" bg="bg-light">
+    <Center h="100%" bg="bg-light" data-testid="modeling-empty-page">
       <EmptyState
         illustrationElement={<img src={EmptyDashboardBot} />}
         title={t`Pick a collection or create a new model or metric`}
