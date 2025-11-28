@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.context
-
   (:require
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 ;; TODO (lbrdnk 2025-11-26): Following should have its own module
@@ -11,7 +11,11 @@
   (if (empty? transform-ids)
     {}
     (let [id->transform (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids])]
-      (assert (= (count id->transform) (count id->transform)))
+      (when (not= (count transform-ids) (count id->transform))
+        (throw (ex-info (tru "Unable to fetch all transforms within the graph")
+                        {:status-code           500
+                         :transform-ids         transform-ids
+                         :missing-transform-ids (remove id->transform transform-ids)})))
       id->transform)))
 
 (defn- fetch-graph-tables
