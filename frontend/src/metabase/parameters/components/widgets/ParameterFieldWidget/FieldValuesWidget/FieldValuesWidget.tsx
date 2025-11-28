@@ -1,5 +1,6 @@
 import cx from "classnames";
 import {
+  type ReactNode,
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,
@@ -27,6 +28,7 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { OptionsType } from "metabase/lib/formatting";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -123,7 +125,7 @@ export interface IFieldValuesWidgetProps {
   placeholder?: string;
   checkedColor?: string;
 
-  valueRenderer?: (value: string | number) => JSX.Element;
+  valueRenderer?: (value: RowValue) => JSX.Element;
   optionRenderer?: (option: FieldValue) => JSX.Element;
   layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
@@ -315,11 +317,14 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   if (!valueRenderer) {
-    valueRenderer = (value: string | number) => {
+    valueRenderer = (value: RowValue, extraOptions?: OptionsType) => {
       const option = options.find((option) => getValue(option) === value);
       return renderValue({
         fields,
-        formatOptions,
+        formatOptions: {
+          ...formatOptions,
+          ...extraOptions,
+        },
         value,
         parameter,
         cardId,
@@ -483,11 +488,17 @@ export const FieldValuesWidgetInner = forwardRef<
                 dashboardId={dashboardId}
                 cardId={cardId}
                 value={isNumericParameter ? parseNumericValue(value) : value}
+                renderValue={valueRenderer}
                 tc={tc}
               />
             )}
             renderOption={({ option }) => (
-              <RemappedOption option={option} fields={fields} tc={tc} />
+              <RemappedOption
+                option={option}
+                fields={fields}
+                tc={tc}
+                renderValue={valueRenderer}
+              />
             )}
             onChange={(values) => {
               if (isNumericParameter) {
@@ -711,6 +722,7 @@ type RemappedValueProps = {
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
+  renderValue: (value: RowValue | null, options?: OptionsType) => ReactNode;
   tc: ContentTranslationFunction;
 };
 
@@ -720,6 +732,7 @@ function RemappedValue({
   value,
   dashboardId,
   cardId,
+  renderValue = (value) => String(value),
   tc,
 }: RemappedValueProps) {
   const isRemapped =
@@ -758,18 +771,18 @@ function RemappedValue({
 
   const remappedData = dashboardData ?? cardData ?? parameterData;
   if (remappedData == null) {
-    return tc(value);
+    return renderValue(value);
   }
 
   const remappedValue = getValue(remappedData);
   const remappedLabel = getLabel(remappedData);
   if (remappedLabel == null) {
-    return tc(value);
+    return renderValue(value);
   }
 
   return (
     <MultiAutocompleteValue
-      value={String(remappedValue)}
+      value={renderValue(remappedValue, { remap: false })}
       label={tc(String(remappedLabel ?? remappedValue))}
     />
   );
@@ -779,15 +792,24 @@ type RemappedOptionProps = {
   option: ComboboxItem;
   fields: Field[];
   tc: ContentTranslationFunction;
+  renderValue: (value: RowValue | null, options?: OptionsType) => ReactNode;
 };
 
-function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
+function RemappedOption({
+  option,
+  fields,
+  tc,
+  renderValue,
+}: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
   if (!isRemapped) {
     return tc(option.label);
   }
 
   return (
-    <MultiAutocompleteOption value={option.value} label={tc(option.label)} />
+    <MultiAutocompleteOption
+      value={renderValue(option.value, { remap: false })}
+      label={tc(option.label)}
+    />
   );
 }
