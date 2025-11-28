@@ -28,6 +28,14 @@ export const CodeTab = ({
     });
   }, [workspaceTransforms, transforms]);
 
+  const handleTransformClick = (transform: Transform) => {
+    const edited = editedTransforms.get(transform.id);
+    const transformToOpen = edited
+      ? ({ ...transform, ...edited } as Transform)
+      : transform;
+    onTransformClick(transformToOpen);
+  };
+
   return (
     <Stack h="100%" gap={0}>
       {workspaceTransforms.length > 0 && (
@@ -48,7 +56,7 @@ export const CodeTab = ({
                 fw={600}
                 isActive={activeTransformId === transform.id}
                 isEdited={editedTransforms.has(transform.id)}
-                onClick={() => onTransformClick(transform)}
+                onClick={() => handleTransformClick(transform)}
               />
             ))}
           </Stack>
@@ -61,7 +69,7 @@ export const CodeTab = ({
             name={transform.name}
             isActive={activeTransformId === transform.id}
             isEdited={editedTransforms.has(transform.id)}
-            onClick={() => onTransformClick(transform)}
+            onClick={() => handleTransformClick(transform)}
           />
         ))}
       </Stack>

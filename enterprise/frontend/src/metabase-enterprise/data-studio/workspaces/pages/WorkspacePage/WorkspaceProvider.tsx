@@ -1,7 +1,20 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  TransformTargetType,
+} from "metabase-types/api";
+
+export interface EditedTransform {
+  name: string;
+  source: DraftTransformSource;
+  target: {
+    name: string;
+    type: TransformTargetType;
+  };
+}
 
 export interface WorkspaceContextValue {
   openedTransforms: Transform[];
@@ -9,11 +22,8 @@ export interface WorkspaceContextValue {
   setActiveTransform: (transform: Transform | undefined) => void;
   addOpenedTransform: (transform: Transform) => void;
   removeOpenedTransform: (transformId: number) => void;
-  editedTransforms: Map<number, DraftTransformSource>;
-  setEditedTransform: (
-    transformId: number,
-    source: DraftTransformSource,
-  ) => void;
+  editedTransforms: Map<number, EditedTransform>;
+  setEditedTransform: (transformId: number, data: EditedTransform) => void;
   removeEditedTransform: (transformId: number) => void;
 }
 
@@ -31,7 +41,7 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
     Transform | undefined
   >();
   const [editedTransforms, setEditedTransforms] = useState<
-    Map<number, DraftTransformSource>
+    Map<number, EditedTransform>
   >(new Map());
 
   const addOpenedTransform = (transform: Transform) => {
@@ -51,11 +61,8 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
     );
   };
 
-  const setEditedTransform = (
-    transformId: number,
-    source: DraftTransformSource,
-  ) => {
-    setEditedTransforms((prev) => new Map(prev).set(transformId, source));
+  const setEditedTransform = (transformId: number, data: EditedTransform) => {
+    setEditedTransforms((prev) => new Map(prev).set(transformId, data));
   };
 
   const removeEditedTransform = (transformId: number) => {

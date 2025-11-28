@@ -81,11 +81,18 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
   const handleTransformChange = useCallback(
     (source: DraftTransformSource) => {
-      if (activeTransform?.id) {
-        setEditedTransform(activeTransform.id as number, source);
+      if (activeTransform) {
+        setEditedTransform(activeTransform.id, {
+          name: activeTransform.name,
+          source,
+          target: {
+            name: activeTransform.target.name,
+            type: activeTransform.target.type,
+          },
+        });
       }
     },
-    [activeTransform?.id, setEditedTransform],
+    [activeTransform, setEditedTransform],
   );
 
   const handleCloseClick = useCallback(
