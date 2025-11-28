@@ -26,7 +26,7 @@ import {
 
 const { H } = cy;
 
-describe("scenarios > content translation > guest embeds > dashboards", () => {
+describe("scenarios > content translation > static embeds > dashboards", () => {
   describe("pivot table renamed column (metabase#63296)", () => {
     beforeEach(() => {
       H.restore();

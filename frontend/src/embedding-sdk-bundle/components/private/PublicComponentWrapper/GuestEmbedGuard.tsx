@@ -14,9 +14,9 @@ export const GuestEmbedGuard = ({
 }>) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
-  return supportsGuestEmbed || !isGuestEmbed ? (
-    children
-  ) : (
+  return isGuestEmbed && !supportsGuestEmbed ? (
     <SdkError message={t`This component does not support guest embeds`} />
+  ) : (
+    children
   );
 };
