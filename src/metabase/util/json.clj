@@ -5,7 +5,8 @@
    [cheshire.core :as cheshire]
    [cheshire.factory]
    [cheshire.generate :as json.generate]
-   [clojure.java.io :as io])
+   [clojure.java.io :as io]
+   [clojure.string :as str])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io InputStream Reader)))
@@ -89,3 +90,12 @@
   "Decode a value from a JSON from a string, InputStream, or Reader, keywordizing map keys."
   [source]
   (decode source true))
+
+(defn decode-body
+  "Given a response map, decodes body if headers indicate it's a JSON response, or just slurps if it's not a string."
+  [res]
+  (let [ctype (get-in res [:headers "content-type"])]
+    (cond
+      (some-> ctype (str/starts-with? "application/json")) (update res :body decode+kw)
+      (string? (:body res))                                res
+      :else                                                (update res :body slurp))))
