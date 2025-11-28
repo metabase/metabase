@@ -43,7 +43,7 @@ export function PythonDataPicker({
   database,
   tables,
   onChange,
-  canChangeDatabase,
+  canChangeDatabase = true,
 }: PythonDataPickerProps) {
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
