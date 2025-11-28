@@ -83,6 +83,22 @@ describe("scenarios > data studio > modeling > tables", () => {
     });
   });
 
+  describe("fields", () => {
+    it("should be able to modify fields", () => {
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+
+      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.DataStudio.Tables.fieldsTab().click();
+      H.DataModel.TableSection.clickField("Total");
+      H.DataModel.FieldSection.getNameInput()
+        .clear()
+        .type("Total changed")
+        .blur();
+      H.undoToast().findByText("Name of Total updated").should("be.visible");
+    });
+  });
+
   describe("dependencies", () => {
     it("should be able to view dependencies for a table", () => {
       H.createLibrary();
