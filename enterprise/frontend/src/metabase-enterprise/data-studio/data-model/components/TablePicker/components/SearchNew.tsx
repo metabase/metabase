@@ -160,7 +160,7 @@ export function SearchNew({
   );
 
   const flatItems = flatten(resultTree, {
-    isExpanded: (key: string) => !getIsExpanded(key),
+    isExpanded: (key: string) => !getIsExpanded(key), // we want to expand all nodes by default
     addLoadingNodes: false,
     canFlattenSingleSchema: true,
     selection: {
