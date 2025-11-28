@@ -12,11 +12,11 @@ import { SourceTableBreadcrumbs } from "./SourceTableBreadcrumbs";
 import { getDataSourceParts } from "./utils";
 
 interface QuestionDataSourceProps {
+  className?: string;
   question: Question;
   originalQuestion?: Question;
   subHead?: boolean;
   isObjectDetail?: boolean;
-  className?: string;
 }
 
 export function QuestionDataSource({

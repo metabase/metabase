@@ -12,19 +12,21 @@ import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
 import { DataSourceCrumbs } from "./DataSourceCrumbs";
 import S from "./QuestionDataSource.module.css";
 
-interface Props {
+type SourceTableBreadcrumbsProps = {
+  className?: string;
   question: Question;
   variant: "head" | "subhead";
   divider?: ReactElement | string;
   isObjectDetail?: boolean;
-}
+};
 
 export function SourceTableBreadcrumbs({
+  className,
   question,
   variant,
   divider,
   isObjectDetail,
-}: Props) {
+}: SourceTableBreadcrumbsProps) {
   const query = question.query();
   const tableId = Lib.sourceTableOrCardId(query);
   const isSubhead = variant === "subhead";
@@ -42,6 +44,7 @@ export function SourceTableBreadcrumbs({
   if (collection == null) {
     return (
       <DataSourceCrumbs
+        className={className}
         question={question}
         variant={variant}
         divider={divider}
@@ -52,6 +55,7 @@ export function SourceTableBreadcrumbs({
 
   return (
     <HeadBreadcrumbs
+      className={className}
       variant={variant}
       divider={divider}
       parts={[
