@@ -33,10 +33,6 @@
   -ms-user-select: none;
 }
 
-.cardEmbed div[data-element-id="data-grid-measure-root"] {
-  display: none;
-}
-
 .questionHeader {
   padding: 0.5rem 1rem;
 }

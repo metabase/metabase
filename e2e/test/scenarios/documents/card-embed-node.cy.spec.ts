@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
   DOCUMENT_WITH_TWO_CARDS,
@@ -500,6 +501,45 @@ describe("documents card embed node custom logic", () => {
       H.documentContent()
         .find('[data-type="flexContainer"]')
         .should("have.length", 2);
+    });
+  });
+
+  describe("text wrapping in table cards", () => {
+    it("should support text wrapping with proper row heights", () => {
+      H.createQuestion({
+        name: "reviews",
+        type: "model",
+        query: {
+          "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+        },
+        visualization_settings: {
+          "table.column_widths": [246, 195, 69, 116, 134, 83],
+          column_settings: {
+            '["name","BODY"]': {
+              text_wrapping: true,
+            },
+          },
+        },
+      });
+
+      cy.visit("/document/new");
+
+      H.documentContent().click();
+      H.addToDocument("/reviews", false);
+      H.commandSuggestionItem(/reviews/).click();
+
+      H.getDocumentCard("reviews")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      H.getDocumentCard("reviews").within(() => {
+        H.tableInteractive()
+          .find("[data-index=0]")
+          .should("exist")
+          .invoke("height")
+          .should("be.greaterThan", 60);
+      });
     });
   });
 
