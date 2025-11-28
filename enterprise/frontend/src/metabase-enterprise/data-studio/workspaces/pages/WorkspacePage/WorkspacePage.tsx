@@ -18,7 +18,6 @@ import {
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import type { DraftTransformSource } from "metabase-types/api";
 
 import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
@@ -231,9 +230,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     {t`Select a transform on the right.`}
                   </Text>
                 ) : (
-                  <TransformTab
-                    source={activeTransform.source as DraftTransformSource}
-                  />
+                  <TransformTab transform={activeTransform} workspaceId={id} />
                 )}
               </Tabs.Panel>
             </Box>
