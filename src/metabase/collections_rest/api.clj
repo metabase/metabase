@@ -693,7 +693,7 @@
             :t.description
             :t.collection_id
             [:t.db_id :database_id]
-            [[:!= :t.archived_at nil] :archived]
+            [[:case [:= :t.archived_at nil] false :else true] :archived]
             [(h2x/literal "table") :model]]
    :from   [[:metabase_table :t]]
    :where  [:and
