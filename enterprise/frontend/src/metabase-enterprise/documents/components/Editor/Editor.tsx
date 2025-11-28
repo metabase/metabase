@@ -44,7 +44,6 @@ import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
-
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
   MetabotNode.name,
