@@ -529,8 +529,8 @@
             (let [tables    (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
                   owner-ids (into #{} (keep :owner_user_id tables))
                   id->owner (when (seq owner-ids)
-                              (t2/select-pk->fn identity
-                                                [:model/User :id :email :first_name :last_name :common_name]
+                              (t2/select-pk->fn #(select-keys % [:id :email :first_name :last_name :common_name])
+                                                :model/User
                                                 :id [:in owner-ids]))]
               (into {}
                     (map (fn [table]
