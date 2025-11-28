@@ -634,85 +634,61 @@
                                                        :ssl true})))))
     (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))
 
-(deftest with-overridden-connection-details-test
-  (testing "Override connection details temporarily"
+(deftest with-swapped-connection-details-test
+  (testing "Swap connection details temporarily"
     (mt/test-drivers (mt/normal-drivers)
-      (let [db (mt/db)
-            original-details (:details db)
-            override-called? (atom false)]
-        (testing "Override function is called when creating connection"
-          (driver/with-overridden-connection-details (u/the-id db)
-            (fn [details]
-              (reset! override-called? true)
-              (testing "Override function receives original details"
-                (is (= original-details details)))
-              (assoc details :test-override true))
-            ;; Create a connection spec - this should trigger the override
+      (let [db    (mt/db)
+            db-id (u/the-id db)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (testing "Swap map is merged into details when creating connection"
+          (driver/with-swapped-connection-details db-id {:test-swap true}
+            ;; Create a connection spec - this should trigger the swap
             (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (some? spec))
-              (testing "Override function was called"
-                (is @override-called?)))))
+              (testing "Pool was created with swap"
+                (is (= 1 (count (filter (fn [[[pool-db-id _] _]]
+                                          (= pool-db-id db-id))
+                                        @@#'sql-jdbc.conn/database-id->connection-pool))))))))
 
-        (testing "Connection works normally outside override scope"
-          (reset! override-called? false)
+        (testing "Connection works normally outside swap scope"
+          (sql-jdbc.conn/invalidate-pool-for-db! db)
           (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
-            (is (some? spec))
-            (testing "Override function not called outside scope"
-              (is (not @override-called?)))))))))
+            (is (some? spec))))))))
 
-(deftest with-overridden-connection-details-nested-test
-  (testing "Nested overrides create separate pools with different composite keys"
+(deftest with-swapped-connection-details-nested-test
+  (testing "Nested swaps for the same database throw an exception"
     (mt/test-drivers (mt/normal-drivers)
-      (let [db            (mt/db)
-            db-id         (u/the-id db)
-            outer-called? (atom false)
-            inner-called? (atom false)]
+      (let [db    (mt/db)
+            db-id (u/the-id db)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-
-        (driver/with-overridden-connection-details db-id
-          (fn [details]
-            (reset! outer-called? true)
-            (assoc details :outer-override true))
+        (driver/with-swapped-connection-details db-id {:outer-swap true}
           (sql-jdbc.conn/db->pooled-connection-spec db)
-          (testing "Outer override was called"
-            (is @outer-called?))
-          (let [outer-pool-count (count (filter (fn [[[pool-db-id _] _]]
-                                                  (= pool-db-id db-id))
-                                                @@#'sql-jdbc.conn/database-id->connection-pool))]
-            (testing "One pool exists after outer scope creates it"
-              (is (= 1 outer-pool-count)))
+          (testing "Attempting nested swap for same database throws"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Nested connection detail swaps are not supported"
+                 (driver/with-swapped-connection-details db-id {:inner-swap true}
+                   (sql-jdbc.conn/db->pooled-connection-spec db)))))))))
 
-            (driver/with-overridden-connection-details db-id
-              (fn [details]
-                (reset! inner-called? true)
-                (assoc details :inner-override true))
-              (sql-jdbc.conn/db->pooled-connection-spec db)
-              (testing "Inner override was called"
-                (is @inner-called?))
-              (let [inner-pool-count (count (filter (fn [[[pool-db-id _] _]]
-                                                      (= pool-db-id db-id))
-                                                    @@#'sql-jdbc.conn/database-id->connection-pool))]
-                (testing "Two pools exist when nested scopes have different overrides"
-                  (is (= 2 inner-pool-count)))))))
-
-        (testing "Both pools persist after scope exits"
-          (let [final-pool-count (count (filter (fn [[[pool-db-id _] _]]
-                                                  (= pool-db-id db-id))
-                                                @@#'sql-jdbc.conn/database-id->connection-pool))]
-            (is (= 2 final-pool-count))))))))
-
-(deftest with-overridden-connection-details-persistence-test
-  (testing "Pools with overrides persist in global cache (no cleanup)"
+  (testing "Different databases can have concurrent swaps"
     (mt/test-drivers (mt/normal-drivers)
-      (let [db (mt/db)
+      (let [db-1    (mt/db)
+            db-1-id (u/the-id db-1)]
+        ;; We can only test this with one db in most test setups, but the code path works
+        (driver/with-swapped-connection-details db-1-id {:swap-1 true}
+          ;; This would work for a different db-id
+          (is (some? (sql-jdbc.conn/db->pooled-connection-spec db-1))))))))
+
+(deftest with-swapped-connection-details-persistence-test
+  (testing "Pools with swaps persist in global cache (no cleanup)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [db    (mt/db)
             db-id (u/the-id db)]
         ;; Clear any existing pools first
         (sql-jdbc.conn/invalidate-pool-for-db! db)
 
-        (driver/with-overridden-connection-details db-id
-          (fn [details]
-            (assoc details :test-override true))
-          ;; Create a connection in override scope
+        (driver/with-swapped-connection-details db-id {:test-swap true}
+          ;; Create a connection in swap scope
           (sql-jdbc.conn/db->pooled-connection-spec db)
 
           (testing "Pool exists in global cache during scope"

@@ -94,11 +94,9 @@
   "Implementation of [[with-mongo-client]]."
   [thunk database]
   (let [db-details-original (mongo.db/details-normalized database)
-        ;; Apply connection detail overrides if present
+        ;; Apply connection detail swaps if present
         db-id           (u/the-id database)
-        db-details      (if-let [detail-update-fn (get driver/*overridden-connection-details* db-id)]
-                          (detail-update-fn db-details-original)
-                          db-details-original)]
+        db-details      (driver/maybe-swap-details db-id db-details-original)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
       (let [client (mongo.util/mongo-client (db-details->mongo-client-settings details-with-tunnel))]
         (log/debug (u/format-color 'cyan "Opened new MongoClient."))

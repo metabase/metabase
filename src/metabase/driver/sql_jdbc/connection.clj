@@ -208,12 +208,15 @@
   (driver-api/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
+;; TODO (ngoc 11/28/25) -- Consider implementing a separate LRU cache with TTL for swapped connection pools
+;; to limit memory usage when workspaces are used at scale. Currently all pools (canonical and swapped)
+;; share the same cache with no eviction policy for swapped pools.
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by `[database-id details-hash]`.
-  The composite key allows different connection details (e.g., from overrides) to have separate pools."}
+  The composite key allows different connection details (e.g., from swaps) to have separate pools."}
   database-id->connection-pool
   (atom {}))
 
-(defonce ^:private ^{:doc "A map of DB details hash values for the canonical (non-overridden) details, keyed by Database `:id`.
+(defonce ^:private ^{:doc "A map of DB details hash values for the canonical (non-swapped) details, keyed by Database `:id`.
   This is used to detect when database details have been updated in the application database."}
   database-id->jdbc-spec-hash
   (atom {}))
@@ -278,9 +281,10 @@
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB.
 
-  When [[metabase.driver/*overridden-connection-details*]] is active for a database, the database details are modified
-  before creating the connection pool. The override is applied to the database map before hash calculation, and pools
-  are cached using a composite key `[database-id details-hash]`, ensuring different overrides get separate pools."
+  When [[metabase.driver/with-swapped-connection-details]] is active for a database, the database details are
+  modified before creating the connection pool. The swap is applied to the database map before hash calculation,
+  and pools are cached using a composite key `[database-id details-hash]`, ensuring different swaps get separate
+  pools."
   [db-or-id-or-spec]
   (when-let [db-id (u/id db-or-id-or-spec)]
     (driver-api/check-allowed-access! db-id))
@@ -295,12 +299,10 @@
                             db-or-id-or-spec)
                           (driver-api/with-metadata-provider database-id
                             (driver-api/database (driver-api/metadata-provider))))
-          ;; Apply connection detail overrides if present
-          has-override? (contains? driver/*overridden-connection-details* database-id)
-          db            (if-let [detail-update-fn (get driver/*overridden-connection-details* database-id)]
-                          (update db-original :details detail-update-fn)
-                          db-original)
-          ;; Calculate hash from final (possibly overridden) details
+          ;; Apply connection detail swaps if present
+          has-swap? (driver/has-connection-swap? database-id)
+          db        (update db-original :details #(driver/maybe-swap-details database-id %))
+          ;; Calculate hash from final (possibly swapped) details
           details-hash  (jdbc-spec-hash db)
           composite-key [database-id details-hash]
           get-fn      (fn [log-invalidation?]
@@ -316,7 +318,7 @@
                             nil
 
                             (let [curr-hash (get @database-id->jdbc-spec-hash database-id)]
-                              (when (and (not @has-override?)  (some? curr-hash) (not= curr-hash details-hash))
+                              (when (and (not has-swap?) (some? curr-hash) (not= curr-hash details-hash))
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match
@@ -353,8 +355,8 @@
           (get-fn false)
           ;; create a new pool and add it to our cache, then return it
           (u/prog1 (create-pool! db)
-            ;; Only update canonical hash if this is NOT an override
-            (set-pool! database-id details-hash <> (not has-override?)))))))
+            ;; Only update canonical hash if this is NOT a swap
+            (set-pool! database-id details-hash <> (not has-swap?)))))))
 
     ;; already a `clojure.java.jdbc` spec map
     (map? db-or-id-or-spec)

@@ -63,59 +63,87 @@
   `(do-with-driver ~driver (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Connection Details Override                                            |
+;;; |                                         Connection Details Swapping                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:dynamic *overridden-connection-details*
-  "A dynamic var that holds a map of database-id -> detail-update-fn for temporarily overriding connection
-  details. When a connection spec is created for a database, if its ID is present in this map, the corresponding
-  function will be applied to transform the connection `:details` before they are used to create a connection.
+(def ^:private ^:dynamic *swapped-connection-details*
+  "A dynamic var that holds a map of database-id -> swap-map for temporarily swapping connection details.
+  When a connection spec is created for a database, if its ID is present in this map, the swap map will be
+  merged into the connection `:details` before they are used to create a connection.
 
-  This provides a mechanism for temporarily using different connection details (e.g., routing queries to a read
-  replica, connecting through a tunnel, or using alternative credentials) without mutating the database record.
+  This provides a mechanism for temporarily using different connection details (e.g., using alternative credentials
+  for workspaces) without mutating the database record.
 
-  The detail-update-fn receives the database `:details` map and returns modified details. The override is applied
-  before any connection-specific processing (like hash calculation for connection pooling), so different overrides
-  will result in different connection pools.
+  The swap map is merged into the database `:details` map. The swap is applied before any connection-specific
+  processing (like hash calculation for connection pooling), so different swaps will result in different
+  connection pools.
 
-  Different drivers may apply this override at different points in their connection lifecycle, but the semantics
-  are consistent: overridden details are used for the duration of the dynamic scope.
+  Different drivers may apply this swap at different points in their connection lifecycle, but the semantics
+  are consistent: swapped details are used for the duration of the dynamic scope.
 
-  See [[with-overridden-connection-details]] for usage."
+  See [[with-swapped-connection-details]] for usage."
   nil)
 
-(defmacro with-overridden-connection-details
-  "Temporarily override the connection details for a specific database within the dynamic scope of `body`.
+(defn- apply-detail-swaps
+  "Merges the `swap-map` into `details`. Supports nested maps via deep merge."
+  [details swap-map]
+  (reduce-kv
+   (fn [acc k v]
+     (if (and (map? v) (map? (get acc k)))
+       (assoc acc k (apply-detail-swaps (get acc k) v))
+       (assoc acc k v)))
+   details
+   swap-map))
 
-  The `detail-update-fn` is a function that takes the database connection `:details` map and returns a modified
-  version. Any code that creates a connection for `database-id` within this scope will use the modified details.
+(defn has-connection-swap?
+  "Returns true if there is an active connection detail swap for `database-id`."
+  [database-id]
+  (contains? *swapped-connection-details* database-id))
 
-  This works across all drivers - each driver applies the override at the appropriate point in its connection
+(defn maybe-swap-details
+  "Returns the database details with any swaps applied from [[*swapped-connection-details*]].
+  If no swap exists for `database-id`, returns `details` unchanged.
+
+  Drivers should call this function when creating connections to apply any active swaps.
+  For JDBC drivers, this is called in [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]].
+  For other drivers (e.g., MongoDB), this should be called in their connection creation logic."
+  [database-id details]
+  (if-let [swap-map (get *swapped-connection-details* database-id)]
+    (apply-detail-swaps details swap-map)
+    details))
+
+(defn do-with-swapped-connection-details
+  "Implementation for [[with-swapped-connection-details]]."
+  [database-id swap-map thunk]
+  (when (contains? *swapped-connection-details* database-id)
+    (throw (ex-info "Nested connection detail swaps are not supported for the same database"
+                    {:database-id database-id})))
+  (binding [*swapped-connection-details* (assoc *swapped-connection-details* database-id swap-map)]
+    (thunk)))
+
+(defmacro with-swapped-connection-details
+  "Temporarily swap the connection details for a specific database within the dynamic scope of `body`.
+
+  The `swap-map` is a map of detail keys to swap values. These will be merged into the database's
+  connection `:details` map. Nested maps are deep-merged.
+
+  Any code that creates a connection for `database-id` within this scope will use the modified details.
+  This works across all drivers - each driver applies the swap at the appropriate point in its connection
   lifecycle. For JDBC drivers, this affects connection pool creation. For other drivers (like MongoDB), this
   affects their native connection mechanisms.
 
+  **Important:** Nested swaps for the same database are not supported and will throw an exception.
+  Different databases can have concurrent swaps.
+
   Example:
 
-    ;; Override connection to use a read replica
-    (driver/with-overridden-connection-details 1 (fn [details]
-                                                    (assoc details :host \"read-replica.example.com\"))
-      ;; All connections created in this scope use the overridden host
-      (qp/process-query query))
-
-    ;; Nested overrides work correctly
-    (driver/with-overridden-connection-details 1 (fn [d] (assoc d :host \"outer\"))
-      (query-db-1)
-      (driver/with-overridden-connection-details 1 (fn [d] (assoc d :host \"inner\"))
-        ;; Inner override takes precedence
-        (query-db-1)))
-
-  Note: This works in conjunction with [[metabase.warehouses.models.database/with-overridden-db-details]]. The
-  Toucan-level override affects database records loaded from the application database, while this driver-level
-  override affects the actual connection creation. Both can be nested and will compose naturally."
+    ;; Swap connection to use alternate credentials
+    (driver/with-swapped-connection-details 1 {:user \"workspace-user\" :password \"workspace-pass\"}
+      ;; All connections created in this scope use the swapped credentials
+      (qp/process-query query))"
   {:style/indent 2}
-  [database-id detail-update-fn & body]
-  `(binding [*overridden-connection-details* (assoc *overridden-connection-details* ~database-id ~detail-update-fn)]
-     ~@body))
+  [database-id swap-map & body]
+  `(do-with-swapped-connection-details ~database-id ~swap-map (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
