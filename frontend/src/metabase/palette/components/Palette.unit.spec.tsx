@@ -55,6 +55,8 @@ describe("command palette", () => {
   });
 
   it("should toggle dark mode", async () => {
+    fetchMock.put("path:/api/setting/color-scheme", 200);
+
     setup();
     await userEvent.keyboard("[ControlLeft>]k");
     await screen.findByTestId("command-palette");
@@ -62,11 +64,18 @@ describe("command palette", () => {
     await userEvent.type(input, "dark mode");
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
-    const getColorSchemeValue = () =>
-      window.localStorage.getItem("metabase-color-scheme");
+    expect(
+      await fetchMock.callHistory
+        .lastCall(/\/api\/setting\/color-scheme/)
+        ?.request?.json(),
+    ).toEqual({ value: "dark" });
 
-    expect(getColorSchemeValue()).toBe("dark");
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
-    expect(getColorSchemeValue()).toBe("auto");
+
+    expect(
+      await fetchMock.callHistory
+        .lastCall(/\/api\/setting\/color-scheme/)
+        ?.request?.json(),
+    ).toEqual({ value: "auto" });
   });
 });
