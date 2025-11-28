@@ -97,6 +97,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
 
+  /** Whether the header cell is clickable (shows hover state). Defaults to true. */
+  headerClickable?: boolean;
+
   /** CSS selector for the clickable area in header */
   headerClickTargetSelector?: string;
 

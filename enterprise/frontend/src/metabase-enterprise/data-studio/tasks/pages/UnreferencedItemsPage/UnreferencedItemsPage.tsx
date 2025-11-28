@@ -16,15 +16,12 @@ import type {
 import { TableSkeleton } from "../../components/TableSkeleton";
 import {
   type EntityTypeFilterValue,
-  TasksFilterButton,
-  type TasksFilterState,
   getFilterApiParams,
 } from "../../components/TasksFilterButton";
 
 import { UnreferencedItemsTable } from "./UnreferencedItemsTable";
 import {
   ENTITY_TYPE_OPTIONS,
-  INITIAL_FILTER_STATE,
   PAGE_SIZE,
   SEARCH_DEBOUNCE_MS,
   VALID_ENTITY_TYPES,
@@ -48,8 +45,6 @@ export function UnreferencedItemsPage({ params }: UnreferencedItemsPageProps) {
   const [sortDirection, setSortDirection] =
     useState<UnreferencedItemSortDirection>();
   const [pageIndex, setPageIndex] = useState(0);
-  const [filters, setFilters] =
-    useState<TasksFilterState>(INITIAL_FILTER_STATE);
 
   useEffect(() => {
     setPageIndex(0);
@@ -57,18 +52,17 @@ export function UnreferencedItemsPage({ params }: UnreferencedItemsPageProps) {
     setSortDirection(undefined);
   }, [entityType]);
 
-  const filterApiParams = getFilterApiParams({
-    ...filters,
-    entityTypes: [entityType],
-  });
-
   const { data, isLoading, isFetching, error } = useGetUnreferencedItemsQuery({
     query: debouncedSearch || undefined,
+    ...getFilterApiParams({
+      entityTypes: [entityType],
+      creatorIds: [],
+      lastModifiedByIds: [],
+    }),
     sort_column: sortColumn,
     sort_direction: sortDirection,
     limit: PAGE_SIZE,
     offset: pageIndex * PAGE_SIZE,
-    ...filterApiParams,
   });
 
   const handleSortChange = useCallback(
@@ -91,11 +85,6 @@ export function UnreferencedItemsPage({ params }: UnreferencedItemsPageProps) {
     },
     [],
   );
-
-  const handleFilterChange = useCallback((newFilters: TasksFilterState) => {
-    setFilters(newFilters);
-    setPageIndex(0);
-  }, []);
 
   const handleEntityTypeChange = useCallback(
     (value: string | null) => {
@@ -131,7 +120,6 @@ export function UnreferencedItemsPage({ params }: UnreferencedItemsPageProps) {
           onChange={handleSearchChange}
           leftSection={<Icon name="search" />}
         />
-        <TasksFilterButton value={filters} onChange={handleFilterChange} />
       </Flex>
       {isLoading ? (
         <TableSkeleton

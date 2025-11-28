@@ -1,19 +1,10 @@
 import { t } from "ttag";
 
-import type {
-  EntityTypeFilterValue,
-  TasksFilterState,
-} from "../../components/TasksFilterButton";
+import type { EntityTypeFilterValue } from "../../components/TasksFilterButton";
 
 export const EMPTY_VALUE = "-";
 export const SEARCH_DEBOUNCE_MS = 300;
 export const PAGE_SIZE = 20;
-
-export const INITIAL_FILTER_STATE: TasksFilterState = {
-  entityTypes: [],
-  creatorIds: [],
-  lastModifiedByIds: [],
-};
 
 type EntityTypeOption = {
   value: EntityTypeFilterValue;

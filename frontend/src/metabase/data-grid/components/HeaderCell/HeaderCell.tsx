@@ -13,6 +13,7 @@ import S from "./HeaderCell.module.css";
 
 export interface HeaderCellProps extends HeaderCellBaseProps {
   variant?: HeaderCellVariant;
+  clickable?: boolean;
 }
 
 export const HeaderCell = memo(function HeaderCell({
@@ -20,9 +21,10 @@ export const HeaderCell = memo(function HeaderCell({
   align,
   sort,
   variant = "light",
+  clickable = true,
 }: HeaderCellProps) {
   return (
-    <HeaderCellWrapper variant={variant} align={align}>
+    <HeaderCellWrapper variant={variant} align={align} clickable={clickable}>
       <HeaderCellPill name={name} sort={sort} align={align} />
     </HeaderCellWrapper>
   );
@@ -66,6 +68,7 @@ export const HeaderCellWrapper = ({
   className,
   variant,
   align,
+  clickable = true,
   children,
 }: HeaderCellWrapperProp) => {
   return (
@@ -73,6 +76,7 @@ export const HeaderCellWrapper = ({
       className={cx(S.root, className, {
         [S.light]: variant === "light",
         [S.outline]: variant === "outline",
+        [S.notClickable]: !clickable,
       })}
       hasHover={false}
       align={align}

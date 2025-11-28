@@ -46,12 +46,15 @@ export function TasksTable<TData, TSortColumn extends string>({
   );
 
   const columnsWithSort = useMemo(() => {
-    if (!columnIdToSortColumn || !sortColumn) {
+    if (!columnIdToSortColumn) {
       return columns;
     }
     return columns.map((col) => {
       const apiColumn = columnIdToSortColumn[col.id];
-      if (apiColumn && apiColumn === sortColumn) {
+      if (!apiColumn) {
+        return { ...col, headerClickable: false };
+      }
+      if (apiColumn === sortColumn) {
         return { ...col, sortDirection };
       }
       return col;
