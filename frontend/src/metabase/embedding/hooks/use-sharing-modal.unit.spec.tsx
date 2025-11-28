@@ -113,6 +113,7 @@ describe("useSharingModal", () => {
     // Extract and call the onBeforeOpen callback
     const onBeforeOpenCallback = mockOpenEmbedJsWizard.mock.calls[0][0]
       .onBeforeOpen as () => void;
+
     act(() => {
       onBeforeOpenCallback();
     });
