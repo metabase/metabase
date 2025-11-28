@@ -22,6 +22,7 @@ import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
+import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab";
 import styles from "./WorkspacePage.module.css";
 import { WorkspaceProvider, useWorkspace } from "./WorkspaceProvider";
@@ -218,12 +219,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
             <Box flex={1} mih={0}>
               <Tabs.Panel value="setup" h="100%" p="md">
-                <Stack gap={0}>
-                  <Title order={4}>{t`Source: `}</Title>
-                  <Title order={3}>
-                    <code>{sourceDb?.name}</code>
-                  </Title>
-                </Stack>
+                <SetupTab databaseName={sourceDb?.name} />
               </Tabs.Panel>
               {isMetabotAvailable && (
                 <Tabs.Panel value="metabot" h="100%">
