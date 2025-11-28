@@ -45,3 +45,9 @@ export const EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG = {
  * such as sdk-based iframe embedding.
  **/
 export const isEmbeddingSdk = () => EMBEDDING_SDK_CONFIG.isEmbeddingSdk;
+
+/**
+ * Whether we are in the Embedded Analytics JS
+ */
+export const isEmbeddedAnalyticsJs = () =>
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding;

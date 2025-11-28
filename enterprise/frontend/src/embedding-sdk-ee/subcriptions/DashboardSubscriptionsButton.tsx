@@ -6,6 +6,9 @@ import { useHasEmailSetup } from "metabase/common/hooks";
 import { toggleSharing } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 
+/**
+ * @internal
+ */
 export const DashboardSubscriptionsButton = (
   props: DashboardSubscriptionsButtonProps,
 ) => {

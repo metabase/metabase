@@ -1,4 +1,3 @@
-import { DASHBOARD_SUBSCRIPTIONS_SDK_PLUGIN } from "embedding-sdk-bundle/components/public/subscriptions";
 import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
 import { Center, Divider } from "metabase/ui";
 
@@ -20,6 +19,7 @@ import {
   FullscreenToggle,
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
+import { DashboardSubscriptionsButton } from "../buttons/DashboardSubscriptionsButton";
 
 import { DASHBOARD_ACTION } from "./dashboard-action-keys";
 import type { DashboardActionButton, DashboardActionKey } from "./types";
@@ -133,8 +133,6 @@ export const dashboardActionButtons: Record<
   // Modular embedding
   [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS]: {
     enabled: ({ withSubscriptions }) => withSubscriptions,
-    component: () => (
-      <DASHBOARD_SUBSCRIPTIONS_SDK_PLUGIN.DashboardSubscriptionsButton />
-    ),
+    component: () => <DashboardSubscriptionsButton />,
   },
 };
