@@ -24,6 +24,15 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
+  /**
+   * The URL of the JWT provider endpoint on your backend.
+   * When provided, the SDK skips the /auth/sso discovery request,
+   * saving one round trip during authentication.
+   */
+  jwtProviderUri?: string;
+
+  skipPackageAuth?: boolean;
+
   apiKey?: never;
 };
 
