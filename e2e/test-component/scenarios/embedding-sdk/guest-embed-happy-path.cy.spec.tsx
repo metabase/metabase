@@ -60,9 +60,6 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
           cy.findByText("Max of Quantity").should("be.visible");
         });
 
-        // Wait for requests
-        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
-
         cy.get("@internalApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(0);
         });
@@ -93,9 +90,6 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
           cy.findByText("Product ID").should("be.visible");
           cy.findByText("Max of Quantity").should("be.visible");
         });
-
-        // Wait for requests
-        cy.wait(WAIT_FOR_INTERNAL_API_REQUESTS_MS);
 
         cy.get("@internalApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(0);
