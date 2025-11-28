@@ -1658,7 +1658,7 @@
    collection-updates :- :map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (let [ctype        (if (:personal_collection_id collection-before-updates)
+  (let [ctype        (if (:personal_owner_id collection-before-updates)
                        "Personal Collection"
                        "Dedicated Tenant Collection")
         unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a {0}." ctype)

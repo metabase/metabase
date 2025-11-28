@@ -68,7 +68,7 @@
           (is (= (set
                   (concat
                    user/admin-or-self-visible-columns
-                   [:common_name :group_ids :personal_collection_id]))
+                   [:common_name :group_ids :personal_collection_id :tenant_collection_id]))
                  (->> result first keys set)))
           ;; just make sure all users are there by checking the emails
           (is (= #{"crowberto@metabase.com"
