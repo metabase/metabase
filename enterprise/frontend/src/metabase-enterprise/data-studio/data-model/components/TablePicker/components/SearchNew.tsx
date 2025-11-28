@@ -162,10 +162,11 @@ export function SearchNew({
   const flatItems = flatten(resultTree, {
     isExpanded: (key: string) => !getIsExpanded(key),
     addLoadingNodes: false,
+    canFlattenSingleSchema: true,
     selection: {
       tables: selectedTables,
-      schemas: new Set(),
-      databases: new Set(),
+      schemas: selectedSchemas,
+      databases: selectedDatabases,
     },
   });
 
