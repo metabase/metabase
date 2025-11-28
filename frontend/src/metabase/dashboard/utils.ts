@@ -304,7 +304,9 @@ export function getDashcardResultsError(
   }
 
   const staticEntityLoadingError = datasets.find((dataset) =>
-    isStaticEmbeddingEntityLoadingError(dataset.error, { isGuestEmbed }),
+    isStaticEmbeddingEntityLoadingError(dataset.error, {
+      isGuestEmbed,
+    }),
   )?.error as StaticEmbeddingEntityError | undefined;
 
   if (staticEntityLoadingError) {

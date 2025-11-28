@@ -65,7 +65,7 @@ export const setup = (options?: {
     <SdkIframeEmbedSetupModal
       opened
       initialState={{
-        isGuestEmbed: false,
+        isGuest: false,
         useExistingUserSession: true,
         ...options?.initialState,
       }}

@@ -58,7 +58,7 @@ export function getEmbedCustomElementSnippet({
   experience: SdkIframeEmbedSetupExperience;
   guestEmbedSignedTokenForSnippet: string | null;
 }): string {
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
 
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
@@ -96,7 +96,7 @@ export function getMetabaseConfigSnippet({
   settings: Partial<SdkIframeEmbedSetupSettings>;
   instanceUrl: string;
 }): string {
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
 
   const config = _.pick(
     settings,
@@ -110,7 +110,7 @@ export function getMetabaseConfigSnippet({
 
     // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),
-    ...(isGuestEmbed ? { isGuestEmbed: true } : {}),
+    ...(isGuestEmbed ? { isGuest: true } : {}),
 
     // Append these settings that can't be controlled by users.
     instanceUrl,

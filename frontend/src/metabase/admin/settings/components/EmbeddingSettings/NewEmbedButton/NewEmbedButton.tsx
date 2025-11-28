@@ -16,7 +16,7 @@ export const NewEmbedButton = () => {
         const modalProps: Pick<SdkIframeEmbedSetupModalProps, "initialState"> =
           {
             initialState: {
-              isGuestEmbed: true,
+              isGuest: true,
               useExistingUserSession: true,
             },
           };

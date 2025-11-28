@@ -33,7 +33,7 @@ export const useGetGuestEmbedSignedToken = ({
       signedTokenForPreview: null,
     });
 
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
   const isQuestionOrDashboard = isQuestionOrDashboardSettings(
     experience,
     settings,

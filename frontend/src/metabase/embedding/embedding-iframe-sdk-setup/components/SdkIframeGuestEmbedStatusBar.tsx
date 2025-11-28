@@ -109,7 +109,7 @@ export const SdkIframeGuestEmbedStatusBar = () => {
     initialEmbeddingParameters,
   } = useSdkIframeEmbedSetupContext();
 
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
 
   const resourceType = getResourceTypeFromExperience(experience);
 

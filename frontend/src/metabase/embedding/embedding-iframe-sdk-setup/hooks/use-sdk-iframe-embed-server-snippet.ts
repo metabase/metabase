@@ -56,7 +56,7 @@ export function useSdkIframeEmbedServerSnippet() {
   const { experience, resource, previewParameterValuesBySlug, settings } =
     useSdkIframeEmbedSetupContext();
 
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
   const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
     experience,
     settings,

@@ -64,11 +64,11 @@ const AuthenticationSection = () => {
   const authType = getAuthTypeForSettings(settings);
 
   const handleAuthTypeChange = (value: string) => {
-    const isGuestEmbed = value === "guest-embed";
+    const isGuest = value === "guest-embed";
     const useExistingUserSession = value === "user-session";
 
     updateSettings({
-      isGuestEmbed,
+      isGuest,
       useExistingUserSession,
     });
   };
@@ -164,11 +164,11 @@ const BehaviorSection = () => {
   const behaviorSection = useMemo(() => {
     return match(settings)
       .with(
-        { template: "exploration", isGuestEmbed: P.optional(false) },
+        { template: "exploration", isGuest: P.optional(false) },
         (settings) => (
           <Checkbox
             label={t`Allow people to save new questions`}
-            disabled={settings.isGuestEmbed}
+            disabled={settings.isGuest}
             checked={settings.isSaveEnabled}
             onChange={(e) =>
               updateSettings({ isSaveEnabled: e.target.checked })
@@ -250,11 +250,11 @@ const BehaviorSection = () => {
         ),
       )
       .with(
-        { componentName: "metabase-browser", isGuestEmbed: P.optional(false) },
+        { componentName: "metabase-browser", isGuest: P.optional(false) },
         (settings) => (
           <Checkbox
             label={t`Allow editing dashboards and questions`}
-            disabled={settings.isGuestEmbed}
+            disabled={settings.isGuest}
             checked={!settings.readOnly}
             onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
           />
@@ -419,7 +419,7 @@ const WithNotAvailableForGuestEmbedsWarning = ({
               {t`Not available if Guest Mode is selected`}
             </Text>
           }
-          disabled={!!settings.isGuestEmbed}
+          disabled={!!settings.isGuest}
         >
           {({
             disabled: disabledForGuestEmbeds,

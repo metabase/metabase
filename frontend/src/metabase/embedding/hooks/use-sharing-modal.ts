@@ -30,7 +30,7 @@ export const useSharingModal = <
     initialState: {
       resourceId: resource.id,
       resourceType,
-      isGuestEmbed: true,
+      isGuest: true,
       useExistingUserSession: true,
     },
   });

@@ -188,7 +188,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       cy.get<string>("@guestEmbedToken").then((token) => {
         const frame = H.loadSdkIframeEmbedTestPage({
-          metabaseConfig: { isGuestEmbed: true },
+          metabaseConfig: { isGuest: true },
           elements: [
             {
               component: "metabase-question",

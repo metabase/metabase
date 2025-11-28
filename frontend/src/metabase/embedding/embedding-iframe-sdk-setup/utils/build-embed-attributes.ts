@@ -30,7 +30,7 @@ export const buildEmbedAttributes = ({
   token: string | null;
   wrapWithQuotes: boolean;
 }) => {
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
 
   const settingsWithOverrides = match(experience)
     .with("chart", () => {

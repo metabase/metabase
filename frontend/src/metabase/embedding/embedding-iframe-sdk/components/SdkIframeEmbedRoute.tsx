@@ -58,12 +58,12 @@ export const SdkIframeEmbedRoute = () => {
 
   const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
 
-  const { isGuestEmbed, theme, locale } = embedSettings;
+  const { isGuest, theme, locale } = embedSettings;
   const isProduction = !embedSettings._isLocalhost;
 
   // If the parent page is not running on localhost, it's not the unauthenticated embedding, and
   // the token feature is not present, we show an error message
-  if (isProduction && !isGuestEmbed && !hasEmbedTokenFeature) {
+  if (isProduction && !isGuest && !hasEmbedTokenFeature) {
     return <SdkIframeInvalidLicenseError />;
   }
 
@@ -78,13 +78,13 @@ export const SdkIframeEmbedRoute = () => {
   }
 
   const authConfig = {
+    isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
   } as MetabaseAuthConfig;
 
   return (
     <ComponentProvider
-      isGuestEmbed={isGuestEmbed}
       authConfig={authConfig}
       theme={theme}
       locale={locale}
@@ -103,7 +103,7 @@ export const SdkIframeEmbedRoute = () => {
       >
         <SdkIframeEmbedView settings={embedSettings} />
 
-        {isGuestEmbed && <EmbedBrandingFooter />}
+        {isGuest && <EmbedBrandingFooter />}
       </Stack>
     </ComponentProvider>
   );

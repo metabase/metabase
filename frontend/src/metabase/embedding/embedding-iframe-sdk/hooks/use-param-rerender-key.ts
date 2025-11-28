@@ -34,7 +34,7 @@ export const useParamRerenderKey = (settings: SdkIframeEmbedSettings) =>
       .otherwise(() => ({ entity: "entity", dependencies: {} }));
 
     return `${entity}-${stableStringify({
-      isGuestEmbed: settings.isGuestEmbed,
+      isGuest: settings.isGuest,
       ...dependencies,
     })}`;
   }, [settings]);

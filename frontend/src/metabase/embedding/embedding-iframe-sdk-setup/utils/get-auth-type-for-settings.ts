@@ -3,7 +3,7 @@ import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-i
 export const getAuthTypeForSettings = (
   settings: SdkIframeEmbedSetupSettings,
 ) =>
-  settings.isGuestEmbed
+  settings.isGuest
     ? "guest-embed"
     : settings.useExistingUserSession
       ? "user-session"
