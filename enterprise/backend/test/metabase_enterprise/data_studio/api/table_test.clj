@@ -30,7 +30,7 @@
                          :is_published true}]
                        (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
              (testing "unpublishing"
-               (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/unpublish-table"
+               (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-table"
                                      {:table_ids [(mt/id :venues)]})
                (is (=? {:display_name "Venues"
                         :collection_id nil
