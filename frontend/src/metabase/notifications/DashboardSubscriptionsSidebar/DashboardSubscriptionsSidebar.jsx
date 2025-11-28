@@ -154,9 +154,8 @@ class DashboardSubscriptionsSidebarInner extends Component {
       isEmbeddingSdk() &&
       shouldDisplayNewPulse(editingMode, pulses) &&
       /**
-       * This last condition ensures that after deleting the last subscription, we do not immediately
-       * go back to EDITING_MODES.ADD_EMAIL while the pulse list is still loading, as shouldDisplayNewPulse(editingMode, pulses)
-       * will change to false (no items in the list) when the pulse list finishes loading.
+       * Ensure we don't prematurely switch to ADD_EMAIL while the pulse list is loading.
+       * When loading completes, shouldDisplayNewPulse() will correctly return false if the list is empty.
        */
       !isSubscriptionListLoading
     ) {
