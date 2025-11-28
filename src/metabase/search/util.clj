@@ -135,21 +135,23 @@
 (defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
   [input]
-  (str
-   (when input
-     (let [trimmed        (str/trim input)
-           complete?      (not (str/ends-with? trimmed "\""))
-           ;; TODO also only complete if the :context is appropriate
-           maybe-complete (if complete? complete-last-word identity)]
-       (->> (str/replace trimmed "\\" "\\\\")
-            split-preserving-quotes
-            (remove str/blank?)
-            (partition-by #{"or"})
-            (remove #(= (first %) "or"))
-            (map process-clause)
-            (remove str/blank?)
-            (str/join " | ")
-            maybe-complete)))))
+  (let [result (str
+                (when input
+                  (let [trimmed        (str/trim input)
+                        complete?      (not (str/ends-with? trimmed "\""))
+                        ;; TODO also only complete if the :context is appropriate
+                        maybe-complete (if complete? complete-last-word identity)]
+                    (->> (str/replace trimmed "\\" "\\\\")
+                         split-preserving-quotes
+                         (remove str/blank?)
+                         (partition-by #{"or"})
+                         (remove #(= (first %) "or"))
+                         (map process-clause)
+                         (remove str/blank?)
+                         (str/join " | ")
+                         maybe-complete))))]
+    (println "TSP to-tsquery-expr input:" input "=> result:" result)
+    result))
 
 (defn weighted-tsvector
   "Create a weighted tsvector for Postgres full-text search with the given weight and text."
