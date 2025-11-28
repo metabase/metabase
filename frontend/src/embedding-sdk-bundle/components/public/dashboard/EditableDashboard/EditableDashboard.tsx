@@ -54,7 +54,7 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
 
 export const EditableDashboard = Object.assign(
   withPublicComponentWrapper(EditableDashboardInner, {
-    isComponentWithGuestEmbedSupport: false,
+    supportsGuestEmbed: false,
   }),
   {
     schema: editableDashboardSchema,

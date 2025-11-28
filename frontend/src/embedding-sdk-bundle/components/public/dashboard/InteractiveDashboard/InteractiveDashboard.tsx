@@ -61,7 +61,7 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
 
 export const InteractiveDashboard = Object.assign(
   withPublicComponentWrapper(InteractiveDashboardInner, {
-    isComponentWithGuestEmbedSupport: false,
+    supportsGuestEmbed: false,
   }),
   {
     schema: interactiveDashboardSchema,

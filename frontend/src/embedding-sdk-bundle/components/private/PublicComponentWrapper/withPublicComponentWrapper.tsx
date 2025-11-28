@@ -5,9 +5,7 @@ import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
 export function withPublicComponentWrapper<P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  {
-    isComponentWithGuestEmbedSupport,
-  }: { isComponentWithGuestEmbedSupport: boolean },
+  { supportsGuestEmbed }: { supportsGuestEmbed: boolean },
 ): (props: P) => React.ReactNode {
   const componentName =
     WrappedComponent.displayName || WrappedComponent.name || "Component";
@@ -16,7 +14,7 @@ export function withPublicComponentWrapper<P extends object>(
     return (
       <GuestEmbedGuard
         componentName={componentName}
-        isComponentWithGuestEmbedSupport={isComponentWithGuestEmbedSupport}
+        supportsGuestEmbed={supportsGuestEmbed}
       >
         <PublicComponentWrapper>
           <WrappedComponent {...props} />

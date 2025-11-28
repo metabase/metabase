@@ -410,7 +410,7 @@ const SdkDashboardInner = ({
 };
 
 export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
-  isComponentWithGuestEmbedSupport: true,
+  supportsGuestEmbed: true,
 }) as typeof SdkDashboardInner &
   Pick<
     typeof Dashboard,

@@ -105,7 +105,7 @@ const subComponents: InteractiveQuestionComponents = {
 
 export const InteractiveQuestion = Object.assign(
   withPublicComponentWrapper(_InteractiveQuestion, {
-    isComponentWithGuestEmbedSupport: false,
+    supportsGuestEmbed: false,
   }),
   subComponents,
   { schema: interactiveQuestionSchema },

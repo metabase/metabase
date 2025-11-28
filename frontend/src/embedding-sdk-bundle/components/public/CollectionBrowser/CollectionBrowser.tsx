@@ -206,7 +206,7 @@ const CollectionBrowserWrapper = ({
 
 export const CollectionBrowser = Object.assign(
   withPublicComponentWrapper(CollectionBrowserWrapper, {
-    isComponentWithGuestEmbedSupport: false,
+    supportsGuestEmbed: false,
   }),
   { schema: collectionBrowserPropsSchema },
 );

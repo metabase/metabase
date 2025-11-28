@@ -201,7 +201,7 @@ const subComponents: StaticQuestionComponents = {
 
 export const StaticQuestion = Object.assign(
   withPublicComponentWrapper(StaticQuestionInner, {
-    isComponentWithGuestEmbedSupport: true,
+    supportsGuestEmbed: true,
   }),
   subComponents,
   { schema: staticQuestionSchema },
