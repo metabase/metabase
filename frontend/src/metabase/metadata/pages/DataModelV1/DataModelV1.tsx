@@ -17,12 +17,13 @@ import {
   FieldEmptyState,
   FieldSection,
   FieldValuesModal,
+  NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
   SyncOptionsModal,
   TableSection,
 } from "../../components";
-import { NoDatabasesEmptyState, trackMetadataChange } from "../shared";
+import { trackMetadataChange } from "../shared";
 
 import S from "./DataModel.module.css";
 import { RouterTablePicker, SegmentsLink } from "./components";

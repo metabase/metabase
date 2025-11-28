@@ -11,6 +11,13 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import {
+  FieldSection,
+  FieldValuesModal,
+  NoDatabasesEmptyState,
+  PreviewSection,
+  type PreviewType,
+} from "metabase/metadata/components";
+import {
   getTableMetadataQuery,
   parseRouteParams,
 } from "metabase/metadata/pages/shared/utils";
@@ -20,11 +27,6 @@ import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 
 import { trackMetadataChange } from "../../analytics";
 import {
-  FieldSection,
-  FieldValuesModal,
-  NoDatabasesEmptyState,
-  PreviewSection,
-  type PreviewType,
   RouterTablePicker,
   SyncOptionsModal,
   TableSection,
