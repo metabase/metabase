@@ -171,8 +171,21 @@ export function setupTenantRootCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/ee/tenant/collection/root/items`, (call) =>
-    handleCollectionItemsResponse({ call, collectionItems, modelsParam }),
+  fetchMock.get(
+    `path:/api/collection/root/items`,
+    (call, request) => {
+      // Check if this is a tenant collection request
+      if (request.url.includes("namespace=shared-tenant-collection")) {
+        return handleCollectionItemsResponse({
+          call: { url: request.url },
+          collectionItems,
+          modelsParam,
+        });
+      }
+      // Otherwise let it fall through to other mocks
+      return 404;
+    },
+    { name: "tenant-root-collection-items" },
   );
 }
 
