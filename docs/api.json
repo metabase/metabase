@@ -1463,6 +1463,9 @@
       "metabase-enterprise.metabot-v3.tools.api.column" : {
         "type" : "object",
         "properties" : {
+          "database_type" : {
+            "type" : "string"
+          },
           "description" : {
             "type" : "string"
           },
@@ -2641,7 +2644,7 @@
           "properties" : {
             "field_granularity" : {
               "type" : "string",
-              "enum" : [ "day", "week", "month", "quarter", "year" ]
+              "enum" : [ "minute", "hour", "day", "week", "month", "quarter", "year", "day-of-week" ]
             },
             "field_id" : {
               "type" : "string"
@@ -3085,6 +3088,9 @@
       "metabase-enterprise.metabot-v3.tools.api.table-result" : {
         "type" : "object",
         "properties" : {
+          "database_engine" : {
+            "type" : "string"
+          },
           "id" : {
             "type" : "integer"
           },
@@ -3099,6 +3105,9 @@
             "items" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
             }
+          },
+          "related_by" : {
+            "type" : "string"
           },
           "display_name" : {
             "type" : "string"
@@ -3123,7 +3132,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter" : {
         "allOf" : [ {
