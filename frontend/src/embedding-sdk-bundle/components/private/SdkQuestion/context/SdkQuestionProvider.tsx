@@ -204,8 +204,12 @@ export const SdkQuestionProvider = ({
   };
 
   useEffect(() => {
+    if (tokenError) {
+      return;
+    }
+
     loadAndQueryQuestion();
-  }, [loadAndQueryQuestion]);
+  }, [loadAndQueryQuestion, tokenError]);
 
   const dispatch = useSdkDispatch();
 
