@@ -1,9 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  activateToken,
-  createQuestion,
-  getSignedJwtForResource,
-} from "e2e/support/helpers";
+import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
 import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountGuestEmbedQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
