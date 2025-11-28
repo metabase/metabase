@@ -1,4 +1,9 @@
-import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ALL_USERS_GROUP_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   createLibraryWithItems,
   createLibraryWithModel,
@@ -59,7 +64,7 @@ describe("scenarios > data studio > modeling > library", () => {
     });
   });
 
-  it("should be available the data picker", () => {
+  it("should be available in the data picker", () => {
     createLibraryWithItems();
 
     H.startNewQuestion();
@@ -120,5 +125,41 @@ describe("scenarios > data studio > modeling > library", () => {
     H.entityPickerModalItem(0, "Library").click();
     H.entityPickerModalItem(1, "Data").click();
     H.entityPickerModalItem(2, "Trusted Orders Model").should("exist");
+  });
+
+  it("should be available in the question picker modal", () => {
+    createLibraryWithItems();
+
+    const library = () => H.entityPickerModalLevel(0).findByText("Library");
+
+    cy.visit(
+      `/admin/permissions/data/group/${ALL_USERS_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${SAMPLE_DATABASE.ACCOUNTS_ID}/segmented`,
+    );
+
+    H.modal()
+      .findByText(/Use a saved question/)
+      .click();
+    H.modal()
+      .button(/Select a question/)
+      .click();
+
+    H.entityPickerModal().within(() => {
+      // Questions tab should not show the library, because the library can only contain models and metrics
+      H.entityPickerModalTab("Questions").click();
+      library().should("not.exist");
+      H.entityPickerModalItem(0, "Our analytics").should("exist");
+
+      // Question picker should show library in models tab
+      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalItem(0, "Our analytics").should("exist");
+      library().click();
+      H.entityPickerModalItem(1, "Metrics").should(
+        "have.attr",
+        "data-disabled",
+        "true",
+      );
+      H.entityPickerModalItem(1, "Data").click();
+      H.entityPickerModalItem(2, "Trusted Orders Model").should("exist");
+    });
   });
 });
