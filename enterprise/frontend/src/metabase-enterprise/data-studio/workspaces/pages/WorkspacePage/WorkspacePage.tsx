@@ -18,16 +18,13 @@ import {
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
 import { TransformTab } from "./TransformTab";
 import styles from "./WorkspacePage.module.css";
-import {
-  WorkspaceProvider,
-  type WorkspaceTransform,
-  useWorkspace,
-} from "./WorkspaceProvider";
+import { WorkspaceProvider, useWorkspace } from "./WorkspaceProvider";
 
 type WorkspacePageProps = {
   params: {
@@ -70,6 +67,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     setActiveTransform,
     addOpenedTransform,
     removeOpenedTransform,
+    setEditedTransform,
   } = useWorkspace();
 
   const workspaceTransforms = useMemo(
@@ -80,8 +78,17 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     [transforms, workspace],
   );
 
+  const handleTransformChange = useCallback(
+    (source: DraftTransformSource) => {
+      if (activeTransform?.id) {
+        setEditedTransform(activeTransform.id as number, source);
+      }
+    },
+    [activeTransform?.id, setEditedTransform],
+  );
+
   const handleCloseClick = useCallback(
-    (event: React.MouseEvent, transform: WorkspaceTransform, index: number) => {
+    (event: React.MouseEvent, transform: Transform, index: number) => {
       event.stopPropagation();
 
       const isActive = activeTransform?.id === transform.id;
@@ -230,7 +237,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     {t`Select a transform on the right.`}
                   </Text>
                 ) : (
-                  <TransformTab transform={activeTransform} workspaceId={id} />
+                  <TransformTab
+                    transform={activeTransform}
+                    onChange={handleTransformChange}
+                    workspaceId={id}
+                  />
                 )}
               </Tabs.Panel>
             </Box>
@@ -250,7 +261,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               <CodeTab
                 workspaceTransforms={workspaceTransforms}
                 transforms={transforms}
-                activeTransform={activeTransform}
+                activeTransformId={activeTransform?.id}
                 onTransformClick={(transform) => {
                   setTab(String(transform.id));
                   addOpenedTransform(transform);

@@ -5,17 +5,21 @@ import {
   useGetWorkspaceContentsQuery,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
-import type { DraftTransformSource, WorkspaceId } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  WorkspaceId,
+} from "metabase-types/api";
 
 import { TransformEditor } from "./TransformEditor";
-import type { WorkspaceTransform } from "./WorkspaceProvider";
 
 interface Props {
-  transform: WorkspaceTransform;
+  transform: Transform;
+  onChange: (source: DraftTransformSource) => void;
   workspaceId: WorkspaceId;
 }
 
-export const TransformTab = ({ transform, workspaceId }: Props) => {
+export const TransformTab = ({ transform, workspaceId, onChange }: Props) => {
   const { data } = useGetWorkspaceContentsQuery(workspaceId);
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
 
@@ -62,7 +66,10 @@ export const TransformTab = ({ transform, workspaceId }: Props) => {
       </Group>
 
       <Box flex="1">
-        <TransformEditor source={transform.source as DraftTransformSource} />
+        <TransformEditor
+          source={transform.source as DraftTransformSource}
+          onChange={onChange}
+        />
       </Box>
     </Stack>
   );

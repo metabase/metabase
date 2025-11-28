@@ -3,31 +3,24 @@ import { t } from "ttag";
 import { Stack, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
-import type { WorkspaceTransform } from "../WorkspaceProvider";
+import { useWorkspace } from "../WorkspaceProvider";
 
 import { TransformListItem } from "./TransformListItem";
 
 type CodeTabProps = {
   workspaceTransforms: Transform[];
   transforms: Transform[];
-  activeTransform?: WorkspaceTransform;
-  onTransformClick: (transform: WorkspaceTransform) => void;
+  activeTransformId?: number;
+  onTransformClick: (transform: Transform) => void;
 };
 
 export const CodeTab = ({
   workspaceTransforms,
   transforms,
-  activeTransform,
+  activeTransformId,
   onTransformClick,
 }: CodeTabProps) => {
-  const handleTransformClick = (transform: Transform) => {
-    const workspaceTransform: WorkspaceTransform = {
-      id: transform.id as number,
-      name: transform.name as string,
-      source: transform.source,
-    };
-    onTransformClick(workspaceTransform);
-  };
+  const { editedTransforms } = useWorkspace();
 
   return (
     <Stack h="100%">
@@ -44,8 +37,9 @@ export const CodeTab = ({
               <TransformListItem
                 key={transform.id}
                 name={transform.name as string}
-                isActive={activeTransform?.id === transform.id}
-                onClick={() => handleTransformClick(transform)}
+                isActive={activeTransformId === transform.id}
+                isEdited={editedTransforms.has(transform.id as number)}
+                onClick={() => onTransformClick(transform)}
               />
             ))}
           </Stack>
@@ -56,8 +50,9 @@ export const CodeTab = ({
           <TransformListItem
             key={transform.id}
             name={transform.name as string}
-            isActive={activeTransform?.id === transform.id}
-            onClick={() => handleTransformClick(transform)}
+            isActive={activeTransformId === transform.id}
+            isEdited={editedTransforms.has(transform.id as number)}
+            onClick={() => onTransformClick(transform)}
           />
         ))}
       </Stack>

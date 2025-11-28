@@ -1,18 +1,20 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
 
-export interface WorkspaceTransform {
-  id: number;
-  name: string;
-  source: unknown;
-}
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 export interface WorkspaceContextValue {
-  openedTransforms: WorkspaceTransform[];
-  activeTransform: WorkspaceTransform | undefined;
-  setActiveTransform: (transform: WorkspaceTransform | undefined) => void;
-  addOpenedTransform: (transform: WorkspaceTransform) => void;
+  openedTransforms: Transform[];
+  activeTransform: Transform | undefined;
+  setActiveTransform: (transform: Transform | undefined) => void;
+  addOpenedTransform: (transform: Transform) => void;
   removeOpenedTransform: (transformId: number) => void;
+  editedTransforms: Map<number, DraftTransformSource>;
+  setEditedTransform: (
+    transformId: number,
+    source: DraftTransformSource,
+  ) => void;
+  removeEditedTransform: (transformId: number) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -24,14 +26,15 @@ interface WorkspaceProviderProps {
 }
 
 export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
-  const [openedTransforms, setOpenedTransforms] = useState<
-    WorkspaceTransform[]
-  >([]);
+  const [openedTransforms, setOpenedTransforms] = useState<Transform[]>([]);
   const [activeTransform, setActiveTransform] = useState<
-    WorkspaceTransform | undefined
+    Transform | undefined
   >();
+  const [editedTransforms, setEditedTransforms] = useState<
+    Map<number, DraftTransformSource>
+  >(new Map());
 
-  const addOpenedTransform = (transform: WorkspaceTransform) => {
+  const addOpenedTransform = (transform: Transform) => {
     setOpenedTransforms((prev) => {
       const exists = prev.some((item) => item.id === transform.id);
       if (exists) {
@@ -48,6 +51,21 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
     );
   };
 
+  const setEditedTransform = (
+    transformId: number,
+    source: DraftTransformSource,
+  ) => {
+    setEditedTransforms((prev) => new Map(prev).set(transformId, source));
+  };
+
+  const removeEditedTransform = (transformId: number) => {
+    setEditedTransforms((prev) => {
+      const next = new Map(prev);
+      next.delete(transformId);
+      return next;
+    });
+  };
+
   const value = useMemo(
     () => ({
       openedTransforms,
@@ -55,8 +73,11 @@ export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
       setActiveTransform,
       addOpenedTransform,
       removeOpenedTransform,
+      editedTransforms,
+      setEditedTransform,
+      removeEditedTransform,
     }),
-    [openedTransforms, activeTransform],
+    [openedTransforms, activeTransform, editedTransforms],
   );
 
   return (

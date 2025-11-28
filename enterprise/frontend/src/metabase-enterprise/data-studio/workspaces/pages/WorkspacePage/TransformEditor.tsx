@@ -9,13 +9,18 @@ import type { DraftTransformSource } from "metabase-types/api";
 
 type TransformEditorProps = {
   source: DraftTransformSource;
+  onChange: (source: DraftTransformSource) => void;
 };
 
-export function TransformEditor({ source }: TransformEditorProps) {
+export function TransformEditor({ source, onChange }: TransformEditorProps) {
   const [uiState, setUiState] = useState(getInitialUiStateForTransform);
   const [uiOptions] = useState({
     canChangeDatabase: false,
   });
+
+  const handleSourceChange = (source: DraftTransformSource) => {
+    onChange?.(source);
+  };
 
   return (
     <TransformQueryPageEditor
@@ -25,7 +30,7 @@ export function TransformEditor({ source }: TransformEditorProps) {
       setUiState={setUiState}
       uiOptions={uiOptions}
       databases={[]}
-      setSourceAndRejectProposed={_.noop}
+      setSourceAndRejectProposed={handleSourceChange}
       acceptProposed={_.noop}
       rejectProposed={_.noop}
     />
