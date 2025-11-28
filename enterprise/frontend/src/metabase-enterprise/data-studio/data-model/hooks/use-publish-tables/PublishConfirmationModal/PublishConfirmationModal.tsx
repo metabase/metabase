@@ -3,20 +3,22 @@ import { t } from "ttag";
 
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 
-type AcknowledgePublishTablesModalProps = {
+type PublishConfirmationModalProps = {
+  isOpened: boolean;
   onSubmit: (isAcknowledged: boolean) => void;
   onClose: () => void;
 };
 
-export function AcknowledgePublishTablesModal({
+export function PublishConfirmationModal({
+  isOpened,
   onSubmit,
   onClose,
-}: AcknowledgePublishTablesModalProps) {
+}: PublishConfirmationModalProps) {
   const [isAcknowledged, setIsAcknowledged] = useState(false);
 
   return (
     <Modal
-      opened
+      opened={isOpened}
       padding="xl"
       size={rem(512)}
       title={t`What publishing a table does`}

@@ -10,7 +10,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type { PublishTablesRequest } from "metabase-types/api";
 
-import { AcknowledgePublishTablesModal } from "./AcknowledgePublishTablesModal";
+import { PublishConfirmationModal } from "./PublishConfirmationModal";
 
 export function usePublishTables() {
   const dispatch = useDispatch();
@@ -57,12 +57,13 @@ export function usePublishTables() {
     }
   };
 
-  const publishConfirmationModal = isModalOpened ? (
-    <AcknowledgePublishTablesModal
+  const publishConfirmationModal = (
+    <PublishConfirmationModal
+      isOpened={isModalOpened}
       onSubmit={handleAcknowledgeSubmit}
       onClose={closeModal}
     />
-  ) : null;
+  );
 
   return { publishConfirmationModal, isPublishing, handlePublish };
 }
