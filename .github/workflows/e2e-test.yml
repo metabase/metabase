@@ -78,9 +78,9 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
-          postgres: ${{ inputs.name != 'mongo' }}
-          mysql: ${{ inputs.name != 'mongo' }}
-          mongo: ${{ inputs.name == 'mongo' }}
+          postgres: true
+          mysql: true
+          mongo: true
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact
