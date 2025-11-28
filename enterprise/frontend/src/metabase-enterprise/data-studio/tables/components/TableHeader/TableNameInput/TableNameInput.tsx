@@ -33,6 +33,7 @@ export function TableNameInput({ table }: TableNameInputProps) {
     <PaneHeaderInput
       initialValue={table.display_name}
       maxLength={NAME_MAX_LENGTH}
+      data-testid="table-name-input"
       onChange={handleChangeName}
     />
   );

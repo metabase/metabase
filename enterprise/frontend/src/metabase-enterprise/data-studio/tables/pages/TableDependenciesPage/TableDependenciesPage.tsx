@@ -39,7 +39,7 @@ export function TableDependenciesPage({
   }
 
   return (
-    <Flex direction="column" h="100%">
+    <Flex direction="column" h="100%" data-testid="table-dependencies-page">
       <TableHeader table={table} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{

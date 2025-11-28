@@ -13,7 +13,7 @@ type TableHeaderProps = {
 export function TableHeader({ table }: TableHeaderProps) {
   return (
     <PaneHeader
-      data-testid="table-header"
+      data-testid="table-pane-header"
       title={<TableNameInput table={table} />}
       icon="table"
       menu={<TableMoreMenu table={table} />}

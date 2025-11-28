@@ -59,7 +59,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
   }
 
   return (
-    <Flex direction="column" h="100%" data-testid="table-overview-page">
+    <Flex direction="column" h="100%" data-testid="table-fields-page">
       <TableHeader table={table} />
       <Flex className={S.body} flex={1} bg="accent-gray-light">
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>

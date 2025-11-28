@@ -270,6 +270,10 @@ export const queryBuilderFooterDisplayToggle = () => {
   return cy.findByTestId("query-display-tabular-toggle");
 };
 
+export const queryVisualizationRoot = () => {
+  return cy.findByTestId("query-visualization-root");
+};
+
 export const closeQuestionActions = () => {
   queryBuilderHeader().click();
 };

@@ -1,4 +1,7 @@
+import type { TableId } from "metabase-types/api";
+
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
+import { popover } from "./e2e-ui-elements-helpers";
 
 const modelingSidebar = () => cy.findByTestId("modeling-sidebar");
 const collectionsSection = () => cy.findByTestId("collections-section");
@@ -14,7 +17,6 @@ const modelFieldsPage = () => cy.findByTestId("model-fields-page");
 const collectionPage = () => cy.findByTestId("collection-page");
 const modelingEmptyPage = () =>
   cy.findByText("Pick a collection or create a new model or metric");
-const tableOverviewPage = () => cy.findByTestId("table-overview-page");
 
 export const DataStudio = {
   header: () => cy.findByTestId("data-studio-header"),
@@ -102,13 +104,34 @@ export const DataStudio = {
       DataStudio.Models.header().findByText("Dependencies"),
   },
   Tables: {
-    overviewPage: tableOverviewPage,
-    header: () => cy.findByTestId("table-header"),
+    overviewPage: () => cy.findByTestId("table-overview-page"),
+    fieldsPage: () => cy.findByTestId("table-fields-page"),
+    dependenciesPage: () => cy.findByTestId("table-dependencies-page"),
+    header: () => cy.findByTestId("table-pane-header"),
+    nameInput: () => cy.findByTestId("table-name-input"),
     moreMenu: () => DataStudio.Tables.header().icon("ellipsis"),
     overviewTab: () => DataStudio.Tables.header().findByText("Overview"),
     fieldsTab: () => DataStudio.Tables.header().findByText("Fields"),
     dependenciesTab: () =>
       DataStudio.Tables.header().findByText("Dependencies"),
+    visitOverviewPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/modeling/tables/${tableId}`),
+    moreMenuViewTable: () =>
+      popover()
+        .findByRole("menuitem", { name: /View/ })
+        .invoke("removeAttr", "target")
+        .click(),
+
+    Overview: {
+      descriptionText: () =>
+        cy
+          .findByTestId("table-description-section")
+          .findByTestId("editable-text"),
+      descriptionInput: () =>
+        cy
+          .findByTestId("table-description-section")
+          .findByPlaceholderText("No description"),
+    },
   },
   Modeling: {
     emptyPage: modelingEmptyPage,
