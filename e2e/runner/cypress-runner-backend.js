@@ -22,7 +22,7 @@ const CypressBackend = {
 
     this.server = server;
   },
-  async start() {
+  async start(jarPath = "target/uberjar/metabase.jar") {
     if (!this.server) {
       this.createServer();
     }
@@ -52,22 +52,18 @@ const CypressBackend = {
         MB_IS_CYPRESS: "true", // custom flag so we can detect we're running in Cypress, used in tests.
       };
 
-      this.server.process = spawn(
-        "java",
-        [...javaFlags, "-jar", "target/uberjar/metabase-backend.jar"],
-        {
-          env: {
-            ...process.env,
-            ...metabaseConfig,
-          },
-          stdio:
-            process.env["DISABLE_LOGGING"] ||
-            process.env["DISABLE_LOGGING_BACKEND"]
-              ? "ignore"
-              : "inherit",
-          detached: true,
+      this.server.process = spawn("java", [...javaFlags, "-jar", jarPath], {
+        env: {
+          ...process.env,
+          ...metabaseConfig,
         },
-      );
+        stdio:
+          process.env["DISABLE_LOGGING"] ||
+          process.env["DISABLE_LOGGING_BACKEND"]
+            ? "ignore"
+            : "inherit",
+        detached: true,
+      });
     }
 
     if (!(await isReady(this.server.host))) {

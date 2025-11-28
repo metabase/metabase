@@ -114,7 +114,7 @@ const init = async () => {
       process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = tempSampleDBDir;
 
       printBold("⏳ Starting backend");
-      await CypressBackend.start();
+      await CypressBackend.start("target/uberjar/metabase-backend.jar");
     }
   } else {
     printBold(
