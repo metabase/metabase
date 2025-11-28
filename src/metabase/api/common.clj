@@ -491,12 +491,10 @@
 ;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
 
 (defn bit->boolean
-  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean.
+
+  MariaDB is especially strange: https://stackoverflow.com/questions/78466426/bit1-in-view-using-conditionals-in-mariadb-returns-48-49"
   [v]
-  (when-not (or (number? v) (boolean? v) (nil? v) (bytes? v))
-    (throw (ex-info (format "Unexpected type in bit->boolean %s of type %s of class %s"
-                            v (type v) (class v))
-                    {:status 500})))
   (cond
     (number? v)                      (not (zero? v))
     (and (bytes? v) (= (count v) 1)) (case (char (first v))
