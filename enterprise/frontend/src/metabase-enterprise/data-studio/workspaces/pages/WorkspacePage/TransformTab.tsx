@@ -3,6 +3,8 @@ import { t } from "ttag";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import {
   useLazyGetTransformQuery,
+  useRunTransformJobMutation,
+  useRunTransformMutation,
   useUpdateTransformMutation,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
@@ -34,13 +36,18 @@ export const TransformTab = ({
   const [getTransform] = useLazyGetTransformQuery();
   const [updateTransform] = useUpdateTransformMutation();
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
+  useRunTransformJobMutation();
 
   const { addOpenedTransform, removeOpenedTransform, setActiveTransform } =
     useWorkspace();
 
   const isSaved = transform.workspace_id === workspaceId;
 
-  const handleRun = () => {};
+  const [runTransform] = useRunTransformMutation();
+
+  const handleRun = async () => {
+    runTransform(transform.id);
+  };
 
   const handleSave = async () => {
     if (isSaved) {
