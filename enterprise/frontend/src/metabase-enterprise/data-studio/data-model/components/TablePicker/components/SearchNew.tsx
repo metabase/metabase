@@ -1,15 +1,23 @@
-import { useContext, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
-import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
+import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import type { RouteParams } from "../../../pages/DataModel/types";
-import type { FlatItem, FilterState } from "../types";
+import type {
+  DatabaseNode,
+  FilterState,
+  FlatItem,
+  RootNode,
+  SchemaNode,
+  TableNode,
+} from "../types";
+import { flatten, rootNode } from "../utils";
 
 import { TablePickerResults } from "./Results";
 
@@ -20,92 +28,62 @@ interface SearchNewProps {
   setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-class DatabaseItem {
-  public schemas: SchemaItem[] = [];
-  constructor(public databaseId: number) {}
+type DatabaseKey = `db-${number}`;
+type SchemaKey = `schema-${number}-${string}`;
 
-  addSchema(schema: SchemaItem) {
-    this.schemas.push(schema);
-  }
-}
-
-class SchemaItem {
-  public tables: TableItem[] = [];
-  constructor(public schemaName: string) {}
-
-  addTable(table: TableItem) {
-    this.tables.push(table);
-  }
-}
-
-class TableItem {
-  constructor(public tableId: number) {}
-}
-
-function buildFlatItemList(
-  tables: any[],
-  selectedTables: Set<number>,
-): FlatItem[] {
-  const result: FlatItem[] = [];
-  const seenDatabases = new Map<number, DatabaseItem>();
-  const seenSchemas = new Set<string>();
+function buildResultTree(tables: Table[]): RootNode {
+  const databases = new Map<DatabaseKey, DatabaseNode>();
+  const seenSchemas = new Map<SchemaKey, SchemaNode>();
+  const root = rootNode();
 
   tables.forEach((table) => {
-    const dbId = table.db_id;
-    const dbName = table.db?.name;
+    const dbKey = `db-${table.db_id}` as const;
     const schemaName = table.schema;
+    const schemaKey = `schema-${table.db_id}-${schemaName}` as const;
+    const tableKey = `table-${table.id}` as const;
 
-    // Add database if not seen
-    if (dbId && !seenDatabases.has(dbId)) {
-      seenDatabases.set(dbId, new DatabaseItem(dbId));
-      result.push({
+    if (dbKey && !databases.has(dbKey)) {
+      const dbName = table.db?.name;
+
+      const databaseNode: DatabaseNode = {
         type: "database",
-        key: `db-${dbId}`,
-        label: dbName || `Database ${dbId}`,
-        value: { databaseId: dbId },
-        level: 0,
-        isExpanded: true,
+        key: dbKey,
+        label: dbName || `Database ${table.db_id}`,
+        value: { databaseId: table.db_id },
         children: [],
-        isSelected: "no",
-      });
+      };
+      databases.set(dbKey, databaseNode);
+      root.children.push(databaseNode);
     }
 
-    // Add schema if not seen (use combination of db + schema as key)
-    const schemaKey = `${dbId}:${schemaName}`;
     if (schemaName && !seenSchemas.has(schemaKey)) {
-      seenSchemas.add(schemaKey);
-      result.push({
+      const schemaNode: SchemaNode = {
         type: "schema",
-        key: `schema-${dbId}-${schemaName}`,
+        key: schemaKey,
         label: schemaName,
-        value: { databaseId: dbId, schemaName: schemaName },
-        level: 1,
-        isExpanded: true,
-        parent: `db-${dbId}`,
+        value: { databaseId: table.db_id, schemaName: schemaName },
         children: [],
-        isSelected: "no",
-      });
+      };
+      seenSchemas.set(schemaKey, schemaNode);
+      databases.get(dbKey)?.children.push(schemaNode);
     }
 
-    // Add table
-    result.push({
+    const tableNode: TableNode = {
       type: "table",
-      key: `table-${table.id}`,
+      key: tableKey,
       label: table.display_name || table.name,
       value: {
-        databaseId: dbId,
+        databaseId: table.db_id,
         schemaName: schemaName,
         tableId: table.id,
       },
-      level: schemaName ? 2 : 1,
-      parent: schemaName ? `schema-${dbId}-${schemaName}` : `db-${dbId}`,
       children: [],
       table: table,
-      isSelected: selectedTables.has(table.id) ? "yes" : "no",
-    });
+    };
+    seenSchemas.get(schemaKey)?.children.push(tableNode);
   });
 
-  return result;
+  return root;
 }
 
 export function SearchNew({
@@ -158,10 +136,20 @@ export function SearchNew({
     return () => setOnUpdateCallback(null);
   }, [refetch, setOnUpdateCallback]);
 
-  const flatItems = useMemo(
-    () => buildFlatItemList(filteredTables, selectedTables),
-    [filteredTables, selectedTables],
+  const resultTree = useMemo(
+    () => buildResultTree(filteredTables),
+    [filteredTables],
   );
+
+  const flatItems = flatten(resultTree, {
+    isExpanded: () => true,
+    addLoadingNodes: false,
+    selection: {
+      tables: selectedTables,
+      schemas: new Set(),
+      databases: new Set(),
+    },
+  });
 
   const handleItemToggle = (item: FlatItem) => {
     if (item.type !== "table" || !item.table) {
@@ -179,7 +167,7 @@ export function SearchNew({
     });
   };
 
-  const handleRangeSelect = (items: FlatItem[], targetItem: FlatItem) => {
+  const handleRangeSelect = (items: FlatItem[]) => {
     const tableItems = items.filter(
       (item) => item.type === "table" && item.table,
     );
