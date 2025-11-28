@@ -107,7 +107,7 @@
     {}))
 
 (api.macros/defendpoint :post "/publish-table"
-  "Create a model for each of selected tables"
+  "Set collection for each of selected tables"
   [_route-params
    _query-params
    body :- ::table-selectors]
@@ -130,7 +130,7 @@
      :target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-table"
-  "Create a model for each of selected tables"
+  "Unset collection for each of selected tables"
   [_route-params
    _query-params
    body :- ::table-selectors]
