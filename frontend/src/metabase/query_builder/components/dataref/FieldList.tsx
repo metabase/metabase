@@ -1,5 +1,6 @@
 import { msgid, ngettext } from "ttag";
 
+import { CopyButton } from "metabase/common/components/CopyButton";
 import {
   HoverParent,
   TableColumnInfoIcon,
@@ -55,6 +56,11 @@ export const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
               />
               <NodeListItemName>{field.name}</NodeListItemName>
             </NodeListItemLink>
+            <CopyButton
+              value={field.name}
+              className={S.fieldCopyButton}
+              aria-label={msgid`Copy column name`}
+            />
           </HoverParent>
         );
       })}
