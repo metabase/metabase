@@ -40,9 +40,9 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 printBold(`Running Cypress with options:
   - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
   - MB_EDITION           : ${options.MB_EDITION}
+  - BACKEND_PORT         : ${options.BACKEND_PORT}
   - BUILD_BACKEND        : ${options.BUILD_BACKEND}
   - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
-  - BACKEND_PORT         : ${options.BACKEND_PORT}
   - OPEN_UI              : ${options.OPEN_UI}
   - TZ                   : ${options.TZ}
 `);
