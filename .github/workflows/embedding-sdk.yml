@@ -111,23 +111,12 @@ jobs:
         if: ${{ steps.docs-generation.outcome == 'failure' }}
         run: exit 1
 
-
-  embedding-sdk-component-tests-oss:
-    name: "SDK component tests OSS"
-    if: inputs.component-tests && !inputs.skip
-    uses: ./.github/workflows/embedding-sdk-component-tests.yml
-    secrets: inherit
-    with:
-      edition: oss
-
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
-  embedding-sdk-component-tests-ee:
-    name: "SDK component tests EE"
+  embedding-sdk-component-tests:
+    name: "SDK component tests"
     if: inputs.component-tests && !inputs.skip
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
-    with:
-      edition: ee
 
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
@@ -140,8 +129,7 @@ jobs:
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
-      - embedding-sdk-component-tests-oss
-      - embedding-sdk-component-tests-ee
+      - embedding-sdk-component-tests
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5

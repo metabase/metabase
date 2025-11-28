@@ -2,15 +2,10 @@ name: Embedding SDK Component Tests
 
 on:
   workflow_call:
-    inputs:
-      edition:
-        description: 'MB_EDITION'
-        required: true
-        type: string
 
 jobs:
   sdk-component-tests:
-    name: "SDK component tests ${{ inputs.edition }} (React ${{ matrix.react-version }})"
+    name: "SDK component tests (React ${{ matrix.react-version }})"
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     strategy:
@@ -18,7 +13,7 @@ jobs:
         react-version: [18, 19]
       fail-fast: false
     env:
-      MB_EDITION: ${{ inputs.edition }}
+      MB_EDITION: ee
       DISPLAY: ""
       MB_RUN_MODE: "e2e"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -35,10 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Retrieve uberjar artifact for ${{ inputs.edition }}
+      - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
 
@@ -79,9 +74,7 @@ jobs:
       - name: Run component tests for Embedding SDK
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: |
-          node e2e/runner/run_cypress_ci.js component \
-            --env grepTags="${{ inputs.edition == 'oss' && '@OSS' || '-@OSS' }}",grepFilterSpecs=true
+        run: node e2e/runner/run_cypress_ci.js component
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -99,7 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: cypress-recording-embedding-sdk-react-${{ inputs.edition }}-${{ matrix.react-version }}
+          name: cypress-recording-embedding-sdk-react-${{ matrix.react-version }}
           path: |
             ./cypress
             ./logs/test.log
@@ -144,12 +137,12 @@ jobs:
   # Embedding SDK Bundle (Metabase JAR) from the previous commit (N-1).
   # N - 1 is a target of a pull request, or a literal previous commit when this job is run on push in a branch.
   sdk-component-tests-backward-compatibility:
-    name: "SDK component tests ${{ inputs.edition }} (Backward compatibility)"
+    name: "SDK component tests (Backward compatibility)"
     needs: [decide-target-ref]
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
-      MB_EDITION: ${{ inputs.edition }}
+      MB_EDITION: ee
       DISPLAY: ""
       MB_RUN_MODE: "e2e"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -179,11 +172,11 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Attempt to retrieve the ${{ inputs.edition }} uberjar artifact from the previous commit
+      - name: Attempt to retrieve the ee uberjar artifact from the previous commit
         id: download-uberjar
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ inputs.edition }}-${{ steps.get-commit-sha.outputs.sha }}-uberjar
+          name: metabase-ee-${{ steps.get-commit-sha.outputs.sha }}-uberjar
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
         continue-on-error: true # do not break the whole job if this step doesn't succeed
@@ -236,7 +229,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: cypress-recording-embedding-sdk-cross-version-${{ inputs.edition }}
+          name: cypress-recording-embedding-sdk-cross-version
           path: |
             ./cypress
             ./logs/test.log
