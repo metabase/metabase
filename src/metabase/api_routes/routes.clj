@@ -145,13 +145,13 @@
    "/cards"                (+auth metabase.queries.api/cards-routes)
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
-   "/comment"              (+auth metabase.comments.api/routes)
    "/collection"           (+auth 'metabase.collections-rest.api)
+   "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
-   "/document"             (+auth metabase.documents.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
+   "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
