@@ -126,7 +126,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=user_session,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -162,7 +162,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest_embed,drills=false,withDownloads=true,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -198,7 +198,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest_embed,drills=false,withDownloads=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-title="false"');
@@ -271,7 +271,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=chart,guestEmbedEnabled=false,auth=guest_embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=chart,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -388,8 +388,8 @@ describe(suiteTitle, () => {
         event: "embed_wizard_options_completed",
         event_detail:
           experience === "chart"
-            ? "settings=custom,experience=chart,auth=user_session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
-            : "settings=custom,experience=exploration,auth=user_session,isSaveEnabled=true,theme=default",
+            ? "settings=custom,experience=chart,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
+            : "settings=custom,experience=exploration,auth=user-session,isSaveEnabled=true,theme=default",
       });
 
       codeBlock().should("contain", 'is-save-enabled="true"');
@@ -426,7 +426,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=browser,auth=user_session,readOnly=false,theme=default",
+        "settings=custom,experience=browser,auth=user-session,readOnly=false,theme=default",
     });
 
     codeBlock().should("contain", 'read-only="false"');
@@ -472,7 +472,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest_embed,drills=false,withDownloads=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
     });
 
     codeBlock().should("contain", '"theme": {');
@@ -541,7 +541,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=user_session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=custom",
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=custom",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
@@ -567,7 +567,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,auth=user_session,layout=stacked,theme=default",
+        "settings=custom,experience=metabot,auth=user-session,layout=stacked,theme=default",
     });
 
     getEmbedSidebar().findByText("Back").click();
@@ -583,7 +583,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=metabot,auth=user_session,layout=sidebar,theme=default",
+        "settings=custom,experience=metabot,auth=user-session,layout=sidebar,theme=default",
     });
   });
 });
