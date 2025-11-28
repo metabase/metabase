@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   ActionIcon,
@@ -19,8 +18,9 @@ import {
   useGetWorkspaceQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type { DraftTransformSource } from "metabase-types/api";
 
+import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
 import { TransformEditor } from "./TransformEditor";
 import styles from "./WorkspacePage.module.css";
@@ -249,91 +249,16 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               </Tabs.List>
             </Box>
             <Tabs.Panel value="code" p="md">
-              <Stack h="100%">
-                {workspaceTransforms.length === 0 ? null : (
-                  <Stack
-                    gap="md"
-                    style={{
-                      borderBottom: "1px solid var(--mb-color-border)",
-                    }}
-                  >
-                    <Stack gap={0}>
-                      <Text fw={600}>{t`Workspace Transforms`}</Text>
-                      {workspaceTransforms.map((transform) => (
-                        <Group
-                          justify="flex-start"
-                          align="center"
-                          key={transform.id}
-                          gap="sm"
-                          wrap="nowrap"
-                          onClick={() => {
-                            setTab(String(transform.id));
-                            const workspaceTransform: WorkspaceTransform = {
-                              id: transform.id as number,
-                              name: transform.name as string,
-                              source: (transform as Transform).source,
-                            };
-
-                            addOpenedTransform(workspaceTransform);
-                            setActiveTransform(workspaceTransform);
-                          }}
-                        >
-                          <Icon name="sun" size={12} />
-                          <Ellipsified
-                            style={{ cursor: "pointer" }}
-                            variant="inline"
-                            c={
-                              activeTransform?.id === transform.id
-                                ? "var(--mb-color-primary)"
-                                : "text-dark"
-                            }
-                          >
-                            {transform.name}
-                          </Ellipsified>
-                        </Group>
-                      ))}
-                    </Stack>
-                  </Stack>
-                )}
-                <Stack py="md" dir="column" gap="sm">
-                  {transforms.map((transform) => (
-                    <Group
-                      justify="flex-start"
-                      align="center"
-                      key={transform.id}
-                      gap="sm"
-                      wrap="nowrap"
-                      onClick={() => {
-                        setTab(String(transform.id));
-                        const availableTransform: WorkspaceTransform = {
-                          id: transform.id as number,
-                          name: transform.name as string,
-                          source: (transform as Transform).source,
-                        };
-
-                        addOpenedTransform(availableTransform);
-                        setActiveTransform(availableTransform);
-                      }}
-                    >
-                      <Icon name="sun" size={12} />
-                      <Ellipsified
-                        style={{
-                          cursor: "pointer",
-                          color: "var(--mb-color-primary)",
-                        }}
-                        variant="subtle"
-                        c={
-                          activeTransform?.id === transform.id
-                            ? "var(--mb-color-brand)"
-                            : "text-dark"
-                        }
-                      >
-                        {transform.name}
-                      </Ellipsified>
-                    </Group>
-                  ))}
-                </Stack>
-              </Stack>
+              <CodeTab
+                workspaceTransforms={workspaceTransforms}
+                transforms={transforms}
+                activeTransform={activeTransform}
+                onTransformClick={(transform) => {
+                  setTab(String(transform.id));
+                  addOpenedTransform(transform);
+                  setActiveTransform(transform);
+                }}
+              />
             </Tabs.Panel>
           </Tabs>
         </Box>
