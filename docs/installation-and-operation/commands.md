@@ -18,7 +18,7 @@ Metabase will print out the help text for available commands.
 
 ## `api-documentation`
 
-Generate an HTML and JSON files for all API endpoints.
+Generate an HTML file and a JSON file for Scalar docs for the Metabase API.
 
 ## `command-documentation`
 

@@ -3085,6 +3085,9 @@
       "metabase-enterprise.metabot-v3.tools.api.table-result" : {
         "type" : "object",
         "properties" : {
+          "database_engine" : {
+            "type" : "string"
+          },
           "id" : {
             "type" : "integer"
           },
@@ -3123,7 +3126,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter" : {
         "allOf" : [ {
