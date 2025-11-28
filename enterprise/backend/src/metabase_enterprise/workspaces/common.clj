@@ -73,9 +73,13 @@
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
                                                 :workspace_id (:id ws)})
-        ws      (assoc ws :collection_id (:id coll))]
-    ;; Set the backlink from the workspace to the collection inside it.
-    (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
+        schema  (ws.isolation/isolation-schema-name (:id ws))
+        ws      (assoc ws
+                       :collection_id (:id coll)
+                       :schema schema)]
+    ;; Set the backlink from the workspace to the collection inside it and set the schema.
+    (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)
+                                           :schema schema})
     ;; TODO (Sanya 2025-11-18) - not sure how to transfer this api key to agent
     #_(log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
     ws))
@@ -105,9 +109,12 @@
         (recur (inc attempt))
         (let [workspace (:workspace result)]
           (ws.isolation/ensure-database-isolation! workspace database)
-          (let [graph (ws.mirroring/mirror-entities! workspace database graph)]
-            (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
-            (assoc workspace :graph graph)))))))
+          ;; temp hack to avoid running mirror and failing if there are no checkouts
+          (if (not-empty (:check-outs graph))
+            (let [graph (ws.mirroring/mirror-entities! workspace database graph)]
+              (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
+              (assoc workspace :graph graph))
+            (assoc workspace :graph {})))))))
 
 ;; TODO internal: test!
 (defn create-workspace!
