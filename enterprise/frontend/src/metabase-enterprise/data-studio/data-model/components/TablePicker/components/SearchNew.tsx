@@ -67,7 +67,7 @@ function buildResultTree(tables: Table[]): RootNode {
       root.children.push(databaseNode);
     }
 
-    if (schemaName && !seenSchemas.has(schemaKey)) {
+    if (!seenSchemas.has(schemaKey)) {
       const schemaNode: SchemaNode = {
         type: "schema",
         key: schemaKey,
