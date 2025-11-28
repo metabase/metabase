@@ -64,3 +64,13 @@ export type WorkspaceMergeResponse = {
   workspace: WorkspaceItem;
   archived_at: string | null;
 };
+
+export type WorkspaceUpdateContentsRequest = {
+  id: WorkspaceId;
+  add_upstream?: {
+    transforms?: TransformId[];
+  };
+  remove_downstream?: {
+    transforms?: TransformId[];
+  };
+};
