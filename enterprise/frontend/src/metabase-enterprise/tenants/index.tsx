@@ -25,6 +25,7 @@ import { MainNavSharedCollections } from "./components/MainNavSharedCollections"
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
 import { TenantCollectionPermissionsPage } from "./components/TenantCollectionPermissionsPage";
+import { TenantCollectionList } from "./components/TenantCollectionList";
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
@@ -139,5 +140,6 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantGroupHintIcon = TenantGroupHintIcon;
     PLUGIN_TENANTS.MainNavSharedCollections = MainNavSharedCollections;
     PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
+    PLUGIN_TENANTS.TenantCollectionList = TenantCollectionList;
   }
 }

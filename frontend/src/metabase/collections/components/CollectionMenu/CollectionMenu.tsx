@@ -6,6 +6,7 @@ import {
   isPersonalCollection,
   isRootCollection,
   isRootPersonalCollection,
+  isDedicatedTenantCollectionRoot,
 } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
@@ -51,6 +52,7 @@ export const CollectionMenu = ({
   const canMove =
     !isRoot &&
     !isRootPersonalCollection(collection) &&
+    !isDedicatedTenantCollectionRoot(collection) &&
     canWrite &&
     !isInstanceAnalyticsCustom;
 
@@ -79,7 +81,7 @@ export const CollectionMenu = ({
     );
   }
 
-  if (isAdmin && !isPersonal && !isSharedTenantCollection) {
+  if (isAdmin && !isPersonal && !isDedicatedTenantCollectionRoot(collection)) {
     editItems.push(
       <Menu.Item
         key="collection-edit"

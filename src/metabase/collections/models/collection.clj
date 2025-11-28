@@ -18,7 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -81,11 +81,16 @@
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
 
-(mu/defn tenant-collection?
+(mu/defn is-shared-tenant-collection?
   "Whether or not a collection is a tenant collection."
   [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
   (= (some-> namespace name)
      (name shared-tenant-ns)))
+
+(mu/defn is-dedicated-tenant-root-collection?
+  "Whether or not a collection is a *dedicated* tenant root collection"
+  [{:keys [type]} :- [:or RootCollection [:map [:type [:maybe string?]]]]]
+  (= type "tenant-specific-root-collection"))
 
 (defn tenant-collection-where-clause
   "Returns a HoneySQL clause that will be true if this is a tenant collection, false otherwise."
@@ -326,7 +331,7 @@
   Collection."
   [{:keys [location], owner-id :personal_owner_id, collection-namespace :namespace, :as collection}]
   {:pre [(contains? collection :namespace)]}
-  (when (and namespace (tenant-collection? collection) (not (perms/use-tenants)))
+  (when (and namespace (is-shared-tenant-collection? collection) (not (perms/use-tenants)))
     (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)})))
   (when location
     (when-let [parent-id (location-path->parent-id location)]
@@ -472,6 +477,19 @@
                   :id id
                   :personal_owner_id [:not= nil])))))
 
+(def ^:private CollectionWithNamespace
+  "Schema for a Collection instance that has a valid `:location`, and a `:namespace` key *present* (but not
+  necessarily non-nil)."
+  [:map
+   [:namespace [:maybe [:or :keyword :string]]]])
+
+(mu/defn is-dedicated-tenant-collection-or-descendant? :- :boolean
+  "Is `collection` a Dedicated Tenant Collection, or a descendant of one?"
+  [collection :- CollectionWithNamespace]
+  (boolean
+   ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
+   (= (some-> (:namespace collection) name) "tenant-specific")))
+
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
@@ -546,11 +564,11 @@
                                               (or (get user-id->collection-id (u/the-id user))
                                                   (user->personal-collection-id (u/the-id user)))))))))
 
-(mi/define-simple-hydration-method hydrate-tenant-collection?
-  :is_tenant_collection
-  "Hydrate the `is_tenant_collection` property of collections - whether or not they're a tenant coll."
+(mi/define-simple-hydration-method is-shared-tenant-collection
+  :is_shared_tenant_collection
+  "Hydrate the `is_shared_tenant_collection` property of collections - whether or not they're a tenant coll."
   [collection]
-  (tenant-collection? collection))
+  (is-shared-tenant-collection? collection))
 
 (mi/define-batched-hydration-method collection-is-personal
   :is_personal
@@ -718,8 +736,12 @@
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
                                             {:select visible-union-columns
+                                             :from   [[:collection :c]]
+                                             :where  [:in :id [:inline personal-collection-and-descendant-ids]]})
+                                          (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
+                                            {:select visible-union-columns
                                              :from [[:collection :c]]
-                                             :where [:in :id [:inline personal-collection-and-descendant-ids]]})])}
+                                             :where [:in :id [:inline tenant-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
@@ -1374,6 +1396,8 @@
    (perms/set-has-full-permissions-for-set?
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
+  (api/check-400
+   (not= (:type collection) "tenant-specific-root-collection"))
   (t2/with-transaction [_conn]
     (let [archive-operation-id (str (random-uuid))
           affected-collection-ids (cons (u/the-id collection)
@@ -1483,6 +1507,8 @@
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
                        :new-location new-location})))
+    (when (= (:type collection) "tenant-specific-root-collection")
+      (throw (ex-info "Can't move a dedicated tenant collection" {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
@@ -1567,9 +1593,13 @@
   Descendants of Personal Collections, like Personal Collections themselves, cannot have permissions entries in the
   application database.
 
+  This also does *not* apply to Dedicated Tenant Collections or their descendants. Like Personal Collections, they
+  cannot have permissions entries in the application database.
+
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
   [{:keys [location id], collection-namespace :namespace, :as collection}]
   (when-not (or (is-personal-collection-or-descendant-of-one? collection)
+                (is-dedicated-tenant-collection-or-descendant? collection)
                 (is-trash-or-descendant? collection))
     (let [parent-collection-id (location-path->parent-id location)]
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
@@ -1581,7 +1611,7 @@
   Collection is a descendant of another Shared Tenant Collection we should apply the standard [[copy-parent-permissions!]]
   defaults."
   [collection]
-  (if (tenant-collection? (parent collection))
+  (if (is-shared-tenant-collection? (parent collection))
     (copy-parent-permissions! collection)
     ;; TODO(edpaget - 2025-11-17): this is potentially inserting a lot of rows but since the impl of
     ;; [[copy-collection-permissions!]] doesn't do any batching this seems acceptable
@@ -1592,26 +1622,31 @@
 (t2/define-after-insert :model/Collection
   [collection]
   (u/prog1 (t2.realize/realize collection)
-    (if (tenant-collection? <>)
+    (if (is-shared-tenant-collection? <>)
+      ;; Shared Tenant Collections get default read permissions for all non-admin groups
       (set-tenant-collection-permissions! <>)
       (copy-parent-permissions! <>))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
-(mu/defn- check-changes-allowed-for-personal-collection
-  "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
-  have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
+(mu/defn- check-changes-allowed-for-protected-collection
+  "If we're trying to UPDATE a Personal Collection or Dedicated Tenant Collection, make sure the proposed changes are
+  allowed. Personal Collections and DTCs have lots of restrictions -- you can't archive them, for example, nor can you
+  transfer them to other Users."
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot
    collection-updates :- :map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
-                      :authority_level (tru "You are not allowed to change the authority level of a Personal Collection.")
+  (let [ctype        (if (:personal_owner_id collection-before-updates)
+                       "Personal Collection"
+                       "Dedicated Tenant Collection")
+        unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a {0}." ctype)
+                      :authority_level   (tru "You are not allowed to change the authority level of a {0}." ctype)
                       ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
                       ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
                       ;; doesn't hurt to check here too.
-                      :location (tru "You are not allowed to move a Personal Collection.")
-                      :archived (tru "You cannot archive a Personal Collection.")}]
+                      :location          (tru "You are not allowed to move a {0}." ctype)
+                      :archived          (tru "You cannot archive a {0}." ctype)}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]
                                       (api/column-will-change? k collection-before-updates collection-updates)))
@@ -1680,6 +1715,25 @@
         ;; this newly privatized Collection
         (revoke-perms-when-moving-into-personal-collection! collection-before-updates)))))
 
+(defenterprise update-perms-for-tenant-specific-namespace-change!
+  "If a Collection is moving into or out of the tenant-specific namespace, adjust the Permissions for it accordingly.
+
+  OSS version: Throws an exception if a collection attempts to cross the tenant-specific namespace boundary, as this
+  should never happen in OSS and we want to maintain the invariant that tenant-specific collections have no
+  permissions entries."
+  metabase-enterprise.tenants.permissions
+  [collection-before-updates collection-updates]
+  ;; Check if the collection is moving across the tenant-specific namespace boundary
+  (let [is-tenant-specific?      (is-dedicated-tenant-collection-or-descendant? collection-before-updates)
+        will-be-tenant-specific? (is-dedicated-tenant-collection-or-descendant? (merge collection-before-updates
+                                                                                       collection-updates))]
+    (when (not= is-tenant-specific? will-be-tenant-specific?)
+      (throw (ex-info (tru "Cannot move collections across tenant-specific namespace boundary in OSS.")
+                      {:status-code 400
+                       :collection collection-before-updates
+                       :is-tenant-specific is-tenant-specific?
+                       :will-be-tenant-specific will-be-tenant-specific?})))))
+
 ;; PUTTING IT ALL TOGETHER <3
 
 (defn- namespace-equals?
@@ -1704,8 +1758,9 @@
      [400 "You cannot modify the Trash Collection."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
-    (when (:personal_owner_id collection-before-updates)
-      (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
+    (when (or (:personal_owner_id collection-before-updates)
+              (= (:type collection-before-updates) "tenant-specific-collection"))
+      (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
     ;; (3) make sure Collection namespace is valid
@@ -1721,7 +1776,10 @@
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
-      (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
+      (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates)
+      ;; (4.5) If we're moving a Collection across the tenant-specific namespace boundary, we need to adjust
+      ;; permissions accordingly (delete when moving in, grant when moving out)
+      (update-perms-for-tenant-specific-namespace-change! collection-before-updates collection-updates))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; slugify the collection name in case it's changed in the output; the results of this will get passed along
     ;; to Toucan's `update!` impl
@@ -1952,7 +2010,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics :shared-tenant-collection})
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see

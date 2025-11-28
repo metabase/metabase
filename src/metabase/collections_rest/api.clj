@@ -589,7 +589,7 @@
       (assoc :location (or (when parent-collection
                              (collection/children-location parent-collection))
                            "/"))
-      (assoc :is_tenant_dashboard (collection/tenant-collection? parent-collection))
+      (assoc :is_tenant_dashboard (collection/is-shared-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
@@ -749,7 +749,7 @@
             collection/maybe-localize-trash-name
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
-            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_tenant_collection)
+            (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
             (dissoc :collection_position :display :moderated_status :icon
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
@@ -1224,7 +1224,7 @@
   means 'any tenant collection.'"
   metabase-enterprise.tenants.core
   [collection]
-  (when (collection/tenant-collection? collection)
+  (when (collection/is-shared-tenant-collection? collection)
     (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400})))
   collection)
 
@@ -1315,7 +1315,7 @@
                                                   (collection/perms-for-moving collection-before-update new-parent)))
 
         (api/check
-         (not (collection/tenant-collection? new-parent)))
+         (not (collection/is-shared-tenant-collection? new-parent)))
 
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location
@@ -1474,7 +1474,7 @@
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)
                    "Collection must be trashed before deletion.")
-    (api/check-400 (nil? (:namespace collection))
+    (api/check-400 (contains? #{:tenant-specific :shared-tenant-collections nil} (:namespace collection))
                    "Collections in non-nil namespaces cannot be deleted.")
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
@@ -1525,7 +1525,7 @@
                                    :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state                (keyword pinned_state)
                                    :include-can-run-adhoc-query include_can_run_adhoc_query
-                                   :include-tenant-collections? (collection/tenant-collection? collection)
+                                   :include-tenant-collections? (collection/is-shared-tenant-collection? collection)
                                    :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                                                  :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
                                                                  ;; default to sorting official collections first, except for the trash.
