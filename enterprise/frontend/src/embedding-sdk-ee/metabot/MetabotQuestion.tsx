@@ -134,7 +134,7 @@ const MetabotQuestionWrapped = (props: MetabotQuestionProps) => {
 // side effect that activates the plugin
 METABOT_SDK_EE_PLUGIN.MetabotQuestion = Object.assign(
   withPublicComponentWrapper(MetabotQuestionWrapped, {
-    isComponentWithGuestEmbedSupport: false,
+    supportsGuestEmbed: false,
   }),
   { schema: metabotQuestionSchema },
 );

@@ -20,5 +20,5 @@ const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
 );
 
 export const CreateQuestion = withPublicComponentWrapper(CreateQuestionInner, {
-  isComponentWithGuestEmbedSupport: false,
+  supportsGuestEmbed: false,
 }) as typeof CreateQuestionInner;

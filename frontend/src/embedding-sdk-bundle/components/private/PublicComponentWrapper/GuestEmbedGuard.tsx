@@ -7,14 +7,14 @@ import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 
 export const GuestEmbedGuard = ({
   children,
-  isComponentWithGuestEmbedSupport,
+  supportsGuestEmbed,
 }: PropsWithChildren<{
   componentName: string;
-  isComponentWithGuestEmbedSupport: boolean;
+  supportsGuestEmbed: boolean;
 }>) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
-  return isComponentWithGuestEmbedSupport || !isGuestEmbed ? (
+  return supportsGuestEmbed || !isGuestEmbed ? (
     children
   ) : (
     <SdkError message={t`This component does not support guest embeds`} />

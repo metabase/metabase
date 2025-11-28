@@ -209,7 +209,7 @@ const subComponents: SdkQuestionComponents = {
 
 export const SdkQuestion = Object.assign(
   withPublicComponentWrapper(_SdkQuestion, {
-    isComponentWithGuestEmbedSupport: true,
+    supportsGuestEmbed: true,
   }),
   subComponents,
 );

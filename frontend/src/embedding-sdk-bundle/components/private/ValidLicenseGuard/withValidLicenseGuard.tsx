@@ -11,8 +11,8 @@ import {
 
 const Guard = ({
   children,
-  isComponentWithGuestEmbedSupport,
-}: PropsWithChildren<{ isComponentWithGuestEmbedSupport: boolean }>) => {
+  supportsGuestEmbed,
+}: PropsWithChildren<{ supportsGuestEmbed: boolean }>) => {
   const isEmbeddingSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
@@ -20,7 +20,7 @@ const Guard = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   // Skip license check when guest embed is currently used
-  if (isComponentWithGuestEmbedSupport && isGuestEmbed) {
+  if (supportsGuestEmbed && isGuestEmbed) {
     return children;
   }
 
@@ -35,7 +35,7 @@ const Guard = ({
     />
   );
 
-  return isComponentWithGuestEmbedSupport || isGuestEmbed ? (
+  return supportsGuestEmbed || isGuestEmbed ? (
     withLicenseCheck
   ) : (
     <SdkError message={t`This component does not support Guest Embed`} />
@@ -44,10 +44,10 @@ const Guard = ({
 
 export function withValidLicenseGuard<TProps extends object>(
   WrappedComponent: ComponentType<TProps>,
-  { isComponentWithGuestEmbedSupport = false } = {},
+  { supportsGuestEmbed = false } = {},
 ): (props: TProps) => ReactNode {
   const WithValidLicenseGuard: FC<TProps> = (props) => (
-    <Guard isComponentWithGuestEmbedSupport={isComponentWithGuestEmbedSupport}>
+    <Guard supportsGuestEmbed={supportsGuestEmbed}>
       <WrappedComponent {...props} />
     </Guard>
   );
