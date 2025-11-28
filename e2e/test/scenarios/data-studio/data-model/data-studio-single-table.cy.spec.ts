@@ -65,14 +65,13 @@ describe("Table editing", () => {
     () => {
       H.restore("mysql-8");
       H.activateToken("bleeding-edge");
-      H.createLibrary();
       H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
       // Shows publish model information modal
       cy.findByRole("button", { name: /Publish/ }).click();
-      cy.findByRole("button", { name: /Publish/ }).click();
+      H.modal().button("Create my Library and publish").click();
 
       cy.wait("@publishTables");
       H.undoToast().within(() => {
