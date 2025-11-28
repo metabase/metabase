@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
+import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
@@ -65,12 +65,12 @@ export const SdkQuestionProvider = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const {
-    entityId: questionId,
+    resourceId: questionId,
     token,
     tokenError,
-  } = useExtractEntityIdFromJwtToken({
+  } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
-    entityId: rawQuestionId,
+    resourceId: rawQuestionId,
     token: rawToken ?? undefined,
   });
 

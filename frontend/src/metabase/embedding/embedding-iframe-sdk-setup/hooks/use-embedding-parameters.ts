@@ -39,9 +39,7 @@ export const useEmbeddingParameters = ({
       return null;
     }
 
-    return getDefaultEmbeddingParams(resource, initialAvailableParameters, {
-      getAllParams: true,
-    });
+    return getDefaultEmbeddingParams(resource, initialAvailableParameters);
   }, [initialAvailableParameters, resource]);
 
   const embeddingParameters = useMemo(() => {

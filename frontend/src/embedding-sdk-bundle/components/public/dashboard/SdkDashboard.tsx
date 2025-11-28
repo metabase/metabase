@@ -19,7 +19,7 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
-import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
+import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
@@ -157,12 +157,12 @@ const SdkDashboardInner = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const {
-    entityId: dashboardId,
+    resourceId: dashboardId,
     token,
     tokenError,
-  } = useExtractEntityIdFromJwtToken({
+  } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
-    entityId: rawDashboardId,
+    resourceId: rawDashboardId,
     token: rawToken ?? undefined,
   });
 

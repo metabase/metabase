@@ -11,7 +11,7 @@ import { getResourceTypeFromExperience } from "metabase/embedding/embedding-ifra
 import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
 import { EmbedModalContentStatusBar } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar";
 import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
-import { getHasSettingsChanges } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-settings-changes";
+import { getHasParamsChanged } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-params-changed";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { Card } from "metabase/ui";
@@ -68,7 +68,7 @@ const SdkIframeGuestEmbedStatusBarInner = ({
     });
   };
 
-  const hasSettingsChanges = getHasSettingsChanges({
+  const hasParamsChanged = getHasParamsChanged({
     initialEmbeddingParams: initialEmbeddingParameters,
     embeddingParams: embeddingParameters,
   });
@@ -83,7 +83,6 @@ const SdkIframeGuestEmbedStatusBarInner = ({
       embeddingParams: embeddingParameters,
       setEmbeddingParams: onEmbeddingParametersChange,
       exampleDashboardId,
-      getAllParamsOnDiscard: true,
     });
 
   return (
@@ -92,7 +91,7 @@ const SdkIframeGuestEmbedStatusBarInner = ({
         resourceType={resourceType}
         isPublished={resource.enable_embedding}
         isFetching={isFetching}
-        hasSettingsChanges={hasSettingsChanges}
+        hasSettingsChanges={hasParamsChanged}
         onSave={handleSave}
         onUnpublish={handleUnpublish}
         onDiscard={handleDiscard}
