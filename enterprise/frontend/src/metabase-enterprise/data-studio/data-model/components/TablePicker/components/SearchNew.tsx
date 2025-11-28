@@ -13,6 +13,7 @@ import {
   toggleDatabaseSelection,
   toggleSchemaSelection,
 } from "../bulk-selection.utils";
+import { useExpandedState } from "../hooks";
 import type {
   DatabaseNode,
   ExpandedDatabaseItem,
@@ -23,6 +24,7 @@ import type {
   SchemaNode,
   TableNode,
   TreeNode,
+  TreePath,
 } from "../types";
 import { isDatabaseNode, isSchemaNode, isTableNode2 } from "../types";
 import { flatten, rootNode } from "../utils";
@@ -34,6 +36,7 @@ interface SearchNewProps {
   params: RouteParams;
   filters: FilterState;
   setOnUpdateCallback: (callback: (() => void) | null) => void;
+  path: TreePath;
 }
 
 type DatabaseKey = `db-${number}`;
@@ -99,6 +102,7 @@ export function SearchNew({
   params,
   filters,
   setOnUpdateCallback,
+  path,
 }: SearchNewProps) {
   const {
     selectedTables,
@@ -128,6 +132,7 @@ export function SearchNew({
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
+  const { isExpanded: getIsExpanded, toggle } = useExpandedState(path);
 
   const allowedDatabaseIds = useMemo(
     () => new Set(databases?.data.map((database) => database.id) ?? []),
@@ -155,7 +160,7 @@ export function SearchNew({
   );
 
   const flatItems = flatten(resultTree, {
-    isExpanded: () => true,
+    isExpanded: (key: string) => !getIsExpanded(key),
     addLoadingNodes: false,
     selection: {
       tables: selectedTables,
@@ -239,6 +244,7 @@ export function SearchNew({
         tableId: routeParams.tableId,
       }}
       onItemToggle={handleItemToggle}
+      toggle={toggle}
       onRangeSelect={handleRangeSelect}
     />
   );
