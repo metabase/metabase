@@ -75,7 +75,7 @@
                                  {:dependency_analysis_version target-version})]
     (when-let [card (and (pos? update-count)
                          (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-update {:object card :user-id config/internal-mb-user-id}))
+      (events/publish-event! :event/card-dependency-backfill {:object card}))
     update-count))
 
 (defn- backfill-entity!
