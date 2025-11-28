@@ -98,7 +98,7 @@ const AuthenticationSection = () => {
             )}
 
             <WithSimpleEmbeddingFeatureUpsellTooltip
-              shouldWrap={!isSimpleEmbedFeatureAvailable}
+              enableTooltip={!isSimpleEmbedFeatureAvailable}
             >
               {({ disabled }) => (
                 <Radio
@@ -135,7 +135,7 @@ const AuthenticationSection = () => {
             </WithSimpleEmbeddingFeatureUpsellTooltip>
 
             <WithSimpleEmbeddingFeatureUpsellTooltip
-              shouldWrap={!isSimpleEmbedFeatureAvailable}
+              enableTooltip={!isSimpleEmbedFeatureAvailable}
             >
               {({ disabled }) => (
                 <Radio
@@ -393,7 +393,7 @@ const WithNotAvailableWithoutSimpleEmbeddingFeatureWarning = ({
   return (
     <WithSimpleEmbeddingFeatureUpsellTooltip
       mode={mode}
-      shouldWrap={!isSimpleEmbedFeatureAvailable}
+      enableTooltip={!isSimpleEmbedFeatureAvailable}
     >
       {({ disabled, hoverCard }) => children({ disabled, hoverCard })}
     </WithSimpleEmbeddingFeatureUpsellTooltip>
@@ -413,7 +413,7 @@ const WithNotAvailableForGuestEmbedsWarning = ({
     <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning mode={mode}>
       {({ disabled: disabledForOss, hoverCard: disabledForOssHoverCard }) => (
         <TooltipWarning
-          shouldWrap={!disabledForOss}
+          enableTooltip={!disabledForOss}
           warning={
             <Text lh="md" p="md">
               {t`Not available if Guest Mode is selected`}

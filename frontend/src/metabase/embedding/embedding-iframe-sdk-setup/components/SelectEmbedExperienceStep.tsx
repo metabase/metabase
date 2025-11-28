@@ -87,7 +87,7 @@ export const SelectEmbedExperienceStep = () => {
             <WithSimpleEmbeddingFeatureUpsellTooltip
               key={experience.value}
               mode="custom"
-              shouldWrap={experience.showUpsell === true}
+              enableTooltip={experience.showUpsell === true}
             >
               {({ disabled, hoverCard }) => (
                 <Radio

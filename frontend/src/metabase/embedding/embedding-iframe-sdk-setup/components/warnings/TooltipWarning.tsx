@@ -8,7 +8,7 @@ export type TooltipWarningMode = "default" | "custom";
 export const TooltipWarning = ({
   children,
   mode = "default",
-  shouldWrap = true,
+  enableTooltip = true,
   icon,
   warning,
   disabled,
@@ -18,12 +18,12 @@ export const TooltipWarning = ({
     disabled: boolean;
     hoverCard: ReactNode | null;
   }) => ReactNode;
-  shouldWrap?: boolean;
+  enableTooltip?: boolean;
   icon?: ReactNode;
   warning: ReactNode;
   disabled: boolean;
 }) => {
-  if (!shouldWrap) {
+  if (!enableTooltip) {
     return children({ disabled: false, hoverCard: null });
   }
 
