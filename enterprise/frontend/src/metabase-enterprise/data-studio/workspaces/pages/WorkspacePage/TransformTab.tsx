@@ -1,20 +1,25 @@
 import { t } from "ttag";
 
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
-import { useUpdateWorkspaceContentsMutation } from "metabase-enterprise/api";
+import {
+  useGetWorkspaceContentsQuery,
+  useUpdateWorkspaceContentsMutation,
+} from "metabase-enterprise/api";
 import type { DraftTransformSource, WorkspaceId } from "metabase-types/api";
 
 import { TransformEditor } from "./TransformEditor";
 import type { WorkspaceTransform } from "./WorkspaceProvider";
 
 interface Props {
-  isSaved?: boolean; // TODO
   transform: WorkspaceTransform;
   workspaceId: WorkspaceId;
 }
 
-export const TransformTab = ({ isSaved, transform, workspaceId }: Props) => {
+export const TransformTab = ({ transform, workspaceId }: Props) => {
+  const { data } = useGetWorkspaceContentsQuery(workspaceId);
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
+
+  const isSaved = data?.contents.transforms.some((t) => t.id === transform.id);
 
   const handleRun = () => {};
 
@@ -26,6 +31,8 @@ export const TransformTab = ({ isSaved, transform, workspaceId }: Props) => {
           transforms: [transform.id],
         },
       });
+    } else {
+      window.alert("TODO");
     }
   };
 
