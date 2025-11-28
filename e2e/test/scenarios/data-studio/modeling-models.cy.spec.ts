@@ -17,6 +17,64 @@ describe("scenarios > data studio > modeling > models", () => {
     createLibraryWithItems();
   });
 
+  it("should create model with proper validation and save to collection", () => {
+    cy.log("Navigate to Data Studio Modeling");
+    cy.visit("/data-studio/modeling");
+
+    cy.log("Create a new model");
+    H.DataStudio.ModelingSidebar.createCardMenuButton().click();
+    H.popover().findByText("Model").realHover();
+    H.popover().findByText("Query builder").click();
+
+    H.DataStudio.Models.queryEditor().should("be.visible");
+    H.DataStudio.Models.saveButton().should("be.disabled");
+
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModal().within(() => {
+      cy.findByText("Databases").click();
+      cy.findByText("Orders").click();
+    });
+
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    H.popover().findByText("Created At").click();
+
+    H.DataStudio.Models.saveButton().should("be.enabled").click();
+
+    H.modal().within(() => {
+      cy.findByText("Save your model").should("be.visible");
+      cy.findByLabelText("Name").type("A model name");
+      cy.findByLabelText("Description").type(
+        "The sum of the squares of the legs is equal to the square of the hypotenuse",
+      );
+      cy.findByText("Where do you want to save this?").should("be.visible");
+      cy.button("Save").click();
+    });
+
+    cy.wait("@createCard");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_library_model_created",
+    });
+
+    cy.log("Verify model overview page");
+    cy.url().should("match", /\/data-studio\/modeling\/models\/\d+$/);
+
+    H.DataStudio.Models.overviewPage().within(() => {
+      cy.findByText("A model name").should("be.visible");
+      cy.findByText(
+        "The sum of the squares of the legs is equal to the square of the hypotenuse",
+      ).should("be.visible");
+      cy.findByText("Sample Database").should("be.visible");
+      cy.findByText("PUBLIC").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Creator and last editor").should("be.visible");
+      cy.findAllByText(/by Bobby Tables/).should("be.visible");
+    });
+  });
+
   it("should edit model name and description", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");

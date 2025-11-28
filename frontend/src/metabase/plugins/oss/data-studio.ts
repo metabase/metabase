@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { MiniPickerCollectionItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import type Question from "metabase-lib/v1/Question";
+import type { DataStudioOpenedEvent } from "metabase-types/analytics";
 import type {
   Collection,
   CollectionItem,
@@ -58,6 +59,9 @@ type DataStudioPlugin = {
     data: undefined | MiniPickerCollectionItem;
     isLoading: boolean;
   };
+  trackDataStudioOpened: (
+    from: DataStudioOpenedEvent["triggered_from"],
+  ) => void;
 };
 
 const getDefaultPluginDataStudio = (): DataStudioPlugin => ({
@@ -72,6 +76,7 @@ const getDefaultPluginDataStudio = (): DataStudioPlugin => ({
   useGetLibraryChildCollectionByType: ({ skip: _skip, type: _type }) =>
     undefined,
   useGetLibraryCollection: (_props) => ({ data: undefined, isLoading: false }),
+  trackDataStudioOpened: () => {},
 });
 
 export const PLUGIN_DATA_STUDIO = getDefaultPluginDataStudio();

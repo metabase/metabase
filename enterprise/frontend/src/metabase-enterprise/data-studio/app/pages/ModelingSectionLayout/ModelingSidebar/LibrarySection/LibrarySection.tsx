@@ -7,8 +7,10 @@ import { isLibraryCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ModelingSidebarSection } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarSection";
+import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/analytics";
 import type { Collection, CollectionId } from "metabase-types/api";
+
+import { ModelingSidebarSection } from "../ModelingSidebarSection";
 
 import { CreateLibraryModal } from "./CreateLibraryModal";
 import { LibraryCollectionTree } from "./LibraryCollectionTree";
@@ -38,6 +40,7 @@ export function LibrarySection({
 
   const handleCreate = (collection: Collection) => {
     closeModal();
+    trackDataStudioLibraryCreated(collection.id);
     dispatch(push(Urls.dataStudioCollection(collection.id)));
   };
 
