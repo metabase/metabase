@@ -28,6 +28,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { usePublishTables } from "../../../common/hooks/use-publish-tables";
@@ -61,6 +62,7 @@ const TableSectionBase = ({
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const { publishConfirmationModal, isPublishing, handlePublish } =
     usePublishTables({ hasLibrary });
+  const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables();
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -173,11 +175,17 @@ const TableSectionBase = ({
           <Button
             flex="1"
             p="sm"
-            leftSection={<Icon name="publish" />}
-            disabled={table.is_published || isPublishing}
-            onClick={() => handlePublish({ tableIds: [table.id] })}
+            leftSection={
+              <Icon name={table.is_published ? "unpublish" : "publish"} />
+            }
+            disabled={isPublishing}
+            onClick={() =>
+              table.is_published
+                ? handleUnpublish({ tableIds: [table.id] })
+                : handlePublish({ tableIds: [table.id] })
+            }
           >
-            {table.is_published ? t`Published` : t`Publish`}
+            {table.is_published ? t`Unpublish` : t`Publish`}
           </Button>
           <Button
             flex="1"
@@ -307,6 +315,7 @@ const TableSectionBase = ({
         </Stack>
       </Box>
       {publishConfirmationModal}
+      {unpublishConfirmationModal}
     </Stack>
   );
 };
