@@ -4,6 +4,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.util :as u]
+   [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]))
 
 (set! *warn-on-reflection* true)
@@ -28,22 +29,26 @@
 (defn ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
-  (let [schema      (try #_:clj-kondo/ignore
-                     (eval schema)
-                         (catch Exception _ #_:clj-kondo/ignore
-                                (requiring-resolve-form schema)))
-        schema-type (mc/type schema)]
-    [schema-type
-     (condp = schema-type
-       ;; can use any regex directly
-       :re       (first (mc/children schema))
-       :keyword  #"[\S]+"
-       'pos-int? #"[0-9]+"
-       :int      #"-?[0-9]+"
-       'int?     #"-?[0-9]+"
-       :uuid     u/uuid-regex
-       'uuid?    u/uuid-regex
-       nil)]))
+  (let [schema (try
+                 #_{:clj-kondo/ignore [:discouraged-var]}
+                 (eval schema)
+                 (catch Exception _
+                   (requiring-resolve-form schema)))]
+    (or (:api/regex (mc/properties schema))
+        (let [schema-type (mc/type schema)]
+          (condp = schema-type
+            ;; can use any regex directly
+            :re       (first (mc/children schema))
+            :keyword  #"[\S]+"
+            'pos-int? #"[1-9]\d*"
+            :int      #"-?\d+"
+            'int?     #"-?\d+"
+            :uuid     u/uuid-regex
+            'uuid?    u/uuid-regex
+            :or       (let [child-regexes (map ->matching-regex (mc/children schema))]
+                        (when (every? some? child-regexes)
+                          (u.regex/re-or child-regexes)))
+            nil)))))
 
 (p.types/defprotocol+ EndpointResponse
   "Protocol for transformations that should be done to the value returned by a `defendpoint` form before it
