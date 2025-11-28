@@ -1020,6 +1020,113 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
   });
 });
 
+describe("scenarios > visualizations > table > data size formatting", () => {
+  const dataSizeQuery = `
+      SELECT 1024 AS file_size
+      UNION ALL SELECT 1048576
+      UNION ALL SELECT 1073741824;
+  `;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should format numbers as data size when manually selected", { tags: ["@external"] }, () => {
+    H.createNativeQuestion(
+      {
+        name: "data-size-test",
+        native: {
+          query: dataSizeQuery,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    // Open the formatting menu
+    H.tableHeaderClick("FILE_SIZE");
+    H.popover().icon("gear").click();
+
+    // Select Data size style
+    cy.findByTestId("column-formatting-settings").within(() => {
+      cy.findByText("Style").click();
+    });
+    H.popover().findByText("Data size").click();
+
+    // Verify binary formatting is applied by default (1024 bytes = 1 KiB)
+    cy.findByRole("gridcell").findByText("1 KiB");
+    cy.findByRole("gridcell").findByText("1 MiB");
+    cy.findByRole("gridcell").findByText("1 GiB");
+  });
+
+  it("should toggle between binary and decimal unit systems", { tags: ["@external"] }, () => {
+    H.createNativeQuestion(
+      {
+        name: "data-size-unit-test",
+        native: {
+          query: dataSizeQuery,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    // Open the formatting menu and select Data size
+    H.tableHeaderClick("FILE_SIZE");
+    H.popover().icon("gear").click();
+
+    cy.findByTestId("column-formatting-settings").within(() => {
+      cy.findByText("Style").click();
+    });
+    H.popover().findByText("Data size").click();
+
+    // Default should be binary
+    cy.findByRole("gridcell").findByText("1 KiB");
+
+    // Switch to decimal
+    cy.findByTestId("column-formatting-settings").within(() => {
+      cy.findByText("Decimal (1 KB = 1000 bytes)").click();
+    });
+
+    // Verify decimal formatting (1024 bytes ≈ 1.02 KB)
+    cy.findByRole("gridcell").findByText(/1\.02.*KB/);
+  });
+
+  it("should toggle datasize_unit_in_header setting", { tags: ["@external"] }, () => {
+    H.createNativeQuestion(
+      {
+        name: "data-size-header-test",
+        native: {
+          query: dataSizeQuery,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    // Open the formatting menu and select Data size
+    H.tableHeaderClick("FILE_SIZE");
+    H.popover().icon("gear").click();
+
+    cy.findByTestId("column-formatting-settings").within(() => {
+      cy.findByText("Style").click();
+    });
+    H.popover().findByText("Data size").click();
+
+    // Default shows unit in cells (not header)
+    cy.findByRole("gridcell").findByText("1 KiB");
+
+    // Switch to show unit in header
+    cy.findByTestId("column-formatting-settings").within(() => {
+      cy.findByText("In the column heading").click();
+    });
+
+    // Verify unit is now in header and cells show just numbers
+    H.tableHeaderColumn("FILE_SIZE").should("contain.text", "KiB");
+    // Cell should show just the number without unit
+    cy.findByRole("gridcell").should("contain.text", "1");
+    cy.findByRole("gridcell").should("not.contain.text", "KiB");
+  });
+});
+
 function headerCells() {
   return cy.findAllByTestId("header-cell");
 }

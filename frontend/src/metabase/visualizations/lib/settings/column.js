@@ -429,7 +429,7 @@ export const NUMBER_COLUMN_SETTINGS = {
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
     getValue: (column, settings) => {
-      // datameasure doesn't use Intl.NumberFormat, so return null
+      // datasize doesn't use Intl.NumberFormat, so return null
       if (settings["number_style"] === "datasize") {
         return null;
       }

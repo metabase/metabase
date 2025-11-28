@@ -137,10 +137,10 @@ export function formatNumber(
         nf = numberFormatterForOptions(options);
       }
 
-      // Handle null formatter (e.g., for filesize which doesn't use Intl.NumberFormat)
+      // Handle null formatter (e.g., for datasize which doesn't use Intl.NumberFormat)
       if (!nf) {
-        // For filesize and other custom formats that don't use Intl.NumberFormat,
-        // just return the raw number as a string - the filesize formatting
+        // For datasize and other custom formats that don't use Intl.NumberFormat,
+        // just return the raw number as a string - the datasize formatting
         // is handled elsewhere in the function
         return String(number);
       }
@@ -208,8 +208,8 @@ export function numberFormatterForOptions(
     ...options,
   };
 
-  // datameasure is a custom format, not supported by Intl.NumberFormat
-  // Return null for datameasure - formatNumber will handle it specially
+  // datasize is a custom format, not supported by Intl.NumberFormat
+  // Return null for datasize - formatNumber will handle it specially
   if (options.number_style === "datasize") {
     return null;
   }
