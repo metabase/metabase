@@ -63,7 +63,7 @@ export const StaticEmbedSetupPane = ({
   const initialEmbeddingParams = getDefaultEmbeddingParams(
     resource,
     resourceParameters,
-    { getAllParams: false },
+    { getAllParams: true },
   );
   const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
     initialEmbeddingParams,
