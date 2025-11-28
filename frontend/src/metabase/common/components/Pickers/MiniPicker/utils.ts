@@ -133,7 +133,7 @@ async function getCollectionPathFromValue(
     collection?.id,
   ].filter(Boolean);
 
-  if (collectionIds.includes(String(libraryCollection?.id))) {
+  if (collectionIds.includes(libraryCollection?.id)) {
     collectionIds.shift(); // pretend the library is at the top level
     locationPath.shift();
   }
