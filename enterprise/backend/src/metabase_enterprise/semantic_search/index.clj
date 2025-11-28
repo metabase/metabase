@@ -472,7 +472,7 @@
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type collection]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type]}]
   (let [conditions (filter some?
                            [(when (some? archived?)
                               [:= :archived archived?])
@@ -486,8 +486,6 @@
                               [:in :last_editor_id last-edited-by])
                             (when table-db-id
                               [:= :database_id table-db-id])
-                            (when collection
-                              [:= :collection_id collection])
                             (when (seq ids)
                               [:in :model_id (map str ids)])
                             (when (seq display-type)
