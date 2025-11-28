@@ -119,15 +119,12 @@
                               (throw (ex-info (tru "Multiple library-models collections found.")
                                               {:status-code 409}))
                               (first colls)))
-        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        updated-count     (-> (t2/query {:update (t2/table-name :model/Table)
-                                         :set    {:collection_id (:id target-collection)
-                                                  :is_published  true}
-                                         :where  where})
-                              first)]
-    {:created_count     updated-count
-     :tables            (t2/hydrate (t2/select :model/Table :active true {:where where}) :collection)
-     :target_collection target-collection}))
+        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))]
+    (t2/query {:update (t2/table-name :model/Table)
+               :set    {:collection_id (:id target-collection)
+                        :is_published  true}
+               :where  where})
+    {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-table"
   "Unset collection for each of selected tables"
@@ -135,15 +132,12 @@
    _query-params
    body :- ::table-selectors]
   (api/check-superuser)
-  (let [where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        updated-count     (-> (t2/query {:update (t2/table-name :model/Table)
-                                         :set    {:collection_id nil
-                                                  :is_published  false}
-                                         :where  where})
-                              first)]
-
-    {:created_count     updated-count
-     :tables            (t2/select :model/Table :active true {:where where})}))
+  (let [where (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))]
+    (t2/query {:update (t2/table-name :model/Table)
+               :set    {:collection_id nil
+                        :is_published  false}
+               :where  where})
+    api/generic-204-no-content))
 
 (defn- sync-schema-async!
   [table user-id]

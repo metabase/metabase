@@ -20,14 +20,7 @@
          (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-models-collection-type}]
            (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-table"
                                                 {:table_ids [(mt/id :users) (mt/id :venues)]})]
-             (is (= 2 (:created_count response)))
-             (is (= 2 (count (:tables response))))
-             (testing "tables have correct attributes"
-               (is (= #{(mt/id :users) (mt/id :venues)}
-                      (set (map :id (:tables response))))))
-             (testing "tables point to the collection"
-               (doseq [table (:tables response)]
-                 (is (= collection-id (:id (:collection table))))))
+             (is (=? {:id collection-id} (:target_collection response)))
              (testing "collection_id and is_published are set"
                (is (=? [{:display_name "Users"
                          :collection_id collection-id
