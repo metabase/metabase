@@ -9,7 +9,7 @@ import type {
   SchemaNode,
   TreeNode,
 } from "./types";
-import { isExpandedItem, isSchemaNode, isTableNode } from "./types";
+import { isExpandedItem, isSchemaNode, isTableOrSchemaNode } from "./types";
 
 export interface NodeSelection {
   tables: Set<TableId>;
@@ -87,7 +87,7 @@ export function getSchemaId(item: FlatItem) {
   if (!isExpandedItem(item)) {
     return undefined;
   }
-  if (!isTableNode(item)) {
+  if (!isTableOrSchemaNode(item)) {
     return undefined;
   }
   return `${item.value.databaseId}:${item.value.schemaName}`;
@@ -179,11 +179,11 @@ export function getSchemaTables(
   const result = allItems
     .filter(
       (item) =>
-        isTableNode(item) &&
+        isTableOrSchemaNode(item) &&
         getSchemaId(schema) === getSchemaId(item) &&
         item.value.tableId,
     )
-    .filter(isTableNode);
+    .filter(isTableOrSchemaNode);
 
   return result;
 }

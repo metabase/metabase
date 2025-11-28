@@ -132,7 +132,7 @@ export function isSchemaNode(
   );
 }
 
-export function isTableNode(
+export function isTableOrSchemaNode(
   node: ExpandedItem | TreeNode,
 ): node is ExpandedTableItem {
   return (
@@ -142,6 +142,6 @@ export function isTableNode(
   );
 }
 
-export function isTableNode2(node: FlatItem): node is ExpandedTableItem {
+export function isTableNode(node: FlatItem): node is ExpandedTableItem {
   return node.type === "table";
 }

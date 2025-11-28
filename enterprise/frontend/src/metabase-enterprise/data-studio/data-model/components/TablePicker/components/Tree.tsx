@@ -24,7 +24,7 @@ import type {
   TreeNode,
   TreePath,
 } from "../types";
-import { isSchemaNode, isTableNode } from "../types";
+import { isSchemaNode, isTableOrSchemaNode } from "../types";
 import { flatten } from "../utils";
 
 import { EmptyState } from "./EmptyState";
@@ -316,7 +316,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         (rangeItem): rangeItem is ExpandedItem =>
           rangeItem.isLoading === undefined,
       )
-      .filter(isTableNode)
+      .filter(isTableOrSchemaNode)
       .map((rangeItem) =>
         rangeItem.value?.tableId ? rangeItem.value.tableId : null,
       )

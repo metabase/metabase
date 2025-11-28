@@ -26,7 +26,7 @@ import type {
   TreeNode,
   TreePath,
 } from "../types";
-import { isDatabaseNode, isSchemaNode, isTableNode2 } from "../types";
+import { isDatabaseNode, isSchemaNode, isTableNode } from "../types";
 import { flatten, rootNode } from "../utils";
 
 import { TablePickerResults } from "./Results";
@@ -192,7 +192,7 @@ export function SearchNew({
           .tables,
       );
     }
-    if (isTableNode2(item)) {
+    if (isTableNode(item)) {
       setSelectedTables((prev) => {
         const newSet = new Set(prev);
         if (newSet.has(item.table!.id)) {
