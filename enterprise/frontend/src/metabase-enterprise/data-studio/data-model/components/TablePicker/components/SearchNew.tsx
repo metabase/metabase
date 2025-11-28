@@ -89,7 +89,7 @@ function buildResultTree(tables: Table[]): RootNode {
         tableId: table.id,
       },
       children: [],
-      table: table,
+      table,
     };
     seenSchemas.get(schemaKey)?.children.push(tableNode);
   });
