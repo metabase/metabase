@@ -493,6 +493,7 @@
 (defn bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
   [v]
+  (log/info "bit->boolean input:" (type v) (pr-str v))
   (if (number? v)
     (not (zero? v))
     v))
