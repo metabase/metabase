@@ -41,7 +41,7 @@ export const ParameterSettings = () => {
       updateSettings,
     });
 
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
   const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
     experience,
     settings,

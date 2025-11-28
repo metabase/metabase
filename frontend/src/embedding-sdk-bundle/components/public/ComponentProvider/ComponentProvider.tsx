@@ -54,7 +54,6 @@ function useInitPlugins() {
 
 export const ComponentProviderInternal = ({
   children,
-  isGuestEmbed,
   authConfig,
   pluginsConfig,
   eventHandlers,
@@ -66,6 +65,7 @@ export const ComponentProviderInternal = ({
   allowConsoleLog,
   isLocalHost,
 }: ComponentProviderInternalProps): JSX.Element => {
+  const isGuestEmbed = !!authConfig.isGuest;
   const { fontFamily } = theme ?? {};
 
   // The main call of useInitData happens in the MetabaseProvider

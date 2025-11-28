@@ -27,7 +27,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
-        isGuestEmbed: true,
+        isGuest: true,
         withTitle: true,
         withDownloads: false,
         drills: true,
@@ -56,7 +56,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
-        isGuestEmbed: false,
+        isGuest: false,
         withTitle: false,
         withDownloads: true,
         drills: false,
@@ -88,7 +88,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
-        isGuestEmbed: false,
+        isGuest: false,
         entityTypes: ["model", "table"],
         apiKey: "test-api-key",
       };
@@ -110,7 +110,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
-        isGuestEmbed: false,
+        isGuest: false,
         targetCollection: 456,
         apiKey: "test-api-key",
       };
@@ -132,7 +132,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
-        isGuestEmbed: false,
+        isGuest: false,
         hiddenParameters: [],
         apiKey: "test-api-key",
       };
@@ -153,7 +153,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
         questionId: 123,
-        isGuestEmbed: true,
+        isGuest: true,
         initialSqlParameters: {
           param1: "value1",
           param2: "value2",
@@ -179,7 +179,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-dashboard",
         dashboardId: 456,
-        isGuestEmbed: true,
+        isGuest: true,
         withTitle: true,
         withDownloads: true,
         drills: false,
@@ -208,7 +208,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-dashboard",
         dashboardId: 456,
-        isGuestEmbed: false,
+        isGuest: false,
         withTitle: false,
         withDownloads: false,
         drills: true,
@@ -238,7 +238,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-dashboard",
         dashboardId: 456,
-        isGuestEmbed: false,
+        isGuest: false,
         hiddenParameters: [],
         apiKey: "test-api-key",
       };
@@ -259,7 +259,7 @@ describe("buildEmbedAttributes", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-dashboard",
         dashboardId: 456,
-        isGuestEmbed: true,
+        isGuest: true,
         initialParameters: {
           filter1: "value1",
           filter2: "value2",
@@ -309,7 +309,7 @@ describe("buildEmbedAttributes", () => {
     it("should build attributes for exploration with guest embed", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
-        isGuestEmbed: true,
+        isGuest: true,
         targetCollection: 789,
         entityTypes: ["model"],
         apiKey: "test-api-key",
@@ -330,7 +330,7 @@ describe("buildEmbedAttributes", () => {
     it("should omit isSaveEnabled for guest embed exploration", () => {
       const settings: SdkIframeEmbedSetupSettings = {
         componentName: "metabase-question",
-        isGuestEmbed: true,
+        isGuest: true,
         targetCollection: 789,
         isSaveEnabled: true,
         apiKey: "test-api-key",
@@ -357,7 +357,7 @@ describe("buildEmbedAttributes", () => {
         theme: { colors: { primary: "#000" } },
         locale: "en",
         preferredAuthMethod: "jwt",
-        isGuestEmbed: false,
+        isGuest: false,
       } as SdkIframeEmbedSetupSettings;
 
       const result = buildEmbedAttributes({

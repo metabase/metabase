@@ -43,9 +43,11 @@ export const useInitData = () => {
     );
   }
 
+  const isGuestEmbed = !!props.authConfig.isGuest;
+
   useInitDataInternal({
     reduxStore,
-    isGuestEmbed: props.isGuestEmbed,
+    isGuestEmbed,
     authConfig,
   });
 };

@@ -69,7 +69,7 @@ export const useEmbeddingParameters = ({
     if (
       resource?.id &&
       !hasInitializedRef.current &&
-      settings.isGuestEmbed &&
+      settings.isGuest &&
       initialEmbeddingParameters !== null
     ) {
       hasInitializedRef.current = true;
@@ -78,7 +78,7 @@ export const useEmbeddingParameters = ({
   }, [
     initialEmbeddingParameters,
     onEmbeddingParametersChange,
-    settings.isGuestEmbed,
+    settings.isGuest,
     resource?.id,
   ]);
 

@@ -23,7 +23,7 @@ const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
   return {
     ...(isQuestionOrDashboardEmbed
       ? {
-          isGuestEmbed: true,
+          isGuest: true,
           useExistingUserSession: false,
           ...(isQuestionOrDashboardEmbed && {
             drills: false,
@@ -34,7 +34,7 @@ const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
           }),
         }
       : {
-          isGuestEmbed: false,
+          isGuest: false,
           useExistingUserSession: true,
         }),
     hiddenParameters: [],
@@ -43,10 +43,7 @@ const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
 
 const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
   state:
-    | Pick<
-        SdkIframeEmbedSetupSettings,
-        "isGuestEmbed" | "useExistingUserSession"
-      >
+    | Pick<SdkIframeEmbedSetupSettings, "isGuest" | "useExistingUserSession">
     | undefined;
   experience: SdkIframeEmbedSetupExperience;
 }) => SdkIframeEmbedSetupGuestEmbedSettings &
@@ -62,12 +59,12 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
   return {
     ...(isQuestionOrDashboardEmbed
       ? {
-          isGuestEmbed: false,
+          isGuest: false,
           useExistingUserSession: state?.useExistingUserSession,
           drills: true,
         }
       : {
-          isGuestEmbed: false,
+          isGuest: false,
           useExistingUserSession: state?.useExistingUserSession,
         }),
     ...(isQuestionEmbed && {
@@ -83,10 +80,7 @@ export const getCommonEmbedSettings = ({
   isGuestEmbedsEnabled,
 }: {
   state:
-    | Pick<
-        SdkIframeEmbedSetupSettings,
-        "isGuestEmbed" | "useExistingUserSession"
-      >
+    | Pick<SdkIframeEmbedSetupSettings, "isGuest" | "useExistingUserSession">
     | undefined;
   experience: SdkIframeEmbedSetupExperience;
   isGuestEmbedsEnabled: boolean;
@@ -95,7 +89,7 @@ export const getCommonEmbedSettings = ({
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
 
   if (isSimpleEmbedFeatureAvailable) {
-    return isGuestEmbedsEnabled && state?.isGuestEmbed
+    return isGuestEmbedsEnabled && state?.isGuest
       ? GET_ENABLE_GUEST_EMBED_SETTINGS({
           experience,
           isSimpleEmbedFeatureAvailable,

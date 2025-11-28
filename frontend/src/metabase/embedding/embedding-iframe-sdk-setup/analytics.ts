@@ -118,7 +118,7 @@ export const trackEmbedWizardOptionsCompleted = ({
   ];
 
   if (hasCustomOptions) {
-    const auth = settings.isGuestEmbed
+    const auth = settings.isGuest
       ? "guest_embed"
       : settings.useExistingUserSession
         ? "user_session"
@@ -132,7 +132,7 @@ export const trackEmbedWizardOptionsCompleted = ({
         ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
         `auth=${auth}`,
         ...buildEventDetailsPartsForSettings(settings),
-        ...(settings.isGuestEmbed ? [`params=${JSON.stringify(params)}`] : []),
+        ...(settings.isGuest ? [`params=${JSON.stringify(params)}`] : []),
         `theme=${hasCustomTheme ? "custom" : "default"}`,
       ],
     );
@@ -177,7 +177,7 @@ const buldEventDetailsPartsForGuestEmbedResource = ({
   resource: Dashboard | Card | null;
   settings: Partial<SdkIframeEmbedSetupSettings>;
 }) => [
-  ...(settings.isGuestEmbed
+  ...(settings.isGuest
     ? [
         resource?.enable_embedding !== undefined
           ? `guestEmbedEnabled=${resource.enable_embedding}`

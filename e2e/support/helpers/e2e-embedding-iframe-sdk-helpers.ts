@@ -25,7 +25,7 @@ const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 export interface BaseEmbedTestPageOptions {
   // Passed to defineMetabaseConfig
   metabaseConfig?: {
-    isGuestEmbed?: boolean;
+    isGuest?: boolean;
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
@@ -310,7 +310,7 @@ export const getNewEmbedScriptTag = ({
 
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
-  isGuestEmbed,
+  isGuest,
   theme,
   apiKey,
   useExistingUserSession,
@@ -319,7 +319,7 @@ export const getNewEmbedConfigurationScript = ({
 }: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
-    isGuestEmbed,
+    isGuest,
     apiKey,
     useExistingUserSession,
     theme,

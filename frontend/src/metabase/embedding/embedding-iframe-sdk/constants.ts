@@ -25,7 +25,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "preferredAuthMethod",
     "fetchRequestToken",
     "useExistingUserSession",
-    "isGuestEmbed",
+    "isGuest",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -70,7 +70,7 @@ export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
     "instanceUrl",
     "theme",
     "locale",
-    "isGuestEmbed",
+    "isGuest",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "token",
@@ -120,7 +120,7 @@ export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
   "fetchRequestToken",
-  "isGuestEmbed",
+  "isGuest",
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";

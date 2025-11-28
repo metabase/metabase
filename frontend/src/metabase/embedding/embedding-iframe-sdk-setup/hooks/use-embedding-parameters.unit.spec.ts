@@ -55,7 +55,7 @@ const defaultSettings: any = {
   dashboardId: 1,
   hiddenParameters: ["category"],
   lockedParameters: ["status"],
-  isGuestEmbed: true,
+  isGuest: true,
 } as SdkIframeEmbedSetupSettings;
 
 describe("useEmbeddingParameters", () => {
@@ -124,7 +124,7 @@ describe("useEmbeddingParameters", () => {
           settings: {
             dashboardId: 1,
             lockedParameters: ["status"],
-            isGuestEmbed: true,
+            isGuest: true,
           } as SdkIframeEmbedSetupSettings,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
@@ -141,7 +141,7 @@ describe("useEmbeddingParameters", () => {
         useEmbeddingParameters({
           settings: {
             hiddenParameters: ["category"],
-            isGuestEmbed: true,
+            isGuest: true,
           } as SdkIframeEmbedSetupSettings,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
@@ -158,7 +158,7 @@ describe("useEmbeddingParameters", () => {
         useEmbeddingParameters({
           settings: {
             dashboardId: 1,
-            isGuestEmbed: true,
+            isGuest: true,
           } as SdkIframeEmbedSetupSettings,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
@@ -176,7 +176,7 @@ describe("useEmbeddingParameters", () => {
           settings: {
             questionId: 1,
             lockedParameters: ["status"],
-            isGuestEmbed: true,
+            isGuest: true,
           } as SdkIframeEmbedSetupSettings,
           updateSettings: mockUpdateSettings,
           resource: mockCard,
@@ -244,7 +244,7 @@ describe("useEmbeddingParameters", () => {
             dashboardId: 1,
             hiddenParameters: [],
             lockedParameters: [],
-            isGuestEmbed: true,
+            isGuest: true,
           } as any,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
@@ -265,7 +265,7 @@ describe("useEmbeddingParameters", () => {
             dashboardId: 1,
             hiddenParameters: ["category"],
             lockedParameters: ["category"],
-            isGuestEmbed: true,
+            isGuest: true,
           } as any,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,
@@ -378,7 +378,7 @@ describe("useEmbeddingParameters", () => {
           useEmbeddingParameters({
             settings: {
               ...defaultSettings,
-              isGuestEmbed: false,
+              isGuest: false,
             },
             updateSettings: mockUpdateSettings,
             resource,
@@ -432,7 +432,7 @@ describe("useEmbeddingParameters", () => {
           useEmbeddingParameters({
             settings: {
               questionId: 1,
-              isGuestEmbed: true,
+              isGuest: true,
               hiddenParameters: [],
             } as unknown as SdkIframeEmbedSetupSettings,
             updateSettings: mockUpdateSettings,
@@ -503,7 +503,7 @@ describe("useEmbeddingParameters", () => {
             dashboardId: 1,
             hiddenParameters: ["param-with-dash_and_underscore"],
             lockedParameters: [],
-            isGuestEmbed: true,
+            isGuest: true,
           } as any,
           updateSettings: mockUpdateSettings,
           resource: mockDashboard,

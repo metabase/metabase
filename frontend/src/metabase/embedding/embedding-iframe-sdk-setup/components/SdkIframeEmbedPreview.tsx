@@ -85,9 +85,9 @@ const SdkIframeEmbedPreviewInner = () => {
       instanceUrl,
       theme: derivedTheme,
       useExistingUserSession: true,
-      isGuestEmbed: settings.isGuestEmbed,
+      isGuest: settings.isGuest,
     }),
-    [instanceUrl, derivedTheme, settings.isGuestEmbed],
+    [instanceUrl, derivedTheme, settings.isGuest],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -173,11 +173,11 @@ export const SdkIframeEmbedPreview = () => {
   const remountKey = useMemo(
     () =>
       JSON.stringify({
-        // We must re-mount preview when `isGuestEmbed` setting is changed
+        // We must re-mount preview when `isGuest` setting is changed
         // to force its change for embed.js
-        isGuestEmbed: settings.isGuestEmbed,
+        isGuest: settings.isGuest,
       }),
-    [settings.isGuestEmbed],
+    [settings.isGuest],
   );
 
   return <SdkIframeEmbedPreviewInner key={remountKey} />;

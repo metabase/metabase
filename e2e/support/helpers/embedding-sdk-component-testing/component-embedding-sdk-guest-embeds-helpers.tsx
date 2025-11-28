@@ -17,7 +17,7 @@ export function mountGuestEmbedQuestion(
   cy.intercept("GET", "/api/embed/pivot/card/*/query*").as("getCardPivotQuery");
 
   mountSdkContent(<StaticQuestion {...extraProps} />, {
-    sdkProviderProps: { isGuestEmbed: true, locale },
+    sdkProviderProps: { authConfig: { isGuest: true }, locale },
   });
 
   if (shouldAssertCardQuery) {
@@ -33,7 +33,7 @@ export function mountGuestEmbedDashboard(
   cy.intercept("GET", "/api/embed/dashboard/*").as("getDashboard");
 
   mountSdkContent(<StaticDashboard {...extraProps} />, {
-    sdkProviderProps: { isGuestEmbed: true },
+    sdkProviderProps: { authConfig: { isGuest: true } },
   });
 
   cy.wait("@getDashboard").then(({ response }) => {

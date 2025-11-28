@@ -14,7 +14,7 @@ export const LegacyStaticEmbeddingAlert = () => {
 
   const dispatch = useDispatch();
 
-  const isGuestEmbed = !!settings.isGuestEmbed;
+  const isGuestEmbed = !!settings.isGuest;
   const useExistingUserSession = !!settings.useExistingUserSession;
 
   const resourceType = getResourceTypeFromExperience(experience);
@@ -65,7 +65,7 @@ export const LegacyStaticEmbeddingAlert = () => {
                 parentInitialState: {
                   resourceId: resource.id,
                   resourceType,
-                  isGuestEmbed,
+                  isGuest: isGuestEmbed,
                   useExistingUserSession,
                 },
               };

@@ -7,7 +7,7 @@ export type SdkIframeEmbedSetupModalProps = {
 export type SdkIframeEmbedSetupModalInitialState = {
   resourceType?: string | null;
   resourceId?: string | number | null;
-  isGuestEmbed?: boolean;
+  isGuest?: boolean;
   useExistingUserSession?: boolean;
 };
 

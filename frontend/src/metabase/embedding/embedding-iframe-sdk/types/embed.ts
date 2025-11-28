@@ -173,7 +173,7 @@ type CollectionBrowserEntityTypes =
   | "model";
 
 export type SdkIframeEmbedBaseSettings = {
-  isGuestEmbed?: boolean;
+  isGuest?: boolean;
   apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
@@ -189,7 +189,7 @@ export type SdkIframeEmbedBaseSettings = {
 };
 
 export type SdkIframeEmbedGuestEmbedSettings = {
-  isGuestEmbed: boolean;
+  isGuest: boolean;
 };
 
 export type SdkIframeEmbedTemplateSettings =

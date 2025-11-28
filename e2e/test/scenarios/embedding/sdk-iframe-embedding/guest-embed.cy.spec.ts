@@ -40,7 +40,7 @@ describe(
         });
 
         const frame = H.loadSdkIframeEmbedTestPage({
-          metabaseConfig: { isGuestEmbed: true },
+          metabaseConfig: { isGuest: true },
           elements: [
             {
               component: "metabase-question",
