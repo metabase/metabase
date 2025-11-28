@@ -493,11 +493,16 @@
 (defn bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
   [v]
-  (when-not (or (number? v) (boolean? v) (nil? v))
-    (throw (ex-info "Unexpected type in bit->boolean" {:value v :type (type v) :class (class v)})))
-  (if (number? v)
-    (not (zero? v))
-    v))
+  (when-not (or (number? v) (boolean? v) (nil? v) (bytes? v))
+    (throw (ex-info (format "Unexpected type in bit->boolean %s of type %s of class %s"
+                            v (type v) (class v))
+                    {:status 500})))
+  (cond
+    (number? v)                      (not (zero? v))
+    (and (bytes? v) (= (count v) 1)) (case (char (first v))
+                                       \0 false
+                                       \1 true)
+    :else                            v))
 
 (defn parse-multi-values-param
   "Parse a param that could have a single value or multiple values using `parse-fn`.
