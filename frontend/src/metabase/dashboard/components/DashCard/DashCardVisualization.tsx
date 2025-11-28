@@ -463,11 +463,11 @@ export function DashCardVisualization({
     (cardId: CardId | null) => {
       const card = findCardById(cardId);
       onChangeCardAndRun?.({
-        previousCard: findCardById(card?.id),
+        previousCard: dashcard.card,
         nextCard: card,
       });
     },
-    [findCardById, onChangeCardAndRun],
+    [findCardById, onChangeCardAndRun, dashcard.card],
   );
 
   const titleMenuItems = useMemo(
