@@ -482,7 +482,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.visitEmbeddedPage(payload);
 
       H.getDashboardCard()
-        .findByText("Assert failed: (map? token-params)")
+        .findByText("There was a problem displaying this chart.")
         .should("be.visible");
     });
   });
@@ -740,7 +740,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     // and the card will not display.
 
     H.getDashboardCard()
-      .findByText("You must specify a value for :source in the JWT.")
+      .findByText("There was a problem displaying this chart.")
       .should("be.visible");
   });
 
