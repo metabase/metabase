@@ -62,8 +62,8 @@
   [transform-node ctx]
   (let [{:keys [source]} (ws.ctx/transform-node->data ctx transform-node)
         remaps (ws.ctx/transform-node->py-tables-remaps ctx transform-node)
-        key-remapper (fn [id] (get remaps id id))]
-    (update source :source-tables update-vals key-remapper)))
+        val-remapper (fn [id] (get remaps id id))]
+    (update source :source-tables update-vals val-remapper)))
 
 ;;;; Public
 
