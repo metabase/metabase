@@ -181,13 +181,14 @@ export function SearchNew({
         toggleDatabaseSelection(
           item as unknown as ExpandedDatabaseItem,
           selection,
-        ),
+        ).tables,
       );
     }
 
     if (isSchemaNode(item as unknown as TreeNode)) {
       setSelectedTables(
-        toggleSchemaSelection(item as unknown as ExpandedSchemaItem, selection),
+        toggleSchemaSelection(item as unknown as ExpandedSchemaItem, selection)
+          .tables,
       );
     }
     if (isTableNode2(item)) {
