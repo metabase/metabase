@@ -1,11 +1,16 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   ActionIcon,
   Box,
+  Button,
   Flex,
   Group,
   Icon,
@@ -17,6 +22,7 @@ import {
 import {
   useGetWorkspaceQuery,
   useListTransformsQuery,
+  useMergeWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
 
@@ -35,6 +41,8 @@ type WorkspacePageProps = {
 
 function WorkspacePageContent({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
+  const dispatch = useDispatch();
+  const { sendErrorToast } = useMetadataToasts();
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const [tab, setTab] = useState<string>("setup");
 
@@ -43,6 +51,9 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: allTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+
+  const [mergeWorkspace, { isLoading: isMerging }] =
+    useMergeWorkspaceMutation();
 
   const sourceDb = databases?.data.find(
     (db) => db.id === workspace?.database_id,
@@ -70,12 +81,21 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     addOpenedTransform,
     removeOpenedTransform,
     setEditedTransform,
+    hasChangedAndRunTransforms,
   } = useWorkspace();
 
   const workspaceTransforms = useMemo(
     () => dbTransforms.filter((transform) => transform.workspace_id === id),
     [dbTransforms, id],
   );
+
+  useEffect(() => {
+    if (activeTransform) {
+      setTab(String(activeTransform.id));
+    } else {
+      setTab("setup");
+    }
+  }, [id, activeTransform]);
 
   const handleTransformChange = useCallback(
     (source: DraftTransformSource) => {
@@ -126,6 +146,22 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     ],
   );
 
+  const handleMergeWorkspace = useCallback(async () => {
+    try {
+      const response = await mergeWorkspace(id).unwrap();
+
+      if (response.errors && response.errors.length > 0) {
+        sendErrorToast(
+          t`Failed to merge workspace: ${response.errors.map((e) => e.error).join(", ")}`,
+        );
+        return;
+      }
+      dispatch(push(Urls.dataStudioWorkspaceList()));
+    } catch (error) {
+      sendErrorToast(t`Failed to merge workspace`);
+    }
+  }, [id, mergeWorkspace, sendErrorToast, dispatch]);
+
   if (isLoadingWorkspace) {
     return (
       <Box p="lg">
@@ -151,6 +187,15 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         justify="space-between"
       >
         <Title order={2}>{workspace.name}</Title>
+        <Button
+          variant="filled"
+          onClick={handleMergeWorkspace}
+          loading={isMerging}
+          disabled={!hasChangedAndRunTransforms()}
+          size="xs"
+        >
+          {t`Merge`}
+        </Button>
       </Group>
       <Group align="flex-start" gap={0} flex="1 1 auto" wrap="nowrap">
         <Box
@@ -284,8 +329,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 }
 
 export const WorkspacePage = ({ params }: WorkspacePageProps) => {
+  const workspaceId = Number(params.workspaceId);
+
   return (
-    <WorkspaceProvider>
+    <WorkspaceProvider workspaceId={workspaceId}>
       <WorkspacePageContent params={params} />
     </WorkspaceProvider>
   );

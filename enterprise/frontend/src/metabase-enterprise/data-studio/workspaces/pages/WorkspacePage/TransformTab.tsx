@@ -38,15 +38,24 @@ export const TransformTab = ({
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
   useRunTransformJobMutation();
 
-  const { addOpenedTransform, removeOpenedTransform, setActiveTransform } =
-    useWorkspace();
+  const {
+    addOpenedTransform,
+    removeOpenedTransform,
+    setActiveTransform,
+    markTransformAsRun,
+  } = useWorkspace();
 
   const isSaved = transform.workspace_id === workspaceId;
 
   const [runTransform] = useRunTransformMutation();
 
   const handleRun = async () => {
-    runTransform(transform.id);
+    try {
+      await runTransform(transform.id).unwrap();
+      markTransformAsRun(transform.id);
+    } catch (error) {
+      console.error("Failed to run transform", error);
+    }
   };
 
   const handleSave = async () => {

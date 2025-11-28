@@ -11,6 +11,7 @@ export type Workspace = {
   database_id: DatabaseId | null;
   created_at: string;
   updated_at: string;
+  archived_at?: string | null;
   contents?: WorkspaceContents["contents"];
 };
 
