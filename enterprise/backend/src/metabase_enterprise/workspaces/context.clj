@@ -8,10 +8,11 @@
 
 (defn- fetch-graph-transforms
   [transform-ids]
-  (let [id->transform (into {}
-                            (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
-    (assert (= (count id->transform) (count id->transform)))
-    id->transform))
+  (if (empty? transform-ids)
+    {}
+    (let [id->transform (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids])]
+      (assert (= (count id->transform) (count id->transform)))
+      id->transform)))
 
 (defn- fetch-graph-tables
   [table-ids]
