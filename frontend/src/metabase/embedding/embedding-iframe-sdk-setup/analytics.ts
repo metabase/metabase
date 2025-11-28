@@ -118,11 +118,7 @@ export const trackEmbedWizardOptionsCompleted = ({
   ];
 
   if (hasCustomOptions) {
-    const auth = settings.isGuest
-      ? "guest_embed"
-      : settings.useExistingUserSession
-        ? "user_session"
-        : "sso";
+    const authType = getAuthTypeForSettings(settings);
     const params = countEmbeddingParameterOptions(embeddingParameters);
     const hasCustomTheme = settings.theme?.colors !== undefined;
 
@@ -130,7 +126,7 @@ export const trackEmbedWizardOptionsCompleted = ({
       ...[
         `experience=${experience}`,
         ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-        `auth=${auth}`,
+        `auth=${authType}`,
         ...buildEventDetailsPartsForSettings(settings),
         ...(settings.isGuest ? [`params=${JSON.stringify(params)}`] : []),
         `theme=${hasCustomTheme ? "custom" : "default"}`,
@@ -161,7 +157,7 @@ export const trackEmbedWizardCodeCopied = ({
     `experience=${experience}`,
     `snippetType=${snippetType}`,
     ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-    `authType=${authType}`,
+    `auth=${authType}`,
   ];
 
   trackSimpleEvent({

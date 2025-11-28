@@ -171,7 +171,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
         event_detail:
-          "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed",
+          "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest_embed",
       });
 
       // Visit embed page

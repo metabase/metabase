@@ -237,6 +237,8 @@ export function openLegacyStaticEmbeddingModal({
     modal().within(() => {
       cy.findByText("Static embedding").should("be.visible");
 
+      // Some tests after a modal is opened expect the entity to be unpublished;
+      // Other tests want to keep it published.
       if (unpublishBeforeOpen) {
         unpublishChanges(apiPath);
       }
