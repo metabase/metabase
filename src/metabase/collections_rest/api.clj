@@ -380,7 +380,7 @@
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
-                  [:= :collection_id (:id collection)]
+                  [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
@@ -481,16 +481,16 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
-                      [:= :collection_id (:id collection)]
+                      [:= :c.collection_id (:id collection)]
                       [:= :c.archived_directly false]])
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
-                   [:= :archived (boolean archived?)]
+                   [:= :c.archived (boolean archived?)]
                    (case card-type
                      :model
                      [:= :c.type (h2x/literal "model")]
@@ -562,7 +562,7 @@
                    :d.archived_directly
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
-                   :archived
+                   :d.archived
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
@@ -579,13 +579,13 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
-                      [:= :collection_id (:id collection)]
+                      [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   [:= :archived (boolean archived?)]]}
+                   [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
