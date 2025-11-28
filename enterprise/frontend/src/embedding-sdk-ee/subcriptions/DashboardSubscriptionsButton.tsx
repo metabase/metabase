@@ -1,14 +1,13 @@
-import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
+import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/subscriptions";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useHasEmailSetup } from "metabase/common/hooks";
 import { toggleSharing } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import type { ActionIconProps } from "metabase/ui";
 
 export const DashboardSubscriptionsButton = (
-  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+  props: DashboardSubscriptionsButtonProps,
 ) => {
   const dispatch = useDispatch();
   const handleClick = () => dispatch(toggleSharing());
