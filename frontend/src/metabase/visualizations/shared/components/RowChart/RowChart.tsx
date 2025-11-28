@@ -20,7 +20,7 @@ import {
 import { addSideSpacingForTicksAndLabels, getChartScales } from "./utils/scale";
 import { getXTicks } from "./utils/ticks";
 
-const MIN_BAR_HEIGHT = 24;
+export const MIN_BAR_HEIGHT = 24;
 
 const defaultFormatter = (value: any) => String(value);
 
@@ -33,6 +33,7 @@ export interface RowChartProps<TDatum> {
   seriesColors: Record<string, string>;
 
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
+  shouldGroupRemainingValues?: boolean;
 
   goal?: ChartGoal | null;
   theme: RowChartTheme;
@@ -69,6 +70,7 @@ export const RowChart = <TDatum,>({
 
   data,
   trimData,
+  shouldGroupRemainingValues = true,
   series: multipleSeries,
   seriesColors,
 
@@ -102,7 +104,6 @@ export const RowChart = <TDatum,>({
   onHover,
 }: RowChartProps<TDatum>) => {
   const isMeasured = typeof width === "number" && typeof height === "number";
-
   const maxYValues = useMemo(
     () =>
       isMeasured
@@ -116,10 +117,14 @@ export const RowChart = <TDatum,>({
     [height, multipleSeries.length, stackOffset, isMeasured],
   );
 
-  const trimmedData = useMemo(
-    () => trimData?.(data, maxYValues) ?? data,
-    [data, maxYValues, trimData],
-  );
+  const trimmedData = useMemo(() => {
+    if (shouldGroupRemainingValues === false || !trimData) {
+      return data;
+    }
+
+    return trimData(data, maxYValues);
+  }, [data, maxYValues, shouldGroupRemainingValues, trimData]);
+  const trimmedDataLength = trimmedData.length;
 
   const seriesData = useMemo(
     () =>
@@ -172,8 +177,43 @@ export const RowChart = <TDatum,>({
     ],
   );
 
+  const measuredHeight = typeof height === "number" ? height : null;
+  const canGroupRemainingValues =
+    Boolean(trimData) && shouldGroupRemainingValues !== false;
+  const shouldShowAllRows = !canGroupRemainingValues;
+
+  const chartHeight = useMemo(() => {
+    if (!isMeasured || measuredHeight == null) {
+      return measuredHeight;
+    }
+
+    if (!shouldShowAllRows) {
+      return measuredHeight;
+    }
+
+    const valueSeriesCount = Math.max(multipleSeries.length, 1);
+    const singleValueHeight =
+      stackOffset != null ? MIN_BAR_HEIGHT : MIN_BAR_HEIGHT * valueSeriesCount;
+    const desiredInnerHeight = trimmedDataLength * singleValueHeight;
+    const desiredChartHeight = desiredInnerHeight + margin.top + margin.bottom;
+
+    return Math.max(measuredHeight, desiredChartHeight);
+  }, [
+    isMeasured,
+    margin,
+    measuredHeight,
+    multipleSeries.length,
+    shouldGroupRemainingValues,
+    stackOffset,
+    trimmedDataLength,
+    trimData,
+  ]);
+
   const innerWidth = isMeasured ? width - margin.left - margin.right : 0;
-  const innerHeight = isMeasured ? height - margin.top - margin.bottom : 0;
+  const resolvedHeight = isMeasured ? chartHeight ?? measuredHeight ?? 0 : 0;
+  const innerHeight = isMeasured
+    ? Math.max(resolvedHeight - margin.top - margin.bottom, 0)
+    : 0;
 
   const additionalXValues = useMemo(
     () => (goal != null ? [goal.value ?? 0] : []),
@@ -249,9 +289,22 @@ export const RowChart = <TDatum,>({
     [goal, measureTextWidth, theme.goal, paddedXScale],
   );
 
+  const chartStyle = useMemo(() => {
+    if (chartHeight == null) {
+      return style;
+    }
+
+    return {
+      ...style,
+      height: chartHeight,
+    };
+  }, [chartHeight, style]);
+
+  const viewHeight = chartHeight ?? height;
+
   return (
     <RowChartView
-      style={style}
+      style={chartStyle}
       isStacked={stackOffset != null}
       seriesData={seriesData}
       innerHeight={innerHeight}
@@ -259,7 +312,7 @@ export const RowChart = <TDatum,>({
       margin={margin}
       theme={theme}
       width={width}
-      height={height}
+      height={viewHeight}
       xScale={paddedXScale}
       yScale={yScale}
       goal={rowChartGoal}
