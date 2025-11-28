@@ -39,7 +39,7 @@ export function PublishConfirmationModal({
           />
         </Box>
         <Button onClick={() => onSubmit(isAcknowledged)} variant="filled">
-          {t`Got it`}
+          {t`Publish`}
         </Button>
       </Group>
     </Modal>

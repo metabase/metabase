@@ -30,7 +30,7 @@ import {
 } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
-import { usePublishTables } from "../../hooks/use-publish-tables";
+import { usePublishTables } from "../../../common/hooks/use-publish-tables";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
@@ -182,7 +182,7 @@ const TableSectionBase = ({
                 width: "100%",
               }}
               disabled={!hasLibrary || table.is_published || isPublishing}
-              onClick={() => handlePublish({ table_ids: [table.id] })}
+              onClick={() => handlePublish({ tableIds: [table.id] })}
             >
               {table.is_published ? t`Published` : t`Publish`}
             </Button>

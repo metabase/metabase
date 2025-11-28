@@ -11,14 +11,14 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Title, Tooltip } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
-import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { usePublishTables } from "metabase-enterprise/data-studio/common/hooks/use-publish-tables";
+import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
 import type {
   TableDataLayer,
   TableDataSource,
   UserId,
 } from "metabase-types/api";
 
-import { usePublishTables } from "../../hooks/use-publish-tables";
 import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
 import { SyncOptionsModal } from "../SyncOptionsModal";
 
@@ -40,6 +40,7 @@ export function TableAttributesEditBulk({
   } = useSelection();
   const { publishConfirmationModal, isPublishing, handlePublish } =
     usePublishTables();
+  const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
   const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
@@ -49,10 +50,6 @@ export function TableAttributesEditBulk({
   const [email, setEmail] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
-  const [
-    isUnpublishModalOpen,
-    { close: closeUnpublishModal, open: openUnpublishModal },
-  ] = useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
 
@@ -160,9 +157,9 @@ export function TableAttributesEditBulk({
                   leftSection={<Icon name="publish" />}
                   onClick={() =>
                     handlePublish({
-                      table_ids: Array.from(selectedTables),
-                      schema_ids: Array.from(selectedSchemas),
-                      database_ids: Array.from(selectedDatabases),
+                      databaseIds: Array.from(selectedDatabases),
+                      schemaIds: Array.from(selectedSchemas),
+                      tableIds: Array.from(selectedTables),
                     })
                   }
                 >
@@ -180,7 +177,13 @@ export function TableAttributesEditBulk({
                   w="100%"
                   disabled={!hasLibrary}
                   leftSection={<Icon name="unpublish" />}
-                  onClick={openUnpublishModal}
+                  onClick={() =>
+                    handleUnpublish({
+                      databaseIds: Array.from(selectedDatabases),
+                      schemaIds: Array.from(selectedSchemas),
+                      tableIds: Array.from(selectedTables),
+                    })
+                  }
                 >
                   {t`Unpublish`}
                 </Button>
@@ -274,15 +277,7 @@ export function TableAttributesEditBulk({
       </Stack>
 
       {publishConfirmationModal}
-
-      {isUnpublishModalOpen && (
-        <UnpublishTablesModal
-          databaseIds={Array.from(selectedDatabases)}
-          schemaIds={Array.from(selectedSchemas)}
-          tableIds={Array.from(selectedTables)}
-          onClose={closeUnpublishModal}
-        />
-      )}
+      {unpublishConfirmationModal}
 
       <SyncOptionsModal
         isOpen={isSyncModalOpen}

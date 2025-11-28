@@ -1,10 +1,9 @@
-import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Box, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
-import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
 import type { Table } from "metabase-types/api";
 
 import S from "./TableCollection.module.css";
@@ -16,8 +15,7 @@ type TableCollectionProps = {
 
 export function TableCollection({ table }: TableCollectionProps) {
   const { collection } = table;
-  const [isModalOpened, { open: openModal, close: closeModal }] =
-    useDisclosure();
+  const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables();
 
   return (
     <>
@@ -36,15 +34,16 @@ export function TableCollection({ table }: TableCollectionProps) {
             <Box>{t`You don't have access to this collection`}</Box>
           )}
           <Tooltip label={t`Unpublish`}>
-            <ActionIcon aria-label={t`Unpublish`} onClick={openModal}>
+            <ActionIcon
+              aria-label={t`Unpublish`}
+              onClick={() => handleUnpublish({ tableIds: [table.id] })}
+            >
               <FixedSizeIcon name="unpublish" />
             </ActionIcon>
           </Tooltip>
         </Group>
       </TableSectionGroup>
-      {isModalOpened && (
-        <UnpublishTablesModal tableIds={[table.id]} onClose={closeModal} />
-      )}
+      {unpublishConfirmationModal}
     </>
   );
 }

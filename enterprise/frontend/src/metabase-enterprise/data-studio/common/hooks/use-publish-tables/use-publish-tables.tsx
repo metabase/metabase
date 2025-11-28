@@ -8,9 +8,15 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
-import type { PublishTablesRequest } from "metabase-types/api";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import { PublishConfirmationModal } from "./PublishConfirmationModal";
+
+export type PublishTablesInput = {
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
+};
 
 export function usePublishTables() {
   const dispatch = useDispatch();
@@ -21,19 +27,23 @@ export function usePublishTables() {
     useUserAcknowledgement("seen-publish-tables-info");
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
-  const requestRef = useRef<PublishTablesRequest | null>(null);
+  const inputRef = useRef<PublishTablesInput | null>(null);
 
-  const handlePublish = async (request: PublishTablesRequest) => {
+  const handlePublish = async (input: PublishTablesInput) => {
     if (seenPublishTablesInfo) {
-      await handlePublishRequest(request);
+      await handlePublishRequest(input);
     } else {
-      requestRef.current = request;
+      inputRef.current = input;
       openModal();
     }
   };
 
-  const handlePublishRequest = async (request: PublishTablesRequest) => {
-    const { data, error } = await publishTables(request);
+  const handlePublishRequest = async (input: PublishTablesInput) => {
+    const { data, error } = await publishTables({
+      database_ids: input.databaseIds,
+      schema_ids: input.schemaIds,
+      table_ids: input.tableIds,
+    });
     if (error) {
       sendErrorToast(t`Failed to publish tables`);
     } else if (data) {
@@ -51,9 +61,9 @@ export function usePublishTables() {
     if (isAcknowledged) {
       ackSeenPublishTablesInfo();
     }
-    if (requestRef.current != null) {
-      await handlePublishRequest(requestRef.current);
-      requestRef.current = null;
+    if (inputRef.current != null) {
+      await handlePublishRequest(inputRef.current);
+      inputRef.current = null;
     }
   };
 
