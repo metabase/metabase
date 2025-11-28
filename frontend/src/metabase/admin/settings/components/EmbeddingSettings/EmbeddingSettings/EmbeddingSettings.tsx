@@ -113,7 +113,6 @@ function EmbeddingSettingsEE() {
 function EmbeddingSettingsOSS() {
   return (
     <SharedCombinedEmbeddingSettings
-      showEmbeddingSdkSettings
       showCorsSettings
       showContentTranslationSettings
     />

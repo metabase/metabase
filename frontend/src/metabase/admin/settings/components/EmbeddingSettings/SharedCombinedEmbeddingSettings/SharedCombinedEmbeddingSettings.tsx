@@ -17,7 +17,6 @@ import { Box, Text } from "metabase/ui";
 
 import { SettingTitle } from "../../SettingHeader";
 import { EmbeddedResources } from "../../widgets/PublicLinksListing/EmbeddedResources";
-import { EmbeddingSdkSettings } from "../EmbeddingSdkSettings/EmbeddingSdkSettings";
 import { EmbeddingSecretKeyWidget } from "../EmbeddingSecretKeyWidget";
 import { CorsInputWidget } from "../EmbeddingSecuritySettings/CorsInputWidget";
 
@@ -28,7 +27,6 @@ type Props = {
 };
 
 export function SharedCombinedEmbeddingSettings({
-  showEmbeddingSdkSettings,
   showCorsSettings,
   showContentTranslationSettings,
 }: Props) {
@@ -57,8 +55,6 @@ export function SharedCombinedEmbeddingSettings({
         sdk-setting-card
         testId="guest-embeds-setting-card"
       />
-
-      {showEmbeddingSdkSettings && <EmbeddingSdkSettings />}
 
       {!isSimpleEmbedFeatureAvailable && (
         <UpsellBanner
