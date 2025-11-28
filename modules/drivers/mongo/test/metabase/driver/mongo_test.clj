@@ -15,6 +15,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -1174,3 +1175,282 @@
       :type/MongoBSONID        "objectId"
       :type/MongoBinData       "binData"
       :type/IPAddress          "string")))
+
+;;
+;; Deactivated field not removed from query test
+;;
+
+;; Sample of the following dataset
+;; {
+;;   "users": {
+;;     "otherId": "user001",
+;;     "name": "Alice Johnson",
+;;     "email": "alice.johnson@email.com",
+;;     "createdAt": "2024-01-15T00:00:00.000Z"
+;;   },
+;;   "products": {
+;;     "otherId": "prod001",
+;;     "name": "Laptop Pro 15",
+;;     "price": 1299.99,
+;;     "category": "Electronics",
+;;     "stock": 45
+;;   },
+;;   "orderItems": {
+;;     "otherId": "item001",
+;;     "links": {
+;;       "customerId": "user001",
+;;       "productId": "prod001"
+;;     },
+;;     "data": {
+;;       "orderDate": "2024-06-01T00:00:00.000Z",
+;;       "status": "delivered",
+;;       "quantity": 1,
+;;       "price": 1299.99
+;;     }
+;;   }
+;;  }
+
+(mt/defdataset sno
+  "Simple nested orders dataset."
+  [["users"
+    [{:field-name "otherId" :base-type :type/Text}
+     {:field-name "name" :base-type :type/Text}
+     {:field-name "email" :base-type :type/Text}
+     {:field-name "createdAt" :base-type :type/Date}]
+    [["user001" "Alice Johnson" "alice.johnson@email.com" "2024-01-15"]
+     ["user002" "Bob Smith" "bob.smith@email.com" "2024-02-20"]
+     ["user003" "Carol White" "carol.white@email.com" "2024-03-10"]
+     ["user004" "David Brown" "david.brown@email.com" "2024-04-05"]
+     ["user005" "Emma Davis" "emma.davis@email.com" "2024-05-12"]]]
+   ["products"
+    [{:field-name "otherId" :base-type :type/Text}
+     {:field-name "name" :base-type :type/Text}
+     {:field-name "price" :base-type :type/Decimal}
+     {:field-name "category" :base-type :type/Text}
+     {:field-name "stock" :base-type :type/Integer}]
+    [["prod001" "Laptop Pro 15" 1299.99 "Electronics" 45]
+     ["prod002" "Wireless Mouse" 29.99 "Accessories" 150]
+     ["prod003" "USB-C Hub" 49.99 "Accessories" 80]
+     ["prod004" "Mechanical Keyboard" 149.99 "Accessories" 60]
+     ["prod005" "4K Monitor" 599.99 "Electronics" 25]]]
+   ["orderItems"
+    [{:field-name "otherId" :base-type :type/Text}
+     {:field-name "links" :base-type :type/Dictionary :nested-fields [{:field-name "customerId"
+                                                                       :base-type :type/Text}
+                                                                      {:field-name "productId"
+                                                                       :base-type :type/Text}]}
+     {:field-name "data" :base-type :type/Dictionary :nested-fields [{:field-name "orderDate"
+                                                                      :base-type :type/DateTime}
+                                                                     {:field-name "status"
+                                                                      :base-type :type/Text}
+                                                                     {:field-name "quantity"
+                                                                      :base-type :type/Integer}
+                                                                     {:field-name "price"
+                                                                      :base-type :type/Decimal}]}]
+    [["item001"
+      {"customerId" "user001", "productId" "prod001"}
+      {"orderDate" #t "2024-06-01", "status" "delivered", "quantity" 1, "price" 1299.99}]
+     ["item002"
+      {"customerId" "user001", "productId" "prod003"}
+      {"orderDate" #t "2024-06-01", "status" "delivered", "quantity" 1, "price" 49.99}]
+     ["item003"
+      {"customerId" "user002", "productId" "prod004"}
+      {"orderDate" #t "2024-06-15", "status" "shipped", "quantity" 1, "price" 149.99}]
+     ["item004"
+      {"customerId" "user003", "productId" "prod005"}
+      {"orderDate" #t "2024-07-02", "status" "processing", "quantity" 1, "price" 599.99}]
+     ["item005"
+      {"customerId" "user004", "productId" "prod002"}
+      {"orderDate" #t "2024-07-20", "status" "delivered", "quantity" 1, "price" 29.99}]]]])
+
+(deftest retired-field-use-in-summaries-test
+  (mt/test-driver
+    :mongo
+    (mt/dataset
+      sno
+      (try
+        (let [mp (mt/metadata-provider)
+              q (-> (lib/query mp (lib.metadata/table mp (mt/id :orderItems)))
+                    (lib/breakout (lib/with-temporal-bucket
+                                    (lib.metadata/field mp (mt/id :orderItems :data :orderDate))
+                                    :month))
+                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orderItems :data :price)))))
+              base-rows (mt/rows (qp/process-query q))]
+
+          (testing "Baseline"
+            (is (= [["2024-06-01T00:00:00Z" 1499.97] ["2024-07-01T00:00:00Z" 629.98]]
+                   base-rows)))
+
+         ;; Deactivate breakout field
+          (t2/update! :model/Field :id (mt/id :orderItems :data :orderDate) {:active false})
+          (is (false? (t2/select-one-fn :active :model/Field :id (mt/id :orderItems :data :orderDate))))
+
+          (testing "Results are unchanged with deactivated breakout (nested field)"
+            (= base-rows
+               (mt/rows (qp/process-query (assoc q :lib/metadata (mt/metadata-provider))))))
+
+         ;; Deactivate aggregated field
+          (t2/update! :model/Field :id (mt/id :orderItems :data :price) {:active false})
+          (is (false? (t2/select-one-fn :active :model/Field :id (mt/id :orderItems :data :price))))
+
+          (testing "Results are unchanged with deactivated aggregated field (nested field)"
+            (= base-rows
+               (mt/rows (qp/process-query (assoc q :lib/metadata (mt/metadata-provider)))))))
+        (finally
+          (t2/update! :model/Field :id (mt/id :orderItems :data :orderDate) {:active true})
+          (t2/update! :model/Field :id (mt/id :orderItems :data :price) {:active true}))))))
+
+(deftest retired-field-use-in-fields-test
+  (mt/test-driver
+    :mongo
+    (mt/dataset
+      sno
+      (try
+      ;; Sanity
+        (is (true? (t2/select-one-fn :active :model/Field :id (mt/id :orderItems :data :orderDate))))
+
+        (let [mp (mt/metadata-provider)
+              q (lib/query mp (lib.metadata/table mp (mt/id :orderItems)))
+              res-base (qp/process-query q)
+              rows-base (mt/rows res-base)]
+
+        ;; Deactivate orderDate field
+          (t2/update! :model/Field :id (mt/id :orderItems :data :orderDate) {:active false})
+          (is (false? (t2/select-one-fn :active :model/Field :id (mt/id :orderItems :data :orderDate))))
+
+        ;; Questionable.
+          (testing "Implicitly selected deactivated field is not present in the rows and query completes"
+          ;; ... because it is not added by
+          ;; [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]
+            (let [res-1 (qp/process-query (assoc q :lib/metadata (mt/metadata-provider)))
+                  rows-1 (mt/rows res-1)]
+              (is (= "Data: OrderDate"
+                     (-> res-base :data :results_metadata :columns (nth 6) :display_name)))
+              (is (= (mapv #(vec (concat (take 6 %) (drop 7 %))) rows-base)
+                     rows-1))))
+
+        ;; Fine.
+          (testing "Explicitly selected deactivated field is present in query results"
+            (let [q2 (-> (lib/query mp (lib.metadata/table mp (mt/id :orderItems)))
+                         (lib/with-fields [(lib.metadata/field mp (mt/id :orderItems :data :orderDate))]))
+                  rows-2 (mt/rows (qp/process-query q2))]
+              (is (= [["2024-06-01T00:00:00Z"]
+                      ["2024-06-01T00:00:00Z"]
+                      ["2024-06-15T00:00:00Z"]
+                      ["2024-07-02T00:00:00Z"]
+                      ["2024-07-20T00:00:00Z"]]
+                     rows-2)))))
+
+      ;; Clneaup
+        (finally
+          (t2/update! :model/Field (mt/id :orderItems :data :orderDate) {:active true}))))))
+
+(deftest retired-field-use-in-variable-or-filter-test
+  (mt/test-driver
+    :mongo
+    (mt/dataset
+      sno
+      (try
+      ;; Sanity
+        (is (true? (t2/select-one-fn :active :model/Field (mt/id :orderItems :otherId))))
+
+        (let [nq {:lib/type :mbql/query
+                  :database (mt/id)
+                  :parameters [{:type :string/=, :value ["item002"], :id "d041b4f2",
+                                :target [:dimension [:template-tag "idm"]
+                                         {:stage-number 0}]}]
+                  :stages [{:lib/type :mbql.stage/native
+                            :native "[{\"$addFields\": {}},\n {\"$match\": {{idm}}}]"
+                            :collection "orderItems"
+                            :template-tags {"idm"
+                                            {:display-name "Idm",
+                                             :type :dimension,
+                                             :dimension [:field
+                                                         #:lib{:uuid "c5384afa-3551-4d4d-89e5-ad945c7d314a"}
+                                                         (mt/id :orderItems :otherId)],
+                                             :name "idm",
+                                             :widget-type :id,
+                                             :id "9ee69388-67b8-40e4-a047-8cb1ec551ce5",
+                                             :default ["item001"]}}}]}
+              res-base (qp/process-query nq)
+              rows-base (mt/rows res-base)]
+
+        ;; Deactivate the field linked to variable
+          (t2/update! :model/Field :id (mt/id :orderItems :otherId) {:active false})
+
+          (testing "Query results are the same with active and deactivated field linked to variable"
+          ;; ... native query is not affected as references are removed only from mbql. And variable linking
+          ;; is not affected either. Linking field filter to dashboard was tested manually.
+            (= rows-base
+               (mt/rows (qp/process-query nq)))))
+
+      ;; Cleanup
+        (finally
+          (t2/update! :model/Field :id (mt/id :orderItems :otherId) {:active true}))))))
+
+(deftest retired-field-use-in-join-test
+  (mt/test-driver
+    :mongo
+    (mt/dataset
+      sno
+      (try
+
+      ;; Sanity
+        (is (true? (t2/select-one-fn :active :model/Field (mt/id :orderItems :links :productId))))
+        (is (true? (t2/select-one-fn :active :model/Field (mt/id :orderItems :links :productId))))
+
+        (let [mp (mt/metadata-provider)
+              q (-> (lib/query mp (lib.metadata/table mp (mt/id :orderItems)))
+                    (lib/join (lib/with-join-alias
+                               (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                [(lib/= (lib.metadata/field mp (mt/id :orderItems :links :productId))
+                                                        (lib.metadata/field mp (mt/id :products :otherId)))])
+                               "joined_products"))
+                    (lib/order-by (lib.metadata/field mp (mt/id :orderItems :otherId))))
+              res-base (qp/process-query q)
+              rows-base (mt/rows res-base)]
+
+        ;; Deactivate join condition LHS field
+          (t2/update! :model/Field :id (mt/id :orderItems :links :productId) {:active false})
+          (is (false? (t2/select-one-fn :active :model/Field (mt/id :orderItems :links :productId))))
+
+          (testing (str "Implicitly selected deactivated field is not present in results, "
+                        "but joining on that field works when it is LHS")
+            (let [res-2 (qp/process-query (assoc q :lib/metadata (mt/metadata-provider)))
+                  rows-2 (mt/rows res-2)]
+            ;; Implicitly selected orderItems.links.productId is 5th column
+              (is (= "Links: ProductId"
+                     (-> res-base :data :results_metadata :columns (nth 4) :display_name)))
+            ;; So it is removed from baseline rows
+              (is (= (mapv #(vec (concat (take 4 %) (drop 5 %))) rows-base)
+                     rows-2))))
+
+        ;; Deactivate join condition RHS field
+          (t2/update! :model/Field :id (mt/id :products :otherId) {:active false})
+          (is (false? (t2/select-one-fn :active :model/Field (mt/id :products :otherId))))
+
+        ;; Following is broken -- we fail when RHS is deactivated. Long story short, 
+        ;; [[metabase.query-processor.util.add-alias-info/add-escaped-desired-aliases]] uses
+        ;; `returned-columns` to generate `:metabase.query-processor.util.add-alias-info/desired-alias->escaped`.
+        ;; The alias for deactivated column is missing from that map. That provokes exception elsewhere in that
+        ;; namespace.
+        ;;
+        ;; This is the crux obstacle I see with examined approach.
+          (testing "Ideally we would be able to join also on deactivated RHS field (we are not)"
+            (is (= :not-thrown
+                   (try
+                     (qp/process-query (assoc q :lib/metadata (mt/metadata-provider)))
+                     :not-thrown
+                     (catch Throwable t
+                       (def eex t)
+                       t))))))
+
+      ;; For debugging
+        (catch Throwable t
+          (def ttt t)
+          (throw t))
+
+      ;; Cleanup
+        (finally
+          (t2/update! :model/Field :id (mt/id :orderItems :links :productId) {:active true})
+          (t2/update! :model/Field :id (mt/id :products :otherId) {:active true}))))))
