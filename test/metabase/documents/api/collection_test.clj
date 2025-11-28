@@ -50,21 +50,6 @@
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items)))))))))
 
-(deftest document-cards-do-not-appear-in-root-items-without-premium
-  (testing "GET /api/collection/root/items excludes cards with document_id when documents feature is disabled"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Card {normal-card-id :id} {:collection_id nil
-                                                       :name "Normal Root Card"}
-                     :model/Dashboard {dash-id :id} {:collection_id nil
-                                                     :name "Root Dashboard"}]
-        (testing "Normal cards and dashboards in root appear, no documents"
-          (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
-                root-test-items (filter #(#{normal-card-id dash-id} (:id %))
-                                        (:data items))]
-            (is (= #{[normal-card-id "card"]
-                     [dash-id "dashboard"]}
-                   (set (map (juxt :id :model) root-test-items))))))))))
-
 (deftest documents-appear-in-collection-items
   (testing "GET /api/collection/:id/items includes documents"
     (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -78,22 +63,7 @@
                  [dash-id "dashboard"]}
                (set (map (juxt :id :model)
                          (:data (mt/user-http-request :rasta :get 200
-                                                      (str "collection/" coll-id "/items"))))))))))))
-
-(deftest documents-do-not-appear-in-collection-items-without-premium
-  (testing "GET /api/collection/:id/items excludes documents when documents feature is disabled"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Collection {coll-id :id} {}
-                     :model/Card {card-id :id} {:collection_id coll-id}
-                     :model/Document _ {:collection_id coll-id
-                                        :name "Test Document"}
-                     :model/Dashboard {dash-id :id} {:collection_id coll-id}]
-        (testing "Only cards and dashboards appear, no documents"
-          (is (= #{[card-id "card"]
-                   [dash-id "dashboard"]}
-                 (set (map (juxt :id :model)
-                           (:data (mt/user-http-request :rasta :get 200
-                                                        (str "collection/" coll-id "/items"))))))))))))
+                                                      (str "collection/" coll-id "/items")))))))))))
 
 (deftest documents-appear-in-root-items
   (testing "GET /api/collection/root/items includes documents"
@@ -111,23 +81,6 @@
                    [card-id "card"]
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items)))))))))
-
-(deftest documents-do-not-appear-in-root-items-without-premium
-  (testing "GET /api/collection/root/items excludes documents when documents feature is disabled"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Card {card-id :id} {:collection_id nil
-                                                :name "Root Card"}
-                     :model/Document _ {:collection_id nil
-                                        :name "Test Document"}
-                     :model/Dashboard {dash-id :id} {:collection_id nil
-                                                     :name "Root Dashboard"}]
-        (testing "Only cards and dashboards appear in root, no documents"
-          (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
-                root-test-items (filter #(#{card-id dash-id} (:id %))
-                                        (:data items))]
-            (is (= #{[card-id "card"]
-                     [dash-id "dashboard"]}
-                   (set (map (juxt :id :model) root-test-items))))))))))
 
 (deftest archived-documents-appear-in-trash-items
   (testing "GET /api/collection/trash/items includes documents with archived_directly true"
@@ -156,28 +109,6 @@
                  (set (map (juxt :id :model :can_delete :can_restore) trash-test-items))))
           (testing "Non-archived documents do not appear in trash"
             (is (not (some #(= normal-doc-id (:id %)) trash-test-items)))))))))
-
-(deftest archived-documents-do-not-appear-in-trash-items-without-premium
-  (testing "GET /api/collection/trash/items excludes documents when documents feature is disabled"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Document _ {:collection_id nil
-                                        :name "Archived Document"
-                                        :archived true
-                                        :archived_directly true}
-                     :model/Card {archived-card-id :id} {:collection_id nil
-                                                         :name "Archived Card"
-                                                         :archived true
-                                                         :archived_directly true}
-                     :model/Dashboard {archived-dash-id :id} {:collection_id nil
-                                                              :name "Archived Dashboard"
-                                                              :archived true
-                                                              :archived_directly true}]
-        (testing "Only archived cards and dashboards appear in trash, no documents"
-          (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (collection/trash-collection-id)))
-                trash-test-items (:data items)]
-            (is (= #{[archived-card-id "card"]
-                     [archived-dash-id "dashboard"]}
-                   (set (map (juxt :id :model) trash-test-items))))))))))
 
 (deftest document-pinning-collection-items
   (testing "GET /api/collection/:id/items supports pinned_state parameter for documents"

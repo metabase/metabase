@@ -68,7 +68,7 @@
         ;; Check second document
         (let [doc2 (first (filter #(= (:id %) doc2-id) results))]
           (is (= "Document 2" (:name doc2)))
-          (is (= false (:archived doc2)))))))))
+          (is (= false (:archived doc2))))))))
 
 (deftest select-documents-for-recents-without-collection-test
   (testing "returns documents without collection when collection_id is nil"
@@ -116,7 +116,7 @@
           (is (= active-coll-id (:entity-coll-id doc2)))
           (is (= active-coll-id (:collection_id doc2)))
           (is (= "Active Collection" (:collection_name doc2)))
-          (is (= "official" (:collection_authority_level doc2)))))))))
+          (is (= "official" (:collection_authority_level doc2))))))))
 
 (deftest select-documents-for-recents-archived-documents-test
   (testing "includes archived documents in results"
@@ -151,21 +151,21 @@
       (let [results (recent-views/select-documents-for-recents [doc1-id doc2-id doc1-id])]
         ;; Should return unique documents even if IDs are duplicated
         (is (= 2 (count results)))
-        (is (= #{doc1-id doc2-id} (set (map :id results))))))))
+        (is (= #{doc1-id doc2-id} (set (map :id results)))))))
 
-(deftest recents-api-with-documents-premium-feature-test
-  (testing "/recents API returns documents when :document premium feature is enabled"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Document {doc-id :id} {:name "Test Document"
-                                                 :collection_id coll-id
-                                                 :archived false}]
+  (deftest recents-api-with-documents-premium-feature-test
+    (testing "/recents API returns documents when :document premium feature is enabled"
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                     :model/Document {doc-id :id} {:name "Test Document"
+                                                   :collection_id coll-id
+                                                   :archived false}]
       ;; Add document to recent views
-      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
+        (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
 
       ;; Call the API
-      (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
-        (is (some #(and (= (:model %) "document")
-                        (= (:id %) doc-id)
-                        (= (:name %) "Test Document"))
-                  (:recents response))
-            "Document should be present in recents when premium feature is enabled")))))
+        (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
+          (is (some #(and (= (:model %) "document")
+                          (= (:id %) doc-id)
+                          (= (:name %) "Test Document"))
+                    (:recents response))
+              "Document should be present in recents when premium feature is enabled"))))))

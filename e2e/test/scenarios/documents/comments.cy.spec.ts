@@ -736,7 +736,6 @@ describe("document comments", () => {
         cy.findByText("Lorem ipsum").should("not.exist");
         cy.findByText("Bobby Tables").should("be.visible");
         cy.findByText("No Collection Tableton").should("be.visible");
-        cy.findByText("Most viewed content").should("be.visible");
       });
 
       cy.realType("s");

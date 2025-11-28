@@ -53,7 +53,7 @@
             (is (not (contains? object :creator_id)))
             (is (not (contains? object :created_at)))
             (is (not (contains? object :updated_at)))
-            (is (not (contains? object :collection_id))))))))))
+            (is (not (contains? object :collection_id)))))))))
 
 (deftest document-update-event-triggers-revision-test
   (testing "Document update triggers revision creation via events"
@@ -74,7 +74,7 @@
           (testing "serialized object contains updated data"
             (let [object (:object revision)]
               (is (= "Updated Document" (:name object)))
-              (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]} (:document object))))))))))))
+              (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]} (:document object))))))))))
 
 (deftest document-revision-api-endpoints-test
   (testing "Document revision API endpoints work correctly"
@@ -166,7 +166,7 @@
                    (mt/user-http-request :rasta :post 403 "revision/revert"
                                          {:entity :document
                                           :id document-id
-                                          :revision_id prev-rev-id}))))))))))))
+                                          :revision_id prev-rev-id})))))))))
 
 (deftest document-revision-cross-boundary-integration-test
   (testing "Document revisions integrate properly with OSS revision system"
@@ -200,7 +200,7 @@
                                                      :revision_id original-rev-id})]
           (is (:is_reversion revert-response))
           (let [reverted-doc (t2/select-one :model/Document :id doc-id)]
-            (is (= "Cross-boundary Document" (:name reverted-doc)))))))))))
+            (is (= "Cross-boundary Document" (:name reverted-doc)))))))))
 
 (deftest document-revision-event-handler-integration-test
   (testing "Document revision events are published and handled correctly"
@@ -231,7 +231,7 @@
           (testing "Events were published correctly"
             (is (>= (count @events-received) 2))
             (is (some #(= :event/document-create (first %)) @events-received))
-            (is (some #(= :event/document-update (first %)) @events-received))))))))))
+            (is (some #(= :event/document-update (first %)) @events-received))))))))
 
 (deftest document-revision-diff-and-descriptions-test
   (testing "Document revision diffs and descriptions work correctly"

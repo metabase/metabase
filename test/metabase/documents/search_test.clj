@@ -97,7 +97,7 @@
             (let [archived-results (mt/user-http-request :rasta :get 200 "search" :q "Archived" :archived true :models "document")]
               (is (= #{doc-archived}
                      (set (map :id (:data archived-results))))
-                  "User with write permissions should see archived documents in accessible collections")))))))))
+                  "User with write permissions should see archived documents in accessible collections"))))))))
 
 (deftest document-view-tracking-integration-test
   (testing "Document view tracking integrates with search"

@@ -144,6 +144,8 @@ describe("scenarios > documents > downloads", () => {
   });
 
   it("hides Download results when the person lacks download permission but can view the collection", () => {
+    H.activateToken("bleeding-edge");
+
     H.createDocument({
       name: "No Download Permission Document",
       document: DOCUMENT_WITH_TWO_CARDS,

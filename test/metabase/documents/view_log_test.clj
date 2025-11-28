@@ -64,7 +64,7 @@
           (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
           (is (= 1 (t2/select-one-fn :view_count :model/Document (:id document))))
           (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
-          (is (= 2 (t2/select-one-fn :view_count :model/Document (:id document)))))))))))
+          (is (= 2 (t2/select-one-fn :view_count :model/Document (:id document)))))))))
 
 (deftest update-document-last-viewed-at-test
   (let [now (-> (t/offset-date-time)

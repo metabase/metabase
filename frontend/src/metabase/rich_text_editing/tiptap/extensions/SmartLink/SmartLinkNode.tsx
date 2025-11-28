@@ -470,7 +470,7 @@ export const SmartLinkComponent = memo(
     if (model === "user" && isMentionableUser(entity)) {
       return (
         <NodeViewWrapper as="span">
-          <span className={styles.userMention}>@{entity.name}</span>
+          <span className={styles.userMention}>@{entity.common_name}</span>
         </NodeViewWrapper>
       );
     }
