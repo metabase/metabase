@@ -300,6 +300,10 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
+/**
+ * @deprecated Use `moveDnDKitElementByAlias` instead.
+ * Otherwise, the chain will be broken due to "element was removed from the DOM" error
+ */
 export const moveDnDKitElement = (
   element,
   { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},

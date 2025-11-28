@@ -13,16 +13,12 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
-import { startHostAppContainers } from "./embedding-sdk/host-apps/start-host-app-containers";
-import { startSampleAppContainers } from "./embedding-sdk/sample-apps/start-sample-app-containers";
-import { resolveSdkE2EConfig } from "./resolve-sdk-e2e-config";
 
 let tempSampleDBDir: string | null = null;
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
   CYPRESS_TESTING_TYPE: "e2e", // e2e | component
-  SDK_TEST_SUITE: undefined, // one of the many sample-app, or host-app Embedding SDK suites
   MB_EDITION: "ee", // ee | oss
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,
@@ -66,7 +62,6 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 
 printBold(`Running Cypress with options:
   - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
-  - SDK_TEST_SUITE       : ${options.SDK_TEST_SUITE}
   - MB_EDITION           : ${options.MB_EDITION}
   - START_CONTAINERS     : ${options.START_CONTAINERS}
   - STOP_CONTAINERS      : ${options.STOP_CONTAINERS}
@@ -131,10 +126,7 @@ const init = async () => {
 
     printBold("⏳ Generating app db snapshots");
     process.env.OPEN_UI = "false";
-    await runCypress(
-      { configFile: "e2e/support/cypress-snapshots.config.js" },
-      cleanup,
-    );
+    await runCypress({ configFile: "e2e/support/cypress-snapshots.config.js" });
     process.env.OPEN_UI = `${options.OPEN_UI}`;
   } else {
     printBold("Skipping snapshot generation, beware of stale snapshot caches");
@@ -148,44 +140,19 @@ const init = async () => {
     );
   }
 
-  if (options.SDK_TEST_SUITE) {
-    switch (options.SDK_TEST_SUITE) {
-      case "metabase-nodejs-react-sdk-embedding-sample-e2e":
-      case "metabase-nextjs-sdk-embedding-sample-e2e":
-      case "shoppy-e2e":
-        await startSampleAppContainers(options.SDK_TEST_SUITE);
-        break;
-
-      case "vite-6-host-app-e2e":
-      case "next-15-app-router-host-app-e2e":
-      case "next-15-pages-router-host-app-e2e":
-      case "angular-20-host-app-e2e":
-        await startHostAppContainers(options.SDK_TEST_SUITE);
-        break;
-    }
-
-    printBold("⏳ Starting Sample/Host App Cypress Tests");
-    const config = resolveSdkE2EConfig(options.SDK_TEST_SUITE);
-    await runCypress(config, cleanup);
-  }
-
   if (options.CYPRESS_TESTING_TYPE === "component") {
     printBold("⏳ Starting Cypress SDK component tests");
-    await runCypress(
-      {
-        configFile:
-          "e2e/support/cypress-embedding-sdk-component-test.config.js",
-        testingType: "component",
-      },
-      cleanup,
-    );
+    await runCypress({
+      configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
+      testingType: "component",
+    });
   }
 
   if (options.CYPRESS_TESTING_TYPE === "e2e") {
     const config = { configFile: "e2e/support/cypress.config.js" };
 
     printBold("⏳ Starting Cypress");
-    await runCypress({ ...config, ...userOverrides }, cleanup);
+    await runCypress({ ...config, ...userOverrides });
   }
 };
 
