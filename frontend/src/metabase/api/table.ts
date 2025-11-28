@@ -90,6 +90,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", id),
           tag("database"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
