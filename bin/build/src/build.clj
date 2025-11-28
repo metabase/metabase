@@ -26,24 +26,17 @@
   (let [mb-edition (case edition
                      :ee "ee"
                      :oss "oss")]
-    (u/step (format "Build frontend with MB_EDITION=%s" mb-edition)
+    (u/step (format "Build frontend with MB_EDITION=%s (using wireit cache)" mb-edition)
       (when-not (env/env :ci)
         (u/step "Run 'yarn' to download JavaScript dependencies"
           (u/sh {:dir u/project-root-directory} "yarn")))
-      (u/step "Build frontend"
+      (u/step "Build frontend (wireit-cached)"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
               "yarn" "build-release"))
-      (u/step "Build static viz"
-        (u/sh {:dir u/project-root-directory
-               :env {"PATH"       (env/env :path)
-                     "HOME"       (env/env :user-home)
-                     "WEBPACK_BUNDLE"   "production"
-                     "MB_EDITION" mb-edition}}
-              "yarn" "build-release:static-viz"))
       (u/announce "Frontend built successfully."))))
 
 (defn- build-licenses!
@@ -74,6 +67,23 @@
                           "resources"
                           "license-frontend-third-party.txt") license-text)))))
 
+(defn build-licenses-direct!
+  "Build licenses without requiring edition parameter. Used for yarn/wireit caching."
+  [_options]
+  (build-licenses! (edition-from-env-var)))
+
+(defn build-version-direct!
+  "Generate version properties file without requiring explicit parameters. Used for yarn/wireit caching."
+  [_options]
+  (let [edition (edition-from-env-var)
+        version (version-properties/current-snapshot-version edition)]
+    (version-properties/generate-version-properties-file! edition version)))
+
+(defn build-drivers-direct!
+  "Build drivers without requiring edition parameter. Used for yarn/wireit caching."
+  [_options]
+  (build-drivers/build-drivers! (edition-from-env-var)))
+
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar/uberjar-filename)
@@ -82,21 +92,42 @@
     (u/assert-file-exists uberjar/uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
+(defn- build-via-yarn!
+  ([step-name]
+   (build-via-yarn! step-name {}))
+  ([step-name {:keys [edition]}]
+   (let [mb-edition (when edition
+                      (case edition
+                        :ee "ee"
+                        :oss "oss"))]
+     (u/step (format "Build %s (using wireit cache)" step-name)
+       (u/sh {:dir u/project-root-directory
+              :env (cond-> {"PATH" (env/env :path)
+                            "HOME" (env/env :user-home)}
+                     mb-edition (assoc "MB_EDITION" mb-edition))}
+             "yarn" (str "build:" step-name))
+       (u/announce "%s built successfully (cached)." step-name)))))
+
+(defn build-uberjar-direct!
+  "Build uberjar without requiring edition parameter. Used for yarn/wireit caching."
+  [_options]
+  (build-uberjar! (edition-from-env-var)))
+
 (def ^:private all-steps
   "These build steps are run in order during the build process."
   (ordered-map/ordered-map
-   :version      (fn [{:keys [edition version]}]
-                   (version-properties/generate-version-properties-file! edition version))
-   :translations (fn [_]
-                   (i18n/create-all-artifacts!))
+   :version      (fn [{:keys [edition]}]
+                   (build-via-yarn! "version" {:edition edition}))
+   :translations (fn [{:keys [edition]}]
+                   (build-via-yarn! "translations" {:edition edition}))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
    :licenses     (fn [{:keys [edition]}]
-                   (build-licenses! edition))
+                   (build-via-yarn! "licenses" {:edition edition}))
    :drivers      (fn [{:keys [edition]}]
-                   (build-drivers/build-drivers! edition))
+                   (build-via-yarn! "drivers" {:edition edition}))
    :uberjar      (fn [{:keys [edition]}]
-                   (build-uberjar! edition))))
+                   (build-via-yarn! "uberjar" {:edition edition}))))
 
 (defn build!
   "Programmatic entrypoint."

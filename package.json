@@ -355,6 +355,7 @@
     "webpack-dev-server": "^5.2.1",
     "webpack-notifier": "1.15.0",
     "webpack-stats-plugin": "^1.1.3",
+    "wireit": "^0.14.12",
     "yaml-lint": "~1.6.0",
     "yarn-deduplicate": "^6.0.2"
   },
@@ -392,10 +393,10 @@
     "build-hot:js": "yarn && yarn clean-dev:js && NODE_OPTIONS=--max-old-space-size=8192 WEBPACK_BUNDLE=hot rspack serve",
     "build-hot:js-wait": "yarn wait:cljs; yarn build-hot:js",
     "build-pure:cljs": "yarn clean-dev:cljs && shadow-cljs compile app",
-    "build-release": "yarn build-release:cljs && yarn build-release:js",
-    "build-release:cljs": "yarn clean-release:cljs && shadow-cljs release app",
-    "build-release:js": "WEBPACK_BUNDLE=production rspack build",
-    "build-release:static-viz": "WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js",
+    "build-release": "wireit",
+    "build-release:cljs": "wireit",
+    "build-release:js": "wireit",
+    "build-release:static-viz": "wireit",
     "build-release:embedding-sdk-package": "WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-package.config.js",
     "build-release:embedding-sdk-bundle": "WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-bundle.config.js",
     "build-shared": "yarn && rspack --config rspack.shared.config.js",
@@ -486,7 +487,140 @@
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
     "generate:expression-parser": "lezer-generator frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.js",
-    "cloud:dev": "yarn && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && yarn concurrently -n 'FE,BE' -c 'blue,green' 'yarn build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
+    "cloud:dev": "yarn && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && yarn concurrently -n 'FE,BE' -c 'blue,green' 'yarn build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'",
+    "build:version": "wireit",
+    "build:translations": "wireit",
+    "build:licenses": "wireit",
+    "build:drivers": "wireit",
+    "build:uberjar": "wireit"
+  },
+  "wireit": {
+    "build-release": {
+      "dependencies": [
+        "build-release:cljs",
+        "build-release:js",
+        "build-release:static-viz"
+      ]
+    },
+    "build-release:cljs": {
+      "command": "yarn clean-release:cljs && shadow-cljs release app",
+      "files": [
+        "frontend/src/**/*.{cljs,cljc}",
+        "enterprise/frontend/src/**/*.{cljs,cljc}",
+        "shadow-cljs.edn",
+        "deps.edn"
+      ],
+      "output": [
+        "target/cljs_release/**"
+      ]
+    },
+    "build-release:js": {
+      "command": "WEBPACK_BUNDLE=production rspack build",
+      "dependencies": [
+        "build-release:cljs"
+      ],
+      "files": [
+        "frontend/src/**/*.{js,jsx,ts,tsx,css}",
+        "enterprise/frontend/src/**/*.{js,jsx,ts,tsx,css}",
+        "target/cljs_release/**",
+        "rspack.config.js",
+        "rspack.main.config.js",
+        "rspack.iframe-sdk-embed.config.js",
+        "rspack.embedding-sdk-bundle.config.js",
+        "frontend/build/**/*.js",
+        "package.json",
+        "tsconfig.json"
+      ],
+      "output": [
+        "resources/frontend_client/app/dist/**",
+        "!resources/frontend_client/app/dist/lib-static-viz.bundle.js"
+      ]
+    },
+    "build-release:static-viz": {
+      "command": "WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js",
+      "dependencies": [
+        "build-release:cljs"
+      ],
+      "files": [
+        "frontend/src/metabase/static-viz/**/*.{js,jsx,ts,tsx}",
+        "frontend/src/metabase-lib/**/*.{js,jsx,ts,tsx}",
+        "frontend/src/metabase-types/**/*.{js,jsx,ts,tsx}",
+        "target/cljs_release/**",
+        "rspack.static-viz.config.js",
+        "frontend/build/**/*.js",
+        "package.json"
+      ],
+      "output": [
+        "resources/frontend_client/app/dist/lib-static-viz.bundle.js"
+      ]
+    },
+    "build:version": {
+      "command": "clojure -X:build build/build-version-direct!",
+      "files": [
+        "bin/build/src/build/version_properties.clj",
+        "deps.edn"
+      ],
+      "output": [
+        "resources/version.properties"
+      ]
+    },
+    "build:translations": {
+      "command": "clojure -X:build i18n.create-artifacts/create-all-artifacts!",
+      "files": [
+        "locales/**/*.po",
+        "bin/build/src/i18n/**/*.clj"
+      ],
+      "output": [
+        "resources/locales.clj",
+        "resources/i18n/**",
+        "resources/frontend_client/app/locales/**"
+      ]
+    },
+    "build:licenses": {
+      "command": "clojure -X:build build/build-licenses-direct!",
+      "files": [
+        "deps.edn",
+        "package.json",
+        "yarn.lock",
+        "bin/build/src/build/licenses.clj"
+      ],
+      "output": [
+        "resources/license-backend-third-party.txt",
+        "resources/license-frontend-third-party.txt"
+      ]
+    },
+    "build:drivers": {
+      "command": "clojure -X:build:drivers build/build-drivers-direct!",
+      "files": [
+        "modules/drivers/**/src/**/*.clj",
+        "modules/drivers/**/resources/**/*",
+        "modules/drivers/**/deps.edn",
+        "bin/build/src/build_drivers/**/*.clj"
+      ],
+      "output": [
+        "resources/modules/**"
+      ]
+    },
+    "build:uberjar": {
+      "command": "clojure -X:build build/build-uberjar-direct!",
+      "dependencies": [
+        "build:version",
+        "build:translations",
+        "build:licenses",
+        "build:drivers"
+      ],
+      "files": [
+        "src/**/*.{clj,cljc}",
+        "enterprise/backend/src/**/*.{clj,cljc}",
+        "resources/**/*",
+        "enterprise/backend/resources/**/*",
+        "deps.edn",
+        "bin/build/src/build/uberjar.clj"
+      ],
+      "output": [
+        "target/uberjar/metabase.jar"
+      ]
+    }
   },
   "lint-staged": {
     "+(frontend|enterprise)/**/*.styled.tsx": [
