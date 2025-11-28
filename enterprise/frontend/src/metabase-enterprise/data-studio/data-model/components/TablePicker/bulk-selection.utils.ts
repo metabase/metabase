@@ -1,6 +1,14 @@
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import type { DatabaseNode, ExpandedItem, FlatItem, TreeNode } from "./types";
+import type {
+  DatabaseNode,
+  ExpandedDatabaseItem,
+  ExpandedItem,
+  ExpandedSchemaItem,
+  FlatItem,
+  SchemaNode,
+  TreeNode,
+} from "./types";
 import { isExpandedItem, isSchemaNode, isTableNode } from "./types";
 
 export interface NodeSelection {
@@ -274,4 +282,112 @@ export function areSchemasSelected(
   }
 
   return "none";
+}
+
+export function markAllSchemas(
+  item: FlatItem,
+  targetChecked: "yes" | "no",
+  selection: NodeSelection,
+) {
+  const schemasSelection = new Set(selection.schemas);
+  const tablesSelection = new Set(selection.tables);
+
+  if (item.type !== "database") {
+    return {
+      schemasSelection,
+      tablesSelection,
+      databasesSelection: selection.databases,
+    };
+  }
+
+  const schemas = item.children.filter(
+    (child): child is SchemaNode => child.type === "schema",
+  );
+  schemas.forEach((schema) => {
+    if (!isSchemaNode(schema)) {
+      return;
+    }
+    const schemaId = getSchemaId(schema);
+    if (!schemaId) {
+      return;
+    }
+    if (schema.children.length === 0) {
+      targetChecked === "yes"
+        ? schemasSelection.add(schemaId)
+        : schemasSelection.delete(schemaId);
+    } else {
+      markAllTables(schema, targetChecked, tablesSelection);
+    }
+  });
+
+  return {
+    schemasSelection,
+    tablesSelection,
+    databasesSelection: selection.databases,
+  };
+}
+
+function markAllTables(
+  schema: SchemaNode,
+  targetChecked: "yes" | "no",
+  tablesSelection: Set<TableId>,
+) {
+  const tables = getSchemaChildrenTableIds(schema);
+  tables.forEach((tableId) => {
+    if (tableId === -1) {
+      return;
+    }
+    targetChecked === "yes"
+      ? tablesSelection.add(tableId)
+      : tablesSelection.delete(tableId);
+  });
+
+  return tablesSelection;
+}
+
+export function toggleDatabaseSelection(
+  item: ExpandedDatabaseItem,
+  selection: NodeSelection,
+): Set<TableId> {
+  const isSelected = isItemSelected(item as unknown as TreeNode, selection);
+  const targetChecked = isSelected === "yes" ? "no" : "yes";
+
+  const { tablesSelection } = markAllSchemas(item, targetChecked, selection);
+
+  return tablesSelection;
+}
+
+export function toggleSchemaSelection(
+  item: ExpandedSchemaItem,
+  selection: NodeSelection,
+): Set<TableId> {
+  const isSelected = isItemSelected(item as unknown as TreeNode, selection);
+
+  if (isSelected === "yes") {
+    const tableIds = getSchemaChildrenTableIds(item);
+    const newSet = new Set(selection.tables);
+    tableIds.forEach((x) => {
+      newSet.delete(x);
+    });
+    return newSet;
+  } else {
+    const tableIds = getSchemaChildrenTableIds(item);
+    const newSet = new Set(selection.tables);
+    tableIds.forEach((x) => {
+      newSet.add(x);
+    });
+    return newSet;
+  }
+}
+
+export function toggleTableSelection(
+  item: ExpandedItem,
+  selection: NodeSelection,
+): Set<TableId> {
+  const isSelected = isItemSelected(item as unknown as TreeNode, selection);
+  const targetChecked = isSelected === "yes" ? "no" : "yes";
+
+  const { tablesSelection } = markAllSchemas(item, targetChecked, selection);
+
+  return tablesSelection;
 }

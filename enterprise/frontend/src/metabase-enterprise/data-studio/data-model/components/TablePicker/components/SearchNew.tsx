@@ -9,14 +9,22 @@ import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import type { RouteParams } from "../../../pages/DataModel/types";
+import {
+  toggleDatabaseSelection,
+  toggleSchemaSelection,
+} from "../bulk-selection.utils";
 import type {
   DatabaseNode,
+  ExpandedDatabaseItem,
+  ExpandedSchemaItem,
   FilterState,
   FlatItem,
   RootNode,
   SchemaNode,
   TableNode,
+  TreeNode,
 } from "../types";
+import { isDatabaseNode, isSchemaNode, isTableNode2 } from "../types";
 import { flatten, rootNode } from "../utils";
 
 import { TablePickerResults } from "./Results";
@@ -92,7 +100,12 @@ export function SearchNew({
   filters,
   setOnUpdateCallback,
 }: SearchNewProps) {
-  const { selectedTables, setSelectedTables } = useSelection();
+  const {
+    selectedTables,
+    setSelectedTables,
+    selectedSchemas,
+    selectedDatabases,
+  } = useSelection();
   const routeParams = parseRouteParams(params);
   const {
     data: tables,
@@ -152,19 +165,37 @@ export function SearchNew({
   });
 
   const handleItemToggle = (item: FlatItem) => {
-    if (item.type !== "table" || !item.table) {
-      return;
+    const selection = {
+      tables: selectedTables,
+      schemas: selectedSchemas,
+      databases: selectedDatabases,
+    };
+
+    if (isDatabaseNode(item as unknown as TreeNode)) {
+      setSelectedTables(
+        toggleDatabaseSelection(
+          item as unknown as ExpandedDatabaseItem,
+          selection,
+        ),
+      );
     }
 
-    setSelectedTables((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(item.table!.id)) {
-        newSet.delete(item.table!.id);
-      } else {
-        newSet.add(item.table!.id);
-      }
-      return newSet;
-    });
+    if (isSchemaNode(item as unknown as TreeNode)) {
+      setSelectedTables(
+        toggleSchemaSelection(item as unknown as ExpandedSchemaItem, selection),
+      );
+    }
+    if (isTableNode2(item)) {
+      setSelectedTables((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(item.table!.id)) {
+          newSet.delete(item.table!.id);
+        } else {
+          newSet.add(item.table!.id);
+        }
+        return newSet;
+      });
+    }
   };
 
   const handleRangeSelect = (items: FlatItem[]) => {

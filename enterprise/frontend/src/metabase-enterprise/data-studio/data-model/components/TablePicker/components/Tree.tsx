@@ -5,11 +5,11 @@ import type { TableId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
-  type NodeSelection,
   getSchemaChildrenTableIds,
   getSchemaId,
   getSchemaTableIds,
   isItemSelected,
+  markAllSchemas,
   noManuallySelectedDatabaseChildrenTables,
   noManuallySelectedSchemas,
   noManuallySelectedTables,
@@ -21,7 +21,6 @@ import type {
   ExpandedItem,
   FlatItem,
   SchemaItem,
-  SchemaNode,
   TreeNode,
   TreePath,
 } from "../types";
@@ -370,67 +369,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
       onRangeSelect={onItemRangeSelect}
     />
   );
-}
-
-function markAllSchemas(
-  item: FlatItem,
-  targetChecked: "yes" | "no",
-  selection: NodeSelection,
-) {
-  const schemasSelection = new Set(selection.schemas);
-  const tablesSelection = new Set(selection.tables);
-
-  if (item.type !== "database") {
-    return {
-      schemasSelection,
-      tablesSelection,
-      databasesSelection: selection.databases,
-    };
-  }
-
-  const schemas = item.children.filter(
-    (child): child is SchemaNode => child.type === "schema",
-  );
-  schemas.forEach((schema) => {
-    if (!isSchemaNode(schema)) {
-      return;
-    }
-    const schemaId = getSchemaId(schema);
-    if (!schemaId) {
-      return;
-    }
-    if (schema.children.length === 0) {
-      targetChecked === "yes"
-        ? schemasSelection.add(schemaId)
-        : schemasSelection.delete(schemaId);
-    } else {
-      markAllTables(schema, targetChecked, tablesSelection);
-    }
-  });
-
-  return {
-    schemasSelection,
-    tablesSelection,
-    databasesSelection: selection.databases,
-  };
-}
-
-function markAllTables(
-  schema: SchemaNode,
-  targetChecked: "yes" | "no",
-  tablesSelection: Set<TableId>,
-) {
-  const tables = getSchemaChildrenTableIds(schema);
-  tables.forEach((tableId) => {
-    if (tableId === -1) {
-      return;
-    }
-    targetChecked === "yes"
-      ? tablesSelection.add(tableId)
-      : tablesSelection.delete(tableId);
-  });
-
-  return tablesSelection;
 }
 
 function toggleInSet<T>(set: Set<T>, item: T) {
