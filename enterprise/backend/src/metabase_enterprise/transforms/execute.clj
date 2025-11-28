@@ -12,7 +12,7 @@
   (let [f (fn [] (transforms.i/execute! transform opts))]
     (if-let [workspace (and (:workspace_id transform)
                             (t2/select-one :model/Workspace (:workspace_id transform)))]
-      (driver/with-overridden-connection-details (:database_id workspace)
-        (fn [details] (merge details (:database_details workspace)))
+      (driver/with-swapped-connection-details (:database_id workspace)
+        (:database_details workspace)
         (f))
       (f))))
