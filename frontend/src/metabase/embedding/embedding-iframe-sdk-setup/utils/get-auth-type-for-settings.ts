@@ -4,7 +4,7 @@ export const getAuthTypeForSettings = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) =>
   settings.isGuest
-    ? "guest_embed"
+    ? "guest-embed"
     : settings.useExistingUserSession
-      ? "user_session"
+      ? "user-session"
       : "sso";
