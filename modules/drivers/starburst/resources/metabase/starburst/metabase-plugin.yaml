@@ -1,0 +1,53 @@
+info:
+  name: Metabase Starburst Driver
+  version: 6.1.0
+  description: Allows Metabase to connect to Starburst Enterprise, Starburst Galaxy, and Trino query engines.
+driver:
+  name: starburst
+  display-name: Starburst (Trino)
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 8080
+    - merge:
+        - dbname
+        - name: catalog
+          placeholder: tpch
+          display-name: Catalog
+          required: true
+          helper-text: Starburst Catalogs contain schemas and reference data sources via a connector.
+    - name: schema
+      display-name: Schema (optional)
+      required: false
+      helper-text: Only add tables to Metabase that come from a specific schema.
+    - merge:
+        - user
+        - required: false
+    - merge:
+        - password
+        - required: false
+    - ssl
+    - name: roles
+      display-name: Role (optional)
+      required: false
+      helper-text: Specify a role to override the database user’s default role.
+    - name: prepared-optimized
+      display-name: Optimized prepared statements
+      type: boolean
+      required: false
+      default: false
+      description: Requires Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or Trino (version 418 or higher)
+    - advanced-options-start
+    - merge:
+        - additional-options
+        - placeholder: "trustServerCertificate=false"
+    - default-advanced-options
+
+init:
+  - step: load-namespace
+    namespace: metabase.driver.starburst
+  - step: register-jdbc-driver
+    class: io.trino.jdbc.TrinoDriver

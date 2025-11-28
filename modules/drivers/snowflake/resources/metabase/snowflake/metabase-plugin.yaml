@@ -1,0 +1,71 @@
+info:
+  name: Metabase Snowflake Driver
+  version: 1.0.0-SNAPSHOT-3.12.7
+  description: Allows Metabase to connect to Snowflake databases.
+driver:
+  name: snowflake
+  display-name: Snowflake
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: use-hostname
+      type: section
+      default: false
+    - merge:
+        - host
+        - visible-if:
+            use-hostname: true
+    - name: account
+      display-name: Account name
+      helper-text: Enter your Account ID with the region that your Snowflake cluster is running on e.g. "xxxxxxxx.us-east-2.aws". Some regions don't have this suffix.
+      placeholder: xxxxxxxx.us-east-2.aws
+      required: true
+      visible-if:
+        use-hostname: false
+    - user
+    - name: use-password
+      display-name: "Authenticate with user and password"
+      description: Snowflake will soon block password authentication.
+      type: boolean
+      default: false
+    - name: private-key
+      display-name: RSA private key (PKCS#8/.p8)
+      type: secret
+      secret-kind: pem-cert
+      visible-if:
+        use-password: false
+      required: true
+    - merge:
+      - password
+      - visible-if:
+          use-password: true
+        required: true
+    - name: warehouse
+      display-name: Warehouse
+      helper-text: If your user doesn't have a default warehouse, enter the warehouse to connect to.
+      placeholder: birds_main
+      required: true
+    - merge:
+        - dbname
+        - name: db
+          required: true
+          display-name: Database name (case sensitive)
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
+    - name: role
+      display-name: Role (optional, required for connection impersonation)
+      helper-text: Specify a role to override the database user’s default role.
+      placeholder: user
+    - cloud-ip-address-info
+    - ssh-tunnel
+    - advanced-options-start
+    - merge:
+      - additional-options
+      - placeholder: 'queryTimeout=0'
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.snowflake
+  - step: register-jdbc-driver
+    class: net.snowflake.client.jdbc.SnowflakeDriver
