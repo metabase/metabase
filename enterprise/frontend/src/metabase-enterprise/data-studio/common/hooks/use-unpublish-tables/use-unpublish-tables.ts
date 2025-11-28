@@ -5,13 +5,19 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUnpublishTablesMutation } from "metabase-enterprise/api";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
+export type UseUnpublishTablesProps = {
+  onUnpublish?: () => void;
+};
+
 export type UseUnpublishTablesRequest = {
   databaseIds?: DatabaseId[];
   schemaIds?: SchemaId[];
   tableIds?: TableId[];
 };
 
-export function useUnpublishTables() {
+export function useUnpublishTables({
+  onUnpublish,
+}: UseUnpublishTablesProps = {}) {
   const [unpublishTables] = useUnpublishTablesMutation();
   const { show: showModal, modalContent } = useConfirmation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -31,6 +37,7 @@ export function useUnpublishTables() {
           sendErrorToast(t`Failed to unpublish tables`);
         } else {
           sendSuccessToast(t`Unpublished`);
+          onUnpublish?.();
         }
       },
     });

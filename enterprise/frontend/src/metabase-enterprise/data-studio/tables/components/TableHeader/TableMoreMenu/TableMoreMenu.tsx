@@ -1,6 +1,7 @@
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
@@ -11,7 +12,10 @@ type TableMoreMenuProps = {
 };
 
 export function TableMoreMenu({ table }: TableMoreMenuProps) {
-  const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables();
+  const dispatch = useDispatch();
+  const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables({
+    onUnpublish: () => dispatch(Urls.dataStudioModeling()),
+  });
 
   return (
     <>
