@@ -142,11 +142,9 @@
      [:type [:= "python"]]
      [:body :string]]]])
 
-(mr/def ::transform-target
+(mr/def ::ws-transform-target
   [:map
-   [:database {:optional true} :int]
    [:type [:enum "table"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])
 
 (mr/def ::run-trigger
@@ -320,28 +318,20 @@
             [:name :string]
             [:description {:optional true} [:maybe :string]]
             [:source ::transform-source]
-            [:target ::transform-target]
+            [:target ::ws-transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (let [workspace       (api/check-404 (t2/select-one :model/Workspace :id id))
-        workspace-db-id (:database_id workspace)
-        target-db-id    (or (get-in body [:target :database]) workspace-db-id)]
-    (api/check-400 (nil? (:archived_at workspace)) "Cannot create transforms in an archived workspace")
-    (api/check-400 (= target-db-id workspace-db-id)
-                   (deferred-tru "Transform target database must match workspace database"))
+  (api/check (transforms.util/check-feature-enabled body)
+             [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
 
-    (api/check (transforms.util/check-feature-enabled body)
-               [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
-
-    (let [target-schema   (get-in body [:target :schema])
-          target-name     (get-in body [:target :name])
-          existing-target (some (fn [tx]
-                                  (let [t (:target tx)]
-                                    (and (= (:schema t) target-schema)
-                                         (= (:name t) target-name))))
-                                (t2/select :model/Transform :workspace_id id))]
-      (api/check-400 (not existing-target)
-                     (deferred-tru "Another transform in this workspace already targets that table.")))
+  (let [workspace       (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+                          (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
+        target-name     (get-in body [:target :name])
+        existing-target (some #(= (:name (:target %)) target-name) (t2/select :model/Transform :workspace_id id))
+        body            (update body :target
+                                assoc :database_id (:database_id workspace) :schema (:schema workspace))]
+    (api/check-400 (not existing-target)
+                   (deferred-tru "Another transform in this workspace already targets that table."))
 
     (ws.common/create-transform! workspace body api/*current-user-id*)))
 

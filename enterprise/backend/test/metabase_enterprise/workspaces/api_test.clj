@@ -97,7 +97,6 @@
                                     :source {:type "query"
                                              :query {}}
                                     :target {:type "table"
-                                             :schema "test"
                                              :name "should_fail"}}))))))
 
 (deftest create-workspace-transform-archived-test
@@ -111,22 +110,6 @@
                                     :source {:type "query"
                                              :query (mt/mbql-query venues)}
                                     :target {:type "table"
-                                             :schema "test"
-                                             :name "should_fail"}}))))))
-
-(deftest create-workspace-transform-database-mismatch-test
-  (testing "Transform target database must match workspace database"
-    (mt/with-temp [:model/Workspace workspace {:name "Test Workspace"
-                                               :database_id 1}]
-      (is (= "Transform target database must match workspace database"
-             (mt/user-http-request :crowberto :post 400
-                                   (str "ee/workspace/" (:id workspace) "/transform")
-                                   {:name "Wrong DB"
-                                    :source {:type "query"
-                                             :query (mt/mbql-query venues)}
-                                    :target {:type "table"
-                                             :database 999
-                                             :schema "test"
                                              :name "should_fail"}}))))))
 
 (deftest add-entities-to-workspace-test
@@ -198,5 +181,4 @@
                                              :source {:type  "query"
                                                       :query (mt/mbql-query transforms_products)}
                                              :target {:type   "table"
-                                                      :schema (get-test-schema)
                                                       :name   table-name}}))))))))))
