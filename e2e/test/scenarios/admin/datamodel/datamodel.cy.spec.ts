@@ -79,7 +79,6 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Data loading", () => {
-    // Note: Basic 404 tests are now in shared test suite.
     // This admin-specific test uses @external tag and postgres setup.
     it(
       "should not show 404 error if database is not selected",
@@ -810,7 +809,6 @@ describe("scenarios > admin > datamodel", () => {
     );
 
     describe("Name and description", () => {
-      // Note: Basic name and description tests are now in shared test suite.
       // This admin-specific test uses data model permissions.
       it("should allow changing the table name with data model permissions only", () => {
         H.activateToken("pro-self-hosted");
@@ -840,7 +838,6 @@ describe("scenarios > admin > datamodel", () => {
     });
 
     describe("Field name and description", () => {
-      // Note: Basic field name/description tests are now in shared test suite.
       // This admin-specific test uses data model permissions.
       it("should allow changing the field name with data model permissions only", () => {
         H.activateToken("pro-self-hosted");
@@ -880,7 +877,6 @@ describe("scenarios > admin > datamodel", () => {
         );
       });
 
-      // Note: Basic field description tests are now in shared test suite.
       // This admin-specific test includes extra validation steps.
       it("should allow clearing the field description", () => {
         H.DataModel.visit({
@@ -913,10 +909,6 @@ describe("scenarios > admin > datamodel", () => {
         cy.findByText("No description yet").should("be.visible");
       });
     });
-
-    // Note: Sorting tests are now in shared test suite.
-    // Note: Table sync options test is now in shared test suite.
-
   });
 
   describe("Field section", () => {
@@ -1034,7 +1026,6 @@ describe("scenarios > admin > datamodel", () => {
         H.tableHeaderColumn("Remapped Product ID").should("be.visible");
       });
     });
-
 
     describe("Data", () => {
       describe("Coercion strategy", () => {
@@ -1157,7 +1148,6 @@ describe("scenarios > admin > datamodel", () => {
 
     describe("Metadata", () => {
       describe("Semantic type", () => {
-
         it("should allow to change the field foreign key target with no permissions to Reviews table", () => {
           H.activateToken("pro-self-hosted");
           setDataModelPermissions({
@@ -1934,7 +1924,6 @@ describe("scenarios > admin > datamodel", () => {
             .findByRole("option", { name: /Custom mapping/ })
             .should("not.have.attr", "data-combobox-disabled");
         });
-
       });
 
       describe("Unfold JSON", { tags: "@external" }, () => {
@@ -2310,7 +2299,6 @@ describe("scenarios > admin > datamodel", () => {
         .should("be.visible");
     });
   });
-
 
   describe("Responsiveness", () => {
     it("should hide labels of buttons when they don't fit", () => {
