@@ -173,7 +173,12 @@ export function FormCollectionAndDashboardPicker({
           : t`Select this collection`,
       savingModel,
     }),
-    [filterPersonalCollections, type, showCreateNewCollectionOption, savingModel],
+    [
+      filterPersonalCollections,
+      type,
+      showCreateNewCollectionOption,
+      savingModel,
+    ],
   );
 
   const [fetchDashboard] = useLazyGetDashboardQuery();
