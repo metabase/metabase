@@ -117,7 +117,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
           style={{ flex: 1 }}
           search={debouncedSearch}
           setDataSourceCollapsed={setDataSourceCollapsed}
-          muted={!showDatasets}
+          muted={false}
         />
       </Flex>
       <Flex
