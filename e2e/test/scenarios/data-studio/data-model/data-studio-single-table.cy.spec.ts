@@ -72,7 +72,7 @@ describe("Table editing", () => {
 
       // Shows publish model information modal
       cy.findByRole("button", { name: /Publish/ }).click();
-      cy.findByRole("button", { name: /Got it/ }).click();
+      cy.findByRole("button", { name: /Publish/ }).click();
 
       cy.wait("@publishTables");
       H.undoToast().within(() => {

@@ -108,7 +108,7 @@ describe("bulk table operations", () => {
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
     cy.findByRole("button", { name: /Publish/ }).click();
     cy.findByLabelText("Don’t show this to me again").check();
-    cy.findByRole("button", { name: /Got it/ }).click();
+    cy.findByRole("button", { name: /Publish/ }).click();
     cy.wait("@publishTables");
     H.undoToast().within(() => {
       cy.findByText("Published").should("be.visible");
@@ -171,7 +171,7 @@ describe("bulk table operations", () => {
     H.selectDropdown().contains("Ingested").click();
 
     cy.findByRole("button", { name: /Publish/ }).click();
-    cy.findByRole("button", { name: /Got it/ }).click();
+    cy.findByRole("button", { name: /Publish/ }).click();
     cy.wait("@publishTables");
 
     TablePicker.getDatabase("Writable Postgres12").click();
