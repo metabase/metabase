@@ -286,7 +286,10 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(datasets: Dataset[]) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
   const isAccessRestricted = datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
@@ -301,7 +304,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   }
 
   const staticEntityLoadingError = datasets.find((dataset) =>
-    isStaticEmbeddingEntityLoadingError(dataset.error),
+    isStaticEmbeddingEntityLoadingError(dataset.error, { isGuestEmbed }),
   )?.error as StaticEmbeddingEntityError | undefined;
 
   if (staticEntityLoadingError) {
@@ -370,7 +373,7 @@ const shouldHideCard = (
 
   return (
     !hasRows(dashcardData) &&
-    !getDashcardResultsError(Object.values(dashcardData))
+    !getDashcardResultsError(Object.values(dashcardData), false)
   );
 };
 

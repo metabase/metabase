@@ -142,7 +142,7 @@ export function useLoadQuestion({
         return {};
       }
 
-      if (isGuestEmbed && isStaticEmbeddingEntityLoadingError(err)) {
+      if (isStaticEmbeddingEntityLoadingError(err, { isGuestEmbed })) {
         dispatch(
           setError({
             status: err.status,
