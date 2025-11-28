@@ -18,7 +18,6 @@ interface EntitySearchSectionProps {
   selectedIndex: number;
   onItemSelect: (index: number) => void;
   onFooterClick: () => void;
-  query: string;
   searchResults: SearchResult[];
   modal: "question-picker" | null;
   onModalSelect: (item: QuestionPickerValueItem) => void;
@@ -35,7 +34,6 @@ export function EntitySearchSection({
   selectedIndex,
   onItemSelect,
   onFooterClick,
-  query,
   searchResults,
   modal,
   onModalSelect,
@@ -47,7 +45,6 @@ export function EntitySearchSection({
   onTriggerCreateNew,
 }: EntitySearchSectionProps) {
   const hasNoItems = menuItems.length === 0 && searchResults.length === 0;
-  const shouldShowNoResults = query.length > 0 && hasNoItems;
 
   const browseAllItemIndex = getBrowseAllItemIndex(
     menuItems.length,
@@ -81,14 +78,13 @@ export function EntitySearchSection({
         />
       ))}
 
-      {shouldShowNoResults ? (
+      {hasNoItems ? (
         <Box p="sm" ta="center">
           <Text size="md" c="text-medium">{t`No results found`}</Text>
         </Box>
       ) : null}
 
-      {(shouldShowNoResults || !hasNoItems) &&
-        (canCreateNewQuestion || canBrowseAll) && <Divider my="sm" mx="sm" />}
+      {(canCreateNewQuestion || canBrowseAll) && <Divider my="sm" mx="sm" />}
 
       {canCreateNewQuestion && (
         <CreateNewQuestionFooter

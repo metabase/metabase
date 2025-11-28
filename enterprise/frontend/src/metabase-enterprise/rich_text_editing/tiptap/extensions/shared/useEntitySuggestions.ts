@@ -27,6 +27,7 @@ interface UseEntitySuggestionsOptions {
     model: string;
     label?: string;
     href: string | null;
+    collectionName?: string;
   }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];

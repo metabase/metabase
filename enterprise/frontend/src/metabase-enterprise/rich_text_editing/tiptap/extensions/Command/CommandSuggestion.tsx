@@ -375,7 +375,6 @@ export const CommandSuggestion = forwardRef<
           onItemSelect={entityHandlers.selectItem}
           onItemHover={entityHandlers.hoverHandler}
           onFooterClick={entityHandlers.openModal}
-          query={query}
           searchResults={searchResults}
           modal={entityModal}
           onModalSelect={entityHandlers.handleModalSelect}
