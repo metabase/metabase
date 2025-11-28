@@ -78,13 +78,13 @@ Define one of the following environment variables with enterprise token: `CYPRES
 To run these tests locally, run:
 
 ```
-SDK_TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+SDK_TEST_SUITE=<sample_app_repo_name>-e2e yarn test-cypress-host-sample-apps
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 
 ```
-SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e yarn test-cypress-host-sample-apps
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
@@ -130,13 +130,13 @@ Tests a bit similar to Sample App tests, but:
 To run these tests locally, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
 ```
 
 For example for the `vite-6-host-app` Host App, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
 ```
 
 #### CI runs
