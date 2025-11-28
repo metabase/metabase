@@ -67,7 +67,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:dynamic *swapped-connection-details*
-  "A dynamic var that holds a map of database-id -> swap-map for temporarily swapping connection details.
+  "A dynamic var that holds a map of database-id -> swapped-details-map for temporarily swapping connection details.
   When a connection spec is created for a database, if its ID is present in this map, the swap map will be
   merged into the connection `:details` before they are used to create a connection.
 
@@ -128,9 +128,6 @@
   connection `:details` map. Nested maps are deep-merged.
 
   Any code that creates a connection for `database-id` within this scope will use the modified details.
-  This works across all drivers - each driver applies the swap at the appropriate point in its connection
-  lifecycle. For JDBC drivers, this affects connection pool creation. For other drivers (like MongoDB), this
-  affects their native connection mechanisms.
 
   **Important:** Nested swaps for the same database are not supported and will throw an exception.
   Different databases can have concurrent swaps.

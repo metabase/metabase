@@ -634,6 +634,13 @@
                                                        :ssl true})))))
     (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))
 
+(defn- count-swapped-pools-for-db
+  "Count the number of swapped connection pools for a given database ID."
+  [db-id]
+  (count (filter (fn [[[pool-db-id _] _]]
+                   (= pool-db-id db-id))
+                 (.asMap @#'sql-jdbc.conn/swapped-connection-pools))))
+
 (deftest with-swapped-connection-details-test
   (testing "Swap connection details temporarily"
     (mt/test-drivers (mt/normal-drivers)
@@ -645,10 +652,8 @@
             ;; Create a connection spec - this should trigger the swap
             (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (some? spec))
-              (testing "Pool was created with swap"
-                (is (= 1 (count (filter (fn [[[pool-db-id _] _]]
-                                          (= pool-db-id db-id))
-                                        @@#'sql-jdbc.conn/database-id->connection-pool))))))))
+              (testing "Pool was created with swap in swapped pools cache"
+                (is (= 1 (count-swapped-pools-for-db db-id)))))))
 
         (testing "Connection works normally outside swap scope"
           (sql-jdbc.conn/invalidate-pool-for-db! db)
@@ -680,7 +685,7 @@
           (is (some? (sql-jdbc.conn/db->pooled-connection-spec db-1))))))))
 
 (deftest with-swapped-connection-details-persistence-test
-  (testing "Pools with swaps persist in global cache (no cleanup)"
+  (testing "Pools with swaps persist in Guava cache until TTL expiration"
     (mt/test-drivers (mt/normal-drivers)
       (let [db    (mt/db)
             db-id (u/the-id db)]
@@ -691,14 +696,31 @@
           ;; Create a connection in swap scope
           (sql-jdbc.conn/db->pooled-connection-spec db)
 
-          (testing "Pool exists in global cache during scope"
-            (testing "Pool is in global cache"
-              (is (= 1 (count (filter (fn [[[pool-db-id _] _]]
-                                        (= pool-db-id db-id))
-                                      @@#'sql-jdbc.conn/database-id->connection-pool)))))))
+          (testing "Pool exists in swapped pools cache during scope"
+            (is (= 1 (count-swapped-pools-for-db db-id)))))
 
-        (testing "Pool persists after scope exit"
-          (testing "Pool remains in global cache after scope exits"
-            (is (= 1 (count (filter (fn [[[pool-db-id _] _]]
-                                      (= pool-db-id db-id))
-                                    @@#'sql-jdbc.conn/database-id->connection-pool))))))))))
+        (testing "Pool persists in Guava cache after scope exit (until TTL expires)"
+          (is (= 1 (count-swapped-pools-for-db db-id))))))))
+
+(deftest swapped-pool-separate-from-canonical-test
+  (testing "Swapped pools are stored separately from canonical pools"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [db    (mt/db)
+            db-id (u/the-id db)]
+        ;; Clear any existing pools first
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+
+        ;; Create canonical pool first
+        (sql-jdbc.conn/db->pooled-connection-spec db)
+        (testing "Canonical pool exists in atom cache"
+          (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool db-id)))
+        (testing "No swapped pool exists yet"
+          (is (= 0 (count-swapped-pools-for-db db-id))))
+
+        ;; Now create a swapped pool
+        (driver/with-swapped-connection-details db-id {:test-swap true}
+          (sql-jdbc.conn/db->pooled-connection-spec db)
+          (testing "Swapped pool exists in Guava cache"
+            (is (= 1 (count-swapped-pools-for-db db-id))))
+          (testing "Canonical pool still exists"
+            (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool db-id))))))))
