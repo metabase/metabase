@@ -28,7 +28,6 @@ import type {
   TransformTag,
 } from "metabase-types/api";
 
-
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
   "scim",

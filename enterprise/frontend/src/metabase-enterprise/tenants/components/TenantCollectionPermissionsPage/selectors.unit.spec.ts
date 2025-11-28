@@ -1,5 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import type { CollectionPermissions } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import {
@@ -25,11 +26,8 @@ const createMockStateWithPermissions = ({
   tenantCollectionPermissions = {},
   originalTenantCollectionPermissions = {},
 }: {
-  tenantCollectionPermissions?: Record<number, Record<string | number, string>>;
-  originalTenantCollectionPermissions?: Record<
-    number,
-    Record<string | number, string>
-  >;
+  tenantCollectionPermissions?: CollectionPermissions;
+  originalTenantCollectionPermissions?: CollectionPermissions;
 } = {}): State => {
   const state = createMockState({
     settings: mockSettings({
@@ -43,7 +41,6 @@ const createMockStateWithPermissions = ({
         originalCollectionPermissions: {},
         tenantCollectionPermissions,
         originalTenantCollectionPermissions,
-        tenantCollectionPermissionsRevision: 1,
         isHelpReferenceOpen: false,
         hasRevisionChanged: { revision: null, hasChanged: false },
       },
@@ -71,7 +68,7 @@ describe("TenantCollectionPermissionsPage selectors", () => {
 
   describe("getIsTenantDirty", () => {
     it("should return false when permissions are unchanged", () => {
-      const permissions = {
+      const permissions: CollectionPermissions = {
         [ADMIN_GROUP_ID]: { root: "write", 100: "write" },
         [ALL_USERS_GROUP_ID]: { root: "none", 100: "none" },
       };

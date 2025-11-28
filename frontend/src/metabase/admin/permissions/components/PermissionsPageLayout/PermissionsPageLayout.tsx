@@ -40,7 +40,11 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab = "data" | "collections" | "application";
+type PermissionsPageTab =
+  | "data"
+  | "collections"
+  | "application"
+  | "tenant-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
