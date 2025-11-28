@@ -129,7 +129,7 @@ async function getCollectionPathFromValue(
 
   const collectionIds = [
     "root",
-    ...(location?.split("/") ?? []),
+    ...(location?.split("/") ?? []).map((id) => parseInt(id, 10)),
     collection?.id,
   ].filter(Boolean);
 
@@ -156,9 +156,7 @@ async function getCollectionPathFromValue(
     }
 
     const nextItem = collectionItems.data.find(
-      (item) =>
-        item.model === "collection" &&
-        String(item.id) === String(collectionIds[i + 1]),
+      (item) => item.model === "collection" && item.id === collectionIds[i + 1],
     );
 
     if (!nextItem) {

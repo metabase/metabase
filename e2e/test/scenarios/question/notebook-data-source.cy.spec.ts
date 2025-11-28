@@ -208,8 +208,10 @@ describe("scenarios > notebook > data source", () => {
       H.startNewQuestion();
 
       cy.log("verify the picker when nothing is selected");
+      H.popover().findByText("Data").click();
       H.popover().findByText("Orders").click();
       H.join();
+      H.popover().findByText("Data").click();
       H.popover().findByText("Products").click();
       H.visualize();
       H.tableHeaderColumn("User ID").should("be.visible");
@@ -230,6 +232,7 @@ describe("scenarios > notebook > data source", () => {
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
         cy.findByText("Orders").click();
       });
 
@@ -238,12 +241,38 @@ describe("scenarios > notebook > data source", () => {
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Data").click();
         H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
         cy.findByText("Products").click();
       });
 
       H.visualize();
       H.tableHeaderColumn("User ID").should("be.visible");
       H.tableHeaderColumn("Products → ID").should("be.visible");
+
+      H.openNotebook();
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().within(() => {
+        cy.findByText("Data").click();
+        cy.findByText("Browse all").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Library").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(1, "Data").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(2, "Orders").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+      });
     });
   });
 
