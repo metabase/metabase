@@ -64,6 +64,11 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
       <Flex className={S.body} flex={1} bg="accent-gray-light">
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
           <TableSection
+            /**
+             * Make sure internal component state is reset when changing tables.
+             * This is to avoid state mix-up with optimistic updates.
+             */
+            key={tableId}
             table={table}
             fieldId={fieldId}
             getFieldHref={(fieldId) =>
@@ -75,6 +80,11 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
         {field != null && (
           <Stack className={S.column} flex="9 1 0" miw={320} maw={680} mih={0}>
             <FieldSection
+              /**
+               * Make sure internal component state is reset when changing tables.
+               * This is to avoid state mix-up with optimistic updates.
+               */
+              key={fieldId}
               field={field}
               table={table}
               getFieldHref={(fieldId) =>

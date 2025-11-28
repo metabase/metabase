@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import type { CollectionItem } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -11,10 +9,7 @@ export const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
 };
 
 export function getItemDescription(item: CollectionItem): string {
-  if (!item.description?.trim()) {
-    return item.model === "metric" ? t`A metric` : t`A model`;
-  }
-  return item.description;
+  return item.description ?? "";
 }
 
 export function sortItems(

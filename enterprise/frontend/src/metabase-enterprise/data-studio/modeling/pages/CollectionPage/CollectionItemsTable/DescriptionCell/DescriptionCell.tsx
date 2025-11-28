@@ -24,7 +24,7 @@ export function DescriptionCell({ item }: DescriptionCellProps) {
           allowedElements={["strong", "em"]}
           oneLine
         >
-          {getItemDescription(item) || ""}
+          {getItemDescription(item)}
         </MarkdownPreview>
       ) : (
         <Skeleton natural h="16.8px" />
