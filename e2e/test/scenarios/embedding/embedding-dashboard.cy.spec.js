@@ -392,9 +392,14 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   it("should allow searching dashboard parameters in preview embed modal", () => {
-    cy.intercept("GET", "api/preview_embed/dashboard/*", (req) => {
-      req.continue();
-    }).as("previewEmbed");
+    const gracefulFail = (interception) => {
+      if (!interception || !interception.response) {
+        cy.log("Request failed - continuing test");
+        return null;
+      }
+    };
+
+    cy.intercept("GET", "api/preview_embed/dashboard/*").as("previewEmbed");
 
     H.visitDashboard("@dashboardId");
 
@@ -403,15 +408,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       previewMode: "preview",
     });
 
-    cy.wait("@previewEmbed", { timeout: 20000, failOnStatusCode: false }).then(
-      (interception) => {
-        if (!interception || !interception.response) {
-          cy.log("Request failed - continuing test");
-          return null;
-        }
-        // Use interception.response here if needed
-      },
-    );
+    cy.wait("@previewEmbed", { failOnStatusCode: false }).then(gracefulFail);
 
     H.modal().within(() => {
       // Set the Name parameter to enabled so we can test searching
@@ -424,20 +421,14 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     H.popover().findByText("Editable").click();
 
-    cy.wait("@previewEmbed", { timeout: 20000, failOnStatusCode: false }).then(
-      (interception) => {
-        if (!interception || !interception.response) {
-          cy.log("Request failed - continuing test");
-          return null;
-        }
-        // Use interception.response here if needed
-      },
-    );
+    cy.wait("@previewEmbed", { failOnStatusCode: false }).then(gracefulFail);
 
     // Test the preview iframe parameter search functionality
     H.getIframeBody().within(() => {
       // Open the Name filter dropdown
-      cy.findByTestId("dashboard-parameters-widget-container")
+      cy.findByTestId("dashboard-parameters-widget-container", {
+        timeout: 20_000,
+      })
         .findByText("Name")
         .click();
       // Test searching for names containing specific text
