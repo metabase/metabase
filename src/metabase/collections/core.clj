@@ -19,4 +19,4 @@
   moving-into-remote-synced?
   moving-from-remote-synced?
   non-remote-synced-dependencies
-  tenant-collection?])
+  is-shared-tenant-collection?])

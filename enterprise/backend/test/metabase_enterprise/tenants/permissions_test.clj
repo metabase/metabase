@@ -122,7 +122,7 @@
 
           (testing "from Root Collection - should DELETE all permissions entries"
             (mt/with-temp [:model/Collection {coll-id :id :as coll} {:name "Collection A"
-                                                                      :location (str "/" root-coll-id "/")}]
+                                                                     :location (str "/" root-coll-id "/")}]
               ;; Grant permissions on the collection
               (perms/grant-collection-readwrite-permissions! group-id coll)
               ;; Verify permissions exist
@@ -131,8 +131,8 @@
 
               ;; Move collection into tenant-specific namespace
               (t2/update! :model/Collection coll-id
-                         {:location (collection/children-location
-                                    (t2/select-one :model/Collection :id tenant-collection-id))})
+                          {:location (collection/children-location
+                                      (t2/select-one :model/Collection :id tenant-collection-id))})
 
               ;; Verify permissions were deleted
               (is (= #{}
@@ -140,11 +140,11 @@
 
           (testing "with descendants - should DELETE permissions for collection and all descendants"
             (mt/with-temp [:model/Collection {parent-id :id :as parent} {:name "Parent"
-                                                                          :location (str "/" root-coll-id "/")}
+                                                                         :location (str "/" root-coll-id "/")}
                            :model/Collection {child-id :id :as child} {:name "Child"
                                                                        :location (str "/" root-coll-id "/" parent-id "/")}
                            :model/Collection {grandchild-id :id :as grandchild} {:name "Grandchild"
-                                                                                  :location (str "/" root-coll-id "/" parent-id "/" child-id "/")}]
+                                                                                 :location (str "/" root-coll-id "/" parent-id "/" child-id "/")}]
               ;; Grant permissions on all collections
               (perms/grant-collection-read-permissions! group-id parent)
               (perms/grant-collection-read-permissions! group-id child)
@@ -155,8 +155,8 @@
 
               ;; Move parent into tenant-specific namespace
               (t2/update! :model/Collection parent-id
-                         {:location (collection/children-location
-                                    (t2/select-one :model/Collection :id tenant-collection-id))})
+                          {:location (collection/children-location
+                                      (t2/select-one :model/Collection :id tenant-collection-id))})
 
               ;; Verify all permissions were deleted recursively
               (is (= #{}
@@ -173,8 +173,8 @@
 
           (testing "to Root Collection - should GRANT permissions matching new parent"
             (mt/with-temp [:model/Collection {coll-id :id :as coll} {:name "Collection A"
-                                                                      :namespace "tenant-specific"
-                                                                      :location (collection/children-location
+                                                                     :namespace "tenant-specific"
+                                                                     :location (collection/children-location
                                                                                 (t2/select-one :model/Collection :id tenant-collection-id))}]
               ;; Grant permissions on Root Collection
               (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)
@@ -185,7 +185,7 @@
 
               ;; Move collection out of tenant-specific namespace to Root
               (t2/update! :model/Collection coll-id
-                         {:location "/"})
+                          {:location "/"})
 
               ;; Verify permissions were granted matching Root Collection
               (is (= #{(perms/collection-readwrite-path coll)}
@@ -193,8 +193,8 @@
 
           (testing "to a regular Collection - should GRANT permissions matching new parent"
             (mt/with-temp [:model/Collection {coll-id :id :as coll} {:name "Collection B"
-                                                                      :namespace "tenant-specific"
-                                                                      :location (collection/children-location
+                                                                     :namespace "tenant-specific"
+                                                                     :location (collection/children-location
                                                                                 (t2/select-one :model/Collection :id tenant-collection-id))}]
               ;; Grant read permissions on target collection
               (perms/grant-collection-read-permissions! group-id target-coll)
@@ -205,7 +205,7 @@
 
               ;; Move collection out of tenant-specific namespace to target collection
               (t2/update! :model/Collection coll-id
-                         {:location (collection/children-location target-coll)})
+                          {:location (collection/children-location target-coll)})
 
               ;; Verify permissions were granted matching parent (read-only)
               (is (= #{(perms/collection-read-path coll)}
@@ -213,15 +213,15 @@
 
           (testing "with descendants - should GRANT permissions for collection and all descendants"
             (mt/with-temp [:model/Collection {parent-id :id :as parent} {:name "Parent"
-                                                                          :namespace "tenant-specific"
-                                                                          :location (collection/children-location
+                                                                         :namespace "tenant-specific"
+                                                                         :location (collection/children-location
                                                                                     (t2/select-one :model/Collection :id tenant-collection-id))}
                            :model/Collection {child-id :id :as child} {:name "Child"
                                                                        :namespace "tenant-specific"
                                                                        :location (str "/" tenant-collection-id "/" parent-id "/")}
                            :model/Collection {grandchild-id :id :as grandchild} {:name "Grandchild"
-                                                                                  :namespace "tenant-specific"
-                                                                                  :location (str "/" tenant-collection-id "/" parent-id "/" child-id "/")}]
+                                                                                 :namespace "tenant-specific"
+                                                                                 :location (str "/" tenant-collection-id "/" parent-id "/" child-id "/")}]
               ;; Grant write permissions on target collection
               (perms/grant-collection-readwrite-permissions! group-id target-coll)
 
@@ -231,7 +231,7 @@
 
               ;; Move parent out of tenant-specific namespace
               (t2/update! :model/Collection parent-id
-                         {:location (collection/children-location target-coll)})
+                          {:location (collection/children-location target-coll)})
 
               ;; Verify permissions were granted recursively for all descendants
               (is (= #{(perms/collection-readwrite-path parent)
@@ -251,7 +251,7 @@
 
           (testing "within regular namespace - permissions should remain unchanged"
             (mt/with-temp [:model/Collection {coll-id :id :as coll} {:name "Collection"
-                                                                      :location (str "/" regular-a "/")}]
+                                                                     :location (str "/" regular-a "/")}]
               ;; Grant permissions
               (perms/grant-collection-read-permissions! group-id coll)
               (let [perms-before (group->collection-perms [coll] group-id)]
@@ -263,8 +263,8 @@
           (testing "within tenant-specific namespace - permissions should remain empty"
             (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
               (mt/with-temp [:model/Collection {coll-a-id :id} {:name "Tenant Subcoll A"
-                                                                 :namespace "tenant-specific"
-                                                                 :location (collection/children-location tenant-coll)}
+                                                                :namespace "tenant-specific"
+                                                                :location (collection/children-location tenant-coll)}
                              :model/Collection {coll-b-id :id :as coll-b} {:name "Collection"
                                                                            :namespace "tenant-specific"
                                                                            :location (str "/" tenant-collection-id "/" coll-a-id "/")}]
@@ -273,5 +273,4 @@
                 ;; Move within tenant-specific namespace
                 (t2/update! :model/Collection coll-b-id {:location (collection/children-location tenant-coll)})
                 ;; Permissions should still be empty
-                (is (= #{} (group->collection-perms [coll-b] group-id))))))))))))
-
+                (is (= #{} (group->collection-perms [coll-b] group-id)))))))))))

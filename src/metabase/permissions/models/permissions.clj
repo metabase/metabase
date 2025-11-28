@@ -451,7 +451,7 @@
 
 (defn- tenant-collection?
   [collection]
-  ((requiring-resolve 'metabase.collections.models.collection/tenant-collection?) collection))
+  ((requiring-resolve 'metabase.collections.models.collection/is-shared-tenant-collection?) collection))
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
