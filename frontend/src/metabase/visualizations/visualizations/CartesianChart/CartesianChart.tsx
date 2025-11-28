@@ -32,6 +32,8 @@ import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
 
 const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
 const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
+const MOBILE_X_AXIS_ROTATE_WIDTH_THRESHOLD = 480;
+const MOBILE_X_AXIS_ROTATE_HEIGHT_THRESHOLD = 300;
 
 function _CartesianChart(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,10 +70,20 @@ function _CartesianChart(props: VisualizationProps) {
   const settings = useMemo(() => {
     const settings = getGridSizeAdjustedSettings(originalSettings, gridSize);
     if (isDashboard) {
+      // Hide Y-axis labels when width is too narrow
       if (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD) {
         settings["graph.y_axis.labels_enabled"] = false;
       }
-      if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
+
+      // For mobile/small screens, apply responsive x-axis label handling
+      if (
+        outerWidth <= MOBILE_X_AXIS_ROTATE_WIDTH_THRESHOLD ||
+        outerHeight <= MOBILE_X_AXIS_ROTATE_HEIGHT_THRESHOLD
+      ) {
+        // Rotate labels on mobile to prevent overlap instead of hiding them
+        settings["graph.x_axis.axis_enabled"] = "rotate-45";
+      } else if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
+        // Only hide x-axis labels as last resort for very small heights
         settings["graph.x_axis.labels_enabled"] = false;
       }
     }
