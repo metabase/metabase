@@ -1286,29 +1286,14 @@
                  {:display_name "Products2"}]
                 (list-tables :term "P")))
 
-        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "published"})
 
         (is (=? [{:display_name "Products2"}]
-                (list-tables :term "P" :data-layer "gold")))
+                (list-tables :term "P" :data-layer "published")))
 
-<<<<<<< HEAD
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (list-tables :term "P" :data-layer "bronze")))))))
-=======
-      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "published"})
-      (is (=? [{:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "published")
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
-                   (map #(select-keys % [:display_name])))))
-
-      (testing "empty filter"
-        (is (=? [{:display_name "People"}
-                 {:display_name "Products"}]
-                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "internal")
-                     (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
-                     (map #(select-keys % [:display_name])))))))))
->>>>>>> ad9a4466556 (Replace data-source medallion with internal,published,hidden)
+                (list-tables :term "P" :data-layer "internal")))))))
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"

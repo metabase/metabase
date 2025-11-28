@@ -48,16 +48,14 @@ export const LayerInput = ({
         return (
           <SelectItem selected={selected}>
             <Group align="center" gap="sm" justify="center">
-              <Icon c={getColor(item.option.value)} name="eye_filled" />
+              <VisibilityIcon value={item.option.value} />
               <span>{item.option.label}</span>
             </Group>
           </SelectItem>
         );
       }}
-      leftSection={
-        value ? <Icon c={getColor(value)} name="eye_filled" /> : undefined
-      }
-      placeholder={t`Select a visibility type`}
+      leftSection={value ? <VisibilityIcon value={value} /> : undefined}
+      placeholder={t`Select visibility type`}
       value={value}
       onChange={(value) => onChange(value)}
       onFocus={handleFocus}
@@ -70,10 +68,20 @@ function isDataLayer(value: string): value is TableDataLayer {
   return dataLayers.some((layer) => layer === value);
 }
 
-function getColor(value: TableDataLayer | string): ColorName {
-  if (isDataLayer(value)) {
-    return value;
+function VisibilityIcon({ value }: { value: string | null }): React.ReactNode {
+  if (value == null) {
+    return null;
   }
-  // todo fixme
-  return "copper";
+
+  if (isDataLayer(value)) {
+    return <Icon name={VISIBILITY_ICONS[value]} />;
+  }
+
+  return null;
 }
+
+const VISIBILITY_ICONS = {
+  hidden: "eye_filled",
+  internal: "database",
+  published: "published",
+} as const;
