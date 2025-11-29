@@ -202,7 +202,7 @@ export const SettingsLdapForm = () => {
                 <Stack gap="md">
                   <GroupMappingsWidget
                     isFormik
-                    setting={{ key: "ldap-group-sync" }}
+                    settingKey="ldap-group-sync"
                     onChange={handleSubmit}
                     settingValues={settingValues}
                     mappingSetting="ldap-group-mappings"

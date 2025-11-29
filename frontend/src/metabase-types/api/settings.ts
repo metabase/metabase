@@ -682,6 +682,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-lastname": string | null;
   "jwt-attribute-groups": string | null;
   "jwt-group-sync": boolean | null;
+  "jwt-group-mappings": Record<string, GroupId[]> | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;

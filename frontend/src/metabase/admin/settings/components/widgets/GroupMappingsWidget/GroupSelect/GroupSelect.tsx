@@ -1,4 +1,4 @@
-import cx from "classnames";
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
@@ -7,9 +7,6 @@ import type {
   UserGroupType,
   UserGroupsType,
 } from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import Select from "metabase/common/components/Select";
-import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,
   getGroupColor,
@@ -17,8 +14,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
 type GroupSelectProps = {
   groups: UserGroupsType;
@@ -28,10 +24,17 @@ type GroupSelectProps = {
   emptyListMessage?: string;
 };
 
-function getSections(groups: UserGroupsType) {
+type GroupSection = {
+  name?: string;
+  items: UserGroupsType;
+};
+
+function getSections(groups: UserGroupsType): GroupSection[] {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
-  const topGroups = [defaultGroup, adminGroup].filter((g) => g != null);
+  const topGroups = [defaultGroup, adminGroup].filter(
+    (g): g is UserGroupType => g != null,
+  );
   const groupsExceptDefaultAndAdmin = groups.filter(
     (g) => !isAdminGroup(g) && !isDefaultGroup(g),
   );
@@ -40,15 +43,16 @@ function getSections(groups: UserGroupsType) {
     return [{ items: groupsExceptDefaultAndAdmin }];
   }
 
-  return [
-    { items: topGroups },
-    groupsExceptDefaultAndAdmin.length > 0
-      ? {
-          items: groupsExceptDefaultAndAdmin as any,
-          name: t`Groups`,
-        }
-      : null,
-  ].filter(isNotNull);
+  const sections: GroupSection[] = [{ items: topGroups }];
+
+  if (groupsExceptDefaultAndAdmin.length > 0) {
+    sections.push({
+      items: groupsExceptDefaultAndAdmin,
+      name: t`Groups`,
+    });
+  }
+
+  return sections;
 }
 
 export const GroupSelect = ({
@@ -58,54 +62,81 @@ export const GroupSelect = ({
   isCurrentUser = false,
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
+  const [opened, { toggle }] = useDisclosure(false);
+
+  const handleCheckboxChange = (group: UserGroupType, checked: boolean) => {
+    onGroupChange(group, checked);
+  };
+
+  const isOptionDisabled = (group: UserGroupType) =>
+    (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group);
+
   const triggerElement = (
-    <div className={cx(CS.flex, CS.alignCenter)}>
+    <Flex onClick={toggle} align="center" style={{ cursor: "pointer" }}>
       <GroupSummary
         mr="0.5rem"
         groups={groups}
         selectedGroupIds={selectedGroupIds}
       />
-      <Icon className={CS.textLight} name="chevrondown" size={10} />
-    </div>
+      <Icon c="text-light" name="chevrondown" size={10} />
+    </Flex>
   );
 
   if (groups.length === 0) {
     return (
-      <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className={CS.p1}>{emptyListMessage}</span>
-      </PopoverWithTrigger>
+      <Popover opened={opened} onChange={toggle}>
+        <Popover.Target>{triggerElement}</Popover.Target>
+        <Popover.Dropdown>
+          <Text p="sm" c="text-medium">
+            {emptyListMessage}
+          </Text>
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 
   const sections = getSections(groups);
 
   return (
-    <Select
-      triggerElement={triggerElement}
-      onChange={({ target: { value } }: { target: { value: any } }) => {
-        groups
-          .filter(
-            // find the differing groups between the new `value` on previous `selectedGroupIds`
-            (group) =>
-              (selectedGroupIds.includes(group.id) as any) ^
-              value.includes(group.id),
-          )
-          .forEach((group) => onGroupChange(group, value.includes(group.id)));
-      }}
-      optionDisabledFn={(group: UserGroupType) =>
-        (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group)
-      }
-      optionValueFn={(group: UserGroupType) => group.id}
-      optionNameFn={getGroupNameLocalized}
-      optionStylesFn={(group: UserGroupType) => ({
-        color: getGroupColor(group),
-      })}
-      value={selectedGroupIds}
-      sections={sections}
-      multiple
-    />
+    <Popover opened={opened} onChange={toggle}>
+      <Popover.Target>{triggerElement}</Popover.Target>
+      <Popover.Dropdown p="sm" w={200}>
+        <Stack gap="xs">
+          {sections.map((section, sectionIndex) => (
+            <Box key={sectionIndex}>
+              {section.name && (
+                <Text size="md" fw={700} c="text-medium" mb="xs">
+                  {section.name}
+                </Text>
+              )}
+              <Stack gap="xs">
+                {section.items.map((group) => {
+                  const isDisabled = isOptionDisabled(group);
+                  const isChecked = selectedGroupIds.includes(group.id);
+                  const color = getGroupColor(group);
+
+                  return (
+                    <Checkbox
+                      key={group.id}
+                      size="md"
+                      label={
+                        <Text c={color} size="md">
+                          {getGroupNameLocalized(group)}
+                        </Text>
+                      }
+                      checked={isChecked}
+                      disabled={isDisabled}
+                      onChange={(event) =>
+                        handleCheckboxChange(group, event.currentTarget.checked)
+                      }
+                    />
+                  );
+                })}
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default GroupSelect;
