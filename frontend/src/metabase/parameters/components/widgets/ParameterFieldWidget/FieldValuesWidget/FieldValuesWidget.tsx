@@ -113,6 +113,7 @@ export interface IFieldValuesWidgetProps {
   fields: Field[];
   dashboardId?: DashboardId;
   cardId?: CardId;
+  token?: string | null;
 
   value: RowValue[];
   onChange: (value: RowValue[]) => void;
@@ -151,6 +152,7 @@ export const FieldValuesWidgetInner = forwardRef<
     fields,
     dashboardId,
     cardId,
+    token,
     value,
     onChange,
     multi,
@@ -248,6 +250,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchCardParameterValues({
         cardId,
+        token,
         parameter,
         query,
       }),
@@ -262,6 +265,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchDashboardParameterValues({
         dashboardId,
+        token,
         parameter,
         parameters,
         query,

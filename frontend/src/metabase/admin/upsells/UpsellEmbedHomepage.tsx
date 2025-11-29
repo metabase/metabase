@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { Text } from "metabase/ui";
 
-import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
 const campaign = "advanced-embeds";

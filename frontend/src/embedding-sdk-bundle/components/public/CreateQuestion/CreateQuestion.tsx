@@ -1,3 +1,5 @@
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+
 import {
   InteractiveQuestion,
   type InteractiveQuestionProps,
@@ -13,6 +15,10 @@ export type CreateQuestionProps = Omit<
   "questionId" | "children"
 >;
 
-export const CreateQuestion = (props: CreateQuestionProps = {}) => (
+const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
   <InteractiveQuestion {...props} questionId="new" />
 );
+
+export const CreateQuestion = withPublicComponentWrapper(CreateQuestionInner, {
+  supportsGuestEmbed: false,
+}) as typeof CreateQuestionInner;

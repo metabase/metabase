@@ -1,11 +1,11 @@
 import { c, t } from "ttag";
 
+import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 
-import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
 export const UpsellUploads = ({ location }: { location: string }) => {

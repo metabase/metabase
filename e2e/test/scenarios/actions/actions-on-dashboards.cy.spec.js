@@ -354,16 +354,24 @@ const MODEL_NAME = "Test Action Model";
                   });
                   cy.visit(`/dashboard/${dashboard.id}`);
                   cy.wrap(dashboard.id).as("dashboardId");
+
+                  cy.log("The action should be visible in the dashboard");
+                  cy.findByRole("button", { name: "Create" }).should(
+                    "be.visible",
+                  );
+
+                  cy.log("Visit static embed dashboard");
+
+                  H.openLegacyStaticEmbeddingModal({
+                    resource: "dashboard",
+                    resourceId: dashboard.id,
+                    activeTab: "parameters",
+                    unpublishBeforeOpen: false,
+                  });
                 },
               );
             });
 
-          cy.log("The action should be visible in the dashboard");
-          cy.findByRole("button", { name: "Create" }).should("be.visible");
-
-          cy.log("Visit static embed dashboard");
-
-          H.openStaticEmbeddingModal({ activeTab: "parameters" });
           H.visitIframe();
 
           cy.log("Assert static embed dashboard");

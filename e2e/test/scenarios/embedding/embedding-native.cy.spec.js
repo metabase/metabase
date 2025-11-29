@@ -28,14 +28,27 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      cy.get("@questionId").then((questionId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "parameters",
+        });
+      });
     }
 
     it("should not display disabled parameters", () => {
       createAndVisitQuestion();
 
       H.publishChanges("card", ({ request }) => {
-        assert.deepEqual(request.body.embedding_params, {});
+        assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
+          state: "disabled",
+          created_at: "disabled",
+          total: "disabled",
+          source: "disabled",
+          product_id: "disabled",
+        });
       });
 
       H.visitIframe();
@@ -68,6 +81,7 @@ describe("scenarios > embedding > native questions", () => {
           total: "locked",
           state: "enabled",
           product_id: "enabled",
+          source: "disabled",
         };
 
         assert.deepEqual(actual, expected);
@@ -148,7 +162,12 @@ describe("scenarios > embedding > native questions", () => {
         // weren't touched and therefore aren't changed, whereas
         // "enabled" must be set by default for required params.
         const expected = {
+          id: "disabled",
+          state: "disabled",
+          created_at: "disabled",
           total: "enabled",
+          source: "disabled",
+          product_id: "disabled",
         };
 
         assert.deepEqual(actual, expected);
@@ -352,10 +371,15 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
-      H.visitQuestion("@questionId");
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
+      H.visitQuestion("@questionId").then((id) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: id,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
       });
+
       H.visitIframe();
 
       cy.log("should show card results by default");
@@ -377,15 +401,23 @@ describe("scenarios > embedding > native questions with default parameters", () 
       wrapId: true,
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@questionId").then((questionId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: questionId,
+        activeTab: "parameters",
+      });
+    });
 
     // Note: ID is disabled
     H.setEmbeddingParameter("Source", "Locked");
     H.setEmbeddingParameter("Name", "Editable");
     H.publishChanges("card", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
+        id: "disabled",
         source: "locked",
         name: "enabled",
+        user_id: "disabled",
       });
     });
   });

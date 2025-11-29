@@ -7,7 +7,12 @@ import type { StaticDashboardProps } from "./StaticDashboard";
 const propsSchema: Yup.SchemaOf<StaticDashboardProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
-  dashboardId: Yup.mixed().required(),
+  dashboardId: Yup.mixed().when("token", {
+    is: (token: unknown) => token !== undefined,
+    then: (schema) => schema.optional(),
+    otherwise: (schema) => schema.required(),
+  }),
+  token: Yup.mixed().optional(),
   dataPickerProps: Yup.object({
     entityTypes: Yup.mixed().optional(),
   })

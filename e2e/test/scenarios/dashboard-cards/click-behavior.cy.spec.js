@@ -1958,12 +1958,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         })
         .then(({ body: dashCard }) => {
           H.visitDashboard(dashCard.dashboard_id);
+
+          H.openLegacyStaticEmbeddingModal({
+            resource: "dashboard",
+            resourceId: dashCard.dashboard_id,
+            activeTab: "parameters",
+            unpublishBeforeOpen: false,
+          });
         });
 
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
-        acceptTerms: false,
-      });
       H.visitIframe();
       clickLineChartPoint();
 

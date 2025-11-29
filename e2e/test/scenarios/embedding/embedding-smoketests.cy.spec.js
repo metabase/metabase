@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const standalonePath = "/admin/embedding/static";
+const standalonePath = "/admin/embedding/guest";
 
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
@@ -39,26 +39,20 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should show the sdk upsell link in oss", () => {
-      cy.visit("/admin/embedding/modular");
+      cy.visit("/admin/embedding");
 
       mainPage().within(() => {
-        cy.findByRole("link", { name: "Try for free" })
+        cy.findByRole("link", { name: "Upgrade" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=embedding-page&source_plan=oss",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedded-analytics-js",
           );
       });
     });
 
-    it("should not let you embed the question", () => {
+    it("should not let you use non-guest auth methods", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-
-      ensureEmbeddingIsDisabled();
-    });
-
-    it("should not let you embed the dashboard", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       ensureEmbeddingIsDisabled();
     });
@@ -238,7 +232,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         enable_embedding: true,
       });
-      visitAndEnableSharing("question");
+      visitAndEnableSharing("question", false);
 
       H.modal().within(() => {
         cy.findByRole("tab", { name: "Parameters" }).click();
@@ -302,29 +296,34 @@ function resetEmbedding() {
 }
 
 function ensureEmbeddingIsDisabled() {
-  H.openSharingMenu();
-  H.sharingMenu()
-    .findByRole("menuitem", { name: "Embed" })
-    .should("be.enabled")
-    .click();
-  H.modal()
-    .findByRole("article", { name: "Static embedding" })
-    .within(() => {
-      cy.findByText("Disabled.").should("be.visible");
-      cy.findByText("Enable in admin settings").should("be.visible");
-    });
+  H.openEmbedJsModal();
+  H.embedModalEnableEmbedding();
+
+  H.embedModalContent().within(() => {
+    cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
+    cy.findByLabelText("Existing Metabase session").should("be.disabled");
+  });
 }
 
-function visitAndEnableSharing(object, acceptTerms = true) {
-  if (object === "question") {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-  }
+function visitAndEnableSharing(object, unpublishBeforeOpen = true) {
+  const { id, visitFunction } = {
+    question: {
+      id: ORDERS_QUESTION_ID,
+      visitFunction: H.visitQuestion,
+    },
+    dashboard: {
+      id: ORDERS_DASHBOARD_ID,
+      visitFunction: H.visitDashboard,
+    },
+  }[object];
 
-  if (object === "dashboard") {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-  }
+  visitFunction(id);
 
-  H.openStaticEmbeddingModal({ acceptTerms });
+  H.openLegacyStaticEmbeddingModal({
+    resource: object,
+    resourceId: id,
+    unpublishBeforeOpen,
+  });
 }
 
 function mainPage() {

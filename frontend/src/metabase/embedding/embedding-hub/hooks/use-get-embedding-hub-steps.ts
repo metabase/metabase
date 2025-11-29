@@ -33,7 +33,10 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: true },
+              initialState: {
+                isGuest: true,
+                useExistingUserSession: true,
+              },
             });
           },
           variant: "outline",
@@ -130,7 +133,10 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
           onClick: () => {
             openEmbedModal({
-              initialState: { useExistingUserSession: false },
+              initialState: {
+                isGuest: false,
+                useExistingUserSession: false,
+              },
             });
           },
           variant: "outline",

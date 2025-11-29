@@ -15,17 +15,21 @@ export const loadMetadataForTable =
   };
 
 export const loadMetadataForCard =
-  (card: Card | UnsavedCard) => async (dispatch: Dispatch) => {
+  (card: Card | UnsavedCard, { token }: { token?: string | null } = {}) =>
+  async (dispatch: Dispatch) => {
     if (isSavedCard(card)) {
       return entityCompatibleQuery(
-        card.id,
+        token ?? card.id,
         dispatch,
         cardApi.endpoints.getCardQueryMetadata,
         { forceRefetch: false },
       );
     } else if (card.dataset_query.database != null) {
       return entityCompatibleQuery(
-        card.dataset_query,
+        {
+          ...card.dataset_query,
+          ...(!!token && { token }),
+        },
         dispatch,
         datasetApi.endpoints.getAdhocQueryMetadata,
         { forceRefetch: false },

@@ -23,10 +23,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
     H.openSharingMenu("Embed");
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByText("public embedding").should("be.visible");
-      cy.findByText("Static embedding").should("be.visible");
-    });
+    H.embedModalContent().should("be.visible");
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {

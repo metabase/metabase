@@ -1,3 +1,4 @@
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   BackButton,
   Breakout,
@@ -36,7 +37,7 @@ import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
  */
 export type InteractiveQuestionProps = Omit<
   SdkQuestionProps,
-  "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
+  "token" | "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
 >;
 
 /**
@@ -103,7 +104,9 @@ const subComponents: InteractiveQuestionComponents = {
 };
 
 export const InteractiveQuestion = Object.assign(
-  _InteractiveQuestion,
+  withPublicComponentWrapper(_InteractiveQuestion, {
+    supportsGuestEmbed: false,
+  }),
   subComponents,
   { schema: interactiveQuestionSchema },
 );

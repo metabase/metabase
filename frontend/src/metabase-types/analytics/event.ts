@@ -215,7 +215,7 @@ export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
 
 export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
   event: "embed_wizard_resource_selection_completed";
-  event_detail: "default" | "custom";
+  event_detail: string;
 }>;
 
 export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
@@ -225,7 +225,7 @@ export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
 
 export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
-  event_detail: "sso" | "user_session";
+  event_detail: string;
 }>;
 
 export type TableEditingSettingsToggledEvent = ValidateEvent<{

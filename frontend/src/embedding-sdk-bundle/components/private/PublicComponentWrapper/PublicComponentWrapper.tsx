@@ -5,7 +5,7 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { SdkLoader } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import {
-  getLoginStatus,
+  getInitStatus,
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
@@ -18,21 +18,21 @@ export const PublicComponentWrapper = forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
 >(function PublicComponentWrapper({ children, className, style }, ref) {
-  const loginStatus = useSdkSelector(getLoginStatus);
+  const initStatus = useSdkSelector(getInitStatus);
   const usageProblem = useSdkSelector(getUsageProblem);
 
   let content = children;
 
   if (
-    loginStatus.status === "uninitialized" ||
-    loginStatus.status === "loading"
+    initStatus.status === "uninitialized" ||
+    initStatus.status === "loading"
   ) {
     content = <SdkLoader />;
   }
 
-  if (loginStatus.status === "error") {
+  if (initStatus.status === "error") {
     content = (
-      <SdkError message={loginStatus.error.message} error={loginStatus.error} />
+      <SdkError message={initStatus.error.message} error={initStatus.error} />
     );
   }
 

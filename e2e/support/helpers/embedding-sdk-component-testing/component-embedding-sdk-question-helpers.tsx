@@ -40,7 +40,7 @@ export function mountInteractiveQuestion(
 
 export function mountStaticQuestion(
   extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
-  { shouldAssertCardQuery }: MountQuestionOptions = {
+  { shouldAssertCardQuery, sdkProviderProps }: MountQuestionOptions = {
     shouldAssertCardQuery: true,
   },
 ) {
@@ -48,7 +48,10 @@ export function mountStaticQuestion(
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
   cy.get<number>("@questionId").then((questionId) => {
-    mountSdkContent(<StaticQuestion questionId={questionId} {...extraProps} />);
+    mountSdkContent(
+      <StaticQuestion questionId={questionId} {...extraProps} />,
+      { sdkProviderProps },
+    );
   });
 
   if (shouldAssertCardQuery) {

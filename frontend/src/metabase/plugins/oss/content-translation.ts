@@ -7,6 +7,7 @@ import type { Series } from "metabase-types/api";
 
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
+  getDictionaryBasePath: null as string | null,
   setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: <
