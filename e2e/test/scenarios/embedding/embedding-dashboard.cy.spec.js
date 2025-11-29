@@ -400,9 +400,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
     };
 
     cy.intercept("GET", "api/preview_embed/dashboard/*").as("previewEmbed");
-    cy.intercept("GET", "embed/dashboard/*", (req) => {
-      req.continue();
-    }).as("embed");
+    cy.intercept("GET", "**/api/preview_embed/dashboard/*/params/**").as(
+      "parameterValues",
+    );
 
     H.visitDashboard("@dashboardId");
 
@@ -440,13 +440,21 @@ describe("scenarios > embedding > dashboard parameters", () => {
         .click();
       // Test searching for names containing specific text
       cy.findByPlaceholderText("Search by Name").type("Af");
+      cy.wait("@parameterValues", {
+        timeout: 20_000,
+        failOnStatusCode: false,
+      }).then(gracefulFail);
+
       // Verify that search results are filtered
-      H.popover().within(() => {
-        // Should show names containing "Af"
-        cy.findByText("Afton Lesch").should("be.visible");
-        // Should not show names that don't match the search
-        cy.findByText("Lina Heaney").should("not.exist");
-      });
+      H.popover()
+        .should("have.length.at.least", 1)
+        .last()
+        .within(() => {
+          // Should show names containing "Af"
+          cy.findByText("Afton Lesch").should("be.visible");
+          // Should not show names that don't match the search
+          cy.findByText("Lina Heaney").should("not.exist");
+        });
     });
   });
 
