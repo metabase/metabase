@@ -3,7 +3,10 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
-import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModelV1/types";
+import type {
+  MetadataEditAnalyticsDetail,
+  MetadataEventSource,
+} from "metabase/metadata/pages/DataModelV1/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
@@ -410,7 +413,7 @@ export type LearnAboutDataClickedEvent = ValidateEvent<{
 export type MetadataEditEvent = ValidateEvent<{
   event: "metadata_edited";
   event_detail: MetadataEditAnalyticsDetail;
-  triggered_from: "admin";
+  triggered_from: MetadataEventSource;
 }>;
 
 export type BookmarkQuestionEvent = ValidateEvent<{

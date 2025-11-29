@@ -12,6 +12,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
+import type { MetadataEventSource } from "../../DataModelV1/types";
 import { DataModelContext } from "../DataModelContext";
 import { trackMetadataChange } from "../analytics";
 
@@ -25,9 +26,15 @@ interface Props {
   databaseId: DatabaseId;
   field: Field;
   table: Table;
+  eventSource: MetadataEventSource;
 }
 
-const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
+const MetadataSectionBase = ({
+  databaseId,
+  field,
+  table,
+  eventSource,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
@@ -49,7 +56,7 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
         t`Failed to update semantic type of ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("semantic_type_change");
+      trackMetadataChange("semantic_type_change", eventSource);
 
       sendSuccessToast(
         t`Semantic type of ${field.display_name} updated`,

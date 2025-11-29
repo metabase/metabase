@@ -13,13 +13,15 @@ import type {
   FieldFormattingSettings as FieldSettings,
 } from "metabase-types/api";
 
+import type { MetadataEventSource } from "../../DataModelV1/types";
 import { trackMetadataChange } from "../analytics";
 
 interface Props {
   field: Field;
+  eventSource: MetadataEventSource;
 }
 
-const FormattingSectionBase = ({ field }: Props) => {
+const FormattingSectionBase = ({ field, eventSource }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -37,7 +39,7 @@ const FormattingSectionBase = ({ field }: Props) => {
     if (error) {
       sendErrorToast(t`Failed to update formatting of ${field.display_name}`);
     } else {
-      trackMetadataChange("formatting");
+      trackMetadataChange("formatting", eventSource);
 
       sendSuccessToast(
         t`Formatting of ${field.display_name} updated`,

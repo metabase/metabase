@@ -36,3 +36,5 @@ export type MetadataEditAnalyticsDetail =
   | "display_values"
   | "json_unfolding"
   | "formatting";
+
+export type MetadataEventSource = "admin" | "data_studio";

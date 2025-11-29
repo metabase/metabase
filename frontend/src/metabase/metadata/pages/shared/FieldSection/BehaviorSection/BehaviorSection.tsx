@@ -9,6 +9,7 @@ import {
 } from "metabase/metadata/components";
 import { TitledSection } from "metabase/metadata/components/TitledSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { MetadataEventSource } from "metabase/metadata/pages/DataModelV1/types";
 import {
   canFieldUnfoldJson,
   getRawTableFieldId,
@@ -29,9 +30,10 @@ import { RemappingPicker } from "./RemappingPicker";
 interface Props {
   databaseId: DatabaseId;
   field: Field;
+  eventSource: MetadataEventSource;
 }
 
-const BehaviorSectionBase = ({ databaseId, field }: Props) => {
+const BehaviorSectionBase = ({ databaseId, field, eventSource }: Props) => {
   const id = getRawTableFieldId(field);
   const { data: database } = useGetDatabaseQuery({
     id: databaseId,
@@ -49,7 +51,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       visibility_type: visibilityType,
     });
 
-    trackMetadataChange("visibility_change");
+    trackMetadataChange("visibility_change", eventSource);
 
     if (error) {
       sendErrorToast(t`Failed to update visibility of ${field.display_name}`);
@@ -73,7 +75,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       has_field_values: hasFieldValues,
     });
 
-    trackMetadataChange("filtering_change");
+    trackMetadataChange("filtering_change", eventSource);
 
     if (error) {
       sendErrorToast(t`Failed to update filtering of ${field.display_name}`);
@@ -106,7 +108,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           : t`Failed to disable JSON unfolding for ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("json_unfolding");
+      trackMetadataChange("json_unfolding", eventSource);
 
       sendSuccessToast(
         jsonUnfolding
@@ -145,6 +147,7 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
           field={field}
           label={t`Display values`}
+          eventSource={eventSource}
         />
       )}
 
