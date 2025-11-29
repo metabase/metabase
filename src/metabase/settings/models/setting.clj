@@ -896,6 +896,9 @@
 (defn- default-setter-for-type [setting-type]
   (partial set-value-of-type! (keyword setting-type)))
 
+(derive ::event :metabase/event)
+(derive :event/setting-update ::event)
+
 (defn- audit-setting-change!
   [{:keys [name audit sensitive?]} previous-value new-value]
   (let [maybe-obfuscate #(cond-> % sensitive? obfuscate-value)]
