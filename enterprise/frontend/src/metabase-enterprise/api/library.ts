@@ -1,4 +1,4 @@
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { listTag, tag } from "./tags";
@@ -12,9 +12,16 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: [listTag("collection")],
     }),
-    getLibraryCollection: builder.query<CollectionItem, void>({
+    getLibraryCollection: builder.query<Collection, void>({
       query: () => ({
         url: `/api/ee/library`,
+        method: "GET",
+      }),
+      providesTags: () => [tag("library-collection")],
+    }),
+    getLibraryCollectionTree: builder.query<Collection[], void>({
+      query: () => ({
+        url: `/api/ee/library/tree`,
         method: "GET",
       }),
       providesTags: () => [tag("library-collection")],
@@ -22,5 +29,8 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useCreateLibraryMutation, useGetLibraryCollectionQuery } =
-  libraryApi;
+export const {
+  useCreateLibraryMutation,
+  useGetLibraryCollectionQuery,
+  useGetLibraryCollectionTreeQuery,
+} = libraryApi;

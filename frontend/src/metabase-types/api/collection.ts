@@ -181,6 +181,7 @@ export type ListCollectionItemsRequest = {
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
   collection_type?: CollectionType;
+  include_editable_data_model?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 

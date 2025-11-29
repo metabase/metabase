@@ -42,6 +42,11 @@ export const canAccessSettings = createSelector(
   (user) => user?.permissions?.can_access_setting ?? false,
 );
 
+export const canAccessDataStudio = createSelector(
+  (state: ApplicationPermissionsState) => state.currentUser,
+  (user) => user?.permissions?.can_access_data_studio ?? false,
+);
+
 const getApplicationPermission = (
   permissions: ApplicationPermissions,
   groupId: number,
@@ -124,6 +129,13 @@ export const getApplicationPermissionEditor = createSelector(
             defaultGroup,
             "subscription",
           ),
+          getPermission(
+            permissions,
+            isAdmin,
+            group.id,
+            defaultGroup,
+            "data-studio",
+          ),
         ],
       };
     });
@@ -138,6 +150,10 @@ export const getApplicationPermissionEditor = createSelector(
           hint: t`This grants access to Tools`,
         },
         { name: t`Subscriptions and Alerts` },
+        {
+          name: t`Data Studio access`,
+          hint: t`This grants access to the Data Studio`,
+        },
       ],
       entities,
     };
