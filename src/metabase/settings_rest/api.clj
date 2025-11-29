@@ -5,7 +5,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]))
+   [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.util :as u]
+   [ring.util.response :as response]))
 
 (defn- do-with-setting-access-control
   [thunk]
@@ -22,6 +24,20 @@
    return generic 403s to non-admins who try to read or write settings they don't have access to."
   [& body]
   `(do-with-setting-access-control (fn [] ~@body)))
+
+(def ^:private settings-last-updated-cookie-name "metabase.SETTINGS_LAST_UPDATED")
+
+(defn- add-settings-last-updated-cookie
+  "Add a cookie with the current settings-last-updated timestamp to the response."
+  [response]
+  (if-let [timestamp (get (setting.cache/cache) setting.cache/settings-last-updated-key)]
+    (response/set-cookie response
+                        settings-last-updated-cookie-name
+                        timestamp
+                        {:path      "/"
+                         :max-age   (* 5 60)
+                         :same-site :lax})
+    response))
 
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
 (api.macros/defendpoint :get "/"
@@ -42,7 +58,7 @@
    settings :- [:map-of kebab-cased-keyword :any]]
   (with-setting-access-control
     (setting/set-many! settings))
-  api/generic-204-no-content)
+  (add-settings-last-updated-cookie api/generic-204-no-content))
 
 (api.macros/defendpoint :get "/:key"
   "Fetch a single `Setting`."
@@ -60,4 +76,4 @@
    {:keys [value]} :- [:map [:value :any]]]
   (with-setting-access-control
     (setting/set! key value))
-  api/generic-204-no-content)
+  (add-settings-last-updated-cookie api/generic-204-no-content))
