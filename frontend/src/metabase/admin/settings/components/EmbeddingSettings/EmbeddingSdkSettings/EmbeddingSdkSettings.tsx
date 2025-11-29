@@ -54,11 +54,6 @@ export function EmbeddingSdkSettings() {
 
   const isHosted = useSetting("is-hosted?");
 
-  const { url: switchMetabaseBinariesUrl } = useDocsUrl(
-    "paid-features/activating-the-enterprise-edition",
-    { utm: utmTags },
-  );
-
   const implementJwtUrl = useDocsUrl("embedding/sdk/authentication", {
     utm: utmTags,
   });
@@ -76,16 +71,6 @@ export function EmbeddingSdkSettings() {
   // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
   const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
 
-  const SwitchBinariesLink = (
-    <ExternalLink
-      key="switch-metabase-binaries"
-      href={switchMetabaseBinariesUrl}
-      className={cx(CS.link, CS.textBold)}
-    >
-      {t`switch Metabase binaries`}
-    </ExternalLink>
-  );
-
   const ImplementJwtLink = (
     <ExternalLink
       key="implement-jwt"
@@ -97,18 +82,9 @@ export function EmbeddingSdkSettings() {
   );
 
   const apiKeyBannerText = match({
-    needsToSwitchBinaries: !isEE,
     needsToUpgrade: !isEmbeddingAvailable,
     needsToImplementJwt: isEmbeddingAvailable,
   })
-    .with(
-      { needsToSwitchBinaries: true },
-      () =>
-        c(
-          "{0} is the link to switch binaries. {1} is the link to upsell the SDK. {2} is the link to implement JWT or SAML authentication.",
-        )
-          .jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and ${ImplementJwtLink}.`,
-    )
     .with(
       { needsToUpgrade: true },
       () =>
@@ -169,60 +145,64 @@ export function EmbeddingSdkSettings() {
         testId="sdk-setting-card"
       />
 
-      <EmbeddingSettingsCard
-        title={t`SDK for React`}
-        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
-        settingKey="enable-embedding-sdk"
-        links={[
-          {
-            icon: "bolt",
-            title: t`Quick start`,
-            href: sdkQuickStartUrl,
-          },
-          {
-            icon: "reference",
-            title: t`Documentation`,
-            href: sdkDocumentationUrl,
-          },
-        ]}
-        alertInfoText={apiKeyBannerText}
-        testId="sdk-setting-card"
-      />
+      {isEE && (
+        <>
+          <EmbeddingSettingsCard
+            title={t`SDK for React`}
+            description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+            settingKey="enable-embedding-sdk"
+            links={[
+              {
+                icon: "bolt",
+                title: t`Quick start`,
+                href: sdkQuickStartUrl,
+              },
+              {
+                icon: "reference",
+                title: t`Documentation`,
+                href: sdkDocumentationUrl,
+              },
+            ]}
+            alertInfoText={apiKeyBannerText}
+            testId="sdk-setting-card"
+          />
 
-      <Box py="lg" px="xl" className={S.SectionCard}>
-        <AdminSettingInput
-          title={t`Cross-Origin Resource Sharing (CORS)`}
-          description={
-            <Group align="center" gap="sm">
-              <Text c="text-medium" fz="md">
-                {isEmbeddingAvailable
-                  ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
-                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
-              </Text>
+          <Box py="lg" px="xl" className={S.SectionCard}>
+            <AdminSettingInput
+              title={t`Cross-Origin Resource Sharing (CORS)`}
+              description={
+                <Group align="center" gap="sm">
+                  <Text c="text-medium" fz="md">
+                    {isEmbeddingAvailable
+                      ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
+                      : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink key="upsell-sdk-link" />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
+                  </Text>
 
-              {isEmbeddingAvailable && (
-                <HoverCard position="bottom">
-                  <HoverCard.Target>
-                    <Icon name="info" c="text-medium" cursor="pointer" />
-                  </HoverCard.Target>
+                  {isEmbeddingAvailable && (
+                    <HoverCard position="bottom">
+                      <HoverCard.Target>
+                        <Icon name="info" c="text-medium" cursor="pointer" />
+                      </HoverCard.Target>
 
-                  <HoverCard.Dropdown>
-                    <Box p="md" w={270} bg="white">
-                      <Text lh="lg" c="text-medium">
-                        {corsHintText}
-                      </Text>
-                    </Box>
-                  </HoverCard.Dropdown>
-                </HoverCard>
-              )}
-            </Group>
-          }
-          name="embedding-app-origins-sdk"
-          placeholder="https://*.example.com"
-          inputType="text"
-          disabled={!canEditSdkOrigins}
-        />
-      </Box>
+                      <HoverCard.Dropdown>
+                        <Box p="md" w={270} bg="white">
+                          <Text lh="lg" c="text-medium">
+                            {corsHintText}
+                          </Text>
+                        </Box>
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+                  )}
+                </Group>
+              }
+              name="embedding-app-origins-sdk"
+              placeholder="https://*.example.com"
+              inputType="text"
+              disabled={!canEditSdkOrigins}
+            />
+          </Box>
+        </>
+      )}
 
       {isEmbeddingAvailable && isHosted && (
         <Box py="lg" px="xl" className={S.SectionCard}>
