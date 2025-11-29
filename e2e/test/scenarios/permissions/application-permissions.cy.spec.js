@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -291,16 +292,13 @@ describe("scenarios > admin > permissions > application", () => {
         cy.signInAsNormalUser();
 
         cy.log("Non-admin creates the library - should get write access");
-        H.createLibrary().then((response) => {
-          const modelsCollection = response.body.effective_children?.find(
-            (child) => child.name === "Data",
-          );
-          cy.wrap(modelsCollection.id).as("modelsCollectionId");
+        H.createLibrary().then(({ data }) => {
+          cy.wrap(data.id).as("dataCollectionId");
         });
 
         cy.log("Non-admin should be able to move question to library as model");
         cy.get("@questionId").then((questionId) => {
-          cy.get("@modelsCollectionId").then((collectionId) => {
+          cy.get("@dataCollectionId").then((collectionId) => {
             cy.request("PUT", `/api/card/${questionId}`, {
               type: "model",
               collection_id: collectionId,
@@ -310,7 +308,7 @@ describe("scenarios > admin > permissions > application", () => {
 
         cy.log("Verify permissions show Curate for All Users on library");
         cy.signInAsAdmin();
-        cy.get("@modelsCollectionId").then((collectionId) => {
+        cy.get("@dataCollectionId").then((collectionId) => {
           cy.visit(`/admin/permissions/collections/${collectionId}`);
         });
         H.assertPermissionForItem("All Users", 0, "Curate");
@@ -318,11 +316,8 @@ describe("scenarios > admin > permissions > application", () => {
 
       it("grants write access to existing library when data studio permission is granted", () => {
         cy.log("Admin creates library first");
-        H.createLibrary().then((response) => {
-          const modelsCollection = response.body.effective_children?.find(
-            (child) => child.name === "Data",
-          );
-          cy.wrap(modelsCollection.id).as("modelsCollectionId");
+        H.createLibrary().then(({ data }) => {
+          cy.wrap(data.id).as("dataCollectionId");
         });
 
         cy.log("Create a question as admin");
@@ -340,7 +335,7 @@ describe("scenarios > admin > permissions > application", () => {
         H.modal().button("Yes").click();
 
         cy.log("Verify permissions show Curate for All Users on library");
-        cy.get("@modelsCollectionId").then((collectionId) => {
+        cy.get("@dataCollectionId").then((collectionId) => {
           cy.visit(`/admin/permissions/collections/${collectionId}`);
         });
         H.assertPermissionForItem("All Users", 0, "Curate");
@@ -348,7 +343,7 @@ describe("scenarios > admin > permissions > application", () => {
         cy.log("Non-admin should be able to move question to library as model");
         cy.signInAsNormalUser();
         cy.get("@questionId").then((questionId) => {
-          cy.get("@modelsCollectionId").then((collectionId) => {
+          cy.get("@dataCollectionId").then((collectionId) => {
             cy.request("PUT", `/api/card/${questionId}`, {
               type: "model",
               collection_id: collectionId,
@@ -361,6 +356,220 @@ describe("scenarios > admin > permissions > application", () => {
           H.visitModel(questionId);
         });
         cy.findByLabelText("Open in Data Studio").should("be.visible");
+      });
+    });
+
+    describe("library section visibility based on collection access", () => {
+      it("shows permission error when opening model without data access", () => {
+        const { ALL_USERS_GROUP } = USER_GROUPS;
+
+        cy.log("Create library with a model");
+        createLibraryWithItems();
+
+        cy.log("Grant data studio permission to All Users");
+        cy.visit("/admin/permissions/application");
+        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Block data access for All Users group");
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": "blocked",
+              "create-queries": "no",
+            },
+          },
+        });
+
+        cy.log(
+          "Sign in as 'none' user (only in All Users group) and open model",
+        );
+        cy.signIn("none");
+
+        cy.get("@trustedOrdersModelId").then((modelId) => {
+          cy.visit(`/data-studio/modeling/models/${modelId}`);
+        });
+
+        cy.log("Verify permission error is shown");
+        H.main()
+          .findByText("Sorry, you don't have permission to run this query.")
+          .should("be.visible");
+      });
+
+      it("hides library section when user has no access to library collections", () => {
+        const { ALL_USERS_GROUP } = USER_GROUPS;
+
+        cy.log("Create library as admin");
+        H.createLibrary({ wrapIds: true });
+
+        cy.log(
+          "Grant data studio permission but revoke library collection access",
+        );
+        cy.visit("/admin/permissions/application");
+        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Revoke collection access for All Users on library");
+        cy.get("@libraryId").then((libraryId) => {
+          cy.get("@dataCollectionId").then((dataId) => {
+            cy.get("@metricsCollectionId").then((metricsId) => {
+              cy.updateCollectionGraph({
+                [ALL_USERS_GROUP]: {
+                  [libraryId]: "none",
+                  [dataId]: "none",
+                  [metricsId]: "none",
+                },
+              });
+            });
+          });
+        });
+
+        cy.log("Sign in as 'none' user and verify library section is hidden");
+        cy.signIn("none");
+        cy.visit("/data-studio/modeling");
+
+        H.DataStudio.ModelingSidebar.root().should("be.visible");
+        H.DataStudio.ModelingSidebar.librarySection().should("not.exist");
+        H.DataStudio.ModelingSidebar.glossarySection().should("be.visible");
+      });
+
+      it("shows only accessible library subcollections (partial access)", () => {
+        const { ALL_USERS_GROUP } = USER_GROUPS;
+
+        cy.log("Create library with items as admin");
+        H.createLibrary({ wrapIds: true }).then(({ library, metrics }) => {
+          H.createQuestion(
+            {
+              name: "Trusted Orders Model",
+              query: { "source-table": ORDERS_ID },
+            },
+            { wrapId: true, idAlias: "trustedOrdersModelId" },
+          ).then(() =>
+            cy.get("@trustedOrdersModelId").then((modelId) => {
+              cy.get("@dataCollectionId").then((dataCollectionId) => {
+                cy.request("PUT", `/api/card/${modelId}`, {
+                  type: "model",
+                  collection_id: dataCollectionId,
+                });
+              });
+            }),
+          );
+
+          cy.log("Grant data studio permission to All Users");
+          cy.visit("/admin/permissions/application");
+          H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+          cy.button("Save changes").click();
+          H.modal().button("Yes").click();
+
+          cy.log("Revoke access to Metrics collection only");
+          cy.updateCollectionGraph({
+            [ALL_USERS_GROUP]: {
+              [library.id]: "read",
+              [metrics.id]: "none",
+            },
+          });
+        });
+
+        cy.log("Sign in as 'none' user and verify partial library access");
+        cy.signIn("none");
+        cy.visit("/data-studio/modeling");
+
+        H.DataStudio.ModelingSidebar.librarySection().should("be.visible");
+        H.DataStudio.ModelingSidebar.collectionsTree().within(() => {
+          cy.findByText("Data").should("be.visible");
+          cy.findByText("Metrics").should("not.exist");
+        });
+      });
+    });
+
+    describe("data model section visibility", () => {
+      it("hides Data tab for users without data model permission", () => {
+        cy.log("Grant data studio permission to All Users");
+        cy.visit("/admin/permissions/application");
+        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Sign in as 'none' user and verify Data tab is not visible");
+        cy.signIn("none");
+        cy.visit("/data-studio/modeling");
+
+        cy.log("Data tab should not be visible without data model permission");
+        cy.findByTestId("data-studio-data-tab").should("not.exist");
+        cy.findByTestId("data-studio-modeling-tab").should("be.visible");
+      });
+
+      it("shows Data tab for users with data model permission on any database", () => {
+        const DATA_MODEL_PERMISSION_INDEX = 3;
+
+        cy.log("Grant data studio permission to All Users");
+        cy.visit("/admin/permissions/application");
+        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Grant data model permission on Sample Database");
+        cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+        H.modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Sign in as 'none' user and verify Data tab is visible");
+        cy.signIn("none");
+        cy.visit("/data-studio");
+
+        cy.findByTestId("data-studio-data-tab").should("be.visible");
+        cy.findByTestId("data-studio-modeling-tab").should("be.visible");
+      });
+
+      it("allows editing table metadata with blocked data access but data model permission", () => {
+        const DATA_ACCESS_PERMISSION_INDEX = 0;
+        const DATA_MODEL_PERMISSION_INDEX = 3;
+
+        cy.log("Grant data studio permission to All Users");
+        cy.visit("/admin/permissions/application");
+        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Block data access but grant data model permission");
+        cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+        H.modifyPermission(
+          "All Users",
+          DATA_ACCESS_PERMISSION_INDEX,
+          "Blocked",
+        );
+        H.modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
+        cy.button("Save changes").click();
+        H.modal().button("Yes").click();
+
+        cy.log("Sign in as 'none' user and verify can access data model");
+        cy.signIn("none");
+
+        cy.intercept("PUT", "/api/table/*").as("updateTable");
+        cy.intercept(
+          "GET",
+          "/api/table/*/query_metadata?include_sensitive_fields=true&include_editable_data_model=true",
+        ).as("tableMetadataFetch");
+
+        cy.visit("/data-studio/data");
+        cy.findByTestId("data-studio-data-tab").should("be.visible");
+
+        cy.log("Select table and verify can edit metadata");
+        H.DataModel.TablePicker.getTable("Orders").click();
+        cy.wait("@tableMetadataFetch");
+
+        cy.log("Update table name to verify edit permissions work");
+        H.DataModel.TableSection.getNameInput()
+          .should("have.value", "Orders")
+          .clear()
+          .type("Modified Orders")
+          .blur();
+        cy.wait("@updateTable");
+
+        H.undoToast().should("contain.text", "Table name updated");
       });
     });
   });
