@@ -13,7 +13,6 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-// Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
 export function canAccessDataStudio(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;
@@ -91,9 +90,17 @@ export const useGetLibraryCollection = ({
   const { data: libraryCollection, isLoading: isLoadingCollection } =
     useGetLibraryCollectionQuery(undefined, { skip });
 
+  const data = useMemo(
+    () =>
+      libraryCollection
+        ? { ...libraryCollection, model: "collection" as const }
+        : undefined,
+    [libraryCollection],
+  );
+
   return {
     isLoading: isLoadingCollection,
-    data: libraryCollection,
+    data,
   };
 };
 
