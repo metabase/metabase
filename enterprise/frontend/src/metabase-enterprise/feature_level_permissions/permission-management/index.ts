@@ -8,6 +8,7 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 import { buildDataModelPermission } from "./data-model-permission";
 import { buildDetailsPermission } from "./details-permission";
 import { buildDownloadPermission } from "./download-permission";
+import { buildTransformsPermission } from "./transforms-permission";
 
 export const getFeatureLevelDataPermissions = (
   entityId: EntityId,
@@ -46,7 +47,19 @@ export const getFeatureLevelDataPermissions = (
     permissionSubject,
   );
 
-  return [downloadPermission, dataModelPermission, detailsPermission].filter(
-    Boolean,
+  const transformsPermission = buildTransformsPermission(
+    entityId,
+    groupId,
+    isAdmin,
+    permissions,
+    defaultGroup,
+    permissionSubject,
   );
+
+  return [
+    downloadPermission,
+    dataModelPermission,
+    detailsPermission,
+    transformsPermission,
+  ].filter(Boolean);
 };

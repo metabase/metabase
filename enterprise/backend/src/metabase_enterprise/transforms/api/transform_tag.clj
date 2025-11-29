@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.api.transform-tag
   (:require
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -11,6 +12,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- check-transforms-permission-for-any-db!
+  "Check that the current user has transforms permission for at least one database."
+  []
+  (api/check-403 (transforms.util/current-user-has-any-transforms-permission?)))
+
 (api.macros/defendpoint :post "/"
   "Create a new transform tag."
   [_route-params
@@ -18,7 +24,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag:" name)
-  (api/check-superuser)
+  (check-transforms-permission-for-any-db!)
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
@@ -31,7 +37,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id "with name:" name)
-  (api/check-superuser)
+  (check-transforms-permission-for-any-db!)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
@@ -43,7 +49,7 @@
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (api/check-superuser)
+  (check-transforms-permission-for-any-db!)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
@@ -53,7 +59,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (api/check-superuser)
+  (check-transforms-permission-for-any-db!)
   (t2/select :model/TransformTag {:order-by [[:name :asc]]}))
 
 (def ^{:arglists '([request respond raise])} routes

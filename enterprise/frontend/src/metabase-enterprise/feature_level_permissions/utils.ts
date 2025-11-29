@@ -41,9 +41,14 @@ export const getDataColumns = (subject: PermissionSubject) => {
   ];
 
   if (subject === "schemas") {
-    allSubjectsColumns.push({
-      name: t`Manage database`,
-    });
+    allSubjectsColumns.push(
+      {
+        name: t`Manage database`,
+      },
+      {
+        name: t`Transforms`,
+      },
+    );
   }
 
   return allSubjectsColumns;
