@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useLatest } from "react-use";
 
 import { useCreateCardMutation } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
@@ -16,12 +17,15 @@ export function CardCopyModal({ card, onCopy, onClose }: CardCopyModalProps) {
   const [createCard] = useCreateCardMutation();
   const initialCollectionId = useGetDefaultCollectionId();
 
+  const cardRef = useLatest(card);
   const initialValues = useMemo(
     () => ({
-      ...card,
-      collection_id: card.can_write ? card.collection_id : initialCollectionId,
+      ...cardRef.current,
+      collection_id: cardRef.current.can_write
+        ? cardRef.current.collection_id
+        : initialCollectionId,
     }),
-    [card, initialCollectionId],
+    [cardRef, initialCollectionId],
   );
 
   const handleCopy = async (values: CopyCardProperties) => {
@@ -36,6 +40,7 @@ export function CardCopyModal({ card, onCopy, onClose }: CardCopyModalProps) {
   };
 
   const handleCopySucceeded = (newCard: Card) => {
+    onClose();
     onCopy?.(newCard);
   };
 
