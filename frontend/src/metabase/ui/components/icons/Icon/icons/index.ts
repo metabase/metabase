@@ -350,6 +350,8 @@ import popular_component from "./popular.svg?component";
 import popular_source from "./popular.svg?source";
 import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
+import published_component from "./published.svg?component";
+import published_source from "./published.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
@@ -1191,6 +1193,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: progress_component,
       source: progress_source,
     },
+    published: {
+      component: published_component,
+      source: published_source,
+    },
     embed_interactive: {
       component: embed_interactive_component,
       source: embed_interactive_source,
@@ -1754,6 +1760,7 @@ export type IconName =
   | "popover"
   | "popular"
   | "progress"
+  | "published"
   | "pulse"
   | "receipt"
   | "recents"

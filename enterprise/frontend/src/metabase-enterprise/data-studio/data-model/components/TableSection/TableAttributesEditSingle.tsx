@@ -167,7 +167,7 @@ export function TableAttributesEditSingle({ table }: Props) {
         />
 
         <LayerInput
-          value={table.data_layer ?? "copper"}
+          value={table.data_layer ?? "hidden"}
           onChange={handleLayerChange}
           styles={{
             label: {
