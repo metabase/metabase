@@ -53,7 +53,11 @@
                                             :_type   type
                                             :content (transduce (map second) str block)}]
                           (:DATA
-                           :ERROR)        (map #(-> (second %) (assoc :_type type)) block)
+                           :ERROR)        (map #(let [v (second %)]
+                                                  (if (map? v)
+                                                    (assoc v :_type type)
+                                                    {:_type type :content (str v)}))
+                                               block)
                           :TOOL_CALL      [{:role       role
                                             :_type      type
                                             :tool_calls (map (fn [[_ v]]

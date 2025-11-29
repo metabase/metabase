@@ -65,4 +65,15 @@
             (metabot.u/aisdk->messages "assistant"
                                        (-> (io/resource "metabase_enterprise/metabot_v3/aisdkstream2.txt")
                                            io/reader
-                                           line-seq))))))
+                                           line-seq)))))
+  (testing "We should handle ERROR chunks that parse as strings instead of maps"
+    (is (= [{:_type :ERROR
+             :content "some error string"}]
+           (metabot.u/aisdk->messages "assistant"
+                                      ["3:\"some error string\""]))))
+  (testing "We should handle ERROR chunks that are valid maps normally"
+    (is (= [{:_type :ERROR
+             :error "something went wrong"
+             :code 500}]
+           (metabot.u/aisdk->messages "assistant"
+                                      ["3:{\"error\":\"something went wrong\",\"code\":500}"])))))
