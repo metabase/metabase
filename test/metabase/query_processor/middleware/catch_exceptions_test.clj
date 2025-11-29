@@ -16,7 +16,8 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users])
   (:import
-   (java.sql SQLException)))
+   (java.sql SQLException)
+   (org.postgresql.util PSQLException PSQLState)))
 
 (deftest ^:parallel exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"
@@ -192,3 +193,45 @@
                   (qp/process-query
                    (qp/userland-query
                     (mt/mbql-query venues {:fields [!month.id]}))))))))))
+
+(deftest query-cancellation-not-logged-test
+  (testing "Query cancellation exceptions should not be logged"
+    (mt/test-driver :postgres
+      (mt/with-log-messages-for-level [log-messages :error]
+        (testing "Regular exceptions are logged"
+          (catch-exceptions
+           (fn [] (throw (ex-info "Regular error" {:type qp.error-type/invalid-query}))))
+          (is (= 1 (count (log-messages)))
+              "Regular exceptions should be logged"))
+
+        ;; Reset log messages for next test
+        (testing "Query cancellation exceptions are not logged"
+          ;; Create a Postgres query cancellation exception (SQLState 57014)
+          (let [pg-cancel-ex (PSQLException. (.getState PSQLState/QUERY_CANCELED) "canceling statement due to user request" nil)]
+            ;; Wrap it in an ExceptionInfo with the :query-canceled? flag, as our code does
+            (catch-exceptions
+             (fn [] (throw (ex-info "Error executing query: canceling statement due to user request"
+                                    {:driver :postgres
+                                     :sql    ["SELECT pg_sleep(1000)"]
+                                     :params []
+                                     :type   qp.error-type/invalid-query
+                                     :query/query-canceled? true}
+                                    pg-cancel-ex)))))
+          (is (= 0 (count (log-messages)))
+              "Query cancellation exceptions should not be logged")))))
+
+  (testing "Query cancellation exceptions from other drivers are not logged"
+    (mt/with-log-messages-for-level [log-messages :error]
+      (testing "MySQL query timeout (error code 1317) is not logged"
+        ;; Create a MySQL query cancellation exception (error code 1317)
+        (let [mysql-cancel-ex (SQLException. "Query execution was interrupted" "70100" 1317)]
+          (catch-exceptions
+           (fn [] (throw (ex-info "Error executing query: Query execution was interrupted"
+                                  {:driver :mysql
+                                   :sql    ["SELECT SLEEP(1000)"]
+                                   :params []
+                                   :type   qp.error-type/invalid-query
+                                   :query/query-canceled? true}
+                                  mysql-cancel-ex)))))
+        (is (= 0 (count (log-messages)))
+            "MySQL query cancellation exceptions should not be logged")))))
