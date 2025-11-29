@@ -401,9 +401,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
     cy.intercept("GET", "api/preview_embed/dashboard/*").as("previewEmbed");
     cy.intercept("GET", "embed/dashboard/*", (req) => {
-      req.on("before:response", () => {
-        req.send("");
-      });
+      req.continue();
     }).as("embed");
 
     H.visitDashboard("@dashboardId");
