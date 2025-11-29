@@ -8,6 +8,7 @@
                   mvxcvi/puget      {:mvn/version "1.3.4"}
                   org.babashka/json {:mvn/version "0.1.6"}
                   table/table       {:mvn/version "0.5.0"}}
+ :pods           {org.babashka/fswatcher {:version "0.0.7"}}
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -188,14 +189,17 @@
 
   run-tests
   {:doc        "Quickly run tests locally. Pass dirs/files as arguments to run them."
-   :examples   [["./bin/mage run-tests" "launch interactive test picker"]
+   :examples   [["./bin/mage run-tests" "launch interactive test picker & run tests once"]
+                ["./bin/mage run-tests -w" "launch interactive test picker in watch mode"]
                 ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
-                ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
+                ["./bin/mage run-tests -w test/metabase/logger test/metabase/api_keys"
+                 "run tests in test/metabase/logger and src/metabase/api_keys, in watch mode."]
                 ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
    ;; TODO: add option to select files as well as dirs from fzf with styles
    :options    [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
                 ;; all, file, dir
-                ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+                ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]
+                ["-w" "--watch" "Watch files and re-run tests on changes"]]
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
                 [:string {:description "Files or directories (recursive) to test"}]]
