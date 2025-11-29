@@ -26,6 +26,7 @@ const propsSchema: Yup.SchemaOf<StaticDashboardProps> = Yup.object({
   style: Yup.mixed().optional(),
   withCardTitle: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
+  withSubscriptions: Yup.mixed().optional(),
   withTitle: Yup.mixed().optional(),
   onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();

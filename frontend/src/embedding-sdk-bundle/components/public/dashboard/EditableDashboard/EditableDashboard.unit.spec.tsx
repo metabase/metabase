@@ -10,6 +10,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";
 
+import { addSubscriptionTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
@@ -96,6 +97,8 @@ describe("EditableDashboard", () => {
       dashboardHeader.queryByLabelText("Download as PDF"),
     ).not.toBeInTheDocument();
   });
+
+  addSubscriptionTests(setup);
 
   it("should allow to create a new question in addition to adding existing questions", async () => {
     await setup({ hasEmbeddingEnterprisePlugin: true });
