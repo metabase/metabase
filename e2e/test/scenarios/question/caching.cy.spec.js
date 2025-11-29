@@ -5,6 +5,7 @@ import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-per
 import {
   adaptiveRadioButton,
   cacheStrategySidesheet,
+  confirmModal,
   durationRadioButton,
   openSidebarCacheStrategyForm,
   questionSettingsSidesheet,
@@ -61,6 +62,49 @@ describe("scenarios > question > caching", () => {
         "contain",
         "Adaptive",
       );
+    });
+  });
+
+  /**
+   * @note There is a similar test for closing the cache form when it's dirty
+   * It's in the Cypress describe block labeled "scenarios > dashboard > caching"
+   */
+  it("should guard closing caching form if it's dirty on different actions", () => {
+    interceptPerformanceRoutes();
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    openSidebarCacheStrategyForm("question");
+
+    cacheStrategySidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
+      durationRadioButton().click();
+    });
+    [
+      // clicking on cross button
+      () =>
+        cacheStrategySidesheet().within(() =>
+          cy.findByRole("button", { name: /Close/ }).click(),
+        ),
+      // ESC button
+      () => cy.get("body").type("{esc}"),
+      // click outside
+      () =>
+        cy
+          .findAllByTestId("modal-overlay")
+          .should("have.length", 2)
+          .last()
+          .click(),
+      // // clicking on title with back icon on it
+      () =>
+        cacheStrategySidesheet().within(() =>
+          cy.findByRole("button", { name: /Caching settings/ }).click(),
+        ),
+    ].forEach((attempt) => {
+      attempt();
+      confirmModal().within(() => {
+        // cancel to attempt closing other way
+        cy.findByRole("button", { name: /Cancel/ }).click();
+      });
     });
   });
 
