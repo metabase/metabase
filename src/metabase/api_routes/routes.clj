@@ -17,8 +17,10 @@
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.collections-rest.api]
+   [metabase.comments.api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
+   [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
    [metabase.geojson.api]
@@ -66,8 +68,10 @@
          metabase.bug-reporting.api/keep-me
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
+         metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
          metabase.dashboards-rest.api/keep-me
+         metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -142,10 +146,12 @@
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
+   "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
+   "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)

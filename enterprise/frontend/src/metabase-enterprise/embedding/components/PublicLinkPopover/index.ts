@@ -1,1 +1,0 @@
-export { DocumentPublicLinkPopover } from "./DocumentPublicLinkPopover";

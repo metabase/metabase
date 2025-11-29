@@ -6,6 +6,7 @@ import _ from "underscore";
 import { bookmarkApi, useListBookmarksQuery } from "metabase/api";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
+import Documents from "metabase/entities/documents";
 import Questions from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PLUGIN_ENTITIES } from "metabase/plugins";
@@ -150,7 +151,7 @@ function getEntityFor(type) {
     card: Questions,
     collection: Collections,
     dashboard: Dashboards,
-    document: PLUGIN_ENTITIES.entities["documents"],
+    document: Documents,
     transform: PLUGIN_ENTITIES.entities["transforms"],
   };
 

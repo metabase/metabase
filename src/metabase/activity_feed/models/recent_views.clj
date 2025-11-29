@@ -38,7 +38,6 @@
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -460,14 +459,6 @@
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
- ;; ================== Recent Documents ==================
-
-(defenterprise select-documents-for-recents
-  "Returns empty when not running in enterprise mode."
-  metabase-enterprise.documents.recent-views
-  [_document-ids]
-  [])
-
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
     (when (and (not= "hidden" (:visibility_type table))
@@ -572,7 +563,7 @@
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))
      :table      (m/index-by :id (table-recents table-ids))
-     :document   (m/index-by :id (select-documents-for-recents document-ids))}))
+     :document   (m/index-by :id ((requiring-resolve 'metabase.documents.recent-views/select-documents-for-recents) document-ids))}))
 
 (def ^:private ItemValidator (mr/validator Item))
 

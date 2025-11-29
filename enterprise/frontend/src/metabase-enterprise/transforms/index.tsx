@@ -1,5 +1,6 @@
 import { PLUGIN_ENTITIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useGetTransformQuery } from "metabase-enterprise/api";
 import { Transforms } from "metabase-enterprise/entities/transforms";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -17,5 +18,6 @@ export function initializePlugin() {
     PLUGIN_TRANSFORMS.getDataStudioTransformRoutes =
       getDataStudioTransformRoutes;
     PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
+    PLUGIN_TRANSFORMS.useGetTransformQuery = useGetTransformQuery;
   }
 }

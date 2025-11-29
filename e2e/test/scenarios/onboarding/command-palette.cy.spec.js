@@ -167,7 +167,7 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New metric" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -177,7 +177,7 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New metric" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -225,12 +225,10 @@ describe("command palette", () => {
   // Enables a bunch of other stuff and messes up the "Renders a searchable command palette"
   // test. In the future, this can be integrated into the test above, or moved to a BE test
   it("should display collection names for documents in recents", () => {
-    H.activateToken("bleeding-edge");
-
     //Create a document so that it appears in the recents list
     cy.request(
       "POST",
-      "/api/ee/document",
+      "/api/document",
       createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
     );
 

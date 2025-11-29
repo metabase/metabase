@@ -34,6 +34,7 @@ export type TransformsPlugin = {
   canAccessTransforms: (state: State) => boolean;
   getDataStudioTransformRoutes(): ReactNode;
   TransformPicker: ComponentType<TransformPickerProps>;
+  useGetTransformQuery: any;
 };
 
 export type PythonTransformEditorProps = {
@@ -138,6 +139,7 @@ const getDefaultPluginTransforms = (): TransformsPlugin => ({
   canAccessTransforms: () => false,
   getDataStudioTransformRoutes: () => null,
   TransformPicker: PluginPlaceholder,
+  useGetTransformQuery: () => [],
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();

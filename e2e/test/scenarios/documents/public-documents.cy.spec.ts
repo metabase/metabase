@@ -94,7 +94,6 @@ describe("scenarios > documents > public", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.updateSetting("enable-public-sharing", true);
   });
 

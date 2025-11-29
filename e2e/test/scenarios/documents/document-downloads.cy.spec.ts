@@ -8,7 +8,6 @@ describe("scenarios > documents > downloads", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
   it("shows Download results for read-only document access", () => {
@@ -145,6 +144,8 @@ describe("scenarios > documents > downloads", () => {
   });
 
   it("hides Download results when the person lacks download permission but can view the collection", () => {
+    H.activateToken("bleeding-edge");
+
     H.createDocument({
       name: "No Download Permission Document",
       document: DOCUMENT_WITH_TWO_CARDS,

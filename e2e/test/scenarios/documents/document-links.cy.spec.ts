@@ -8,7 +8,6 @@ describe("Links in documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
   });
 
   describe("plain links", () => {

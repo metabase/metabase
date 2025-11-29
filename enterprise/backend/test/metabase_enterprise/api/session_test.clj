@@ -21,7 +21,6 @@
                               :database-auth-providers
                               :data-studio
                               :development-mode
-                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -71,7 +70,6 @@
             :database_auth_providers        true
             :data_studio                    true
             :development_mode               true
-            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
