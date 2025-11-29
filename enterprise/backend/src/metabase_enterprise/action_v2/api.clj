@@ -127,6 +127,10 @@
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 400 :scope scope :action action-def})))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/execute"
   "Execute an action with a single input.
 
@@ -158,6 +162,10 @@
                           :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params [input])})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/execute-bulk"
   "Execute an action with multiple inputs.
 
@@ -192,6 +200,10 @@
                           :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params inputs)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/execute-form"
   "Temporary endpoint for describing an actions parameters
   such that they can be presented correctly in a modal ahead of execution."

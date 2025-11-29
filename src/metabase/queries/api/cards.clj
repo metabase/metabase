@@ -14,6 +14,10 @@
         :else dashboard)
       (select-keys [:id :name :error])))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/dashboards"
   "Get the dashboards that multiple cards appear in. The response is a sequence of maps, each of which has a `card_id`
   and `dashboards`. `dashboard` may include an `:error` key, either `:unreadable-dashboard` or
@@ -31,6 +35,10 @@
               {:card_id id :dashboards (map present-dashboard in_dashboards)})
             $))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/move"
   "Moves a number of Cards to a single collection or dashboard.
 

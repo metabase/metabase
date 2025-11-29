@@ -338,6 +338,10 @@
   [conn-id]
   (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/sync"
   "Force a sync of the connection now.
 
@@ -358,6 +362,10 @@
                    :sync_started_at (seconds-from-epoch-now))
             (throw-error 502 (tru "Error requesting sync") response)))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/connection"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
