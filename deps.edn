@@ -4,10 +4,7 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {amalloy/ring-buffer                       {:mvn/version "1.3.1"               ; fixed length queue implementation, used in log buffering
-                                             :exclusions  [org.clojure/clojure
-                                                           org.clojure/clojurescript]}
-  amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+ {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
   bigml/histogram                           {:mvn/version "5.0.0"               ; Histogram data structure
                                              :exclusions  [junit/junit]}
