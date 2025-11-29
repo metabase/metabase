@@ -2,7 +2,7 @@
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
   (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for
-                            first second update-vals #?(:cljs clj->js)])
+                            first second update-vals get-in #?(:cljs clj->js)])
   #?(:clj (:require
            [net.cgrand.macrovich :as macros])
      :cljs (:require
@@ -375,6 +375,18 @@
                              coll coll)
                   maybe-persistent!
                   (with-meta (meta coll)))))
+
+(defn get-in
+  "Drop-in replacement for `clojure.core/get-in`, but more efficient."
+  ([m ks]
+   (reduce get m ks))
+  ([m ks not-found]
+   (let [sentinel #?(:clj (Object.) :cljs #js{})]
+     (reduce #(let [v (get %1 %2 sentinel)]
+                (if (identical? sentinel v)
+                  (reduced not-found)
+                  v))
+             m ks))))
 
 ;; List comprehension reimplementation.
 
