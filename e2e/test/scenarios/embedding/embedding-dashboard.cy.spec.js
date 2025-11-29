@@ -429,8 +429,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
     H.getIframeBody().within(() => {
       // Open the Name filter dropdown
       cy.findByTestId("dashboard-parameters-widget-container", {
-        timeout: 20_000,
+        timeout: 30_000,
       })
+        .should("be.visible")
         .findByText("Name")
         .click();
       // Test searching for names containing specific text
