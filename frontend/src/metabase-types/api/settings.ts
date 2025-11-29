@@ -78,9 +78,20 @@ export type DatabaseProvider = {
 
 export type EngineKey = (typeof engineKeys)[number];
 
+export type ContainerStyleType = "grid" | "component";
+export type ContainerStyle = [ContainerStyleType, string];
+
+export interface DatabaseFieldGroup {
+  type: "group";
+  "container-style": ContainerStyle;
+  fields: EngineField[];
+}
+
+export type DatabaseFieldOrGroup = EngineField | DatabaseFieldGroup;
+
 export interface Engine {
   "driver-name": string;
-  "details-fields"?: EngineField[];
+  "details-fields"?: DatabaseFieldOrGroup[];
   source: EngineSource;
   "superseded-by": string | null;
   "extra-info": {
