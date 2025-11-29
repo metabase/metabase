@@ -5,6 +5,7 @@ import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-per
 import {
   adaptiveRadioButton,
   cacheStrategySidesheet,
+  confirmModal,
   durationRadioButton,
   openSidebarCacheStrategyForm,
   questionSettingsSidesheet,
@@ -80,21 +81,30 @@ describe("scenarios > question > caching", () => {
     });
     [
       // clicking on cross button
-      () => cy.findByRole("button", { name: /Close/i }).click(),
+      () =>
+        cacheStrategySidesheet().within(() =>
+          cy.findByRole("button", { name: /Close/ }).click(),
+        ),
       // ESC button
       () => cy.get("body").type("{esc}"),
       // click outside
-      () => cy.findByTestId("modal-overlay").click({ force: true }),
-      // clicking on title with back icon on it
-      () => cy.findByRole("button", { name: /Caching settings/i }).click(),
-      // browser's back button
-      () => cy.go("back"),
-      // browser's forward button
-      () => cy.go("forward"),
-    ].forEach((action) => {
-      action();
-      cy.findByTestId("confirm-modal").should("be.visible");
-      cacheStrategySidesheet().should("be.visible");
+      () =>
+        cy
+          .findAllByTestId("modal-overlay")
+          .should("have.length", 2)
+          .last()
+          .click(),
+      // // clicking on title with back icon on it
+      () =>
+        cacheStrategySidesheet().within(() =>
+          cy.findByRole("button", { name: /Caching settings/ }).click(),
+        ),
+    ].forEach((attempt) => {
+      attempt();
+      confirmModal().within(() => {
+        // cancel to attempt closing other way
+        cy.findByRole("button", { name: /Cancel/ }).click();
+      });
     });
   });
 

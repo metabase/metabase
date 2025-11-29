@@ -138,6 +138,9 @@ export const openSidebarCacheStrategyForm = (
 export const cacheStrategySidesheet = () =>
   cy.findByRole("dialog", { name: /Caching settings/ }).should("be.visible");
 
+export const confirmModal = () =>
+  cy.findByTestId("confirm-modal").should("be.visible");
+
 export const questionSettingsSidesheet = () =>
   cy.findByRole("dialog", { name: /Question settings/ }).should("be.visible");
 
