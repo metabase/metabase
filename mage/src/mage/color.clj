@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:dynamic *disable-colors*
   "If set to true, all color functions will return the input string as is."
-  false)
+  (if (System/getenv "NO_COLOR") true false))
 
 (def ^:private reset
   (str "\033[" 0 "m"))

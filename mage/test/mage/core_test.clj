@@ -3,11 +3,9 @@
    [babashka.tasks :as bt]
    [clojure.string :as str]
    [clojure.test :as t :refer [deftest is testing]]
-   [mage.token-scan-test :as token-scan-test]
-   [mage.util :as u]))
-
-(comment
-  token-scan-test/keep-me)
+   [mage.token-scan-test]
+   [mage.util :as u]
+   [mage.util-test]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,4 +49,5 @@
   (testing "Invalid task name prints help"
     (invalid-task-names-print-help-test))
 
-  (t/run-tests 'mage.token-scan-test))
+  (t/run-tests 'mage.token-scan-test)
+  (t/run-tests 'mage.util-test))

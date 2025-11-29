@@ -2,7 +2,9 @@ name: Mage Tests
 
 on:
   pull_request:
-    paths: ["mage/**"]
+    paths:
+      - "mage/**"
+      - "bb.edn"
 
 jobs:
   # run mage tests even if the rest of be isnt needed

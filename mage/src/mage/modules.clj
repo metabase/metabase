@@ -3,6 +3,7 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
+   [mage.color :as c]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -104,9 +105,9 @@
     (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
     (println)
     (println)
-    (println "Driver tests" (if (skip-driver-tests? deps updated)
-                              "CAN be skipped."
-                              "MUST be run."))))
+    (println (if (skip-driver-tests? deps updated)
+               (c/green "Driver tests " (c/bold "CAN be skipped") "")
+               (c/red "Driver tests " (c/bold "MUST be run") ".")))))
 
 (defn cli-print-affected-modules
   [[git-ref, :as _command-line-args]]
@@ -120,8 +121,8 @@
     (println)
     (println)
     (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n" (pr-str (mapv module->test-directory affected)))
-    (flush))
-  (System/exit 0))
+    (flush)
+    (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
@@ -133,7 +134,7 @@
             (printf "Running driver tests because %s was changed\n" (pr-str filename))
             (flush)
             filename))
-        (u/updated-files (or git-ref "master"))))
+        (u/updated-clojure-files (or git-ref "master"))))
 
 (defn- remove-non-driver-test-namespaces [files]
   (into []
@@ -154,7 +155,7 @@
   Invoke this from the CLI with
 
     ./bin/mage can-skip-driver-tests [git-ref]"
-  [[git-ref, :as _command-line-args]]
+  [[git-ref, :as _arguments]]
   (let [deps          (dependencies)
         git-ref       (or git-ref "master")
         updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
@@ -162,7 +163,7 @@
         skip-tests?   (skip-driver-tests? deps updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
     (print-updated-and-unaffected-modules deps updated)
-    (System/exit ^Long (cond
-                         (not skip-tests?)                             1
-                         (changes-important-file-for-drivers? git-ref) 1
-                         :else                                         0))))
+    (u/exit (cond
+              (not skip-tests?)                             1
+              (changes-important-file-for-drivers? git-ref) 1
+              :else                                         0))))
