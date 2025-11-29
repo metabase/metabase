@@ -10,6 +10,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Box, Button, Icon, Stack, Text } from "metabase/ui";
+import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 import type {
   Database,
   DatabaseId,
@@ -162,6 +163,7 @@ export function PythonDataPicker({
           setDatabaseFn={handleDatabaseChange}
           databases={databases?.data ?? []}
           databaseIsDisabled={(database: Database) =>
+            !doesDatabaseSupportTransforms(database) ||
             !hasFeature(database, "transforms/python")
           }
         />
