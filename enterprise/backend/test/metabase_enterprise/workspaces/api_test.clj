@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [get-test-schema with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

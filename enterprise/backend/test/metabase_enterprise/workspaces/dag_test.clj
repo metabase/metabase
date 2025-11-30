@@ -24,15 +24,6 @@
 
 ;;;; Test data helpers
 
-(defn- kw->type
-  "Convert shorthand keyword to dependency type string.
-   :x<n> -> \"transform\", :t<n> -> \"table\", :m<n> -> \"card\""
-  [kw]
-  (case (first (name kw))
-    \x "transform"
-    \t "table"
-    \m "card"))
-
 (defn- transform? [kw] (= \x (first (name kw))))
 (defn- table? [kw] (= \t (first (name kw))))
 (defn- kw->id [kw] (parse-long (subs (name kw) 1)))

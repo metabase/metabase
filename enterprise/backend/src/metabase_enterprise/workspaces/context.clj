@@ -38,6 +38,7 @@
 ;;;; Public
 
 (defn ->context-with-resources
+  "TODO (lbrdnk): Add docstring."
   [graph]
   {:data (fetch-graph-resources graph)
    :graph graph})
@@ -45,6 +46,7 @@
 ;;;; Misc
 
 (defn transform-node->data
+  "TODO (lbrdnk): Add docstring."
   [ctx transform-node]
   ;; TODO: :var
   (get-in ctx [:data :id->transform (:id transform-node)]))
@@ -55,10 +57,11 @@
   (get-in ctx [:graph :dependencies node]))
 
 (defn has-dependencies?
+  "TODO (lbrdnk): Add docstring."
   [ctx node]
   (boolean (seq (direct-dependencies ctx node))))
 
-(defn transform-node->remapped-target-rf
+(defn- transform-node->remapped-target-rf
   [ctx acc transform-dep-node]
   (let [transform-data (transform-node->data ctx transform-dep-node)
         {:keys [schema name]} (:target transform-data)
@@ -67,6 +70,7 @@
     (assoc acc k v)))
 
 (defn transform-node->src->dst-remapping
+  "TODO (lbrdnk): Add docstring."
   [ctx transform-node]
   (let [transform-deps-nodes (direct-dependencies ctx transform-node)]
     (assert (every? (comp #{:transform} :type) transform-deps-nodes))
