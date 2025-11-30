@@ -466,3 +466,27 @@
 (deftest deps-flags-when-supported-driver-is-not-covered-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
                         (driver/native-query-deps ::mock-deps-driver nil nil))))
+
+(deftest ^:parallel maybe-swap-details-test
+  (testing "maybe-swap-details merges swap map into details"
+    (binding [#'driver/*swapped-connection-details* {1 {:user "swap-user" :password "swap-pass"}}]
+      (is (= {:host "localhost" :user "swap-user" :password "swap-pass"}
+             (driver/maybe-swap-details 1 {:host "localhost" :user "original-user" :password "original-pass"})))))
+
+  (testing "maybe-swap-details returns details unchanged when no swap exists"
+    (binding [#'driver/*swapped-connection-details* {1 {:user "swap-user"}}]
+      (is (= {:host "localhost" :user "original-user"}
+             (driver/maybe-swap-details 2 {:host "localhost" :user "original-user"})))))
+
+  (testing "maybe-swap-details supports deep merge for nested maps"
+    (binding [#'driver/*swapped-connection-details* {1 {:ssl {:key-store-password "new-pass"}}}]
+      (is (= {:host "localhost" :ssl {:enabled true :key-store-password "new-pass"}}
+             (driver/maybe-swap-details 1 {:host "localhost" :ssl {:enabled true :key-store-password "old-pass"}})))))
+
+  (testing "nested swaps for the same database throw an exception"
+    (driver/with-swapped-connection-details 1 {:user "outer"}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Nested connection detail swaps are not supported"
+           (driver/with-swapped-connection-details 1 {:user "inner"}
+             nil))))))
