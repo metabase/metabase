@@ -134,8 +134,11 @@ jobs:
         uses: ./.github/actions/prepare-cypress
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+
       - name: Generate database snapshots
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --env grepTags="${{inputs.qa_db && '' || '-@external'}}"
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep
