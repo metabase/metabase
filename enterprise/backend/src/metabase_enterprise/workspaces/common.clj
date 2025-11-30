@@ -11,6 +11,14 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn check-no-card-dependencies!
+  "Check that transforms don't depend on cards. Throws 400 if they do."
+  [transform-ids]
+  (when-let [card-ids (seq (ws.dag/card-dependencies transform-ids))]
+    (api/check-400 false
+                   (format "Cannot add transforms that depend on saved questions (cards). Found dependencies on card IDs: %s"
+                           (pr-str (vec card-ids))))))
+
 (defn- extract-suffix-number
   "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."
   [ws-name base-name]

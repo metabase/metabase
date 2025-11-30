@@ -259,7 +259,8 @@
                                                  :id [:in transform-ids]
                                                  :workspace_id [:not= nil])]
       (when (seq workspace-transforms)
-        (api/check-400 false "Cannot add transforms that belong to another workspace"))))
+        (api/check-400 false "Cannot add transforms that belong to another workspace")))
+    (ws.common/check-no-card-dependencies! transform-ids))
 
   (-> (ws.common/create-workspace! api/*current-user-id* body)
       ws->response))
@@ -343,7 +344,8 @@
                                                    :id [:in transform-ids]
                                                    :workspace_id [:not= nil])]
         (when (seq workspace-transforms)
-          (api/check-400 false "Cannot add transforms that belong to another workspace"))))
+          (api/check-400 false "Cannot add transforms that belong to another workspace")))
+      (ws.common/check-no-card-dependencies! transform-ids))
 
     (let [existing-upstream-ids (t2/select-fn-set :upstream_id :model/WorkspaceMappingTransform
                                                   :workspace_id id)
