@@ -4,6 +4,7 @@
   "description": "",
   "type": "module",
   "main": "run/build.js",
+  "packageManager": "pnpm@10.11.0",
   "engines": {
     "node": ">=18.0.0"
   },
