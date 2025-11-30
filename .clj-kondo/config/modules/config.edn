@@ -1325,6 +1325,7 @@
            metabase.sync.core
            metabase.sync.init
            metabase.sync.schedules
+           metabase.sync.sync-metadata.tables
            metabase.sync.task.sync-databases
            metabase.sync.util}
    :uses #{analyze
@@ -2277,6 +2278,7 @@
            app-db
            config
            driver
+           events
            lib
            lib-be
            query-processor
@@ -2291,6 +2293,22 @@
            models
            premium-features
            upload
+           util}}
+
+  enterprise/workspaces
+  {:team "Metabot"
+   :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.init}
+   :uses #{api
+           api-keys
+           driver
+           enterprise/transforms
+           events
+           models
+           queries
+           request
+           sync
+           system
            util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

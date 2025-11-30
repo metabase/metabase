@@ -17,6 +17,7 @@ import {
 export function PythonTransformEditor({
   source,
   proposedSource,
+  uiOptions,
   isDirty,
   onChangeSource,
   onAcceptProposed,
@@ -72,6 +73,7 @@ export function PythonTransformEditor({
     <Flex h="100%" w="100%">
       <PythonDataPicker
         database={source["source-database"]}
+        canChangeDatabase={uiOptions?.canChangeDatabase}
         tables={source["source-tables"]}
         onChange={handleDataChange}
       />
