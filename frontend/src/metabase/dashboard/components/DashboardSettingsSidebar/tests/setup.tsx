@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDashboardEndpoints,
@@ -59,11 +61,16 @@ export async function setup({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(
+  const TestDashboardSettingsSidebar = () => (
     <MockDashboardContext dashboard={dashboard} closeSidebar={onClose}>
       <DashboardSettingsSidebar />
-    </MockDashboardContext>,
-    { storeInitialState: state },
+    </MockDashboardContext>
+  );
+
+  renderWithProviders(
+    <Route path="*" component={TestDashboardSettingsSidebar} />,
+
+    { storeInitialState: state, withRouter: true },
   );
   await waitForLoaderToBeRemoved();
 

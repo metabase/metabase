@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDatabasesEndpoints,
@@ -67,9 +69,15 @@ export const setupStrategyEditorForDatabases = ({
   );
   setupDatabasesEndpoints(databases);
 
-  return renderWithProviders(<StrategyEditorForDatabases />, {
-    storeInitialState,
-  });
+  const TestStrategyEditorForDatabases = () => <StrategyEditorForDatabases />;
+
+  return renderWithProviders(
+    <Route path="*" component={TestStrategyEditorForDatabases} />,
+    {
+      storeInitialState,
+      withRouter: true,
+    },
+  );
 };
 
 export const getSaveButton = async () =>
