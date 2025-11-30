@@ -14,6 +14,7 @@ import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
+import { TasksSectionLayout } from "./app/pages/TasksSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
@@ -21,6 +22,7 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
+import { getDataStudioTasksRoutes } from "./tasks/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -54,6 +56,9 @@ export function getDataStudioRoutes(
           {getDataStudioMetricRoutes()}
           {getDataStudioSnippetRoutes()}
           {getDataStudioGlossaryRoutes()}
+        </Route>
+        <Route path="tasks" component={TasksSectionLayout}>
+          {getDataStudioTasksRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>

@@ -9,6 +9,7 @@ import type { Document } from "./document";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
+import type { UserInfo } from "./user";
 
 export type DependencyId = number;
 export type DependencyType =
@@ -35,14 +36,28 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
   dependents_count?: DependentsCount | null;
 };
 
+export type TableOwnerInfo = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name" | "common_name"
+>;
+
 export type TableDependencyNodeData = Pick<
   Table,
-  "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
->;
+  | "name"
+  | "display_name"
+  | "description"
+  | "db_id"
+  | "schema"
+  | "db"
+  | "fields"
+  | "view_count"
+> & {
+  owner?: TableOwnerInfo | null;
+};
 
 export type TransformDependencyNodeData = Pick<
   Transform,
-  "name" | "description" | "table"
+  "name" | "description" | "table" | "creator" | "last_run" | "target"
 >;
 
 export type CardDependencyNodeData = Pick<
@@ -61,9 +76,8 @@ export type CardDependencyNodeData = Pick<
   | "created_at"
   | "last-edit-info"
   | "moderation_reviews"
-> & {
-  view_count?: number | null;
-};
+  | "view_count"
+>;
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
@@ -80,16 +94,18 @@ export type DashboardDependencyNodeData = Pick<
   | "collection_id"
   | "collection"
   | "moderation_reviews"
-> & {
-  view_count?: number | null;
-};
+  | "view_count"
+>;
 
 export type DocumentDependencyNodeData = Pick<
   Document,
-  "name" | "created_at" | "creator" | "collection_id" | "collection"
-> & {
-  view_count?: number | null;
-};
+  | "name"
+  | "created_at"
+  | "creator"
+  | "collection_id"
+  | "collection"
+  | "view_count"
+>;
 
 export type SandboxDependencyNodeData = {
   table_id: TableId;
@@ -179,3 +195,70 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
+
+export type UnreferencedItemCardType = "question" | "model" | "metric";
+export type UnreferencedItemSortColumn = "name" | "location" | "view_count";
+export type UnreferencedItemSortDirection = "asc" | "desc";
+
+type UnreferencedNode<TType extends DependencyType, TData> = {
+  id: DependencyId;
+  type: TType;
+  data: TData;
+};
+
+export type UnreferencedTableItem = UnreferencedNode<
+  "table",
+  TableDependencyNodeData
+>;
+export type UnreferencedTransformItem = UnreferencedNode<
+  "transform",
+  TransformDependencyNodeData
+>;
+export type UnreferencedCardItem = UnreferencedNode<
+  "card",
+  CardDependencyNodeData
+>;
+export type UnreferencedSnippetItem = UnreferencedNode<
+  "snippet",
+  SnippetDependencyNodeData
+>;
+export type UnreferencedDashboardItem = UnreferencedNode<
+  "dashboard",
+  DashboardDependencyNodeData
+>;
+export type UnreferencedDocumentItem = UnreferencedNode<
+  "document",
+  DocumentDependencyNodeData
+>;
+export type UnreferencedSandboxItem = UnreferencedNode<
+  "sandbox",
+  SandboxDependencyNodeData
+>;
+
+export type UnreferencedItem =
+  | UnreferencedTableItem
+  | UnreferencedTransformItem
+  | UnreferencedCardItem
+  | UnreferencedSnippetItem
+  | UnreferencedDashboardItem
+  | UnreferencedDocumentItem
+  | UnreferencedSandboxItem;
+
+export type GetUnreferencedItemsRequest = {
+  types?: DependencyType | DependencyType[];
+  card_types?: UnreferencedItemCardType | UnreferencedItemCardType[];
+  query?: string;
+  sort_column?: UnreferencedItemSortColumn;
+  sort_direction?: UnreferencedItemSortDirection;
+  limit?: number;
+  offset?: number;
+};
+
+export type GetUnreferencedItemsResponse = {
+  data: UnreferencedItem[];
+  limit: number;
+  offset: number;
+  total: number;
+  sort_column: UnreferencedItemSortColumn;
+  sort_direction: UnreferencedItemSortDirection;
+};

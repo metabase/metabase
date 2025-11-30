@@ -12,6 +12,9 @@ import S from "./Footer.module.css";
 export interface FooterProps<TData> {
   table: Table<TData>;
   enablePagination?: boolean;
+  paginationTotal?: number;
+  paginationPageIndex?: number;
+  onPaginationChange?: (pageIndex: number) => void;
   showRowsCount?: boolean;
   rowsTruncated?: number;
   style?: React.CSSProperties;
@@ -23,6 +26,9 @@ export const Footer = <TData,>({
   table,
   showRowsCount,
   enablePagination,
+  paginationTotal,
+  paginationPageIndex,
+  onPaginationChange,
   className,
   style,
   tableFooterExtraButtons,
@@ -34,21 +40,48 @@ export const Footer = <TData,>({
     className: cx(S.root, className),
     style: { height: `${FOOTER_HEIGHT}px`, ...style },
   };
-  const total = table.getPrePaginationRowModel().rows.length;
+  const clientSideTotal = table.getPrePaginationRowModel().rows.length;
+  const isServerSidePagination =
+    paginationTotal != null &&
+    paginationPageIndex != null &&
+    onPaginationChange != null;
 
-  if (enablePagination) {
-    const pagination = table.getState().pagination;
-
-    const start = pagination.pageIndex * pagination.pageSize;
+  if (isServerSidePagination) {
+    const pageSize = table.getState().pagination.pageSize;
+    const start = paginationPageIndex * pageSize;
     const end =
-      Math.min((pagination.pageIndex + 1) * pagination.pageSize, total) - 1;
+      Math.min((paginationPageIndex + 1) * pageSize, paginationTotal) - 1;
+
     return (
       <div {...wrapperAttributes}>
         {tableFooterExtraButtons}
         <PaginationFooter
           start={start}
           end={end}
-          total={total}
+          total={paginationTotal}
+          onPreviousPage={() => onPaginationChange(paginationPageIndex - 1)}
+          onNextPage={() => onPaginationChange(paginationPageIndex + 1)}
+        />
+      </div>
+    );
+  }
+
+  if (enablePagination) {
+    const pagination = table.getState().pagination;
+
+    const start = pagination.pageIndex * pagination.pageSize;
+    const end =
+      Math.min(
+        (pagination.pageIndex + 1) * pagination.pageSize,
+        clientSideTotal,
+      ) - 1;
+    return (
+      <div {...wrapperAttributes}>
+        {tableFooterExtraButtons}
+        <PaginationFooter
+          start={start}
+          end={end}
+          total={clientSideTotal}
           onPreviousPage={table.previousPage}
           onNextPage={table.nextPage}
         />
@@ -65,14 +98,14 @@ export const Footer = <TData,>({
             ? getRowCountMessage(
                 {
                   data: { rows_truncated: rowsTruncated ?? 0 },
-                  row_count: total,
+                  row_count: clientSideTotal,
                 },
                 formatNumber,
               )
             : ngettext(
-                msgid`${formatNumber(total)} row`,
-                `${formatNumber(total)} rows`,
-                total,
+                msgid`${formatNumber(clientSideTotal)} row`,
+                `${formatNumber(clientSideTotal)} rows`,
+                clientSideTotal,
               )}
         </span>
       </div>

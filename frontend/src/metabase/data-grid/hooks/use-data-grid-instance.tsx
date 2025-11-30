@@ -72,6 +72,9 @@ export const useDataGridInstance = <TData, TValue>({
   columnRowSelectOptions,
   theme,
   pageSize,
+  total,
+  pageIndex,
+  onPageChange,
   enableRowSelection,
   rowSelection,
   onRowSelectionChange,
@@ -218,10 +221,10 @@ export const useDataGridInstance = <TData, TValue>({
       return undefined;
     }
 
-    return enablePagination
-      ? minGridWidthProp
-      : minGridWidthProp - getScrollBarSize();
-  }, [enablePagination, minGridWidthProp]);
+    // Always subtract scrollbar size because scrollbar-gutter: stable
+    // reserves space for the scrollbar even when there's no overflow
+    return minGridWidthProp - getScrollBarSize();
+  }, [minGridWidthProp]);
 
   const table = useReactTable({
     data,
@@ -541,5 +544,8 @@ export const useDataGridInstance = <TData, TValue>({
     getTotalHeight,
     getVisibleRows,
     enablePagination,
+    paginationTotal: total,
+    paginationPageIndex: pageIndex,
+    onPaginationChange: onPageChange,
   };
 };

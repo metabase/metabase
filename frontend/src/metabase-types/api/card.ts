@@ -80,6 +80,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
+  view_count?: number;
 }
 
 export interface PublicCard {
