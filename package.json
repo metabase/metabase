@@ -363,8 +363,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@types/react-dom": "^18.2.17",
-      "@types/react": "^18.2.42",
+      "@types/react-dom": "18.2.17",
+      "@types/react": "18.2.77",
       "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
       "ansi-regex": "5.0.1",
       "cipher-base": "^1.0.5",
