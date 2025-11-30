@@ -225,12 +225,23 @@
                  (let [table-name (t2/table-name model)
                        id-column (keyword (name table-name) "id")]
                    (case model
-                     ;; Superuser-only entities
-                     (:model/Transform :model/Sandbox)
+                     ;; Sandbox is superuser-only
+                     :model/Sandbox
                      (when api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id] :from [table-name]}]])
+
+                     ;; Transform requires transforms permission for the specific database
+                     :model/Transform
+                     [:and
+                      [:= entity-type-field (name entity-type)]
+                      (mi/visible-filter-clause
+                       model
+                       entity-id-field
+                       {:user-id       api/*current-user-id*
+                        :is-superuser? api/*is-superuser?*}
+                       nil)]
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
@@ -322,8 +333,13 @@
                            (m/map-vals #(map second %)))]
     (mapcat (fn [[entity-type entity-ids]]
               (let [model (entity-model entity-type)
-                    fields (entity-select-fields entity-type)]
-                (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
+                    fields (entity-select-fields entity-type)
+                    ;; For transforms, H2 doesn't support SQL-level JSON extraction so we need
+                    ;; application-layer filtering via mi/can-read? (following established pattern
+                    ;; in custom_migrations.clj where H2 falls back to Clojure-level processing)
+                    entities (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
+                               (= entity-type :transform) (->> (filter mi/can-read?)))]
+                (->> (cond-> entities
                        (= entity-type :card) (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
                                                  (->> (map collection.root/hydrate-root-collection))
                                                  (revisions/with-last-edit-info :card))

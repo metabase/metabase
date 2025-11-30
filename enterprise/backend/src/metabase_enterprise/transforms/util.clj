@@ -105,19 +105,24 @@
   (or api/*is-superuser?*
       (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms)))
 
+(defn databases-with-transforms-permission-for-user
+  "Returns a set of database IDs the given user has transforms permission for."
+  [user-id]
+  (set (t2/select-fn-set :db_id :model/DataPermissions
+                         {:select [[:p.db_id :db_id]]
+                          :from [[:permissions_group_membership :pgm]]
+                          :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                          :where [:and
+                                  [:= :pgm.user_id user-id]
+                                  [:= :p.perm_type "perms/transforms"]
+                                  [:= :p.perm_value "yes"]]})))
+
 (defn databases-with-transforms-permission
   "Returns a set of database IDs the current user has transforms permission for."
   []
   (if api/*is-superuser?*
     (set (t2/select-pks-vec :model/Database))
-    (set (t2/select-fn-set :db_id :model/DataPermissions
-                           {:select [[:p.db_id :db_id]]
-                            :from [[:permissions_group_membership :pgm]]
-                            :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                            :where [:and
-                                    [:= :pgm.user_id api/*current-user-id*]
-                                    [:= :p.perm_type "perms/transforms"]
-                                    [:= :p.perm_value "yes"]]}))))
+    (databases-with-transforms-permission-for-user api/*current-user-id*)))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."

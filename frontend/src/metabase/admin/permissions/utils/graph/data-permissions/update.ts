@@ -274,10 +274,7 @@ const hasFullViewDataAccess = (viewDataValue: DataPermissionValue): boolean => {
 const hasFullCreateQueriesAccess = (
   createQueriesValue: DataPermissionValue,
 ): boolean => {
-  return (
-    createQueriesValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE ||
-    createQueriesValue === DataPermissionValue.QUERY_BUILDER
-  );
+  return createQueriesValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
 };
 
 export function revokeTransformsPermissionIfNeeded(

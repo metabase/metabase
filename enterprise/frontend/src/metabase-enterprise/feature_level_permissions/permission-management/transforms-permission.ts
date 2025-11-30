@@ -56,10 +56,7 @@ const hasFullViewDataAccess = (viewDataValue: DataPermissionValue): boolean => {
 const hasFullCreateQueriesAccess = (
   createQueriesValue: DataPermissionValue,
 ): boolean => {
-  return (
-    createQueriesValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE ||
-    createQueriesValue === DataPermissionValue.QUERY_BUILDER
-  );
+  return createQueriesValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
 };
 
 const getTransformsDisabledTooltip = (
@@ -71,7 +68,7 @@ const getTransformsDisabledTooltip = (
   }
 
   if (!hasRequiredPermissions) {
-    return t`Transforms require unrestricted View data and Create queries access for all tables in this database`;
+    return t`Transforms require "Can view" data access and "Query builder and native" for all tables in this database`;
   }
 
   return null;
