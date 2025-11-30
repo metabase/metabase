@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [every? empty? #?(:clj doseq) #?(:clj for)])
   (:require
    [medley.core :as m]
-   [metabase.lib.computed :as lib.computed]
+   [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -153,10 +153,9 @@
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
-  (lib.computed/with-cache-sticky* metadata-providerable [:metadata/card card-id :metadata]
-    (fn []
-      (some-> (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)
-              (m/update-existing :dataset-query normalize-query metadata-providerable)))))
+  (lib.metadata.cache/with-cached-value metadata-providerable [:metadata/card card-id :metadata]
+    (some-> (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)
+            (m/update-existing :dataset-query normalize-query metadata-providerable))))
 
 (mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
   "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
