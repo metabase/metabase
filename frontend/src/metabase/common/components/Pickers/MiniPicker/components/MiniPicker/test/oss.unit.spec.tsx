@@ -45,6 +45,17 @@ describe("MiniPicker", () => {
     });
   });
 
+  it("shows 'Collections' when an adult decides you can't have access to Our analytics", async () => {
+    await setup({}, { hasAccessToRoot: false });
+
+    expect(await screen.findByText("Collections")).toBeInTheDocument();
+    expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+
+    // Should still be able to navigate into collections
+    await userEvent.click(await screen.findByText("Collections"));
+    expect(await screen.findByText("more things")).toBeInTheDocument();
+  });
+
   describe("tables", () => {
     it("can pick a table from a db with multiple schemas", async () => {
       const { onChangeSpy } = await setup();
