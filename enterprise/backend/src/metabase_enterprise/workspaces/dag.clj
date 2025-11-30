@@ -179,6 +179,41 @@
     (fn [e]
       [(index-of e) (:type e) (:id e)])))
 
+;;;; Card dependency detection
+
+;; TODO this may be overkill:
+;;   1. We currently care only that there is at-least-one card being depended on.
+;;   2. We know for transforms that we can only have any card dependencies if there is a first-order card dependency.
+;;
+;;   ie. we could just do an existence check on direct ancestors.
+;;
+;;   If we only disallow MBQL cards however, we would still need to walk transitive dependencies in
+;;   case we hit one further up. We could still short-circuit however.
+;;
+(defn card-dependencies
+  "Find all card IDs that the given transforms transitively depend on.
+   Queries the dependency table for upstream cards.
+   Returns a set of card IDs, or empty set if no card dependencies."
+  [transform-ids]
+  (when (seq transform-ids)
+    (let [starting-tuples (mapv (fn [id] ["transform" id]) transform-ids)
+          rows (t2/query {:with-recursive
+                          [[:starting (tuples->starting-cte starting-tuples)]
+                           [:upstream {:union-all
+                                       [{:select [:entity_type :entity_id]
+                                         :from   [:starting]}
+                                        {:select [[:d.to_entity_type :entity_type]
+                                                  [:d.to_entity_id :entity_id]]
+                                         :from   [[:dependency :d]]
+                                         :join   [[:upstream :r]
+                                                  [:and
+                                                   [:= :d.from_entity_type :r.entity_type]
+                                                   [:= :d.from_entity_id :r.entity_id]]]}]}]]
+                          :select-distinct [:entity_id]
+                          :from   [:upstream]
+                          :where  [:= :entity_type "card"]})]
+      (into #{} (map :entity_id) rows))))
+
 ;;;; Public API
 
 (defn path-induced-subgraph
