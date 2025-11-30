@@ -1895,7 +1895,6 @@
    :uses #{analyze
            api
            collections
-           config
            driver
            events
            graph

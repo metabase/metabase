@@ -34,6 +34,8 @@
 (derive ::card-deps :metabase/event)
 (derive :event/card-create ::card-deps)
 (derive :event/card-update ::card-deps)
+;; Backfill-only event that triggers dependency calculation without creating a revision (#66365)
+(derive :event/card-dependency-backfill ::card-deps)
 
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]
