@@ -1,4 +1,2 @@
-export * from "../../shared/SegmentsLink";
-export * from "./SyncOptionsModal";
+export * from "./SegmentsLink";
 export * from "./TablePicker";
-export * from "./TableSection";

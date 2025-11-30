@@ -34,10 +34,9 @@ import { TablePickerResults } from "./Results";
 interface Props {
   path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
-  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
+export function Tree({ path, onChange }: Props) {
   const {
     selectedTables,
     setSelectedTables,
@@ -49,11 +48,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader(path);
-
-  useEffect(() => {
-    setOnUpdateCallback(() => () => reload(path));
-    return () => setOnUpdateCallback(null);
-  }, [path, reload, setOnUpdateCallback]);
 
   const items = flatten(tree, {
     isExpanded,

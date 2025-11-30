@@ -352,7 +352,9 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
       )} ${wrappedSearchResult.model_name}`}</SubtitleText>
     );
   } else if (wrappedSearchResult.model === "table") {
-    return (
+    return wrappedSearchResult.collection?.name ? (
+      <SubtitleText>{wrappedSearchResult.collection.name}</SubtitleText>
+    ) : (
       <SubtitleText>
         {wrappedSearchResult.table_schema
           ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`

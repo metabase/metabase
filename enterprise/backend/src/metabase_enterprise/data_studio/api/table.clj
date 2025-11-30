@@ -5,18 +5,15 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -24,8 +21,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -110,48 +106,38 @@
       (maybe-sync-unhidden-tables! existing-tables set-map))
     {}))
 
-(defn- table->published-model
-  [{:keys [id name db_id] :as _table} creator-id collection-id]
-  {:name                   (format "Model based on %s" name)
-   :description            (format "Base model for table %s " name)
-   :dataset_query          (let [mp (lib-be/application-database-metadata-provider db_id)]
-                             (lib/query mp (lib.metadata/table mp id)))
-   :type                   :model
-   :display                :table
-   :visualization_settings {}
-   :creator_id             creator-id
-   :collection_id          collection-id
-   :published_table_id     id})
-
-(api.macros/defendpoint :post "/publish-model"
-  "Create a model for each of selected tables"
+(api.macros/defendpoint :post "/publish-table"
+  "Set collection for each of selected tables"
   [_route-params
    _query-params
-   {:keys [target_collection_id]
-    :as body}
-   :- [:merge
-       ::table-selectors
-       [:map
-        [:target_collection_id [:maybe [:or pos-int? [:= "library"]]]]]]]
+   body :- ::table-selectors]
   (api/check-superuser)
-  (let [target-collection (cond
-                            (= "library" target_collection_id) (api/check-403 (collections/remote-synced-collection))
-                            (nil? target_collection_id) nil
-                            :else (api/check-404 (t2/select-one :model/Collection target_collection_id)))
-        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        created-models    (t2/with-transaction [_conn]
-                            (into []
-                                  (comp
-                                   (map t2.realize/realize)
-                                   (partition-all 20)
-                                   (mapcat (fn [batch]
-                                             (mapv (fn [table]
-                                                     (queries/create-card! (table->published-model table api/*current-user-id* (:id target-collection)) @api/*current-user*))
-                                                   batch))))
-                                  (t2/reducible-select :model/Table :active true {:where where})))]
-    {:created_count     (count created-models)
-     :models            created-models
-     :target_collection target-collection}))
+  (let [target-collection (api/let-404 [colls (seq (t2/select :model/Collection
+                                                              :type collection/library-models-collection-type
+                                                              {:limit 2}))]
+                            (if (next colls)
+                              (throw (ex-info (tru "Multiple library-models collections found.")
+                                              {:status-code 409}))
+                              (first colls)))
+        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))]
+    (t2/query {:update (t2/table-name :model/Table)
+               :set    {:collection_id (:id target-collection)
+                        :is_published  true}
+               :where  where})
+    {:target_collection target-collection}))
+
+(api.macros/defendpoint :post "/unpublish-table"
+  "Unset collection for each of selected tables"
+  [_route-params
+   _query-params
+   body :- ::table-selectors]
+  (api/check-superuser)
+  (let [where (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))]
+    (t2/query {:update (t2/table-name :model/Table)
+               :set    {:collection_id nil
+                        :is_published  false}
+               :where  where})
+    api/generic-204-no-content))
 
 (defn- sync-schema-async!
   [table user-id]

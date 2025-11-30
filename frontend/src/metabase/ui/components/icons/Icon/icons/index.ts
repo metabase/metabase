@@ -350,6 +350,8 @@ import popular_component from "./popular.svg?component";
 import popular_source from "./popular.svg?source";
 import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
+import publish_component from "./publish.svg?component";
+import publish_source from "./publish.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
@@ -490,6 +492,8 @@ import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
 import unpin_source from "./unpin.svg?source";
+import unpublish_component from "./unpublish.svg?component";
+import unpublish_source from "./unpublish.svg?source";
 import unsubscribe_component from "./unsubscribe.svg?component";
 import unsubscribe_source from "./unsubscribe.svg?source";
 import upload_component from "./upload.svg?component";
@@ -1203,6 +1207,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: embed_static_component,
       source: embed_static_source,
     },
+    publish: {
+      component: publish_component,
+      source: publish_source,
+    },
     pulse: {
       component: pulse_component,
       source: pulse_source,
@@ -1481,6 +1489,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: unpin_component,
       source: unpin_source,
     },
+    unpublish: {
+      component: unpublish_component,
+      source: unpublish_source,
+    },
     unsubscribe: {
       component: unsubscribe_component,
       source: unsubscribe_source,
@@ -1754,6 +1766,7 @@ export type IconName =
   | "popover"
   | "popular"
   | "progress"
+  | "publish"
   | "pulse"
   | "receipt"
   | "recents"
@@ -1823,6 +1836,7 @@ export type IconName =
   | "undo"
   | "unknown"
   | "unpin"
+  | "unpublish"
   | "unsubscribe"
   | "upload"
   | "variable"

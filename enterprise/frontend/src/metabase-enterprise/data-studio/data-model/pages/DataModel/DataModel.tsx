@@ -9,19 +9,24 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  getTableMetadataQuery,
-  parseRouteParams,
-} from "metabase/metadata/pages/shared/utils";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, rem } from "metabase/ui";
-
+import * as Urls from "metabase/lib/urls";
 import {
   FieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
+} from "metabase/metadata/components";
+import {
+  getTableMetadataQuery,
+  parseRouteParams,
+} from "metabase/metadata/pages/shared/utils";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Box, Flex, Stack, rem } from "metabase/ui";
+import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
+
+import { trackMetadataChange } from "../../analytics";
+import {
   RouterTablePicker,
   SyncOptionsModal,
   TableSection,
@@ -56,14 +61,18 @@ function DataModelContent({ params }: Props) {
     selectedTables,
     hasSelectedMoreThanOneTable,
   } = useSelection();
+  const parsedParams = parseRouteParams(params);
   const {
     databaseId,
     fieldId,
     schemaName,
     tableId: queryTableId,
-  } = parseRouteParams(params);
-  const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ include_editable_data_model: true });
+  } = parsedParams;
+  const {
+    data: databasesData,
+    error: databasesError,
+    isLoading: isLoadingDatabases,
+  } = useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -82,7 +91,7 @@ function DataModelContent({ params }: Props) {
 
   const {
     data: table,
-    error,
+    error: tableError,
     isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
   const fieldsByName = useMemo(() => {
@@ -91,8 +100,17 @@ function DataModelContent({ params }: Props) {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
+
+  const {
+    data: libraryCollection,
+    isLoading: isLoadingLibrary,
+    error: libraryError,
+  } = useGetLibraryCollectionQuery();
+
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
+  const error = databasesError ?? tableError ?? libraryError;
+  const hasLibrary = libraryCollection?.id != null;
 
   useWindowEvent(
     "keydown",
@@ -180,7 +198,7 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <TableAttributesEditBulk />
+            <TableAttributesEditBulk hasLibrary={hasLibrary} />
           </Stack>
         )}
 
@@ -203,6 +221,7 @@ function DataModelContent({ params }: Props) {
                   key={table.id}
                   table={table}
                   activeFieldId={fieldId}
+                  hasLibrary={hasLibrary}
                   onSyncOptionsClick={openSyncModal}
                 />
               )}
@@ -226,15 +245,18 @@ function DataModelContent({ params }: Props) {
               {field && table && databaseId != null && (
                 <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                   <FieldSection
-                    databaseId={databaseId}
-                    field={field}
                     /**
                      * Make sure internal component state is reset when changing fields.
                      * This is to avoid state mix-up with optimistic updates.
                      */
                     key={getRawTableFieldId(field)}
+                    field={field}
                     parent={parentField}
                     table={table}
+                    getFieldHref={(fieldId) =>
+                      Urls.dataStudioData({ ...parsedParams, fieldId })
+                    }
+                    onTrackMetadataChange={trackMetadataChange}
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}
                   />
@@ -259,14 +281,11 @@ function DataModelContent({ params }: Props) {
           >
             <PreviewSection
               className={S.preview}
-              databaseId={databaseId}
               field={field}
-              fieldId={fieldId}
-              previewType={previewType}
               table={table}
-              tableId={metadataTableId}
-              onClose={closePreview}
+              previewType={previewType}
               onPreviewTypeChange={setPreviewType}
+              onClose={closePreview}
             />
           </Box>
         )}

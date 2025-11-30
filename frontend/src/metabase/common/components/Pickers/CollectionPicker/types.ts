@@ -21,7 +21,7 @@ export type CollectionItemId = CollectionId | CardId | DashboardId;
 // so that we can use its components for picking all of them
 export type CollectionPickerModel = Extract<
   CollectionItemModel,
-  "collection" | "card" | "dataset" | "metric" | "dashboard"
+  "collection" | "card" | "dataset" | "metric" | "dashboard" | "table"
 >;
 
 // we can enforce type safety at the boundary of a collection-only picker with this type

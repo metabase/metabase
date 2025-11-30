@@ -634,7 +634,8 @@ describe("scenarios > data studio > datamodel", () => {
       it("should indicate published tables", () => {
         getTableId({ databaseId: WRITABLE_DB_ID, name: domesticAnimalsTable })
           .then((tableId) => {
-            return publishTables([tableId]);
+            H.createLibrary();
+            publishTables([tableId]);
           })
           .as("publishedTableId");
 
@@ -1856,7 +1857,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "type_casting",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Casting enabled for Rating");
 
@@ -1974,7 +1975,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "semantic_type_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -2376,7 +2377,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "visibility_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Visibility of Tax updated");
           FieldSection.getVisibilityInput().should("have.value", "Everywhere");
@@ -2569,7 +2570,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "filtering_change",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           verifyAndCloseToast("Filtering of Quantity updated");
 
@@ -2735,7 +2736,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "display_values",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -2829,7 +2830,7 @@ describe("scenarios > data studio > datamodel", () => {
                 H.expectUnstructuredSnowplowEvent({
                   event: "metadata_edited",
                   event_detail: "display_values",
-                  triggered_from: "admin",
+                  triggered_from: "data_studio",
                 });
                 H.undoToast().should(
                   "contain.text",
@@ -3195,7 +3196,7 @@ describe("scenarios > data studio > datamodel", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
             event_detail: "json_unfolding",
-            triggered_from: "admin",
+            triggered_from: "data_studio",
           });
           H.undoToast().should(
             "contain.text",
@@ -3321,7 +3322,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.expectUnstructuredSnowplowEvent({
           event: "metadata_edited",
           event_detail: "formatting",
-          triggered_from: "admin",
+          triggered_from: "data_studio",
         });
         verifyAndCloseToast("Formatting of Quantity updated");
 
@@ -4101,9 +4102,8 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-model", {
+  return cy.request("POST", "/api/ee/data-studio/table/publish-table", {
     table_ids: tableIds,
-    target_collection_id: null,
   });
 }
 

@@ -162,7 +162,7 @@
             (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
-                        :pk_field)
+                        :pk_field :collection)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
@@ -183,7 +183,7 @@
                 (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                             :view_count]
                                            :id table-id)
-                            :pk_field)
+                            :pk_field :collection)
                 {:schema       ""
                  :name         "schemaless_table"
                  :display_name "Schemaless"
@@ -244,8 +244,9 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                             :id (mt/id :users))
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                         :id (mt/id :users))
+                          :collection)
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -325,8 +326,9 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                             :id (mt/id :users))
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                         :id (mt/id :users))
+                          :collection)
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -419,7 +421,8 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details])))
-              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
+              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+                          :pk_field :collection)
               {:description     "What a nice table!"
                :entity_type     nil
                :schema          ""
@@ -644,7 +647,8 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+            (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+                        :collection)
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"

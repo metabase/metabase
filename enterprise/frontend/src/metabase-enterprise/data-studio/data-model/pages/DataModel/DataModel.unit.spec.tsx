@@ -7,6 +7,7 @@ import {
   setupDatabaseIdFieldsEndpoints,
   setupDatabasesEndpoints,
   setupFieldsValuesEndpoints,
+  setupLibraryEndpoints,
   setupTableEndpoints,
   setupTableSearchEndpoint,
   setupTablesBulkEndpoints,
@@ -24,7 +25,7 @@ import {
   within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import { getUrl } from "metabase/metadata/pages/shared/utils";
+import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
@@ -181,12 +182,10 @@ const OtherComponent = () => {
   return (
     <>
       <span>Another route</span>
-      <Link to="admin/datamodel">Link to Data Model</Link>
+      <Link to="data-studio/data">Link to Data Model</Link>
     </>
   );
 };
-
-const BASE_URL = "/admin/datamodel";
 
 async function setup({
   databases = [SAMPLE_DB],
@@ -203,9 +202,10 @@ async function setup({
   setupTablesBulkEndpoints();
   setupUsersEndpoints([createMockUserListResult()]);
   setupUserAcknowledgementEndpoints({
-    key: "seen-publish-models-info",
+    key: "seen-publish-tables-info",
     value: false,
   });
+  setupLibraryEndpoints();
 
   if (hasFieldValuesAccess) {
     setupFieldsValuesEndpoints(fieldValues);
@@ -220,8 +220,8 @@ async function setup({
 
   const { history } = renderWithProviders(
     <>
-      <Route path="notAdmin" component={OtherComponent} />
-      <Route path="admin/datamodel">
+      <Route path="notData" component={OtherComponent} />
+      <Route path="data-studio/data">
         <IndexRedirect to="database" />
         <Route path="database" component={DataModel} />
         <Route path="database/:databaseId" component={DataModel} />
@@ -241,7 +241,7 @@ async function setup({
     </>,
     {
       withRouter: true,
-      initialRoute: initialRoute ?? getUrl(BASE_URL, params),
+      initialRoute: initialRoute ?? Urls.dataStudioData(params),
     },
   );
 
@@ -647,7 +647,7 @@ describe("DataModel", () => {
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
         const { history } = await setup({
-          initialRoute: "notAdmin",
+          initialRoute: "notData",
           waitForDatabase: false,
           waitForTable: false,
         });

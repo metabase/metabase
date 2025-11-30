@@ -184,7 +184,9 @@
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
                                         [:id :name :authority_level :type])
-                           (merge {:id              collection_id
+                           (merge {:id              (if (and (nil? collection_id) (some? collection_name))
+                                                      "root"
+                                                      collection_id)
                                    :name            collection_name
                                    :authority_level collection_authority_level
                                    :type            collection_type}

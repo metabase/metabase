@@ -11,6 +11,8 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
+import { usePublishTables } from "metabase-enterprise/data-studio/common/hooks/use-publish-tables";
+import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -19,19 +21,26 @@ import type {
 
 import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
 import { SyncOptionsModal } from "../SyncOptionsModal";
-import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
-export function TableAttributesEditBulk() {
+type TableAttributesEditBulkProps = {
+  hasLibrary: boolean;
+};
+
+export function TableAttributesEditBulk({
+  hasLibrary,
+}: TableAttributesEditBulkProps) {
   const {
     selectedTables,
     selectedSchemas,
     selectedDatabases,
     selectedItemsCount,
   } = useSelection();
-  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
+  const { publishConfirmationModal, isPublishing, handlePublish } =
+    usePublishTables({ hasLibrary });
+  const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
   const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
@@ -136,27 +145,44 @@ export function TableAttributesEditBulk() {
 
         <Box px="lg">
           <Group gap="sm">
-            <Box flex={1}>
+            <Button
+              flex={1}
+              p="sm"
+              disabled={isPublishing}
+              leftSection={<Icon name="publish" />}
+              onClick={() =>
+                handlePublish({
+                  databaseIds: Array.from(selectedDatabases),
+                  schemaIds: Array.from(selectedSchemas),
+                  tableIds: Array.from(selectedTables),
+                })
+              }
+            >
+              {t`Publish`}
+            </Button>
+            {hasLibrary && (
               <Button
-                leftSection={<Icon name="settings" />}
-                onClick={openSyncModal}
-                style={{
-                  width: "100%",
-                }}
-              >
-                {t`Sync settings`}
-              </Button>
-            </Box>
-            <Box flex={1}>
-              <Button
-                onClick={() => setIsCreateModelsModalOpen(true)}
+                flex={1}
                 p="sm"
-                leftSection={<Icon name="add_folder" />}
-                style={{
-                  width: "100%",
-                }}
-              >{t`Publish`}</Button>
-            </Box>
+                leftSection={<Icon name="unpublish" />}
+                onClick={() =>
+                  handleUnpublish({
+                    databaseIds: Array.from(selectedDatabases),
+                    schemaIds: Array.from(selectedSchemas),
+                    tableIds: Array.from(selectedTables),
+                  })
+                }
+              >
+                {t`Unpublish`}
+              </Button>
+            )}
+            <Button
+              flex={1}
+              leftSection={<Icon name="settings" />}
+              onClick={openSyncModal}
+            >
+              {t`Sync settings`}
+            </Button>
           </Group>
         </Box>
 
@@ -235,13 +261,8 @@ export function TableAttributesEditBulk() {
         </Box>
       </Stack>
 
-      <PublishModelsModal
-        tables={selectedTables}
-        schemas={selectedSchemas}
-        databases={selectedDatabases}
-        isOpen={isCreateModelsModalOpen}
-        onClose={() => setIsCreateModelsModalOpen(false)}
-      />
+      {publishConfirmationModal}
+      {unpublishConfirmationModal}
 
       <SyncOptionsModal
         isOpen={isSyncModalOpen}

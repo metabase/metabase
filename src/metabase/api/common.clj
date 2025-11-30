@@ -491,11 +491,16 @@
 ;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
 
 (defn bit->boolean
-  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean.
+
+  MariaDB is especially strange: https://stackoverflow.com/questions/78466426/bit1-in-view-using-conditionals-in-mariadb-returns-48-49"
   [v]
-  (if (number? v)
-    (not (zero? v))
-    v))
+  (cond
+    (number? v)                      (not (zero? v))
+    (and (bytes? v) (= (count v) 1)) (case (char (first v))
+                                       \0 false
+                                       \1 true)
+    :else                            v))
 
 (defn parse-multi-values-param
   "Parse a param that could have a single value or multiple values using `parse-fn`.

@@ -21,6 +21,7 @@ import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
+import { getDataStudioTableRoutes } from "./tables/routes";
 
 export function getDataStudioRoutes(
   store: Store<State>,
@@ -50,6 +51,7 @@ export function getDataStudioRoutes(
         )}
         <Route path="modeling" component={ModelingSectionLayout}>
           {getDataStudioModelingRoutes()}
+          {getDataStudioTableRoutes()}
           {getDataStudioModelRoutes()}
           {getDataStudioMetricRoutes()}
           {getDataStudioSnippetRoutes()}

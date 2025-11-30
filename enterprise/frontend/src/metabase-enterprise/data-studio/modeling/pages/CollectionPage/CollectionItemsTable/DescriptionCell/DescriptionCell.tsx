@@ -1,12 +1,12 @@
 import { Cell } from "metabase/browse/components/BrowseTable.styled";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Skeleton } from "metabase/ui";
+import type { CollectionItem } from "metabase-types/api";
 
-import type { ModelingItem } from "../types";
 import { getItemDescription } from "../utils";
 
 interface DescriptionCellProps {
-  item?: ModelingItem;
+  item?: CollectionItem;
 }
 
 const CONTAINER_NAME = "ItemsTableContainer";
@@ -24,7 +24,7 @@ export function DescriptionCell({ item }: DescriptionCellProps) {
           allowedElements={["strong", "em"]}
           oneLine
         >
-          {getItemDescription(item) || ""}
+          {getItemDescription(item)}
         </MarkdownPreview>
       ) : (
         <Skeleton natural h="16.8px" />

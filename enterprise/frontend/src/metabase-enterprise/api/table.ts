@@ -1,10 +1,11 @@
 import type {
   DiscardTablesValuesRequest,
   EditTablesRequest,
-  PublishModelsRequest,
-  PublishModelsResponse,
+  PublishTablesRequest,
+  PublishTablesResponse,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
+  UnpublishTablesRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -57,13 +58,22 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    publishModels: builder.mutation<
-      PublishModelsResponse,
-      PublishModelsRequest
+    publishTables: builder.mutation<
+      PublishTablesResponse,
+      PublishTablesRequest
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/data-studio/table/publish-model",
+        url: "/api/ee/data-studio/table/publish-table",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
+    }),
+    unpublishTables: builder.mutation<void, UnpublishTablesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/data-studio/table/unpublish-table",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -77,5 +87,6 @@ export const {
   useRescanTablesFieldValuesMutation,
   useSyncTablesSchemasMutation,
   useDiscardTablesFieldValuesMutation,
-  usePublishModelsMutation,
+  usePublishTablesMutation,
+  useUnpublishTablesMutation,
 } = tableApi;

@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders } from "__support__/ui";
+import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -266,6 +266,19 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("tables", () => {
+    it("should not allow actions on a table", () => {
+      const item = createMockCollectionItem({
+        id: 1,
+        model: "table",
+      });
+
+      setup({ item });
+
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
     });
   });
 });

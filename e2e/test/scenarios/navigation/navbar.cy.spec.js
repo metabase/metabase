@@ -148,4 +148,24 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().should("not.be.visible");
     });
   });
+
+  describe("library", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+    });
+
+    it("should show the library when a table is published", () => {
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      cy.visit("/");
+      H.navigationSidebar()
+        .findByRole("section", { name: "Library" })
+        .findByText("Data")
+        .click();
+      H.collectionTable().findByText("Orders").click();
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
+    });
+  });
 });

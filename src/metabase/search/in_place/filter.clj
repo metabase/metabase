@@ -284,8 +284,18 @@
                             [:= :collection.id collection-id]
                             [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
 
+(defmethod build-optional-filter-query [:collection "table"]
+  [_filter model query collection-id]
+  (let [collection-col (search.config/column-with-model-alias model :collection_id)
+        published-col  (search.config/column-with-model-alias model :is_published)]
+    (sql.helpers/where query [:and
+                              [:= published-col true]
+                              [:or
+                               [:= collection-col collection-id]
+                               [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]])))
+
 ;; Things that don't belong to collections
-(doseq [model ["table" "database" "action" "indexed-entity"]]
+(doseq [model ["database" "action" "indexed-entity"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter _model query _collection-id]
     ;; These models don't have collection_id, so they never match
@@ -311,7 +321,7 @@
             (reduce (fn [acc [filter model]]
                       (update acc filter set/union #{model}))
                     {})))
-      (update :collection disj "table" "database")
+      (update :collection disj "database")
       (update :collection conj "indexed-entity")))
 
 ;; ------------------------------------------------------------------------------------------------;;

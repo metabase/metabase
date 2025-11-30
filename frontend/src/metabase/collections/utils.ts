@@ -175,10 +175,23 @@ export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
 }
 
-export function canBookmarkItem(item: CollectionItem) {
-  return (
-    !isLibraryCollection(item as Pick<Collection, "type">) && !item.archived
-  );
+export function canBookmarkItem({ model, type, archived }: CollectionItem) {
+  if (archived) {
+    return false;
+  }
+
+  if (type === "question" || type === "model" || type === "metric") {
+    return true;
+  }
+
+  switch (model) {
+    case "table":
+      return false;
+    case "collection":
+      return !isLibraryCollection({ type });
+    default:
+      return true;
+  }
 }
 
 export function canPinItem(item: CollectionItem, collection?: Collection) {
@@ -210,6 +223,7 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     !isReadOnlyCollection(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
     !isLibraryCollection(item as Pick<Collection, "type">) &&
+    item.model !== "table" &&
     !item.archived
   );
 }
