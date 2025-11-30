@@ -15,6 +15,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     dashboard = 0,
     document = 0,
     sandbox = 0,
+    segment = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -27,6 +28,7 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "dashboard", count: dashboard },
     { type: "document", count: document },
     { type: "sandbox", count: sandbox },
+    { type: "segment", count: segment },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -75,5 +77,7 @@ export function getDependentGroupLabel({
         `${count} row and column security rules`,
         count,
       );
+    case "segment":
+      return ngettext(msgid`${count} segment`, `${count} segments`, count);
   }
 }

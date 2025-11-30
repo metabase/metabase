@@ -4,6 +4,7 @@ import type { DependencyNode } from "metabase-types/api";
 import {
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
+  createMockSegmentDependencyNode,
   createMockSnippetDependencyNode,
   createMockTableDependencyNode,
   createMockTableDependencyNodeData,
@@ -119,6 +120,15 @@ describe("getNodeLink", () => {
       expectedLink: {
         label: "View metadata",
         url: "/admin/datamodel/database/2/schema/2:not%20public/table/1",
+      },
+    },
+    {
+      node: createMockSegmentDependencyNode({
+        id: 1,
+      }),
+      expectedLink: {
+        label: "View this segment",
+        url: "/admin/datamodel/segment/1",
       },
     },
   ])("should get the node link", ({ node, expectedLink }) => {

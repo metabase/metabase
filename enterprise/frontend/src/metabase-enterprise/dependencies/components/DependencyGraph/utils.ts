@@ -146,6 +146,8 @@ export function getNodeIconWithType(
       return "document";
     case "sandbox":
       return "permissions_limited";
+    case "segment":
+      return "segment";
   }
 }
 
@@ -203,6 +205,11 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         };
       }
       return null;
+    case "segment":
+      return {
+        label: t`View this segment`,
+        url: Urls.dataStudioSegment(node.id),
+      };
     case "snippet":
       return null;
   }
@@ -253,6 +260,20 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         ];
       }
       return null;
+    case "segment":
+      if (node.data.table != null) {
+        return [
+          {
+            label: node.data.table.display_name,
+            url: Urls.dataModelTable(
+              node.data.table.db_id,
+              node.data.table.schema,
+              node.data.table.id,
+            ),
+          },
+        ];
+      }
+      return null;
     case "transform":
     case "snippet":
     case "sandbox":
@@ -275,6 +296,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "transform":
     case "snippet":
     case "sandbox":
+    case "segment":
       return null;
   }
 }
@@ -327,5 +349,7 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
       return { label: t`Row and column security rule`, color: "error" };
+    case "segment":
+      return { label: t`Segment`, color: "accent2" };
   }
 }
