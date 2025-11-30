@@ -41,6 +41,10 @@ describe("scenarios > data studio > modeling > library", () => {
     cy.wait("@createLibrary");
     cy.wait("@getCollectionTree");
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_library_created",
+    });
+
     cy.log("Verify library collections appear in sidebar");
     H.DataStudio.ModelingSidebar.collectionsTree().within(() => {
       cy.findByText("Data").should("be.visible");

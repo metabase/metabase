@@ -12,6 +12,7 @@ import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
+import { trackDataStudioLibraryMetricCreated } from "metabase-enterprise/data-studio/analytics";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
@@ -77,6 +78,7 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
   );
 
   const handleCreate = (card: Card) => {
+    trackDataStudioLibraryMetricCreated(card.id);
     dispatch(push(Urls.dataStudioMetric(card.id)));
   };
 

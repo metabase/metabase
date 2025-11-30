@@ -1,13 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
+import { Route } from "react-router";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ProfileLink } from "metabase/nav/components/ProfileLink";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
+  createMockTokenFeatures,
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -38,6 +42,7 @@ function setup({
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
+  withDataStudio = false,
 }: {
   isAdmin?: boolean;
   isHosted?: boolean;
@@ -45,6 +50,7 @@ function setup({
   helpLinkSetting?: HelpLinkSetting;
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
+  withDataStudio?: boolean;
 }) {
   const settings = mockSettings({
     "is-hosted?": isHosted,
@@ -52,6 +58,9 @@ function setup({
     "help-link": helpLinkSetting,
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
+    "token-features": createMockTokenFeatures({
+      data_studio: withDataStudio,
+    }),
   });
 
   const admin = createMockAdminState({
@@ -60,13 +69,22 @@ function setup({
     }),
   });
 
-  return renderWithProviders(<ProfileLink />, {
-    storeInitialState: {
-      admin,
-      settings,
-      currentUser: createMockUser({ is_superuser: isAdmin }),
+  if (withDataStudio) {
+    setupEnterpriseOnlyPlugin("data-studio");
+  }
+
+  return renderWithProviders(
+    <Route path="/" component={() => <ProfileLink />} />,
+    {
+      storeInitialState: {
+        admin,
+        settings,
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      },
+      initialRoute: "/",
+      withRouter: true,
     },
-  });
+  );
 }
 
 function setupHosted(opts = {}) {
@@ -141,6 +159,28 @@ describe("ProfileLink", () => {
 
       await openMenu();
       expect(screen.queryByText("How to use Metabase")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("'Data studio' link", () => {
+    it("should render a link to data studio and trigger the analytics event", async () => {
+      setup({
+        isAdmin: true,
+        isHosted: true,
+        withDataStudio: true,
+      });
+
+      await openMenu();
+      jest.spyOn(PLUGIN_DATA_STUDIO, "trackDataStudioOpened");
+
+      expect(
+        screen.getByRole("menuitem", { name: "Data studio" }),
+      ).toHaveAttribute("href", "/data-studio");
+      screen.getByRole("menuitem", { name: "Data studio" }).click();
+      expect(PLUGIN_DATA_STUDIO.trackDataStudioOpened).toHaveBeenCalledTimes(1);
+      expect(PLUGIN_DATA_STUDIO.trackDataStudioOpened).toHaveBeenCalledWith(
+        "profile-menu",
+      );
     });
   });
 
