@@ -108,3 +108,49 @@
                 (catch Exception _e
                   ;; Ignore cleanup errors
                   nil)))))))))
+
+;;; ------------------------------------------------------------
+;;; Filter xf tests
+;;; ------------------------------------------------------------
+
+(deftest ^:parallel type-filter-xf-test
+  (testing "->type-filter-xf filters transforms by source type"
+    (let [query-transform  {:id 1 :source {:type "query"}}
+          python-transform {:id 2 :source {:type "python"}}
+          transforms       [query-transform python-transform]]
+
+      (are [x y] (= x (into [] (transforms.util/->type-filter-xf y) transforms))
+        transforms         nil
+        transforms         []
+        [query-transform]  ["query"]
+        [python-transform] ["python"]
+        transforms         ["query" "python"]
+        []                 ["whatever"]))))
+
+(deftest ^:parallel database-id-filter-xf-test
+  (testing "->database-id-filter-xf filters transforms by database ID"
+    (let [db1-query-x  {:id     1
+                        :name   "Query on DB1"
+                        :source {:type "query" :query {:database 1}}
+                        :target {:type "table" :name "t1"}}
+          db2-query-x  {:id     2
+                        :name   "Query on DB2"
+                        :source {:type "query" :query {:database 2}}
+                        :target {:type "table" :name "t2"}}
+          db3-python-x {:id     3
+                        :name   "Python with source DB3"
+                        :source {:type "python" :source-database 3 :body ""}
+                        :target {:type "table" :name "t3" :database 4}}
+          db4-target-x {:id     4
+                        :name   "Python targeting DB4"
+                        :source {:type "python" :body "" :source-tables {}}
+                        :target {:type "table" :name "t4" :database 4}}
+          transforms   [db1-query-x db2-query-x db3-python-x db4-target-x]]
+
+      (are [x y] (= x (into [] (transforms.util/->database-id-filter-xf y) transforms))
+        transforms                  nil
+        [db1-query-x]               1
+        [db2-query-x]               2
+        [db3-python-x]              3
+        [db3-python-x db4-target-x] 4
+        []                          999))))
