@@ -19,7 +19,7 @@
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
   []
-  (u/seek #(not= :search.engine/semantic %) (search.engine/supported-engines)))
+  (u/seek #(not (isa? % :search.engine/semantic)) (search.engine/supported-engines)))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
@@ -33,19 +33,29 @@
    (some? semantic.db.datasource/db-url)
    (semantic.settings/semantic-search-enabled)))
 
+(defn- hybrid-variant? [{:keys [search-engine]}]
+  (case search-engine
+    :search.engine/semantic        true
+    :search.engine/semantic-hybrid true
+    :search.engine/semantic-only   false
+    (do
+      (log/warn "Unknown semantic search-engine variant:" search-engine)
+      true)))
+
 (defenterprise results
   "Enterprise implementation of semantic search results with improved fallback logic. Falls back to appdb search only
   when semantic search returns too few results and some results were filtered out (e.g. due to permission checks)."
   :feature :semantic-search
   [search-ctx]
   (try
-    (let [{:keys [results raw-count]}
+    (let [hybrid? (hybrid-variant? search-ctx)
+          {:keys [results raw-count]}
           (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
                                        (semantic.env/get-index-metadata)
-                                       search-ctx)
+                                       (assoc search-ctx :semantic-hybrid-mode? hybrid?))
           final-count (count results)
           threshold (semantic.settings/semantic-search-min-results-threshold)]
-      (if (or (>= final-count threshold)
+      (if (or (and (not hybrid?) (>= final-count threshold))
               (and (zero? raw-count)
                    ;; :search-string is nil when using search to populate the list of tables for a given database in
                    ;; the native query editor. Semantic search doesn't support this, so fallback in this case.

@@ -8,6 +8,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
+   [metabase.search.core :as search.core]
    [metabase.search.engine :as search.engine]
    [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
@@ -81,8 +82,22 @@
                     (is (not @semantic-called?) "Semantic search should not be called when overridden")
                     (is (not @appdb-called?) "AppDB search should not be called when overridden")))))))))))
 
-(def ^:private search-context
-  {:search-string "test" :search-engine :search.engine/semantic})
+;; Behind a delay as we need the db to be initialized before we can determine the admin user id.
+(def ^:private search-context-input-delay
+  (delay
+    {:search-string         "test"
+     :search-engine         "semantic"
+    ;; suppress warnings
+     :current-user-id       (mt/user->id :crowberto)
+     :is-superuser?         true
+     :is-impersonated-user? false
+     :is-sandboxed-user?    false
+     :current-user-perms    #{"/"}
+     :model-ancestors?      false
+     :models                nil}))
+
+;; Behind a delay as we need the db to be initialized before we can build the input, and do feature flag validation
+(def ^:private search-context-delay (delay (search.core/search-context @search-context-input-delay)))
 
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
@@ -125,10 +140,10 @@
                                 (make-card-result 2 "fallback-card-2")
                                 (make-card-result 3 "fallback-card-3")
                                 (make-card-result 4 "fallback-dashboard" :model "dashboard")]
-              search-ctx       search-context
-              metrics (atom {:metabase-search/semantic-fallback-results-usage 0
-                             :metabase-search/semantic-fallback-triggered 0
-                             :metabase-search/semantic-results-before-fallback 0})]
+              search-ctx       @search-context-delay
+              metrics          (atom {:metabase-search/semantic-fallback-results-usage  0
+                                      :metabase-search/semantic-fallback-triggered      0
+                                      :metabase-search/semantic-results-before-fallback 0})]
           (with-redefs [analytics/inc! (fn [metric & _args]
                                          (case metric
                                            :metabase-search/semantic-fallback-triggered
@@ -167,7 +182,7 @@
     (mt/with-premium-features #{:semantic-search}
       (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
         (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
-              search-ctx      search-context]
+              search-ctx      @search-context-delay]
           (with-search-engine-mocks! [semantic-result] (fn [_] (throw (ex-info "Fallback fail" {})))
             (fn []
               (let [results (into [] (semantic.core/results search-ctx))]
@@ -181,7 +196,7 @@
                                 (make-card-result 2 "semantic-card-2" :score 0.8)
                                 (make-card-result 3 "semantic-card-3" :score 0.7)
                                 (make-card-result 4 "semantic-card-4" :score 0.6)]
-              search-ctx       search-context
+              search-ctx       @search-context-delay
               fallback-fn      (fn [ctx] (throw (ex-info "Should not call fallback engine" {:engine (:search-engine ctx)})))]
           (with-search-engine-mocks! semantic-results fallback-fn
             (fn []
@@ -198,7 +213,7 @@
         (let [semantic-result  (make-card-result 1 "semantic-card" :score 0.9)
               fallback-results (for [i (range 2 10)]
                                  (make-card-result i (str "fallback-card-" i)))
-              search-ctx       search-context]
+              search-ctx       @search-context-delay]
           (with-search-engine-mocks! [semantic-result] fallback-results
             (fn []
               (let [results (semantic.core/results search-ctx)]
@@ -214,7 +229,7 @@
     (mt/with-premium-features #{:semantic-search}
       (let [semantic-results {:results [] :raw-count 0}
             fallback-results [(make-card-result 1 "fallback-card-1")]
-            search-ctx       search-context]
+            search-ctx       @search-context-delay]
         (with-search-engine-mocks! semantic-results fallback-results
           (fn []
             (testing ":search-string is nil"
@@ -223,3 +238,23 @@
             (testing ":search-string is empty"
               (let [results (semantic.core/results (assoc search-ctx :search-string ""))]
                 (is (= fallback-results results))))))))))
+
+;; TODO (Chris, 2025-11-14) It's gross that we test this with mocking, but in-line with the rest of the test suite.
+;;      Ideally we would do more back box testing, and use actual embedding snapshots taken from a real model.
+(deftest test-engine-variant-to-hybrid-mode-mapping
+  (testing "search engine variants correctly map to hybrid mode flag"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-dynamic-fn-redefs [semantic.pgvector-api/query
+                                  (fn [_pgvector _index-metadata search-ctx]
+                                    {:results [(make-card-result 1 (str (:semantic-hybrid-mode? search-ctx)))]
+                                     :raw-count 1})]
+        (doseq [[engine hybrid?] {nil               true
+                                  "semantic"        true
+                                  "semantic-hybrid" true
+                                  "semantic-only"   false
+                                  "semantic-future" true}]
+          (testing (str engine " => " hybrid? " mode")
+            (let [results (semantic.core/results
+                           (search.core/search-context
+                            (assoc @search-context-input-delay :search-engine engine)))]
+              (is (= (str hybrid?) (:name (first results)))))))))))
