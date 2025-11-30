@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: "release"
+          sparse-checkout: release
       - uses: pnpm/action-setup@v4
       - name: prepare dependencies in release directory
         run: pnpm --dir release install --frozen-lockfile
@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: "release"
+          sparse-checkout: release
       - uses: pnpm/action-setup@v4
       - name: prepare dependencies in release directory
         run: pnpm --dir release install --frozen-lockfile
@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: "release"
+          sparse-checkout: release
       - uses: pnpm/action-setup@v4
       - name: prepare dependencies in release directory
         run: pnpm --dir release install --frozen-lockfile
