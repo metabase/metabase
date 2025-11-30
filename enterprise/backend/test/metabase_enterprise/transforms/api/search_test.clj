@@ -10,7 +10,7 @@
 
 (use-fixtures :each (fn [thunk]
                       (binding [search.ingestion/*force-sync* true]
-                        (search.tu/with-new-search-if-available (thunk)))))
+                        (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
 
 (deftest basic-search-test
   (testing "Transform can be found with search"
