@@ -28,22 +28,22 @@
                      :oss "oss")]
     (u/step (format "Build frontend with MB_EDITION=%s" mb-edition)
       (when-not (env/env :ci)
-        (u/step "Run 'yarn' to download JavaScript dependencies"
-          (u/sh {:dir u/project-root-directory} "yarn")))
+        (u/step "Run 'pnpm install' to download JavaScript dependencies"
+          (u/sh {:dir u/project-root-directory} "pnpm" "install")))
       (u/step "Build frontend"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build-release"))
+              "pnpm" "build-release"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build-release:static-viz"))
+              "pnpm" "build-release:static-viz"))
       (u/announce "Frontend built successfully."))))
 
 (defn- build-licenses!
@@ -65,11 +65,11 @@
                 without-license))
         (u/announce "License information generated at %s" output-filename)))
 
-    (u/step "Run `yarn licenses generate-disclaimer`"
+    (u/step "Run `pnpm licenses list`"
       (let [license-text (str/join \newline
                                    (u/sh {:dir    u/project-root-directory
                                           :quiet? true}
-                                         "yarn" "licenses" "generate-disclaimer"))]
+                                         "pnpm" "licenses" "list" "--long"))]
         (spit (u/filename u/project-root-directory
                           "resources"
                           "license-frontend-third-party.txt") license-text)))))
