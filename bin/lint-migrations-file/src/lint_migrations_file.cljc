@@ -144,6 +144,18 @@
    change-log
    #(pos? (compare % "v49.00-000"))))
 
+(defn require-primary-key-exists-has-table-name
+  "Ensures that all primaryKeyExists preconditions specify a tableName."
+  [change-log]
+  (doseq [{:keys [changeSet]} change-log
+          :when changeSet
+          :let [s (pr-str (:preConditions changeSet))]
+          :when (and (str/includes? s ":primaryKeyExists")
+                     (not (str/includes? s ":tableName")))]
+    (throw (validation-error
+            (format "Migration '%s' has primaryKeyExists precondition without tableName" (:id changeSet))
+            {:id (:id changeSet)}))))
+
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
 
@@ -163,6 +175,7 @@
   (require-no-bare-blob-or-text-types change-log)
   (require-no-bare-boolean-types change-log)
   (require-no-datetime-type change-log)
+  (require-primary-key-exists-has-table-name change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
     (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet})

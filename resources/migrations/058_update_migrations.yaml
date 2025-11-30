@@ -1450,6 +1450,7 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - not:
             - primaryKeyExists:
+                tableName: workspace_mapping_transform
                 primaryKeyName: pk_workspace_mapping_transform
       changes:
         - addPrimaryKey:
