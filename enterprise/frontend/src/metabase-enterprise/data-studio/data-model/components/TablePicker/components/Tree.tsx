@@ -5,14 +5,14 @@ import type { TableId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import {
-  type NodeSelection,
-  getSchemaChildrenTableIds,
   getSchemaId,
   getSchemaTableIds,
   isItemSelected,
   noManuallySelectedDatabaseChildrenTables,
   noManuallySelectedSchemas,
   noManuallySelectedTables,
+  toggleDatabaseSelection,
+  toggleSchemaSelection,
 } from "../bulk-selection.utils";
 import { useExpandedState, useTableLoader } from "../hooks";
 import type {
@@ -21,11 +21,10 @@ import type {
   ExpandedItem,
   FlatItem,
   SchemaItem,
-  SchemaNode,
   TreeNode,
   TreePath,
 } from "../types";
-import { isSchemaNode, isTableNode } from "../types";
+import { isSchemaNode, isTableOrSchemaNode } from "../types";
 import { flatten } from "../utils";
 
 import { EmptyState } from "./EmptyState";
@@ -248,11 +247,12 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   }
 
   function onItemToggle(item: FlatItem) {
-    const isSelected = isItemSelected(item as unknown as TreeNode, {
+    const selection = {
       tables: selectedTables,
       schemas: selectedSchemas,
       databases: selectedDatabases,
-    });
+    };
+    const isSelected = isItemSelected(item as unknown as TreeNode, selection);
 
     if (item.type === "table") {
       const tableId = item.value?.tableId ?? -1;
@@ -272,19 +272,15 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         return newSet;
       });
     }
-    if (item.type === "database") {
+    if (item.type === "database" && item.isLoading === undefined) {
       if (item.children.length > 0) {
-        const targetChecked = isSelected === "yes" ? "no" : "yes";
-
-        const { schemasSelection, tablesSelection, databasesSelection } =
-          markAllSchemas(item, targetChecked, {
-            tables: selectedTables,
-            schemas: selectedSchemas,
-            databases: selectedDatabases,
-          });
-        setSelectedSchemas(schemasSelection);
-        setSelectedTables(tablesSelection);
-        setSelectedDatabases(databasesSelection);
+        const { schemas, tables, databases } = toggleDatabaseSelection(
+          item,
+          selection,
+        );
+        setSelectedSchemas(schemas);
+        setSelectedTables(tables);
+        setSelectedDatabases(databases);
       } else {
         const databaseId = item.value?.databaseId;
         if (databaseId) {
@@ -294,25 +290,8 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     }
     if (item.type === "schema" && item.isLoading === undefined) {
       if (item.children.length > 0 && isSchemaNode(item)) {
-        if (isSelected === "yes") {
-          setSelectedTables((prev) => {
-            const tableIds = getSchemaChildrenTableIds(item);
-            const newSet = new Set(prev);
-            tableIds.forEach((x) => {
-              newSet.delete(x);
-            });
-            return newSet;
-          });
-        } else {
-          setSelectedTables((prev) => {
-            const tableIds = getSchemaChildrenTableIds(item);
-            const newSet = new Set(prev);
-            tableIds.forEach((x) => {
-              newSet.add(x);
-            });
-            return newSet;
-          });
-        }
+        const { tables } = toggleSchemaSelection(item, selection);
+        setSelectedTables(tables);
       } else {
         setSelectedSchemas((prev) => {
           const newSet = new Set(prev);
@@ -337,7 +316,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         (rangeItem): rangeItem is ExpandedItem =>
           rangeItem.isLoading === undefined,
       )
-      .filter(isTableNode)
+      .filter(isTableOrSchemaNode)
       .map((rangeItem) =>
         rangeItem.value?.tableId ? rangeItem.value.tableId : null,
       )
@@ -370,67 +349,6 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
       onRangeSelect={onItemRangeSelect}
     />
   );
-}
-
-function markAllSchemas(
-  item: FlatItem,
-  targetChecked: "yes" | "no",
-  selection: NodeSelection,
-) {
-  const schemasSelection = new Set(selection.schemas);
-  const tablesSelection = new Set(selection.tables);
-
-  if (item.type !== "database") {
-    return {
-      schemasSelection,
-      tablesSelection,
-      databasesSelection: selection.databases,
-    };
-  }
-
-  const schemas = item.children.filter(
-    (child): child is SchemaNode => child.type === "schema",
-  );
-  schemas.forEach((schema) => {
-    if (!isSchemaNode(schema)) {
-      return;
-    }
-    const schemaId = getSchemaId(schema);
-    if (!schemaId) {
-      return;
-    }
-    if (schema.children.length === 0) {
-      targetChecked === "yes"
-        ? schemasSelection.add(schemaId)
-        : schemasSelection.delete(schemaId);
-    } else {
-      markAllTables(schema, targetChecked, tablesSelection);
-    }
-  });
-
-  return {
-    schemasSelection,
-    tablesSelection,
-    databasesSelection: selection.databases,
-  };
-}
-
-function markAllTables(
-  schema: SchemaNode,
-  targetChecked: "yes" | "no",
-  tablesSelection: Set<TableId>,
-) {
-  const tables = getSchemaChildrenTableIds(schema);
-  tables.forEach((tableId) => {
-    if (tableId === -1) {
-      return;
-    }
-    targetChecked === "yes"
-      ? tablesSelection.add(tableId)
-      : tablesSelection.delete(tableId);
-  });
-
-  return tablesSelection;
 }
 
 function toggleInSet<T>(set: Set<T>, item: T) {

@@ -156,7 +156,6 @@ export function TablePickerResults({
       }
     }
 
-    // single checkbox toggle
     onItemToggle(item);
     lastSelectedTableIndex.current = isTable ? itemIndex : null;
   };

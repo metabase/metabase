@@ -79,6 +79,8 @@ export type ExpandedSchemaItem = SchemaItem &
     children: TableNode[];
   };
 
+export type ExpandedDatabaseItem = DatabaseItem & ExpandedItemBase;
+
 export type ExpandedTableItem = TableItem & ExpandedItemBase;
 
 type LoadingItem = {
@@ -115,6 +117,12 @@ export function isExpandedItem(node: FlatItem): node is ExpandedItem {
   return node.isLoading === undefined;
 }
 
+export function isDatabaseNode(
+  node: ExpandedItem | TreeNode,
+): node is ExpandedDatabaseItem {
+  return node.type === "database";
+}
+
 export function isSchemaNode(
   node: ExpandedItem | TreeNode,
 ): node is ExpandedSchemaItem {
@@ -124,7 +132,7 @@ export function isSchemaNode(
   );
 }
 
-export function isTableNode(
+export function isTableOrSchemaNode(
   node: ExpandedItem | TreeNode,
 ): node is ExpandedTableItem {
   return (
@@ -132,4 +140,8 @@ export function isTableNode(
     (node.type === "schema" &&
       node.children.every((child) => child.type === "table"))
   );
+}
+
+export function isTableNode(node: FlatItem): node is ExpandedTableItem {
+  return node.type === "table";
 }
