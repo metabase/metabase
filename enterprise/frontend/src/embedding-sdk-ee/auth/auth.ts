@@ -22,6 +22,9 @@ import type {
 } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
+import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
+import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
@@ -29,8 +32,9 @@ import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import type { User } from "metabase-types/api";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -40,14 +44,12 @@ let refreshTokenPromise: ReturnType<
 
 // Side effect happening here.
 PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
-  {
-    metabaseInstanceUrl,
-    preferredAuthMethod,
-    apiKey,
-    isLocalHost,
-  }: MetabaseAuthConfig & { isLocalHost?: boolean },
+  authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
+  const { metabaseInstanceUrl, isLocalHost } = authConfig;
+  const apiKey = "apiKey" in authConfig ? authConfig.apiKey : undefined;
+
   // remove any stale tokens that might be there from a previous session=
   samlTokenStorage.remove();
 
@@ -55,6 +57,29 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   const isValidInstanceUrl =
     metabaseInstanceUrl && metabaseInstanceUrl?.length > 0;
   const isValidApiKeyConfig = apiKey && (isLocalHost || getIsLocalhost());
+
+  // Check if we can use the auth pre-fetched by the package
+  if (
+    "jwtProviderUri" in authConfig &&
+    authConfig.jwtProviderUri &&
+    getAuthState()?.status
+  ) {
+    await waitForAuthCompletion();
+    const authState = getAuthState() as SdkAuthState;
+    if (
+      authState.status === "completed" &&
+      authState.session &&
+      authState.user &&
+      authState.siteSettings
+    ) {
+      api.sessionToken = authState.session.id;
+      dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
+      dispatch(loadSettings(authState.siteSettings as any));
+      return; // nothing else to do
+    }
+    // if we get here, the auth is not completed or the data is not available
+    // so we fallback to the standard auth flow
+  }
 
   if (isValidApiKeyConfig) {
     // API key setup
@@ -66,10 +91,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
       async () => {
         const session = await dispatch(
-          getOrRefreshSession({
-            metabaseInstanceUrl,
-            preferredAuthMethod,
-          }),
+          getOrRefreshSession(authConfig),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
@@ -77,12 +99,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       };
     try {
       // verify that the session is actually valid before proceeding
-      await dispatch(
-        getOrRefreshSession({
-          metabaseInstanceUrl,
-          preferredAuthMethod,
-        }),
-      ).unwrap();
+      await dispatch(getOrRefreshSession(authConfig)).unwrap();
     } catch (e) {
       // TODO: Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
       // but due to time constraints this is what we have to do to make sure tests pass.
@@ -113,10 +130,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 };
 
 const refreshTokenImpl = async (
-  {
-    metabaseInstanceUrl,
-    preferredAuthMethod,
-  }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
+  config: MetabaseAuthConfig,
   { getState }: { getState: () => unknown },
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
   const state = getState() as SdkStoreState;
@@ -128,8 +142,7 @@ const refreshTokenImpl = async (
   const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? undefined;
 
   const session = await getRefreshToken({
-    metabaseInstanceUrl,
-    preferredAuthMethod,
+    ...config,
     fetchRequestToken: customGetRefreshToken,
   });
   validateSession(session);
@@ -148,13 +161,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = refreshTokenImpl;
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  async (
-    authConfig: Pick<
-      MetabaseAuthConfig,
-      "metabaseInstanceUrl" | "preferredAuthMethod"
-    >,
-    { dispatch, getState },
-  ) => {
+  async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
     // necessary to ensure that we don't use a popup every time the user
     // refreshes the page
     const storedAuthToken = samlTokenStorage.get();
@@ -190,10 +197,21 @@ const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,
   fetchRequestToken: customGetRequestToken,
+  jwtProviderUri,
 }: Pick<
   MetabaseAuthConfig,
   "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
->) => {
+> & { jwtProviderUri?: string }) => {
+  // If jwtProviderUri is provided, skip discovery
+  if (jwtProviderUri) {
+    return jwtDefaultRefreshTokenFunction(
+      jwtProviderUri,
+      metabaseInstanceUrl,
+      getSdkRequestHeaders(),
+      customGetRequestToken,
+    );
+  }
+
   const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
     preferredAuthMethod,
     headers: getSdkRequestHeaders(),
@@ -227,4 +245,39 @@ function getSdkRequestHeaders(hash?: string): Record<string, string> {
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
+}
+
+function getAuthState(): SdkAuthState | undefined {
+  return getWindow()?.[SDK_AUTH_STATE_KEY];
+}
+
+/**
+ * Wait for the package's auth to complete.
+ * Polls the window state until it's no longer "in-progress".
+ */
+async function waitForAuthCompletion(
+  timeoutMs: number = 30000,
+): Promise<SdkAuthState> {
+  // early return if already completed
+  if (getAuthState()?.status !== "in-progress") {
+    return getAuthState() as SdkAuthState;
+  }
+  const startTime = Date.now();
+  const pollInterval = 10;
+
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      const state = getAuthState();
+      if (state?.status !== "in-progress") {
+        resolve(state ?? { status: "idle" });
+        return;
+      }
+      if (Date.now() - startTime > timeoutMs) {
+        reject(new Error("Timeout waiting for early auth to complete"));
+        return;
+      }
+      setTimeout(check, pollInterval);
+    };
+    check();
+  });
 }

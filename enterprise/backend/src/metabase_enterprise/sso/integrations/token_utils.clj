@@ -45,14 +45,14 @@
   (get-in request [:headers "x-metabase-sdk-jwt-hash"] nil))
 
 (defn with-token
-  "Add a newly generated token to a response"
+  "Legacy helper for embedding SDK hash handshakes. No-op now that hashes are optional."
   [response]
-  (assoc response :hash (generate-token)))
+  response)
 
 (defn has-token
-  "Check if a request has a valid token"
+  "Check if a request has a valid token. Missing tokens are treated as valid for backward compatibility."
   [request]
   (let [token (get-token-from-header request)]
     (if token
       (validate-token token)
-      false)))
+      true)))

@@ -21,23 +21,12 @@ export const PLUGIN_EMBEDDING_SDK_AUTH = {
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
-    {
-      metabaseInstanceUrl,
-      preferredAuthMethod,
-      apiKey,
-      isLocalHost,
-    }: MetabaseAuthConfig & { isLocalHost?: boolean },
+    config: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
-    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(
-      {
-        metabaseInstanceUrl,
-        preferredAuthMethod,
-        apiKey,
-        isLocalHost,
-      },
-      { dispatch },
-    );
+    // Pass the entire config to preserve all auth options including
+    // jwtProviderUri, fetchRequestToken, and skipPackageAuth
+    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(config, { dispatch });
   },
 );
 
