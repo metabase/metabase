@@ -28,3 +28,4 @@ export function initializePlugins() {
 // These only apply to the SDK, not to the core app
 import "../embedding-sdk-ee/auth";
 import "../embedding-sdk-ee/metabot";
+import "../embedding-sdk-ee/example-button";
