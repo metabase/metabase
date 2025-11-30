@@ -466,3 +466,25 @@
     (if tag-ids
       (filter #(some tag-ids (get-in % field-path)))
       identity)))
+
+(defn ->type-filter-xf
+  "Returns an xform for a transform source type filter."
+  [types]
+  (let [types (->> types (map keyword) set not-empty)]
+    (if types
+      (filter #(types (-> % :source :type keyword)))
+      identity)))
+
+(defn ->database-id-filter-xf
+  "Returns an xform for a transform database ID filter.
+   Matches transforms where the source database OR target database matches the given database-id."
+  [database-id]
+  (if database-id
+    (filter (fn [transform]
+              (let [source-db-id (get-in transform [:source :query :database])
+                    python-source-db-id (get-in transform [:source :source-database])
+                    target-db-id (get-in transform [:target :database])]
+                (or (= database-id source-db-id)
+                    (= database-id python-source-db-id)
+                    (= database-id target-db-id)))))
+    identity))

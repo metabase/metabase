@@ -80,13 +80,15 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids database_id type]}]
   (api/check-superuser)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (transforms.util/->database-id-filter-xf database_id)
+                (transforms.util/->type-filter-xf type)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
 
@@ -100,7 +102,9 @@
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]
+    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "python"])]]]]
   (get-transforms query-params))
 
 (api.macros/defendpoint :post "/"
