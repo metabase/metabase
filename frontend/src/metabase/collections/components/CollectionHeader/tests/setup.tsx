@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
@@ -74,7 +75,17 @@ export const setup = ({
   }
 
   renderWithProviders(
-    <Route path="/" component={() => <CollectionHeader {...props} />} />,
+    <>
+      <Route
+        path="/"
+        component={() => (
+          <>
+            <CollectionHeader {...props} />
+            <UndoListing />
+          </>
+        )}
+      />
+    </>,
     {
       storeInitialState: state,
       initialRoute: "/",

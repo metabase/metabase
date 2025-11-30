@@ -6,6 +6,7 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { useToast } from "metabase/common/hooks";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -29,21 +30,39 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
+  const [sendToast] = useToast();
+
   const isEditable = isEditableCollection(collection);
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(
     (name: string) => {
+      if (name.length > 100) {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "var(--mb-color-warning)",
+          message: t`Title must be 100 characters or less`,
+        });
+        return;
+      }
       onUpdateCollection(collection, { name });
     },
-    [collection, onUpdateCollection],
+    [collection, onUpdateCollection, sendToast],
   );
 
   const handleChangeDescription = useCallback(
     (description: string) => {
+      if (description?.length > 255) {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "var(--mb-color-warning)",
+          message: t`Description must be 255 characters or less`,
+        });
+        return;
+      }
       onUpdateCollection(collection, { description: description || null });
     },
-    [collection, onUpdateCollection],
+    [collection, onUpdateCollection, sendToast],
   );
 
   return (
@@ -57,6 +76,7 @@ export const CollectionCaption = ({
           isDisabled={!isEditable}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
+          maxLength={100}
         />
       </CaptionTitleContainer>
       {(isEditable || hasDescription) && (
@@ -74,6 +94,7 @@ export const CollectionCaption = ({
           onChange={handleChangeDescription}
           data-testid="collection-description-in-caption"
           left={0}
+          maxLength={255}
         />
       )}
     </CaptionRoot>
