@@ -27,7 +27,7 @@ export function TableMetadata({ table }: Props) {
 
   return (
     <Stack gap="md">
-      <MetadataRow label={t`Name on disk`} value={table.name} />
+      <MetadataRow label={t`Name in the database`} value={table.name} />
       <MetadataRow label={t`Last updated at`} value={formattedDate} />
       <MetadataRow
         label={t`View count`}
