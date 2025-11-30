@@ -194,7 +194,7 @@
                              :name (str test-schema "__" (-> x2 :target :name))}
                             (:target x2-mirror))))
                   (testing "source query referencing target of x1 mirror"
-                   ;; TODO (lbrdnk 2025-11-27): Quotes are removed, figure out whether what has 
+                   ;; TODO (lbrdnk 2025-11-27): Quotes are removed, figure out whether what has
                    ;;                           some unwanted consequences.
                     (is (=? {:query {:stages [{:native (format "SELECT *\nFROM %s.%s\nLIMIT 10\n"
                                                                (-> x1-mirror :target :schema)
@@ -220,4 +220,3 @@
           (throw t))
         (finally
           (teardown! (:id @new-workspace)))))))
-
