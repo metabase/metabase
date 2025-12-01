@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
@@ -57,14 +58,27 @@
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
   This function is meant to be used for GET /api/user/current "
   [user]
-  (let [permissions-set @api/*current-user-permissions-set*]
+  (let [permissions-set      @api/*current-user-permissions-set*
+        non-sample-db-ids    (t2/select-pks-set :model/Database :is_sample false)
+        user-id              api/*current-user-id*
+        create-query-perms   (into {}
+                                   (for [db-id non-sample-db-ids]
+                                     [db-id (data-perms/most-permissive-database-permission-for-user
+                                             user-id :perms/create-queries db-id)]))
+        can-create-queries?  (some #(data-perms/at-least-as-permissive?
+                                     :perms/create-queries % :query-builder)
+                                   (vals create-query-perms))
+        can-create-native?   (some #(= % :query-builder-and-native)
+                                   (vals create-query-perms))]
     (assoc user :permissions
-           {:can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
-            :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
-            :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
-            :can_access_data_model   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
-            :can_access_db_details   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
-            :is_group_manager        api/*is-group-manager?*})))
+           {:can_access_setting        (perms/set-has-application-permission-of-type? permissions-set :setting)
+            :can_access_subscription   (perms/set-has-application-permission-of-type? permissions-set :subscription)
+            :can_access_monitoring     (perms/set-has-application-permission-of-type? permissions-set :monitoring)
+            :can_access_data_model     (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
+            :can_access_db_details     (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
+            :is_group_manager          api/*is-group-manager?*
+            :can_create_queries        (boolean can-create-queries?)
+            :can_create_native_queries (boolean can-create-native?)})))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."

@@ -60,6 +60,71 @@
             (is (partial= {:can_access_db_details true}
                           (user-permissions :rasta)))))))))
 
+(deftest current-user-can-create-queries-test
+  (testing "GET /api/user/current includes can_create_queries and can_create_native_queries"
+    (mt/with-premium-features #{:advanced-permissions}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "admins should have both permissions true"
+          (is (partial= {:can_create_queries        true
+                         :can_create_native_queries true}
+                        (user-permissions :crowberto))))
+
+        (testing "user with query-builder-and-native on a non-sample DB"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :query-builder-and-native}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries true}
+                            (user-permissions :rasta))))))
+
+        (testing "user with only query-builder (no native) on a non-sample DB"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :query-builder}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "user with no query permissions on non-sample DBs"
+          (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                         :create-queries :no}}
+              (is (partial= {:can_create_queries        false
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "permissions on sample DB should not count"
+          (mt/with-temp [:model/Database {sample-db-id :id} {:is_sample true}]
+            (mt/with-all-users-data-perms-graph! {sample-db-id {:view-data      :unrestricted
+                                                                :create-queries :query-builder-and-native}}
+              (is (partial= {:can_create_queries        false
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "mixed scenario: sample DB with native, non-sample DB with query-builder only"
+          (mt/with-temp [:model/Database {sample-db-id :id}     {:is_sample true}
+                         :model/Database {non-sample-db-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {sample-db-id     {:view-data      :unrestricted
+                                                                    :create-queries :query-builder-and-native}
+                                                  non-sample-db-id {:view-data      :unrestricted
+                                                                    :create-queries :query-builder}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))
+
+        (testing "at least one non-sample DB with native permission is enough"
+          (mt/with-temp [:model/Database {db1-id :id} {:is_sample false}
+                         :model/Database {db2-id :id} {:is_sample false}]
+            (mt/with-all-users-data-perms-graph! {db1-id {:view-data      :unrestricted
+                                                          :create-queries :no}
+                                                  db2-id {:view-data      :unrestricted
+                                                          :create-queries :query-builder-and-native}}
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries true}
+                            (user-permissions :rasta))))))))))
+
 (deftest new-database-view-data-permission-level-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/Database         {db-id :id}      {}
