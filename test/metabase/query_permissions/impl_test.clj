@@ -344,3 +344,23 @@
               (mt/with-no-data-perms-for-all-users!
                 (is (not (query-perms/can-run-query? mbql-query)) "Blocked view-data should override collection perms")
                 (is (not (query-perms/can-run-query? native-query)))))))))))
+
+(deftest published-table-does-not-grant-view-data-test
+  (testing "Published tables with collection permissions should NOT grant view-data permissions"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-temp [:model/Collection collection {}]
+        (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+        (perms/grant-collection-read-permissions! (perms/all-users-group) (u/the-id collection))
+
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+
+        (let [user-id (mt/user->id :rasta)]
+          (testing "Should grant create-queries via collection permissions"
+            (is (= :query-builder
+                   (perms/table-permission-for-user user-id :perms/create-queries (mt/id) (mt/id :venues)))
+                "Collection permissions should grant query-builder permission"))
+
+          (testing "Should NOT grant view-data via collection permissions (without explicit grant)"
+            (is (= :blocked
+                   (perms/table-permission-for-user user-id :perms/view-data (mt/id) (mt/id :venues)))
+                "Without explicit view-data grant, All Users defaults to blocked")))))))

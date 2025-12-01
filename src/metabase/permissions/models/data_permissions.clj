@@ -302,14 +302,7 @@
                                 :where           [:and
                                                   [:in :group_id {:select [:id]
                                                                   :from   [:user_group_ids]}]
-                                                  [:in :perm_value [[:inline "read"] [:inline "read-and-write"]]]]}]
-            [:blocked_tables {:select-distinct [:table_id]
-                              :from            [:data_permissions]
-                              :where           [:and
-                                                [:= :perm_type [:inline "perms/view-data"]]
-                                                [:= :perm_value [:inline "blocked"]]
-                                                [:in :group_id {:select [:id]
-                                                                :from   [:user_group_ids]}]]}]]
+                                                  [:in :perm_value [[:inline "read"] [:inline "read-and-write"]]]]}]]
    :select [[[:inline true] :has-published-table]]
    :from   [:metabase_table]
    :where  [:and
@@ -317,17 +310,13 @@
             [:= :is_published true]
             [:is-not :collection_id nil]
             [:in :collection_id {:select [:collection_id]
-                                 :from   [:user_collections]}]
-            [:not-in :id {:select [:table_id]
-                          :from   [:blocked_tables]}]]
+                                 :from   [:user_collections]}]]
    :limit  1})
 
 (defn- user-published-table-permission [perm-type user-id table-id]
-  (when (and (#{:perms/create-queries :perms/view-data} perm-type)
+  (when (and (= perm-type :perms/create-queries)
              (:has-published-table (t2/query-one (user-published-table-query user-id table-id))))
-    (case perm-type
-      :perms/create-queries :query-builder
-      :perms/view-data      :unrestricted)))
+    :query-builder))
 
 (mu/defn table-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
