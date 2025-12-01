@@ -207,6 +207,10 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
                   slug: "user_id_pk",
                   type: "id",
                   target: ["dimension", ["template-tag", "user_id_pk"]],
+                  values_source_type: "static-list",
+                  values_source_config: {
+                    values: ["foo", "bar"],
+                  },
                 }),
               ],
               enable_embedding: true,
@@ -222,6 +226,10 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
           );
         },
       });
+
+      cy.intercept("GET", "/api/embed/card/*/params/*/values").as(
+        "parameterValuesApiRequest",
+      );
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
@@ -241,6 +249,16 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
         getSdkRoot().within(() => {
           cy.findAllByTestId("parameter-widget").should("have.length", 2);
+
+          cy.findAllByTestId("parameter-widget")
+            .filter(':contains("PK->Name")')
+            .click();
+        });
+
+        cy.wait("@parameterValuesApiRequest");
+
+        cy.get("@parameterValuesApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length(1);
         });
       });
     });
