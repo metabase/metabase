@@ -9,6 +9,10 @@
 
 (set! *warn-on-reflection* true)
 
+(comment
+  mage.token-scan-test/keep-me
+  mage.util-test/keep-me)
+
 (deftest bin-mage-has-help-test
   (doseq [help-cmds [[] [" "] ["  "] ["-h"] ["--help"] [" -h"] [" --help"] ["  -h"] ["  --help"]]
           :let [cmd (str "./bin/mage " (str/join " " help-cmds))
@@ -34,7 +38,3 @@
         (let [result (try (bt/shell {:err :string :out :string} (str "./bin/mage " task-name))
                           (catch Exception e (:out (:proc (ex-data e)))))]
           (is (str/includes? result "The following tasks are available:")))))))
-
-(deftest mage-tests
-  (t/run-tests 'mage.token-scan-test)
-  (t/run-tests 'mage.util-test))

@@ -179,8 +179,8 @@
    :requires [[mage.be-dev :refer [nrepl-eval]]]
    :options  [["-c" "--comment-id ID" "Notify about this comment id"]
               ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
-   :examples [["./bin/mage notify -c 1234" "Notify about comment with id 1234"]
-              ["./bin/mage notify --comment-id 5678 --port 59498" "Notify about comment with id 5678 on nrepl port 59498"]]
+   ;; :examples [["./bin/mage notify -c 1234" "Notify about comment with id 1234"]
+   ;;            ["./bin/mage notify --comment-id 5678 --port 59498" "Notify about comment with id 5678 on nrepl port 59498"]]
    :task     (let [opts (:options (cli/parse! (current-task)))
                    ;; note: no quoting -> expect it to be int
                    code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
@@ -311,9 +311,9 @@
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
-         :requires [[mage.core-test]
-                    [clojure.test :refer [run-tests]]]
-         :task     (run-tests 'mage.core-test)}
+         :requires [[mage.core-test] ;; loads the actual tests
+                    [clojure.test]]
+         :task     (clojure.test/run-all-tests (re-pattern "^mage\\..*"))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
