@@ -707,11 +707,6 @@
             [:= :t.is_published true]
             (poison-when-pinned-clause pinned-state)
             (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            (mi/visible-filter-clause :model/Table :t.id
-                                      {:user-id       api/*current-user-id*
-                                       :is-superuser? api/*is-superuser?*}
-                                      {:perms/view-data      :unrestricted
-                                       :perms/create-queries :query-builder})
             [:= :t.collection_id (:id collection)]
             (if archived?
               [:!= :t.archived_at nil]
