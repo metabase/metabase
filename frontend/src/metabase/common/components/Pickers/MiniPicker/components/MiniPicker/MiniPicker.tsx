@@ -3,18 +3,17 @@ import { useCallback, useEffect, useMemo } from "react";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Menu } from "metabase/ui";
 
-import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
-import type { DataPickerValue } from "../../DataPicker";
-import { MiniPickerContext } from "../context";
-import type { MiniPickerItem, MiniPickerPickableItem } from "../types";
+import { useLogRecentItem } from "../../../../EntityPicker/hooks/use-log-recent-item";
+import type { DataPickerValue } from "../../../DataPicker";
+import { MiniPickerContext } from "../../context";
+import type { MiniPickerItem, MiniPickerPickableItem } from "../../types";
 import {
   focusFirstMiniPickerItem,
   getFolderAndHiddenFunctions,
   useGetPathFromValue,
-} from "../utils";
-
-import { MiniPickerListLoader } from "./MiniPickerItemList";
-import { MiniPickerPane } from "./MiniPickerPane";
+} from "../../utils";
+import { MiniPickerListLoader } from "../MiniPickerItemList";
+import { MiniPickerPane } from "../MiniPickerPane";
 
 export type MiniPickerProps = {
   searchQuery?: string;
@@ -26,6 +25,7 @@ export type MiniPickerProps = {
   models: MiniPickerPickableItem["model"][];
   onBrowseAll?: () => void;
   shouldHide?: (item: MiniPickerItem | unknown) => boolean;
+  shouldShowLibrary?: boolean;
 };
 
 export function MiniPicker({
@@ -38,6 +38,7 @@ export function MiniPicker({
   onBrowseAll,
   trapFocus = false,
   shouldHide,
+  shouldShowLibrary = true,
 }: MiniPickerProps) {
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection();
@@ -82,6 +83,7 @@ export function MiniPicker({
         models,
         canBrowse: !!onBrowseAll,
         libraryCollection,
+        shouldShowLibrary,
       }}
     >
       <Menu
