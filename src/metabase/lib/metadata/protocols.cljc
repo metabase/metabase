@@ -1,4 +1,4 @@
-(ns  metabase.lib.metadata.protocols
+(ns metabase.lib.metadata.protocols
   (:require
    #?@(:clj [[potemkin :as p]])
    [medley.core :as m]
