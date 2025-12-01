@@ -3,6 +3,7 @@ import {
   entityPickerModal,
   getParametersContainer,
 } from "e2e/support/helpers";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
   codeBlock,
@@ -271,6 +272,49 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         getParametersContainer()
           .findByLabelText("Text")
           .should("contain.text", "Disabled");
+      });
+    });
+
+    it("Properly adjusts EmbedJS options when switching between guest/sso modes for a Question", () => {
+      cy.get("@question1Id").then((questionId) => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+        });
+
+        enableJwtAuth();
+
+        navigateToEmbedOptionsStep({
+          experience: "chart",
+          resourceName: FIRST_QUESTION_NAME,
+        });
+
+        getEmbedSidebar().within(() => {
+          cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+        });
+
+        H.setEmbeddingParameter("Text", "Locked");
+
+        getEmbedSidebar().within(() => {
+          cy.findByText("Get code").click();
+
+          codeBlock().first().should("contain", "token=");
+
+          codeBlock().first().should("not.contain", "question-id=");
+          codeBlock().first().should("not.contain", "hidden-parameters=");
+          codeBlock().first().should("not.contain", "locked-parameters=");
+
+          cy.findByText("Back").click();
+
+          cy.findByLabelText("Single sign-on (SSO)").click();
+
+          cy.findByText("Get code").click();
+
+          codeBlock().first().should("contain", "question-id=");
+
+          codeBlock().first().should("not.contain", "token=");
+          codeBlock().first().should("not.contain", "hidden-parameters=");
+          codeBlock().first().should("not.contain", "locked-parameters=");
+        });
       });
     });
   });
