@@ -62,7 +62,7 @@ We recommend running either the dev or the watch command to have shorter a feedb
 To start the cypress for the e2e tests:
 
 ```bash
-TEST_SUITE="component" yarn test-cypress
+CYPRESS_TESTING_TYPE="component" yarn test-cypress
 ```
 
 Then in a separate terminal run `yarn embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
@@ -78,18 +78,18 @@ Define one of the following environment variables with enterprise token: `CYPRES
 To run these tests locally, run:
 
 ```
-TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+SDK_TEST_SUITE=<sample_app_repo_name>-e2e yarn test-cypress-host-sample-apps
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 
 ```
-TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e yarn test-cypress-host-sample-apps
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
 
-For the Shoppy's Sample App Tests (`TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
+For the Shoppy's Sample App Tests (`SDK_TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
 
 You can get it by:
 
@@ -130,13 +130,13 @@ Tests a bit similar to Sample App tests, but:
 To run these tests locally, run:
 
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=<host_app_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
 ```
 
 For example for the `vite-6-host-app` Host App, run:
 
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=vite-6-host-app-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
 ```
 
 #### CI runs

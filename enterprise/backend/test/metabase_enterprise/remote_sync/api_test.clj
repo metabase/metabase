@@ -177,7 +177,7 @@
 (deftest export-with-default-settings-test
   (testing "POST /api/ee/remote-sync/export succeeds with default settings"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
@@ -192,7 +192,7 @@
 (deftest export-with-custom-branch-and-message-test
   (testing "POST /api/ee/remote-sync/export succeeds with custom branch and message"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
@@ -222,7 +222,7 @@
 (deftest export-handles-write-errors-test
   (testing "POST /api/ee/remote-sync/export handles write errors"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
         (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
@@ -365,7 +365,7 @@
   (testing "GET /api/ee/remote-sync/is-dirty returns false when no remote-synced collections have changes"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection _ {:name "Remote Collection"
-                                          :type "remote-synced"
+                                          :is_remote_synced true
                                           :entity_id "test-collection-1"
                                           :location "/"}]
         (is (= {:is_dirty false}
@@ -375,7 +375,7 @@
   (testing "GET /api/ee/remote-sync/is-dirty returns true when any remote-synced collection has changes"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :entity_id "test-collection-1"
                                                    :location "/"}
                      :model/Card card {:collection_id (:id remote-col)
@@ -398,7 +398,7 @@
   (testing "GET /api/ee/remote-sync/dirty returns empty list when no dirty models"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection _ {:name "Remote Collection"
-                                          :type "remote-synced"
+                                          :is_remote_synced true
                                           :entity_id "test-collection-1"
                                           :location "/"}]
         (is (= {:dirty []}
@@ -408,11 +408,11 @@
   (testing "GET /api/ee/remote-sync/dirty returns all dirty models across remote-synced collections"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col1 {:name "Remote Collection 1"
-                                                    :type "remote-synced"
+                                                    :is_remote_synced true
                                                     :entity_id "test-collection-1"
                                                     :location "/"}
                      :model/Collection remote-col2 {:name "Remote Collection 2"
-                                                    :type "remote-synced"
+                                                    :is_remote_synced true
                                                     :entity_id "test-collection-2"
                                                     :location "/"}
                      :model/Card card1 {:collection_id (:id remote-col1)
@@ -445,11 +445,11 @@
   (testing "GET /api/ee/remote-sync/dirty returns dirty models from nested collections"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :entity_id "test-collection-1"
                                                    :location "/"}
                      :model/Collection nested-col {:name "Nested Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :location (str "/" (:id remote-col) "/")}
                      :model/Card nested-card {:collection_id (:id nested-col)
                                               :name "Nested Card"}
@@ -466,7 +466,7 @@
   (testing "GET /api/ee/remote-sync/dirty deduplicates items"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
-                                                   :type "remote-synced"
+                                                   :is_remote_synced true
                                                    :entity_id "test-collection-1"
                                                    :location "/"}
                      :model/Card card {:collection_id (:id remote-col)

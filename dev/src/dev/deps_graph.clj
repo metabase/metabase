@@ -356,8 +356,8 @@
 
   ([deps module-x module-y]
    (let [module-x-ns->module-y-ns (->> (external-usages deps module-y)
-                                         (filter #(= (:module %) module-x))
-                                         (map (juxt :namespace :depends-on-namespace)))]
+                                       (filter #(= (:module %) module-x))
+                                       (map (juxt :namespace :depends-on-namespace)))]
      (reduce
       (fn [m [module-x-ns module-y-ns]]
         (update m module-x-ns (fn [deps]
@@ -433,10 +433,10 @@
        ddiff/minimize)))
 
 (defn print-kondo-config-diff
-    "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
+  "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
   reality ([[kondo-config]]). Use this to suggest updates to make to the config file."
-    []
-    (ddiff/pretty-print (kondo-config-diff)))
+  []
+  (ddiff/pretty-print (kondo-config-diff)))
 
 (comment
   (external-usages 'core)
@@ -461,12 +461,12 @@
   ([deps module]
    (all-module-deps-paths deps module (sorted-map) (atom #{}) []))
   ([deps module acc already-seen path]
-   (let [module-deps  (module-dependencies deps module)
-         new-deps     (remove @already-seen module-deps)
-         acc          (into acc
-                            (map (fn [dep]
-                                   [dep path]))
-                            new-deps)]
+   (let [module-deps (module-dependencies deps module)
+         new-deps    (remove @already-seen module-deps)
+         acc         (into acc
+                           (map (fn [dep]
+                                  [dep path]))
+                           new-deps)]
      (swap! already-seen into new-deps)
      (reduce
       (fn [acc new-dep]
@@ -532,7 +532,46 @@
   affect `module`."
   [module]
   (let [deps        (dependencies)
-        all-modules (into (sorted-set) (map :module) deps)]
-    (set/difference
-     all-modules
-     (set (keys (all-module-deps-paths deps module))))))
+        all-modules (into (sorted-set) (map :module) deps)
+        module-deps (set (keys (all-module-deps-paths deps module)))]
+    (printf "Module %s depends on %d/%d (%.1f%%) other modules.\n"
+            module
+            (count module-deps)
+            (count all-modules)
+            (double (* (/ (count module-deps) (count all-modules)) 100)))
+    (flush)
+    (set/difference all-modules module-deps)))
+
+(defn- simulate-rename
+  "Create a new version of `deps` as they would appear if you renamed namespace(s).
+
+    (simulate-rename (dependencies) '{metabase.users.api metabase.users-rest.api})"
+  ([deps old-namespace new-namespace]
+   (for [dep deps]
+     (-> dep
+         (cond-> (= (:namespace dep) old-namespace)
+           (assoc :namespace new-namespace))
+         (update :deps (fn [deps]
+                         (for [dep deps]
+                           (if (= (:namespace dep) old-namespace)
+                             {:namespace new-namespace, :module (module new-namespace)}
+                             dep)))))))
+
+  ([deps old-namespace->new-namespace]
+   (reduce
+    (fn [deps [old-namespace new-namespace]]
+      (simulate-rename deps old-namespace new-namespace))
+    deps
+    old-namespace->new-namespace)))
+
+(defn dependencies-eliminated-by-renaming-namespaces
+  "Calculate the set of dependencies of `module` (both explicit and transient) that would be eliminated by renaming
+  `old-namespaces->new-namespaces`.
+
+    (dependencies-eliminated-by-renaming-namespaces 'users '{metabase.users.api metabase.users-rest.api})"
+  [module old-namespace->new-namespace]
+  (let [deps            (dependencies)
+        old-module-deps (into (sorted-set) (keys (all-module-deps-paths deps module)))
+        new-deps        (simulate-rename deps old-namespace->new-namespace)
+        new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
+    (set/difference old-module-deps new-module-deps)))

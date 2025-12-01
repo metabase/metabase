@@ -23,6 +23,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
@@ -264,7 +265,7 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
-(deftest additional-options-test
+(deftest ^:sequential additional-options-test
   (mt/test-driver
     :snowflake
     (let [existing-details (dissoc (:details (mt/db)) :password)]
@@ -1317,3 +1318,106 @@
       :type/Integer            [:INTEGER]
       :type/Text               [:TEXT]
       :type/Time               [:TIME])))
+
+(deftest snowflake-string-filter-tests
+  (mt/test-driver :snowflake
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          products-category (lib.metadata/field mp (mt/id :products :category))
+          products-name (lib.metadata/field mp (mt/id :products :title))
+          products-id (lib.metadata/field mp (mt/id :products :id))
+          filter-query (fn [filter]
+                         (-> (lib/query mp products)
+                             (lib/filter filter)
+                             (lib/order-by products-id :asc)
+                             (lib/limit 3)
+                             (lib/with-fields [products-id products-name products-category])))]
+      (doseq [[msg filter exp-filter exp-rows] [["case insensitive contains has rows"
+                                                 (-> (lib/contains products-category "GET")
+                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                 "CONTAINS(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [9 "Practical Bronze Computer" "Widget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]]]
+
+                                                ["case sensitive contains has rows"
+                                                 (-> (lib/contains products-category "Gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'Gad')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]
+                                                  [16 "Incredible Bronze Pants" "Gadget"]]]
+
+                                                ["case sensitive contains with no rows"
+                                                 (-> (lib/contains products-category "gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "CONTAINS(\"PUBLIC\".\"products\".\"category\", 'gad')"
+                                                 []]
+
+                                                ["case insensitive starts with has rows"
+                                                 (-> (lib/starts-with products-category "GAD")
+                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                 "STARTSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'gad')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]
+                                                  [16 "Incredible Bronze Pants" "Gadget"]]]
+
+                                                ["case sensitive starts with has rows"
+                                                 (-> (lib/starts-with products-category "Gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'Gad')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]
+                                                  [16 "Incredible Bronze Pants" "Gadget"]]]
+
+                                                ["case sensitive starts with has no rows"
+                                                 (-> (lib/starts-with products-category "gad")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "STARTSWITH(\"PUBLIC\".\"products\".\"category\", 'gad')"
+                                                 []]
+
+                                                ["case insensitive ends with has rows"
+                                                 (-> (lib/ends-with products-category "GET")
+                                                     (lib.options/update-options assoc :case-sensitive false))
+                                                 "ENDSWITH(LOWER(\"PUBLIC\".\"products\".\"category\"), 'get')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [9 "Practical Bronze Computer" "Widget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]]]
+
+                                                ["case sensitive ends with has rows"
+                                                 (-> (lib/ends-with products-category "get")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'get')"
+                                                 [[5 "Enormous Marble Wallet" "Gadget"]
+                                                  [9 "Practical Bronze Computer" "Widget"]
+                                                  [11 "Ergonomic Silk Coat" "Gadget"]]]
+
+                                                ["case sensitive ends with has no rows"
+                                                 (-> (lib/ends-with products-category "GET")
+                                                     (lib.options/update-options assoc :case-sensitive true))
+                                                 "ENDSWITH(\"PUBLIC\".\"products\".\"category\", 'GET')"
+                                                 []]]]
+        (testing msg
+          (let [result (qp/process-query (filter-query filter))]
+            (is (str/includes? (-> result :data :native_form :query) exp-filter))
+            (is (= exp-rows (mt/rows result)))))))))
+
+(deftest snowflake-collate-comparison-test
+  (mt/test-driver :snowflake
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          collation-query (fn [collation]
+                            (let [query (-> (lib/query mp products)
+                                            (lib/expression "contains_result" (lib/contains (lib/collate "café" collation) "CAFE"))
+                                            (lib/limit 1))
+                                  contains-expr (lib/expression-ref query "contains_result")]
+                              (lib/with-fields query [contains-expr])))]
+      (doseq [[collation exp-filter exp-rows] [["en-ci-ai"
+                                                "CONTAINS(COLLATE('café', 'en-ci-ai'), 'CAFE')"
+                                                [[true]]]
+                                               ["en-ci"
+                                                "CONTAINS(COLLATE('café', 'en-ci'), 'CAFE')"
+                                                [[false]]]]]
+        (let [result (qp/process-query (collation-query collation))]
+          (is (str/includes? (-> result :data :native_form :query) exp-filter))
+          (is (= exp-rows (mt/rows result))))))))

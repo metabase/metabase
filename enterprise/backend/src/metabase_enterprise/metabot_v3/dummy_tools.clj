@@ -4,8 +4,6 @@
    [metabase-enterprise.documents.core :as documents]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   ;; TODO (Cam 10/10/25) -- update MetaBot to use Lib + MBQL 5
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -166,19 +164,22 @@
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
+           db-engine (:engine (if metadata-provider
+                                (lib.metadata/database metadata-provider)
+                                (metabot-v3.tools.u/get-database db-id :engine)))
            mp (when query-needed?
                 (or metadata-provider
                     (lib-be/application-database-metadata-provider db-id)))
            table-query (when query-needed?
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
-                  (->> (lib/visible-columns table-query)
+                  (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        field-values-fn
                        (map #(metabot-v3.tools.u/add-table-reference table-query %))))
-           field-id-prefix (when with-fields?
+           field-id-prefix (when (or with-fields? with-related-tables?)
                              (metabot-v3.tools.u/table-field-id-prefix id))
            related-tables (when with-related-tables?
-                            (related-tables table-query with-fields? field-values-fn))]
+                            (related-tables table-query field-id-prefix with-fields? field-values-fn))]
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
@@ -187,6 +188,7 @@
             :display_name (some->> (:name base)
                                    (u.humanization/name->human-readable-name :simple))
             :database_id db-id
+            :database_engine db-engine
             :database_schema (:schema base)}
            (m/assoc-some :description (:description base)
                          :related_tables related-tables
@@ -194,21 +196,42 @@
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))))))))
 
-(defn- related-tables
-  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key."
-  [query with-fields? field-values-fn]
-  (let [fk-fields (->> (lib/visible-columns query)
-                       (filter :fk-field-id))
-        related-table-ids (->> fk-fields
-                               (map :table-id)
-                               (into #{}))]
-    (when (seq related-table-ids)
-      (map #(table-details % {:with-fields? with-fields?
-                              :field-values-fn field-values-fn
-                              ;; Important! Only recurse one level
-                              :with-related-tables? false
-                              :with-metrics? false})
-           related-table-ids))))
+(defn related-tables
+  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
+   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
+  [query main-field-id-prefix with-fields? field-values-fn]
+  (let [all-main-cols    (lib/visible-columns query)
+        ;; Map [table-id fk-field-id field-name] -> index in the main query
+        contextual-index (into {}
+                               (keep-indexed
+                                (fn [idx {:keys [fk-field-id table-id name]}]
+                                  (when fk-field-id
+                                    {[table-id fk-field-id name] idx})))
+                               all-main-cols)
+        fk-cols          (filter :fk-field-id all-main-cols)
+        ;; { [table-id fk-field-id] [fk-col ...] }
+        grouped-fks      (group-by (juxt :table-id :fk-field-id) fk-cols)]
+    (when (seq grouped-fks)
+      (mapv
+       (fn [[[table-id fk-field-id] _]]
+         (let [base-details   (table-details table-id
+                                             {:with-fields?          with-fields?
+                                              :field-values-fn       field-values-fn
+                                              :with-related-tables?  false
+                                              :with-metrics?         false})
+               base-table-col (lib.metadata/field query fk-field-id)
+               fk-field-name  (:name base-table-col)
+               updated-fields
+               (when with-fields?
+                 (->> (:fields base-details)
+                      (keep
+                       (fn [{:keys [name] :as field}]
+                         (when-let [idx (get contextual-index [table-id fk-field-id name])]
+                           (assoc field :field_id (str main-field-id-prefix idx)))))))]
+           (-> (cond-> base-details
+                 updated-fields (assoc :fields updated-fields))
+               (assoc :related_by fk-field-name))))
+       grouped-fks))))
 
 (defn- card-details
   "Get details for a card."
@@ -223,6 +246,8 @@
                                    with-metrics?        true}
                             :as   options}]
    (let [id (:id base)
+         database-id (:database_id base)
+         database-engine (:engine (lib.metadata/database metadata-provider))
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
          query-needed? (or with-fields? with-related-tables? with-metrics?)
@@ -237,16 +262,17 @@
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
+         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)
          related-tables (when with-related-tables?
-                          (related-tables card-query with-fields? field-values-fn))
-         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
+                          (related-tables card-query field-id-prefix with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
-          :database_id (:database_id base)
+          :database_id database-id
+          :database_engine database-engine
           :verified (verified-review? id "card")}
          (m/assoc-some
           :description (:description base)
@@ -378,23 +404,23 @@
     {:output "invalid document_id"}))
 
 (defn- execute-query
-  [query-id legacy-query]
-  (let [legacy-query (mbql.normalize/normalize legacy-query)
+  [query-id query-input]
+  (let [normalized-query (lib-be/normalize-query query-input)
         field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-        database-id (:database legacy-query)
+        database-id (:database normalized-query)
         _ (api/read-check :model/Database database-id)
         mp (lib-be/application-database-metadata-provider database-id)
-        query (lib/query mp legacy-query)
+        query (lib/query mp normalized-query)
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     :query legacy-query
+     :query normalized-query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 field-id-prefix))
                            returned-cols)}))
 
 (defn get-query-details
-  "Get the details of a (legacy) query."
+  "Get the details of a query (supports both MBQL v4 and v5)."
   [{:keys [query]}]
   (lib-be/with-metadata-provider-cache
     {:structured-output (execute-query (u/generate-nano-id) query)}))

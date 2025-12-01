@@ -143,6 +143,8 @@ export const createMockTokenFeatures = (
   transforms: false,
   remote_sync: false,
   "transforms-python": false,
+  data_studio: false,
+  "support-users": false,
   ...opts,
 });
 
