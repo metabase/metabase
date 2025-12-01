@@ -41,7 +41,7 @@ export const DataSourceInput = ({
 
 function getData(showMetabaseTransform?: boolean) {
   return [
-    { value: "unknown" as const, label: t`Unknown` },
+    { value: "unknown" as const, label: t`Unspecified` },
     { value: "ingested" as const, label: t`Ingested` },
     showMetabaseTransform
       ? // eslint-disable-next-line no-literal-metabase-strings -- shown in Data Studio only
