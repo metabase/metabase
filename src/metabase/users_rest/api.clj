@@ -297,13 +297,13 @@
   "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries
   permissions across non-sample databases."
   [user]
-  (let [non-sample-db-ids   (t2/select-pks-set :model/Database :is_sample false)
-        _                   (perms/prime-db-cache non-sample-db-ids)
+  (let [db-ids              (t2/select-pks-set :model/Database)
+        _                   (perms/prime-db-cache db-ids)
         create-query-perms  (into #{}
                                   (map (fn [db-id]
                                          (perms/most-permissive-database-permission-for-user
                                           api/*current-user-id* :perms/create-queries db-id)))
-                                  non-sample-db-ids)
+                                  db-ids)
         can-create-queries? (-> (some #(perms/at-least-as-permissive?
                                         :perms/create-queries % :query-builder)
                                       create-query-perms)
