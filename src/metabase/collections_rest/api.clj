@@ -83,8 +83,7 @@
 
   Normally, tenant collections will not be included in the results. Passing `include-tenant-collections=true`
   will restrict the results to tenant collections."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only include-library?
-           include-tenant-collections]}]
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only include-library?]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -217,7 +216,7 @@
   some point in the future."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace shallow collection-id include-tenant-collections]}
+           namespace shallow collection-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
@@ -231,8 +230,7 @@
                                              :namespace                      namespace
                                              :shallow                        shallow
                                              :collection-id                  collection-id
-                                             :include-library?               include-library
-                                             :include-tenant-collections     include-tenant-collections})
+                                             :include-library?               include-library})
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)

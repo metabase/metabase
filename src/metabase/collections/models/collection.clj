@@ -776,12 +776,7 @@
                                                                           [:or
                                                                            [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                            (when (= :read (:permission-level visibility-config))
-                                                                             [:= :p.perm_value (h2x/literal "read")])]]}]
-                                                   (when (perms/use-tenants)
-                                                     [:not [:exists {:select [1]
-                                                                     :from [[:collection :sub_c]]
-                                                                     :where [:and [:= :c.id :sub_c.id]
-                                                                             [:= :sub_c.namespace "shared-tenant-collection"]]}]])]}
+                                                                             [:= :p.perm_value (h2x/literal "read")])]]}]]}
                                           {:select visible-union-columns
                                            :from [[:collection :c]]
                                            :where [:= :type (h2x/literal trash-collection-type)]}
@@ -807,6 +802,12 @@
                [:= :c.archived true]
                ;; the trash collection is included when viewing archived-only
                [:= :id [:inline (trash-collection-id)]]])
+
+            (when-not (perms/use-tenants)
+              [:not [:exists {:select [1]
+                              :from [[:collection :sub_c]]
+                              :where [:and [:= :c.id :sub_c.id]
+                                      [:= :sub_c.namespace "shared-tenant-collection"]]}]])
 
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
