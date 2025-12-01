@@ -16,14 +16,11 @@ import {
 import { useExpandedState } from "../hooks";
 import type {
   DatabaseNode,
-  ExpandedDatabaseItem,
-  ExpandedSchemaItem,
   FilterState,
   FlatItem,
   RootNode,
   SchemaNode,
   TableNode,
-  TreeNode,
   TreePath,
 } from "../types";
 import { isDatabaseNode, isSchemaNode, isTableNode } from "../types";
@@ -184,20 +181,12 @@ export function SearchNew({
       databases: selectedDatabases,
     };
 
-    if (isDatabaseNode(item as unknown as TreeNode)) {
-      setSelectedTables(
-        toggleDatabaseSelection(
-          item as unknown as ExpandedDatabaseItem,
-          selection,
-        ).tables,
-      );
+    if (isDatabaseNode(item)) {
+      setSelectedTables(toggleDatabaseSelection(item, selection).tables);
     }
 
-    if (isSchemaNode(item as unknown as TreeNode)) {
-      setSelectedTables(
-        toggleSchemaSelection(item as unknown as ExpandedSchemaItem, selection)
-          .tables,
-      );
+    if (isSchemaNode(item)) {
+      setSelectedTables(toggleSchemaSelection(item, selection).tables);
     }
     if (isTableNode(item)) {
       setSelectedTables((prev) => {
