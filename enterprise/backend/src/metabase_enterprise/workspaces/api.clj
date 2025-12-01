@@ -188,22 +188,29 @@
   (t2/select [:model/Table :id :schema :name [:name :table]]
              :id [:in (map :id (:inputs graph))]))
 
-(defn- outputs-with-transforms
-  [graph]
-  (let [id->transform-data (t2/select-fn->fn :id identity :model/Transform
-                                             :id [:in (map (comp :id :mapping) (:transforms graph))])
-        s+t->transform-data (into {}
-                                  (map (fn [[_id td]]
-                                         (let [{:keys [schema name]} (:target td)]
-                                           [[schema name] td])))
-                                  id->transform-data)]
-    (mapv
-     (fn [{:keys [schema name mapping] :as _output}]
-       {:global {:schema schema
-                 :table name}
-        :workspace {:transform-id (:id (s+t->transform-data [(:schema mapping) (:name mapping)]))
-                    :table-id (:id mapping)}})
-     (:outputs graph))))
+(defn- output-tables
+  [workspace-id]
+  (let [src-table-id->dst-table-id (t2/select-fn->fn :src-id :dst-id
+                                                     [:model/WorkspaceMappingTable [:upstream_id :src-id] [:downstream_id :dst-id]]
+                                                     :workspace_id workspace-id)
+        id->table-data (t2/select-fn->fn :id identity :model/Table
+                                         :id [:in (filter pos-int? (concat (keys src-table-id->dst-table-id)
+                                                                           (vals src-table-id->dst-table-id)))])
+
+        workspace-transforms-data (t2/select :model/Transform :workspace_id workspace-id)
+        s+t->workspace-transform (u/for-map
+                                  [{:keys [target] :as transform} workspace-transforms-data]
+                                   [[(:schema target) (:name target)] transform])]
+    (mapv (fn [[src-table-id dst-table-id]]
+            (let [src-schema (get-in id->table-data [src-table-id :schema])
+                  src-table (get-in id->table-data [src-table-id :name])
+                  dst-schema (get-in id->table-data [dst-table-id :schema])
+                  dst-table (get-in id->table-data [dst-table-id :name])]
+              {:global {:schema src-schema
+                        :table src-table}
+               :workspace {:transform-id (get-in s+t->workspace-transform [[dst-schema dst-table] :id])
+                           :table-id dst-table-id}}))
+          src-table-id->dst-table-id)))
 
 (api.macros/defendpoint :get "/:id/tables" :- [:map
                                                [:inputs [:sequential
@@ -224,7 +231,7 @@
   (let [workspace (-> (api/check-404 (t2/select-one :model/Workspace :id id))
                       (t2/hydrate :contents))]
     {:inputs (input-tables (:graph workspace))
-     :outputs (outputs-with-transforms (:graph workspace))}))
+     :outputs (output-tables (:id workspace))}))
 
 ;;;; /tables end
 
