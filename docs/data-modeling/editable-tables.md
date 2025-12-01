@@ -13,7 +13,7 @@ Admins can enable editable table data in Metabase.
 
 ## Databases that support editable tables
 
-Currently, editable tables are avavailable for the following databases:
+Currently, editable tables are available for the following databases:
 
 - PostgreSQL
 - MySQL
