@@ -34,7 +34,6 @@ const setup = (setupOpts: SetupOpts) => {
     model: "table",
     table_id: TEST_TABLE.id,
     database_id: TEST_DATABASE.id,
-    getUrl: () => `/table/${TEST_TABLE.id}`,
     ...setupOpts,
   });
 

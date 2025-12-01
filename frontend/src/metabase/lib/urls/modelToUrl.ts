@@ -7,7 +7,6 @@ import { document } from "./documents";
 import { indexedEntity } from "./indexed-entities";
 import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
-import { segment } from "./segment";
 import { timeline } from "./timelines";
 import { transform } from "./transforms";
 
@@ -59,8 +58,6 @@ export function modelToUrl(item: UrlableModel): string {
       return transform(item.id);
     case "indexed-entity":
       return indexedEntity(item.id);
-    case "segment":
-      return segment(item.id);
     default:
       return NOT_FOUND_URL;
   }
