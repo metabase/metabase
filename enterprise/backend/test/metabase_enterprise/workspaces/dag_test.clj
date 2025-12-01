@@ -1,11 +1,13 @@
 (ns metabase-enterprise.workspaces.dag-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.dependencies.models.dependency :as deps]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;;;; Example graphs for testing
@@ -22,17 +24,9 @@
 
 ;;;; Test data helpers
 
-(defn- kw->type
-  "Convert shorthand keyword to dependency type string.
-   :x<n> -> \"transform\", :t<n> -> \"table\", :m<n> -> \"card\""
-  [kw]
-  (case (first (name kw))
-    \x "transform"
-    \t "table"
-    \m "card"))
-
 (defn- transform? [kw] (= \x (first (name kw))))
 (defn- table? [kw] (= \t (first (name kw))))
+(defn- kw->id [kw] (parse-long (subs (name kw) 1)))
 
 (defn- create-test-graph!
   "Create test transforms and tables from shorthand notation, returning id mappings.
@@ -46,61 +40,59 @@
 
    NOTE: Caller should wrap in mt/with-model-cleanup for proper cleanup."
   [{:keys [check-outs dependencies]}]
-  (let [all-ids    (set (concat (keys dependencies)
+  (let [schema     (str/replace (str (random-uuid)) "-" "_")
+        all-ids    (set (concat (keys dependencies)
                                 (mapcat val dependencies)
                                 check-outs))
         transforms (filter transform? all-ids)
         tables     (filter table? all-ids)
-        ;; Create mock tables
-        table-ids  (into {}
-                         (for [t tables]
-                           (let [id (t2/insert-returning-pk! :model/Table
-                                                             {:db_id  (mt/id)
-                                                              :name   (str "test_table_" (name t))
-                                                              :active true})]
-                             [t id])))
+        table-ids  (u/for-map [t tables]
+                     [t (t2/insert-returning-pk! :model/Table
+                                                 {:db_id  (mt/id)
+                                                  :schema schema
+                                                  :name   (str "test_table_" (kw->id t))
+                                                  :active true})])
         ;; Create transforms that reference their input tables
-        tx-ids     (into {}
-                         (for [tx transforms]
-                           (let [;; Find parent tables for this transform
-                                 parent-tables (->> (get dependencies tx [])
-                                                    (filter table?)
-                                                    (map table-ids))
-                                 source-table  (first parent-tables)
-                                 id            (t2/insert-returning-pk! :model/Transform
-                                                                        {:name   (str "Test " (name tx))
-                                                                         :source {:type  :query
-                                                                                  :query (if source-table
-                                                                                           {:database   (mt/id)
-                                                                                            :type       :query
-                                                                                            :query      {:source-table source-table}}
-                                                                                           {:database (mt/id)
-                                                                                            :type     :native
-                                                                                            :native   {:query "SELECT 1"}})}
-                                                                         :target {:type   "table"
-                                                                                  :schema "public"
-                                                                                  :name   (str "test_output_" (name tx))}})]
-                             [tx id])))
-        id-map     (merge tx-ids table-ids)]
-    ;; Create dependencies
-    (doseq [[child parents] dependencies
-            :let [child-id (id-map child)]
-            parent parents
-            :let [parent-id (id-map parent)]]
-      (deps/replace-dependencies!
-       (kw->type child) child-id
-       {(kw->type parent) #{parent-id}}))
-    id-map))
+        tx-ids     (u/for-map [tx transforms]
+                     (let [parent-tables (->> (get dependencies tx []) (filter table?) (map table-ids))
+                           id            (t2/insert-returning-pk! :model/Transform
+                                                                  {:name   (str "Test " (name tx))
+                                                                   :source {:type  :query
+                                                                            :query (if (seq parent-tables)
+                                                                                     {:database (mt/id)
+                                                                                      :type     :query
+                                                                                      :query    {:source-table (first parent-tables)
+                                                                                                 :joins        (for [pt (rest parent-tables)]
+                                                                                                                 {:source-table pt
+                                                                                                                  :condition    [:= 1 1]})}}
+                                                                                     {:database (mt/id)
+                                                                                      :type     :native
+                                                                                      :native   {:query "SELECT 1"}})}
+                                                                   :target {:type     "table"
+                                                                            :database (mt/id)
+                                                                            :schema   schema
+                                                                            :name     (str "test_table_" (kw->id tx))}})]
+                       [tx id]))]
+
+    ;; TODO This is a workaround for the dependency between transforms and their output only being inserted on run.
+    ;;      We will need to do something about this when we mirror as well - ideally the deps module would "just work"
+    (doseq [[tx-kw tx-id] tx-ids]
+      (t2/insert! :model/Dependency
+                  {:from_entity_type "table"
+                   :from_entity_id   (table-ids (keyword (str "t" (kw->id tx-kw))))
+                   :to_entity_type   "transform"
+                   :to_entity_id     tx-id}))
+
+    (merge tx-ids table-ids)))
 
 (defn- translate-result
   "Translate result from real IDs back to shorthand notation for easier comparison."
   [result id-map]
-  (let [reverse-map (into {} (map (fn [[k v]] [v k]) id-map))
-        translate   (fn [{:keys [id]}]
-                      (get reverse-map id))]
+  (let [reverse-map (u/for-map [[k v] id-map] [v k])
+        translate   (fn [{:keys [id]}] (get reverse-map id))]
     (-> (reduce (fn [m k] (update m k #(set (map translate %))))
                 result
-                [:check-outs :inputs :outputs :transforms :entities])
+                [:check-outs :inputs :outputs :transforms])
         (update :dependencies
                 (fn [deps]
                   (into {}
@@ -206,6 +198,29 @@
           (is (= #{:x1} (:transforms translated)))
           ;; Inputs should be :t1
           (is (contains? (:inputs translated) :t1)))))))
+
+(deftest path-induced-subgraph-larger-test
+  (mt/with-premium-features #{:workspaces :dependencies}
+    (mt/with-model-cleanup [:model/Table :model/Transform :model/Dependency]
+      (testing "graph built from shorthand matches abstract solver"
+        (let [shorthand  {:check-outs   #{:x2, :x4}
+                          :dependencies {:x1 [:t0]
+                                         :x2 [:x1, :t10]
+                                         :x3 [:x2, :t8]
+                                         :x4 [:x3]
+                                         :x5 [:x2, :x4, :t9]}}
+              id-map     (create-test-graph! (dag-abstract/expand-shorthand shorthand))
+              result     (ws.dag/path-induced-subgraph {:transforms (mapv id-map (:check-outs shorthand))})
+              translated (translate-result result id-map)]
+          (is (=? {:check-outs   #{:x2, :x4}
+                   :transforms   #{:x2, :x3, :x4}
+                   :inputs       #{:t0, :t1, :t8, :t10}
+                   :outputs      #{:t2, :t3, :t4}
+                   ;; Dependencies outside the subgraph are not listed
+                   :dependencies {:x2 #{}
+                                  :x3 #{:x2}
+                                  :x4 #{:x3}}}
+                  translated)))))))
 
 (deftest expand-solver-test
   (testing "expand-shorthand inserts interstitial nodes for transform output tables"

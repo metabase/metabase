@@ -32,9 +32,7 @@ it("Should render a segment editor", () => {
 
   const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
 
-  expect(within(firstRow).getByPlaceholderText(/Label for this/)).toHaveValue(
-    "bad",
-  );
+  expect(within(firstRow).getByPlaceholderText(/Optional/)).toHaveValue("bad");
   expect(within(firstRow).getByPlaceholderText(/Min/)).toHaveValue("0");
   expect(within(firstRow).getByPlaceholderText(/Max/)).toHaveValue("100");
 });

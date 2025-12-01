@@ -63,6 +63,7 @@ export type MetabotDebugToolCallMessage = {
   args?: string;
   status: "started" | "ended";
   result?: string;
+  is_error?: boolean;
 };
 
 export type MetabotAgentChatMessage =
@@ -339,12 +340,38 @@ export const metabot = createSlice({
         state.errorMessages = [];
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
+        state.history = action.payload?.history?.slice() ?? [];
         state.activeToolCalls = [];
         state.isProcessing = false;
       })
-      .addCase(sendAgentRequest.rejected, (state) => {
+      .addCase(sendAgentRequest.rejected, (state, action) => {
+        // aborted requests needs special state adjustments
+        if (action.payload?.type === "abort") {
+          state.state = { ...(action.payload?.state ?? {}) };
+          state.history = action.payload?.history?.slice() ?? [];
+          if (action.payload.unresolved_tool_calls.length > 0) {
+            // update history w/ synthetic tool_result entries for each unresolved tool call
+            // as having a tool_call without a matching tool_result is invalid
+            const syntheticToolResults =
+              action.payload.unresolved_tool_calls.map((tc) => ({
+                role: "tool" as const,
+                content: "Tool execution interrupted by user",
+                tool_call_id: tc.toolCallId,
+              }));
+            state.history.push(...syntheticToolResults);
+
+            // update message state so that unresolved tools are marked as ended
+            state.messages.forEach((msg) => {
+              if (msg.type === "tool_call" && msg.status === "started") {
+                msg.status = "ended";
+                msg.result = "Tool execution interrupted by user";
+                msg.is_error = true;
+              }
+            });
+          }
+        }
+
         state.activeToolCalls = [];
         state.isProcessing = false;
       });

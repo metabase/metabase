@@ -1,136 +1,48 @@
 (ns metabase-enterprise.workspaces.mirroring
   (:require
+   [metabase-enterprise.workspaces.context :as ws.ctx]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
-   [metabase.util :as u]
+   [metabase-enterprise.workspaces.remap :as ws.remap]
    [toucan2.core :as t2]))
 
-;; TODO (Chris 2025-11-18) not sure why this is here - maybe we should check that between this and mirrored keys
-;;       that we are fully specifying everything on the model - so we catch if something important is added.
-#_(def ^:private t2-transform-not-mirrored-keys
-    #{:id :creator_id :created_at :updated_at :entity_id})
-
-;; t2 for snake
-(def ^:private t2-transform-keys
+(def ^:private transform-mirrored-keys
   #{:description :name :source :target :source_type})
 
+(defn- mirror-data
+  [transform-node ctx workspace-id]
+  (merge {:workspace_id workspace-id}
+         (select-keys (ws.ctx/transform-node->data ctx transform-node)
+                      transform-mirrored-keys)
+         (ws.remap/remap-for-transform transform-node ctx)))
+
+;; TODO (lbrdnk 2025-11-26): Make this logic pure, move inserts upstream into single insert.
 (defn- mirror-transform!
   "Create the mirroring transform and transform mapping rows for a single transform."
-  [workspace database-id graph transform]
-  ;; With addition of e.g. Clickhouse I expect some juggling with how we provide targets,
-  ;; but for now doing plain copy-paste schema name here.
-  ;; TODO (lbrdnk 2025-11-18) revisit schema, name vs db specific access pattern.
-  (let [table-mapping (u/for-map [{:keys [name schema mapping]} (:outputs graph)]
-                        [[schema name] ((juxt :schema :name) mapping)])
-        ;; TODO (Chris 2025-11-19) avoid re-selecting here, by passing what we need from the start
-        mirror        (let [transform (t2/select-one (into [:model/Transform] t2-transform-keys) (:id transform))
-                            target    (:target transform)
-                            old-s+n   ((juxt :schema :name) target)
-                            new-s+n   (table-mapping old-s+n)]
-                        ;; TODO (Chris 2025-11-20) we can rework things to get rid of this requirement
-                        (assert new-s+n "Unable to find isolated mapping for the target table - are you sure the source table exists?")
-                        (assert (= "table" (:type target)) "We only support mirroring transforms that target tables.")
-                        (assert (= database-id (:database target)) "Unexpected target database for transform.")
-                        (merge transform
-                               {:workspace_id (:id workspace)
-                                ;; TODO (Chris 2025-11-19) remap source table (when necessary)
-                                #_#_:source {}
-                                :target       {:type     "table"
-                                               :database database-id
-                                               :schema   (first new-s+n)
-                                               :name     (second new-s+n)}}))
-        mirror        (t2/insert-returning-instance! :model/Transform mirror)
-        graph-node    (assoc transform :mapping (select-keys mirror [:id :name]))
-        _             (t2/insert! :model/WorkspaceMappingTransform
-                                  {:upstream_id   (:id transform)
-                                   :downstream_id (:id mirror)
-                                   :workspace_id  (:id workspace)})]
-    (update graph :transforms #(conj (or % []) graph-node))))
+  [workspace ctx transform-node]
+  (let [mirror-data (mirror-data transform-node ctx (:id workspace))
+        mirror (t2/insert-returning-instance! :model/Transform mirror-data)
+        ;; TODO (lbrdnk 2025-11-26): Strong gut feeling we want "mapping" represented differently.
+        ;;                           Motivation: Transforms _created_ in the workspace have no "original" map in graph
+        ;;                                       where they could live. Having some transforms in "mapping" and some
+        ;;                                       elsewhere feels dirty.
+        graph-node (assoc transform-node :mapping (select-keys mirror [:id :name]))]
+    (t2/insert! :model/WorkspaceMappingTransform
+                {:upstream_id   (:id transform-node)
+                 :downstream_id (:id mirror)
+                 :workspace_id  (:id workspace)})
+    (update-in ctx [:graph :transforms] #(conj (or % []) graph-node))))
 
-(defn- mirror-transforms! [workspace database-id graph]
-  (reduce #(mirror-transform! workspace database-id %1 %2) graph (:transforms graph)))
-
-(comment
-  ;;
-  (t2/select-one :model/Transform)
-  ;;=> (toucan2.instance/instance
-  ;;    :model/Transform
-  ;;    {:description "x",
-  ;;     :dependency_analysis_version 2,
-  ;;     :name "overwrite_existing_test",
-  ;;     :source
-  ;;     {:type :query,
-  ;;      :query
-  ;;      {:lib/type :mbql/query,
-  ;;       :lib/metadata
-  ;;       (metabase.lib.metadata.invocation-tracker/invocation-tracker-provider
-  ;;        (metabase.lib.metadata.cached-provider/cached-metadata-provider
-  ;;         (metabase.lib-be.metadata.jvm/->UncachedApplicationDatabaseMetadataProvider 2))),
-  ;;       :database 2,
-  ;;       :stages
-  ;;       [{:lib/type :mbql.stage/mbql,
-  ;;         :aggregation
-  ;;         [[:sum
-  ;;           #:lib{:uuid "ed6c85c7-9d2f-48e5-899a-ca77a56791f0"}
-  ;;           [:field
-  ;;            {:effective-type :type/Float, :lib/uuid "3e975bcc-4444-41d8-94ad-f107ec83419f", :base-type :type/Float}
-  ;;            259]]],
-  ;;         :source-table 32,
-  ;;         :breakout
-  ;;         [[:field
-  ;;           {:effective-type :type/DateTimeWithLocalTZ,
-  ;;            :base-type :type/DateTimeWithLocalTZ,
-  ;;            :lib/uuid "32cf8766-5a19-430d-a006-4482cd8b9493",
-  ;;            :temporal-unit :month}
-  ;;           261]]}]}},
-  ;;     :source_type :mbql,
-  ;;     :creator_id 1,
-  ;;     :updated_at #t "2025-11-18T10:07:10.024448Z",
-  ;;     :id 1,
-  ;;     :entity_id "otpI4D8HlmpmnIaesJzAL",
-  ;;     :target {:type "table", :database 2, :name "tabi_tabi", :schema "public"},
-  ;;     :created_at #t "2025-11-18T10:03:57.366345Z"})
-  )
+(defn- mirror-transforms!
+  [workspace ctx]
+  (reduce #(mirror-transform! workspace %1 %2)
+          (update ctx :graph dissoc :transforms)
+          (-> ctx :graph :transforms)))
 
 (defn mirror-entities!
-  "Create mirrored transforms and isolated tables, etc"
-  [workspace
-   database
-   graph]
-  ;; Add a check that isolation exists instead as this is supposed to be called from common or core.
-  #_(ws.isolation/ensure-database-isolation! workspace database)
-  (->> graph
-       (ws.isolation/create-isolated-output-tables! workspace database)
-       (mirror-transforms! workspace (:id database))))
-
-#_:clj-kondo/ignore
-(comment
-  ;;;; manually mirror some transform without dependencies -- adjust to your needs
-  ;;
-  ;; Set the following vars, then exec try block
-  ;; for cleanup use the do block
-  ;;
-  (def ws* {:id "ahoj2"})
-
-  (def graph* (#'metabase-enterprise.workspaces.common/build-graph
-               {:transforms (t2/select-fn-vec :id [:model/Transform :id] :workspace_id nil {:order-by [:id], :limit 1})}))
-
-  (def db-id* (t2/select-one-fn :db_id [:model/Table :db_id] (:id (first (:inputs graph*)))))
-
-  (try (mirror-entities! ws* db-id* graph*)
-       (catch Throwable t
-         (def eee t)
-         (throw t)))
-
-  ;; synced transform tables
-  #_(t2/select :model/Table :schema [:like "mb__isolation_%_ahoj2"])
-
-  ;; drop tested
-  (do
-    (t2/delete! :model/Transform :id [:> 1])
-    (t2/delete! :model/Table :schema "mb__isolation_91499_ahoj2")
-    (let [db (t2/select-one :model/Database :id 2)
-          driver (metabase.driver.util/database->driver db)
-          jdbc-spec ((requiring-resolve 'metabase.driver.sql-jdbc.connection/connection-details->spec)
-                     driver
-                     (:details db))]
-      (clojure.java.jdbc/execute! jdbc-spec ["DROP SCHEMA \"mb__isolation_91499_ahoj2\" CASCADE"]))))
+  "TODO (lbrdnk): Add docstring."
+  [workspace database graph]
+  (let [ctx (ws.ctx/->context-with-resources graph)]
+    (->> ctx
+         (ws.isolation/create-isolated-output-tables! workspace database)
+         (mirror-transforms! workspace)
+         :graph)))

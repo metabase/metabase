@@ -162,6 +162,7 @@ export type ListNodeDependentsRequest = {
   type: DependencyType;
   dependent_type: DependencyType;
   dependent_card_type?: CardType;
+  archived?: boolean;
 };
 
 export type CheckDependenciesResponse = {

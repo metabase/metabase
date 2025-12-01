@@ -34,7 +34,8 @@
       mi/json-out-without-keywordization
       (update-keys keyword)
       (m/update-existing :query lib-be/normalize-query)
-      (m/update-existing :type keyword)))
+      (m/update-existing :type keyword)
+      (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
 
 (defn- transform-source-in [m]
   (-> m
@@ -222,13 +223,14 @@
   [_model-name opts]
   {:copy [:name :description :entity_id]
    :skip [:dependency_analysis_version :source_type]
-   :transform {:created_at   (serdes/date)
-               :creator_id   (serdes/fk :model/User)
-               :workspace_id (serdes/fk :model/Workspace)
-               :source       {:export #(update % :query serdes/export-mbql)
-                              :import #(update % :query serdes/import-mbql)}
-               :target       {:export serdes/export-mbql :import serdes/import-mbql}
-               :tags         (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+   :transform {:created_at    (serdes/date)
+               :creator_id    (serdes/fk :model/User)
+               :workspace_id  (serdes/fk :model/Workspace)
+               :collection_id (serdes/fk :model/Collection)
+               :source        {:export #(update % :query serdes/export-mbql)
+                               :import #(update % :query serdes/import-mbql)}
+               :target        {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags          (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source tags]}]

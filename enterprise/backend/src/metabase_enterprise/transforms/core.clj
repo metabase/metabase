@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.core
   "API namespace for the `metabase-enterprise.transform` module."
   (:require
+   [metabase-enterprise.transforms.models.transform]
    [metabase-enterprise.transforms.models.transform-run]
    [metabase-enterprise.transforms.settings]
    [metabase-enterprise.transforms.util]
@@ -14,4 +15,6 @@
   python-transform?
   query-transform?]
  [metabase-enterprise.transforms.models.transform-run
-  timeout-run!])
+  timeout-run!]
+ [metabase-enterprise.transforms.models.transform
+  update-transform-tags!])

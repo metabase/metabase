@@ -5,7 +5,7 @@ summary: Create documents to combine text and charts for long-form analysis. Add
 
 # Documents
 
-{% include plans-blockquote.html feature="Documents" %}
+{% include plans-blockquote.html feature="Documents" is_plural=true%}
 
 ![Document with comment](./images/document-with-comment.png)
 
@@ -64,10 +64,11 @@ Questions that are created directly in the document (either through [Metabot](..
 
 To edit a chart, click the **three-dot** menu in the chart's upper right. You can:
 
-- Edit visualization
-- Edit query
-- Replace the chart with another question or model
-- [Download results](../questions/exporting-results.md#exporting-results-from-document-cards)
+- **Add supporting text** to provide context next to the chart
+- **Edit visualization** to change how the chart displays data
+- **Edit query** to modify the underlying question
+- **Replace** the chart with another question or model
+- [**Download results**](../questions/exporting-results.md#exporting-results-from-document-cards)
 
 Edits only affect the chart in the document. If you added the chart from a collection, Metabase will have created a copy of the chart. Any changes made to the chart in the document won't affect the original question.
 
@@ -77,15 +78,30 @@ Edits only affect the chart in the document. If you added the chart from a colle
 
 To rearrange charts, simply click and hold on the chart and drag it to where you want it in the document.
 
-You can put up to three charts side by side (more than three charts side-by-side gets crowded). To resize charts, you can click on the edges to adjust their size.
-
-When there are multiple charts in the same row, you can resize them horizontally by clicking between the charts and sliding left or right to resize.
+You can put up to three items side by side in a group. This includes both charts and supporting text blocks. When you have multiple items in the same row, you can resize them horizontally by clicking between the items and sliding left or right to resize.
 
 To resize a chart's height, click the bottom of the chart and resize the chart up or down.
 
-For now, you can only put charts side-by-side (not text elements).
-
 After arranging your charts, save your changes!
+
+## Adding supporting text to charts
+
+![Supporting text next to a chart](./images/supporting-text.png)
+
+You can add a supporting text block next to charts to provide context.
+
+To add supporting text to a chart:
+
+1. Hover over the chart.
+2. Click the **three-dot** menu in the chart's upper right.
+3. Select **Add supporting text**.
+4. Type your text in the supporting text block.
+
+You can only have one supporting text block per group of charts. A group can contain up to three items total (charts and supporting text block combined).
+
+You can drag and drop a supporting text block to reorder them within a group of charts. You can only move supporting text within its current group; you can't drag it out to create a standalone text block.
+
+Supporting text blocks support the same Markdown formatting as the rest of the document, including headings, lists, blockquotes, and code blocks. But you can't add charts in supporting text.
 
 ## Formatting text
 

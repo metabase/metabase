@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { CurrencyStyle } from "metabase/lib/formatting";
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
@@ -330,6 +330,8 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms",
   "transforms-python",
+  "data_studio",
+  "support-users",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -572,6 +574,8 @@ export type UserSettings = {
   "notebook-native-preview-sidebar-width"?: number | null;
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
+  "expand-collections-in-nav"?: boolean;
+  "expand-library-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;

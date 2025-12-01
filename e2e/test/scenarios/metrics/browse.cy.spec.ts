@@ -135,7 +135,10 @@ describe("scenarios > browse > metrics", () => {
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
         .click();
-      cy.findByTestId("entity-picker-modal").findByText("People").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("People").click();
+      });
       cy.findByTestId("edit-bar")
         .should("contain", "New metric")
         .button("Save")
