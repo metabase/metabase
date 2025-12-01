@@ -215,9 +215,9 @@
                                               :schema (-> mirror-transform :target :schema)
                                               :name (-> mirror-transform :target :name))]
               (testing "/tables returns expected results"
-                (is (=? {:inputs [{:id (mt/id :orders) :schema-name orig-schema, :table-name "orders"}],
+                (is (=? {:inputs [{:id (mt/id :orders) :schema orig-schema :table "orders"}]
                          :outputs
-                         [{:global {:schema-name orig-schema, :table-name orig-name},
+                         [{:global {:schema orig-schema :table orig-name}
                            :workspace {:transform-id (:id mirror-transform)
                                        :table-id (:id mirror-table)}}]}
                         tables-result))))))))))
