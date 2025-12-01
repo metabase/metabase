@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   JWT_SHARED_SECRET,
   entityPickerModal,
@@ -14,6 +15,24 @@ import {
 
 const { H } = cy;
 
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const DASHBOARD_NAME = "Dashboard with Parameters";
+const DASHBOARD_PARAMETERS = [
+  {
+    name: "ID",
+    slug: "id",
+    id: "11111111",
+    type: "id",
+  },
+  {
+    name: "Product ID",
+    slug: "product_id",
+    id: "22222222",
+    type: "id",
+  },
+];
+
 const FIRST_QUESTION_NAME = "Question With Params 1";
 const SECOND_QUESTION_NAME = "Question With Params 2";
 
@@ -26,6 +45,19 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
     H.enableTracking();
 
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders table",
+        query: { "source-table": ORDERS_ID },
+      },
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+        parameters: DASHBOARD_PARAMETERS,
+      },
+    }).then(({ body: card }) => {
+      cy.wrap(card.dashboard_id).as("dashboardId");
+    });
 
     H.createNativeQuestion(
       {
@@ -275,31 +307,31 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       });
     });
 
-    it("Properly adjusts EmbedJS options when switching between guest/sso modes for a Question", () => {
-      cy.get("@question1Id").then((questionId) => {
-        cy.request("PUT", `/api/card/${questionId}`, {
+    it("Properly adjusts EmbedJS options when switching between guest/sso modes for a Dashboard", () => {
+      cy.get("@dashboardId").then((dashboardId) => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           enable_embedding: true,
         });
 
         enableJwtAuth();
 
         navigateToEmbedOptionsStep({
-          experience: "chart",
-          resourceName: FIRST_QUESTION_NAME,
+          experience: "dashboard",
+          resourceName: DASHBOARD_NAME,
         });
 
         getEmbedSidebar().within(() => {
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
         });
 
-        H.setEmbeddingParameter("Text", "Locked");
+        H.setEmbeddingParameter("Product ID", "Locked");
 
         getEmbedSidebar().within(() => {
           cy.findByText("Get code").click();
 
           codeBlock().first().should("contain", "token=");
 
-          codeBlock().first().should("not.contain", "question-id=");
+          codeBlock().first().should("not.contain", "dashboard-id=");
           codeBlock().first().should("not.contain", "hidden-parameters=");
           codeBlock().first().should("not.contain", "locked-parameters=");
 
@@ -309,10 +341,10 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
           cy.findByText("Get code").click();
 
-          codeBlock().first().should("contain", "question-id=");
+          codeBlock().first().should("contain", "dashboard-id=");
+          codeBlock().first().should("contain", "hidden-parameters=");
 
           codeBlock().first().should("not.contain", "token=");
-          codeBlock().first().should("not.contain", "hidden-parameters=");
           codeBlock().first().should("not.contain", "locked-parameters=");
         });
       });
