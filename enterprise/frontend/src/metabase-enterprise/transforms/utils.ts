@@ -9,10 +9,13 @@ import type {
   Database,
   DatabaseId,
   DraftTransformSource,
+  Transform,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
 } from "metabase-types/api";
+
+import { CHECKPOINT_TEMPLATE_TAG } from "./constants";
 
 export function parseTimestampWithTimezone(
   timestamp: string,
@@ -125,6 +128,35 @@ export function parseRunMethod(value: unknown): TransformRunMethod | undefined {
   }
 }
 
+export function isTransformRunning(transform: Transform) {
+  const lastRun = transform.last_run;
+  return lastRun?.status === "started";
+}
+
+export function isTransformCanceling(transform: Transform) {
+  const lastRun = transform.last_run;
+  return lastRun?.status === "canceling";
+}
+
+export function isTransformSyncing(transform: Transform) {
+  const lastRun = transform.last_run;
+
+  // If the last run succeeded but there is no table yet, wait for the sync to
+  // finish. If the transform is changed until the sync finishes, stop polling,
+  // because the table could be already deleted.
+  if (
+    transform.table == null &&
+    lastRun?.status === "succeeded" &&
+    lastRun?.end_time != null
+  ) {
+    const endedAt = parseTimestamp(lastRun.end_time);
+    const updatedAt = parseTimestamp(transform.updated_at);
+    return endedAt.isAfter(updatedAt);
+  }
+
+  return false;
+}
+
 export function isSameSource(
   source1: DraftTransformSource,
   source2: DraftTransformSource,
@@ -142,4 +174,33 @@ export function isNotDraftSource(
   source: DraftTransformSource,
 ): source is TransformSource {
   return source.type !== "python" || source["source-database"] != null;
+}
+
+const ALLOWED_TRANSFORM_VARIABLES = [CHECKPOINT_TEMPLATE_TAG];
+
+export type ValidationResult = {
+  isValid: boolean;
+  errorMessage?: string;
+};
+
+export function getValidationResult(query: Lib.Query): ValidationResult {
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (isNative) {
+    const tags = Object.values(Lib.templateTags(query));
+    // Allow snippets, cards, and the special transform variables ({checkpoint})
+    const hasInvalidTags = tags.some(
+      (t) =>
+        t.type !== "card" &&
+        t.type !== "snippet" &&
+        !ALLOWED_TRANSFORM_VARIABLES.includes(t.name),
+    );
+    if (hasInvalidTags) {
+      return {
+        isValid: false,
+        errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
+      };
+    }
+  }
+
+  return { isValid: Lib.canSave(query, "question") };
 }

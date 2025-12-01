@@ -242,6 +242,7 @@
   text
   today
   split-part
+  collate
   integer
   float]
  [lib.extraction

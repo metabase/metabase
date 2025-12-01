@@ -140,21 +140,27 @@
           ret)))
     (thunk)))
 
-(defn- create-table-and-insert-data!
-  "Create a table from metadata and insert data from source."
-  [driver db-id table-name metadata data-source]
-  (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
-                      :columns (mapv (fn [{:keys [name base_type #_database_type]}]
-                                       {:name name
-                                        :type (python-runner/restricted-insert-type base_type)
-                                        ;; :database-type database_type
-                                        :nullable? true})
-                                     (:fields metadata))}
-        data-source (assoc data-source :table-schema table-schema)]
-    (transforms.util/create-table-from-schema! driver db-id table-schema)
+(defn- table-schema [table-name metadata]
+  {:name (if (keyword? table-name) table-name (keyword table-name))
+   :columns (mapv (fn [{:keys [name base_type #_database_type]}]
+                    {:name name
+                     :type (python-runner/restricted-insert-type base_type)
+                     ;; :database-type database_type
+                     :nullable? true})
+                  (:fields metadata))})
 
+(defn- insert-data!
+  "Insert data from source into an existing table."
+  [driver db-id table-schema data-source]
+  (let [data-source (assoc data-source :table-schema table-schema)]
     (->> #(driver/insert-from-source! driver db-id table-schema data-source)
          (maybe-retry-with-backoff driver))))
+
+(defn- create-table-and-insert-data!
+  "Create a table from metadata and insert data from source."
+  [driver db-id table-schema data-source]
+  (transforms.util/create-table-from-schema! driver db-id table-schema)
+  (insert-data! driver db-id table-schema data-source))
 
 (defn- transfer-with-rename-tables-strategy!
   "Transfer data using the rename-tables*! multimethod with atomicity guarantees.
@@ -168,7 +174,7 @@
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
 
-      (create-table-and-insert-data! driver db-id source-table-name metadata data-source)
+      (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
       (transforms.util/rename-tables! driver db-id {table-name temp-table-name
                                                     source-table-name table-name})
       (transforms.util/drop-table! driver db-id temp-table-name)
@@ -188,7 +194,7 @@
     (log/info "Using create-drop-rename strategy to minimize downtime")
     (try
 
-      (create-table-and-insert-data! driver db-id source-table-name metadata data-source)
+      (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
       (transforms.util/drop-table! driver db-id table-name)
       (driver/rename-table! driver db-id source-table-name table-name)
 
@@ -207,13 +213,37 @@
   (try
 
     (transforms.util/drop-table! driver db-id table-name)
-    (create-table-and-insert-data! driver db-id table-name metadata data-source)
+    (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source)
 
     (catch Exception e
       (log/error e "Failed to transfer data using drop-create fallback strategy")
       (throw e))))
 
-(defn- transfer-file-to-db [driver {db-id :id :as db} {:keys [target] :as transform} metadata temp-file]
+(defmulti ^:private transfer-file-to-db
+  {:arglists '([driver db transform metadata temp-file])}
+  (fn [_ _ transform _ _] (-> transform :target :type keyword)))
+
+(defmethod transfer-file-to-db :table-incremental
+  [driver {db-id :id}
+   {:keys [target] :as transform}
+   metadata temp-file]
+  (let [table-name (transforms.util/qualified-table-name driver target)
+        table-exists? (transforms.util/target-table-exists? transform)
+        data-source {:type :jsonl-file
+                     :file temp-file}]
+
+    ;; once we have more than just append, dispatch on :target-incremental-strategy
+
+    (if (not table-exists?)
+      (do
+        (log/info "New table")
+        (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
+      (insert-data! driver db-id (table-schema table-name metadata) data-source))))
+
+(defmethod transfer-file-to-db :table
+  [driver {db-id :id :as db}
+   {:keys [target] :as transform}
+   metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
         table-exists? (transforms.util/target-table-exists? transform)
         data-source {:type :jsonl-file
@@ -222,7 +252,7 @@
       (not table-exists?)
       (do
         (log/info "New table")
-        (create-table-and-insert-data! driver db-id table-name metadata data-source))
+        (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
 
       (driver.u/supports? driver :atomic-renames db)
       (transfer-with-rename-tables-strategy! driver db-id table-name metadata data-source)
@@ -253,10 +283,11 @@
           server-url      (transforms-python.settings/python-runner-url)
           _               (python-runner/copy-tables-to-s3! {:run-id         run-id
                                                              :shared-storage @shared-storage-ref
-                                                             :table-name->id (:source-tables source)
-                                                             :cancel-chan    cancel-chan})
+                                                             :source         source
+                                                             :cancel-chan    cancel-chan
+                                                             :limit          (:limit source)
+                                                             :transform-id   (:id transform)})
           _               (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
-
           {:keys [status body] :as response}
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url
@@ -341,7 +372,7 @@
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                 (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-          (transforms.util/sync-target! target db run-id))
+          (transforms.util/sync-target! target db))
         {:run_id run-id
          :result result}))
     (catch Throwable t

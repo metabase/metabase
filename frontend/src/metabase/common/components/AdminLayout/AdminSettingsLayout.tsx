@@ -1,10 +1,6 @@
 import type React from "react";
-import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
-import { getLocation } from "metabase/selectors/routing";
 import { Box } from "metabase/ui";
 
 import { NotFound } from "../ErrorPages";
@@ -22,10 +18,6 @@ export const AdminSettingsLayout = ({
   fullWidth?: boolean;
   maw?: string;
 }) => {
-  const location = useSelector(getLocation);
-  const isMetabotEnabledForRoute =
-    location.pathname.startsWith("/admin/transforms");
-
   return (
     <Box className={S.Wrapper}>
       <Box className={S.Main}>
@@ -45,21 +37,6 @@ export const AdminSettingsLayout = ({
             </Box>
           </Box>
         </Box>
-
-        <PLUGIN_METABOT.Metabot
-          hide={!isMetabotEnabledForRoute}
-          config={{
-            // we don't save snapshots of the metabot conversation "state" value and do not
-            // revert it to the point in time of a message was sent. this will cause values
-            // like the todo list to confuse the agent as there may no longer be any conversation
-            // history but an in progress/complete todo list.
-            preventRetryMessage: true,
-            preventClose: true,
-            hideSuggestedPrompts: true,
-            emptyText: t`Let's transform your data together!`,
-            suggestionModels: ["dataset", "transform", "table", "database"],
-          }}
-        />
       </Box>
     </Box>
   );

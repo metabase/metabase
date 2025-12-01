@@ -2,62 +2,39 @@ name: SDK
 
 on:
   workflow_call:
+    inputs:
+      cli-snippets-type-check:
+        description: "Whether to run cli snippets type check."
+        required: true
+        type: boolean
+      docs-snippets-type-check:
+        description: "Whether to run docs snippets type check."
+        required: true
+        type: boolean
+      documentation-validation:
+        description: "Whether to run documentation generation validation check."
+        required: true
+        type: boolean
+      component-tests:
+        description: "Whether to run component tests."
+        required: true
+        type: boolean
+      host-sample-apps-tests:
+        description: "Whether to run host and sample apps compatibility tests."
+        required: true
+        type: boolean
+      skip:
+        description: Whether to skip running tests due to one of the artifacts failing to build.
+        required: true
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    outputs:
-      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
-      e2e_embedding_sdk_compatibility: ${{ steps.changes.outputs.e2e_embedding_sdk_compatibility }}
-      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
-      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
-  build-sdk-package:
-    needs: [files-changed]
-    if: |
-      !cancelled() &&
-      (needs.files-changed.outputs.e2e_embedding_sdk == 'true' ||
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
-      needs.files-changed.outputs.embedding_documentation == 'true')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build Embedding SDK package
-        run: |
-          # Remove the matchers to not report false positives on every PR
-          # unrelated to embedding (EMB-765)
-          echo "::remove-matcher owner=tsc::"
-          yarn build-embedding-sdk-package
-      - name: Prepare Embedding SDK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: resources/embedding-sdk
-
   embedding-sdk-cli-snippets-type-check:
-    needs: [files-changed, build-sdk-package]
-    if: |
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build-sdk-package.result == 'success'
+    if: inputs.cli-snippets-type-check && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -73,10 +50,7 @@ jobs:
         run: yarn run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    needs: [files-changed, build-sdk-package]
-    if: |
-      needs.files-changed.outputs.embedding_documentation == 'true' &&
-      needs.build-sdk-package.result == 'success'
+    if: inputs.docs-snippets-type-check && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -92,10 +66,7 @@ jobs:
         run: yarn run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    needs: [files-changed, build-sdk-package]
-    if: |
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build-sdk-package.result == 'success'
+    if: inputs.documentation-validation && !inputs.skip
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -143,21 +114,15 @@ jobs:
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   embedding-sdk-component-tests:
     name: "SDK component tests"
-    needs: [build-sdk-package, files-changed]
-    if: needs.files-changed.outputs.e2e_embedding_sdk == 'true'
+    if: inputs.component-tests && !inputs.skip
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
-    with:
-      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   not-required-embedding-sdk-apps-compatibility-tests:
     name: "SDK e2e tests for compatibility with (host/sample) apps"
-    needs: [build-sdk-package, files-changed]
-    if: needs.files-changed.outputs.e2e_embedding_sdk_compatibility == 'true'
-    uses: ./.github/workflows/embedding-sdk-e2e-tests.yml
+    if: inputs.host-sample-apps-tests && !inputs.skip
+    uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
-    with:
-      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   embedding-sdk-tests-result:
     needs:

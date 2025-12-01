@@ -95,6 +95,7 @@ export const ItemList = <
       {filteredItems.map((item: Item) => {
         const isSelected = isSelectedItem(item, selectedItem);
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
+        const isDisabled = shouldDisableItem?.(item);
 
         return (
           <Box
@@ -104,7 +105,7 @@ export const ItemList = <
           >
             <NavLink
               w={"auto"}
-              disabled={shouldDisableItem?.(item)}
+              disabled={isDisabled}
               rightSection={
                 isFolder(item) ? <Icon name="chevronright" size={10} /> : null
               }

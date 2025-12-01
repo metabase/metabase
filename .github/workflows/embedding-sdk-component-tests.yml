@@ -2,10 +2,6 @@ name: Embedding SDK Component Tests
 
 on:
   workflow_call:
-    inputs:
-      cached-embedding-sdk-dist-artifact-name:
-        required: true
-        type: string
 
 jobs:
   sdk-component-tests:
@@ -35,14 +31,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Retrieve uberjar artifact for ee
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.cached-embedding-sdk-dist-artifact-name }}
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Prepare front-end environment
@@ -64,7 +62,10 @@ jobs:
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        # Component tests only need the default snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       # Has to be run after the app db snapshot is made, as it is not compatible with React 19
       - name: Change React version to ${{ matrix.react-version }}
@@ -190,7 +191,7 @@ jobs:
       - name: Retrieve Embedding SDK dist artifact built from the current commit N
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.cached-embedding-sdk-dist-artifact-name }}
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Prepare Cypress environment
@@ -203,7 +204,10 @@ jobs:
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        # Component tests only need the default snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Run component tests for Embedding SDK
         env:

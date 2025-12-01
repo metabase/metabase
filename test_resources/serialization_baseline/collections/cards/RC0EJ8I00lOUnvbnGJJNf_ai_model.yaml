@@ -13,7 +13,6 @@ database_id: test-data (h2)
 table_id: null
 enable_embedding: false
 embedding_params: null
-embedding_type: null
 made_public_by_id: null
 public_uuid: null
 parameters: []
@@ -29,7 +28,9 @@ serdes/meta:
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.52.2-SNAPSHOT (f309296)
+document_id: null
+embedding_type: null
+metabase_version: v1.57.1-SNAPSHOT (d027b42)
+published_table_id: null
 source_card_id: null
 type: model
-document_id: null

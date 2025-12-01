@@ -28,9 +28,9 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.findByTestId("app-bar").findByLabelText("New").click();
     H.popover().findByTextEnsureVisible("Question").click();
-    cy.findByTestId("data-step-cell").should(
-      "have.text",
-      "Pick your starting data",
+    H.miniPickerBrowseAll().click();
+    cy.findByPlaceholderText("Search for tables and more...").should(
+      "be.visible",
     );
     H.entityPickerModal().button("Close").click();
 
@@ -328,8 +328,7 @@ describe(
 
     it("should work for both simple and nested questions based on previously converted GUI query", () => {
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
         cy.findByText(MONGO_DB_NAME).click();
         cy.findByText("Products").click();
       });

@@ -31,14 +31,18 @@ export type MetabaseCollectionItem = {
     | "instance-analytics"
     | "trash"
     | "remote-synced"
+    | "library"
+    | "library-models"
+    | "library-metrics"
     | "model"
     | "question"
     | "metric"
     | null;
+  is_remote_synced?: boolean;
   "last-edit-info"?: {
     email: string;
-    first_name: string;
-    last_name: string;
+    first_name: string | null;
+    last_name: string | null;
     id: SdkUserId;
     timestamp: string;
   };
