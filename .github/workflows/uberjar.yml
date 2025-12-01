@@ -89,7 +89,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Get build dependencies
         uses: actions/github-script@v7
