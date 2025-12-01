@@ -86,6 +86,7 @@ function DataStudioNav({
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
   const isDataTab = pathname.startsWith(Urls.dataStudioData());
+  const isGlossaryTab = pathname.startsWith(Urls.dataStudioGlossary());
   const isTransformsTab = pathname.startsWith(Urls.transformList());
   const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
   const isDependenciesTab = pathname.startsWith(Urls.dependencyGraph());
@@ -104,6 +105,13 @@ function DataStudioNav({
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
+        <DataStudioTab
+          label={t`Library`}
+          icon="model"
+          to={Urls.dataStudioModeling()}
+          isSelected={isModelingTab}
+          showLabel={isNavbarOpened}
+        />
 
         {canAccessDataModel && (
           <DataStudioTab
@@ -114,28 +122,30 @@ function DataStudioNav({
             showLabel={isNavbarOpened}
           />
         )}
-        {canAccessTransforms && (
+        {canAccessDataModel && (
           <DataStudioTab
-            label={t`Transforms`}
-            icon="transform"
-            to={Urls.transformList()}
-            isSelected={isTransformsTab}
+            label={t`Glossary`}
+            icon="reference"
+            to={Urls.dataStudioGlossary()}
+            isSelected={isGlossaryTab}
             showLabel={isNavbarOpened}
           />
         )}
-        <DataStudioTab
-          label={t`Modeling`}
-          icon="model"
-          to={Urls.dataStudioModeling()}
-          isSelected={isModelingTab}
-          showLabel={isNavbarOpened}
-        />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency graph`}
             icon="schema"
             to={Urls.dependencyGraph()}
             isSelected={isDependenciesTab}
+            showLabel={isNavbarOpened}
+          />
+        )}
+        {canAccessTransforms && (
+          <DataStudioTab
+            label={t`Transforms`}
+            icon="transform"
+            to={Urls.transformList()}
+            isSelected={isTransformsTab}
             showLabel={isNavbarOpened}
           />
         )}
