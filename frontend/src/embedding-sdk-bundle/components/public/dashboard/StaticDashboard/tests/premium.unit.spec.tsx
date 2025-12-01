@@ -1,3 +1,7 @@
+import type { ComponentType } from "react";
+
+import type { SdkDashboardProps } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboard";
+
 import { addPremiumSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -18,7 +22,7 @@ const setupPremium = async (
       embedding_sdk: true,
     },
     enterprisePlugins: ["sdk_subscriptions"],
-    component: StaticDashboard,
+    component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };
 console.warn = () => {};

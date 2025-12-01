@@ -5,37 +5,27 @@ import type { SetupSdkDashboardOptions } from "../tests/setup";
 
 type SetupOpts = Omit<SetupSdkDashboardOptions, "component">;
 
-function createAddCommonSubscriptionsTests(
-  testVariant: "common" | "enterprise",
+export function addEnterpriseSubscriptionsTests(
+  setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
 ) {
-  return (
-    setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
-  ) => {
-    describe(`Subscriptions Button (${testVariant})`, () => {
-      it.each([
-        { isSlackConfigured: false, isEmailConfigured: false },
-        { isSlackConfigured: false, isEmailConfigured: true },
-        { isSlackConfigured: true, isEmailConfigured: false },
-        { isSlackConfigured: true, isEmailConfigured: true },
-      ])(
-        "should not show subscriptions button without `embedding_sdk` token feature (isSlackConfigured: $isSlackConfigured, isEmailConfigured: $isEmailConfigured)",
-        async ({ isSlackConfigured, isEmailConfigured }) => {
-          await setup({
-            props: { withSubscriptions: true },
-            isEmailConfigured,
-            isSlackConfigured,
-          });
-        },
-      );
-    });
-  };
+  describe(`Subscriptions Button (enterprise)`, () => {
+    it.each([
+      { isSlackConfigured: false, isEmailConfigured: false },
+      { isSlackConfigured: false, isEmailConfigured: true },
+      { isSlackConfigured: true, isEmailConfigured: false },
+      { isSlackConfigured: true, isEmailConfigured: true },
+    ])(
+      "should not show subscriptions button without `embedding_sdk` token feature (isSlackConfigured: $isSlackConfigured, isEmailConfigured: $isEmailConfigured)",
+      async ({ isSlackConfigured, isEmailConfigured }) => {
+        await setup({
+          props: { withSubscriptions: true },
+          isEmailConfigured,
+          isSlackConfigured,
+        });
+      },
+    );
+  });
 }
-
-export const addCommonSubscriptionsTests =
-  createAddCommonSubscriptionsTests("common");
-
-export const addEnterpriseSubscriptionsTests =
-  createAddCommonSubscriptionsTests("enterprise");
 
 export function addPremiumSubscriptionsTests(
   setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
