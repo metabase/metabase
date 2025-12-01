@@ -1,8 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -182,3 +184,40 @@
                                                       :query (mt/mbql-query transforms_products)}
                                              :target {:type   "table"
                                                       :name   table-name}}))))))))))
+
+(deftest tables-endpoint-test
+  (mt/test-driver
+    :postgres
+    (mt/with-model-cleanup [:model/Workspace :model/Transform :model/Collection]
+      (let [mp (mt/metadata-provider)
+            query (lib/native-query mp "select * from orders limit 10;")
+            orig-schema "public"]
+        (with-transform-cleanup! [orig-name "ws_tables_test"]
+          (mt/with-temp [:model/Transform x1 {:source_type "native"
+                                              :name "My X1"
+                                              :source {:type "query"
+                                                       :query query}
+                                              :target {:type "table"
+                                                       :database (mt/id)
+                                                       :schema "public"
+                                                       :name orig-name}}]
+           ;; create the target table
+            (transforms.i/execute! x1 {:run-method :manual})
+           ;; create the workspace
+            (let [workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                  {:name        "Test Workspace"
+                                                   :database_id (mt/id)
+                                                   :upstream {:transforms [(:id x1)]}})
+                  tables-result (mt/user-http-request :crowberto :get 200
+                                                      (str "ee/workspace/" (:id workspace) "/tables"))
+                  mirror-transform (t2/select-one :model/Transform :workspace_id (:id workspace))
+                  mirror-table (t2/select-one :model/Table
+                                              :schema (-> mirror-transform :target :schema)
+                                              :name (-> mirror-transform :target :name))]
+              (testing "/tables returns expected results"
+                (is (=? {:inputs [{:id (mt/id :orders) :schema orig-schema, :name "orders"}],
+                         :outputs
+                         [{:global {:schema orig-schema, :name orig-name},
+                           :workspace {:transform-id (:id mirror-transform)
+                                       :table-id (:id mirror-table)}}]}
+                        tables-result))))))))))

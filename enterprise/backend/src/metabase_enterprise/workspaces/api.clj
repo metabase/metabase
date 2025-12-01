@@ -181,6 +181,43 @@
    :limit  (request/limit)
    :offset (request/offset)})
 
+;;;; /tables start
+
+(defn- input-tables
+  [graph]
+  (vec (t2/select [:model/Table :id :schema :name]
+                  :id [:in (map :id (:inputs graph))])))
+
+(defn- outputs-with-transforms
+  [graph]
+  (let [;; duplicated and original data
+        id->transform-data (t2/select-fn->fn :id identity :model/Transform
+                                             :id [:in (concat (map :id (:transforms graph))
+                                                              (map (comp :id :mapping) (:transforms graph)))])
+        s+t->transform-data (into {}
+                                  (map (fn [[_id td]]
+                                         (let [{:keys [schema name]} (:target td)]
+                                           [[schema name] td])))
+                                  id->transform-data)]
+    (mapv
+     (fn [{:keys [schema name mapping] :as _output}]
+       {:global {:schema schema
+                 :name name}
+        :workspace {:transform-id (:id (s+t->transform-data [(:schema mapping) (:name mapping)]))
+                    :table-id (:id mapping)}})
+     (:outputs graph))))
+
+(api.macros/defendpoint :get "/:id/tables" :- [:map]
+  "Get a single workspace by ID"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (let [workspace (-> (api/check-404 (t2/select-one :model/Workspace :id id))
+                      (t2/hydrate :contents))]
+    {:inputs (input-tables (:graph workspace))
+     :outputs (outputs-with-transforms (:graph workspace))}))
+
+;;;; /tables end
+
 (api.macros/defendpoint :get "/:id" :- FullWorkspace
   "Get a single workspace by ID"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
