@@ -78,10 +78,14 @@ export function canPlaceEntityInCollectionOrDescendants(
   return false;
 }
 
+const isLibrary = (
+  collection: CollectionItem | { data: null } | undefined,
+): collection is CollectionItem => !!collection && "name" in collection;
+
 export const useGetLibraryCollection = ({
   skip = false,
 }: { skip?: boolean } = {}) => {
-  const { data: libraryCollection, isLoading: isLoadingCollection } =
+  const { data: maybeLibrary, isLoading: isLoadingCollection } =
     useGetLibraryCollectionQuery(undefined, { skip });
 
   return {
@@ -97,10 +101,7 @@ export const useGetLibraryChildCollectionByType = ({
   skip?: boolean;
   type: CollectionType;
 }) => {
-  const { data: rootLibraryCollection } = useGetLibraryCollectionQuery(
-    undefined,
-    { skip },
-  );
+  const { data: rootLibraryCollection } = useGetLibraryCollection({ skip });
   const { data: libraryCollections } = useListCollectionItemsQuery(
     rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
   );
