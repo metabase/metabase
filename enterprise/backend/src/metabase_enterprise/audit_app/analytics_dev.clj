@@ -18,6 +18,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase.audit-app.impl :as audit-app.impl]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
    [metabase.setup.core :as setup]
@@ -279,11 +280,16 @@
   []
   (t2/select-one [:model/User :id :email] :is_superuser true {:order-by [[:id :asc]]}))
 
+(defn find-analytics-collection
+  "Get the analytics collection"
+  []
+  (t2/select-one :model/Collection :entity_id @#'audit-app.impl/default-audit-collection-entity-id))
+
 (defn- analytics-content-loaded?
   "Check if analytics content has already been imported."
   []
   (and (find-analytics-dev-database)
-       (t2/exists? :model/Collection :entity_id "vG58R8k-QddHWA7_47umn")))
+       (find-analytics-collection)))
 
 (defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
   [_]

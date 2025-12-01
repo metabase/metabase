@@ -6,7 +6,6 @@
    [metabase-enterprise.audit-app.settings :as audit.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.audit-app.core :as audit]
    [metabase.util.compress :as u.compress]
    [metabase.util.log :as log]
    [ring.core.protocols :as ring.protocols])
@@ -32,11 +31,6 @@
         (callback)
         res))))
 
-(defn- find-analytics-collection
-  "Find the analytics collection by entity ID."
-  []
-  (audit/default-audit-collection))
-
 (defn- export-and-pack
   "Export analytics content and pack into a tarball.
 
@@ -45,7 +39,7 @@
   - :callback - Function to clean up temp files
   - :error-message - Error message if export failed"
   []
-  (let [collection (find-analytics-collection)]
+  (let [collection (analytics-dev/find-analytics-collection)]
     (when-not collection
       (throw (ex-info "Analytics collection not found" {:status 404})))
 
