@@ -106,7 +106,8 @@ jobs:
 
       - name: Set up E2E JVM options
         run: |
-          JDK_JAVA_OPTIONS=$(clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :e2e :jvm-opts) (clojure.string/join " ") println)') >> GITHUB_ENV
+          opts=$(clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :e2e :jvm-opts) (clojure.string/join " ") println)')
+          echo "JDK_JAVA_OPTIONS=$opts" >> $GITHUB_ENV
         shell: bash
 
       - name: Run Metabase
