@@ -3475,6 +3475,8 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (testing "for tenant collections"
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
+                         :model/Permissions _ {:group_id group-id
+                                               :object "/collection/namespace/shared-tenant-collection/root/read/"}
                          :model/Collection coll {:name "Tenant Collection"
                                                  :namespace collection/shared-tenant-ns
                                                  :location "/"}]
