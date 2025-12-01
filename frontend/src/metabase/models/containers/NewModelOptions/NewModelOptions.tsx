@@ -1,11 +1,9 @@
 import cx from "classnames";
 import type { Location } from "history";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
@@ -116,8 +114,4 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 };
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-)(NewModelOptions);
+export default NewModelOptions;
