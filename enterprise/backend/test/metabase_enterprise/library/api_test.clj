@@ -12,7 +12,7 @@
       (without-library
        (testing "When there is no library, returns a message but still 200"
          (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
-           (is (= {:message "Library does not exist"} response))))
+           (is (= {:data nil} response))))
        (let [_          (collection/create-library-collection!)
              models-id  (t2/select-one-pk :model/Collection :type collection/library-models-collection-type)
              metrics-id (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
