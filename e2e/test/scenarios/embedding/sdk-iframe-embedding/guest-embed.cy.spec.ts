@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { IS_ENTERPRISE } = Cypress.env();
 const IS_OSS = !IS_ENTERPRISE;
-const MB_EDITION = IS_OSS ? "ee" : "oss";
+const MB_EDITION = IS_ENTERPRISE ? "ee" : "oss";
 
 describe(
   `scenarios > embedding > sdk iframe embedding > guest-embed > ${MB_EDITION}`,
@@ -57,6 +57,24 @@ describe(
           cy.findByText("Product ID").should("be.visible");
           cy.findByText("Max of Quantity").should("be.visible");
         });
+      });
+    });
+
+    it("shows an error for a component without guest embed support", () => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        metabaseConfig: { isGuest: true },
+        elements: [
+          {
+            component: "metabase-browser",
+            attributes: {},
+          },
+        ],
+      });
+
+      frame.within(() => {
+        cy.findByText("This component does not support guest embeds").should(
+          "be.visible",
+        );
       });
     });
   },
