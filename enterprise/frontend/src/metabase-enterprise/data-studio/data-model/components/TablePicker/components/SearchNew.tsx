@@ -245,11 +245,7 @@ export function SearchNew({
   return (
     <TablePickerResults
       items={flatItems}
-      path={{
-        databaseId: routeParams.databaseId,
-        schemaName: routeParams.schemaName,
-        tableId: routeParams.tableId,
-      }}
+      path={routeParams}
       onItemToggle={handleItemToggle}
       toggle={toggle}
       onRangeSelect={handleRangeSelect}
