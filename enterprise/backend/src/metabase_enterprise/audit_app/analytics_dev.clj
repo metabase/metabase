@@ -123,7 +123,7 @@
 
   Replaces user email with canonical creator_id.
   For the Database entitiy, strips down to minimal required fields and sets is_audit to true."
-  [yaml-data user-email]
+  [file-name yaml-data user-email]
   (let [transformed (walk/postwalk
                      (fn [node]
                        (if (map? node)
@@ -132,9 +132,7 @@
                            canonical-creator-id
                            node)))
                      yaml-data)
-        serdes-meta (get transformed :serdes/meta)
-        is-database? (and (map? transformed)
-                          (= "Database" (get (first serdes-meta) :model)))]
+        is-database? (= file-name (str canonical-db-id ".yaml"))]
     (if is-database?
       (-> (select-keys transformed [:name :creator_id :is_sample :is_on_demand :serdes/meta
                                     :initial_sync_status :entity_id])
@@ -240,7 +238,7 @@
           target-file (io/file target-dir relative-path)]
       (.mkdirs (.getParentFile target-file))
       (let [yaml-data (yaml/parse-string (slurp file))
-            transformed (yaml->canonical yaml-data user-email)]
+            transformed (yaml->canonical (.getName file) yaml-data user-email)]
         (spit target-file (yaml/generate-string transformed))))))
 
 (defn export-analytics-content!
