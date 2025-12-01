@@ -149,7 +149,7 @@ function mapStateToProps(state: any) {
 const mapDispatchToProps = { setDatasetEditorTab };
 
 function getSidebar(
-  props: DatasetEditorInnerProps & { modelIndexes?: unknown },
+  props: DatasetEditorInnerProps & { modelIndexes?: any },
   {
     datasetEditorTab,
     isQueryError,
@@ -243,6 +243,7 @@ function getSidebar(
     );
   }
   if (isShowingDataReference) {
+    // @ts-expect-error DataReference props handled internally
     return <DataReference {...props} onClose={toggleDataReference} />;
   }
   if (isShowingSnippetSidebar) {

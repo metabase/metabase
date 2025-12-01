@@ -51,7 +51,7 @@ type PermissionsPageLayoutProps = {
   confirmBar?: ReactNode;
   diff?: PermissionsGraph;
   isDirty?: boolean;
-  onSave?: () => void;
+  onSave: () => void;
   onLoad?: () => void;
   saveError?: string;
   clearSaveError?: () => void;

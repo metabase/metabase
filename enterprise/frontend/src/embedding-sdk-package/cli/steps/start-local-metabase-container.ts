@@ -1,8 +1,8 @@
-import { exec as execCallback } from "child_process";
+import { exec as execCallback } from "node:child_process";
+import { promisify } from "node:util";
 
 import chalk from "chalk";
 import ora from "ora";
-import { promisify } from "util";
 
 import {
   CONTAINER_NAME,

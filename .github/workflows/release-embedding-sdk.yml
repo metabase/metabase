@@ -46,8 +46,7 @@ jobs:
         with:
           sparse-checkout: release
 
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && pnpm && pnpm build
+      - uses: ./.github/actions/prepare-release-scripts
 
       - name: Cache build scripts
         uses: actions/upload-artifact@v4

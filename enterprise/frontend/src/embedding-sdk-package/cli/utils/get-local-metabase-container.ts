@@ -1,6 +1,5 @@
-import { exec as execCallback } from "child_process";
-
-import { promisify } from "util";
+import { exec as execCallback } from "node:child_process";
+import { promisify } from "node:util";
 
 import { safeJsonParse } from "metabase/lib/json-parse";
 
