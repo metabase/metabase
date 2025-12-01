@@ -1,7 +1,7 @@
-import { exec } from "child_process";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 
 import toggle from "inquirer-toggle";
-import { promisify } from "util";
 
 import { CONTAINER_NAME } from "../constants/config";
 import { INSTANCE_CONFIGURED_MESSAGE } from "../constants/messages";

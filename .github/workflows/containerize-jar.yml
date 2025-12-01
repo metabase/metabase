@@ -49,8 +49,7 @@ jobs:
       uses: ./.github/actions/fetch-artifact
       with:
         name: ${{ inputs.artifact-name }}
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && pnpm && pnpm build
+    - uses: ./.github/actions/prepare-release-scripts
     - name: Get platforms
       id: platforms
       uses: actions/github-script@v7
