@@ -201,9 +201,9 @@
                                                        :database (mt/id)
                                                        :schema "public"
                                                        :name orig-name}}]
-           ;; create the target table
+            ;; create the target table
             (transforms.i/execute! x1 {:run-method :manual})
-           ;; create the workspace
+            ;; create the workspace
             (let [workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                   {:name        "Test Workspace"
                                                    :database_id (mt/id)
@@ -215,9 +215,9 @@
                                               :schema (-> mirror-transform :target :schema)
                                               :name (-> mirror-transform :target :name))]
               (testing "/tables returns expected results"
-                (is (=? {:inputs [{:id (mt/id :orders) :schema orig-schema, :name "orders"}],
+                (is (=? {:inputs [{:id (mt/id :orders) :schema-name orig-schema, :table-name "orders"}],
                          :outputs
-                         [{:global {:schema orig-schema, :name orig-name},
+                         [{:global {:schema-name orig-schema, :table-name orig-name},
                            :workspace {:transform-id (:id mirror-transform)
                                        :table-id (:id mirror-table)}}]}
                         tables-result))))))))))
