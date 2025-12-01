@@ -18,4 +18,4 @@ jobs:
       - name: Check mage runs
         run: ./bin/mage -h
       - name: Run mage tests
-        run: ./bin/mage -tests
+        run: ./bin/mage -test
