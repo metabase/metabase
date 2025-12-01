@@ -2,13 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor, within } from "__support__/ui";
 
-import { addSubscriptionTests } from "../shared-tests/subscriptions.spec";
+import { addCommonSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
-} from "../tests/setup";
-
-import { InteractiveDashboard } from "./InteractiveDashboard";
+} from "../../tests/setup";
+import { InteractiveDashboard } from "../InteractiveDashboard";
 
 const setup = async (
   options: Omit<SetupSdkDashboardOptions, "component"> = {},
@@ -22,6 +21,8 @@ const setup = async (
 console.warn = () => {};
 
 describe("InteractiveDashboard", () => {
+  addCommonSubscriptionsTests(setup);
+
   it("should call onVisualizationChange when a card is opened", async () => {
     const onVisualizationChange = jest.fn();
 
@@ -96,8 +97,6 @@ describe("InteractiveDashboard", () => {
     expect(screen.queryByLabelText("Download results")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
-
-  addSubscriptionTests(setup);
 
   it("should only show the download button if downloads are enabled", async () => {
     await setup({

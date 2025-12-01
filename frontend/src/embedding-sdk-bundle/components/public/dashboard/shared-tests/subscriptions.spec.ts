@@ -3,10 +3,34 @@ import type { Dashboard } from "metabase-types/api";
 
 import type { SetupSdkDashboardOptions } from "../tests/setup";
 
-export function addSubscriptionTests(
-  setup: (
-    options?: Omit<SetupSdkDashboardOptions, "component">,
-  ) => Promise<{ dashboard: Dashboard }>,
+type SetupOpts = Omit<SetupSdkDashboardOptions, "component">;
+
+export function addCommonSubscriptionsTests(
+  setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
+) {
+  describe("Subscriptions Button", () => {
+    it.each([
+      { isSlackConfigured: false, isEmailConfigured: false },
+      { isSlackConfigured: false, isEmailConfigured: true },
+      { isSlackConfigured: true, isEmailConfigured: false },
+      { isSlackConfigured: true, isEmailConfigured: true },
+    ])(
+      "should not show subscriptions button without `embedding_sdk` token feature (isSlackConfigured: $isSlackConfigured, isEmailConfigured: $isEmailConfigured)",
+      async ({ isSlackConfigured, isEmailConfigured }) => {
+        await setup({
+          props: { withSubscriptions: true },
+          isEmailConfigured,
+          isSlackConfigured,
+        });
+      },
+    );
+  });
+}
+
+export const addEnterpriseSubscriptionsTests = addCommonSubscriptionsTests;
+
+export function addPremiumSubscriptionsTests(
+  setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
 ) {
   describe("Subscriptions Button", () => {
     it.each([
