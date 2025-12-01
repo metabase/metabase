@@ -1,15 +1,16 @@
-const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { confirmModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
 
 import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
   cacheStrategySidesheet,
-  confirmModal,
   durationRadioButton,
   openSidebarCacheStrategyForm,
   questionSettingsSidesheet,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
+
+const { H } = cy;
 
 describe("scenarios > question > caching", () => {
   beforeEach(() => {
@@ -82,9 +83,9 @@ describe("scenarios > question > caching", () => {
     [
       // clicking on cross button
       () =>
-        cacheStrategySidesheet().within(() =>
-          cy.findByRole("button", { name: /Close/ }).click(),
-        ),
+        cacheStrategySidesheet()
+          .findByRole("button", { name: /Close/ })
+          .click(),
       // ESC button
       () => cy.get("body").type("{esc}"),
       // click outside
@@ -96,15 +97,15 @@ describe("scenarios > question > caching", () => {
           .click(),
       // // clicking on title with back icon on it
       () =>
-        cacheStrategySidesheet().within(() =>
-          cy.findByRole("button", { name: /Caching settings/ }).click(),
-        ),
+        cacheStrategySidesheet()
+          .findByRole("button", { name: /Caching settings/ })
+          .click(),
     ].forEach((attempt) => {
       attempt();
-      confirmModal().within(() => {
-        // cancel to attempt closing other way
-        cy.findByRole("button", { name: /Cancel/ }).click();
-      });
+      // cancel to attempt closing other way
+      confirmModal()
+        .findByRole("button", { name: /Cancel/ })
+        .click();
     });
   });
 

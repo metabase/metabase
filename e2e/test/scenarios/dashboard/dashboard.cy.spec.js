@@ -1,7 +1,6 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -10,6 +9,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { confirmModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
@@ -20,10 +20,11 @@ import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-per
 import {
   adaptiveRadioButton,
   cacheStrategySidesheet,
-  confirmModal,
   durationRadioButton,
   openSidebarCacheStrategyForm,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
+
+const { H } = cy;
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -1701,6 +1702,7 @@ describe("scenarios > dashboard > caching", () => {
       cy.findByText(/Caching settings/).should("be.visible");
       durationRadioButton().click();
     });
+
     [
       // clicking on cross button
       () =>
@@ -1718,15 +1720,15 @@ describe("scenarios > dashboard > caching", () => {
           .click(),
       // // clicking on title with back icon on it
       () =>
-        cacheStrategySidesheet().within(() =>
-          cy.findByRole("button", { name: /Caching settings/ }).click(),
-        ),
+        cacheStrategySidesheet()
+          .findByRole("button", { name: /Caching settings/ })
+          .click(),
     ].forEach((attempt) => {
       attempt();
-      confirmModal().within(() => {
-        // cancel to attempt closing other way
-        cy.findByRole("button", { name: /Cancel/ }).click();
-      });
+      // cancel to attempt closing other way
+      confirmModal()
+        .findByRole("button", { name: /Cancel/ })
+        .click();
     });
   });
 
