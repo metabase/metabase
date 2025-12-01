@@ -4,13 +4,12 @@ import type { ComponentType } from "react";
 import { screen, waitFor, within } from "__support__/ui";
 import type { SdkDashboardProps } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboard";
 
-import { addSubscriptionTests } from "../shared-tests/subscriptions.spec";
+import { addCommonSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
-} from "../tests/setup";
-
-import { StaticDashboard } from "./StaticDashboard";
+} from "../../tests/setup";
+import { StaticDashboard } from "../StaticDashboard";
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
@@ -27,6 +26,8 @@ const setup = async (
 console.warn = () => {};
 
 describe("StaticDashboard", () => {
+  addCommonSubscriptionsTests(setup);
+
   it("should not allow users to click the dashcard title", async () => {
     await setup();
 
@@ -103,8 +104,6 @@ describe("StaticDashboard", () => {
       dashboardHeader.queryByTestId("dashboard-header-row-button"),
     ).not.toBeInTheDocument();
   });
-
-  addSubscriptionTests(setup);
 
   it("should not show 'Add a chart' button on empty dashboards", async () => {
     await setup({ dashcards: [] });
