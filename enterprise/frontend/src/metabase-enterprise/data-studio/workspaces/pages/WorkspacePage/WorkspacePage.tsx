@@ -152,7 +152,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         );
         return;
       }
-      dispatch(push(Urls.dataStudioWorkspaceList()));
+      dispatch(push(Urls.transformList()));
     } catch (error) {
       sendErrorToast(t`Failed to merge workspace`);
     }
