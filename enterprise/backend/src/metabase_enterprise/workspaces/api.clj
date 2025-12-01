@@ -185,8 +185,15 @@
 
 (defn- input-tables
   [graph]
-  (vec (t2/select [:model/Table :id :schema :name]
-                  :id [:in (map :id (:inputs graph))])))
+  (into []
+        (map #(update-keys %
+                           (fn [k]
+                             (case k
+                               :schema :schema-name
+                               :name :table-name
+                               k))))
+        (t2/select [:model/Table :id :schema :name]
+                   :id [:in (map :id (:inputs graph))])))
 
 (defn- outputs-with-transforms
   [graph]
@@ -201,13 +208,27 @@
                                   id->transform-data)]
     (mapv
      (fn [{:keys [schema name mapping] :as _output}]
-       {:global {:schema schema
-                 :name name}
+       {:global {:schema-name schema
+                 :table-name name}
         :workspace {:transform-id (:id (s+t->transform-data [(:schema mapping) (:name mapping)]))
                     :table-id (:id mapping)}})
      (:outputs graph))))
 
-(api.macros/defendpoint :get "/:id/tables" :- [:map]
+(api.macros/defendpoint :get "/:id/tables" :- [:map
+                                               [:inputs [:maybe
+                                                         [:sequential
+                                                          [:map
+                                                           [:schema-name [:maybe :string]]
+                                                           [:table-name [:maybe :string]]]]]]
+                                               [:outputs [:maybe
+                                                          [:sequential
+                                                           [:map
+                                                            [:global [:map
+                                                                      [:schema-name [:maybe :string]]
+                                                                      [:table-name [:maybe :string]]]]
+                                                            [:workspace [:map
+                                                                         [:transform-id :int]
+                                                                         [:table-id :int]]]]]]]]
   "Get a single workspace by ID"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
