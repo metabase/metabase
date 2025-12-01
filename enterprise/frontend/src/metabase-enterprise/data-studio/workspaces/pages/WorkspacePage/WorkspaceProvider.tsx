@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { checkNotNull } from "metabase/lib/types";
 import type {
   DraftTransformSource,
   Transform,
@@ -30,7 +31,10 @@ export interface WorkspaceContextValue {
   addOpenedTransform: (transform: Transform) => void;
   removeOpenedTransform: (transformId: number) => void;
   editedTransforms: Map<number, EditedTransform>;
-  setEditedTransform: (transformId: number, data: EditedTransform) => void;
+  patchEditedTransform: (
+    transformId: number,
+    patch: Partial<EditedTransform>,
+  ) => void;
   removeEditedTransform: (transformId: number) => void;
   runTransforms: Set<number>;
   markTransformAsRun: (transformId: number) => void;
@@ -133,12 +137,19 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
-  const setEditedTransform = useCallback(
-    (transformId: number, data: EditedTransform) => {
+  const patchEditedTransform = useCallback(
+    (transformId: number, patch: Partial<EditedTransform>) => {
       updateWorkspaceState((state) => {
+        const activeTransform = checkNotNull(state.activeTransform);
+        const newEditedTransform = {
+          name: patch.name ? patch.name : activeTransform.name,
+          source: patch.source ? patch.source : activeTransform.source,
+          target: patch.target ? patch.target : activeTransform.target,
+        };
+
         const newEditedTransforms = new Map(state.editedTransforms).set(
           transformId,
-          data,
+          newEditedTransform,
         );
         const newRunTransforms = new Set(state.runTransforms);
         newRunTransforms.delete(transformId);
@@ -193,7 +204,7 @@ export const WorkspaceProvider = ({
       addOpenedTransform,
       removeOpenedTransform,
       editedTransforms,
-      setEditedTransform,
+      patchEditedTransform,
       removeEditedTransform,
       runTransforms,
       markTransformAsRun,
@@ -208,7 +219,7 @@ export const WorkspaceProvider = ({
       setActiveTransform,
       addOpenedTransform,
       removeOpenedTransform,
-      setEditedTransform,
+      patchEditedTransform,
       removeEditedTransform,
       markTransformAsRun,
       hasChangedAndRunTransforms,

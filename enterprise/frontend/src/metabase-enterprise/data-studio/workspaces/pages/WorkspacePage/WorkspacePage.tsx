@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -24,14 +25,18 @@ import {
   useListTransformsQuery,
   useMergeWorkspaceMutation,
 } from "metabase-enterprise/api";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab";
 import styles from "./WorkspacePage.module.css";
-import { WorkspaceProvider, useWorkspace } from "./WorkspaceProvider";
+import {
+  type EditedTransform,
+  WorkspaceProvider,
+  useWorkspace,
+} from "./WorkspaceProvider";
 
 type WorkspacePageProps = {
   params: {
@@ -80,7 +85,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     setActiveTransform,
     addOpenedTransform,
     removeOpenedTransform,
-    setEditedTransform,
+    patchEditedTransform,
     hasChangedAndRunTransforms,
   } = useWorkspace();
 
@@ -98,19 +103,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   }, [id, activeTransform]);
 
   const handleTransformChange = useCallback(
-    (source: DraftTransformSource) => {
-      if (activeTransform) {
-        setEditedTransform(activeTransform.id, {
-          name: activeTransform.name,
-          source,
-          target: {
-            name: activeTransform.target.name,
-            type: activeTransform.target.type,
-          },
-        });
-      }
+    (patch: Partial<EditedTransform>) => {
+      patchEditedTransform(checkNotNull(activeTransform).id, patch);
     },
-    [activeTransform, setEditedTransform],
+    [activeTransform, patchEditedTransform],
   );
 
   const handleCloseClick = useCallback(
@@ -286,6 +282,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   </Text>
                 ) : (
                   <TransformTab
+                    databaseId={checkNotNull(workspace.database_id)}
                     transform={activeTransform}
                     editedTransform={activeEditedTransform}
                     workspaceId={id}

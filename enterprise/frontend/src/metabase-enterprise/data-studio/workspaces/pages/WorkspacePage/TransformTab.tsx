@@ -1,6 +1,16 @@
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  TextInput,
+  rem,
+} from "metabase/ui";
 import {
   useLazyGetTransformQuery,
   useRunTransformJobMutation,
@@ -8,7 +18,9 @@ import {
   useUpdateTransformMutation,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
+import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type {
+  DatabaseId,
   DraftTransformSource,
   Transform,
   TransformId,
@@ -19,14 +31,16 @@ import { TransformEditor } from "./TransformEditor";
 import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
 
 interface Props {
+  databaseId: DatabaseId;
   editedTransform: EditedTransform;
   transform: Transform;
   workspaceId: WorkspaceId;
-  onChange: (source: DraftTransformSource) => void;
+  onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transformId: TransformId) => void;
 }
 
 export const TransformTab = ({
+  databaseId,
   editedTransform,
   transform,
   workspaceId,
@@ -45,6 +59,14 @@ export const TransformTab = ({
     markTransformAsRun,
   } = useWorkspace();
 
+  const hasSourceChanged = !isSameSource(
+    editedTransform.source,
+    transform.source,
+  );
+  const hasTargetNameChanged =
+    transform.target.name !== editedTransform.target.name;
+  const hasChanges = hasSourceChanged || hasTargetNameChanged;
+
   const isSaved = transform.workspace_id === workspaceId;
 
   const [runTransform] = useRunTransformMutation();
@@ -58,12 +80,36 @@ export const TransformTab = ({
     }
   };
 
+  const handleSourceChange = (source: DraftTransformSource) => {
+    onChange({ source });
+  };
+
+  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const name = event.target.value;
+
+    onChange({
+      target: {
+        type: editedTransform.target.type,
+        name,
+      },
+    });
+  };
+
   const handleSave = async () => {
     if (isSaved) {
-      updateTransform({
+      const response = await updateTransform({
         id: transform.id,
         source: editedTransform.source,
+        name: editedTransform.name,
+        target: {
+          type: "table",
+          name: editedTransform.target.name,
+          schema: transform.target.schema,
+          database: databaseId,
+        },
       });
+
+      setActiveTransform(response.data);
     } else {
       const response = await updateWorkspaceContents({
         id: workspaceId,
@@ -99,11 +145,29 @@ export const TransformTab = ({
         p="md"
         style={{ borderBottom: "1px solid var(--mb-color-border" }}
       >
-        <Group>{t`Output table input?`}</Group>
+        <Group>
+          {isSaved && (
+            <form>
+              <Group>
+                <Text
+                  c="text-dark"
+                  component="label"
+                  fw="bold"
+                >{t`Output table`}</Text>
+                <TextInput
+                  miw={rem(300)}
+                  value={editedTransform.target.name}
+                  onChange={handleNameChange}
+                />
+              </Group>
+            </form>
+          )}
+        </Group>
 
         <Group>
           {isSaved && (
             <Button
+              disabled={hasChanges}
               leftSection={<Icon name="play" />}
               size="sm"
               onClick={handleRun}
@@ -111,6 +175,7 @@ export const TransformTab = ({
           )}
 
           <Button
+            disabled={!hasChanges}
             size="sm"
             variant="filled"
             onClick={handleSave}
@@ -122,7 +187,7 @@ export const TransformTab = ({
         <Box flex="1">
           <TransformEditor
             source={editedTransform.source}
-            onChange={onChange}
+            onChange={handleSourceChange}
           />
         </Box>
       )}
