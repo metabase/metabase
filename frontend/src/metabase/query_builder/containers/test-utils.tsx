@@ -52,6 +52,8 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
+  createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -60,6 +62,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { RequestState, State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { QueryBuilder } from "./QueryBuilder";
 
@@ -305,6 +308,14 @@ export const setup = async ({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({
+            can_create_queries: true,
+            can_create_native_queries: true,
+          }),
+        }),
+      }),
     },
   );
 

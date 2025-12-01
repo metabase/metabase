@@ -38,6 +38,7 @@ import {
   createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -184,7 +185,11 @@ export const setupSdkDashboard = async ({
 
   setupBookmarksEndpoints([]);
 
-  const user = createMockUser();
+  const user = createMockUser({
+    permissions: createMockUserPermissions({
+      can_create_queries: true,
+    }),
+  });
 
   const state = setupSdkState({
     currentUser: user,

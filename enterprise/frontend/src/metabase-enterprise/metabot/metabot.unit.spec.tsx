@@ -30,6 +30,7 @@ import {
   createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -851,7 +852,11 @@ describe("metabot-streaming", () => {
     });
 
     it("should send along available actions in context", async () => {
-      setup();
+      setup({
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({ can_create_queries: true }),
+        }),
+      });
       fetchMock.removeRoutes({ names: ["database-list"] });
       setupDatabaseListEndpoint([
         createMockDatabase({
