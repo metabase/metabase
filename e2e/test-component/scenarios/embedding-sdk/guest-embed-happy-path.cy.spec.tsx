@@ -1,5 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type NativeQuestionDetails,
+  type StructuredQuestionDetails,
   createNativeQuestion,
   createQuestion,
   createQuestionAndDashboard,
@@ -14,7 +16,7 @@ import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embeddi
 import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import type { Card } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 1000;
 
@@ -109,12 +111,15 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
       });
     });
 
-    it("should show content of a question with `map` type  with tyles for unauthorized user", () => {
+    it("should show content of a question with `map` type  with tiles for unauthorized user", () => {
       setup({
         createQuestionOverride: () => {
-          createNativeQuestion(questionAsPinMapWithTiles, {
-            wrapId: true,
-          });
+          createNativeQuestion(
+            questionAsPinMapWithTiles as NativeQuestionDetails,
+            {
+              wrapId: true,
+            },
+          );
         },
       });
 
@@ -143,13 +148,19 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
   });
 
   describe("dashboard", () => {
-    const setup = ({ display }: { display?: Card["display"] } = {}) => {
+    const setup = ({
+      display,
+      questionDetails,
+    }: {
+      display?: Card["display"];
+      questionDetails?: StructuredQuestionDetails;
+    } = {}) => {
       signInAsAdminAndSetupGuestEmbedding({
         token: "starter",
       });
 
       createQuestionAndDashboard({
-        questionDetails: {
+        questionDetails: questionDetails ?? {
           name: "Sample Question",
           query: {
             "source-table": ORDERS_ID,
@@ -224,6 +235,36 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
         cy.get("@internalApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(0);
+        });
+      });
+    });
+
+    it("should show content of a question with `map` type  with tiles for unauthorized user", () => {
+      setup({
+        questionDetails: {
+          ...questionAsPinMapWithTiles,
+          query: {
+            "source-table": PEOPLE_ID,
+          },
+        } as StructuredQuestionDetails,
+      });
+
+      cy.intercept("GET", "/api/embed/tiles/dashboard/**").as(
+        "mapTilesApiRequest",
+      );
+
+      cy.get("@dashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+        });
+
+        mountGuestEmbedDashboard({ token });
+
+        cy.wait("@mapTilesApiRequest");
+
+        cy.get("@mapTilesApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length.greaterThan(1);
         });
       });
     });
