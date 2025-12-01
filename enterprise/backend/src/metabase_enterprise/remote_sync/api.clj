@@ -116,8 +116,7 @@
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
-       [:remote-sync-branch {:optional true} [:maybe :string]]
-       [:tenant-collections-remote-sync-enabled {:optional true} [:maybe :boolean]]]]
+       [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")

@@ -132,18 +132,12 @@
 
 (defn remote-synced-collection?
   "Is this a remote-synced collection?
-   Returns true if:
-   - The collection has is_remote_synced=true in the database, OR
-   - The tenant-collections-remote-sync-enabled setting is true AND
-     the collection is in the shared-tenant-collection namespace"
+   Returns true if the collection has is_remote_synced=true in the database."
   [collection-or-id]
   (cond
     (nil? collection-or-id) false ;; the root collection is never remote-synced
-    (map? collection-or-id) (or (:is_remote_synced collection-or-id)
-                                (remote-sync/tenant-collection-remote-synced? collection-or-id))
-    :else (remote-synced-collection?
-           (t2/select-one [:model/Collection :id :is_remote_synced :namespace]
-                          :id (u/the-id collection-or-id)))))
+    (map? collection-or-id) (boolean (:is_remote_synced collection-or-id))
+    :else (t2/select-one-fn :is_remote_synced :model/Collection :id (u/the-id collection-or-id))))
 
 (defn- is-library?
   "Is this the Library collection?"
