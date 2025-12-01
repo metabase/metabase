@@ -104,10 +104,13 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
-      - name: Run Metabase
+      - name: Set up E2E JVM options
         run: |
-          export JDK_JAVA_OPTIONS=$(clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :e2e :jvm-opts) (clojure.string/join " ") println)')
-          node e2e/runner/run_cypress_ci.js start
+          JDK_JAVA_OPTIONS=$(clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :e2e :jvm-opts) (clojure.string/join " ") println)') >> GITHUB_ENV
+        shell: bash
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
         env:
