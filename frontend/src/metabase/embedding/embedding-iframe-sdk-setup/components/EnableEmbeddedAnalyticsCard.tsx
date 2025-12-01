@@ -8,6 +8,11 @@ export const EnableEmbeddedAnalyticsCard = () => {
   const { isSimpleEmbeddingEnabled, isSimpleEmbeddingTermsAccepted } =
     useSdkIframeEmbedSetupContext();
 
+  // Not yet fetched
+  if (isSimpleEmbeddingEnabled === undefined) {
+    return null;
+  }
+
   return (
     <EnableEmbeddingCard
       embeddingType="Embedded Analytics JS"

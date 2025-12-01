@@ -28,7 +28,7 @@ export const visitNewEmbedPage = () => {
 
   cy.visit("/admin/embedding");
 
-  cy.findAllByTestId("sdk-setting-card")
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
     .first()
     .within(() => {
       cy.findByText("New embed").click();

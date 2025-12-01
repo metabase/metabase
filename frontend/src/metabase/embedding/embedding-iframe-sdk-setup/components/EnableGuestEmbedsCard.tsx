@@ -15,6 +15,11 @@ export const EnableGuestEmbedsCard = () => {
     return null;
   }
 
+  // Not yet fetched
+  if (isGuestEmbedsEnabled === undefined) {
+    return null;
+  }
+
   return (
     <EnableEmbeddingCard
       embeddingType="Guest embeds"

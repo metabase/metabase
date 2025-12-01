@@ -135,6 +135,15 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       // Experience step
       getEmbedSidebar().within(() => {
+        ["Exploration", "Browser"].forEach((label) => {
+          cy.findByLabelText(label).should("not.be.disabled");
+          cy.get("label")
+            .contains(label)
+            .within(() => {
+              cy.findByTestId("upsell-gem").should("not.be.visible");
+            });
+        });
+
         cy.findByText("Chart").click();
         cy.findByText("Next").click();
       });
@@ -170,12 +179,35 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       cy.findByLabelText("Allow people to drill through on data points")
         .should("be.visible")
         .should("be.disabled");
+      cy.findByLabelText("Allow downloads")
+        .should("be.visible")
+        .should("not.be.disabled")
+        .should("not.be.checked");
       cy.findByLabelText("Allow people to save new questions")
         .should("be.visible")
         .should("be.disabled");
 
+      [
+        "Single sign-on (SSO)",
+        "Allow people to drill through on data points",
+        "Allow downloads",
+        "Allow people to save new questions",
+      ].forEach((text) => {
+        cy.findAllByTestId("tooltip-warning")
+          .filter(`:contains("${text}")`)
+          .within(() => {
+            cy.findByTestId("upsell-gem").should("not.be.visible");
+          });
+      });
+
       H.setEmbeddingParameter("Text", "Locked");
       cy.findAllByTestId("parameter-widget").find("input").type("Foo Bar Baz");
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("appearance-section").within(() => {
+          cy.findByTestId("upsell-gem").should("not.be.visible");
+        });
+      });
 
       H.publishChanges("card");
       cy.button("Unpublish").should("be.visible");

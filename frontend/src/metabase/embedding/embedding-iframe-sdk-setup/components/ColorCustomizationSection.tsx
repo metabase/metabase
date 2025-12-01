@@ -57,7 +57,12 @@ export const ColorCustomizationSection = ({
 
   return (
     <>
-      <Group justify="space-between" align="center" mb="lg">
+      <Group
+        justify="space-between"
+        align="center"
+        mb="lg"
+        data-testid="appearance-section"
+      >
         <Text size="lg" fw="bold">
           {t`Appearance`}
         </Text>
