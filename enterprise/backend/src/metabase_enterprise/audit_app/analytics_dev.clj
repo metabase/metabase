@@ -18,6 +18,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase.models.serialization :as serdes]
    [metabase.audit-app.impl :as audit-app.impl]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
@@ -105,35 +106,40 @@
 ;;; YAML Transformation Logic
 ;;; ============================================================================
 
-(defn transform-yaml
-  "Transform a YAML data structure between canonical and dev formats.
+(defn- yaml->dev
+  "Transform YAML from canonical format to dev format.
 
-  Only transforms creator_id (email), everything else stays the same.
-
-  Direction:
-  - :from-canonical - Replace 'internal@metabase.com' with actual user email
-  - :to-canonical - Replace user email with 'internal@metabase.com'"
-  [yaml-data direction opts]
+  Replaces canonical creator_id with actual user email."
+  [yaml-data user-email]
   (walk/postwalk
    (fn [node]
-     (case direction
-
-       :from-canonical
-       (condp = node
-
-         canonical-creator-id (:user-email opts)
-
-         node)
-
-       :to-canonical
-       (if (map? node)
-         (dissoc node :metabase_version)
-         (condp = node
-
-           (:user-email opts) canonical-creator-id
-
-           node))))
+     (if (= node canonical-creator-id)
+       user-email
+       node))
    yaml-data))
+
+(defn- yaml->canonical
+  "Transform YAML from dev format to canonical format.
+
+  Replaces user email with canonical creator_id.
+  For the Database entitiy, strips down to minimal required fields and sets is_audit to true."
+  [yaml-data user-email]
+  (let [transformed (walk/postwalk
+                     (fn [node]
+                       (if (map? node)
+                         (dissoc node :metabase_version :is_writable)
+                         (if (= node user-email)
+                           canonical-creator-id
+                           node)))
+                     yaml-data)
+        serdes-meta (get transformed :serdes/meta)
+        is-database? (and (map? transformed)
+                          (= "Database" (get (first serdes-meta) :model)))]
+    (if is-database?
+      (-> (select-keys transformed [:name :creator_id :is_sample :is_on_demand :serdes/meta
+                                    :initial_sync_status :entity_id])
+          (assoc :is_audit true))
+      transformed)))
 
 ;;; ============================================================================
 ;;; YAML Import
@@ -145,11 +151,8 @@
   Returns the temp directory path."
   [source-dir user-email]
   (let [temp-dir (Files/createTempDirectory "analytics-dev-import" (make-array FileAttribute 0))
-        temp-path (.toFile temp-dir)
-        opts {:user-email user-email}]
+        temp-path (.toFile temp-dir)]
     (log/info "Copying and transforming YAMLs from" source-dir "to" temp-path)
-
-    ;; Walk through all YAML files in source directory
     (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
                        (.endsWith (.getName file) ".yaml"))]
@@ -157,12 +160,9 @@
                                        (str (.getPath (io/file source-dir)) "/")
                                        "")
             target-file (io/file temp-path relative-path)]
-        ;; Create parent directories
         (.mkdirs (.getParentFile target-file))
-
-        ;; Read, transform, and write YAML
         (let [yaml-data (yaml/parse-string (slurp file))
-              transformed (transform-yaml yaml-data :from-canonical opts)]
+              transformed (yaml->dev yaml-data user-email)]
           (spit target-file (yaml/generate-string transformed)))))
 
     (log/info "YAML transformation complete")
@@ -210,15 +210,13 @@
     (try
       (let [opts {:targets (v2.extract/make-targets-of-type "Collection" [collection-id])
                   :no-settings true :no-transforms true}
-            extraction (v2.extract/extract opts)
-            report (v2.storage/store! extraction (.getPath temp-path))]
+            report (serdes/with-cache (v2.storage/store! (v2.extract/extract opts) (.getPath temp-path)))]
         (log/info "Export complete:" (count (:seen report)) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))
         {:report report
          :export-dir (.getPath temp-path)})
       (catch Exception e
-        ;; Clean up temp directory on error
         (doseq [^File file (reverse (file-seq temp-path))]
           (.delete file))
         (throw e)))))
@@ -228,32 +226,22 @@
 
   Reads YAMLs from export-dir, transforms them, writes to target-dir."
   [export-dir target-dir user-email]
-  (let [opts {:user-email user-email}
-        changed-files (atom [])]
-    (log/info "Transforming exported YAMLs to canonical format")
-
-    ;; Walk through all YAML files in export directory
-    (doseq [^File file (file-seq (io/file export-dir))
-            :when (and (.isFile file)
-                       (or (not (.contains (.getPath file) "/databases/"))
-                           (and (.contains (.getPath file) (str "/databases/" canonical-db-id))
-                                (.contains (.getPath file) "/tables/v_")))
-                       (.endsWith (.getName file) ".yaml"))]
-      (let [relative-path (str/replace (.getPath file)
-                                       (str (.getPath (io/file export-dir)) "/")
-                                       "")
-            target-file (io/file target-dir relative-path)]
-        ;; Create parent directories
-        (.mkdirs (.getParentFile target-file))
-
-        ;; Read, transform, and write YAML
-        (let [yaml-data (yaml/parse-string (slurp file))
-              transformed (transform-yaml yaml-data :to-canonical opts)]
-          (spit target-file (yaml/generate-string transformed))
-          (swap! changed-files conj relative-path))))
-
-    (log/info "Transformation complete:" (count @changed-files) "files transformed")
-    @changed-files))
+  (log/info "Transforming exported YAMLs to canonical format")
+  (doseq [^File file (file-seq (io/file export-dir))
+          :when (and (.isFile file)
+                     (.endsWith (.getName file) ".yaml")
+                     (or (not (.contains (.getPath file) "/databases/"))
+                         (and (.contains (.getPath file) (str "/databases/" canonical-db-id))
+                              (or (= (.getName file) (str canonical-db-id ".yaml"))
+                                  (.contains (.getPath file) "/tables/v_")))))]
+    (let [relative-path (str/replace (.getPath file)
+                                     (str (.getPath (io/file export-dir)) "/")
+                                     "")
+          target-file (io/file target-dir relative-path)]
+      (.mkdirs (.getParentFile target-file))
+      (let [yaml-data (yaml/parse-string (slurp file))
+            transformed (yaml->canonical yaml-data user-email)]
+        (spit target-file (yaml/generate-string transformed))))))
 
 (defn export-analytics-content!
   "Export dev collection and transform back to canonical format."
@@ -261,12 +249,10 @@
   (let [{:keys [export-dir report]} (export-dev-collection! collection-id)
         export-path (io/file export-dir)]
     (try
-      (let [changed-files (transform-exported-yamls! export-dir target-dir user-email)]
-        {:status :success
-         :changed-files changed-files
-         :export-report report})
+      (transform-exported-yamls! export-dir target-dir user-email)
+      {:status :success
+       :export-report report}
       (finally
-        ;; Clean up temp export directory
         (when (.exists export-path)
           (doseq [^File file (reverse (file-seq export-path))]
             (.delete file)))))))
@@ -297,23 +283,16 @@
     (future
       (try
         (log/info "Analytics dev mode enabled, waiting for user setup...")
-
         ;; Wait for user setup on new installs
         (while (not (setup/has-user-setup))
           (Thread/sleep 1000))
-
         (log/info "User setup complete, checking analytics dev environment...")
-
-        ;; Check if already set up
         (if (analytics-content-loaded?)
           (log/info "Analytics dev environment already set up, skipping initialization")
-
-          ;; Set up analytics dev environment
           (when-let [admin-user (first-admin-user)]
             (log/info "Setting up analytics dev environment with user:" (:email admin-user))
             (create-analytics-dev-database! (:id admin-user))
             (import-analytics-content! (:email admin-user))
             (log/info "Analytics dev environment ready")))
-
         (catch Exception e
           (log/error e "Failed to set up analytics dev environment"))))))
