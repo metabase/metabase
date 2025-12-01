@@ -1821,65 +1821,6 @@
         (is (set? result)
             "Should return a set of card IDs")))))
 
-(deftest non-remote-synced-dependencies-different-remote-synced-roots-test
-  (testing "non-remote-synced-dependencies function behavior with different remote-synced roots"
-    ;; This test documents the expected behavior when Cards have dependencies
-    ;; across different remote-synced collection roots. The function now treats
-    ;; ALL remote-synced collections as a unified pool:
-    ;; 1. NOT flag dependencies within the same remote-synced root hierarchy
-    ;; 2. NOT flag dependencies that cross between different remote-synced roots (NEW BEHAVIOR)
-    ;; 3. ONLY flag dependencies that point to non-remote-synced collections
-
-    (testing "Setup: Creating remote-synced collection hierarchies"
-      (mt/with-temp [:model/Collection {root-1 :id} {:name "Remote-Synced Root 1" :is_remote_synced true}
-                     :model/Collection {child-1 :id} {:name "Child of Root 1"
-                                                      :location (format "/%d/" root-1)
-                                                      :is_remote_synced true}
-                     :model/Collection {root-2 :id} {:name "Remote-Synced Root 2" :is_remote_synced true}
-                     :model/Collection {child-2 :id} {:name "Child of Root 2"
-                                                      :location (format "/%d/" root-2)
-                                                      :is_remote_synced true}]
-
-        ;; Verify the collections are correctly created
-        (is (true? (:is_remote_synced (t2/select-one :model/Collection :id root-1)))
-            "Root 1 should be remote-synced type")
-        (is (true? (:is_remote_synced (t2/select-one :model/Collection :id root-2)))
-            "Root 2 should be remote-synced type")
-        (is (= (format "/%d/" root-1) (:location (t2/select-one :model/Collection :id child-1)))
-            "Child 1 should be nested under Root 1")
-        (is (= (format "/%d/" root-2) (:location (t2/select-one :model/Collection :id child-2)))
-            "Child 2 should be nested under Root 2")))
-
-    (testing "Expected behavior documentation (actual dependency tracking requires serdes setup)"
-      ;; Note: The actual implementation relies on serdes/descendants to track dependencies.
-      ;; In a real scenario with properly set up dependencies:
-      ;;
-      ;; Scenario 1: Card in child-1 depends on Card in root-1 (same hierarchy)
-      ;; - Both are under remote-synced root-1
-      ;; - Result: Should return empty set (no non-remote-synced dependencies)
-      ;;
-      ;; Scenario 2: Card in root-2 depends on Card in root-1 (different roots)
-      ;; - They are in different remote-synced roots
-      ;; - Result: Should return empty set (both are remote-synced, cross-root is allowed)
-      ;;
-      ;; Scenario 3: Card in child-2 depends on Card in child-1 (different root hierarchies)
-      ;; - They are in children of different remote-synced roots
-      ;; - Result: Should return empty set (both are remote-synced, cross-root is allowed)
-      ;;
-      ;; Scenario 4: Card in root-1 depends on Card in regular (non-remote-synced) collection
-      ;; - Result: Should return #{card-in-regular} as non-remote-synced dependency
-
-      (is (fn? collection/non-remote-synced-dependencies)
-          "non-remote-synced-dependencies function should exist")
-
-      ;; The function implementation checks:
-      ;; 1. Gets the collection of the model
-      ;; 2. Traverses dependencies using serdes/descendants
-      ;; 3. Filters out items that are in ANY remote-synced collection
-      ;; 4. Returns IDs that are NOT in any remote-synced collection
-
-      (is true "See implementation in src/metabase/collections/models/collection.clj"))))
-
 (deftest non-remote-synced-dependencies-mixed-locations-test
   (testing "when model has mixed card dependencies (some in remote-synced, some outside)"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
