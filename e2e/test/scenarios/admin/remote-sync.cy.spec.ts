@@ -512,6 +512,31 @@ describe("Remote Sync", () => {
       });
     });
 
+    it("should disable 'Set up Remote Sync' button if git url is not set (#65653)", () => {
+      cy.visit("/admin/settings/remote-sync");
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByRole("switch", { name: "Auto-sync with git" }).click({
+        force: true,
+      });
+
+      // Trivial dirty state should not be enough to enable the button
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByLabelText(/Access Token/i)
+        .clear()
+        .type("SecretToken");
+      // Still disabled - url is not set
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByLabelText(/repository url/i)
+        .clear()
+        .type(LOCAL_GIT_URL);
+
+      // Enabled now - url is set
+      cy.button("Set up Remote Sync").should("be.enabled");
+    });
+
     it("shows an error if git settings are invalid", () => {
       cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       cy.visit("/admin/settings/remote-sync");
