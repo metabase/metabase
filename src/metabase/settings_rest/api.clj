@@ -5,9 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
-   [metabase.settings.models.setting.cache :as setting.cache]
-   [metabase.util :as u]
-   [ring.util.response :as response]))
+   [metabase.util :as u]))
 
 (defn- do-with-setting-access-control
   [thunk]
@@ -25,19 +23,10 @@
   [& body]
   `(do-with-setting-access-control (fn [] ~@body)))
 
-(def ^:private settings-last-updated-cookie-name "metabase.SETTINGS_LAST_UPDATED")
-
 (defn- add-settings-last-updated-cookie
   "Add a cookie with the current settings-last-updated timestamp to the response."
   [response]
-  (if-let [timestamp (get (setting.cache/cache) setting.cache/settings-last-updated-key)]
-    (response/set-cookie response
-                        settings-last-updated-cookie-name
-                        timestamp
-                        {:path      "/"
-                         :max-age   (* 5 60)
-                         :same-site :lax})
-    response))
+  (assoc-in response [:mb/cookies :cookie/settings-cache-timestamp] true))
 
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
 (api.macros/defendpoint :get "/"
