@@ -41,6 +41,9 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
   const { theme } = useEmbedFrameOptions({ location });
+  const hasEmbedBranding = useSelector(
+    (state) => !getSetting(state, "hide-embed-branding?"),
+  );
 
   const {
     value: document,
@@ -122,6 +125,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
       className={S.container}
       contentClassName={S.documentArea}
       background={false}
+      withFooter={hasEmbedBranding}
     >
       <LoadingAndErrorWrapper
         loading={loading}

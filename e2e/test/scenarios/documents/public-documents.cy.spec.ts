@@ -341,4 +341,43 @@ describe("scenarios > documents > public", () => {
       verifyErrorMessage("Not found");
     });
   });
+
+  it("should display 'Powered by Metabase' link in footer", () => {
+    // Create a document
+    createTestDocument(
+      "Test Document with Footer",
+      "Testing footer branding link",
+    );
+
+    cy.log("Create public link and visit public document");
+    visitPublicDocument("@documentId", { signOut: true });
+
+    cy.log("Verify document content is visible");
+    H.documentContent().should("contain", "Testing footer branding link");
+
+    cy.log("Verify 'Powered by Metabase' link exists in footer");
+    cy.findByRole("link", { name: "Powered by Metabase" })
+      .should("exist")
+      .should("be.visible")
+      .should("have.attr", "href")
+      .and("contain", "https://www.metabase.com/powered-by-metabase");
+  });
+
+  it("should not display footer for premium", () => {
+    H.activateToken("bleeding-edge");
+
+    // Create a document
+    createTestDocument(
+      "Test Document with Footer",
+      "Testing footer branding link",
+    );
+
+    cy.log("Create public link and visit public document");
+    visitPublicDocument("@documentId", { signOut: true });
+
+    cy.log("Verify document content is visible");
+    H.documentContent().should("contain", "Testing footer branding link");
+
+    cy.findByTestId("embed-frame-footer").should("not.exist");
+  });
 });
