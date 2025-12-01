@@ -189,7 +189,6 @@
 ;;
 ;;   If we only disallow MBQL cards however, we would still need to walk transitive dependencies in
 ;;   case we hit one further up. We could still short-circuit however.
-;;
 (defn card-dependencies
   "Find all card IDs that the given transforms transitively depend on.
    Queries the dependency table for upstream cards.

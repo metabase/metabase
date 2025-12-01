@@ -118,14 +118,16 @@
   (testing "Add entities to workspace"
     (mt/with-premium-features [:workspaces :dependencies :transforms]
       (mt/with-model-cleanup [:model/Collection :model/Workspace :model/Transform :model/WorkspaceMappingTransform]
+        ;; TODO (sanya) - I shouldn't write tests like this
         (let [transform-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:limit 2 :order-by [[:id :asc]]})
               first-tx-id   (first transform-ids)
               second-tx-id  (second transform-ids)]
+          (is (and first-tx-id second-tx-id) "Send Sanya to metajail for this test")
           (when (and first-tx-id second-tx-id)
-            (let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                          {:name     "Add Entities Test"
-                                                           :upstream {:transforms [first-tx-id]}}))]
-
+            ;; Subsequent routes are invalid without an id
+            (when-let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                               {:name     "Add Entities Test"
+                                                                :upstream {:transforms [first-tx-id]}}))]
               (testing "Can add new entities to workspace"
                 (is (=? {:contents {:transforms #(>= (count %) 2)}}
                         (mt/user-http-request :crowberto :post 200

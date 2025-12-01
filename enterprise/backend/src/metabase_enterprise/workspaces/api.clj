@@ -252,14 +252,13 @@
    _query-params
    {:keys [database_id upstream] :as body} :- CreateWorkspace]
 
-  (check-transforms-enabled! database_id)
+  ;; TODO (Sanya) Oops, I forgot that this is optional, and can get inferred later. I broke a bunch of tests.
+  ;;              Validation logic should all move to common in any case.
+  (when database_id
+    (check-transforms-enabled! database_id))
 
   (when-let [transform-ids (seq (get upstream :transforms []))]
-    (let [workspace-transforms (t2/select-fn-set :id :model/Transform
-                                                 :id [:in transform-ids]
-                                                 :workspace_id [:not= nil])]
-      (when (seq workspace-transforms)
-        (api/check-400 false "Cannot add transforms that belong to another workspace")))
+    (ws.common/check-transforms-not-in-workspace! transform-ids)
     (ws.common/check-no-card-dependencies! transform-ids))
 
   (-> (ws.common/create-workspace! api/*current-user-id* body)
@@ -340,11 +339,7 @@
     (api/check-400 (nil? (:archived_at workspace)) "Cannot add entities to an archived workspace")
 
     (when-let [transform-ids (seq (get upstream :transforms []))]
-      (let [workspace-transforms (t2/select-fn-set :id :model/Transform
-                                                   :id [:in transform-ids]
-                                                   :workspace_id [:not= nil])]
-        (when (seq workspace-transforms)
-          (api/check-400 false "Cannot add transforms that belong to another workspace")))
+      (ws.common/check-transforms-not-in-workspace! transform-ids)
       (ws.common/check-no-card-dependencies! transform-ids))
 
     (let [existing-upstream-ids (t2/select-fn-set :upstream_id :model/WorkspaceMappingTransform
