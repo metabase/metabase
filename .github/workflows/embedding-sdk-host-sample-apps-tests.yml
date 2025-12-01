@@ -278,7 +278,9 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Prepare and launch Host App
         run: npx tsx ./e2e/runner/embedding-sdk/host-apps/start-ci.ts ${{ matrix.test_suite }}
