@@ -1893,6 +1893,7 @@
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
+           app-db
            collections
            config
            driver
