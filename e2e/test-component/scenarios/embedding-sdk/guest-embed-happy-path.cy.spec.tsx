@@ -15,6 +15,7 @@ import {
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
 import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import type { Card } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -142,6 +143,104 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
         cy.get("@mapTilesApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length.greaterThan(1);
+        });
+      });
+    });
+
+    it("should properly work with question parameters", () => {
+      setup({
+        createQuestionOverride: () => {
+          createNativeQuestion(
+            {
+              name: "Orders native question",
+              native: {
+                query:
+                  "SELECT * " +
+                  "FROM ORDERS " +
+                  "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
+                  "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+                "template-tags": {
+                  quantity: {
+                    id: "quantity",
+                    name: "quantity",
+                    "display-name": "Internal",
+                    type: "dimension",
+                    "widget-type": "number/=",
+                    dimension: ["field", ORDERS.QUANTITY, null],
+                  },
+                  product_id_fk: {
+                    id: "product_id_fk",
+                    name: "product_id_fk",
+                    "display-name": "FK",
+                    type: "dimension",
+                    "widget-type": "id",
+                    dimension: ["field", ORDERS.PRODUCT_ID, null],
+                  },
+                  user_id_pk: {
+                    id: "user_id_pk",
+                    name: "user_id_pk",
+                    "display-name": "PK->Name",
+                    type: "dimension",
+                    "widget-type": "id",
+                    dimension: ["field", PEOPLE_ID, null],
+                  },
+                },
+              },
+              parameters: [
+                createMockParameter({
+                  id: "quantity",
+                  name: "Internal",
+                  slug: "quantity",
+                  type: "number/=",
+                  target: ["dimension", ["template-tag", "quantity"]],
+                }),
+                createMockParameter({
+                  id: "product_id_fk",
+                  name: "FK",
+                  slug: "product_id_fk",
+                  type: "id",
+                  target: ["dimension", ["template-tag", "product_id_fk"]],
+                }),
+                createMockParameter({
+                  id: "user_id_pk",
+                  name: "PK->Name",
+                  slug: "user_id_pk",
+                  type: "id",
+                  target: ["dimension", ["template-tag", "user_id_pk"]],
+                }),
+              ],
+              enable_embedding: true,
+              embedding_params: {
+                quantity: "enabled",
+                product_id_fk: "locked",
+                user_id_pk: "enabled",
+              },
+            },
+            {
+              wrapId: true,
+            },
+          );
+        },
+      });
+
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+          params: {
+            product_id_fk: 1,
+          },
+        });
+
+        mountGuestEmbedQuestion(
+          { token },
+          {
+            shouldAssertCardQuery: false,
+          },
+        );
+
+        getSdkRoot().within(() => {
+          cy.findAllByTestId("parameter-widget").should("have.length", 2);
         });
       });
     });
