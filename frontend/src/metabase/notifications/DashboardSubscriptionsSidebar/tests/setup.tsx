@@ -7,6 +7,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
+import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -28,6 +29,10 @@ import {
 } from "metabase-types/store/mocks";
 
 import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
+
+jest.mock("metabase/embedding-sdk/config", () => ({
+  isEmbeddingSdk: jest.fn(() => false),
+}));
 
 export const dashcard = createMockDashboardCard();
 
@@ -74,6 +79,17 @@ function createDashboardState(
   });
 }
 
+type SetupOpts = {
+  email?: boolean;
+  slack?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
+  hasEnterprisePlugins?: boolean;
+  isAdmin?: boolean;
+  dashcards?: DashboardCard[];
+  parameters?: UiParameter[];
+  isEmbeddingSdk?: boolean;
+};
+
 export function setup(
   {
     email,
@@ -83,15 +99,8 @@ export function setup(
     isAdmin = false,
     dashcards = defaultDashcards,
     parameters = defaultParameters,
-  }: {
-    email?: boolean;
-    slack?: boolean;
-    tokenFeatures?: Partial<TokenFeatures>;
-    hasEnterprisePlugins?: boolean;
-    isAdmin?: boolean;
-    dashcards?: DashboardCard[];
-    parameters?: UiParameter[];
-  } = {
+    isEmbeddingSdk = false,
+  }: SetupOpts = {
     email: true,
     slack: true,
     tokenFeatures: {},
@@ -140,6 +149,8 @@ export function setup(
       ],
     };
   }
+
+  (mockIsEmbeddingSdk as jest.Mock).mockReturnValue(isEmbeddingSdk);
 
   setupNotificationChannelsEndpoints(channelData.channels);
 
