@@ -10,6 +10,7 @@ import {
   getOrderedGroups,
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
 import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
@@ -104,31 +105,26 @@ export const getApplicationPermissionEditor = createSelector(
     const entities = groups.flat().map((group) => {
       const isAdmin = isAdminGroup(group);
 
-      return {
-        id: group.id,
-        name: getGroupNameLocalized(group),
-        permissions: [
-          getPermission(
-            permissions,
-            isAdmin,
-            group.id,
-            defaultGroup,
-            "setting",
-          ),
-          getPermission(
-            permissions,
-            isAdmin,
-            group.id,
-            defaultGroup,
-            "monitoring",
-          ),
-          getPermission(
-            permissions,
-            isAdmin,
-            group.id,
-            defaultGroup,
-            "subscription",
-          ),
+      const groupPermissions = [
+        getPermission(permissions, isAdmin, group.id, defaultGroup, "setting"),
+        getPermission(
+          permissions,
+          isAdmin,
+          group.id,
+          defaultGroup,
+          "monitoring",
+        ),
+        getPermission(
+          permissions,
+          isAdmin,
+          group.id,
+          defaultGroup,
+          "subscription",
+        ),
+      ];
+
+      if (PLUGIN_DATA_STUDIO.isEnabled) {
+        groupPermissions.push(
           getPermission(
             permissions,
             isAdmin,
@@ -136,25 +132,36 @@ export const getApplicationPermissionEditor = createSelector(
             defaultGroup,
             "data-studio",
           ),
-        ],
+        );
+      }
+
+      return {
+        id: group.id,
+        name: getGroupNameLocalized(group),
+        permissions: groupPermissions,
       };
     });
 
+    const columns = [
+      { name: t`Group name` },
+      { name: t`Settings access` },
+      {
+        name: t`Monitoring access`,
+        hint: t`This grants access to Tools`,
+      },
+      { name: t`Subscriptions and Alerts` },
+    ];
+
+    if (PLUGIN_DATA_STUDIO.isEnabled) {
+      columns.push({
+        name: t`Data Studio access`,
+        hint: t`This grants access to the Data Studio`,
+      });
+    }
+
     return {
       filterPlaceholder: t`Search for a group`,
-      columns: [
-        { name: t`Group name` },
-        { name: t`Settings access` },
-        {
-          name: t`Monitoring access`,
-          hint: t`This grants access to Tools`,
-        },
-        { name: t`Subscriptions and Alerts` },
-        {
-          name: t`Data Studio access`,
-          hint: t`This grants access to the Data Studio`,
-        },
-      ],
+      columns,
       entities,
     };
   },
