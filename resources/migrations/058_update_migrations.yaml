@@ -815,6 +815,116 @@ databaseChangeLog:
         - sql:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
 
+  - changeSet:
+      id: v58.2025-12-01T18:23:00
+      author: bshepherdson
+      comment: Create measure table for holding new Measures entity
+      changes:
+        - createTable:
+            tableName: measure
+            remarks: Stores Measures - named, reusable aggregations on tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Integer primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: Foreign key to metabase_table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: Foreign key to core_user
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: User-provided display name for this Measure
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Long form description of the Measure's purpose and meaning
+                  constraints:
+                    nullable: true
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: JSON object giving the definition of this Measure
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  remarks: True if this Measure should be considered deleted.
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this Measure was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this Measure was last updated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: measure
+
+  - changeSet:
+      id: v58.2025-12-01T18:32:07
+      author: bshepherdson
+      comment: Add foreign key constraint measure.table_id -> metabase_table.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_measure_table_id_metabase_table_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: measure
+            constraintName: fk_measure_table_id_metabase_table_id
+
+  - changeSet:
+      id: v58.2025-12-01T18:34:47
+      author: bshepherdson
+      comment: Add foreign key constraint measure.creator_id -> core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_measure_creator_id_core_user_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: measure
+            constraintName: fk_measure_creator_id_core_user_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
