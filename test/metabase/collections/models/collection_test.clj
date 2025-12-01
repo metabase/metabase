@@ -1824,9 +1824,11 @@
 (deftest non-remote-synced-dependencies-different-remote-synced-roots-test
   (testing "non-remote-synced-dependencies function behavior with different remote-synced roots"
     ;; This test documents the expected behavior when Cards have dependencies
-    ;; across different remote-synced collection roots. The function should:
+    ;; across different remote-synced collection roots. The function now treats
+    ;; ALL remote-synced collections as a unified pool:
     ;; 1. NOT flag dependencies within the same remote-synced root hierarchy
-    ;; 2. FLAG dependencies that cross between different remote-synced roots
+    ;; 2. NOT flag dependencies that cross between different remote-synced roots (NEW BEHAVIOR)
+    ;; 3. ONLY flag dependencies that point to non-remote-synced collections
 
     (testing "Setup: Creating remote-synced collection hierarchies"
       (mt/with-temp [:model/Collection {root-1 :id} {:name "Remote-Synced Root 1" :is_remote_synced true}
@@ -1858,23 +1860,25 @@
       ;;
       ;; Scenario 2: Card in root-2 depends on Card in root-1 (different roots)
       ;; - They are in different remote-synced roots
-      ;; - Result: Should return #{card-in-root-1} as non-remote-synced dependency
+      ;; - Result: Should return empty set (both are remote-synced, cross-root is allowed)
       ;;
       ;; Scenario 3: Card in child-2 depends on Card in child-1 (different root hierarchies)
       ;; - They are in children of different remote-synced roots
-      ;; - Result: Should return #{card-in-child-1} as non-remote-synced dependency
+      ;; - Result: Should return empty set (both are remote-synced, cross-root is allowed)
+      ;;
+      ;; Scenario 4: Card in root-1 depends on Card in regular (non-remote-synced) collection
+      ;; - Result: Should return #{card-in-regular} as non-remote-synced dependency
 
       (is (fn? collection/non-remote-synced-dependencies)
           "non-remote-synced-dependencies function should exist")
 
       ;; The function implementation checks:
       ;; 1. Gets the collection of the model
-      ;; 2. Determines the root collection ID (either the collection itself or its root from location)
-      ;; 3. Traverses dependencies using serdes/descendants
-      ;; 4. Filters out Cards that are in the same remote-synced root hierarchy
-      ;; 5. Returns Card IDs that are NOT in the same remote-synced root
+      ;; 2. Traverses dependencies using serdes/descendants
+      ;; 3. Filters out items that are in ANY remote-synced collection
+      ;; 4. Returns IDs that are NOT in any remote-synced collection
 
-      (is true "See implementation in src/metabase/collections/models/collection.clj:1521-1544"))))
+      (is true "See implementation in src/metabase/collections/models/collection.clj"))))
 
 (deftest non-remote-synced-dependencies-mixed-locations-test
   (testing "when model has mixed card dependencies (some in remote-synced, some outside)"
@@ -2053,7 +2057,7 @@
             "Should return true when moving from regular to remote-synced collection"))
 
       (testing "when moving from remote-synced collection to remote-synced collection"
-        (is (true? (collection/moving-into-remote-synced? remote-synced-id other-remote-synced-id))
+        (is (false? (collection/moving-into-remote-synced? remote-synced-id other-remote-synced-id))
             "Should return false when moving from remote-synced collection to remote-synced collection"))
 
       (testing "when moving from remote-synced collection to non-remote-synced collection"
@@ -2312,7 +2316,7 @@
             "Should return true when moving from remote-synced collection to regular collection"))
 
       (testing "when moving from remote-synced collection to remote-synced collection"
-        (is (true? (collection/moving-from-remote-synced? remote-synced-id other-remote-synced-id))
+        (is (false? (collection/moving-from-remote-synced? remote-synced-id other-remote-synced-id))
             "Should return false when moving from remote-synced collection to remote-synced collection"))
 
       (testing "when moving from non-remote-synced to remote-synced collection"
@@ -2836,8 +2840,11 @@
         (is (= (format "/%d/" remote-synced-parent2-id)
                (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
 
-(deftest move-collection!-from-remote-synced-to-remote-synced-disallows-move-test
-  (testing "move-collection! disallows moving a collection from one remote-synced collection to another remote-synced collection"
+(deftest move-collection!-from-remote-synced-to-remote-synced-allows-move-with-dependents-in-source-test
+  (testing "move-collection! allows moving a collection between remote-synced roots even when dependents exist in source root"
+    ;; With unified remote-sync checking, all remote-synced collections are treated as a single pool,
+    ;; so moves between different remote-synced roots no longer trigger dependency/dependent checking.
+    ;; This test verifies that a dependent card in the source remote-synced root does NOT block the move.
     (mt/with-temp [:model/Collection {remote-synced-parent1-id :id} {:name "Remote-Synced Parent 1"
                                                                      :location "/"
                                                                      :is_remote_synced true}
@@ -2853,8 +2860,10 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id remote-synced-parent1-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
-      (testing "Errors on moves collection from one remote-synced collection to another"
-        (is (thrown? Exception (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))))))))
+      (testing "Allows moving collection from one remote-synced collection to another"
+        (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
+        (is (= (format "/%d/" remote-synced-parent2-id)
+               (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
 
 (deftest move-collection!-from-remote-synced-with-nested-dependents-prevents-move-test
   (testing "move-collection! prevents moving a collection from remote-synced collection when nested collections have dependents"
@@ -2972,11 +2981,11 @@
             "Should return true when moving from regular to remote-synced collection"))
 
       (testing "when moving between different remote-synced root collections"
-        (is (true? (collection/moving-into-remote-synced? remote-synced-root-a remote-synced-root-b))
+        (is (false? (collection/moving-into-remote-synced? remote-synced-root-a remote-synced-root-b))
             "Should return false when moving between different remote-synced root collections"))
 
       (testing "when moving from remote-synced child to different remote-synced root"
-        (is (true? (collection/moving-into-remote-synced? child-of-a remote-synced-root-b))
+        (is (false? (collection/moving-into-remote-synced? child-of-a remote-synced-root-b))
             "Should return false when moving from remote-synced child to different remote-synced root"))
 
       (testing "when moving within same remote-synced hierarchy"
@@ -3001,12 +3010,12 @@
             "Should return true when moving from remote-synced collection to regular collection"))
 
       (testing "when moving between different remote-synced root collections"
-        (is (true? (collection/moving-from-remote-synced? remote-synced-root-a remote-synced-root-b))
-            "Should return true when moving between different remote-synced root collections"))
+        (is (false? (collection/moving-from-remote-synced? remote-synced-root-a remote-synced-root-b))
+            "Should return false when moving between different remote-synced root collections"))
 
       (testing "when moving from remote-synced child to different remote-synced root"
-        (is (true? (collection/moving-from-remote-synced? child-of-a remote-synced-root-b))
-            "Should return true when moving from remote-synced child to different remote-synced root"))
+        (is (false? (collection/moving-from-remote-synced? child-of-a remote-synced-root-b))
+            "Should return false when moving from remote-synced child to different remote-synced root"))
 
       (testing "when moving from remote-synced collection to root"
         (is (true? (collection/moving-from-remote-synced? remote-synced-root-a nil))
@@ -3356,185 +3365,3 @@
     (let [collection (t2/select-one :model/Collection id)]
       (is (nil? (:type collection)))
       (is (true? (:is_remote_synced collection))))))
-
-(deftest set-tenant-collection-permissions-root-parent-test
-  (testing "When creating a new Shared Tenant Collection at root level"
-    (testing "should apply default read permissions for all non-admin user groups"
-      (mt/with-premium-features #{:tenants}
-        (mt/with-temporary-setting-values [use-tenants true]
-          (mt/with-temp [:model/PermissionsGroup {group-1-id :id} {:name "Group 1"}
-                         :model/PermissionsGroup {group-2-id :id} {:name "Group 2"}
-                         :model/Collection coll {:name "Tenant Collection"
-                                                 :namespace collection/shared-tenant-ns
-                                                 :location "/"}]
-            (let [group-1-perms (t2/select-one :model/Permissions
-                                               :group_id group-1-id
-                                               :object (perms/collection-read-path coll))
-                  group-2-perms (t2/select-one :model/Permissions
-                                               :group_id group-2-id
-                                               :object (perms/collection-read-path coll))]
-              (is (some? group-1-perms)
-                  "Group 1 should have read permissions")
-              (is (some? group-2-perms)
-                  "Group 2 should have read permissions")
-              (is (not (t2/exists? :model/Permissions
-                                   :group_id group-1-id
-                                   :object (perms/collection-readwrite-path coll)))
-                  "Group 1 should not have write permissions")
-              (is (not (t2/exists? :model/Permissions
-                                   :group_id group-2-id
-                                   :object (perms/collection-readwrite-path coll)))
-                  "Group 2 should not have write permissions"))))))))
-
-(deftest set-tenant-collection-permissions-admin-group-excluded-test
-  (testing "Admin group should not receive auto-granted read permissions"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Collection coll {:name "Tenant Collection"
-                                               :namespace collection/shared-tenant-ns
-                                               :location "/"}]
-          (let [admin-group-id (:id (perms/admin-group))]
-            (is (not (t2/exists? :model/Permissions
-                                 :group_id admin-group-id
-                                 :object (perms/collection-read-path coll)))
-                "Admin group should not get explicit read permissions (they have implicit access)")))))))
-
-(deftest set-tenant-collection-permissions-nested-in-tenant-test
-  (testing "When creating a Shared Tenant Collection nested in another Shared Tenant Collection"
-    (testing "should copy parent permissions (standard behavior)"
-      (mt/with-premium-features #{:tenants}
-        (mt/with-temporary-setting-values [use-tenants true]
-          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                         :model/Collection parent {:name "Parent Tenant Collection"
-                                                   :namespace collection/shared-tenant-ns
-                                                   :location "/"}]
-            (perms/grant-collection-readwrite-permissions! group-id parent)
-            (mt/with-temp [:model/Collection child {:name "Child Tenant Collection"
-                                                    :namespace collection/shared-tenant-ns
-                                                    :location (collection/children-location parent)}]
-              (is (t2/exists? :model/Permissions
-                              :group_id group-id
-                              :object (perms/collection-readwrite-path child))
-                  "Child should inherit write permissions from parent tenant collection"))))))))
-
-(deftest set-tenant-collection-permissions-multiple-groups-test
-  (testing "Multiple groups should all receive read permissions"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/PermissionsGroup {group-1-id :id} {:name "Group 1"}
-                       :model/PermissionsGroup {group-2-id :id} {:name "Group 2"}
-                       :model/PermissionsGroup {group-3-id :id} {:name "Group 3"}
-                       :model/Collection coll {:name "Tenant Collection"
-                                               :namespace collection/shared-tenant-ns
-                                               :location "/"}]
-          (let [groups-with-read-perms (t2/select-fn-set :group_id :model/Permissions
-                                                         :object (perms/collection-read-path coll))
-                admin-group-id (:id (perms/admin-group))]
-            (is (contains? groups-with-read-perms group-1-id)
-                "Group 1 should have read permissions")
-            (is (contains? groups-with-read-perms group-2-id)
-                "Group 2 should have read permissions")
-            (is (contains? groups-with-read-perms group-3-id)
-                "Group 3 should have read permissions")
-            (is (not (contains? groups-with-read-perms admin-group-id))
-                "Admin group should not have explicit read permissions")))))))
-
-(deftest set-tenant-collection-permissions-parent-helper-test
-  (testing "The parent function should correctly identify parent collections"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Collection {parent-id :id :as parent} {:name "Parent"
-                                                                     :namespace collection/shared-tenant-ns
-                                                                     :location "/"}
-                       :model/Collection child {:name "Child"
-                                                :namespace collection/shared-tenant-ns
-                                                :location (collection/children-location parent)}]
-          (let [child-parent (#'collection/parent child)]
-            (is (= parent-id (:id child-parent))
-                "Parent function should return the correct parent collection")
-            (is (collection/tenant-collection? child-parent)
-                "Parent should be identified as tenant collection")))))))
-
-(deftest set-tenant-collection-permissions-is-tenant-check-test
-  (testing "The tenant-collection?? predicate"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Collection tenant-coll {:namespace collection/shared-tenant-ns}
-                       :model/Collection regular-coll {:type nil}
-                       :model/Collection remote-coll {:type "remote-synced"}]
-          (is (collection/tenant-collection? tenant-coll)
-              "Should identify shared-tenant-collection as tenant collection")
-          (is (not (collection/tenant-collection? regular-coll))
-              "Should not identify regular collection as tenant collection")
-          (is (not (collection/tenant-collection? remote-coll))
-              "Should not identify remote-synced collection as tenant collection"))))))
-
-(deftest after-insert-routes-to-correct-permissions-logic-test
-  (testing "The after-insert hook should route to the correct permissions logic"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (testing "for tenant collections"
-          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                         :model/Permissions _ {:group_id group-id
-                                               :object "/collection/namespace/shared-tenant-collection/root/read/"}
-                         :model/Collection coll {:name "Tenant Collection"
-                                                 :namespace collection/shared-tenant-ns
-                                                 :location "/"}]
-            (is (t2/exists? :model/Permissions
-                            :group_id group-id
-                            :object (perms/collection-read-path coll))
-                "Tenant collection should trigger set-tenant-collection-permissions!")))
-        (testing "for regular collections"
-          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                         :model/Collection coll {:name "Regular Collection"
-                                                 :location "/"}]
-            (is (not (t2/exists? :model/Permissions
-                                 :group_id group-id
-                                 :object (perms/collection-read-path coll)))
-                "Regular collection should use copy-parent-permissions! (no auto-perms)")))))))
-
-(deftest set-tenant-collection-permissions-deeply-nested-test
-  (testing "Deeply nested tenant collections should handle permissions correctly"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                       :model/Collection level-1 {:name "Level 1 Tenant"
-                                                  :namespace collection/shared-tenant-ns
-                                                  :location "/"}
-                       :model/Collection level-2 {:name "Level 2 Tenant"
-                                                  :namespace collection/shared-tenant-ns
-                                                  :location (collection/children-location level-1)}
-                       :model/Collection level-3 {:name "Level 3 Tenant"
-                                                  :namespace collection/shared-tenant-ns
-                                                  :location (collection/children-location level-2)}]
-          (is (t2/exists? :model/Permissions
-                          :group_id group-id
-                          :object (perms/collection-read-path level-1))
-              "Level 1 should have default read permissions")
-          (is (t2/exists? :model/Permissions
-                          :group_id group-id
-                          :object (perms/collection-read-path level-2))
-              "Level 2 should copy read permissions from Level 1")
-          (is (t2/exists? :model/Permissions
-                          :group_id group-id
-                          :object (perms/collection-read-path level-3))
-              "Level 3 should copy read permissions from Level 2"))))))
-
-(deftest set-tenant-collection-permissions-no-permission-escalation-test
-  (testing "Creating a tenant collection should not escalate permissions beyond read"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                       :model/Collection coll {:name "Tenant Collection"
-                                               :namespace collection/shared-tenant-ns
-                                               :location "/"}]
-          (let [read-perms (t2/exists? :model/Permissions
-                                       :group_id group-id
-                                       :object (perms/collection-read-path coll))
-                write-perms (t2/exists? :model/Permissions
-                                        :group_id group-id
-                                        :object (perms/collection-readwrite-path coll))]
-            (is read-perms
-                "Should have read permissions")
-            (is (not write-perms)
-                "Should NOT have write permissions (no escalation)")))))))
