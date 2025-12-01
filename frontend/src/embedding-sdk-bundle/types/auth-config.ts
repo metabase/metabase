@@ -19,6 +19,11 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
   preferredAuthMethod?: "jwt";
 
   /**
+   * Uri of the jwt provider. If provided the sdk will use jwt and will skip the first `/auth/sso` discovery request.
+   */
+  jwtProviderUri?: string;
+
+  /**
    * Specifies a function to fetch the refresh token.
    * The refresh token should be in the format of {@link UserBackendJwtResponse}
    */
