@@ -22,9 +22,6 @@ describe("scenarios > data studio > modeling > library", () => {
   });
 
   it("should create library via UI as admin and verify collections", () => {
-    cy.intercept("POST", "/api/ee/library").as("createLibrary");
-    cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
-
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
@@ -39,9 +36,6 @@ describe("scenarios > data studio > modeling > library", () => {
       cy.findByText("Create your Library").should("be.visible");
       cy.button("Create my Library").click();
     });
-
-    cy.wait("@createLibrary");
-    cy.wait("@getCollectionTree");
 
     cy.log("Verify library collections appear in sidebar");
     H.DataStudio.ModelingSidebar.collectionsTree().within(() => {
@@ -68,7 +62,6 @@ describe("scenarios > data studio > modeling > library", () => {
 
   it("should allow non-admin users with data-studio permission to create library", () => {
     cy.intercept("POST", "/api/ee/library").as("createLibrary");
-    cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
 
     cy.log("Grant data-studio permission to All Users");
     cy.visit("/admin/permissions/application");
@@ -95,7 +88,6 @@ describe("scenarios > data studio > modeling > library", () => {
     });
 
     cy.wait("@createLibrary");
-    cy.wait("@getCollectionTree");
 
     cy.log("Verify library collections appear in sidebar");
     H.DataStudio.ModelingSidebar.collectionsTree().within(() => {
