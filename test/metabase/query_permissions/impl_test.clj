@@ -6,12 +6,14 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -320,3 +322,25 @@
                 :perms/create-queries {(mt/id :products) :query-builder}
                 :perms/view-data      {(mt/id :products) :unrestricted}}
                (query-perms/required-perms-for-query query :already-preprocessed? true)))))))
+
+(deftest published-table-test
+  (testing "Published tables can be queried via collection permissions"
+    (let [mbql-query   (mt/mbql-query venues)
+          native-query (mt/native-query {:query "SELECT * FROM venues;"})]
+      (binding [*current-user-id*              (mt/user->id :rasta)
+                *current-user-permissions-set* (atom #{})]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+          (testing "WITHOUT collection permission"
+            (is (not (query-perms/can-run-query? mbql-query)))
+            (is (not (query-perms/can-run-query? native-query))))
+          (mt/with-temp [:model/Collection collection {}]
+            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (perms/grant-collection-read-permissions! (perms/all-users-group) (u/the-id collection))
+            (testing "WITH collection permission"
+              (is (query-perms/can-run-query? mbql-query))
+              (is (not (query-perms/can-run-query? native-query)) "Native queries should still be blocked"))
+            (testing "WITH collection permission, but perms/view-data is set to BLOCKED"
+              (mt/with-no-data-perms-for-all-users!
+                (is (not (query-perms/can-run-query? mbql-query)) "Blocked view-data should override collection perms")
+                (is (not (query-perms/can-run-query? native-query)))))))))))

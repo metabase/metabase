@@ -290,6 +290,45 @@
                            (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
 
+(defn- user-published-table-query [user-id table-id]
+  {:pre [(pos-int? user-id) (pos-int? table-id)]}
+  {:with   [[:user_group_ids {:select    [:pg.id]
+                              :from      [[:permissions_group :pg]]
+                              :join      [[:permissions_group_membership :pgm]
+                                          [:= :pgm.group_id :pg.id]]
+                              :where     [:= :pgm.user_id [:inline user-id]]}]
+            [:user_collections {:select-distinct [:collection_id]
+                                :from            [:permissions]
+                                :where           [:and
+                                                  [:in :group_id {:select [:id]
+                                                                  :from   [:user_group_ids]}]
+                                                  [:in :perm_value [[:inline "read"] [:inline "read-and-write"]]]]}]
+            [:blocked_tables {:select-distinct [:table_id]
+                              :from            [:data_permissions]
+                              :where           [:and
+                                                [:= :perm_type [:inline "perms/view-data"]]
+                                                [:= :perm_value [:inline "blocked"]]
+                                                [:in :group_id {:select [:id]
+                                                                :from   [:user_group_ids]}]]}]]
+   :select [[[:inline true] :has-published-table]]
+   :from   [:metabase_table]
+   :where  [:and
+            [:= :id [:inline table-id]]
+            [:= :is_published true]
+            [:is-not :collection_id nil]
+            [:in :collection_id {:select [:collection_id]
+                                 :from   [:user_collections]}]
+            [:not-in :id {:select [:table_id]
+                          :from   [:blocked_tables]}]]
+   :limit  1})
+
+(defn- user-published-table-permission [perm-type user-id table-id]
+  (when (and (#{:perms/create-queries :perms/view-data} perm-type)
+             (:has-published-table (t2/query-one (user-published-table-query user-id table-id))))
+    (case perm-type
+      :perms/create-queries :query-builder
+      :perms/view-data      :unrestricted)))
+
 (mu/defn table-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
@@ -299,13 +338,16 @@
                     {perm-type (permissions.schema/data-permissions perm-type)})))
   (if (is-superuser? user-id)
     (most-permissive-value perm-type)
-    (let [perm-values (->> (get-permissions user-id perm-type database-id)
-                           (filter #(or (= (:table_id %) table-id)
-                                        (nil? (:table_id %))))
-                           (map :perm_value)
-                           (into #{}))]
-      (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
-                                                                                  perm-type)))
+    (let [perm-values (into #{}
+                            (comp (filter #(or (= (:table_id %) table-id)
+                                               (nil? (:table_id %))))
+                                  (map :perm_value))
+                            (get-permissions user-id perm-type database-id))
+          table-perm (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
+                                                                                             perm-type)))]
+      (or (when-not (= table-perm (least-permissive-value perm-type))
+            table-perm)
+          (user-published-table-permission perm-type user-id table-id)
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-table? :- :boolean
