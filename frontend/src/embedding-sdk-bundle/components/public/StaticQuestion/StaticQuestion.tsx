@@ -119,8 +119,6 @@ const StaticQuestionInner = (
     );
   };
 
-  const hasTopBar = Boolean(title || withChartTypeSelector || withDownloads);
-
   return (
     <SdkQuestion
       questionId={questionId ?? null}
@@ -144,24 +142,18 @@ const StaticQuestionInner = (
             h="100%"
             gap="xs"
           >
-            {hasTopBar && (
-              <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-                {title && <DefaultViewTitle title={title} />}
+            <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+              {title && <DefaultViewTitle title={title} />}
 
-                {(withChartTypeSelector || withDownloads) && (
-                  <ResultToolbar>
-                    {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                    {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
-                  </ResultToolbar>
-                )}
+              {(withChartTypeSelector || withDownloads) && (
+                <ResultToolbar>
+                  {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                  {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+                </ResultToolbar>
+              )}
 
-                {isGuestEmbed && (
-                  <Box w="100%">
-                    <SdkQuestion.SqlParametersList />
-                  </Box>
-                )}
-              </Stack>
-            )}
+              {isGuestEmbed && <SdkQuestion.SqlParametersList />}
+            </Stack>
 
             <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
               <Box className={InteractiveQuestionS.Content}>
