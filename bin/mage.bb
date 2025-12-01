@@ -70,7 +70,8 @@
 
     ;; errors
     (invalid-task?)
-    (do (print-help) (System/exit 1))
+    (do (print-help)
+        (throw (ex-info "" {:babashka/exit 1})))
 
     :else
     ;; at this point, we always have a valid task, and we are running in bb, so
@@ -108,6 +109,7 @@
                                                                               (dissoc data :mage/error))))
                      (when (:mage/error data)
                        (println (c/blue (c/reverse-color "mage/error : ")) (:mage/error data))))
+                   #_{:clj-kondo/ignore [:discouraged-java-method]}
                    (System/exit (:babashka/exit data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))

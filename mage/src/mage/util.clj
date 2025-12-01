@@ -213,7 +213,7 @@
        :mage/error (str "You don't have " (c/yellow cmd) " installed. Please install it to use this task.")
        :babashka/exit 1}))))
 
-(defn fzf-select
+(defn fzf-select!
   "Uses fzf to offer interactive selections.
 
    If the user doesn't have fzf installed, explains instructions
