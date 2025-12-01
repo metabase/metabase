@@ -20,6 +20,10 @@ import {
   getResourceIdFromSettings,
 } from "./utils/get-default-sdk-iframe-embed-setting";
 
+export const UPSELL_CAMPAIGN_EXPERIENCE = "embedding_experience";
+export const UPSELL_CAMPAIGN_AUTH = "embedding_auth";
+export const UPSELL_CAMPAIGN_BEHAVIOR = "embedding_behavior";
+
 /**
  * Tracking every embed settings would bloat Snowplow, so we only track
  * the most relevant options that reveal usage patterns.

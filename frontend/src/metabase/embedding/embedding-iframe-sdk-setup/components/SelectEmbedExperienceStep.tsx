@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
+import { UPSELL_CAMPAIGN_EXPERIENCE } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { WithSimpleEmbeddingFeatureUpsellTooltip } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
@@ -88,6 +89,7 @@ export const SelectEmbedExperienceStep = () => {
               key={experience.value}
               mode="custom"
               enableTooltip={experience.showUpsell === true}
+              campaign={UPSELL_CAMPAIGN_EXPERIENCE}
             >
               {({ disabled, hoverCard }) => (
                 <Radio

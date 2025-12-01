@@ -15,10 +15,12 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
   mode,
   children,
   enableTooltip,
+  campaign,
 }: {
   mode?: TooltipWarningMode;
   children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
   enableTooltip: boolean;
+  campaign: string;
 }) => {
   const { settings } = useSdkIframeEmbedSetupContext();
 
@@ -37,8 +39,8 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
         <UpsellCard
           title={t`Get more powerful embedding`}
           buttonLink={upgradeUrl}
-          campaign="embedded-analytics-js"
-          location="embedding-page"
+          campaign={campaign}
+          location="embedded_analytics_js_wizard"
           /* eslint-disable-next-line no-literal-metabase-strings -- Button text */
           buttonText={t`Upgrade to Metabase Pro`}
           maxWidth={UPSELL_CARD_WIDTH}

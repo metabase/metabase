@@ -3,6 +3,10 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import {
+  UPSELL_CAMPAIGN_AUTH,
+  UPSELL_CAMPAIGN_BEHAVIOR,
+} from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
@@ -99,6 +103,7 @@ const AuthenticationSection = () => {
 
             <WithSimpleEmbeddingFeatureUpsellTooltip
               enableTooltip={!isSimpleEmbedFeatureAvailable}
+              campaign={UPSELL_CAMPAIGN_AUTH}
             >
               {({ disabled }) => (
                 <Radio
@@ -136,6 +141,7 @@ const AuthenticationSection = () => {
 
             <WithSimpleEmbeddingFeatureUpsellTooltip
               enableTooltip={!isSimpleEmbedFeatureAvailable}
+              campaign={UPSELL_CAMPAIGN_AUTH}
             >
               {({ disabled }) => (
                 <Radio
@@ -180,7 +186,9 @@ const BehaviorSection = () => {
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <WithNotAvailableForGuestEmbedsWarning>
+            <WithNotAvailableForGuestEmbedsWarning
+              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+            >
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to drill through on data points`}
@@ -191,7 +199,9 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForGuestEmbedsWarning>
 
-            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
+              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+            >
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow downloads`}
@@ -204,7 +214,9 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
 
-            <WithNotAvailableForGuestEmbedsWarning>
+            <WithNotAvailableForGuestEmbedsWarning
+              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+            >
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to save new questions`}
@@ -223,7 +235,9 @@ const BehaviorSection = () => {
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            <WithNotAvailableForGuestEmbedsWarning>
+            <WithNotAvailableForGuestEmbedsWarning
+              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+            >
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow people to drill through on data points`}
@@ -234,7 +248,9 @@ const BehaviorSection = () => {
               )}
             </WithNotAvailableForGuestEmbedsWarning>
 
-            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+            <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
+              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+            >
               {({ disabled }) => (
                 <Checkbox
                   label={t`Allow downloads`}
@@ -340,7 +356,10 @@ const AppearanceSection = () => {
 
   return (
     <Card p="md">
-      <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning mode="custom">
+      <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
+        mode="custom"
+        campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+      >
         {({ disabled, hoverCard }) => (
           <ColorCustomizationSection
             theme={theme}
@@ -384,9 +403,11 @@ const WithGuestEmbedsDisabledWarning = ({
 const WithNotAvailableWithoutSimpleEmbeddingFeatureWarning = ({
   mode,
   children,
+  campaign,
 }: {
   mode?: TooltipWarningMode;
   children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
+  campaign: string;
 }) => {
   const { isSimpleEmbedFeatureAvailable } = useSdkIframeEmbedSetupContext();
 
@@ -394,6 +415,7 @@ const WithNotAvailableWithoutSimpleEmbeddingFeatureWarning = ({
     <WithSimpleEmbeddingFeatureUpsellTooltip
       mode={mode}
       enableTooltip={!isSimpleEmbedFeatureAvailable}
+      campaign={campaign}
     >
       {({ disabled, hoverCard }) => children({ disabled, hoverCard })}
     </WithSimpleEmbeddingFeatureUpsellTooltip>
@@ -403,14 +425,19 @@ const WithNotAvailableWithoutSimpleEmbeddingFeatureWarning = ({
 const WithNotAvailableForGuestEmbedsWarning = ({
   mode,
   children,
+  campaign,
 }: {
   mode?: TooltipWarningMode;
   children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
+  campaign: string;
 }) => {
   const { settings } = useSdkIframeEmbedSetupContext();
 
   return (
-    <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning mode={mode}>
+    <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
+      mode={mode}
+      campaign={campaign}
+    >
       {({ disabled: disabledForOss, hoverCard: disabledForOssHoverCard }) => (
         <TooltipWarning
           enableTooltip={!disabledForOss}
