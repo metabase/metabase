@@ -6,7 +6,7 @@
   "Enable analytics development mode. When true, disables analytics database installation and makes analytics content editable."
   :type       :boolean
   :default    false
-  :visibility :internal
+  :visibility :public
   :setter     :none
   :audit      :never
   :export?    false

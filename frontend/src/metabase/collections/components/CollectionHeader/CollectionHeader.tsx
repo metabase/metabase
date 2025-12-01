@@ -16,6 +16,7 @@ import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
 import { CollectionPermissions } from "./CollectionPermissions";
 import CollectionTimeline from "./CollectionTimeline";
+import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import { CollectionUpload } from "./CollectionUpload";
 
 export interface CollectionHeaderProps {
@@ -28,6 +29,7 @@ export interface CollectionHeaderProps {
   canUpload: boolean;
   uploadsEnabled: boolean;
   saveFile: (file: File) => void;
+  analyticsDevMode?: boolean;
 }
 
 const CollectionHeader = ({
@@ -40,6 +42,7 @@ const CollectionHeader = ({
   saveFile,
   canUpload,
   uploadsEnabled,
+  analyticsDevMode,
 }: CollectionHeaderProps): JSX.Element => {
   const isTrash = isTrashedCollection(collection);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
@@ -49,6 +52,7 @@ const CollectionHeader = ({
   const showNewButton = hasCuratePermissions && !isInstanceAnalytics;
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
+  const showExportButton = isInstanceAnalytics && isAdmin && analyticsDevMode;
   const showTimelinesButton = !isInstanceAnalytics;
   const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
 
@@ -72,6 +76,7 @@ const CollectionHeader = ({
           {showTimelinesButton && (
             <CollectionTimeline collection={collection} />
           )}
+          {showExportButton && <CollectionExportAnalytics />}
           {isInstanceAnalytics && (
             <CollectionPermissions collection={collection} />
           )}

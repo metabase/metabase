@@ -1,9 +1,15 @@
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import { uploadFile } from "metabase/redux/uploads";
+import { getSetting } from "metabase/selectors/settings";
 import type { Collection } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import CollectionHeader from "../../components/CollectionHeader";
+
+const mapStateToProps = (state: State) => ({
+  analyticsDevMode: getSetting(state, "analytics-dev-mode"),
+});
 
 const mapDispatchToProps = {
   onUpdateCollection: (collection: Collection, values: Partial<Collection>) =>
@@ -13,4 +19,4 @@ const mapDispatchToProps = {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(CollectionHeader);
+export default connect(mapStateToProps, mapDispatchToProps)(CollectionHeader);
