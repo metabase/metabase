@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -85,13 +85,11 @@ export const AddEditEmailSidebar = ({
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getCurrentUser);
 
-  // This function changes every render because it's produced by _.partial() and isn't memoized.
-  const onChangePropertyChangeRef = useRef(onChannelPropertyChange);
   useEffect(() => {
     if (isEmbeddingSdk()) {
-      onChangePropertyChangeRef.current("recipients", [currentUser]);
+      onChannelPropertyChange("recipients", [currentUser]);
     }
-  }, [currentUser]);
+  }, [currentUser, onChannelPropertyChange]);
 
   return (
     <Sidebar

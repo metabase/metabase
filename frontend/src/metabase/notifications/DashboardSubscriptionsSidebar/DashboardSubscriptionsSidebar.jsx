@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "error" */
 
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, useMemo } from "react";
 import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -395,21 +395,16 @@ class DashboardSubscriptionsSidebarInner extends Component {
       const channelSpec = formInput.channels.email;
 
       return (
-        <AddEditEmailSidebar
+        <AddEditEmailSidebarWithHooks
+          index={index}
           pulse={pulse}
           formInput={formInput}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
           onCancel={this.onCancel}
-          onChannelPropertyChange={_.partial(
-            this.onChannelPropertyChange,
-            index,
-          )}
-          onChannelScheduleChange={_.partial(
-            this.onChannelScheduleChange,
-            index,
-          )}
+          onChannelPropertyChange={this.onChannelPropertyChange}
+          onChannelScheduleChange={this.onChannelScheduleChange}
           testPulse={testPulse}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
           setPulse={this.setPulse}
@@ -501,6 +496,57 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
     return <Sidebar />;
   }
+}
+
+function AddEditEmailSidebarWithHooks({
+  /* eslint-disable react/prop-types */
+  index,
+  pulse,
+  formInput,
+  channel,
+  channelSpec,
+  handleSave,
+  onCancel,
+  onChannelPropertyChange,
+  onChannelScheduleChange,
+  testPulse,
+  toggleSkipIfEmpty,
+  setPulse,
+  users,
+  handleArchive,
+  dashboard,
+  setPulseParameters,
+  /* eslint-enable react/prop-types */
+}) {
+  /**
+   * Memoized because it's used in `AddEditEmailSidebar.tsx` as a dependency
+   */
+  const handleChannelPropertyChange = useMemo(
+    () => _.partial(onChannelPropertyChange, index),
+    [index, onChannelPropertyChange],
+  );
+
+  const handleChannelScheduleChange = _.partial(onChannelScheduleChange, index);
+
+  return (
+    <AddEditEmailSidebar
+      pulse={pulse}
+      formInput={formInput}
+      channel={channel}
+      channelSpec={channelSpec}
+      handleSave={handleSave}
+      onCancel={onCancel}
+      onChannelPropertyChange={handleChannelPropertyChange}
+      onChannelScheduleChange={handleChannelScheduleChange}
+      testPulse={testPulse}
+      toggleSkipIfEmpty={toggleSkipIfEmpty}
+      setPulse={setPulse}
+      users={users}
+      handleArchive={handleArchive}
+      dashboard={dashboard}
+      setPulseParameters={setPulseParameters}
+    />
+  );
 }
 
 function shouldDisplayNewPulse(editingMode, pulses) {
