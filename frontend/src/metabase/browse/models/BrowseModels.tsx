@@ -2,11 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useListDatabasesQuery,
-  useListRecentsQuery,
-} from "metabase/api";
+import { skipToken, useListRecentsQuery } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -17,8 +13,11 @@ import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -54,7 +53,6 @@ const {
 } = PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
-  const { data } = useListDatabasesQuery();
   const [modelFilters, setModelFilters] = useModelFilterSettings();
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
     useFilteredModels(modelFilters);
@@ -64,9 +62,8 @@ export const BrowseModels = () => {
   const isEmpty = !isLoading && !error && models.length === 0;
   const titleId = useMemo(() => _.uniqueId("browse-models"), []);
 
-  const databases = data?.data ?? [];
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const canCreateNewModel =

@@ -42,6 +42,9 @@ export interface BaseUser {
 }
 
 export interface UserPermissions {
+  can_create_queries?: boolean;
+  can_create_native_queries?: boolean;
+
   // requires advanced_permissions feature
   is_group_manager?: boolean;
   can_access_data_model?: boolean;

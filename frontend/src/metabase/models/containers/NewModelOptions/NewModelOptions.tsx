@@ -3,8 +3,6 @@ import type { Location } from "history";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListDatabasesQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
@@ -13,8 +11,11 @@ import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {
@@ -30,10 +31,8 @@ interface NewModelOptionsProps {
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data, isFetching } = useListDatabasesQuery();
-  const databases = data?.data ?? [];
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -51,10 +50,6 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   const collectionId = urlCollectionId || libraryModelsCollection?.id;
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-
-  if (isFetching) {
-    return <DelayedLoadingSpinner />;
-  }
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (

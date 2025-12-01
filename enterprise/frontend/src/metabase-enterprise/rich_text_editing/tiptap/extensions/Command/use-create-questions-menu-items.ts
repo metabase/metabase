@@ -2,11 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
+import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {
-  getHasDataAccess,
-  getHasDatabaseWithJsonEngine,
-  getHasNativeWrite,
-} from "metabase/selectors/data";
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 
 import type { NewQuestionMenuItem } from "./types";
 
@@ -17,13 +18,9 @@ export const useCreateQuestionsMenuItems = ({
 }) => {
   const { data } = useListDatabasesQuery();
   const databases = useMemo(() => data?.data ?? [], [data]);
-  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
-  const hasNativeWrite = useMemo(
-    () => getHasNativeWrite(databases),
-    [databases],
-  );
-
   const hasDatabaseWithJsonEngine = getHasDatabaseWithJsonEngine(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
   const items = useMemo(() => {
     const result: NewQuestionMenuItem[] = [];

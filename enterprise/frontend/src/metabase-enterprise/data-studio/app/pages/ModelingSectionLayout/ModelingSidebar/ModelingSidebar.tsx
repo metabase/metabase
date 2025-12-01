@@ -1,10 +1,9 @@
-import { useMemo } from "react";
-
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import {
-  useListCollectionsTreeQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import type { CollectionId, NativeQuerySnippetId } from "metabase-types/api";
 
 import { ModelingSidebarView } from "./ModelingSidebarView";
@@ -20,24 +19,13 @@ export function ModelingSidebar({
   selectedSnippetId,
   isGlossaryActive,
 }: ModelingSidebarProps) {
-  const { data: databaseData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery();
-  const { data: collections = [], isLoading: isLoadingCollections } =
-    useListCollectionsTreeQuery({
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-      "include-library": true,
-    });
-
-  const { hasDataAccess, hasNativeWrite } = useMemo(() => {
-    const databases = databaseData?.data ?? [];
-    return {
-      hasDataAccess: getHasDataAccess(databases),
-      hasNativeWrite: getHasNativeWrite(databases),
-    };
-  }, [databaseData]);
-
-  const isLoading = isLoadingDatabases || isLoadingCollections;
+  const { data: collections = [], isLoading } = useListCollectionsTreeQuery({
+    "exclude-other-user-collections": true,
+    "exclude-archived": true,
+    "include-library": true,
+  });
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
   if (isLoading) {
     return null;
