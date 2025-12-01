@@ -202,10 +202,10 @@ export function SearchNew({
     if (isTableNode(item)) {
       setSelectedTables((prev) => {
         const newSet = new Set(prev);
-        if (newSet.has(item.table!.id)) {
-          newSet.delete(item.table!.id);
+        if (newSet.has(item.value.tableId)) {
+          newSet.delete(item.value.tableId);
         } else {
-          newSet.add(item.table!.id);
+          newSet.add(item.value.tableId);
         }
         return newSet;
       });
