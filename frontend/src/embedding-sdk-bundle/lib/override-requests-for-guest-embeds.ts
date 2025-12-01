@@ -19,8 +19,10 @@ const URL_PATTERNS = {
   CARD_PIVOT_QUERY: `${internalBase}/card/pivot/:cardId/query`,
   CARD_PARAMETER_VALUES: `${internalBase}/card/:cardId/params/:paramId/values`,
   CARD_PARAMETER_SEARCH: `${internalBase}/card/:cardId/params/:paramId/search/:query`,
+  CARD_PARAMETER_REMAPPING: `${internalBase}/card/:cardId/params/:paramId/remapping`,
   DASHBOARD_PARAMETER_VALUES: `${internalBase}/dashboard/:dashId/params/:paramId/values`,
   DASHBOARD_PARAMETER_SEARCH: `${internalBase}/dashboard/:dashId/params/:paramId/search/:query`,
+  DASHBOARD_PARAMETER_REMAPPING: `${internalBase}/dashboard/:dashId/params/:paramId/remapping`,
 } as const;
 
 /**
@@ -47,12 +49,20 @@ const EMBED_URL_TRANSFORMATIONS: Record<
     url: `${embedBase}/card/:token/params/:paramId/search/:query`,
     method: "GET",
   },
+  [URL_PATTERNS.CARD_PARAMETER_REMAPPING]: {
+    url: `${embedBase}/card/:token/params/:paramId/remapping`,
+    method: "GET",
+  },
   [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: {
     url: `${embedBase}/dashboard/:token/params/:paramId/values`,
     method: "GET",
   },
   [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: {
     url: `${embedBase}/dashboard/:token/params/:paramId/search/:query`,
+    method: "GET",
+  },
+  [URL_PATTERNS.DASHBOARD_PARAMETER_REMAPPING]: {
+    url: `${embedBase}/dashboard/:token/params/:paramId/remapping`,
     method: "GET",
   },
 } as const;

@@ -55,6 +55,15 @@ describe("matchUrlPattern", () => {
     ).toBe(true);
   });
 
+  it("should match card parameter remapping pattern", () => {
+    expect(
+      matchUrlPattern(
+        "/api/card/:cardId/params/:paramId/remapping",
+        "/api/card/123/params/456/remapping",
+      ),
+    ).toBe(true);
+  });
+
   it("should match dashboard parameter values pattern", () => {
     expect(
       matchUrlPattern(
@@ -69,6 +78,15 @@ describe("matchUrlPattern", () => {
       matchUrlPattern(
         "/api/dashboard/:dashId/params/:paramId/search/:query",
         "/api/dashboard/789/params/456/search/test",
+      ),
+    ).toBe(true);
+  });
+
+  it("should match dashboard parameter remapping pattern", () => {
+    expect(
+      matchUrlPattern(
+        "/api/dashboard/:dashId/params/:paramId/remapping",
+        "/api/dashboard/789/params/456/remapping",
       ),
     ).toBe(true);
   });
