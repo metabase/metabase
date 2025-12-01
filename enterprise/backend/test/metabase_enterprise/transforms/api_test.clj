@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
@@ -47,6 +48,25 @@
       :source-column "category"
       :filter-fn     lib/=
       :filter-values [category]})))
+
+(deftest validate-target-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (testing "Unique"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/validate-target"
+                                             {:db_id  (mt/id)
+                                              :target {:type   "table"
+                                                       :schema "public"
+                                                       :name   (str/replace (str (random-uuid)) "-" "_")}})]
+          (is (= "OK" response))))
+      (testing "Conflict"
+        (let [table    (t2/select-one :model/Table :active true)
+              response (mt/user-http-request :crowberto :post 403 "ee/transform/validate-target"
+                                             {:db_id  (:db_id table)
+                                              :target {:type   "table"
+                                                       :schema (:schema table)
+                                                       :name   (:name table)}})]
+          (is (= "A table with that name already exists." response)))))))
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

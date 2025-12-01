@@ -103,6 +103,17 @@
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (get-transforms query-params))
 
+(api.macros/defendpoint :post "/validate-target"
+  [_route-params
+   _query-params
+   {:keys [db_id target]} :- [:map
+                              [:db_id {:optional true} ms/PositiveInt]
+                              [:target ::transforms.schema/transform-target]]]
+  (if (transforms.util/target-table-exists? {:target (merge {:database db_id} target)
+                                             :source {:type :python}})
+    {:status 403, :body (deferred-tru "A table with that name already exists.")}
+    {:status 200, :body "OK"}))
+
 (api.macros/defendpoint :post "/"
   "Create a new transform."
   [_route-params
