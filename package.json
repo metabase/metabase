@@ -363,8 +363,6 @@
   },
   "pnpm": {
     "overrides": {
-      "@types/react-dom": "18.2.17",
-      "@types/react": "18.2.77",
       "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
       "ansi-regex": "5.0.1",
       "cipher-base": "^1.0.5",
@@ -384,8 +382,6 @@
       "unset-value": "2.0.1",
       "webpack-dev-middleware": "^5.3.4",
       "webpack-dev-server": "^5.2.1",
-      "html2canvas-pro": "1.5.0",
-      "kbar": "0.1.0-beta.45",
       "@swc/core": "1.13.5",
       "@swc/plugin-emotion": "11.1.0"
     },
