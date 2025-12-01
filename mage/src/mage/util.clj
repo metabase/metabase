@@ -82,7 +82,7 @@
 (defn public-bb-tasks-list
   "Returns all public bb tasks as a vector of strings."
   []
-  (->> "bb tasks"
+  (->> (str project-root-directory "/bin/bb tasks")
        shl
        (drop 2)
        (map (comp first #(str/split % #"\s+")))
