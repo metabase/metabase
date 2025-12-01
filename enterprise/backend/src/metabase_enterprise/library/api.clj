@@ -43,7 +43,7 @@
          :can_write
          :effective_children)
         (add-here-and-below))
-    {:message "Library does not exist"}))
+    {:data nil}))
 
 (defn- select-collections
   []
