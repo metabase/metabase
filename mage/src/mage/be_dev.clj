@@ -89,8 +89,7 @@
         _           (u/debug "Code:\n-----\n" code-str "\n-----")
         _           (bencode/write-bencode out {:op "eval" :code code-str})
         final-value (atom nil)
-        safe-print (fn [& msg] (when-not *quiet-nrepl-eval*
-                                 (apply print msg)))]
+        safe-print (fn [& msg] (when-not *quiet-nrepl-eval* (apply print msg) (flush)))]
     (loop []
       (let [response (->> (bencode/read-bencode in) (walk/postwalk consume))]
         (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "\n-----")
@@ -130,9 +129,9 @@
   ([port]
    (try
      (let [port (or port (nrepl-port port))
-           [repl-clj-ver cond-read :as x] (edn/read-string
-                                           (binding [*quiet-nrepl-eval* true]
-                                             (nrepl-eval "user" "[*clojure-version* #?(:clj :clj :cljs :cljs)]" port)))]
+           [repl-clj-ver cond-read] (edn/read-string
+                                     (binding [*quiet-nrepl-eval* true]
+                                       (nrepl-eval "user" "[*clojure-version* #?(:clj :clj :cljs :cljs)]" port)))]
        (if (= "SCI" (:qualifier repl-clj-ver))
          :bb
          cond-read))
