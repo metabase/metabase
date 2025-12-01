@@ -1,6 +1,3 @@
-import { t } from "ttag";
-
-import * as Urls from "metabase/lib/urls";
 import { Box, Stack } from "metabase/ui";
 import { LibrarySection } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/LibrarySection";
 import type {
@@ -8,8 +5,6 @@ import type {
   CollectionId,
   NativeQuerySnippetId,
 } from "metabase-types/api";
-
-import { ModelingSidebarSection } from "../ModelingSidebarSection";
 
 import S from "./ModelingSidebarView.module.css";
 import { SnippetsSection } from "./SnippetsSection";
@@ -27,7 +22,6 @@ export function ModelingSidebarView({
   collections,
   selectedCollectionId,
   selectedSnippetId,
-  isGlossaryActive,
   hasDataAccess,
   hasNativeWrite,
 }: ModelingSidebarViewProps) {
@@ -48,15 +42,6 @@ export function ModelingSidebarView({
             <SnippetsSection selectedSnippetId={selectedSnippetId} />
           </Box>
         )}
-
-        <Box p="md" data-testid="glossary-section">
-          <ModelingSidebarSection
-            icon="book_open"
-            title={t`Glossary`}
-            to={Urls.dataStudioGlossary()}
-            isActive={isGlossaryActive}
-          />
-        </Box>
       </Stack>
     </Box>
   );

@@ -48,12 +48,13 @@ export function getDataStudioRoutes(
             </Route>
           </Route>
         )}
-        <Route path="modeling" component={ModelingSectionLayout}>
+        {getDataStudioGlossaryRoutes()}
+        <Route path="modeling">
+          <IndexRoute component={ModelingSectionLayout} />
           {getDataStudioModelingRoutes()}
           {getDataStudioModelRoutes()}
           {getDataStudioMetricRoutes()}
           {getDataStudioSnippetRoutes()}
-          {getDataStudioGlossaryRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>
