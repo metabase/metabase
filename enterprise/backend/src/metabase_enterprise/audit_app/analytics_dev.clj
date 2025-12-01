@@ -146,6 +146,8 @@
 (defn- copy-and-transform-yamls!
   "Copy YAMLs from source to temp directory, transforming them.
 
+  Skips the database YAML since the database is created separately.
+
   Returns the temp directory path."
   [source-dir user-email]
   (let [temp-dir (Files/createTempDirectory "analytics-dev-import" (make-array FileAttribute 0))
@@ -153,7 +155,8 @@
     (log/info "Copying and transforming YAMLs from" source-dir "to" temp-path)
     (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
-                       (.endsWith (.getName file) ".yaml"))]
+                       (.endsWith (.getName file) ".yaml")
+                       (not (= (.getName file) (str canonical-db-id ".yaml"))))]
       (let [relative-path (str/replace (.getPath file)
                                        (str (.getPath (io/file source-dir)) "/")
                                        "")
