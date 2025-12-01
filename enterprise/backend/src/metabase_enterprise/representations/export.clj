@@ -102,15 +102,17 @@
   "Rename a set of representations based on a sequence of ref strategy functions `gen-refs`.
 
   Each `gen-ref` takes a sequence of representations and returns a new sequence with proposed refs."
-  [representations initial-gen-ref middle-gen-refs final-gen-ref]
-  (let [ref-map (rename-refs-map representations initial-gen-ref middle-gen-refs final-gen-ref)
-        renamed (mapv #(update % :name ref-map) representations)
-        ref:ref-map (into {} (map (fn [[old new]]
-                                    [(str "ref:" old) (str "ref:" new)]))
-                          ref-map)]
-    (->> renamed
-         (walk/postwalk-replace ref:ref-map)
-         (mapv #(dissoc % ::proposed-ref)))))
+  ([representations]
+   (rename-refs representations ref-from-name standard-ref-strategies add-sequence-number))
+  ([representations initial-gen-ref middle-gen-refs final-gen-ref]
+   (let [ref-map (rename-refs-map representations initial-gen-ref middle-gen-refs final-gen-ref)
+         renamed (mapv #(update % :name ref-map) representations)
+         ref:ref-map (into {} (map (fn [[old new]]
+                                     [(str "ref:" old) (str "ref:" new)]))
+                           ref-map)]
+     (->> renamed
+          (walk/postwalk-replace ref:ref-map)
+          (mapv #(dissoc % ::proposed-ref))))))
 
 (defn- schema->table-index [schema]
   (let [tables (:tables schema)

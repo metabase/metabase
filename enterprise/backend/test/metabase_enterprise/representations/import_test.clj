@@ -5,6 +5,7 @@
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common-test :as ct]
    [metabase-enterprise.representations.yaml :as rep-yaml]
+   [metabase.collections.models.collection :as coll]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -30,3 +31,17 @@
                     (dissoc rep2 :name :query))))
           (finally
             (t2/delete! model (:id instance))))))))
+
+(deftest export-update-all-entities
+  (doseq [model [:model/Card :model/Transform :model/Collection :model/NativeQuerySnippet]
+          entity (t2/select model)]
+    (when-not (and (= model :model/Collection)
+                   (coll/is-trash? entity))
+      (mt/with-test-user :crowberto
+        (let [rep (export/export-entity entity)
+              rep (through-yaml rep)
+              instance (import/update! rep (:id entity) (ct/->ParseRefEntityIndex))
+              rep2 (export/export-entity instance)
+              rep2 (through-yaml rep2)]
+          (is (=? (dissoc rep  :name :query)
+                  (dissoc rep2 :name :query))))))))

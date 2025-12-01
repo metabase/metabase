@@ -1,27 +1,36 @@
 (ns metabase-enterprise.representations.export-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.representations.core :as core]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- through-yaml [representation]
+  (-> representation
+      rep-yaml/generate-string
+      rep-yaml/parse-string))
+
 (deftest export-entity-all-entities
   (doseq [model [:model/Card :model/Database :model/Transform :model/Collection :model/NativeQuerySnippet]
           entity (t2/select model)]
     (mt/with-test-user :crowberto
-      (is (export/export-entity entity)))))
+      (let [rep (through-yaml (export/export-entity entity))]
+        (is rep)
+        (is (core/normalize-representation rep))))))
 
-(deftest rename-refs-empty
+(deftest rename-refs-empty-test
   (is (= [] (export/rename-refs []
                                 export/ref-from-name
                                 export/standard-ref-strategies
                                 export/add-sequence-number))))
 
-(deftest rename-refs-one
+(deftest rename-refs-one-test
   (is (= [{:name "xyz"}]
          (export/rename-refs [{:name "abc"}]
                              (fn [reps] (map #(assoc % ::export/proposed-ref "xyz") reps))
@@ -33,7 +42,7 @@
   (= (count representations)
      (count (into #{} (map :name) representations))))
 
-(deftest hard-one
+(deftest hard-one-rename-test
   (is (unique-names? (export/rename-refs [{:name "1" :display_name "b-question-1" :type :question}
                                           {:name "2" :display_name "b" :type :question}
                                           {:name "3" :display_name "b" :type :question}]
@@ -41,7 +50,7 @@
                                          export/standard-ref-strategies
                                          export/add-sequence-number))))
 
-(deftest hard-one-2
+(deftest hard-one-2-rename-test
   (let [reps [{:name "1" :display_name "b" :type :question :database "ref:2"}
               {:name "2" :display_name "b" :type :database}]
         reps' (export/rename-refs reps
