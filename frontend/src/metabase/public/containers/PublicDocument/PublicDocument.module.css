@@ -1,3 +1,16 @@
+.container:not([data-css-specificity-hack="🤷‍♀️"]) {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  overflow: hidden;
+}
+
+.documentArea:not([data-css-specificity-hack="🤷‍♀️"]) {
+  flex-shrink: 1;
+  overflow: auto;
+}
+
 .editorContent :global(.ProseMirror) {
   padding: 1.5rem 0 2rem 0;
   outline: none;
