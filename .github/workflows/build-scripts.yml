@@ -13,11 +13,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/checkout@v4
-      with:
-        repository: metabase/representations
-        token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-        path: representations
     - name: Prepare back-end environment
       timeout-minutes: 5
       uses: ./.github/actions/prepare-backend

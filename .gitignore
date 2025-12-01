@@ -163,6 +163,3 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
-
-# Private dependency (checked out locally and in CI)
-/representations/

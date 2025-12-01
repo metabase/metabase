@@ -19,11 +19,6 @@ jobs:
     name: Clj-Kondo
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: metabase/representations
-          token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-          path: representations
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run clj-kondo
@@ -36,11 +31,6 @@ jobs:
     name: Eastwood
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: metabase/representations
-          token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-          path: representations
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
@@ -107,11 +97,6 @@ jobs:
         }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: metabase/representations
-          token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-          path: representations
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -177,11 +162,6 @@ jobs:
     name: "Check Java ${{ matrix.java-version }}"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: metabase/representations
-          token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-          path: representations
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
@@ -195,11 +175,6 @@ jobs:
     name: Cljfmt
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: metabase/representations
-          token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-          path: representations
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run cljfmt

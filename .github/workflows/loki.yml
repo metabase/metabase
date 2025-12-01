@@ -42,12 +42,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-        with:
-          repository: metabase/representations
-          token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-          path: representations
-
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
 

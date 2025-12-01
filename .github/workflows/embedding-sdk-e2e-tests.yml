@@ -85,56 +85,6 @@ jobs:
               matrix: []
             };
 
-  build:
-    needs: [files-changed, get-build-requirements, get-sample-apps-data]
-    if: |
-      !cancelled() &&
-      needs.files-changed.outputs.e2e_embedding_sdk_compatibility == 'true' &&
-      fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    env:
-      MB_EDITION: ee
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: metabase/representations
-          token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-          path: representations
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
-      - name: Build Embedding SDK package
-        run: |
-          # Remove the matchers to not report false positives on every PR
-          # unrelated to embedding (EMB-765)
-          echo "::remove-matcher owner=tsc::"
-          yarn build-embedding-sdk-package
-
-      - name: Prepare Embedding SDK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
-          path: resources/embedding-sdk
-
   # In order to check compatibility between Sample Apps and Embedding SDK, the job for each sample app:
   # - pulls a Sample App
   # - starts it

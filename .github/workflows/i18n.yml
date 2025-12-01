@@ -34,11 +34,6 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/checkout@v4
-      with:
-        repository: metabase/representations
-        token: ${{ secrets.REPRESENTATIONS_GITHUB_PTA }}
-        path: representations
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
