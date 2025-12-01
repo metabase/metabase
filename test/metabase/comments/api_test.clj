@@ -57,7 +57,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Document {doc-id :id} {}]
         (testing "should not return the comments"
-          (mt/user-http-request :crowberto :get 402 "ee/comment/"
+          (mt/user-http-request :crowberto :get 402 "comment/"
                                 :target_type "document"
                                 :target_id doc-id))))))
 
@@ -74,12 +74,12 @@
                            (t2/select-fn-set :event_name :model/NotificationSubscription)))
           (testing "returns empty comments list for entity with no comments"
             (is (= {:comments []}
-                   (mt/user-http-request :rasta :get 200 "ee/comment/"
+                   (mt/user-http-request :rasta :get 200 "comment/"
                                          :target_type "document"
                                          :target_id doc-id))))
           (testing "creates and returns comments for entity"
             (let [content   (tiptap [:p "New comment"])
-                  created   (mt/user-http-request :rasta :post 200 "ee/comment/"
+                  created   (mt/user-http-request :rasta :post 200 "comment/"
                                                   {:target_type "document"
                                                    :target_id   doc-id
                                                    :content     content
@@ -92,7 +92,7 @@
                              :reactions   []}]
               (is (=? expected1 created))
               (is (=? {:comments [expected1]}
-                      (mt/user-http-request :rasta :get 200 "ee/comment/"
+                      (mt/user-http-request :rasta :get 200 "comment/"
                                             :target_type "document"
                                             :target_id doc-id)))
               (testing "document creator receives notifications for top-level comments"
@@ -107,7 +107,7 @@
 
               (testing "creates a reply to an existing comment"
                 (let [content2  (tiptap [:p "Other comment"])
-                      child     (mt/user-http-request :crowberto :post 200 "ee/comment/"
+                      child     (mt/user-http-request :crowberto :post 200 "comment/"
                                                       {:target_type       "document"
                                                        :target_id         doc-id
                                                        :parent_comment_id (:id created)
@@ -122,7 +122,7 @@
                                  :reactions         []}]
                   (is (=? expected2 child))
                   (is (=? {:comments [expected1 expected2]}
-                          (mt/user-http-request :rasta :get 200 "ee/comment/"
+                          (mt/user-http-request :rasta :get 200 "comment/"
                                                 :target_type "document"
                                                 :target_id doc-id)))
                   (testing "participants in the thread receive notifications for new replies"
@@ -133,7 +133,7 @@
                             (first (swap-vals! mt/inbox empty)))))))
 
               (testing "comment in a thread should send emails to all participants of the thread"
-                (let [_another (mt/user-http-request :lucky :post 200 "ee/comment/"
+                (let [_another (mt/user-http-request :lucky :post 200 "comment/"
                                                      {:target_type       "document"
                                                       :target_id         doc-id
                                                       :parent_comment_id (:id created)
@@ -151,7 +151,7 @@
 
           (testing "creates a comment for part of an entity"
             (let [part-id (-> doc :content first :attrs :_id)
-                  created (mt/user-http-request :rasta :post 200 "ee/comment/"
+                  created (mt/user-http-request :rasta :post 200 "comment/"
                                                 {:target_type     "document"
                                                  :target_id       doc-id
                                                  :child_target_id part-id
@@ -175,7 +175,7 @@
                         (first (swap-vals! mt/inbox empty)))))))
 
           (testing "Comments with mentions send notification emails"
-            (let [_created (mt/user-http-request :rasta :post 200 "ee/comment/"
+            (let [_created (mt/user-http-request :rasta :post 200 "comment/"
                                                  {:target_type "document"
                                                   :target_id   doc-id
                                                   :content     (tiptap
@@ -192,12 +192,12 @@
                    :model/Comment  {comment-id :id} {:target_id doc-id}]
       (testing "updates comment content"
         (is (=? {:content {:text "Updated content"}}
-                (mt/user-http-request :rasta :put 200 (str "ee/comment/" comment-id)
+                (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
                                       {:content {"text" "Updated content"}}))))
 
       (testing "updates comment resolution status"
         (is (=? {:is_resolved true}
-                (mt/user-http-request :rasta :put 200 (str "ee/comment/" comment-id)
+                (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
                                       {:is_resolved true})))))))
 
 (deftest delete-comment-test
@@ -209,23 +209,23 @@
                                                  :parent_comment_id c2}]
       (testing "soft deletes a comment"
         (is (= nil
-               (mt/user-http-request :rasta :delete 204 (str "ee/comment/" c1))))
+               (mt/user-http-request :rasta :delete 204 (str "comment/" c1))))
         (testing "comment is marked as deleted in database"
           (let [comment (t2/select-one :model/Comment :id c1)]
             (is (some? (:deleted_at comment)))))
         (testing "deleting a comment twice leaves sour taste in the mouth"
           ;; NOTE: maybe it's fine and we should just noop here rather than return an error?
           (is (= "Comment is already deleted"
-                 (mt/user-http-request :rasta :delete 400 (str "ee/comment/" c1))))))
+                 (mt/user-http-request :rasta :delete 400 (str "comment/" c1))))))
 
       (testing "deleting parent comment still leaves it in a response"
         (is (= nil
-               (mt/user-http-request :rasta :delete 204 (str "ee/comment/" c2))))
+               (mt/user-http-request :rasta :delete 204 (str "comment/" c2))))
         (is (=? {:comments [{:id         c2
                              :deleted_at some?}
                             {:id         c3
                              :deleted_at nil}]}
-                (mt/user-http-request :rasta :get 200 "ee/comment/"
+                (mt/user-http-request :rasta :get 200 "comment/"
                                       :target_type "document"
                                       :target_id doc-id)))))))
 
@@ -235,25 +235,25 @@
                    :model/Comment  {comment-id :id} {:target_id doc-id}]
       (testing "adds a reaction to a comment"
         (is (=? {:reacted true}
-                (mt/user-http-request :rasta :post 200 (str "ee/comment/" comment-id "/reaction")
+                (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction")
                                       {:emoji "👍"})))
 
         (is (=? {:comments [{:id        comment-id
                              :reactions [{:emoji "👍"
                                           :count 1
                                           :users [{:id (mt/user->id :rasta)}]}]}]}
-                (mt/user-http-request :rasta :get 200 "ee/comment/"
+                (mt/user-http-request :rasta :get 200 "comment/"
                                       :target_type "document"
                                       :target_id doc-id))))
 
       (testing "removes an existing reaction when toggled again"
         (is (=? {:reacted false}
-                (mt/user-http-request :rasta :post 200 (str "ee/comment/" comment-id "/reaction")
+                (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction")
                                       {:emoji "👍"})))
 
         (is (=? {:comments [{:id        comment-id
                              :reactions []}]}
-                (mt/user-http-request :rasta :get 200 "ee/comment/"
+                (mt/user-http-request :rasta :get 200 "comment/"
                                       :target_type "document"
                                       :target_id doc-id)))))))
 
@@ -268,13 +268,13 @@
         (mt/with-model-cleanup [:model/Comment]
           (testing "GET /api/comment/ - users without document read permissions cannot see comments"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :get 403 "ee/comment/"
+                   (mt/user-http-request :lucky :get 403 "comment/"
                                          :target_type "document"
                                          :target_id restricted-doc-id))))
 
           (testing "POST /api/comment/ - users without document read permissions cannot create comments"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :post 403 "ee/comment/"
+                   (mt/user-http-request :lucky :post 403 "comment/"
                                          {:target_type "document"
                                           :target_id   restricted-doc-id
                                           :content     (tiptap "Comment by lucky")
@@ -282,16 +282,16 @@
 
           (testing "PUT /api/comment/:id - users without document access cannot update comments"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :put 403 (str "ee/comment/" restricted-comment-id)
+                   (mt/user-http-request :lucky :put 403 (str "comment/" restricted-comment-id)
                                          {:content {:text "Updated by lucky"}}))))
 
           (testing "DELETE /api/comment/:id - users without document access cannot delete comments"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :delete 403 (str "ee/comment/" restricted-comment-id)))))
+                   (mt/user-http-request :lucky :delete 403 (str "comment/" restricted-comment-id)))))
 
           (testing "POST /api/comment/:id/reaction - users without document access cannot react to comments"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :post 403 (str "ee/comment/" restricted-comment-id "/reaction")
+                   (mt/user-http-request :lucky :post 403 (str "comment/" restricted-comment-id "/reaction")
                                          {:emoji "👍"})))))))))
 
 (deftest mention-entities-test
@@ -302,7 +302,7 @@
              :total  int?
              :limit  50
              :offset 0}
-            (-> (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50)
+            (-> (mt/user-http-request :rasta :get 200 "comment/mentions" :limit 50)
                 (update :data #(filter mt/test-user? %)))))))
 
 (deftest iframe-comments-test
@@ -311,16 +311,16 @@
                    :model/Comment  {comment-id :id} {:target_id doc-id}]
       (testing "Comments are not shown if in iframe"
         (is (=? {:comments [{:id comment-id}]}
-                (mt/user-http-request :rasta :get 200 "ee/comment/"
+                (mt/user-http-request :rasta :get 200 "comment/"
                                       :target_type "document"
                                       :target_id doc-id)))
         (is (=? {:comments []
                  :disabled true}
-                (mt/user-http-request :rasta :get 200 "ee/comment/"
+                (mt/user-http-request :rasta :get 200 "comment/"
                                       {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}}
                                       :target_type "document"
                                       :target_id doc-id))))
       (testing "Users mentions are not available either"
         (is (= "Not found."
-               (mt/user-http-request :rasta :get 404 "ee/comment/mentions"
+               (mt/user-http-request :rasta :get 404 "comment/mentions"
                                      {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}})))))))
