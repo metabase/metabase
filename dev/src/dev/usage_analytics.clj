@@ -4,12 +4,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
    [metabase.sync.core :as sync]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -106,11 +107,13 @@
          node)
 
        :to-canonical
-       (condp = node
+       (if (map? node)
+         (dissoc node :metabase_version)
+         (condp = node
 
-         (:user-id opts) canonical-creator-id
+           (:user-id opts) canonical-creator-id
 
-         node)))
+           node))))
    yaml-data))
 
 ;;; ============================================================================
@@ -121,11 +124,10 @@
   "Copy YAMLs from source to temp directory, transforming them.
 
   Returns the temp directory path."
-  [source-dir user-id dev-collection-entity-id]
+  [source-dir user-id]
   (let [temp-dir (Files/createTempDirectory "analytics-dev-import" (make-array FileAttribute 0))
         temp-path (.toFile temp-dir)
-        opts {:user-id user-id
-              :dev-collection-entity-id dev-collection-entity-id}]
+        opts {:user-id user-id}]
     (log/info "Copying and transforming YAMLs from" source-dir "to" temp-path)
 
     ;; Walk through all YAML files in source directory
@@ -155,12 +157,12 @@
   1. Copy YAMLs from resources/instance_analytics/ to temp dir
   2. Transform YAMLs (canonical -> dev format)
   3. Load using v2.ingest/ingest-yaml and v2.load/load-metabase!"
-  [user-id dev-collection-entity-id]
+  [user-id]
   (let [source-dir "resources/instance_analytics"
         _ (when-not (.exists (io/file source-dir))
             (throw (ex-info "Analytics source directory not found" {:path source-dir})))
 
-        temp-dir (copy-and-transform-yamls! source-dir user-id dev-collection-entity-id)]
+        temp-dir (copy-and-transform-yamls! source-dir user-id)]
 
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
@@ -173,4 +175,82 @@
       (finally
         (when (.exists (io/file temp-dir))
           (doseq [^File file (reverse (file-seq (io/file temp-dir)))]
+            (.delete file)))))))
+
+;;; ============================================================================
+;;; YAML Export
+;;; ============================================================================
+
+(defn export-dev-collection!
+  "Export the dev collection using serialization API.
+
+  Returns export report."
+  [collection-id]
+  (let [temp-dir (Files/createTempDirectory "analytics-dev-export" (make-array FileAttribute 0))
+        temp-path (.toFile temp-dir)]
+    (log/info "Exporting dev collection" collection-id "to" temp-path)
+    (try
+      (let [opts {:targets (v2.extract/make-targets-of-type "Collection" [collection-id])
+                  :no-settings true :no-transforms true}
+            extraction (v2.extract/extract opts)
+            report (v2.storage/store! extraction (.getPath temp-path))]
+        (log/info "Export complete:" (count (:seen report)) "entities exported")
+        (when (seq (:errors report))
+          (log/warn "Export had errors:" (:errors report)))
+        {:report report
+         :export-dir (.getPath temp-path)})
+      (catch Exception e
+        ;; Clean up temp directory on error
+        (doseq [^File file (reverse (file-seq temp-path))]
+          (.delete file))
+        (throw e)))))
+
+(defn- transform-exported-yamls!
+  "Transform exported YAMLs from dev format back to canonical.
+
+  Reads YAMLs from export-dir, transforms them, writes to target-dir."
+  [export-dir target-dir user-id]
+  (let [opts {:user-id user-id}
+        changed-files (atom [])]
+    (log/info "Transforming exported YAMLs to canonical format")
+
+    ;; Walk through all YAML files in export directory
+    (doseq [^File file (file-seq (io/file export-dir))
+            :when (and (.isFile file)
+                       (or (not (.contains (.getPath file) "/databases/"))
+                           (and (.contains (.getPath file) (str "/databases/" canonical-db-id))
+                                (.contains (.getPath file) "/tables/v_")))
+                       (.endsWith (.getName file) ".yaml"))]
+      (let [relative-path (str/replace (.getPath file)
+                                       (str (.getPath (io/file export-dir)) "/")
+                                       "")
+            target-file (io/file target-dir relative-path)]
+        ;; Create parent directories
+        (.mkdirs (.getParentFile target-file))
+
+        ;; Read, transform, and write YAML
+        (let [yaml-data (yaml/parse-string (slurp file))
+              transformed (transform-yaml yaml-data :to-canonical opts)]
+          (spit target-file (yaml/generate-string transformed))
+          (swap! changed-files conj relative-path))))
+
+    (log/info "Transformation complete:" (count @changed-files) "files transformed")
+    @changed-files))
+
+(defn export-analytics-content!
+  "Export dev collection and transform back to canonical format."
+  [collection-id user-id target-dir]
+  (let [{:keys [export-dir report]} (export-dev-collection! collection-id)
+        export-path (io/file export-dir)]
+    (try
+      (let [changed-files (transform-exported-yamls! export-dir
+                                                     target-dir
+                                                     user-id)]
+        {:status :success
+         :changed-files changed-files
+         :export-report report})
+      (finally
+        ;; Clean up temp export directory
+        (when (.exists export-path)
+          (doseq [^File file (reverse (file-seq export-path))]
             (.delete file)))))))
