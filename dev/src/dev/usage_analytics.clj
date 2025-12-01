@@ -1,10 +1,36 @@
 (ns dev.usage-analytics
   (:require
+   [clj-yaml.core :as yaml]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
+   [metabase.audit-app.impl :as audit.impl]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private canonical-db-id
+  "The serdes ID used in YAMLs for the audit database."
+  "Internal Metabase Database")
+
+(def ^:private canonical-collection-entity-id
+  "The entity ID used in YAMLs for the usage analytics collection."
+  @#'audit.impl/default-audit-collection-entity-id)
+
+(def ^:private canonical-creator-id
+  "The creator email used in YAMLs for all analytics content."
+  "internal@metabase.com")
+
+(def ^:private dev-db-name "Analytics Development DB")
 
 ;;; ============================================================================
 ;;; Database Management
@@ -23,8 +49,6 @@
   []
   (let [db-type (get-app-db-type)]
     (@#'mdb.env/broken-out-details db-type mdb.env/env)))
-
-(def ^:private dev-db-name "Analytics Development DB")
 
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
@@ -67,3 +91,80 @@
   (log/info "Deleting analytics dev database:" db-id)
   (t2/delete! :model/Database :id db-id)
   (log/info "Deleted analytics dev database"))
+
+;;; ============================================================================
+;;; YAML Transformation Logic
+;;; ============================================================================
+
+(defn transform-yaml
+  [yaml-data direction opts]
+  {:pre [(contains? #{:from-canonical :to-canonical} direction)
+         (:dev-db-name opts)
+         (:user-id opts)
+         (:dev-collection-entity-id opts)]}
+  ;; todo
+  yaml-data)
+
+;;; ============================================================================
+;;; YAML Import
+;;; ============================================================================
+
+(defn- copy-and-transform-yamls!
+  "Copy YAMLs from source to temp directory, transforming them.
+
+  Returns the temp directory path."
+  [source-dir dev-db-name user-id dev-collection-entity-id]
+  (let [temp-dir (Files/createTempDirectory "analytics-dev-import" (make-array FileAttribute 0))
+        temp-path (.toFile temp-dir)
+        opts {:dev-db-name dev-db-name
+              :user-id user-id
+              :dev-collection-entity-id dev-collection-entity-id}]
+    (log/info "Copying and transforming YAMLs from" source-dir "to" temp-path)
+
+    ;; Walk through all YAML files in source directory
+    ;; Skip databases/ directory since we create the dev DB ourselves
+    (doseq [file (file-seq (io/file source-dir))
+            :when (and (.isFile file)
+                       (.endsWith (.getName file) ".yaml")
+                       (not (.contains (.getPath file) "/databases/")))]
+      (let [relative-path (str/replace (.getPath file)
+                                       (str (.getPath (io/file source-dir)) "/")
+                                       "")
+            target-file (io/file temp-path relative-path)]
+        ;; Create parent directories
+        (.mkdirs (.getParentFile target-file))
+
+        ;; Read, transform, and write YAML
+        (let [yaml-data (yaml/parse-string (slurp file))
+              transformed (transform-yaml yaml-data :from-canonical opts)]
+          (spit target-file (yaml/generate-string transformed)))))
+
+    (log/info "YAML transformation complete")
+    (.getPath temp-path)))
+
+(defn import-analytics-content!
+  "Import transformed YAMLs using serialization API.
+
+  Steps:
+  1. Copy YAMLs from resources/instance_analytics/ to temp dir
+  2. Transform YAMLs (canonical -> dev format)
+  3. Load using v2.ingest/ingest-yaml and v2.load/load-metabase!"
+  [dev-db-name user-id dev-collection-entity-id]
+  (let [source-dir "resources/instance_analytics"
+        _ (when-not (.exists (io/file source-dir))
+            (throw (ex-info "Analytics source directory not found" {:path source-dir})))
+
+        temp-dir (copy-and-transform-yamls! source-dir dev-db-name user-id dev-collection-entity-id)]
+
+    (log/info "Ingesting YAMLs from" temp-dir)
+    (try
+      (let [ingestion (v2.ingest/ingest-yaml temp-dir)
+            report (v2.load/load-metabase! ingestion {:backfill? false})]
+        (log/info "Import complete:" (count (:seen report)) "entities loaded")
+        (when (seq (:errors report))
+          (log/warn "Import had errors:" (:errors report)))
+        report)
+      (finally
+        (when (.exists (io/file temp-dir))
+          (doseq [file (reverse (file-seq (io/file temp-dir)))]
+            (.delete file)))))))
