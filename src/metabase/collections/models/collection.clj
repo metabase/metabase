@@ -223,7 +223,7 @@
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
-  (when (audit.settings/load-analytics-content)
+  (when-not (audit.settings/analytics-dev-mode)
     (= id (:id (audit/default-audit-collection)))))
 
 (defmethod mi/can-write? :model/Collection
