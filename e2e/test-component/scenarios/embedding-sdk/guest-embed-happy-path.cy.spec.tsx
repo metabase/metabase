@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createNativeQuestion,
   createQuestion,
   createQuestionAndDashboard,
   getSignedJwtForResource,
@@ -10,6 +11,7 @@ import {
   mountGuestEmbedQuestion,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
+import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import type { Card } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -18,25 +20,35 @@ const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 1000;
 
 describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
   describe("question", () => {
-    const setup = ({ display }: { display?: Card["display"] } = {}) => {
+    const setup = ({
+      display,
+      createQuestionOverride,
+    }: {
+      display?: Card["display"];
+      createQuestionOverride?: () => void;
+    } = {}) => {
       signInAsAdminAndSetupGuestEmbedding({
         token: "starter",
       });
 
-      createQuestion({
-        name: "Question for Guest Embed SDK",
-        enable_embedding: true,
-        embedding_type: "guest-embed",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-          breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          limit: 2,
-        },
-        display,
-      }).then(({ body: question }) => {
-        cy.wrap(question.id).as("questionId");
-      });
+      if (!createQuestionOverride) {
+        createQuestion({
+          name: "Question for Guest Embed SDK",
+          enable_embedding: true,
+          embedding_type: "guest-embed",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+            breakout: [["field", ORDERS.PRODUCT_ID, null]],
+            limit: 2,
+          },
+          display,
+        }).then(({ body: question }) => {
+          cy.wrap(question.id).as("questionId");
+        });
+      } else {
+        createQuestionOverride();
+      }
 
       cy.signOut();
     };
@@ -93,6 +105,38 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
         cy.get("@internalApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(0);
+        });
+      });
+    });
+
+    it("should show content of a question with `map` type  with tyles for unauthorized user", () => {
+      setup({
+        createQuestionOverride: () => {
+          createNativeQuestion(questionAsPinMapWithTiles, {
+            wrapId: true,
+          });
+        },
+      });
+
+      cy.intercept("GET", "/api/embed/tiles/card/**").as("mapTilesApiRequest");
+
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+        });
+
+        mountGuestEmbedQuestion(
+          { token },
+          {
+            shouldAssertCardQuery: false,
+          },
+        );
+
+        cy.wait("@mapTilesApiRequest");
+
+        cy.get("@mapTilesApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length.greaterThan(1);
         });
       });
     });
