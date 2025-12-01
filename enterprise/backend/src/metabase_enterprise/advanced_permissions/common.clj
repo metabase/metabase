@@ -59,28 +59,14 @@
   This function is meant to be used for GET /api/user/current "
   [user]
   (let [permissions-set      @api/*current-user-permissions-set*
-        non-sample-db-ids    (t2/select-pks-set :model/Database :is_sample false)
-        user-id              api/*current-user-id*
-        _                    (data-perms/prime-db-cache non-sample-db-ids)
-        create-query-perms   (into #{}
-                                   (map (fn [db-id]
-                                          (data-perms/most-permissive-database-permission-for-user
-                                           user-id :perms/create-queries db-id)))
-                                   non-sample-db-ids)
-        can-create-queries?  (-> (some #(data-perms/at-least-as-permissive?
-                                         :perms/create-queries % :query-builder)
-                                       create-query-perms)
-                                 boolean)
-        can-create-native?   (contains? create-query-perms :query-builder-and-native)]
+        user-id              api/*current-user-id*]
     (update user :permissions assoc
             :can_access_setting        (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription   (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring     (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model     (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
             :can_access_db_details     (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
-            :is_group_manager          api/*is-group-manager?*
-            :can_create_queries        can-create-queries?
-            :can_create_native_queries can-create-native?)))
+            :is_group_manager          api/*is-group-manager?*)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
