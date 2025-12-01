@@ -109,6 +109,7 @@ export function SearchNew({
     setSelectedTables,
     selectedSchemas,
     selectedDatabases,
+    resetSelection,
   } = useSelection();
   const routeParams = parseRouteParams(params);
   const {
@@ -158,6 +159,12 @@ export function SearchNew({
     () => buildResultTree(filteredTables),
     [filteredTables],
   );
+
+  // clear the selection when tables changes, to make sure that bulk operations
+  // are performed on the intended tables
+  useEffect(() => {
+    resetSelection();
+  }, [tables, resetSelection]);
 
   const flatItems = flatten(resultTree, {
     isExpanded: (key: string) => !getIsExpanded(key), // we want to expand all nodes by default

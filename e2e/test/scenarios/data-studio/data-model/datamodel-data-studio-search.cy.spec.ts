@@ -87,7 +87,19 @@ describe("Search", () => {
       "be.visible",
     );
     cy.get("@accountsCheckbox").uncheck();
-    cy.findByRole("heading", { name: /2 table selected/i }).should("not.exist");
+    cy.findByRole("heading", { name: /2 tables selected/i }).should(
+      "not.exist",
+    );
+
+    // clear selection when changing search query
+    cy.get("@accountsCheckbox").check();
+    cy.findByRole("heading", { name: /2 tables selected/i }).should(
+      "be.visible",
+    );
+    TablePicker.getSearchInput().type("c");
+    cy.findByRole("heading", { name: /2 tables selected/i }).should(
+      "not.exist",
+    );
   });
 
   it("should select/deselect databases and schemas", () => {

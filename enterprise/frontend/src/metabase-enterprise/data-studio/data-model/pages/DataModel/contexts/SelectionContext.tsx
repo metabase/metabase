@@ -4,6 +4,7 @@ import {
   type SetStateAction,
   createContext,
   useContext,
+  useMemo,
   useState,
 } from "react";
 
@@ -34,11 +35,13 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     new Set(),
   );
 
-  const resetSelection = () => {
-    setSelectedTables(new Set());
-    setSelectedSchemas(new Set());
-    setSelectedDatabases(new Set());
-  };
+  const resetSelection = useMemo(() => {
+    return () => {
+      setSelectedTables(new Set());
+      setSelectedSchemas(new Set());
+      setSelectedDatabases(new Set());
+    };
+  }, []);
 
   const hasSelectedItems =
     selectedTables.size > 0 ||
