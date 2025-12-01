@@ -103,15 +103,6 @@
                              :document (documents.test-util/text->prose-mirror-ast "Bar")
                              :collection_id coll-id}))))
 
-(deftest get-document-test-requires-documents-feature
-  (testing "GET /api/document/id"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                        :document (documents.test-util/text->prose-mirror-ast "Doc 1")}]
-        (testing "should not get the document"
-          (mt/user-http-request :crowberto
-                                :get 402 (format "document/%s" document-id)))))))
-
 (deftest get-document-test
   (testing "GET /api/document/id"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"

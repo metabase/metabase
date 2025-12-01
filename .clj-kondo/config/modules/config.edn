@@ -94,7 +94,6 @@
            documents
            events
            models
-           premium-features
            util}}
 
   analytics
@@ -510,7 +509,6 @@
            collections
            events
            models
-           premium-features
            public-sharing
            queries
            query-permissions
@@ -1816,16 +1814,10 @@
            store-api
            util}}
 
-  enterprise/bookmarks
-  {:team "UX West"
-   :api  #{}
-   :uses #{}}
-
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
    :uses #{cache
-           premium-features
            query-processor
            task
            util}}
@@ -2069,17 +2061,6 @@
   {:team "UX West"
    :api  #{}
    :uses #{premium-features
-           util}}
-
-  enterprise/public-sharing
-  {:team "UX West"
-   :api  #{metabase-enterprise.public-sharing.api}
-   :uses #{api
-           events
-           premium-features
-           public-sharing
-           public-sharing-rest
-           query-processor
            util}}
 
   enterprise/remote-sync

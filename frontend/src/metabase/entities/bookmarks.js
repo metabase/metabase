@@ -127,6 +127,20 @@ const Bookmarks = createEntity({
       }
     }
 
+    if (type === Documents.actionTypes.UPDATE && payload?.object) {
+      const { id, archived, name } = payload.object;
+      const key = `document-${id}`;
+
+      if (!getIn(state, [key])) {
+        return state;
+      }
+      if (archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], (item) => ({ ...item, name }));
+      }
+    }
+
     if (type === Bookmarks.actionTypes.REORDER) {
       const indexes = payload.reduce((indexes, bookmark, index) => {
         indexes[bookmark.id] = index;

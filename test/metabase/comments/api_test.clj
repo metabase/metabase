@@ -52,15 +52,6 @@
                      "omg is that you? "
                      [:smartLink {:entityId 6 :model "user"}]])))))
 
-(deftest comments-require-documents-feature
-  (testing "GET /api/comment/"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Document {doc-id :id} {}]
-        (testing "should not return the comments"
-          (mt/user-http-request :crowberto :get 402 "comment/"
-                                :target_type "document"
-                                :target_id doc-id))))))
-
 (deftest basic-comments-test
   (testing "GET /api/comment/"
     (mt/with-temp [:model/Document {doc-id :id doc :document} {:name       "New Document"

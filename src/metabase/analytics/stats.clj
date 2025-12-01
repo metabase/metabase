@@ -829,9 +829,6 @@
     :enabled   (if (premium-features/enable-database-routing?)
                  (t2/exists? :model/DatabaseRouter)
                  false)}
-   {:name      :documents
-    :available true
-    :enabled   true}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
