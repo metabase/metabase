@@ -1920,6 +1920,7 @@
    :uses #{analyze
            api
            collections
+           documents
            driver
            events
            graph
@@ -1934,8 +1935,7 @@
            revisions
            settings
            task
-           util
-           documents}}
+           util}}
 
   enterprise/email
   {:team "UX West"
@@ -2028,6 +2028,7 @@
            audit-app
            collections
            config
+           documents
            driver
            legacy-mbql
            lib
@@ -2051,7 +2052,6 @@
            warehouse-schema
            warehouses-rest
            enterprise/dependencies
-           documents
            enterprise/transforms
            enterprise/transforms-python}}
 
