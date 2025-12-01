@@ -1,4 +1,4 @@
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, IndexedEntity } from "metabase-types/api";
 
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
@@ -57,7 +57,7 @@ export function modelToUrl(item: UrlableModel): string {
     case "transform":
       return transform(item.id);
     case "indexed-entity":
-      return indexedEntity(item.id);
+      return indexedEntity(item as IndexedEntity);
     default:
       return NOT_FOUND_URL;
   }
