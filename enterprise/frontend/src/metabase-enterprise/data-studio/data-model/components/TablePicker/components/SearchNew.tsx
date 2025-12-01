@@ -50,7 +50,7 @@ function buildResultTree(tables: Table[]): RootNode {
     const schemaKey = `schema-${table.db_id}-${schemaName}` as const;
     const tableKey = `table-${table.id}` as const;
 
-    if (dbKey && !databases.has(dbKey)) {
+    if (!databases.has(dbKey)) {
       const dbName = table.db?.name;
 
       const databaseNode: DatabaseNode = {
