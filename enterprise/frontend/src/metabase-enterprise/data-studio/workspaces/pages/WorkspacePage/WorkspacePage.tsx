@@ -27,6 +27,7 @@ import {
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
+import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
@@ -304,14 +305,24 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         </Box>
         <Box style={{ flex: "1 0 auto", width: "30%" }}>
           <Tabs defaultValue="code">
-            <Box
+            <Flex
               px="md"
+              align="center"
               style={{ borderBottom: "1px solid var(--mb-color-border)" }}
             >
               <Tabs.List className={styles.tabsPanel}>
                 <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
               </Tabs.List>
-            </Box>
+              {sourceDb && (
+                <AddTransformMenu
+                  databaseId={sourceDb.id}
+                  onCreate={(transform) => {
+                    addOpenedTransform(transform);
+                    setActiveTransform(transform);
+                  }}
+                />
+              )}
+            </Flex>
             <Tabs.Panel value="code" p="md">
               <CodeTab
                 workspaceTransforms={workspaceTransforms}

@@ -3,6 +3,8 @@ import type {
   TransformDownstreamMapping,
   TransformId,
   TransformUpstreamMapping,
+  ValidateTableNameRequest,
+  ValidateTableNameResponse,
   Workspace,
   WorkspaceContents,
   WorkspaceId,
@@ -77,6 +79,18 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("workspace", id), tag("transform")]),
     }),
+    createWorkspaceTransform: builder.mutation<
+      WorkspaceContents,
+      WorkspaceUpdateContentsRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/transform`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
+    }),
     getTransformUpstreamMapping: builder.query<
       TransformUpstreamMapping,
       TransformId
@@ -117,6 +131,16 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
     }),
+    validateTableName: builder.mutation<
+      ValidateTableNameResponse,
+      ValidateTableNameRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/transform/validate-target",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -131,4 +155,5 @@ export const {
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,
   useArchiveWorkspaceMutation,
+  useValidateTableNameMutation,
 } = workspaceApi;

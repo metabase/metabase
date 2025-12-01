@@ -78,3 +78,17 @@ export type WorkspaceUpdateContentsRequest = {
     transforms?: TransformId[];
   };
 };
+
+export type ValidateTableNameRequest = {
+  db_id: DatabaseId;
+  target: {
+    type: "table";
+    name: string;
+    schema: string | null;
+  };
+};
+
+export type ValidateTableNameResponse = {
+  valid: boolean;
+  error?: string;
+};

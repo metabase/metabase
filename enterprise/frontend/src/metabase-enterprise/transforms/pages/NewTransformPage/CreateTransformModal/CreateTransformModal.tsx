@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useField } from "formik";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -11,6 +12,7 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import {
   Form,
   FormErrorMessage,
@@ -19,7 +21,15 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Box, Button, Group, Modal, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Loader,
+  Modal,
+  Stack,
+  TextInput,
+} from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import type {
@@ -51,11 +61,19 @@ export type NewTransformValues = Yup.InferType<
   ReturnType<typeof getValidationSchema>
 >;
 
+export type ValidateTableNameFn = (
+  tableName: string,
+  schema: string | null,
+) => Promise<{ valid: boolean; error?: string }>;
+
 type CreateTransformModalProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  schemas?: string[] | null;
+  showIncrementalSettings?: boolean;
+  validateTableName?: ValidateTableNameFn;
 };
 
 export function CreateTransformModal({
@@ -63,6 +81,9 @@ export function CreateTransformModal({
   defaultValues,
   onCreate,
   onClose,
+  schemas,
+  showIncrementalSettings = true,
+  validateTableName,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -71,6 +92,9 @@ export function CreateTransformModal({
         defaultValues={defaultValues}
         onCreate={onCreate}
         onClose={onClose}
+        schemas={schemas}
+        showIncrementalSettings={showIncrementalSettings}
+        validateTableName={validateTableName}
       />
     </Modal>
   );
@@ -81,6 +105,9 @@ type CreateTransformFormProps = {
   defaultValues: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  schemas?: string[] | null;
+  showIncrementalSettings?: boolean;
+  validateTableName?: ValidateTableNameFn;
 };
 
 function CreateTransformForm({
@@ -88,10 +115,16 @@ function CreateTransformForm({
   defaultValues,
   onCreate,
   onClose,
+  schemas: schemasProp,
+  showIncrementalSettings = true,
+  validateTableName,
 }: CreateTransformFormProps) {
   const [sendToast] = useToast();
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
+
+  const shouldFetchSchemas = schemasProp === undefined;
+  const showSchemaField = schemasProp !== null;
 
   const {
     data: database,
@@ -100,15 +133,22 @@ function CreateTransformForm({
   } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
 
   const {
-    data: schemas = [],
+    data: fetchedSchemas = [],
     isLoading: isSchemasLoading,
     error: schemasError,
   } = useListDatabaseSchemasQuery(
-    databaseId ? { id: databaseId, include_hidden: true } : skipToken,
+    shouldFetchSchemas && databaseId
+      ? { id: databaseId, include_hidden: true }
+      : skipToken,
   );
 
-  const isLoading = isDatabaseLoading || isSchemasLoading;
-  const error = databaseError ?? schemasError;
+  const schemas = useMemo(
+    () => schemasProp ?? fetchedSchemas ?? [],
+    [schemasProp, fetchedSchemas],
+  );
+  const isLoading =
+    isDatabaseLoading || (shouldFetchSchemas && isSchemasLoading);
+  const error = databaseError ?? (shouldFetchSchemas ? schemasError : null);
 
   const [createTransform] = useCreateTransformMutation();
   const supportsSchemas = database && hasFeature(database, "schemas");
@@ -155,19 +195,27 @@ function CreateTransformForm({
             placeholder={t`My Great Transform`}
             data-autofocus
           />
-          {supportsSchemas && (
+          {showSchemaField && supportsSchemas && (
             <SchemaFormSelect
               name="targetSchema"
               label={t`Schema`}
               data={schemas}
             />
           )}
-          <FormTextInput
-            name="targetName"
-            label={t`Table name`}
-            placeholder={t`descriptive_name`}
-          />
-          <IncrementalTransformSettings source={source} />
+          {validateTableName ? (
+            <AsyncValidatedTableNameInput
+              validateTableName={validateTableName}
+            />
+          ) : (
+            <FormTextInput
+              name="targetName"
+              label={t`Table name`}
+              placeholder={t`descriptive_name`}
+            />
+          )}
+          {showIncrementalSettings && (
+            <IncrementalTransformSettings source={source} />
+          )}
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -181,8 +229,71 @@ function CreateTransformForm({
   );
 }
 
+const DEBOUNCE_DELAY = 300;
+
+type AsyncValidatedTableNameInputProps = {
+  validateTableName: ValidateTableNameFn;
+};
+
+function AsyncValidatedTableNameInput({
+  validateTableName,
+}: AsyncValidatedTableNameInputProps) {
+  const [{ value }, { error, touched }, { setValue, setTouched, setError }] =
+    useField("targetName");
+  const [{ value: schemaValue }] = useField("targetSchema");
+  const [isValidating, setIsValidating] = useState(false);
+  const debouncedValue = useDebouncedValue(value, DEBOUNCE_DELAY);
+  const debouncedSchema = useDebouncedValue(schemaValue, DEBOUNCE_DELAY);
+
+  useEffect(() => {
+    if (!debouncedValue) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsValidating(true);
+
+    validateTableName(debouncedValue, debouncedSchema)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (!result.valid && result.error) {
+          setError(result.error);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(t`The "${debouncedValue}" table name is already taken.`);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsValidating(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedValue, debouncedSchema, validateTableName, setError]);
+
+  return (
+    <TextInput
+      name="targetName"
+      label={t`Table name`}
+      placeholder={t`descriptive_name`}
+      value={value ?? ""}
+      error={touched && error ? error : null}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => setTouched(true)}
+      rightSection={isValidating ? <Loader size="xs" /> : null}
+    />
+  );
+}
+
 function getInitialValues(
-  schemas: string[],
+  schemas: string[] | null,
   defaultValues: Partial<NewTransformValues>,
 ): NewTransformValues {
   return {
