@@ -1463,6 +1463,9 @@
       "metabase-enterprise.metabot-v3.tools.api.column" : {
         "type" : "object",
         "properties" : {
+          "database_type" : {
+            "type" : "string"
+          },
           "description" : {
             "type" : "string"
           },
@@ -2641,7 +2644,7 @@
           "properties" : {
             "field_granularity" : {
               "type" : "string",
-              "enum" : [ "day", "week", "month", "quarter", "year" ]
+              "enum" : [ "minute", "hour", "day", "week", "month", "quarter", "year", "day-of-week" ]
             },
             "field_id" : {
               "type" : "string"
@@ -3102,6 +3105,9 @@
             "items" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
             }
+          },
+          "related_by" : {
+            "type" : "string"
           },
           "display_name" : {
             "type" : "string"
@@ -4352,6 +4358,14 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.AggregationArg" : {
+        "description" : "Schema for the argument to an aggregation clause like `:sum`.\n\n  Strings are allowed as literals here, unlike at the top level as `::Expressions`, so `::FieldOrExpressionDef` is\n  not enough. However, nested aggregations are not allowed here, so we can't use `::ExpressionArg` either. (#66199)",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
+        }, {
+          "type" : "string"
         } ]
       },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
