@@ -46,7 +46,10 @@ if (command === "start") {
 }
 
 if (command === "snapshot") {
-  runTests({ configFile: "e2e/support/cypress-snapshots.config.js" });
+  runTests(
+    { configFile: "e2e/support/cypress-snapshots.config.js" },
+    cliArguments,
+  );
 }
 
 // Metabase component or e2e tests

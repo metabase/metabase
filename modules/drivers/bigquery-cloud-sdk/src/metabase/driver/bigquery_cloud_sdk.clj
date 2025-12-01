@@ -878,8 +878,17 @@
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]}]
-  (let [table-str (get-table-str output-table)]
-    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+  (let [{sql-query :query sql-params :params} query
+        table-str (get-table-str output-table)]
+    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str sql-query)
+     sql-params]))
+
+(defmethod driver/compile-insert :bigquery-cloud-sdk
+  [_driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        table-str (get-table-str output-table)]
+    [(format "INSERT INTO %s %s" table-str sql-query)
+     sql-params]))
 
 (defmethod driver/compile-drop-table :bigquery-cloud-sdk
   [_driver table]
@@ -927,7 +936,7 @@
     (u.date/format (u.date/parse value))
 
     :type/DateTime
-    (u.date/format (u.date/parse value))
+    (u.date/format :iso-local-date-time (u.date/parse value))
 
     :type/DateTimeWithLocalTZ
     (u.date/format (u.date/parse value))
@@ -974,9 +983,10 @@
     (try
       (doall
        (for [query queries]
-         (let [sql (if (string? query) query (first query))
+         (let [[sql params] (if (string? query) [query] query)
                _ (log/debugf "Executing BigQuery DDL: %s" sql)
                job-config (-> (QueryJobConfiguration/newBuilder sql)
+                              (bigquery.params/set-parameters! params)
                               (.setUseLegacySql false)
                               (.build))
                table-result (.query client job-config (into-array BigQuery$JobOption []))]
