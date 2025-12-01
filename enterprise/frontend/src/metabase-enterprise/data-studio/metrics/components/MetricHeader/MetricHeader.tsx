@@ -49,11 +49,15 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
       menu={<MetricMoreMenu card={card} />}
       tabs={<MetricTabs card={card} />}
       actions={actions}
-      /* TODO: Link to specific collection */
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
-          {path?.map((collection) => (
-            <Link key={collection.id} to={Urls.dataStudioModeling()}>
+          {path?.map((collection, i) => (
+            <Link
+              key={collection.id}
+              to={Urls.dataStudioModeling({
+                expandedIds: path.slice(1, i + 1).map((c) => c.id),
+              })}
+            >
               {collection.name}
             </Link>
           ))}
