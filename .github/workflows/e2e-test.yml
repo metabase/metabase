@@ -41,8 +41,6 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
       JOB_NAME: ${{ inputs.name }}
-      MB_RUN_MODE: "e2e"
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
@@ -51,10 +49,6 @@ jobs:
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      MB_EXPERIMENTAL_SEARCH_BLOCK_ON_QUEUE: true
-      MB_SEARCH_ENGINE: appdb
-      MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
     steps:
@@ -115,7 +109,9 @@ jobs:
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
       - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
+        run: |
+          export JDK_JAVA_OPTIONS=$(clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :e2e :jvm-opts) (clojure.string/join " ") println)')
+          node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
         env:
