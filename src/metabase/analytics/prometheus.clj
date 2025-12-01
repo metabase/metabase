@@ -327,6 +327,8 @@
                        {:description "Total number of ms spent filtering readable docs"})
    (prometheus/counter :metabase-search/semantic-collection-filter-ms
                        {:description "Total number of ms spent filtering search results by collection"})
+   (prometheus/counter :metabase-search/semantic-collection-id-filter-ms
+                       {:description "Total number of ms spent filtering search results by collection id"})
    (prometheus/counter :metabase-search/semantic-search-ms
                        {:description "Total number of ms spent performing a semantic search"
                         :labels [:embedding-model]})
