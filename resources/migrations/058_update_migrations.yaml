@@ -815,6 +815,26 @@ databaseChangeLog:
         - sql:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
 
+  - changeSet:
+      id: v58.2025-12-01T20:15:55
+      author: noahmoss
+      comment: Add access_tables column to metabot table
+      changes:
+        - addColumn:
+            tableName: metabot
+            columns:
+              - column:
+                  name: access_tables
+                  type: ${boolean.type}
+                  remarks: Whether this metabot can access all tables in the instance
+                  constraints:
+                    nullable: true
+                  defaultValueBoolean: false
+      rollback:
+        - dropColumn:
+            tableName: metabot
+            columnName: access_tables
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -218,6 +218,7 @@ export type MetabotInfo = {
   description: string;
   use_verified_content: boolean;
   collection_id: number | null;
+  access_tables: boolean;
   created_at: string;
   updated_at: string;
 };

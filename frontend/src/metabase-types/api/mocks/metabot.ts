@@ -9,6 +9,7 @@ export const createMockMetabotInfo = (
   description: "",
   use_verified_content: false,
   collection_id: null,
+  access_tables: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   ...opts,
