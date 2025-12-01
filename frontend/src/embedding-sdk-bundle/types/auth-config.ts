@@ -24,6 +24,23 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
    */
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
+  /**
+   * Optional: Direct URI to the JWT provider endpoint.
+   * If provided, skips the SSO discovery request, saving one round trip.
+   *
+   * Example: "https://your-backend.com/api/metabase-jwt"
+   */
+  jwtProviderUri?: string;
+
+  /**
+   * Optional: Disable early auth optimization in the package.
+   * If true, the bundle will handle all auth.
+   * Useful for debugging or when you want to control auth timing.
+   *
+   * @default false
+   */
+  skipPackageAuth?: boolean;
+
   apiKey?: never;
 };
 

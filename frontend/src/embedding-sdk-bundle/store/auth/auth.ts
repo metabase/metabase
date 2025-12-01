@@ -21,23 +21,10 @@ export const PLUGIN_EMBEDDING_SDK_AUTH = {
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
-    {
-      metabaseInstanceUrl,
-      preferredAuthMethod,
-      apiKey,
-      isLocalHost,
-    }: MetabaseAuthConfig & { isLocalHost?: boolean },
+    authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
-    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(
-      {
-        metabaseInstanceUrl,
-        preferredAuthMethod,
-        apiKey,
-        isLocalHost,
-      },
-      { dispatch },
-    );
+    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(authConfig, { dispatch });
   },
 );
 

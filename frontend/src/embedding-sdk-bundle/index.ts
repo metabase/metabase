@@ -1,5 +1,11 @@
-/* eslint-disable import/order */
+import { waitForAuthConfigAndStart } from "./bootstrap-auth";
+
 const start = new Date();
+(window as any).log = (message: string, ...args: any[]) =>
+  console.log(
+    `${message} after ${new Date().getTime() - start.getTime()} ms`,
+    ...args,
+  );
 
 console.log("🚀 SDK Bootstrap: Starting...");
 
@@ -11,17 +17,31 @@ if (scriptUrl) {
   __webpack_public_path__ = baseUrl + "embedding-sdk/";
 }
 
-const authStart = new Date();
-console.log("Auth code will run here");
+const startTime = new Date();
+console.log("⏳ SDK Bootstrap: Starting early auth...");
 
-console.log("⏳ SDK Bootstrap: Loading main bundle...");
+// Start auth as soon as we have the auth config from the provider props store
+// Import directly (not dynamic) so it's included in the bootstrap chunk
+
+waitForAuthConfigAndStart({ startTime });
+
+console.log(
+  "✅ SDK Bootstrap: Early auth watcher started after",
+  new Date().getTime() - startTime.getTime(),
+  "ms",
+);
+
+console.log(
+  "⏳ SDK Bootstrap: Loading main bundle after",
+  new Date().getTime() - startTime.getTime(),
+  "ms",
+);
 
 // Lazy load the main bundle and dispatch a custom event when fully loaded
 import(/* webpackChunkName: "sdk-main" */ "./main-bundle").then(() => {
-  console.log("✅ SDK Bootstrap: Main bundle loaded!");
   console.log(
-    "Time taken: to load main bundle",
-    new Date().getTime() - authStart.getTime(),
+    "✅ SDK Bootstrap: Main bundle loaded after",
+    new Date().getTime() - startTime.getTime(),
     "ms",
   );
 
