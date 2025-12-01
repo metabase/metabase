@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
@@ -608,6 +608,19 @@
        {:tables (sort-by :id [{:id (mt/id :venues)}
                               {:id (mt/id :categories)}])}
        (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata")))))
+
+(deftest automagic-dashboards-query-metadata-published-table-collection-perms-test
+  (testing "GET /api/automagic-dashboards/:entity/:entity-id-or-query/query_metadata"
+    (testing "Should include published tables accessible via collection permissions"
+      (mt/with-temp [:model/Collection table-coll {}
+                     :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
+                     :model/PermissionsGroup custom-group {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                          :group_id (u/the-id custom-group)}]
+        (perms/set-database-permission! custom-group (mt/id) :perms/view-data :blocked)
+        (perms/grant-collection-read-permissions! custom-group (u/the-id table-coll))
+        (is (=? {:tables [{:id (u/the-id table)}]}
+                (mt/user-http-request :rasta :get 200 (str "automagic-dashboards/table/" (u/the-id table) "/query_metadata"))))))))
 
 (deftest ^:parallel allow-equals-in-base-64-encoding-for-now-test
   (testing "Allow `=` in the route part of X-Rays API requests... for now"

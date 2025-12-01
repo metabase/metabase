@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -31,13 +32,26 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
+(defn- can-access-via-collection?
+  "Returns true if the user can access this published table via collection read permissions."
+  [table]
+  (when (:is_published table)
+    (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection table :read))))
+
+(defn- can-access-table-for-query-metadata?
+  "Returns true if the current user can access this table for query metadata.
+  Checks collection permissions for published tables, data permissions for unpublished tables."
+  [table]
+  (or (can-access-via-collection? table)
+      (mi/can-read? table)))
+
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
   (if include-editable-data-model?
     (api/write-check table)
-    (api/read-check table))
+    (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                                 :segments :metrics :collection]
                          (premium-features/has-feature? :transforms) (conj :transform)
@@ -59,7 +73,7 @@
   [ids]
   (when (seq ids)
     (let [tables (->> (t2/select :model/Table :id [:in ids])
-                      (filter mi/can-read?))
+                      (filter can-access-table-for-query-metadata?))
           tables (t2/hydrate tables
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
