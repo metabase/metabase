@@ -20,13 +20,10 @@ import Collections, {
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/entities/collections";
+import Databases from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  canUserCreateQueries,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -39,11 +36,11 @@ import { MainNavbarView } from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
-    hasDataAccess: canUserCreateQueries(state),
+    hasDataAccess: databases.length > 0,
     bookmarks: getOrderedBookmarks(state),
   };
 }
@@ -66,6 +63,10 @@ interface Props extends MainNavbarProps {
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => Promise<any>;
   onChangeLocation: (location: LocationDescriptor) => void;
+}
+
+interface DatabaseProps {
+  databases?: Database[];
 }
 
 function MainNavbarContainer({
@@ -208,6 +209,9 @@ export default _.compose(
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",
+    loadingAndErrorWrapper: false,
+  }),
+  Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
