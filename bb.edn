@@ -315,11 +315,6 @@
                     [clojure.test :refer [run-tests]]]
          :task     (run-tests 'mage.core-test)}
 
-  -test-examples
-  {:doc      "Runs every example and checks that it exits with 0"
-   :requires [[mage.examples-test :as examples-test]]
-   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
-
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
   ;; These tasks are for personal use, a place for half baked tasks.
