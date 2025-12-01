@@ -72,15 +72,15 @@
                                        create-query-perms)
                                  boolean)
         can-create-native?   (contains? create-query-perms :query-builder-and-native)]
-    (assoc user :permissions
-           {:can_access_setting        (perms/set-has-application-permission-of-type? permissions-set :setting)
+    (update user :permissions assoc
+            :can_access_setting        (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription   (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring     (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model     (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
             :can_access_db_details     (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
             :is_group_manager          api/*is-group-manager?*
             :can_create_queries        can-create-queries?
-            :can_create_native_queries can-create-native?})))
+            :can_create_native_queries can-create-native?)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."

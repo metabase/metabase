@@ -8,7 +8,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.collections.models.collection :as collection]   [metabase.config.core :as config]
+   [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -292,6 +293,26 @@
         :group (within-group)
         :all (all)))))
 
+(defn- add-query-permissions
+  "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries
+  permissions across non-sample databases."
+  [user]
+  (let [non-sample-db-ids   (t2/select-pks-set :model/Database :is_sample false)
+        _                   (perms/prime-db-cache non-sample-db-ids)
+        create-query-perms  (into #{}
+                                  (map (fn [db-id]
+                                         (perms/most-permissive-database-permission-for-user
+                                          api/*current-user-id* :perms/create-queries db-id)))
+                                  non-sample-db-ids)
+        can-create-queries? (-> (some #(perms/at-least-as-permissive?
+                                        :perms/create-queries % :query-builder)
+                                      create-query-perms)
+                                boolean)
+        can-create-native?  (contains? create-query-perms :query-builder-and-native)]
+    (update user :permissions assoc
+            :can_create_queries        can-create-queries?
+            :can_create_native_queries can-create-native?)))
+
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
   [user]
@@ -352,6 +373,7 @@
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
+      add-query-permissions
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info))
