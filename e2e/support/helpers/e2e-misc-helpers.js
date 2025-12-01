@@ -231,7 +231,7 @@ function visitDashboardById(dashboard_id, config) {
         qs: config.params,
       });
 
-      cy.wait(aliases, { timeout: 60000 });
+      cy.wait(aliases);
     } else {
       // For a dashboard:
       //  - without questions (can be empty or markdown only) or
