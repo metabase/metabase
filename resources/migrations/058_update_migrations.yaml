@@ -893,6 +893,22 @@ databaseChangeLog:
             tableName: measure
 
   - changeSet:
+      id: v58.2025-12-01T18:29:58
+      author: bshepherdson
+      comment: Add table_id index to measure table
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+            columns:
+              - column:
+                  name: table_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+
+  - changeSet:
       id: v58.2025-12-01T18:32:07
       author: bshepherdson
       comment: Add foreign key constraint measure.table_id -> metabase_table.id
@@ -908,6 +924,22 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: measure
             constraintName: fk_measure_table_id_metabase_table_id
+
+  - changeSet:
+      id: v58.2025-12-01T18:33:32
+      author: bshepherdson
+      comment: Add creator_id index to measure table
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
 
   - changeSet:
       id: v58.2025-12-01T18:34:47
