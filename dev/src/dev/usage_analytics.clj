@@ -8,11 +8,12 @@
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
-   [metabase.audit-app.impl :as audit.impl]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.io File)
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)))
 
@@ -21,10 +22,6 @@
 (def ^:private canonical-db-id
   "The serdes ID used in YAMLs for the audit database."
   "Internal Metabase Database")
-
-(def ^:private canonical-collection-entity-id
-  "The entity ID used in YAMLs for the usage analytics collection."
-  @#'audit.impl/default-audit-collection-entity-id)
 
 (def ^:private canonical-creator-id
   "The creator email used in YAMLs for all analytics content."
@@ -97,13 +94,28 @@
 ;;; ============================================================================
 
 (defn transform-yaml
+  "Transform a YAML data structure between canonical and dev formats. "
   [yaml-data direction opts]
-  {:pre [(contains? #{:from-canonical :to-canonical} direction)
-         (:dev-db-name opts)
-         (:user-id opts)
-         (:dev-collection-entity-id opts)]}
-  ;; todo
-  yaml-data)
+  (walk/postwalk
+   (fn [node]
+     (case direction
+
+       :from-canonical
+       (condp = node
+
+         canonical-db-id (:dev-db-name opts)
+         canonical-creator-id (:user-id opts)
+
+         node)
+
+       :to-canonical
+       (condp = node
+
+         (:dev-db-name opts) canonical-db-id
+         (:user-id opts) canonical-creator-id
+
+         node)))
+   yaml-data))
 
 ;;; ============================================================================
 ;;; YAML Import
@@ -123,7 +135,7 @@
 
     ;; Walk through all YAML files in source directory
     ;; Skip databases/ directory since we create the dev DB ourselves
-    (doseq [file (file-seq (io/file source-dir))
+    (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
                        (.endsWith (.getName file) ".yaml")
                        (not (.contains (.getPath file) "/databases/")))]
@@ -166,5 +178,5 @@
         report)
       (finally
         (when (.exists (io/file temp-dir))
-          (doseq [file (reverse (file-seq (io/file temp-dir)))]
+          (doseq [^File file (reverse (file-seq (io/file temp-dir)))]
             (.delete file)))))))
