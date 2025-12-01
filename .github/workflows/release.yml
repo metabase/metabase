@@ -63,7 +63,9 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
     - uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
       uses: actions/github-script@v7
@@ -107,7 +109,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Send publish start message
         uses: actions/github-script@v7
@@ -185,7 +189,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
     - uses: ./.github/actions/prepare-release-scripts
     - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
@@ -279,7 +285,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
     - uses: ./.github/actions/prepare-release-scripts
     - name: Tag Release
       uses: actions/github-script@v7
@@ -310,7 +318,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Get extra tags
         id: taglist
@@ -354,7 +364,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Find milestone
         id: find-milestone
@@ -444,7 +456,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
         uses: actions/github-script@v7
@@ -522,7 +536,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
     - uses: ./.github/actions/prepare-release-scripts
     - name: Publish version info
       uses: actions/github-script@v7
@@ -578,7 +594,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Send publish complete message
         uses: actions/github-script@v7
@@ -608,7 +626,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
     - uses: ./.github/actions/prepare-release-scripts
     - name: Update milestones
       uses: actions/github-script@v7

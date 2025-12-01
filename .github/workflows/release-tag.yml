@@ -79,7 +79,9 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
     - uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
       uses: actions/github-script@v7
@@ -303,7 +305,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
+        sparse-checkout: |
+          release
+          .github/actions/prepare-release-scripts
     - uses: ./.github/actions/prepare-release-scripts
     - name: Generate new version info
       uses: actions/github-script@v7

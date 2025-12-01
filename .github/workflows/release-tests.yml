@@ -35,7 +35,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Run frontend type-check
         run: pnpm --dir release type-check
@@ -48,7 +50,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Run release unit tests
         run: pnpm --dir release test:unit
@@ -61,7 +65,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Smoke test release bundle
         run: node release/dist/index.cjs
