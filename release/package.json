@@ -20,6 +20,7 @@
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@octokit/graphql": "^8.2.1",
     "@octokit/rest": "^21.1.1",
     "@slack/web-api": "^7.13",
     "dayjs": "^1.11.10",
