@@ -801,7 +801,7 @@
               [:not [:exists {:select [1]
                               :from [[:collection :sub_c]]
                               :where [:and [:= :c.id :sub_c.id]
-                                      [:not= :sub_c.namespace "shared-tenant-collection"]]}]])
+                                      [:= :sub_c.namespace "shared-tenant-collection"]]}]])
 
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
