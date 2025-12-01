@@ -354,6 +354,8 @@
   ;; initialized with the correct set of settings. This alias orchestrates those pieces.
   ;; Prefer using it when running local backend for Cypress end-to-end tests.
   ;; Two things you can still control via env vars: MB_JETTY_PORT and MB_DB_FILE
+  ;;
+  ;; clojure -M:dev:drivers:(oss|ee):run:e2e
   :e2e
   {:jvm-opts  ["-Dmb.run.mode=e2e"
                "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
