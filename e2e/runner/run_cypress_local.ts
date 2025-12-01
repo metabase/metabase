@@ -1,3 +1,5 @@
+import path from "path";
+
 import { BACKEND_PORT } from "./constants/backend-port";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import runCypress from "./cypress-node-js-runner";
@@ -69,7 +71,10 @@ const init = async () => {
     }
 
     // Use a temporary copy of the sample db so it won't use and lock the db used for local development
-    process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = "e2e/tmp"; // already .gitignored
+    process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = path.resolve(
+      __dirname,
+      "../../e2e/tmp", // already exists and is .gitignored
+    );
 
     printBold("⏳ Starting backend");
     await CypressBackend.start("target/uberjar/metabase-backend.jar");
