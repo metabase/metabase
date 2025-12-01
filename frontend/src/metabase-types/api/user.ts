@@ -41,6 +41,16 @@ export interface BaseUser {
   updated_at: string;
 }
 
+export interface UserPermissions {
+  // requires advanced_permissions feature
+  is_group_manager?: boolean;
+  can_access_data_model?: boolean;
+  can_access_db_details?: boolean;
+  can_access_monitoring?: boolean;
+  can_access_setting?: boolean;
+  can_access_subscription?: boolean;
+}
+
 export interface User extends BaseUser {
   attributes: UserAttributeMap | null;
   login_attributes: UserAttributeMap | null;
@@ -54,6 +64,7 @@ export interface User extends BaseUser {
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
+  permissions?: UserPermissions;
 }
 
 export interface UserListResult {
