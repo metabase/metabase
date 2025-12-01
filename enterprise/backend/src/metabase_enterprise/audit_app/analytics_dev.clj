@@ -1,15 +1,26 @@
-(ns dev.usage-analytics
+(ns metabase-enterprise.audit-app.analytics-dev
+  "Analytics development mode support for local development and testing.
+
+  When MB_ANALYTICS_DEV_MODE=true, this namespace handles:
+  - Creating a real Database entry for analytics views
+  - Importing analytics content as editable (not read-only)
+  - Exporting modified analytics content back to YAML files
+
+  See metabase-enterprise.audit-app.settings/analytics-dev-mode for the setting."
   (:require
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase-enterprise.audit-app.settings :as audit.settings]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
+   [metabase.setup.core :as setup]
+   [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -56,7 +67,7 @@
 
   The database:
   - Points to the same database as the app DB
-  - Named 'Analytics Development DB'
+  - Named 'Internal Metabase Database'
   - Not marked as is_audit (gets normal permissions, is editable)
 
   Returns the created database map."
@@ -93,7 +104,13 @@
 ;;; ============================================================================
 
 (defn transform-yaml
-  "Transform a YAML data structure between canonical and dev formats. "
+  "Transform a YAML data structure between canonical and dev formats.
+
+  Only transforms creator_id (email), everything else stays the same.
+
+  Direction:
+  - :from-canonical - Replace 'internal@metabase.com' with actual user email
+  - :to-canonical - Replace user email with 'internal@metabase.com'"
   [yaml-data direction opts]
   (walk/postwalk
    (fn [node]
@@ -131,7 +148,6 @@
     (log/info "Copying and transforming YAMLs from" source-dir "to" temp-path)
 
     ;; Walk through all YAML files in source directory
-    ;; Skip databases/ directory since we create the dev DB ourselves
     (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
                        (.endsWith (.getName file) ".yaml"))]
@@ -210,7 +226,7 @@
 
   Reads YAMLs from export-dir, transforms them, writes to target-dir."
   [export-dir target-dir user-email]
-  (let [opts {:user-id user-email}
+  (let [opts {:user-email user-email}
         changed-files (atom [])]
     (log/info "Transforming exported YAMLs to canonical format")
 
@@ -252,3 +268,45 @@
         (when (.exists export-path)
           (doseq [^File file (reverse (file-seq export-path))]
             (.delete file)))))))
+
+;;; ============================================================================
+;;; Startup Hook
+;;; ============================================================================
+
+(defn- first-admin-user
+  "Get the first admin user (by ID)."
+  []
+  (t2/select-one [:model/User :id :email] :is_superuser true {:order-by [[:id :asc]]}))
+
+(defn- analytics-content-loaded?
+  "Check if analytics content has already been imported."
+  []
+  (and (find-analytics-dev-database)
+       (t2/exists? :model/Collection :entity_id "vG58R8k-QddHWA7_47umn")))
+
+(defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
+  [_]
+  (when (audit.settings/analytics-dev-mode)
+    (future
+      (try
+        (log/info "Analytics dev mode enabled, waiting for user setup...")
+
+        ;; Wait for user setup on new installs
+        (while (not (setup/has-user-setup))
+          (Thread/sleep 1000))
+
+        (log/info "User setup complete, checking analytics dev environment...")
+
+        ;; Check if already set up
+        (if (analytics-content-loaded?)
+          (log/info "Analytics dev environment already set up, skipping initialization")
+
+          ;; Set up analytics dev environment
+          (when-let [admin-user (first-admin-user)]
+            (log/info "Setting up analytics dev environment with user:" (:email admin-user))
+            (create-analytics-dev-database! (:id admin-user))
+            (import-analytics-content! (:email admin-user))
+            (log/info "Analytics dev environment ready")))
+
+        (catch Exception e
+          (log/error e "Failed to set up analytics dev environment"))))))
