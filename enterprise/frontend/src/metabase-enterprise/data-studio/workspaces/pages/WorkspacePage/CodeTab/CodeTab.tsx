@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { checkNotNull } from "metabase/lib/types";
 import { Stack, Text } from "metabase/ui";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
@@ -54,6 +53,13 @@ export const CodeTab = ({
           <Stack gap={0}>
             <Text fw={600}>{t`Workspace Transforms`}</Text>
             {workspaceTransforms.map((transform) => {
+              const edited = editedTransforms.get(transform.id);
+              const isEdited =
+                edited != null &&
+                (!isSameSource(edited.source, transform.source) ||
+                  edited.name !== transform.name ||
+                  edited.target.name !== transform.target.name);
+
               return (
                 <TransformListItem
                   key={transform.id}
@@ -61,13 +67,7 @@ export const CodeTab = ({
                   icon="pivot_table"
                   fw={600}
                   isActive={activeTransformId === transform.id}
-                  isEdited={
-                    editedTransforms.has(transform.id) &&
-                    !isSameSource(
-                      checkNotNull(editedTransforms.get(transform.id)?.source),
-                      transform.source,
-                    )
-                  }
+                  isEdited={isEdited}
                   onClick={() => handleTransformClick(transform)}
                 />
               );

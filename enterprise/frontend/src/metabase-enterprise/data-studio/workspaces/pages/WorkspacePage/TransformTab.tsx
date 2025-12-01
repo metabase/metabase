@@ -57,6 +57,7 @@ export const TransformTab = ({
     removeOpenedTransform,
     setActiveTransform,
     markTransformAsRun,
+    removeEditedTransform,
   } = useWorkspace();
 
   const hasSourceChanged = !isSameSource(
@@ -109,6 +110,7 @@ export const TransformTab = ({
         },
       });
 
+      removeEditedTransform(transform.id);
       setActiveTransform(response.data);
     } else {
       const response = await updateWorkspaceContents({
@@ -128,6 +130,7 @@ export const TransformTab = ({
         const newTransform = await getTransform(newTransformId).unwrap();
 
         if (newTransform) {
+          removeEditedTransform(transform.id);
           addOpenedTransform(newTransform);
           removeOpenedTransform(transform.id);
           setActiveTransform(newTransform);

@@ -67,11 +67,17 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const dbTransforms = useMemo(
     () =>
       allTransforms.filter((t) => {
+        // TODO: @uladzimirdev add guards
         if (t.source_type === "python") {
-          return t.source["source-database"] === sourceDb?.id;
+          return (
+            "source-database" in t.source &&
+            t.source["source-database"] === sourceDb?.id
+          );
         }
         if (t.source_type === "native") {
-          return t.source.query.database === sourceDb?.id;
+          return (
+            "query" in t.source && t.source.query.database === sourceDb?.id
+          );
         }
         return false;
       }),
@@ -86,7 +92,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     addOpenedTransform,
     removeOpenedTransform,
     patchEditedTransform,
-    hasChangedAndRunTransforms,
+    hasUnsavedChanges,
   } = useWorkspace();
 
   const workspaceTransforms = useMemo(
@@ -187,7 +193,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           variant="filled"
           onClick={handleMergeWorkspace}
           loading={isMerging}
-          disabled={!hasChangedAndRunTransforms()}
+          disabled={hasUnsavedChanges()}
           size="xs"
         >
           {t`Merge`}
