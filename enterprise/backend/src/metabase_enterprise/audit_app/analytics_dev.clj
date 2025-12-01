@@ -7,6 +7,7 @@
   - Exporting modified analytics content back to YAML files
 
   See metabase-enterprise.audit-app.settings/analytics-dev-mode for the setting."
+  ^{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
