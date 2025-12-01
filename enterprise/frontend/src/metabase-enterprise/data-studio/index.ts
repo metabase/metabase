@@ -11,6 +11,7 @@ import {
   getLibraryCollectionType,
   useGetLibraryChildCollectionByType,
   useGetLibraryCollection,
+  useGetResolvedLibraryCollection,
 } from "./utils";
 
 export function initializePlugin() {
@@ -27,5 +28,7 @@ export function initializePlugin() {
     PLUGIN_DATA_STUDIO.useGetLibraryCollection = useGetLibraryCollection;
     PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType =
       useGetLibraryChildCollectionByType;
+    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection =
+      useGetResolvedLibraryCollection;
   }
 }
