@@ -3,12 +3,15 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
+import Link from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { CardMoreMenu } from "metabase/questions/components/CardMoreMenu";
 import { getMetadata } from "metabase/selectors/metadata";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
@@ -28,6 +31,10 @@ type MetricHeaderProps = {
 };
 
 export function MetricHeader({ card, actions }: MetricHeaderProps) {
+  const { path, isLoadingPath } = useCollectionPath({
+    collectionId: card.collection_id,
+  });
+
   return (
     <PaneHeader
       data-testid="metric-header"
@@ -42,6 +49,17 @@ export function MetricHeader({ card, actions }: MetricHeaderProps) {
       menu={<MetricMoreMenu card={card} />}
       tabs={<MetricTabs card={card} />}
       actions={actions}
+      /* TODO: Link to specific collection */
+      breadcrumbs={
+        <DataStudioBreadcrumbs loading={isLoadingPath}>
+          {path?.map((collection) => (
+            <Link key={collection.id} to={Urls.dataStudioModeling()}>
+              {collection.name}
+            </Link>
+          ))}
+          <span>{card.name}</span>
+        </DataStudioBreadcrumbs>
+      }
     />
   );
 }
