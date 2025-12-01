@@ -102,7 +102,7 @@
        :from-canonical
        (condp = node
 
-         canonical-creator-id (:user-id opts)
+         canonical-creator-id (:user-email opts)
 
          node)
 
@@ -111,7 +111,7 @@
          (dissoc node :metabase_version)
          (condp = node
 
-           (:user-id opts) canonical-creator-id
+           (:user-email opts) canonical-creator-id
 
            node))))
    yaml-data))
@@ -124,10 +124,10 @@
   "Copy YAMLs from source to temp directory, transforming them.
 
   Returns the temp directory path."
-  [source-dir user-id]
+  [source-dir user-email]
   (let [temp-dir (Files/createTempDirectory "analytics-dev-import" (make-array FileAttribute 0))
         temp-path (.toFile temp-dir)
-        opts {:user-id user-id}]
+        opts {:user-email user-email}]
     (log/info "Copying and transforming YAMLs from" source-dir "to" temp-path)
 
     ;; Walk through all YAML files in source directory
@@ -157,12 +157,12 @@
   1. Copy YAMLs from resources/instance_analytics/ to temp dir
   2. Transform YAMLs (canonical -> dev format)
   3. Load using v2.ingest/ingest-yaml and v2.load/load-metabase!"
-  [user-id]
+  [user-email]
   (let [source-dir "resources/instance_analytics"
         _ (when-not (.exists (io/file source-dir))
             (throw (ex-info "Analytics source directory not found" {:path source-dir})))
 
-        temp-dir (copy-and-transform-yamls! source-dir user-id)]
+        temp-dir (copy-and-transform-yamls! source-dir user-email)]
 
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
@@ -209,8 +209,8 @@
   "Transform exported YAMLs from dev format back to canonical.
 
   Reads YAMLs from export-dir, transforms them, writes to target-dir."
-  [export-dir target-dir user-id]
-  (let [opts {:user-id user-id}
+  [export-dir target-dir user-email]
+  (let [opts {:user-id user-email}
         changed-files (atom [])]
     (log/info "Transforming exported YAMLs to canonical format")
 
@@ -239,13 +239,11 @@
 
 (defn export-analytics-content!
   "Export dev collection and transform back to canonical format."
-  [collection-id user-id target-dir]
+  [collection-id user-email target-dir]
   (let [{:keys [export-dir report]} (export-dev-collection! collection-id)
         export-path (io/file export-dir)]
     (try
-      (let [changed-files (transform-exported-yamls! export-dir
-                                                     target-dir
-                                                     user-id)]
+      (let [changed-files (transform-exported-yamls! export-dir target-dir user-email)]
         {:status :success
          :changed-files changed-files
          :export-report report})
