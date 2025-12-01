@@ -375,7 +375,7 @@ const ResultsItem = ({
 
   const isActive = isItemActive(item, path, selectedItemsCount);
   const indent = level * INDENT_OFFSET;
-  const hasToggle = hasChildren(type);
+  const itemHasChildren = hasChildren(type);
 
   const handleItemSelect = (open?: boolean, event?: React.MouseEvent) => {
     if (disabled) {
@@ -384,7 +384,7 @@ const ResultsItem = ({
 
     // In multi-select mode, prevent navigation and allow toggling for items with children
     if (selectedItemsCount > 0) {
-      if (hasChildren(type)) {
+      if (itemHasChildren) {
         // Toggle expansion for items with children
         if (open !== undefined) {
           toggle?.(key, open);
@@ -402,7 +402,7 @@ const ResultsItem = ({
     // In single-select mode:
     // If the item is already active, toggle its expansion state
     // Otherwise, navigate to make it active
-    if (isActive && hasChildren(type)) {
+    if (isActive && itemHasChildren) {
       // Second click on active item: toggle expansion
       if (open !== undefined) {
         toggle?.(key, open);
@@ -420,12 +420,12 @@ const ResultsItem = ({
         toggle?.(key, open);
       }
 
-      // Only navigate in single-select mode
-      if (selectedItemsCount === 0 && value) {
+      if (value) {
         // Expand collapsed items when navigating to them
-        if (!isExpanded && hasChildren(type)) {
+        if (!isExpanded && itemHasChildren) {
           toggle?.(key, true);
         }
+
         onItemClick?.(value);
       }
     }
@@ -531,7 +531,7 @@ const ResultsItem = ({
         <Flex align="flex-start" gap="xs" className={S.content}>
           <Flex align="center" gap="xs">
             <Box className={S.chevronSlot} w={INDENT_OFFSET}>
-              {hasToggle && (
+              {itemHasChildren && (
                 <Icon
                   name="chevronright"
                   size={16}
