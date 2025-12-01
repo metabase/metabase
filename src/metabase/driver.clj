@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv empty?]]
@@ -109,7 +110,10 @@
   For other drivers (e.g., MongoDB), this should be called in their connection creation logic."
   [database-id details]
   (if-let [swap-map (get *swapped-connection-details* database-id)]
-    (apply-detail-swaps details swap-map)
+    (do
+      (log/debugf "Applying swapped connection details for database %d, swap keys: %s"
+                  database-id (keys swap-map))
+      (apply-detail-swaps details swap-map))
     details))
 
 (defn do-with-swapped-connection-details
@@ -118,6 +122,8 @@
   (when (contains? *swapped-connection-details* database-id)
     (throw (ex-info "Nested connection detail swaps are not supported for the same database"
                     {:database-id database-id})))
+  (log/debugf "Entering swapped connection details scope for database %d, swap keys: %s"
+              database-id (keys swap-map))
   (binding [*swapped-connection-details* (assoc *swapped-connection-details* database-id swap-map)]
     (thunk)))
 

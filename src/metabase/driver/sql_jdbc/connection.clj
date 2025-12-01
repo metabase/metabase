@@ -271,7 +271,12 @@
 (defn invalidate-pool-for-db!
   "Invalidates all connection pools for the given database (canonical and swapped) by closing them and removing from cache."
   [database]
-  (let [db-id (u/the-id database)]
+  (let [db-id (u/the-id database)
+        has-canonical? (contains? @database-id->connection-pool db-id)
+        swapped-count (count (filter (fn [[[pool-db-id _] _]] (= pool-db-id db-id))
+                                     (.asMap swapped-connection-pools)))]
+    (log/debugf "Invalidating connection pools for database %d (canonical: %s, swapped: %d)"
+                db-id has-canonical? swapped-count)
     ;; Clear canonical pool
     (when-let [pool-spec (get @database-id->connection-pool db-id)]
       (destroy-pool! db-id pool-spec)
@@ -316,13 +321,18 @@
 (defn- get-swapped-pool
   "Get or create a swapped connection pool from the Guava cache."
   [db database-id details-hash]
-  (let [composite-key [database-id details-hash]]
-    (.get ^Cache swapped-connection-pools
-          composite-key
-          (reify java.util.concurrent.Callable
-            (call [_]
-              (log/debug (u/format-color :cyan "Creating swapped connection pool for database %s" database-id))
-              (create-pool! db))))))
+  (let [composite-key [database-id details-hash]
+        existing?     (.getIfPresent ^Cache swapped-connection-pools composite-key)]
+    (if existing?
+      (do
+        (log/debugf "Using existing swapped connection pool for database %d (hash: %d)" database-id details-hash)
+        existing?)
+      (.get ^Cache swapped-connection-pools
+            composite-key
+            (reify java.util.concurrent.Callable
+              (call [_]
+                (log/debugf "Creating new swapped connection pool for database %d (hash: %d)" database-id details-hash)
+                (create-pool! db)))))))
 
 (defn- get-canonical-pool
   "Get a canonical pool if it exists and is valid, otherwise return nil."
@@ -368,17 +378,17 @@
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
-    (let [database-id (u/the-id db-or-id-or-spec)
+    (let [database-id  (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to calculate details hash)
-          db-original (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
-                            (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
-                          (when (= (:lib/type db-or-id-or-spec) :metadata/database)
-                            db-or-id-or-spec)
-                          (driver-api/with-metadata-provider database-id
-                            (driver-api/database (driver-api/metadata-provider))))
+          db-original  (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
+                             (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
+                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
+                             db-or-id-or-spec)
+                           (driver-api/with-metadata-provider database-id
+                             (driver-api/database (driver-api/metadata-provider))))
           ;; Apply connection detail swaps if present
-          has-swap?   (driver/has-connection-swap? database-id)
-          db          (update db-original :details #(driver/maybe-swap-details database-id %))
+          has-swap?    (driver/has-connection-swap? database-id)
+          db           (update db-original :details #(driver/maybe-swap-details database-id %))
           ;; Calculate hash from final (possibly swapped) details
           details-hash (jdbc-spec-hash db)]
       (cond

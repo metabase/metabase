@@ -647,11 +647,11 @@
       (let [db    (mt/db)
             db-id (u/the-id db)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
-        (testing "Swap map is merged into details when creating connection"
-          (driver/with-swapped-connection-details db-id {:test-swap true}
-            ;; Create a connection spec - this should trigger the swap
-            (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
-              (is (some? spec))
+        (let [original-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+          (testing "Swap map is merged into details when creating connection"
+            (driver/with-swapped-connection-details db-id {:test-swap true}
+              (testing "spec is swapped"
+                (is (not= original-spec (sql-jdbc.conn/db->pooled-connection-spec db))))
               (testing "Pool was created with swap in swapped pools cache"
                 (is (= 1 (count-swapped-pools-for-db db-id)))))))
 
@@ -684,43 +684,24 @@
           ;; This would work for a different db-id
           (is (some? (sql-jdbc.conn/db->pooled-connection-spec db-1))))))))
 
-(deftest with-swapped-connection-details-persistence-test
-  (testing "Pools with swaps persist in Guava cache until TTL expiration"
+(deftest invalidate-pool-clears-both-canonical-and-swapped-test
+  (testing "invalidate-pool-for-db! clears both canonical and swapped pools"
     (mt/test-drivers (mt/normal-drivers)
       (let [db    (mt/db)
             db-id (u/the-id db)]
-        ;; Clear any existing pools first
         (sql-jdbc.conn/invalidate-pool-for-db! db)
 
-        (driver/with-swapped-connection-details db-id {:test-swap true}
-          ;; Create a connection in swap scope
-          (sql-jdbc.conn/db->pooled-connection-spec db)
-
-          (testing "Pool exists in swapped pools cache during scope"
-            (is (= 1 (count-swapped-pools-for-db db-id)))))
-
-        (testing "Pool persists in Guava cache after scope exit (until TTL expires)"
-          (is (= 1 (count-swapped-pools-for-db db-id))))))))
-
-(deftest swapped-pool-separate-from-canonical-test
-  (testing "Swapped pools are stored separately from canonical pools"
-    (mt/test-drivers (mt/normal-drivers)
-      (let [db    (mt/db)
-            db-id (u/the-id db)]
-        ;; Clear any existing pools first
-        (sql-jdbc.conn/invalidate-pool-for-db! db)
-
-        ;; Create canonical pool first
         (sql-jdbc.conn/db->pooled-connection-spec db)
-        (testing "Canonical pool exists in atom cache"
-          (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool db-id)))
-        (testing "No swapped pool exists yet"
-          (is (= 0 (count-swapped-pools-for-db db-id))))
+        (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool db-id))
 
-        ;; Now create a swapped pool
         (driver/with-swapped-connection-details db-id {:test-swap true}
-          (sql-jdbc.conn/db->pooled-connection-spec db)
-          (testing "Swapped pool exists in Guava cache"
-            (is (= 1 (count-swapped-pools-for-db db-id))))
-          (testing "Canonical pool still exists"
-            (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool db-id))))))))
+          (sql-jdbc.conn/db->pooled-connection-spec db))
+        (is (= 1 (count-swapped-pools-for-db db-id)))
+
+        ;; Now invalidate - should clear both
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+
+        (testing "Canonical pool is cleared"
+          (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool db-id))))
+        (testing "Swapped pool is cleared"
+          (is (= 0 (count-swapped-pools-for-db db-id))))))))
