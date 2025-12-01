@@ -1,7 +1,7 @@
-import { exec as execCallback } from "child_process";
+import { exec as execCallback } from "node:child_process";
+import { promisify } from "node:util";
 
 import ora from "ora";
-import { promisify } from "util";
 
 import type {
   CliError,

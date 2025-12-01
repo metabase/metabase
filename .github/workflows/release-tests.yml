@@ -36,11 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - name: prepare dependencies in release directory
-        run: pnpm --dir release install --frozen-lockfile
+      - uses: ./.github/actions/prepare-release-scripts
       - name: Run frontend type-check
         run: pnpm --dir release type-check
 
@@ -53,11 +49,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - name: prepare dependencies in release directory
-        run: pnpm --dir release install --frozen-lockfile
+      - uses: ./.github/actions/prepare-release-scripts
       - name: Run release unit tests
         run: pnpm --dir release test:unit
 
@@ -70,12 +62,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - name: prepare dependencies in release directory
-        run: pnpm --dir release install --frozen-lockfile
-      - name: Build release bundle
-        run: pnpm --dir release build
+      - uses: ./.github/actions/prepare-release-scripts
       - name: Smoke test release bundle
         run: node release/dist/index.cjs
