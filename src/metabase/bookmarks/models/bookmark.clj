@@ -14,11 +14,13 @@
 (methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
 (methodical/defmethod t2/table-name :model/CollectionBookmark [_model] :collection_bookmark)
 (methodical/defmethod t2/table-name :model/BookmarkOrdering   [_model] :bookmark_ordering)
+(methodical/defmethod t2/table-name :model/DocumentBookmark   [_model] :document_bookmark)
 
 (derive :model/CardBookmark :metabase/model)
 (derive :model/DashboardBookmark :metabase/model)
 (derive :model/CollectionBookmark :metabase/model)
 (derive :model/BookmarkOrdering :metabase/model)
+(derive :model/DocumentBookmark :metabase/model)
 
 (defn- unqualify-key
   [k]
@@ -89,7 +91,8 @@
                                 [(h2x/literal "collection") :type]
                                 :created_at]
                        :from   [:collection_bookmark]
-                       :where [:= :user_id user-id]}
+                       :where [:= :user_id user-id]}]]
+    {:union-all (conj base-queries
                       {:select [[as-null :card_id]
                                 [as-null :dashboard_id]
                                 [as-null :collection_id]
@@ -98,8 +101,7 @@
                                 [(h2x/literal "document") :type]
                                 :created_at]
                        :from [:document_bookmark]
-                       :where [:= :user_id user-id]}]]
-    {:union-all base-queries}))
+                       :where [:= :user_id user-id]})}))
 
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and

@@ -42,7 +42,7 @@
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
-    :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark
+    :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
