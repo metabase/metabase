@@ -186,8 +186,8 @@
     "@storybook/react-webpack5": "^8.5.0",
     "@storybook/test": "^8.5.0",
     "@svgr/webpack": "^8.1.0",
-    "@swc/core": "^1.13.5",
-    "@swc/plugin-emotion": "^11.1.0",
+    "@swc/core": "^1.15.3",
+    "@swc/plugin-emotion": "^14.0.1",
     "@testing-library/cypress": "^10.0.2",
     "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.0.0",
@@ -381,9 +381,7 @@
       "set-value": "4.0.1",
       "unset-value": "2.0.1",
       "webpack-dev-middleware": "^5.3.4",
-      "webpack-dev-server": "^5.2.1",
-      "@swc/core": "1.13.5",
-      "@swc/plugin-emotion": "11.1.0"
+      "webpack-dev-server": "^5.2.1"
     },
     "ignoredBuiltDependencies": [
       "aws-sdk",
