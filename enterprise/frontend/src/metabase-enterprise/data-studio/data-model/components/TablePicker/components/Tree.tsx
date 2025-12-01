@@ -272,7 +272,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         return newSet;
       });
     }
-    if (item.type === "database" && item.isLoading === undefined) {
+    if (isDatabaseNode(item)) {
       if (item.children.length > 0) {
         const { schemas, tables, databases } = toggleDatabaseSelection(
           item,
@@ -288,8 +288,8 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         }
       }
     }
-    if (item.type === "schema" && item.isLoading === undefined) {
-      if (item.children.length > 0 && isSchemaNode(item)) {
+    if (isSchemaNode(item)) {
+      if (item.children.length > 0) {
         const { tables } = toggleSchemaSelection(item, selection);
         setSelectedTables(tables);
       } else {

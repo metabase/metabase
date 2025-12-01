@@ -125,13 +125,12 @@ export function isDatabaseNode(
   return node.type === "database";
 }
 
+export function isSchemaNode(node: FlatItem): node is ExpandedSchemaItem;
+export function isSchemaNode(node: TreeNode): node is SchemaNode;
 export function isSchemaNode(
-  node: ExpandedItem | TreeNode,
-): node is ExpandedSchemaItem {
-  return (
-    node.type === "schema" &&
-    node.children.every((child) => child.type === "table")
-  );
+  node: ExpandedItem | TreeNode | FlatItem,
+): node is ExpandedSchemaItem | SchemaNode {
+  return node.type === "schema";
 }
 
 export function isTableOrSchemaNode(

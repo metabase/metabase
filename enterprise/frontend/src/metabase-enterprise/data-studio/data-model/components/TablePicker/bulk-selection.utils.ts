@@ -58,7 +58,8 @@ function areChildTablesSelected(
   }
 
   const selectedTablesCount = node.children.filter(
-    (child) => isTableNode(child) && selectedTables.has(child.value.tableId),
+    (child) =>
+      child.type === "table" && selectedTables.has(child.value.tableId),
   ).length;
 
   return selectedTablesCount === node.children.length
@@ -87,14 +88,15 @@ function areChildSchemasSelected(
       : "some";
 }
 
-export function getSchemaId(item: FlatItem) {
-  if (!isExpandedItem(item)) {
-    return undefined;
+export function getSchemaId(item: FlatItem | SchemaNode) {
+  if (
+    "value" in item &&
+    item.value &&
+    "databaseId" in item.value &&
+    "schemaName" in item.value
+  ) {
+    return `${item.value.databaseId}:${item.value.schemaName}`;
   }
-  if (!isTableOrSchemaNode(item)) {
-    return undefined;
-  }
-  return `${item.value.databaseId}:${item.value.schemaName}`;
 }
 
 export function isParentSchemaSelected(
