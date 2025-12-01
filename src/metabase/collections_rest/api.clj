@@ -79,10 +79,7 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded.
-
-  Normally, tenant collections will not be included in the results. Passing `include-tenant-collections=true`
-  will restrict the results to tenant collections."
+  By default, library-type collections are excluded. "
   [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only include-library?]}]
   (cond->>
    (t2/select :model/Collection
@@ -309,8 +306,7 @@
                                             [:sort-direction (into [:enum {:error/message "sort-direction"}]
                                                                    (map normalize-sort-choice)
                                                                    valid-sort-directions)]
-                                            [:official-collections-first? {:optional true} :boolean]]]]
-   [:include-tenant-collections? {:optional true} [:maybe :boolean]]])
+                                            [:official-collections-first? {:optional true} :boolean]]]]])
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -668,8 +664,7 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library? include-tenant-collections?]}]
-  #p collection-namespace
+  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
@@ -1652,7 +1647,6 @@
                                    :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state                (keyword pinned_state)
                                    :include-can-run-adhoc-query include_can_run_adhoc_query
-                                   :include-tenant-collections? (collection/tenant-collection? collection)
                                    :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                                                  :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
                                                                  ;; default to sorting official collections first, except for the trash.
