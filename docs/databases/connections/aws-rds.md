@@ -48,7 +48,7 @@ Add a policy with the `rds-db:connect` action. The policy resource must specify 
 arn:aws:rds-db:region:account-id:dbuser:DbiResourceId/db-user-name
 ```
 
-Note, when entering the username _in Metabase_, you'd just enter your `db-user-name`, not the full ARN.
+When entering the username in Metabase, you'd just enter your `db-user-name`, not the full ARN.
 
 See [Creating IAM policy for IAM database access](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.IAMPolicy.html).
 
@@ -75,8 +75,8 @@ See [Setting up for IAM database authentication](https://docs.aws.amazon.com/Ama
 
 Authentication credentials must be available via one of the methods supported by the [AWS SDK credentials chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html), typically either:
 
-- Environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`).
-- AWS credentials file (`.aws/credentials`), automatically available if running in [Elastic Container Service (ECS)](https://docs.aws.amazon.com/ecs/).
+- Environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`)
+- AWS credentials file (`.aws/credentials`), automatically available if running in [Elastic Container Service (ECS)](https://docs.aws.amazon.com/ecs/)
 
 ### In Metabase, select IAM authentication
 
@@ -84,4 +84,7 @@ When adding or editing a database connection in Metabase, click **Use an authent
 
 ### In Metabase, configure SSL
 
-Use a secure connection (SSL). Set the SSL Mode to **require**. See [PostgreSQL SSL options](./postgresql.md#ssl-mode) or [MySQL SSL options](./mysql.md#use-a-secure-connection-ssl).
+Use a secure connection (SSL):
+
+- **PostgreSQL**: Set the SSL Mode to **require**. See [PostgreSQL SSL options](./postgresql.md#ssl-mode).
+- **MySQL**: The SSL Mode will be automatically set to **verify-ca**. If you manually change the SSL Mode, it must be set to **verify-ca**. See [MySQL SSL options](./mysql.md#use-a-secure-connection-ssl).
