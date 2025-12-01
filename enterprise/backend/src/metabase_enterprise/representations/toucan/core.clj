@@ -66,4 +66,3 @@
   [_t2-model event-entity]
   (->> event-entity
        (merge {:creator_id (or api/*current-user-id* config/internal-mb-user-id)})))
-
