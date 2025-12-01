@@ -43,11 +43,7 @@ export function QueryColumnInfoIcon({
             size={size}
             color={color}
           />
-          <PopoverHoverTarget
-            className={className}
-            name="info_filled"
-            size={size}
-          />
+          <PopoverHoverTarget className={className} name="info" size={size} />
         </span>
       </QueryColumnInfoPopover>
     </>
@@ -79,11 +75,7 @@ export function TableColumnInfoIcon({
           size={size}
           color={color}
         />
-        <PopoverHoverTarget
-          className={className}
-          name="info_filled"
-          size={size}
-        />
+        <PopoverHoverTarget className={className} name="info" size={size} />
       </span>
     </TableColumnInfoPopover>
   );

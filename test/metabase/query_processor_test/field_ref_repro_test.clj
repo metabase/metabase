@@ -10,7 +10,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
@@ -153,7 +153,7 @@
   (testing "Should handle self joins with external remapping (#60444)"
     ;; see https://metaboat.slack.com/archives/C0645JP1W81/p1753208898063419 for further discussion
     (let [mp (lib.tu/remap-metadata-provider
-              (mt/application-database-metadata-provider (mt/id))
+              (mt/metadata-provider)
               (mt/id :orders :user_id) (mt/id :people :email))]
       (doseq [join-base [{:source-table (mt/id :orders)}
                          {:source-query {:source-table (mt/id :orders)
@@ -200,8 +200,8 @@
                       ;; The order of these columns seems to be 'flexible' (I would consider either to be correct), and
                       ;; I've seen both in two different branches of mine attempting to fix this bug. The order doesn't
                       ;; matter at all to the FE, so if this changes in the future it's ok. -- Cam
-                      "j__PEOPLE__via__USER_ID__EMAIL" #_"j__EMAIL"
-                      "PEOPLE__via__USER_ID__EMAIL"]
+                      "PEOPLE__via__USER_ID__EMAIL"
+                      "j__PEOPLE__via__USER_ID__EMAIL"]
                      (map :lib/desired-column-alias (mt/cols results))))
               (is (= [[1                ; <= orders.id
                        1                ; <= orders.user-id
@@ -221,8 +221,8 @@
                        nil
                        "2016-12-25T22:19:38.656Z"
                        2
-                       "labadie.lina@gmail.com"  ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
-                       "borer-hudson@yahoo.com"] ; orders.user-id --[remap]--> people.email (email of People row with ID = 1)
+                       "borer-hudson@yahoo.com"  ; orders.user-id --[remap]--> people.email (email of People row with ID = 1)
+                       "labadie.lina@gmail.com"] ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
                       [1
                        1
                        14
@@ -241,13 +241,13 @@
                        nil
                        "2017-02-04T10:16:00.936Z"
                        1
-                       "arne-o-hara@gmail.com"
-                       "borer-hudson@yahoo.com"]]
+                       "borer-hudson@yahoo.com"
+                       "arne-o-hara@gmail.com"]]
                      (mt/rows results))))))))))
 
 (deftest ^:parallel multi-stage-with-external-remapping-test
   (testing "Should handle multiple stages with external remapping (#60587)"
-    (let [mp    (lib.tu/remap-metadata-provider (mt/application-database-metadata-provider (mt/id))
+    (let [mp    (lib.tu/remap-metadata-provider (mt/metadata-provider)
                                                 (mt/id :orders :user_id)
                                                 (mt/id :people :email))
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
@@ -263,15 +263,13 @@
           (is (= [[1746]]
                  (mt/rows results))))))))
 
-;;; This one is a really tricky one to solve, the problem is that the implicit join happens in the first stage (Card 1)
-;;; because of the remappped column, but the parameter asks to be applied to stage 3... it's too late to add a new
-;;; filter against `PEOPLE__via__USER_ID.STATE` at that point because it doesn't come back from stage 1 or 2 (this is
-;;; why resolution trips up and falls back to `source.STATE`. I think the only way to fix this would be to make the
-;;; parameter logic apply the parameter to the correct stage (ignoring `:stage-number` when it's wrong) or add another
-;;; duplicate implicit join in stage 3 to power the filter
+;;; This is tricky case: the implicit join happens in stage 0 (Card 1) because of the remapped column, but the parameter
+;;; asks to be applied to stage 2. Logic in `add-implicit-joins` now propagates that use of the implicitly joined column
+;;; through stage 1 to stage 0, making the column available for the filter in the last stage.
 ;;;
-;;; See
-;;; also [[metabase.lib.field.resolution-test/resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test]]
+;;; See also
+;;; [[metabase.lib.field.resolution-test/resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test]]
+;;; and [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
 (deftest ^:parallel model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
@@ -293,9 +291,6 @@
                                               :source-field (mt/id :orders :user_id)
                                               :source-field-name "USER_ID"}]
                                             {:stage-number -1}]}]))]
-        ;; should return 613 rows
         (mt/with-native-query-testing-context query
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Column \"source\.PEOPLE__via__USER_ID__STATE\" not found"
-               (-> query qp/process-query mt/rows count))))))))
+          (is (= 613
+                 (-> query qp/process-query mt/rows count))))))))

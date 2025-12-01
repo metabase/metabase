@@ -342,8 +342,9 @@ export const startNewNotebookModel = async () => {
   await userEvent.click(screen.getByText("Use the notebook editor"));
   await waitForLoaderToBeRemoved();
 
-  const modal = await screen.findByTestId("entity-picker-modal");
+  const modal = await screen.findByTestId("mini-picker");
   await waitForLoaderToBeRemoved();
+  await userEvent.click(await within(modal).findByText("Sample Database"));
   await userEvent.click(await within(modal).findByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();

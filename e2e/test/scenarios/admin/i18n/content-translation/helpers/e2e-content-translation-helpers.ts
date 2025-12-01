@@ -17,11 +17,11 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   );
   cy.intercept("GET", "/api/setting").as("getSettings");
   cy.signInAsAdmin();
-  cy.visit("/admin/settings/embedding-in-other-applications/standalone");
+  cy.visit("/admin/embedding/static");
   cy.wait("@getSettings");
 
   cy.findByTestId("content-localization-setting").findByText(
-    /Upload translation dictionary/,
+    /Upload edited translation dictionary/,
   );
 
   cy.get("#content-translation-dictionary-upload-input").selectFile(

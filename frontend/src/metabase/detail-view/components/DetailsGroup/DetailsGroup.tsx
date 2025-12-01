@@ -1,7 +1,4 @@
-import { useMemo } from "react";
-
 import {
-  getBodyColumns,
   getColumnTitle,
   getRowValue,
   renderValue,
@@ -30,19 +27,13 @@ export const DetailsGroup = ({
   table,
 }: Props) => {
   const tc = useTranslateContent();
-  const bodyColumns = useMemo(() => getBodyColumns(columns), [columns]);
-  const columnIndexMap = useMemo(
-    () => new Map(columns.map((column, index) => [column, index])),
-    [columns],
-  );
 
   return (
     <Stack data-testid="object-details" gap="lg">
-      {bodyColumns.map((column, index) => {
+      {columns.map((column, index) => {
         const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
-        const realIndex = columnIndexMap.get(column) ?? -1;
-        const columnSettings = columnsSettings?.[realIndex] ?? {};
+        const columnSettings = columnsSettings?.[index] ?? {};
 
         return (
           <Group

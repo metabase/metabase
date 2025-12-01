@@ -1,8 +1,8 @@
 (ns metabase.driver.druid-jdbc
+  (:refer-clojure :exclude [mapv])
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -14,7 +14,8 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (java.sql ResultSet Types)
    (java.time LocalDate LocalDateTime ZonedDateTime)))
@@ -164,7 +165,7 @@
       (if (or (::sql.qp/forced-alias opts)
               (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
         (keyword (driver-api/qp.add.source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
+        (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)
                        identifier)))))

@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { useCallback } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
@@ -21,12 +22,15 @@ interface ResetPasswordQueryParams {
 
 interface ResetPasswordProps {
   params: ResetPasswordQueryParams;
+  location?: Location<{ redirect?: string }>;
 }
 
 export const ResetPassword = ({
   params,
+  location,
 }: ResetPasswordProps): JSX.Element | null => {
   const { token } = params;
+  const redirectUrl = location?.query?.redirect;
   const dispatch = useDispatch();
   const { data: status, isLoading } =
     useGetPasswordResetTokenStatusQuery(token);
@@ -34,10 +38,10 @@ export const ResetPassword = ({
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
       await dispatch(resetPassword({ token, password })).unwrap();
-      dispatch(replace("/"));
+      dispatch(replace(redirectUrl || "/"));
       dispatch(addUndo({ message: t`You've updated your password.` }));
     },
-    [token, dispatch],
+    [token, dispatch, redirectUrl],
   );
 
   if (isLoading) {

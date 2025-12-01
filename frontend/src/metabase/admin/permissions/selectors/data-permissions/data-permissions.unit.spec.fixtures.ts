@@ -118,6 +118,7 @@ export const normalizedMetadata = {
   fields: {
     /* stripped out */
   },
+  snippets: {},
   revisions: {},
   databasesList: [2, 3],
 

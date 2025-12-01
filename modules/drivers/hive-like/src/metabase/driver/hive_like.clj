@@ -82,6 +82,11 @@
   [_ _ expr]
   (h2x/->timestamp [:from_unixtime expr]))
 
+(defmethod sql.qp/unix-timestamp->honeysql [:hive-like :milliseconds]
+  [_ _ expr]
+  (-> [:timestamp_millis expr]
+      (h2x/with-database-type-info "timestamp")))
+
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
 

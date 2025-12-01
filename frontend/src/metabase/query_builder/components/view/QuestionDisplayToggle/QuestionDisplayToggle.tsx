@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { Flex, Icon } from "metabase/ui";
+import { Icon, SegmentedControl } from "metabase/ui";
 
 import QuestionDisplayToggleS from "./QuestionDisplayToggle.module.css";
 
@@ -28,27 +28,59 @@ const QuestionDisplayToggle = ({
   );
 
   return (
-    <Flex
-      className={cx(QuestionDisplayToggleS.Well, className)}
-      onClick={() => onToggleRawTable(!isShowingRawTable)}
-    >
-      <Flex
-        className={cx(QuestionDisplayToggleS.ToggleIcon, {
-          [QuestionDisplayToggleS.active]: isShowingRawTable,
-        })}
-        aria-label={t`Switch to data`}
-      >
-        <Icon name="table2" />
-      </Flex>
-      <Flex
-        className={cx(QuestionDisplayToggleS.ToggleIcon, {
-          [QuestionDisplayToggleS.active]: !isShowingRawTable,
-        })}
-        aria-label={t`Switch to visualization`}
-      >
-        <Icon name="lineandbar" />
-      </Flex>
-    </Flex>
+    <SegmentedControl
+      classNames={{
+        root: cx(QuestionDisplayToggleS.Well, className),
+        label: QuestionDisplayToggleS.ToggleIcon,
+        indicator: cx(
+          QuestionDisplayToggleS.ToggleIcon,
+          QuestionDisplayToggleS.active,
+        ),
+      }}
+      onClick={(e) => {
+        e.preventDefault();
+        onToggleRawTable(!isShowingRawTable);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggleRawTable(!isShowingRawTable);
+        }
+      }}
+      tabIndex={0}
+      value={isShowingRawTable ? "data" : "visualization"}
+      data-testid="query-display-tabular-toggle"
+      data={[
+        {
+          disabled: true,
+          value: "data",
+          label: (
+            <Icon
+              size={16}
+              name="table2"
+              className={cx(QuestionDisplayToggleS.InnerLabel, {
+                [QuestionDisplayToggleS.activeLabel]: isShowingRawTable,
+              })}
+              aria-label={t`Switch to data`}
+            />
+          ),
+        },
+        {
+          disabled: true,
+          value: "visualization",
+          label: (
+            <Icon
+              size={16}
+              name="lineandbar"
+              className={cx(QuestionDisplayToggleS.InnerLabel, {
+                [QuestionDisplayToggleS.activeLabel]: !isShowingRawTable,
+              })}
+              aria-label={t`Switch to visualization`}
+            />
+          ),
+        },
+      ]}
+    />
   );
 };
 

@@ -3,7 +3,6 @@ import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { Box, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
@@ -12,12 +11,12 @@ import DatasetMetadataStrengthIndicatorS from "./DatasetMetadataStrengthIndicato
 
 function getIndicationColor(percentage: number, isHovered: boolean): string {
   if (percentage <= 0.5) {
-    return color("danger");
+    return "danger";
   }
   if (!isHovered) {
-    return color("text-medium");
+    return "text-medium";
   }
-  return percentage >= 0.9 ? color("success") : color("warning");
+  return percentage >= 0.9 ? "success" : "warning";
 }
 
 function getTooltipMessage(percentage: number) {

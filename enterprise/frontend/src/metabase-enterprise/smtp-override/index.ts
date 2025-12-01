@@ -6,7 +6,13 @@ import {
   SMTPOverrideConnectionForm,
 } from "./components";
 
-if (hasPremiumFeature("cloud_custom_smtp")) {
-  PLUGIN_SMTP_OVERRIDE.CloudSMTPConnectionCard = CloudSMTPConnectionCard;
-  PLUGIN_SMTP_OVERRIDE.SMTPOverrideConnectionForm = SMTPOverrideConnectionForm;
+/**
+ * Initialize SMTP override plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("cloud_custom_smtp")) {
+    PLUGIN_SMTP_OVERRIDE.CloudSMTPConnectionCard = CloudSMTPConnectionCard;
+    PLUGIN_SMTP_OVERRIDE.SMTPOverrideConnectionForm =
+      SMTPOverrideConnectionForm;
+  }
 }

@@ -100,7 +100,7 @@ describe("ParameterLinkedFilters", () => {
     expect(within(compatibleSection).getByText("P2")).toBeInTheDocument();
     expect(within(incompatibleSection).getByText("P3")).toBeInTheDocument();
 
-    await userEvent.hover(getIcon("info_filled"));
+    await userEvent.hover(getIcon("info"));
     expect(
       await screen.findByText(/foreign-key relationship/),
     ).toBeInTheDocument();

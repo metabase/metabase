@@ -12,7 +12,7 @@ function setupEnterprise(opts?: Partial<SetupOpts>) {
 
 describe("EmbedModalContent", () => {
   describe("Interactive Embedding", () => {
-    const INTERACTIVE_EMBEDDING_TITLE = "Interactive embedding";
+    const INTERACTIVE_EMBEDDING_TITLE = "Embedded Analytics JS";
 
     describe("when Interactive Embedding is disabled", () => {
       it("should mention Interactive Embedding and lead users to learn more link", () => {
@@ -23,7 +23,7 @@ describe("EmbedModalContent", () => {
           screen.queryByRole("link", { name: "Learn more" }),
         ).toHaveProperty(
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=static-embed-popover&source_plan=oss",
         );
 
         // We show the learn more link
@@ -57,7 +57,7 @@ describe("EmbedModalContent", () => {
           screen.queryByRole("link", { name: "Learn more" }),
         ).toHaveProperty(
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=static-embed-popover&source_plan=oss",
         );
 
         // We show the learn more link

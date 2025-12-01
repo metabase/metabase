@@ -1,16 +1,17 @@
 (ns metabase.query-processor.streaming.common
   "Shared util fns for various export (download) streaming formats."
+  (:refer-clojure :exclude [mapv select-keys not-empty])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf :refer [mapv select-keys not-empty]])
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
@@ -32,6 +33,8 @@
   [t]
   (u.date/with-time-zone-same-instant
    t
+   ;; existing usage -- don't use going forward
+   #_{:clj-kondo/ignore [:deprecated-var]}
    (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
 
 (defprotocol FormatValue

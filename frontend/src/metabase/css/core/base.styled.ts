@@ -44,4 +44,12 @@ export const baseStyle = css`
     margin: 0;
     list-style-type: none;
   }
+
+  // Mobile Safari sets the opacity of disabled inputs to 0.4 which we don't want
+  // https://github.com/metabase/metabase/issues/49170
+  @supports (-webkit-touch-callout: none) {
+    input:disabled {
+      opacity: 1;
+    }
+  }
 `;

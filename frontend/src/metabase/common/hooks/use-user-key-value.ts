@@ -63,6 +63,8 @@ export function useUserKeyValue<T extends UserKeyValue>({
   const isMutating = setMutationReq.isLoading || clearMutationReq.isLoading;
   const error = fetchError ?? setMutationReq.error ?? clearMutationReq.error;
 
+  // 2025-11-10 @chodorowicz:
+  // valueFromQuery for non-existing keys is "", so the default value is not returned
   return {
     value: user ? (valueFromQuery ?? defaultValue) : defaultValue,
     setValue,

@@ -13,7 +13,6 @@ import {
   getSection,
   selectUsageReason,
   setup,
-  skipLanguageStep,
   skipWelcomeScreen,
   submitUserInfoStep,
 } from "./setup";
@@ -22,11 +21,10 @@ describe("setup (OSS)", () => {
   it("default step order should be correct", async () => {
     await setup();
     await skipWelcomeScreen();
-    expectSectionToHaveLabel("What's your preferred language?", "1");
-    expectSectionToHaveLabel("What should we call you?", "2");
-    expectSectionToHaveLabel("What will you use Metabase for?", "3");
-    expectSectionToHaveLabel("Add your data", "4");
-    expectSectionToHaveLabel("Usage data preferences", "5");
+    expectSectionToHaveLabel("What should we call you?", "1");
+    expectSectionToHaveLabel("What will you use Metabase for?", "2");
+    expectSectionToHaveLabel("Add your data", "3");
+    expectSectionToHaveLabel("Usage data preferences", "4");
 
     expectSectionsToHaveLabelsInOrder();
   });
@@ -36,24 +34,20 @@ describe("setup (OSS)", () => {
     await skipWelcomeScreen();
     expectSectionsToHaveLabelsInOrder({ from: 0 });
 
-    await skipLanguageStep();
+    await submitUserInfoStep();
     expectSectionsToHaveLabelsInOrder({ from: 1 });
 
-    await submitUserInfoStep();
+    await clickNextStep(); // Usage question
     expectSectionsToHaveLabelsInOrder({ from: 2 });
 
-    await clickNextStep(); // Usage question
-    expectSectionsToHaveLabelsInOrder({ from: 3 });
-
     await userEvent.click(screen.getByText("Continue with sample data"));
-    expectSectionsToHaveLabelsInOrder({ from: 4 });
+    expectSectionsToHaveLabelsInOrder({ from: 3 });
   });
 
   describe("Usage question", () => {
     async function setupForUsageQuestion() {
       await setup();
       await skipWelcomeScreen();
-      await skipLanguageStep();
       await submitUserInfoStep();
     }
 
@@ -70,8 +64,8 @@ describe("setup (OSS)", () => {
           "step",
         );
 
-        expectSectionToHaveLabel("Add your data", "4");
-        expectSectionToHaveLabel("Usage data preferences", "5");
+        expectSectionToHaveLabel("Add your data", "3");
+        expectSectionToHaveLabel("Usage data preferences", "4");
       });
     });
 
@@ -88,7 +82,7 @@ describe("setup (OSS)", () => {
           "step",
         );
 
-        expectSectionToHaveLabel("Usage data preferences", "4");
+        expectSectionToHaveLabel("Usage data preferences", "3");
       });
     });
 
@@ -105,8 +99,8 @@ describe("setup (OSS)", () => {
           "step",
         );
 
-        expectSectionToHaveLabel("Add your data", "4");
-        expectSectionToHaveLabel("Usage data preferences", "5");
+        expectSectionToHaveLabel("Add your data", "3");
+        expectSectionToHaveLabel("Usage data preferences", "4");
       });
     });
 
@@ -123,8 +117,8 @@ describe("setup (OSS)", () => {
           "step",
         );
 
-        expectSectionToHaveLabel("Add your data", "4");
-        expectSectionToHaveLabel("Usage data preferences", "5");
+        expectSectionToHaveLabel("Add your data", "3");
+        expectSectionToHaveLabel("Usage data preferences", "4");
       });
     });
   });
@@ -133,7 +127,6 @@ describe("setup (OSS)", () => {
     it("should set the correct flags when interested in embedding", async () => {
       await setup();
       await skipWelcomeScreen();
-      await skipLanguageStep();
       await submitUserInfoStep();
 
       await selectUsageReason("embedding");
@@ -150,7 +143,6 @@ describe("setup (OSS)", () => {
     it("should not set 'embedding-homepage' when not interested in embedding", async () => {
       await setup();
       await skipWelcomeScreen();
-      await skipLanguageStep();
       await submitUserInfoStep();
 
       await selectUsageReason("self-service-analytics");
@@ -178,7 +170,6 @@ describe("setup (OSS)", () => {
         ],
       });
       await skipWelcomeScreen();
-      await skipLanguageStep();
       await submitUserInfoStep();
 
       await selectUsageReason("embedding");
@@ -211,7 +202,6 @@ describe("setup (OSS)", () => {
     it("should call navigator.sendBeacon if the user checked the box", async () => {
       await setup();
       await skipWelcomeScreen();
-      await skipLanguageStep();
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
@@ -239,7 +229,6 @@ describe("setup (OSS)", () => {
     it("should *NOT* call navigator.sendBeacon if the user has not checked the box", async () => {
       await setup();
       await skipWelcomeScreen();
-      await skipLanguageStep();
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();

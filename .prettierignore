@@ -2,4 +2,4 @@ frontend/src/cljs
 docs/configuring-metabase/environment-variables.md
 docs/api/*
 docs/api-documentation.md
-enterprise/frontend/src/embedding-sdk-shared/.storybook/msw-public/mockServiceWorker.js
+frontend/src/embedding-sdk-shared/.storybook/msw-public/mockServiceWorker.js

@@ -24,69 +24,71 @@ import {
   getCollectionType,
   getIcon,
   isRegularCollection,
+  isSyncedCollection,
 } from "./utils";
 
-if (hasPremiumFeature("official_collections")) {
-  PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
+/**
+ * Initialize collections plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("remote_sync")) {
+    PLUGIN_COLLECTIONS.isSyncedCollection = isSyncedCollection;
+  }
 
-  PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
+  if (hasPremiumFeature("official_collections")) {
+    PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
+    PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
+    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
+    PLUGIN_COLLECTIONS.getIcon = getIcon;
 
-  PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
+    PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
+      collection: Collection,
+      onUpdate: (collection: Collection, values: Partial<Collection>) => void,
+    ) => {
+      if (isRegularCollection(collection)) {
+        return [
+          <Menu.Item
+            key="collection-make-official"
+            leftSection={<Icon name={OFFICIAL_COLLECTION.icon} />}
+            onClick={() =>
+              onUpdate(collection, {
+                authority_level: OFFICIAL_COLLECTION.type,
+              })
+            }
+          >{t`Make collection official`}</Menu.Item>,
+        ];
+      } else {
+        return [
+          <Menu.Item
+            key="collection-remove-official"
+            leftSection={<Icon name="close" />}
+            onClick={() =>
+              onUpdate(collection, {
+                authority_level: REGULAR_COLLECTION.type,
+              })
+            }
+          >{t`Remove Official badge`}</Menu.Item>,
+        ];
+      }
+    };
 
-  PLUGIN_COLLECTIONS.getIcon = getIcon;
+    PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics =
+      filterOutItemsFromInstanceAnalytics;
+    PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
+      FormCollectionAuthorityLevel;
+    PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =
+      CollectionAuthorityLevelIcon;
+    PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay =
+      CollectionAuthorityLevelDisplay;
+  }
 
-  PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
-    collection: Collection,
-    onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ) => {
-    if (isRegularCollection(collection)) {
-      return [
-        <Menu.Item
-          key="collection-make-official"
-          leftSection={<Icon name={OFFICIAL_COLLECTION.icon} />}
-          onClick={() =>
-            onUpdate(collection, {
-              authority_level: OFFICIAL_COLLECTION.type,
-            })
-          }
-        >{t`Make collection official`}</Menu.Item>,
-      ];
-    } else {
-      return [
-        <Menu.Item
-          key="collection-remove-official"
-          leftSection={<Icon name="close" />}
-          onClick={() =>
-            onUpdate(collection, {
-              authority_level: REGULAR_COLLECTION.type,
-            })
-          }
-        >{t`Remove Official badge`}</Menu.Item>,
-      ];
-    }
-  };
-
-  PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics =
-    filterOutItemsFromInstanceAnalytics;
-
-  PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
-    FormCollectionAuthorityLevel;
-
-  PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =
-    CollectionAuthorityLevelIcon;
-
-  PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay =
-    CollectionAuthorityLevelDisplay;
-}
-
-if (hasPremiumFeature("audit_app")) {
-  PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon =
-    CollectionInstanceAnalyticsIcon;
-
-  PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
-  PLUGIN_COLLECTIONS.useGetDefaultCollectionId = useGetDefaultCollectionId;
-  PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
-    CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
-
-  PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
+  if (hasPremiumFeature("audit_app")) {
+    PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon =
+      CollectionInstanceAnalyticsIcon;
+    PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
+    PLUGIN_COLLECTIONS.useGetDefaultCollectionId = useGetDefaultCollectionId;
+    PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
+      CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
+    PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
+  }
 }

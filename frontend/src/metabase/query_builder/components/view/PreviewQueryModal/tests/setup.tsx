@@ -6,8 +6,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import {
-  createMockCard,
   createMockDatabase,
+  createMockNativeCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import {
@@ -28,7 +28,7 @@ export const setup = ({
   hasEnterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
-  const card = createMockCard();
+  const card = createMockNativeCard();
   const state = createMockState({
     qb: createMockQueryBuilderState({ card }),
     entities: createMockEntitiesState({

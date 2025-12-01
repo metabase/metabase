@@ -22,16 +22,16 @@ runs:
         chrome-version: 1097615
       id: setup-chrome
 
-    - name: Check to see if dependencies should be cached
-      if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
-      run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
-      shell: bash
+    - name: Get cache keys
+      uses: ./.github/actions/get-cache-keys
+      id: get-cache-keys
+
     - name: Get Cypress cache
-      uses: actions/cache@v4
-      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
+      uses: actions/cache/restore@v4
       with:
         path: ~/.cache/Cypress
-        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
+        key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+
     - name: Ensure that Cypress executable is ready
       run: |
         yarn cypress install

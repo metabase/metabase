@@ -7,9 +7,24 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(deftest public-sharing-test
+  (testing "Document's :public_uuid visibility based on public sharing setting"
+    (testing "comes back if public sharing is enabled"
+      (tu/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
+          (is (=? u/uuid-regex
+                  (:public_uuid document))))))
+    (testing "comes back as nil if public sharing is disabled"
+      (tu/with-temporary-setting-values [enable-public-sharing false]
+        (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
+          (is (= nil
+                 (:public_uuid document))))))))
 
 (deftest sync-document-cards-collection-matching-cards-test
   (testing "should only update cards with matching document_id"
@@ -176,7 +191,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
 
           ;; Should not throw any exception
-          (is (true? (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
+          (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-throws-403-missing-old-permission-test
   (testing "throws 403 when user lacks write permission for old collection"
@@ -189,7 +204,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
 
           ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-throws-403-missing-new-permission-test
@@ -203,7 +218,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
 
           ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-throws-403-no-permissions-test
@@ -216,7 +231,7 @@
           ;; No permissions granted
 
           ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-allows-move-from-root-test
@@ -229,7 +244,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
 
           ;; Should not throw any exception when old collection is nil
-          (is (true? (document/validate-collection-move-permissions nil new-collection-id))))))))
+          (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-allows-move-to-root-test
   (testing "allows move when new collection is nil (moving to root)"
@@ -261,7 +276,7 @@
 
           ;; Use a non-existent collection ID
           (let [non-existent-id 999999]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Request."
                                   (document/validate-collection-move-permissions old-collection-id non-existent-id)))))))))
 
 (deftest validate-collection-move-permissions-throws-400-archived-collection-test
@@ -285,7 +300,7 @@
                    :model/Collection {new-collection-id :id} {:name "New Collection"}]
       (mt/with-current-user (mt/user->id :crowberto)
         ;; Superuser should be able to move without explicit permissions
-        (is (true? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
+        (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
 
 (deftest hydrate-document-creator-test
   (testing "hydrates document creator correctly"
@@ -340,6 +355,82 @@
             (is (= user1-id (get-in doc3 [:creator :id])))
             (is (= "Alice" (get-in doc3 [:creator :first_name])))))))))
 
+(deftest hydrate-document-cards-test
+  (testing "hydrates document cards correctly"
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
+                   :model/Card {card1-id :id} {:name "Card 1"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id document-id}
+                   :model/Card {card2-id :id} {:name "Card 2"
+                                               :dataset_query (mt/mbql-query venues {:limit 10})
+                                               :document_id document-id}]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :cards)]
+        (testing "cards are hydrated as a map keyed by card ID"
+          (is (map? (:cards hydrated-doc)))
+          (is (= 2 (count (:cards hydrated-doc))))
+          (is (contains? (:cards hydrated-doc) card1-id))
+          (is (contains? (:cards hydrated-doc) card2-id)))
+
+        (testing "cards contain correct data"
+          (is (= "Card 1" (get-in hydrated-doc [:cards card1-id :name])))
+          (is (= "Card 2" (get-in hydrated-doc [:cards card2-id :name])))
+          (is (= document-id (get-in hydrated-doc [:cards card1-id :document_id])))
+          (is (= document-id (get-in hydrated-doc [:cards card2-id :document_id]))))))))
+
+(deftest hydrate-document-cards-excludes-archived-test
+  (testing "hydrated cards exclude archived cards"
+    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
+                   :model/Card {active-card-id :id} {:name "Active Card"
+                                                     :dataset_query (mt/mbql-query venues {:limit 5})
+                                                     :document_id document-id
+                                                     :archived false}
+                   :model/Card {archived-card-id :id} {:name "Archived Card"
+                                                       :dataset_query (mt/mbql-query venues {:limit 5})
+                                                       :document_id document-id
+                                                       :archived true}]
+      (let [hydrated-doc (t2/hydrate (t2/select-one :model/Document :id document-id) :cards)]
+        (testing "only active cards are included"
+          (is (= 1 (count (:cards hydrated-doc))))
+          (is (contains? (:cards hydrated-doc) active-card-id))
+          (is (not (contains? (:cards hydrated-doc) archived-card-id))))))))
+
+(deftest hydrate-multiple-documents-cards-test
+  (testing "hydrates cards for multiple documents efficiently"
+    (mt/with-temp [:model/Document {doc1-id :id} {:name "Document 1"}
+                   :model/Document {doc2-id :id} {:name "Document 2"}
+                   :model/Document {doc3-id :id} {:name "Document 3"}
+                   :model/Card {card1-id :id} {:name "Card 1"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id doc1-id}
+                   :model/Card {card2-id :id} {:name "Card 2"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id doc1-id}
+                   :model/Card {card3-id :id} {:name "Card 3"
+                                               :dataset_query (mt/mbql-query venues {:limit 5})
+                                               :document_id doc2-id}]
+      (let [documents (t2/select :model/Document :id [:in [doc1-id doc2-id doc3-id]])
+            hydrated-docs (t2/hydrate documents :cards)]
+        (testing "all documents have cards field"
+          (is (= 3 (count hydrated-docs)))
+          (doseq [doc hydrated-docs]
+            (is (map? (:cards doc)))))
+
+        (testing "cards are correctly matched to documents"
+          (let [doc1 (first (filter #(= doc1-id (:id %)) hydrated-docs))
+                doc2 (first (filter #(= doc2-id (:id %)) hydrated-docs))
+                doc3 (first (filter #(= doc3-id (:id %)) hydrated-docs))]
+            (testing "document 1 has two cards"
+              (is (= 2 (count (:cards doc1))))
+              (is (contains? (:cards doc1) card1-id))
+              (is (contains? (:cards doc1) card2-id)))
+
+            (testing "document 2 has one card"
+              (is (= 1 (count (:cards doc2))))
+              (is (contains? (:cards doc2) card3-id)))
+
+            (testing "document 3 has no cards"
+              (is (empty? (:cards doc3))))))))))
+
 (deftest document-collection-position-field-handling-test
   (testing "Document model supports collection_position field"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}
@@ -367,7 +458,7 @@
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
-      (is (= [:view_count :last_viewed_at] (:skip spec)))
+      (is (= [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version] (:skip spec)))
       (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
       (is (contains? (:transform spec) :updated_at))
@@ -610,7 +701,7 @@
                                                                            {:type "cardEmbed"
                                                                             :attrs {:id 789}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 456] {"Document" document-id}
                 ["Card" 789] {"Document" document-id}}
                descendants))))))
@@ -619,13 +710,13 @@
   (testing "Document descendants includes smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {:id 456
+                                                                            :attrs {:entityId 456
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 789
+                                                                            :attrs {:entityId 789
                                                                                     :model "dashboard"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 456] {"Document" document-id}
                 ["Dashboard" 789] {"Document" document-id}}
                descendants))))))
@@ -636,13 +727,13 @@
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id 111}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 222
+                                                                            :attrs {:entityId 222
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 333
+                                                                            :attrs {:entityId 333
                                                                                     :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 111] {"Document" document-id}
                 ["Card" 222] {"Document" document-id}
                 ["Table" 333] {"Document" document-id}}
@@ -654,25 +745,25 @@
                                                                  :content [{:type "paragraph"
                                                                             :content [{:type "text" :text "Plain text only"}]}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {} descendants))))))
 
 (deftest document-serdes-descendants-nonexistent-document-test
   (testing "Document descendants returns nil for non-existent document"
-    (let [descendants (serdes/descendants "Document" 99999999)]
+    (let [descendants (serdes/descendants "Document" 99999999 {})]
       (is (nil? descendants)))))
 
 (deftest document-serdes-descendants-unknown-smart-link-model-test
   (testing "Document descendants ignores smart links with unknown model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {:id 456
+                                                                            :attrs {:entityId 456
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 789
+                                                                            :attrs {:entityId 789
                                                                                     :model "unknown-model"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         ;; Should only include the known model type
         (is (= {["Card" 456] {"Document" document-id}}
                descendants))
@@ -685,10 +776,10 @@
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id 456}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 456
+                                                                            :attrs {:entityId 456
                                                                                     :model "card"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         ;; Should merge duplicate references - same card referenced twice
         (is (= {["Card" 456] {"Document" document-id}}
                descendants))
@@ -699,23 +790,23 @@
   (testing "Document descendants handles non-prose-mirror documents"
     (mt/with-temp [:model/Document {document-id :id} {:document {:some "other format"}
                                                       :content_type "application/json"}] ; Not prose-mirror
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (nil? descendants))))))
 
 (deftest document-serdes-descendants-all-model-types-test
   (testing "Document descendants correctly maps all supported smart link model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {:id 111
+                                                                            :attrs {:entityId 111
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 222
+                                                                            :attrs {:entityId 222
                                                                                     :model "dashboard"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 333
+                                                                            :attrs {:entityId 333
                                                                                     :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 111] {"Document" document-id}
                 ["Dashboard" 222] {"Document" document-id}
                 ["Table" 333] {"Document" document-id}}

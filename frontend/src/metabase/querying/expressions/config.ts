@@ -460,6 +460,27 @@ const STRING = defineClauses(
         },
       ],
     },
+    collate: {
+      displayName: "collate",
+      type: "string",
+      requiresFeature: "collate",
+      description: () =>
+        t`Applies a collation to a text value for sorting and comparison purposes.`,
+      args: () => [
+        {
+          name: t`value`,
+          type: "string",
+          description: t`The column or text to apply the collation to.`,
+          example: dimension(t`Name`),
+        },
+        {
+          name: t`collation`,
+          type: "string",
+          description: t`The collation specification.`,
+          example: t`en-ci-ai`,
+        },
+      ],
+    },
     "regex-match-first": {
       displayName: `regexExtract`,
       type: "string",

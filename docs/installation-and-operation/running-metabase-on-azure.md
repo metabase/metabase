@@ -49,7 +49,7 @@ From the Azure Management console homepage, create a new resource. This time sea
 
 ![Azure PostgreSQL](images/AZDatabase.png)
 
-In the next page you will have to select the way you will use the service. Choose **Single server** for now, which is a good starting point, but take into account that this will create just one instance of PostgreSQL that will be your single point of failure.
+In the next page you will have to select the way you will use the service. Choose **Single server** for now, which is a good starting point, but consider that this will create just one instance of PostgreSQL that will be your single point of failure.
 
 On the next screen, select or enter the following:
 
@@ -121,7 +121,7 @@ Return to the application configuration page and click on **Settings** -> **Conf
 
 You'll need to add the [environment Variables](../configuring-metabase/environment-variables.md) for connecting Metabase to its [PostgreSQL Application Database](../installation-and-operation/configuring-application-database.md#postgresql). Make sure that you use the full **MB_DB_CONNECTION_URI**.
 
-Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows:
+Also, consider that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows:
 
 ```
 postgresql://databasePrivateIPAddress:port/postgres?user=user@name_of_your_database_engine&password=configuredpassword&ssl=true&sslmode=required
@@ -182,7 +182,7 @@ In your Azure web app, visit **Settings** -> **Custom domains** to use a custom 
 
 Azure provides an easy way to increase the server's capacity by doing a Scale-up. Simply choose a pricing tier with more RAM and CPU count and restart the instance. This approach is easier than scaling out and you should choose this option first before scaling out.
 
-For a highly-available Metabase deployment, you can tell your web app to scale-out (more servers serving the application in parallel). Simply go to Scale-out and use the slider to ask for more instances, or use a custom autoscaling policy (like using more servers during your work hours and fewer during off hours).
+For a highly available Metabase deployment, you can tell your web app to scale-out (more servers serving the application in parallel). Simply go to Scale-out and use the slider to ask for more instances, or use a custom autoscaling policy (like using more servers during your work hours and fewer during off hours).
 
 ### CORS
 

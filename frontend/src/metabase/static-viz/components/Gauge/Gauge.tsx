@@ -177,6 +177,8 @@ export default function Gauge({
           height={CHART_HEIGHT}
           width={CHART_WIDTH}
           preserveAspectRatio="xMinYMin slice"
+          fill={getColor("text-secondary")}
+          opacity={0.2}
         />
       )}
     </svg>

@@ -5,3 +5,11 @@ export const trackNewMetricInitiated = () =>
     event: "plus_button_clicked",
     triggered_from: "metric",
   });
+
+export const trackMetricBookmarked = () => {
+  trackSimpleEvent({
+    event: "bookmark_added",
+    event_detail: "metric",
+    triggered_from: "browse_metrics",
+  });
+};

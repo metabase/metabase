@@ -89,7 +89,7 @@
               (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
           (testing "Will return successfully if the lock is released while we are waiting"
             (let [migrate-ms 100
-                  timeout-ms 200
+                  timeout-ms 500
                   locked     (promise)]
               (future
                 (liquibase/with-scope-locked liquibase

@@ -10,22 +10,18 @@ import { t } from "ttag";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
-import { SemanticTypePicker } from "metabase/metadata/components";
-import { Icon } from "metabase/ui";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import {
+  CurrencyPicker,
+  SemanticTypePicker,
+} from "metabase/metadata/components";
+import { getFieldCurrency } from "metabase/metadata/utils/field";
+import { Box, Icon } from "metabase/ui";
+import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import F from "./Field.module.css";
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
 
-const Field = ({
-  databaseId,
-  field,
-  foreignKeys,
-  url,
-  icon,
-  isEditing,
-  formField,
-}) => {
+const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
   const semanticType =
     typeof formField.semantic_type.value !== "undefined"
       ? formField.semantic_type.value
@@ -104,33 +100,44 @@ const Field = ({
           <div className={F.fieldDataType}>{field.database_type}</div>
         </div>
         <div className={S.itemSubtitle}>
-          <div className={F.fieldForeignKey}>
-            {isEditing
-              ? isTypeFK(semanticType) && (
-                  <FieldFkTargetPicker
-                    className={CS.mt1}
-                    databaseId={databaseId}
-                    field={field}
-                    value={
-                      formField.fk_target_field_id.value ||
-                      field.fk_target_field_id
-                    }
-                    onChange={(value) => {
-                      formField.fk_target_field_id.onChange({
-                        target: {
-                          name: formField.fk_target_field_id.name,
-                          value,
-                        },
-                      });
-                    }}
-                  />
-                )
-              : isTypeFK(field.semantic_type) && (
-                  <span className={CS.mt1}>
-                    {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
-                  </span>
+          {isEditing && isTypeFK(semanticType) && (
+            <Box mt="sm">
+              <FieldFkTargetPicker
+                databaseId={databaseId}
+                field={field}
+                value={
+                  formField.fk_target_field_id.value || field.fk_target_field_id
+                }
+                onChange={(value) => {
+                  formField.fk_target_field_id.onChange({
+                    target: {
+                      name: formField.fk_target_field_id.name,
+                      value,
+                    },
+                  });
+                }}
+              />
+            </Box>
+          )}
+
+          {isEditing && isTypeCurrency(semanticType) && (
+            <Box Box mt="sm">
+              <CurrencyPicker
+                value={getFieldCurrency(
+                  formField.settings.value ?? field.settings,
                 )}
-          </div>
+                fw="bold"
+                onChange={(currency) => {
+                  formField.settings.onChange({
+                    target: {
+                      name: formField.settings.name,
+                      value: { ...field.settings, currency },
+                    },
+                  });
+                }}
+              />
+            </Box>
+          )}
 
           {match({ description: field.description, isEditing })
             .with({ isEditing: true }, () => {
@@ -159,7 +166,6 @@ const Field = ({
 Field.propTypes = {
   databaseId: PropTypes.number.isRequired,
   field: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object.isRequired,
   url: PropTypes.string.isRequired,
   placeholder: PropTypes.string,
   icon: PropTypes.string,

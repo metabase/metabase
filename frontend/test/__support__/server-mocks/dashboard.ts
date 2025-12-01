@@ -18,6 +18,21 @@ export function setupDashboardEndpoints(dashboard: Dashboard) {
   });
 }
 
+export function setupAutoDashboardEndpoints(
+  dashboard: Dashboard,
+  metadata: DashboardQueryMetadata,
+) {
+  fetchMock.get(
+    `path:/api/automagic-dashboards/table/${dashboard.id}`,
+    dashboard,
+  );
+  fetchMock.get(
+    `path:/api/automagic-dashboards/table/${dashboard.id}/query_metadata`,
+    metadata,
+  );
+  fetchMock.post(`path:/api/dashboard/save`, dashboard);
+}
+
 export function setupDashboardCreateEndpoint(dashboard: Partial<Dashboard>) {
   fetchMock.post(
     `path:/api/dashboard`,

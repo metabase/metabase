@@ -1,14 +1,12 @@
 (ns metabase-enterprise.transforms.execute
   (:require
-   [clojure.core.async :as a]
-   [metabase-enterprise.transforms.canceling :as canceling]
-   [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
+   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
-   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -17,41 +15,21 @@
 
 (mr/def ::transform-details
   [:map
-   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
-   [:connection-details :any]
-   [:query :string]
+   [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
+   [:conn-spec :any]
+   [:query ::qp.compile/compiled]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
 (mr/def ::transform-opts
   [:map
    [:overwrite? :boolean]])
 
-(defn- sync-target!
-  ([transform-id run-id]
-   (let [{:keys [source target]} (t2/select-one :model/Transform transform-id)
-         db (get-in source [:query :database])
-         database (t2/select-one :model/Database db)]
-     (sync-target! target database run-id)))
-  ([target database _run-id]
-   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
-   (log/info "Syncing target" (pr-str target) "for transform")
-   (transforms.util/activate-table-and-mark-computed! database target)))
+(defn- transform-opts [{:keys [transform-type]}]
+  (case transform-type
+    :table {:overwrite? true}
 
-(defn run-transform!
-  "Run a compiled transform"
-  [run-id driver transform-details opts]
-  ;; local run is responsible for status
-  (try
-    (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
-    (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-      (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
-      (driver/run-transform! driver transform-details opts))
-    (transform-run/succeed-started-run! run-id)
-    (catch Throwable t
-      (transform-run/fail-started-run! run-id {:message (.getMessage t)})
-      (throw t))
-    (finally
-      (canceling/chan-end-run! run-id))))
+    ;; once we have more than just append, dispatch on :target-incremental-strategy
+    :table-incremental {}))
 
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
@@ -64,30 +42,36 @@
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
-           feature (transforms.util/required-database-feature transform)
-           transform-details {:transform-type (keyword (:type target))
-                              :connection-details (driver/connection-details driver database)
-                              :query (transforms.util/compile-source source)
+           transform-details {:db-id db
+                              :database database
+                              :transform-id   id
+                              :transform-type (keyword (:type target))
+                              :conn-spec (driver/connection-spec driver database)
+                              :query (transforms.util/compile-source transform)
+                              :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
-           opts {:overwrite? true}]
-       (when-not (driver.u/supports? driver feature database)
+           opts (transform-opts transform-details)
+           features (transforms.util/required-database-features transform)]
+
+       (when (transforms.util/db-routing-enabled? database)
+         (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
+                         {:driver driver, :database database})))
+       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
          (throw (ex-info "The database does not support the requested transform target type."
-                         {:driver driver, :database database, :feature feature})))
+                         {:driver driver, :database database, :features features})))
        ;; mark the execution as started and notify any observers
-       (let [{run-id :id} (try
-                            (transform-run/start-run! id {:run_method run-method})
-                            (catch java.sql.SQLException e
-                              (if (= (.getSQLState e) "23505")
-                                (throw (ex-info "Transform is already running"
-                                                {:error :already-running
-                                                 :transform-id id}
-                                                e))
-                                (throw e))))]
+       (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method)]
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
-         (run-transform! run-id driver transform-details opts)
-         (sync-target! target database run-id)))
+         (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+           (transforms.util/run-cancelable-transform!
+            run-id driver transform-details
+            (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
+         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
+           (transforms.util/sync-target! target database)
+         ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+           (events/publish-event! :event/transform-run-complete {:object transform-details}))))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise

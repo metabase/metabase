@@ -2,9 +2,9 @@
 import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
-import { alpha, color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 interface TabProps {
   isSelected?: boolean;
@@ -22,8 +22,8 @@ export const TabRoot = styled.button<TabProps>`
   cursor: pointer;
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
-  margin-right: ${space(1)};
-  border-radius: ${space(0)};
+  margin-right: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-spacing-xs);
 
   &:hover {
     color: var(--mb-color-brand);

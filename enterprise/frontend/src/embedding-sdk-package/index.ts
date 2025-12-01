@@ -69,6 +69,7 @@ export {
   type InteractiveQuestionComponents,
   type InteractiveQuestionProps,
 } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
+export { type MetabotQuestionProps } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 export {
   type StaticQuestionProps,
   type StaticQuestionComponents,
@@ -103,6 +104,7 @@ export type {
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
   MetabaseFontFamily,
+  MetabaseGlobalPluginsConfig,
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,
@@ -120,13 +122,12 @@ export type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 
-export type {
-  UserBackendJwtResponse,
-  MetabaseFetchRequestTokenFn,
-  MetabaseEmbeddingSessionToken,
-} from "embedding-sdk-bundle/types/refresh-token";
-
 export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 export type { IconName } from "metabase/embedding-sdk/types/icon";
+
+export type {
+  UserBackendJwtResponse,
+  MetabaseFetchRequestTokenFn,
+} from "metabase/embedding-sdk/types/refresh-token";

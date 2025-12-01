@@ -23,7 +23,7 @@ interface FieldListProps {
   onFieldClick: (field: Field) => void;
 }
 
-const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
+export const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
   <DelayGroup>
     <NodeListContainer>
       <NodeListTitle>
@@ -61,6 +61,3 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
     </NodeListContainer>
   </DelayGroup>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FieldList;

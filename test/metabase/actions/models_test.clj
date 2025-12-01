@@ -33,20 +33,43 @@
                                     :result_metadata (assoc-in (vec (qp.preprocess/query->expected-cols (mt/mbql-query categories)))
                                                                [1 :display_name] "Display Name")}
                             {:keys [action-id] :as _context} {:type :implicit}]
-            (is (partial= {:id                     action-id
-                           :name                   "Update Example"
-                           :database_id            (mt/id)
-                           :parameters             [{:type         (if (= driver/*driver* :h2) :type/BigInteger :type/Integer)
-                                                     :id           "id"
-                                                     :display-name "ID"}
-                                                    {:type         :type/Text
-                                                     :id           "name"
-                                                     :display-name "Display Name"}]
-                           :visualization_settings {:fields {"id"   {:id     "id"
-                                                                     :hidden false}
-                                                             "name" {:id     "name"
-                                                                     :hidden false}}}}
-                          (action/select-action :id action-id)))))
+            (is (=? {:id                     action-id
+                     :name                   "Update Example"
+                     :database_id            (mt/id)
+                     :parameters             [{:type         :number
+                                               :id           "id"
+                                               :display-name "ID"}
+                                              {:type         :text
+                                               :id           "name"
+                                               :display-name "Display Name"}]
+                     :visualization_settings {:fields {"id"   {:description  nil
+                                                               :placeholder  "ID"
+                                                               :title        "ID"
+                                                               :hidden       false
+                                                               :id           "id"
+                                                               :display_name "ID"
+                                                               :inputType    :number
+                                                               :base_type    #(isa? % :type/Integer)
+                                                               :fieldType    :number
+                                                               :required     true
+                                                               :order        0}
+                                                       "name" {:description  nil
+                                                               :placeholder  "Name"
+                                                               :title        "Name"
+                                                               :hidden       false
+                                                               :id           "name"
+                                                               :display_name "Name"
+                                                               :inputType    :string
+                                                               :base_type    :type/Text
+                                                               :fieldType    :string
+                                                               :required     true
+                                                               :order        1}}}}
+                    (action/select-action :id action-id)))))))))
+
+(deftest hydrate-implicit-action-test-1a
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-test-data-and-actions-enabled
+      (let [query (mt/mbql-query categories)]
         (testing "for implicit actions visualization_settings.fields, "
           (mt/with-actions [_model {:type            :model
                                     :dataset_query   query
@@ -58,15 +81,15 @@
                                                                                                                 :hidden true}}}}]
             (let [field-settings (get-in (action/select-action :id action-id) [:visualization_settings :fields])]
               (testing "an existing entry should not update if there's a matching parameter"
-                (is (= {:id     "id"
-                        :hidden true}
-                       (get field-settings "id"))))
+                (is (=? {:id     "id"
+                         :hidden true}
+                        (get field-settings "id"))))
               (testing "an existing entry should be deleted if there's not a matching parameter"
                 (is (not (contains? field-settings "doesnt_exist"))))
               (testing "a entry with defaults should be created if there is a new matching parameter"
-                (is (= {:id "name"
-                        :hidden false}
-                       (get field-settings "name")))))))))))
+                (is (=? {:id "name"
+                         :hidden false}
+                        (get field-settings "name")))))))))))
 
 (deftest hydrate-implicit-action-test-2
   (testing "Implicit actions do not map parameters to json fields (parents or nested)"
@@ -135,7 +158,7 @@
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
                                                                  :dashboard_id dashboard-id}]
             (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
-            (action/update! {:id action-id, :archived true} {:id action-id})
+            (action/update! {:id action-id, :archived true} (action/select-action :id action-id))
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
 
 (deftest dashcard-deletion-test-2
@@ -159,14 +182,14 @@
           (let [action        (action/select-action :id action-id)
                 new-id        (action/insert! (dissoc action :id :made_public_by_id :public_uuid :entity_id))
                 cloned-action (action/select-action :id new-id)]
-            (is (partial= {:kind "row/create"} cloned-action))))
+            (is (partial= {:kind :row/create} cloned-action))))
         (testing "Update action"
           (let [action (action/select-action :id action-id)]
             ;; Update columns on both the action and the subtype table
             (action/update! (assoc action :name "New name" :kind "row/update") action)
             (let [new-action (action/select-action :id action-id)]
               (is (partial= {:name "New name"
-                             :kind "row/update"} new-action)))))))))
+                             :kind :row/update} new-action)))))))))
 
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -205,14 +228,14 @@
 (deftest exclude-auto-increment-fields-for-create-implicit-actions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
-      (doseq [kind ["row/create" "row/update" "row/delete"]]
+      (doseq [kind [:row/create :row/update :row/delete]]
         (testing (format "for implicit action with kind=%s we should %s include auto incremented fields"
-                         kind (if (= "row/create" kind) "not" ""))
+                         kind (if (= :row/create kind) "not" ""))
           (mt/with-actions [{:keys [action-id]} {:type :implicit
                                                  :kind kind}]
             (let [parameters (:parameters (action/select-action :id action-id))
                   id-parameter (first (filter #(= "id" (:id %)) parameters))]
-              (if (= "row/create" kind)
+              (if (= kind :row/create)
                 (is (nil? id-parameter))
                 (is (some? id-parameter))))))))))
 
@@ -236,14 +259,14 @@
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select ['Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
+             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
                         :table_id (mt/id :default_uuid))))
       (is (= [{:database_is_auto_increment false
                :database_required          true
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select ['Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
+             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
                         :table_id (mt/id :required_uuid)))))
     (mt/with-actions-enabled
       (testing "PK with a default should be excluded from implicit create action parameters"
@@ -292,7 +315,7 @@
               action-id           (action/insert! action-data)
               select-action       #(action/select-action :id action-id)
               action-after-insert (select-action)]
-          (is (= [:type/Boolean] (map :type (:parameters action-after-insert))))
+          (is (= [:boolean] (map :type (:parameters action-after-insert))))
           (action/update! (assoc (select-action) :name "create foo2") action-after-insert)
           (is (= (:parameters action-after-insert) (:parameters (select-action)))))))))
 
@@ -315,13 +338,13 @@
                                (sync/sync-database! (mt/db)))]
           (testing "if a column type is varied the parameter types are updated on select-action"
             (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
-            (is (= [["name" :type/BigInteger]] (map (juxt :id :type) (:parameters (action/select-action action-id)))))
+            (is (= [["name" :number]] (map (juxt :id :type) (:parameters (action/select-action action-id)))))
             (testing "if the column type is varied after an update to the action, it is reflected in the parameters"
               (let [action (action/select-action action-id)]
                 (action/update! (assoc action :name "create foo2") action)
                 (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;")
                 (sync/sync-database! (mt/db))
-                (is (= [["name" :type/Text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
+                (is (= [["name" :text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
           (testing "if a column added, the model column set is used, not the table"
             (exec! "ALTER TABLE \"FOO\" ADD COLUMN \"name2\" BIGINT;")
             (is (= ["name"] (map :id (:parameters (action/select-action action-id))))))

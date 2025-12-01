@@ -1,0 +1,10 @@
+.nativeSidebar {
+  border-left: 1px solid var(--mb-color-border);
+  margin-inline-start: 0.25rem;
+}
+
+.nativeSidebarToggle {
+  position: absolute;
+  top: var(--mantine-spacing-lg);
+  right: var(--mantine-spacing-md);
+}

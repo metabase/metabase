@@ -32,7 +32,7 @@ export const canAccessSettings = createSelector(
 
 export const getUserAttributes = createSelector(
   [getUser],
-  (user) => user?.login_attributes || {},
+  (user) => user?.attributes || {},
 );
 
 export const getUserPersonalCollectionId = createSelector(

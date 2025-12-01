@@ -32,11 +32,11 @@
                ["native"
                 {:gtaps      {:venues {:query
                                        (mt/native-query
-                                         {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
-                                          :template-tags {"cat" {:id           "__MY_CAT__"
-                                                                 :name         "cat"
-                                                                 :display-name "Cat id"
-                                                                 :type         :number}}})
+                                        {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
+                                         :template-tags {"cat" {:id           "__MY_CAT__"
+                                                                :name         "cat"
+                                                                :display-name "Cat id"
+                                                                :type         :number}}})
                                        :remappings {:cat [:variable [:template-tag "cat"]]}}}
                  :attributes {:cat 50}}]]]
         (testing (format "GTAP rule is a %s query" query-type)

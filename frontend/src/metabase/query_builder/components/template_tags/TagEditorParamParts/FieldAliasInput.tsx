@@ -52,7 +52,7 @@ function FieldAlisHelpInfo() {
       <HoverCard.Target>
         <Icon
           c="text-secondary"
-          name="info_filled"
+          name="info"
           data-testid="field-alias-info-icon"
         />
       </HoverCard.Target>

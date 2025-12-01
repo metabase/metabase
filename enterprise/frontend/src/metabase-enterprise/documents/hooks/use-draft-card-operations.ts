@@ -19,7 +19,7 @@ export function useDraftCardOperations(
   const dispatch = useDispatch();
 
   const ensureDraftCard = useCallback(
-    (initialModifications = {}, isVizSettingsOnly = false) => {
+    (initialModifications: Partial<Card> = {}, isVizSettingsOnly = false) => {
       const baseCard = draftCard || card;
       if (!baseCard) {
         return cardId;

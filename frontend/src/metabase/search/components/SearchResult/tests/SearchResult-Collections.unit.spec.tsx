@@ -1,8 +1,9 @@
-import { setupEnterpriseTest } from "__support__/enterprise";
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   getIcon,
   queryIcon,
@@ -12,7 +13,13 @@ import {
 } from "__support__/ui";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import type { WrappedResult } from "metabase/search/types";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import type { TokenFeatures } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { createWrappedSearchResult } from "./util";
 
@@ -40,14 +47,36 @@ const resultInOfficalCollection = createWrappedSearchResult({
   collection: TEST_OFFICIAL_COLLECTION,
 });
 
-const setup = ({ result }: { result: WrappedResult }) => {
+interface SetupOpts {
+  tokenFeatures?: Partial<TokenFeatures>;
+  hasEnterprisePlugins?: boolean;
+  result: WrappedResult;
+}
+
+const setup = ({
+  tokenFeatures = {},
+  hasEnterprisePlugins = false,
+  result,
+}: SetupOpts) => {
   setupCollectionByIdEndpoint({
     collections: [TEST_REGULAR_COLLECTION, TEST_OFFICIAL_COLLECTION],
   });
 
   setupUserRecipientsEndpoint({ users: [createMockUser()] });
 
-  renderWithProviders(<SearchResult result={result} index={0} />);
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+  });
+
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
+  renderWithProviders(<SearchResult result={result} index={0} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("SearchResult > Collections", () => {
@@ -89,10 +118,6 @@ describe("SearchResult > Collections", () => {
       getIcon: () => ({ name: "table" }),
     };
 
-    beforeAll(() => {
-      setupEnterpriseTest();
-    });
-
     it("renders regular collection correctly", async () => {
       setup({ result: resultInRegularCollection });
       expect(
@@ -111,7 +136,11 @@ describe("SearchResult > Collections", () => {
     });
 
     it("renders official collections correctly", async () => {
-      setup({ result: resultInOfficalCollectionEE });
+      setup({
+        result: resultInOfficalCollectionEE,
+        hasEnterprisePlugins: true,
+        tokenFeatures: { official_collections: true },
+      });
       expect(
         screen.getByText(resultInOfficalCollectionEE.name),
       ).toBeInTheDocument();

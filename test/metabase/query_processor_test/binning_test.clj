@@ -47,7 +47,7 @@
           _               (is (= 2
                                  (count card-cols)))
           mp              (lib.tu/mock-metadata-provider
-                           (mt/application-database-metadata-provider (mt/id))
+                           (mt/metadata-provider)
                            {:cards [{:id              1
                                      :dataset-query   card-query
                                      :result-metadata card-cols}]})

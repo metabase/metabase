@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -46,7 +47,7 @@
 
 (deftest dlq-table-creation-test
   (testing "DLQ table creation and existence checks"
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
@@ -58,7 +59,7 @@
 
 (deftest dlq-entry-management-test
   (testing "DLQ entry add, query, and delete operations"
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
@@ -97,7 +98,7 @@
 
 (deftest dlq-entry-upsert-test
   (testing "DLQ entry upsert behavior on conflict"
-    (let [pgvector       semantic.tu/db
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
@@ -129,15 +130,15 @@
             (is (= t2 (:error_gated_at (first results))))))))))
 
 (deftest dlq-poll-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
         t1             (ts "2025-01-01T10:00:00Z")
         t2             (ts "2025-01-01T11:00:00Z")
         t3             (ts "2025-01-01T12:00:00Z")
-        c1             {:model "card" :id "1" :name "Test" :searchable_text "Content"}
-        c2             {:model "card" :id "2" :name "Test" :searchable_text "Content"}
+        c1             {:model "card" :id "1" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
+        c2             {:model "card" :id "2" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
 
@@ -194,15 +195,15 @@
           (is (= 3 (count (semantic.dlq/poll pgvector index-metadata @index-id-ref 10)))))))))
 
 (deftest dlq-retry-loop-test
-  (let [pgvector         semantic.tu/db
+  (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
         model            semantic.tu/mock-embedding-model
         index            (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
         clock-ref        (volatile! (Instant/parse "2025-01-04T00:00:00Z"))
         clock            (reify InstantSource (instant [_] @clock-ref))
         t1               (ts "2025-01-01T10:00:00Z")
-        c1               {:model "card" :id "1" :name "Test" :searchable_text "Content"}
-        c2               {:model "card" :id "2" :name "Test" :searchable_text "Content"}
+        c1               {:model "card" :id "1" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
+        c2               {:model "card" :id "2" :name "Test" :searchable_text "Content" :embeddable_text "Content"}
         version          semantic.gate/search-doc->gate-doc
         add-gate-to-dlq! (fn [pgvector index-metadata index-id]
                            (->> (semantic.gate/poll pgvector index-metadata {})
@@ -296,7 +297,7 @@
                 (is (pos? (:failure-count result)))))))))))
 
 (deftest try-batch-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model          semantic.tu/mock-embedding-model
         index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
@@ -308,7 +309,8 @@
                                            (.setValue (json/encode {:model           "card"
                                                                     :name            "hey"
                                                                     :id              "1"
-                                                                    :searchable_text "foo"})))
+                                                                    :searchable_text "foo"
+                                                                    :embeddable_text "foo"})))
                          :gated_at       (ts "2025-01-04T09:00:00Z")
                          :error_gated_at (ts "2025-01-04T09:00:00Z")}
                         {:id             "card_2"

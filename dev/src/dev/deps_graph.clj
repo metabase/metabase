@@ -1,8 +1,8 @@
 (ns dev.deps-graph
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
@@ -88,13 +88,16 @@
   [zloc :- ::zloc]
   (when (= (z/tag zloc) :list)
     (let [first-child (z/down zloc)]
-      (and (= (z/tag first-child) :token)
-           (require-symbols (z/sexpr first-child))))))
+      (when (= (z/tag first-child) :token)
+        ;; Check all child symbols on the line since `require` might be called in a threading macro
+        ;; like (-> 'ns require)
+        (some require-symbols (z/child-sexprs zloc))))))
 
 (mu/defn- find-required-namespace :- [:maybe simple-symbol?]
   "Given a `zloc` pointing to one of the children of something like `(require ...)` find a required namespace symbol."
   [zloc :- ::zloc]
   (when-let [symbol-loc (z/find-depth-first zloc #(and (= (z/tag %) :token)
+                                                       (symbol? (z/sexpr %))
                                                        (not= (z/sexpr %) 'quote)))]
     (let [symb (z/sexpr symbol-loc)]
       (if (qualified-symbol? symb)
@@ -123,6 +126,7 @@
       (= (z/tag zloc) :uneval)))
 
 (mu/defn- find-requires :- [:maybe [:sequential ::zloc]]
+  "Find all the zipper locations for `(require ...)` nodes."
   [zloc :- ::zloc]
   (concat
    (when-not (comment-loc? zloc)
@@ -258,41 +262,46 @@
 
   (file-dependencies "src/metabase/query_processor/middleware/permissions.clj"))
 
-(def ^{:arglists '([])} dependencies
-  (memoize/ttl
-   (fn []
-     (doall (pmap file-dependencies (find-source-files))))
-   ;; memoize for five seconds
-   :ttl/threshold 5000))
+(defn dependencies []
+  (pmap file-dependencies (find-source-files)))
 
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
-  [module-symb]
-  (for [dep    (dependencies)
-        :when  (not= (:module dep) module-symb)
-        ns-dep (:deps dep)
-        :when  (= (:module ns-dep) module-symb)]
-    {:namespace            (:namespace dep)
-     :module               (:module dep)
-     :depends-on-namespace (:namespace ns-dep)
-     :depends-on-module    (:module ns-dep)}))
+  ([module-symb]
+   (external-usages (dependencies) module-symb))
+
+  ([deps module-symb]
+   (for [dep    deps
+         :when  (not= (:module dep) module-symb)
+         ns-dep (:deps dep)
+         :when  (= (:module ns-dep) module-symb)]
+     {:namespace            (:namespace dep)
+      :module               (:module dep)
+      :depends-on-namespace (:namespace ns-dep)
+      :depends-on-module    (:module ns-dep)})))
 
 (defn external-usages-by-namespace
   "Return a map of module namespace => set of external namespaces using it"
-  [module-symb]
-  (into (sorted-map)
-        (map (fn [[k v]]
-               [k (into (sorted-set) (map :namespace) v)]))
-        (group-by :depends-on-namespace (external-usages module-symb))))
+  ([module-symb]
+   (external-usages-by-namespace (dependencies) module-symb))
+
+  ([deps module-symb]
+   (into (sorted-map)
+         (map (fn [[k v]]
+                [k (into (sorted-set) (map :namespace) v)]))
+         (group-by :depends-on-namespace (external-usages deps module-symb)))))
 
 (defn externally-used-namespaces
   "All namespaces from a module that are used outside that module."
-  [module-symb]
-  (into (sorted-set) (map :depends-on-namespace) (external-usages module-symb)))
+  ([module-symb]
+   (externally-used-namespaces (dependencies) module-symb))
+
+  ([deps module-symb]
+   (into (sorted-set) (map :depends-on-namespace) (external-usages deps module-symb))))
 
 (defn module-dependencies
-  "Build a graph of module => set of modules it refers to."
-  ([]
+  "Build a graph of module => set of modules it directly depends on."
+  ([deps]
    (letfn [(reduce-module-deps [module-deps module deps]
              (reduce
               (fn [module-deps {dep-module :module, :as _dep}]
@@ -302,15 +311,15 @@
               deps))
            (reduce-deps [module->deps {:keys [module deps]}]
              (update module->deps module reduce-module-deps module deps))]
-     (reduce reduce-deps (sorted-map) (dependencies))))
+     (reduce reduce-deps (sorted-map) deps)))
 
-  ([module]
-   (get (module-dependencies) module)))
+  ([deps module]
+   (get (module-dependencies deps) module)))
 
 (defn circular-dependencies
   "Build a graph of module => set of modules it refers to that also refer to this module."
-  ([]
-   (let [module->deps (module-dependencies)]
+  ([deps]
+   (let [module->deps (module-dependencies deps)]
      (letfn [(circular-dependency? [module-x module-y]
                (and (contains? (get module->deps module-x) module-y)
                     (contains? (get module->deps module-y) module-x)))
@@ -326,37 +335,40 @@
                        [module circular-deps])))
              (keys module->deps)))))
 
-  ([module]
-   (get (circular-dependencies) module)))
+  ([deps module]
+   (get (circular-dependencies deps) module)))
 
 (defn non-circular-module-dependencies
   "A graph of [[module-dependencies]], but with modules that have any circular dependencies filtered out. This is mostly
   meant to make it easier to fill out the `:metabase/modules` `:uses` section of the Kondo config, or to figure out
   which ones can easily get a consolidated API namespace without drama."
-  []
-  (let [circular-dependencies (circular-dependencies)]
+  [deps]
+  (let [circular-dependencies (circular-dependencies deps)]
     (into (sorted-map)
           (remove (fn [[module _deps]]
                     (contains? circular-dependencies module)))
-          (module-dependencies))))
+          (module-dependencies deps))))
 
 (defn module-usages-of-other-module
   "Information about how `module-x` uses `module-y`."
-  [module-x module-y]
-  (let [module-x-ns->module-y-ns   (->> (external-usages module-y)
-                                        (filter #(= (:module %) module-x))
-                                        (map (juxt :namespace :depends-on-namespace)))]
-    (reduce
-     (fn [m [module-x-ns module-y-ns]]
-       (update m module-x-ns (fn [deps]
-                               (conj (or deps (sorted-set)) module-y-ns))))
-     (sorted-map)
-     module-x-ns->module-y-ns)))
+  ([module-x module-y]
+   (module-usages-of-other-module (dependencies) module-x module-y))
+
+  ([deps module-x module-y]
+   (let [module-x-ns->module-y-ns (->> (external-usages deps module-y)
+                                       (filter #(= (:module %) module-x))
+                                       (map (juxt :namespace :depends-on-namespace)))]
+     (reduce
+      (fn [m [module-x-ns module-y-ns]]
+        (update m module-x-ns (fn [deps]
+                                (conj (or deps (sorted-set)) module-y-ns))))
+      (sorted-map)
+      module-x-ns->module-y-ns))))
 
 (defn full-dependencies
   "Like [[dependencies]] but also includes transient dependencies."
-  []
-  (let [deps-graph  (module-dependencies)
+  [deps]
+  (let [deps-graph  (module-dependencies deps)
         expand-deps (fn expand-deps [deps]
                       (let [deps' (into (sorted-set)
                                         (mapcat deps-graph)
@@ -369,33 +381,23 @@
                  [k (expand-deps v)]))
           deps-graph)))
 
-(defn module-deps-count []
+(defn module-deps-count [deps]
   (into (sorted-map)
         (map (fn [[k v]]
                [k (count v)]))
-        (full-dependencies)))
-
-(defn module-dependencies-mermaid []
-  (println "flowchart TD")
-  (doseq [[module deps] (module-dependencies)
-          dep deps]
-    (printf "%s-->%s\n" module dep)))
-
-(defn module-dependencies-graphviz []
-  (println "digraph {")
-  (doseq [[module deps] (module-dependencies)
-          dep deps]
-    (printf "  \"%s\" -> \"%s\"\n" module dep))
-  (println "}"))
+        (full-dependencies deps)))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
-  []
-  (into (sorted-map)
-        (map (fn [[module uses]]
-               [module {:api (externally-used-namespaces module)
-                        :uses uses}]))
-        (module-dependencies)))
+  ([]
+   (generate-config (dependencies)))
+
+  ([deps]
+   (into (sorted-map)
+         (map (fn [[module uses]]
+                [module {:api  (externally-used-namespaces deps module)
+                         :uses uses}]))
+         (module-dependencies deps))))
 
 (defn kondo-config
   "Read out the Kondo config for the modules linter."
@@ -419,13 +421,16 @@
    diff))
 
 (defn kondo-config-diff
-  []
-  (-> (ddiff/diff
-       (update-vals (kondo-config) #(dissoc % :team))
-       (generate-config))
-      ddiff/minimize
-      kondo-config-diff-ignore-any
-      ddiff/minimize))
+  ([]
+   (kondo-config-diff (dependencies)))
+
+  ([deps]
+   (-> (ddiff/diff
+        (update-vals (kondo-config) #(dissoc % :team))
+        (generate-config deps))
+       ddiff/minimize
+       kondo-config-diff-ignore-any
+       ddiff/minimize)))
 
 (defn print-kondo-config-diff
   "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in
@@ -434,6 +439,139 @@
   (ddiff/pretty-print (kondo-config-diff)))
 
 (comment
-  (module-dependencies 'lib)
+  (external-usages 'core)
+
+  (module-dependencies (dependencies) 'lib)
 
   (module-usages-of-other-module 'lib 'models))
+
+(defn all-module-deps-paths
+  "Build a map of
+
+    dep => path-to-dep
+
+  for each dependency (direct or indirect) of a module, e.g.
+
+    (all-module-deps-paths 'settings)
+    ;; =>
+    {api      []                         ; settings depends on api directly
+     api-keys [permissions collections]} ; settings depends on permissions which depends on collections which depends on api-keys"
+  ([module]
+   (all-module-deps-paths (dependencies) module))
+  ([deps module]
+   (all-module-deps-paths deps module (sorted-map) (atom #{}) []))
+  ([deps module acc already-seen path]
+   (let [module-deps (module-dependencies deps module)
+         new-deps    (remove @already-seen module-deps)
+         acc         (into acc
+                           (map (fn [dep]
+                                  [dep path]))
+                           new-deps)]
+     (swap! already-seen into new-deps)
+     (reduce
+      (fn [acc new-dep]
+        (all-module-deps-paths deps new-dep acc already-seen (conj path new-dep)))
+      acc
+      new-deps))))
+
+(defn module-dependencies-by-namespace
+  "Return a map of external dependency of `module` => set of namespaces in `module` that use it:
+
+    (module-dependencies-by-namespace 'permissions)
+    ;; =>
+    {api #{metabase.permissions.api
+           metabase.permissions.models.collection.graph
+           ...}
+     app-db #{metabase.permissions.api
+              metabase.permissions.models.permissions-group
+              ...}
+     ...}"
+  ([module]
+   (module-dependencies-by-namespace (dependencies) module))
+
+  ([deps module]
+   (into (sorted-map)
+         (map (fn [dep]
+                [dep (into (sorted-set) (keys (module-usages-of-other-module deps module dep)))]))
+         (module-dependencies deps module))))
+
+(defn dependencies-eliminated-by-removing-namespaces
+  "Return the set of `module` dependencies that we could eliminate if we were to split namespace(s) off into a separate
+  module.
+
+    ;; if we move `metabase.permissions.api` into a separate module then `permissions` no longer has a dependency on
+    ;; `request`
+    (dependencies-eliminated-by-removing-namespaces 'permissions 'metabase.permissions.api)
+    ;; =>
+    #{request}"
+  [module namespace-symb-or-set]
+  (let [deps            (dependencies)
+        namespace-symbs (if (symbol? namespace-symb-or-set)
+                          #{namespace-symb-or-set}
+                          namespace-symb-or-set)
+        dep->namespaces (module-dependencies-by-namespace deps module)]
+    (into (sorted-set)
+          (keep (fn [[dep namespaces]]
+                  (when (empty? (set/difference namespaces namespace-symbs))
+                    dep)))
+          dep->namespaces)))
+
+(defn leaf-modules
+  "Modules that are leaf nodes in the module dependency tree -- nothing else depends on them."
+  []
+  (let [deps (dependencies)]
+    (into (sorted-set)
+          (comp (map :module)
+                (keep (fn [module]
+                        (when (zero? (count (external-usages deps module)))
+                          module))))
+          deps)))
+
+(defn non-dependencies
+  "Modules that `module` does not depend on, either directly or indirectly -- changes to any of these modules should not
+  affect `module`."
+  [module]
+  (let [deps        (dependencies)
+        all-modules (into (sorted-set) (map :module) deps)
+        module-deps (set (keys (all-module-deps-paths deps module)))]
+    (printf "Module %s depends on %d/%d (%.1f%%) other modules.\n"
+            module
+            (count module-deps)
+            (count all-modules)
+            (double (* (/ (count module-deps) (count all-modules)) 100)))
+    (flush)
+    (set/difference all-modules module-deps)))
+
+(defn- simulate-rename
+  "Create a new version of `deps` as they would appear if you renamed namespace(s).
+
+    (simulate-rename (dependencies) '{metabase.users.api metabase.users-rest.api})"
+  ([deps old-namespace new-namespace]
+   (for [dep deps]
+     (-> dep
+         (cond-> (= (:namespace dep) old-namespace)
+           (assoc :namespace new-namespace))
+         (update :deps (fn [deps]
+                         (for [dep deps]
+                           (if (= (:namespace dep) old-namespace)
+                             {:namespace new-namespace, :module (module new-namespace)}
+                             dep)))))))
+
+  ([deps old-namespace->new-namespace]
+   (reduce
+    (fn [deps [old-namespace new-namespace]]
+      (simulate-rename deps old-namespace new-namespace))
+    deps
+    old-namespace->new-namespace)))
+
+(defn dependencies-eliminated-by-renaming-namespaces
+  "Calculate the set of dependencies of `module` (both explicit and transient) that would be eliminated by renaming
+  `old-namespaces->new-namespaces`.
+
+    (dependencies-eliminated-by-renaming-namespaces 'users '{metabase.users.api metabase.users-rest.api})"
+  [module old-namespace->new-namespace]
+  (let [deps            (dependencies)
+        old-module-deps (into (sorted-set) (keys (all-module-deps-paths deps module)))
+        new-deps        (simulate-rename deps old-namespace->new-namespace)
+        new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
+    (set/difference old-module-deps new-module-deps)))

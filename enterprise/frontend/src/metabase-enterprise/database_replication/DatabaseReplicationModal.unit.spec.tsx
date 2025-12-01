@@ -84,7 +84,7 @@ describe("DatabaseReplicationForm", () => {
       screen.queryByPlaceholderText("e.g. public, auth"),
     ).not.toBeInTheDocument();
 
-    // Change to "include"
+    // Change to "inclusion"
     const select = screen.getByLabelText("Select schemas to replicate");
     await user.click(select);
     await user.click(screen.getByText("Only these…"));
@@ -100,7 +100,7 @@ describe("DatabaseReplicationForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows correct text for exclude option", async () => {
+  it("shows correct text for exclusion option", async () => {
     const { user } = await setup();
 
     const select = screen.getByLabelText("Select schemas to replicate");
@@ -135,7 +135,7 @@ describe("DatabaseReplicationForm", () => {
             method: "POST",
             body: {
               replicationSchemaFilters: {
-                "schema-filters-type": "include",
+                "schema-filters-type": "inclusion",
                 "schema-filters-patterns": "public",
               },
             },
@@ -211,7 +211,7 @@ describe("DatabaseReplicationForm", () => {
 
     const { user } = await setup({ previewResponse: previewResponseWithError });
 
-    // Change to "include" to show textarea
+    // Change to "inclusion" to show textarea
     const select = screen.getByLabelText("Select schemas to replicate");
     await user.click(select);
     await user.click(screen.getByText("Only these…"));

@@ -6,10 +6,16 @@ import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
+import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import type { Collection, Dashboard } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionItemModel,
+  Dashboard,
+} from "metabase-types/api";
 
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
@@ -42,6 +48,11 @@ export const useRootCollectionPickerItems = (
         : skipToken,
     );
 
+  const { data: libraryCollection } =
+    PLUGIN_DATA_STUDIO.useGetLibraryCollection({
+      skip: !options.showLibrary,
+    });
+
   const {
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
@@ -64,6 +75,26 @@ export const useRootCollectionPickerItems = (
 
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
+
+    if (options.showLibrary && libraryCollection) {
+      collectionItems.push({
+        ...libraryCollection,
+        model: "collection",
+        moderated_status: null,
+      });
+    }
+
+    if (options.showDatabases) {
+      collectionItems.push({
+        id: "databases",
+        name: t`Databases`,
+        model: "collection",
+        can_write: true,
+        location: "/",
+        here: ["collection"],
+        below: ["table" as CollectionItemModel],
+      });
+    }
 
     if (options.showRootCollection || options.namespace === "snippets") {
       if (rootCollection && !rootCollectionError) {
@@ -117,6 +148,7 @@ export const useRootCollectionPickerItems = (
     options,
     rootCollectionError,
     totalPersonalCollectionItems,
+    libraryCollection,
   ]);
 
   const isLoading =
@@ -171,7 +203,7 @@ export const useEnsureCollectionSelected = ({
     }, [currentCollection, currentDashboard]);
 
   const defaultCollectionItem = useRootCollection
-    ? items[0]
+    ? items.find(isRootCollection)
     : currentCollectionItem;
 
   useEffect(() => {

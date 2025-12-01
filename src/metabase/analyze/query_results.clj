@@ -7,7 +7,7 @@
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.query-processor.schema :as query-processor.schema]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -16,7 +16,7 @@
 
 (def ^:private ResultColumnMetadata
   "Result metadata for a single column"
-  [:ref ::mbql.s/legacy-column-metadata])
+  [:ref ::query-processor.schema/result-metadata.column])
 
 (mr/def ::ResultsMetadata
   (mu/with-api-error-message

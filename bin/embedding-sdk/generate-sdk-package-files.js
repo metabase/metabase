@@ -89,6 +89,6 @@ generateSdkPackage();
 copyFileToOutput("LICENSE.txt");
 copyFileToOutput("frontend/src/embedding-sdk-package/README.md", "README.md");
 copyFileToOutput(
-  "frontend/src/embedding-sdk-bundle/CHANGELOG.md",
+  "frontend/src/embedding-sdk-package/CHANGELOG.md",
   "CHANGELOG.md",
 );

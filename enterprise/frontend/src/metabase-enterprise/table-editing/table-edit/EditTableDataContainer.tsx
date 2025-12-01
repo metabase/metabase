@@ -44,7 +44,7 @@ type EditTableDataContainerProps = {
     tableId: string;
     objectId?: string;
   };
-  location: Location<{ filter?: string }>;
+  location: Location<{ query?: string }>;
 };
 
 export const EditTableDataContainer = ({

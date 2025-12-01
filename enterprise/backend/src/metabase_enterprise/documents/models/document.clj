@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -43,11 +44,10 @@
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
   (when old-collection-id
-    (collection/check-write-perms-for-collection old-collection-id))
+    (api/write-check :model/Collection old-collection-id))
   (when new-collection-id
-    (collection/check-write-perms-for-collection new-collection-id))
-  (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))))
+    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+    (api/write-check :model/Collection new-collection-id)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
   "Hydrate the creator (user) of a document based on the creator_id."
@@ -58,6 +58,24 @@
         (map (juxt :id identity))
         (into {}))
    :creator_id {:default {}}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Document :cards]
+  "Hydrate cards associated with documents via document_id FK, returning as a map keyed by card ID.
+  Fetches all cards for all documents in a single batched query to avoid N+1 queries."
+  [_model k documents]
+  (let [document-ids (keep :id documents)
+        ;; Fetch all cards for all documents in one batched query
+        all-cards (when (seq document-ids)
+                    (t2/select :model/Card
+                               :document_id [:in document-ids]
+                               :archived false))
+        ;; Group cards by document_id, then convert each group to a map keyed by card ID
+        cards-by-doc-id (group-by :document_id all-cards)
+        cards-maps-by-doc-id (update-vals cards-by-doc-id
+                                          (fn [cards]
+                                            (zipmap (map :id cards) cards)))]
+    (for [doc documents]
+      (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
 
 (defn sync-document-cards-collection!
   "Updates all cards associated with a document to match the document's collection.
@@ -76,6 +94,10 @@
                                    :archived archived
                                    :archived-directly archived_directly)
   instance)
+
+(t2/define-after-select :model/Document
+  [document]
+  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -96,9 +118,16 @@
            :last-viewed-at :last_viewed_at
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
    :search-terms [:name]
+   :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id
-                  :collection-position true}})
+                  :collection-authority_level :collection.authority_level
+                  :collection-location        :collection.location
+                  :collection-name            :collection.name
+                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                  :collection-position        true
+                  :collection-type            :collection.type
+                  :archived-directly          true}})
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
@@ -157,7 +186,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -187,7 +216,7 @@
         (when collection_id #{[{:model "Collection" :id collection_id}]}))))
 
 (defmethod serdes/descendants "Document"
-  [_model-name id]
+  [_model-name id _opts]
   (when-let [document (t2/select-one :model/Document :id id)]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
@@ -195,8 +224,16 @@
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{model :model link-id :id} (prose-mirror/collect-ast document
-                                                                        #(when (= prose-mirror/smart-link-type (:type %))
-                                                                           (:attrs %)))
+             (for [{model :model link-id :entityId} (prose-mirror/collect-ast document
+                                                                              #(when (= prose-mirror/smart-link-type (:type %))
+                                                                                 (:attrs %)))
                    :when (contains? model->serdes-model model)]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
+
+(t2/define-before-insert :model/Document [model]
+  (collection/check-allowed-content :model/Document (:collection_id model))
+  model)
+
+(t2/define-before-update :model/Document [model]
+  (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
+  model)

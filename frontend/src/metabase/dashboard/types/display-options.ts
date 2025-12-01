@@ -18,12 +18,6 @@ export type DashboardRefreshPeriodControls = {
   ) => void;
 };
 
-export type DashboardNightModeControls = {
-  hasNightModeToggle: boolean;
-  onNightModeChange: (isNightMode: boolean) => void;
-  isNightMode: boolean;
-};
-
 export type DashboardDownloadControls = {
   downloadsEnabled?: EmbedResourceDownloadOptions;
 };
@@ -38,7 +32,6 @@ export type DashboardLoaderWrapperProps = {
 
 export type DashboardDisplayOptionControls = DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  DashboardNightModeControls &
   DashboardDownloadControls &
   DashboardLoaderWrapperProps &
   DashboardFooterControls;

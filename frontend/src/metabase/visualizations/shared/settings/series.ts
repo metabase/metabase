@@ -1,5 +1,4 @@
 import { getIn } from "icepick";
-import _ from "underscore";
 
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -13,11 +12,27 @@ export const getSeriesColors = (
   settings: VisualizationSettings,
   seriesVizSettingsDefaultKeys: string[],
 ) => {
-  const assignments = _.chain(seriesVizSettingsKeys)
-    .map((key) => [key, getIn(settings, [SERIES_SETTING_KEY, key, "color"])])
-    .filter(([_key, color]) => color != null)
-    .object()
-    .value();
+  const assignments: Record<string, string> = {};
+
+  const seriesSettings = getIn(settings, [SERIES_SETTING_KEY]) as
+    | Record<string, { color?: string; title?: string }>
+    | undefined;
+
+  if (seriesSettings) {
+    for (const [key, seriesObject] of Object.entries(seriesSettings)) {
+      if (!seriesObject) {
+        continue;
+      }
+
+      if (seriesObject.color != null) {
+        assignments[key] = seriesObject.color;
+
+        if (seriesObject.title != null) {
+          assignments[seriesObject.title] = seriesObject.color;
+        }
+      }
+    }
+  }
 
   const legacyColors = settings["graph.colors"];
   if (legacyColors) {

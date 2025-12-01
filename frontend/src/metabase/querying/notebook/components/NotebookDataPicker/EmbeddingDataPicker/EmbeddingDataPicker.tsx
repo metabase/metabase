@@ -37,8 +37,6 @@ export function EmbeddingDataPicker({
     });
 
   const databaseId = Lib.databaseID(query);
-  const tableInfo =
-    table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
@@ -95,7 +93,10 @@ export function EmbeddingDataPicker({
              * so we need to remove it. Treating it as a table.
              */
             getTableIcon={() => "table"}
-            tableInfo={tableInfo}
+            table={table}
+            query={query}
+            stageIndex={stageIndex}
+            setIsOpened={() => {}}
             placeholder={placeholder}
             isDisabled={isDisabled}
           />
@@ -127,7 +128,12 @@ export function EmbeddingDataPicker({
       canSelectQuestion={entityTypes.includes("question")}
       triggerElement={
         <DataPickerTarget
-          tableInfo={tableInfo}
+          table={table}
+          query={query}
+          stageIndex={stageIndex}
+          setIsOpened={() => {
+            /* intentionally empty */
+          }}
           placeholder={placeholder}
           isDisabled={isDisabled}
         />

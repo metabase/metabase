@@ -1,6 +1,5 @@
 (ns metabase.query-processor.postprocess
   (:require
-   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
@@ -29,21 +28,23 @@
 
   Where `rff` has the form
 
-    (f metadata) -> rf"
-  [[::legacy #'format-rows/format-rows]
-   [::legacy #'results-metadata/record-and-return-metadata!]
-   [::mbql5  #'limit/limit-result-rows]
-   [::legacy #'qp.middleware.enterprise/limit-download-result-rows]
-   [::legacy #'qp.add-rows-truncated/add-rows-truncated]
-   [::legacy #'qp.add-timezone-info/add-timezone-info]
-   [::legacy #'qp.middleware.enterprise/merge-sandboxing-metadata]
-   [::legacy #'qp.add-remaps/remap-results]
-   [::legacy #'pivot-export/add-data-for-pivot-export]
-   [::legacy #'large-int/convert-large-int-to-string]
-   [::legacy #'viz-settings/update-viz-settings]
-   [::legacy #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
-   [::mbql5  #'annotate/add-column-info]
-   [::legacy #'fetch-source-query/add-dataset-info]])
+    (f metadata) -> rf
+
+  All of these middlewares assume MBQL 5."
+  [#'format-rows/format-rows
+   #'results-metadata/record-and-return-metadata!
+   #'limit/limit-result-rows
+   #'qp.middleware.enterprise/limit-download-result-rows
+   #'qp.add-rows-truncated/add-rows-truncated
+   #'qp.add-timezone-info/add-timezone-info
+   #'qp.middleware.enterprise/merge-sandboxing-metadata
+   #'qp.add-remaps/remap-results
+   #'pivot-export/add-data-for-pivot-export
+   #'large-int/convert-large-int-to-string
+   #'viz-settings/update-viz-settings
+   #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns
+   #'annotate/add-column-info
+   #'fetch-source-query/add-dataset-info])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 (mu/defn post-processing-rff :- ::qp.schema/rff
@@ -51,19 +52,14 @@
   [preprocessed-query :- ::lib.schema/query
    rff                :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [preprocessed-query preprocessed-query]
-    (let [legacy-query (lib/->legacy-MBQL preprocessed-query)]
-      (try
-        (reduce
-         (fn [rff [middleware-expected-mbql-version middleware-fn]]
-           (u/prog1 (middleware-fn
-                     (case middleware-expected-mbql-version
-                       ::mbql5 preprocessed-query
-                       ::legacy legacy-query)
-                     rff)
-             (assert (fn? <>) (format "%s did not return a valid function" (pr-str middleware)))))
-         rff
-         middleware)
-        (catch Throwable e
-          (throw (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
-                          {:query preprocessed-query, :type qp.error-type/qp}
-                          e)))))))
+    (try
+      (reduce
+       (fn [rff middleware-fn]
+         (u/prog1 (middleware-fn preprocessed-query rff)
+           (assert (fn? <>) (format "%s did not return a valid function" (pr-str middleware)))))
+       rff
+       middleware)
+      (catch Throwable e
+        (throw (ex-info (i18n/tru "Error building query results reducing function: {0}" (ex-message e))
+                        {:query preprocessed-query, :type qp.error-type/qp}
+                        e))))))

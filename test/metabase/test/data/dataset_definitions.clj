@@ -302,3 +302,24 @@
      [2 2.6 2.4]
      [3 3.6 3.3]
      [4 4.6 4.0]]]])
+
+(tx/defdataset nullable-db
+  [["nullable"
+    [{:field-name "a" :base-type :type/Integer, :pk? true :not-null? true}
+     {:field-name "b" :base-type :type/Integer, :not-null? false}
+     {:field-name "c" :base-type :type/Integer, :not-null? true}]
+    []]])
+
+(tx/defdataset default-expr-db
+  [["default_expr"
+    [{:field-name "a" :base-type :type/Integer, :pk? true}
+     {:field-name "b" :base-type :type/Integer, :default-expr "42"}
+     {:field-name "c" :base-type :type/Integer}]
+    []]])
+
+(tx/defdataset generated-column-db
+  [["generated_column"
+    [{:field-name "a" :base-type :type/Integer, :pk? true}
+     {:field-name "b" :base-type :type/Integer, :generated-expr "42"}
+     {:field-name "c" :base-type :type/Integer}]
+    []]])

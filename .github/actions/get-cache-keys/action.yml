@@ -1,0 +1,37 @@
+name: Get cache keys
+description: |
+  Get deterministic cache keys for Maven and Node.js caches based on the centrally controlled cache prefix,
+  and the suffix based on the runner OS and the current week of the year.
+
+outputs:
+  m2-cache-key:
+    description: "The cache key for the Maven cache."
+    value: ${{ steps.keys-factory.outputs.m2-cache-key }}
+  node-cache-key:
+    description: "The cache key for the Node.js cache."
+    value: ${{ steps.keys-factory.outputs.node-cache-key }}
+  eslint-cache-key:
+    description: "The cache key for Eslint cache"
+    value: ${{ steps.keys-factory.outputs.eslint-cache-key }}
+  cypress-cache-key:
+    description: "The cache key for Cypress cache"
+    value: ${{ steps.keys-factory.outputs.cypress-cache-key }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Generate and output cache keys
+      id: keys-factory
+      run: |
+        M2_CACHE_PREFIX='M2'
+        NODE_CACHE_PREFIX='node-modules'
+        ESLINT_CACHE_PREFIX='eslint'
+        CYPRESS_CACHE_PREFIX='cypress'
+        WEEK_OF_YEAR=$(/bin/date "+%G-%V")
+        CACHE_SUFFIX="${{ runner.os }}-$WEEK_OF_YEAR"
+
+        echo "m2-cache-key=$M2_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
+        echo "node-cache-key=$NODE_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
+        echo "eslint-cache-key=$ESLINT_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
+        echo "cypress-cache-key=$CYPRESS_CACHE_PREFIX-$CACHE_SUFFIX" >> $GITHUB_OUTPUT
+      shell: bash

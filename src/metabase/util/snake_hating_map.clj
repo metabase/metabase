@@ -65,6 +65,9 @@
   (kvreduce [this f init]
     (reduce-kv f init m))
 
+  clojure.lang.Counted
+  (count [this] (count m))
+
   pretty/PrettyPrintable
   (pretty [_this]
     (list `snake-hating-map m)))

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
+  type EntityType,
   canonicalCollectionId,
   isTrashedCollection,
   isValidCollectionId,
@@ -32,6 +33,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  entityType?: EntityType;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
@@ -57,6 +59,7 @@ function FormCollectionPicker({
   placeholder = t`Select a collection`,
   type = "collections",
   filterPersonalCollections,
+  entityType,
   collectionPickerModalProps,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
@@ -153,6 +156,7 @@ function FormCollectionPicker({
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
           options={options}
+          entityType={entityType}
           {...collectionPickerModalProps}
         />
       )}

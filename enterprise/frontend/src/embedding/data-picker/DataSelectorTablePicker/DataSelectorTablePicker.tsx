@@ -13,7 +13,6 @@ import {
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
@@ -163,7 +162,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
     <Box
       p="md"
       ta="center"
-      bg={color("bg-light")}
+      bg={"bg-light"}
       style={{
         borderTop: "1px solid var(--mb-color-border)",
       }}

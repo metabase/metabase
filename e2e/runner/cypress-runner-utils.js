@@ -1,6 +1,5 @@
 const { execSync, spawn } = require("child_process");
 
-const arg = require("arg");
 const chalk = require("chalk");
 const cypress = require("cypress");
 
@@ -8,16 +7,7 @@ function printBold(message) {
   console.log(`\n${chalk.bold(chalk.magenta(message.trim()))}\n`);
 }
 
-const args = arg(
-  {
-    "--open": [Boolean], // Run Cypress in open mode or not? Doesn't accept additional arguments
-  },
-  { permissive: true }, // Passes all other flags and args to the Cypress parser
-);
-
-async function parseArguments(args) {
-  const cliArgs = args._;
-
+async function parseArguments(cliArgs) {
   // cypress.cli.parseArguments requires `cypress run` as the first two arguments
   if (cliArgs[0] !== "cypress") {
     cliArgs.unshift("cypress");
@@ -92,7 +82,6 @@ function delay(durationMs) {
 }
 
 module.exports = {
-  args,
   booleanify,
   unBooleanify,
   parseArguments,

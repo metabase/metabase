@@ -253,6 +253,13 @@ export const useChartEvents = (
 
           if (eventData) {
             onChangeCardAndRun?.(eventData);
+
+            // clear selected brush area after calling change handler
+            chartRef.current?.dispatchAction({
+              type: "brush",
+              command: "clear",
+              areas: [],
+            });
           }
         },
       },
@@ -412,13 +419,11 @@ export const useChartEvents = (
         cardId: seriesModel.cardId,
         dimensions,
         settings,
+        element: event.currentTarget,
       };
 
       if (hasBreakout && visualizationIsClickable(clickData)) {
-        onVisualizationClick({
-          ...clickData,
-          element: event.currentTarget,
-        });
+        onVisualizationClick(clickData);
       } else if (isDashboard) {
         onOpenQuestion(seriesModel.cardId);
       }

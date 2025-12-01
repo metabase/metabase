@@ -46,8 +46,8 @@ export const ParameterDropdownWidget = ({
   placeholder,
   onFocusChanged,
   parameters,
-  question,
-  dashboard,
+  cardId,
+  dashboardId,
   enableRequiredBehavior,
 }: ParameterDropdownWidgetProps) => {
   const normalizedValue = Array.isArray(value)
@@ -151,8 +151,8 @@ export const ParameterDropdownWidget = ({
       <ParameterFieldWidget
         parameter={parameter}
         parameters={parameters}
-        question={question}
-        dashboard={dashboard}
+        cardId={cardId}
+        dashboardId={dashboardId}
         value={normalizedValue}
         fields={parameter.fields}
         setValue={setValueOrDefault}

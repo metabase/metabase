@@ -32,6 +32,12 @@ const BaseSidebar = ({ style, className }) => (
         icon="database"
         name={t`Our data`}
       />
+      <SidebarItem
+        key="/reference/glossary"
+        href="/reference/glossary"
+        icon="globe"
+        name={t`Glossary`}
+      />
     </ol>
   </div>
 );

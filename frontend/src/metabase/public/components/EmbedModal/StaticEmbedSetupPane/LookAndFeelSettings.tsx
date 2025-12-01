@@ -4,7 +4,6 @@ import { jt, t } from "ttag";
 import { UpsellMetabaseBanner } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
   DisplayTheme,
@@ -130,7 +129,6 @@ export const LookAndFeelSettings = ({
               value={displayOptions.theme ?? undefined}
               data={[...THEME_OPTIONS]}
               fullWidth
-              bg={color("bg-light")}
               onChange={(value: ThemeOptions) => {
                 onChangeDisplayOptions({
                   ...displayOptions,
@@ -221,6 +219,7 @@ function getBorderLabel(resourceType: EmbedResourceType) {
     .returnType<string>()
     .with("dashboard", () => t`Dashboard border`)
     .with("question", () => t`Question border`)
+    .with("document", () => t`Document border`)
     .exhaustive();
 }
 

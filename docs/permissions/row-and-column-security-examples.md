@@ -95,7 +95,7 @@ Here are the results:
 
 We'll call this question "Filtered people table". Save it to the "Admins collection" you created in the setup (or any collection that only Admins have access to).
 
-2. **Use a SQL question to create a custom view for this table**: We'll go to the Permissions section and grant this group row and column secuity to this table. This time we'll select the second option, "Use a saved question to create a custom view for this table", and select the question we just created ("Filtered people table"), like so:
+2. **Use a SQL question to create a custom view for this table**: We'll go to the Permissions section and grant this group row and column security to this table. This time we'll select the second option, "Use a saved question to create a custom view for this table", and select the question we just created ("Filtered people table"), like so:
 
 ![Using a question to create a custom view](images/question-modal.png)
 

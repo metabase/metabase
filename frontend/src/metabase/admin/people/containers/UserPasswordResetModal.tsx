@@ -1,6 +1,5 @@
-import { goBack } from "react-router-redux";
 import { useUnmount } from "react-use";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   useForgotPasswordMutation,
@@ -10,6 +9,7 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import PasswordReveal from "metabase/common/components/PasswordReveal";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
@@ -38,12 +38,20 @@ const UserPasswordResetModalInner = ({
     clearTemporaryPassword();
   });
 
+  const [sendToast] = useToast();
   const [updatePassword] = useUpdatePasswordMutation();
   const [resetPasswordEmail] = useForgotPasswordMutation();
 
   const handleResetConfirm = async () => {
     if (emailConfigured) {
       await resetPasswordEmail(user.email).unwrap();
+
+      sendToast({
+        message: c("{0} is the name of the user")
+          .t`Password reset email sent to ${user.common_name}`,
+      });
+
+      onClose();
     } else {
       const password = generatePassword();
       await updatePassword({ id: user.id, password }).unwrap();
@@ -102,7 +110,6 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
       {user && (
         <UserPasswordResetModalInner
           {...props}
-          onClose={() => dispatch(goBack())}
           clearTemporaryPassword={() =>
             dispatch(clearTemporaryPassword(user.id))
           }

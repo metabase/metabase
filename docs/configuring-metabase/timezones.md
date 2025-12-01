@@ -45,6 +45,6 @@ The exact data type will depend on your database. Some Metabase features only wo
 ## Common pitfalls
 
 1. Your database is using date/time columns without any timezone information. Typically when this happens your database will assume all the data is from whatever timezone the database is configured in or possible just default to UTC (check your database vendor to be sure).
-2. Your JVM timezone is different from your Metabase `Report Timezone` choice. This is a very common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.
+2. Your JVM timezone is different from your Metabase `Report Timezone` choice. This is a common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.
 
 If you are still experiencing timezone problems, then have a look at the [timezone troubleshooting guide](../troubleshooting-guide/timezones.md).

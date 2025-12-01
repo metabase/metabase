@@ -85,8 +85,13 @@ const loadErrorUIControls = createThunkAction(
   },
 );
 
+type RunDirtyQuestionQueryOpts = {
+  shouldUpdateUrl?: boolean;
+};
+
 export const runDirtyQuestionQuery =
-  () => async (dispatch: Dispatch, getState: GetState) => {
+  ({ shouldUpdateUrl }: RunDirtyQuestionQueryOpts = {}) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     const areResultsDirty = getIsResultDirty(getState());
     const queryResults = getQueryResults(getState());
 
@@ -100,7 +105,7 @@ export const runDirtyQuestionQuery =
       return dispatch(queryCompleted(question, queryResults));
     }
 
-    return dispatch(runQuestionQuery());
+    return dispatch(runQuestionQuery({ shouldUpdateUrl }));
   };
 
 /**

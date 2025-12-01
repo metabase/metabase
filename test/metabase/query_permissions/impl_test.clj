@@ -16,7 +16,7 @@
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
 (defn- card []
-  {:dataset_query {:database (mt/id), :type "native"}})
+  {:dataset_query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}})
 
 (defn- card-in-collection [collection-or-id]
   (assoc (card) :collection_id (u/the-id collection-or-id)))
@@ -27,52 +27,41 @@
       (mt/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{})]
           (is (not (mi/can-read? card)))))
-
       (testing "...or one in a Collection either!"
         (mt/with-temp [:model/Card card (card-in-collection collection)]
           (binding [*current-user-permissions-set* (delay #{})]
             (is (not (mi/can-read? card)))))))
-
     (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
       (mt/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
           (is (mi/can-read? card)))
-
         (testing "...but not if you have perms for some other Collection"
           (binding [*current-user-permissions-set* (delay #{"/collection/1337/read/"})]
             (is (not (mi/can-read? card)))))))
-
     (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
       (mt/with-temp [:model/Card card (card-in-collection collection)]
         (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
           (is (mi/can-read? card)))
-
         (testing "...but not if you only have Root Collection perms"
           (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
             (is (not (mi/can-read? card)))))))
-
     (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
       (mt/with-temp [:model/Card card (card)]
         (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
           (is (mi/can-write? card)))
-
         (testing "...root Collection Read Perms shouldn't work"
           (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
             (is (not (mi/can-write? card))))
-
           (testing "...nor should write perms for another collection"
             (binding [*current-user-permissions-set* (delay #{"/collection/1337/"})]
               (is (not (mi/can-write? card))))))))
-
     (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
       (mt/with-temp [:model/Card card (card-in-collection collection)]
         (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-readwrite-path collection)})]
           (is (mi/can-write? card)))
-
         (testing "...Collection read perms shouldn't work"
           (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
             (is (not (mi/can-write? card))))
-
           (testing "...nor should write perms for the Root Collection"
             (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
               (is (not (mi/can-write? card))))))))))

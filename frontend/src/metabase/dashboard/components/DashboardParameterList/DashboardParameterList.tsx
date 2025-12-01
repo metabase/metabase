@@ -46,7 +46,6 @@ export const DashboardParameterList = forwardRef<
 
   const {
     editingParameter,
-    shouldRenderAsNightMode,
     isFullscreen,
     isEditing,
     dashboard,
@@ -72,10 +71,9 @@ export const DashboardParameterList = forwardRef<
       linkedFilterParameters={linkedFilterParameters}
       editingParameter={editingParameter}
       hideParameters={hideParameters}
-      dashboard={dashboard}
+      dashboardId={dashboard?.id}
       isSortable={isSortable}
       isFullscreen={isFullscreen}
-      isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
       setParameterValue={(id, value) => dispatch(setParameterValue(id, value))}
       setParameterIndex={(id, index) => dispatch(setParameterIndex(id, index))}

@@ -1,16 +1,13 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
+  (:refer-clojure :exclude [not-empty])
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- resolve-fields-with-ids!
   [metadata-providerable field-ids]
@@ -23,38 +20,15 @@
                                field-ids))]
     (recur metadata-providerable parent-ids)))
 
-(defmulti ^:private field-ids
-  {:arglists '([query])}
-  (fn [query]
-    (if (:lib/type query) ::pmbql ::legacy)))
-
-(mu/defmethod field-ids ::pmbql :- [:set ::lib.schema.id/field]
-  [query :- ::lib.schema/query]
-  (into #{}
-        (lib.util.match/match (:stages query)
-          [:field _opts (id :guard pos-int?)]
-          id
-
-          ;; stage metadata
-          {:lib/type :metadata/column, :id (id :guard pos-int?)}
-          id)))
-
-(mu/defmethod field-ids ::legacy :- [:set ::lib.schema.id/field]
-  [query :- ::mbql.s/Query]
-  (into (set (lib.util.match/match (:query query) [:field (id :guard integer?) _] id))
-        (comp cat (keep :id))
-        (lib.util.match/match (:query query) {:source-metadata source-metadata} source-metadata)))
-
+;;; TODO (Cam 9/10/25) -- give this a more accurate name like `prefetch-all-fields` or
+;;; `warm-metadata-provider-cache-with-all-fields` or something.
 (defn resolve-fields
-  "Resolve all field referenced in the `query`, and store them in the QP Store."
+  "Resolve all field referenced in the `query`, and store them in the Metadata Provider."
   [query]
-  (let [ids (field-ids query)]
+  (let [ids (lib/all-field-ids query)]
     (try
       (u/prog1 query
-        (let [metadata-providerable (if (:lib/type query)
-                                      query
-                                      (qp.store/metadata-provider))]
-          (resolve-fields-with-ids! metadata-providerable ids)))
+        (resolve-fields-with-ids! query ids))
       (catch Throwable e
         (throw (ex-info (tru "Error resolving Fields in query: {0}" (ex-message e))
                         {:field-ids ids

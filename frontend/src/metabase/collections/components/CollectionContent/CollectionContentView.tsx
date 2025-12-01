@@ -6,6 +6,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import {
   type CollectionContentTableColumn,
@@ -171,6 +172,7 @@ const CollectionContentViewInner = ({
 
   const handleCreateBookmark = () => {
     createBookmark(collectionId.toString(), "collection");
+    trackCollectionBookmarked();
   };
 
   const handleDeleteBookmark = () => {

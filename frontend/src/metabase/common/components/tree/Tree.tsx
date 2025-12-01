@@ -3,31 +3,43 @@ import * as React from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
+import type { BoxProps } from "metabase/ui";
+
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
 import { getInitialExpandedIds } from "./utils";
 
-interface TreeProps {
-  data: ITreeNodeItem[];
-  selectedId?: ITreeNodeItem["id"];
-  role?: string;
+interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
+  data: ITreeNodeItem<TData>[];
+  selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
-  onSelect?: (item: ITreeNodeItem) => void;
-  TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
+  initialExpandedIds?: ITreeNodeItem<TData>["id"][];
+  role?: string;
+  onSelect?: (item: ITreeNodeItem<TData>) => void;
+  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
+  TreeNode?: any;
 }
 
-function BaseTree({
+function BaseTree<TData = unknown>({
   data,
   selectedId,
   role = "menu",
   emptyState = null,
+  initialExpandedIds,
   onSelect,
   TreeNode = DefaultTreeNode,
-}: TreeProps) {
-  const [expandedIds, setExpandedIds] = useState(
-    new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
-  );
+  rightSection,
+  ...boxProps
+}: TreeProps<TData>) {
+  const [expandedIds, setExpandedIds] = useState(() => {
+    if (initialExpandedIds) {
+      return new Set(initialExpandedIds);
+    }
+    return new Set(
+      selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
+    );
+  });
   const previousSelectedId = usePrevious(selectedId);
   const prevData = usePrevious(data);
 
@@ -35,9 +47,11 @@ function BaseTree({
     if (!selectedId) {
       return;
     }
+    const dataHasChanged = !_.isEqual(data, prevData);
     const selectedItemChanged =
       previousSelectedId !== selectedId && !expandedIds.has(selectedId);
-    if (selectedItemChanged || !_.isEqual(data, prevData)) {
+
+    if (selectedItemChanged || dataHasChanged) {
       setExpandedIds(
         (prev) =>
           new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
@@ -64,14 +78,16 @@ function BaseTree({
 
   return (
     <TreeNodeList
-      items={data}
       role={role}
+      items={data}
       TreeNode={TreeNode}
       expandedIds={expandedIds}
       selectedId={selectedId}
       depth={0}
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
+      rightSection={rightSection}
+      {...boxProps}
     />
   );
 }

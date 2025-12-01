@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import ActionForm from "metabase/actions/components/ActionForm";
 import { getSuccessMessage } from "metabase/actions/utils";
-import title from "metabase/hoc/Title";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PublicApi } from "metabase/services";
 import type {
   ParametersForActionExecution,
@@ -25,6 +25,8 @@ interface Props {
 function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
   const successMessage = getSuccessMessage(action);
+
+  usePageTitle(action.name);
 
   const handleSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {
@@ -50,7 +52,5 @@ function PublicAction({ action, publicId, onError }: Props) {
   );
 }
 
-const getPageTitle = ({ action }: Props) => action.name;
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default title(getPageTitle)(PublicAction);
+export default PublicAction;

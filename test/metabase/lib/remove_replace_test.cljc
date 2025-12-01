@@ -262,7 +262,7 @@
 (defn- by-desired-alias
   [columns desired-alias]
   (let [columns (into []
-                      (lib.field.util/add-source-and-desired-aliases-xform meta/metadata-provider)
+                      (lib.field.util/add-source-and-desired-aliases-xform (lib/query meta/metadata-provider (meta/table-metadata :venues)))
                       columns)]
     (m/find-first (comp #{desired-alias} :lib/desired-column-alias) columns)))
 
@@ -570,13 +570,15 @@
               (lib/replace-clause
                query
                (second (lib/aggregations query))
-               (first (lib/available-metrics query)))))
+               (or (first (lib/available-metrics query))
+                   (throw (ex-info "lib/available-metrics is unexpectedly empty" {:query query}))))))
       (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]
                                        [:metric {:lib/uuid string?} 100]]}]}
               (-> query
                   (lib/replace-clause
                    (second (lib/aggregations query))
-                   (first (lib/available-metrics query)))
+                   (or (first (lib/available-metrics query))
+                       (throw (ex-info "lib/available-metrics is unexpectedly empty" {:query query}))))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-segment-test
@@ -772,6 +774,21 @@
                    (lib/replace-clause (first (lib/breakouts q2)) day))]
         (is (= (get-in q3 [:stages 0 :breakout 0 1 :metabase.lib.field/original-temporal-unit])
                (get-in q3 [:stages 0 :order-by 0 2 1 :metabase.lib.field/original-temporal-unit])))))))
+
+(deftest ^:parallel empty-first-stage-gets-merged-test
+  (testing "issue #45041"
+    (testing "Emptying a stage via remove-replace should merge that stage into the next stage"
+      (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))
+            q2 (-> query
+                   (lib/aggregate (lib/count))
+                   lib/append-stage
+                   (lib/aggregate (lib/count)))
+            to-remove (-> (lib/query-stage q2 0)
+                          :aggregation
+                          first)
+            q3 (lib/remove-clause q2 0 to-remove)]
+        (is (=? {:aggregation [[:count {}]]}
+                (lib/query-stage q3 0)))))))
 
 (deftest ^:parallel rename-join-test
   (let [joined-column (-> (meta/field-metadata :venues :id)
@@ -1039,6 +1056,8 @@
         expected-original {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
         [original-join]   (lib/joins query)
         new-join          (lib/with-join-fields original-join :none)]
+    (assert (some? original-join))
+    (assert (some? new-join))
     (is (=? expected-original
             query))
     (testing "dangling join-spec leads to no change"

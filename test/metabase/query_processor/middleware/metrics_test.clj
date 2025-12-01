@@ -39,7 +39,7 @@
   [metadata-provider]
   (loop []
     (let [id (swap! counter inc)]
-      (if (seq (lib.metadata.protocols/metadatas metadata-provider :metadata/card #{id}))
+      (if (seq (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/card, :id #{id}}))
         (recur)
         id))))
 
@@ -648,7 +648,8 @@
             {:segments [{:id         1
                          :name       "Segment 1"
                          :table-id   (meta/id :venues)
-                         :definition {:filter [:= [:field (meta/id :venues :name) nil] "abc"]}}]})
+                         :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                         (lib/filter (lib/= (meta/field-metadata :venues :name) "abc")))}]})
         [source-metric mp] (mock-metric mp (-> (basic-metric-query)
                                                (lib/filter (lib.metadata/segment mp 1))))]
     ;; Segments are handled further in the pipeline when the source is a metric

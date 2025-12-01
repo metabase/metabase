@@ -121,9 +121,11 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByLabelText("Event name").type("RC1");
 
       cy.findByTestId("event-form").within(() => {
-        cy.findByLabelText("Date").clear().type("10/20/2026");
+        // adding the time first reproduces metabase#62999
         cy.button("Add time").click();
         cy.findByLabelText("Time").type("10:20");
+
+        cy.findByLabelText("Date").clear().type("10/20/2026");
         cy.findByText("Create").click();
         cy.wait("@createEvent");
       });
@@ -626,7 +628,7 @@ describe("scenarios > organization > timelines > collection", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > collections > timelines", () => {
+describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

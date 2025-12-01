@@ -13,15 +13,15 @@ import { useSyncUrlParameters } from "../hooks/use-sync-url-parameters";
 export const SyncedParametersList = ({
   parameters,
   editingParameter,
-  question,
-  dashboard,
+  cardId,
+  dashboardId,
 
   className,
   hideParameters,
 
   isFullscreen,
-  isNightMode,
   isEditing,
+  isSortable,
   commitImmediately,
 
   setParameterValue,
@@ -44,11 +44,11 @@ export const SyncedParametersList = ({
     <ParametersList
       className={className}
       parameters={parameters}
-      question={question}
-      dashboard={dashboard}
+      cardId={cardId}
+      dashboardId={dashboardId}
       editingParameter={editingParameter}
       isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
+      isSortable={isSortable}
       hideParameters={hideParameters}
       isEditing={isEditing}
       commitImmediately={commitImmediately}

@@ -1,8 +1,13 @@
 .field {
   font-size: var(--mantine-font-size-md);
-  height: 1.5rem;
+  height: 1.75rem;
 
   &::placeholder {
     color: var(--mb-color-text-tertiary);
+  }
+
+  &:only-child {
+    margin-left: 0.375rem;
+    margin-right: 0.375rem;
   }
 }

@@ -90,7 +90,7 @@
                                       :source-table (str "card__" (:id model))})]
                   (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
 
-;; sandbox tests in metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
+;; sandbox tests in metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test
 ;; impersonation tests in metabase-enterprise.advanced-permissions.driver.impersonation-test
 
 (defn- populate-metadata [{query :dataset_query, id :id, :as _model}]
@@ -110,8 +110,8 @@
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     #_[:native (mt/native-query
-                                                 (qp.compile/compile
-                                                  (mt/mbql-query products)))]]]
+                                                (qp.compile/compile
+                                                 (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [:model/Card model {:type          :model
                                               :database_id   (mt/id)

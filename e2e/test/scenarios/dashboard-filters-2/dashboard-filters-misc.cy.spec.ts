@@ -33,9 +33,9 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        H.entityPickerModalItem(2, "Orders").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
       });
 
       H.getNotebookStep("filter")

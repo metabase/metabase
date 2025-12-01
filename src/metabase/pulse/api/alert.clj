@@ -75,6 +75,9 @@
                                                       {})})))
                                 (:handlers notification))})))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."

@@ -97,8 +97,8 @@
   true)
 
 (defmethod driver/mbql->native ::sync-test
-  [_ query]
-  query)
+  [_ _query]
+  {:query "SQL string"})
 
 (defn- ^:dynamic *execute-response*
   [query respond]
@@ -125,7 +125,8 @@
     :id          true
     :archived_at false
     :deactivated_at false
-    :updated_at  true}))
+    :updated_at  true
+    :owner_user_id false}))
 
 (defn- field-defaults []
   (merge

@@ -38,6 +38,10 @@ export interface DocumentsState {
   currentDocument: Document | null;
   draftCards: Record<number, Card>;
   mentionsCache: Record<string, MentionCacheItem>;
+  isCommentSidebarOpen: boolean;
+  childTargetId: string | undefined;
+  hoveredChildTargetId: string | undefined;
+  hasUnsavedChanges: boolean;
 }
 
 export const initialState: DocumentsState = {
@@ -46,6 +50,10 @@ export const initialState: DocumentsState = {
   currentDocument: null,
   draftCards: {},
   mentionsCache: {},
+  isCommentSidebarOpen: false,
+  childTargetId: undefined,
+  hoveredChildTargetId: undefined,
+  hasUnsavedChanges: false,
 };
 
 const documentsSlice = createSlice({
@@ -97,7 +105,7 @@ const documentsSlice = createSlice({
     createDraftCard: (
       state,
       action: PayloadAction<{
-        originalCard: Card;
+        originalCard: Card | undefined;
         modifiedData: Partial<Card>;
         draftId: number;
       }>,
@@ -107,7 +115,7 @@ const documentsSlice = createSlice({
         ...originalCard,
         ...modifiedData,
         id: draftId,
-      };
+      } as Card;
     },
     clearDraftCards: (state) => {
       state.draftCards = {};
@@ -117,6 +125,21 @@ const documentsSlice = createSlice({
       { payload }: PayloadAction<MentionCacheItem>,
     ) => {
       state.mentionsCache[getMentionsCacheKey(payload)] = payload;
+    },
+    setIsCommentSidebarOpen: (state, action: PayloadAction<boolean>) => {
+      state.isCommentSidebarOpen = action.payload;
+    },
+    setChildTargetId: (state, action: PayloadAction<string | undefined>) => {
+      state.childTargetId = action.payload;
+    },
+    setHoveredChildTargetId: (
+      state,
+      action: PayloadAction<string | undefined>,
+    ) => {
+      state.hoveredChildTargetId = action.payload;
+    },
+    setHasUnsavedChanges: (state, action: PayloadAction<boolean>) => {
+      state.hasUnsavedChanges = action.payload;
     },
   },
 });
@@ -132,6 +155,10 @@ export const {
   createDraftCard,
   clearDraftCards,
   updateMentionsCache,
+  setIsCommentSidebarOpen,
+  setChildTargetId,
+  setHoveredChildTargetId,
+  setHasUnsavedChanges,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

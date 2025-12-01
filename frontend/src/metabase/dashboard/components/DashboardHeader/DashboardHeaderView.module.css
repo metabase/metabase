@@ -85,7 +85,6 @@
 .HeaderContent {
   padding-top: 1rem;
   padding-bottom: 0.75rem;
-  width: 100%;
   min-width: 0;
 
   .HeaderCaptionContainer {
@@ -127,7 +126,7 @@
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
-  width: 100%;
+  max-width: 100%;
   overflow-wrap: break-word;
 }
 

@@ -12,4 +12,9 @@
 
 .actionsContainer {
   flex-shrink: 0;
+
+  .commentsIcon:hover {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
+  }
 }

@@ -422,3 +422,98 @@
     :h2       (with-database-type-info :%now "timestamp")
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
     :postgres (with-database-type-info :%now "timestamptz")))
+
+(defn- format-postgres-interval
+  "Generate a Postgres 'INTERVAL' literal.
+
+    (sql/format-expr [::postgres-interval 2 :day])
+    =>
+    [\"INTERVAL '2 day'\"]"
+  ;; I tried to write this with Malli but couldn't figure out how to make it work. See
+  ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
+  [_fn [amount unit]]
+  {:pre [(number? amount)
+         (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
+  [(clojure.core/format "INTERVAL '%s %s'" (num amount) (name unit))])
+
+(sql/register-fn! ::postgres-interval #'format-postgres-interval)
+
+(defn- pg-interval [amount unit]
+  (with-database-type-info [::postgres-interval amount unit] "interval"))
+
+(defn ->pg-timestamp
+  "Cast to timestamp, preserving timestamptz if present."
+  [honeysql-form]
+  (cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
+
+(defmulti add-interval-honeysql-form
+  "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.
+  `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
+
+    (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> [:date_add hsql-form 1 (h2x/literal 'day')]
+
+  `amount` is usually an integer, but can be floating-point for units like seconds.
+
+  This multimethod is intended for use in app DB queries; other drivers should extend
+  metabase.driver.sql.query-processor/add-interval-honeysql-form instead."
+  {:arglists '([db-type hsql-form amount unit])}
+  (fn [db-type _hsql-form _amount _unit]
+    (keyword db-type)))
+
+(defmethod add-interval-honeysql-form :postgres
+  [db-type hsql-form amount unit]
+  ;; Postgres doesn't support quarter in intervals (#20683)
+  (cond
+    (= unit :quarter)
+    (recur db-type hsql-form (clojure.core/* 3 amount) :month)
+
+    ;; date + interval -> timestamp, so cast the expression back to date
+    (is-of-type? hsql-form "date")
+    (cast "date" (+ hsql-form (pg-interval amount unit)))
+
+    :else
+    (let [hsql-form (->pg-timestamp hsql-form)]
+      (-> (+ hsql-form (pg-interval amount unit))
+          (with-type-info (type-info hsql-form))))))
+
+(defmethod add-interval-honeysql-form :mysql
+  [db-type hsql-form amount unit]
+  ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
+  (if (= unit :millisecond)
+    (recur db-type hsql-form (clojure.core// amount 1000.0) :second)
+    [:date_add hsql-form [:raw (clojure.core/format "INTERVAL %s %s" amount (name unit))]]))
+
+(defn- dateadd-h2 [unit amount expr]
+  (let [expr (cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
+    (-> [:dateadd
+         (literal unit)
+         (if (number? amount)
+           [:inline (long amount)]
+           (cast-unless-type-in "integer" #{"long" "integer"} amount))
+         expr]
+        (with-database-type-info (database-type expr)))))
+
+(defmethod add-interval-honeysql-form :h2
+  [db-type hsql-form amount unit]
+  (cond
+    (= unit :quarter)
+    (recur db-type hsql-form (* amount 3) :month)
+
+    ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
+    ;; for application DB purposes) convert to `:millisecond`
+    (and (= unit :second)
+         (not (zero? (rem amount 1))))
+    (recur db-type hsql-form (clojure.core/* amount 1000.0) :millisecond)
+
+    :else
+    (dateadd-h2 unit amount hsql-form)))
+
+(defmethod add-interval-honeysql-form :default
+  [db-type hsql-form amount unit]
+  (throw (ex-info (clojure.core/format (str "metabase.util.honey-sql-2/add-interval-honeysql-form not implemented for db-type %s. "
+                                            "You might want to be calling metabase.driver.sql.query-processor/add-interval-honeysql-form instead.")
+                                       db-type)
+                  {:db-type db-type
+                   :hsql-form hsql-form
+                   :amount amount
+                   :unit unit})))

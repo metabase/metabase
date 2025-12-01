@@ -49,9 +49,10 @@
   ### Entity Types -- keys starting with `:entity/`
 
   These are used to record the semantic purpose of a Table."
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
-   #?@(:cljs
-       [[metabase.util :as u]])
+   #?(:clj [metabase.util.performance :refer [for]]
+      :cljs [metabase.util :as u])
    [clojure.set :as set]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
    [metabase.util.malli :as mu]
@@ -389,7 +390,9 @@
   {:deprecated "0.57.0"}
   [tyype                                                  :- :keyword
    {base-type :base_type, effective-type :effective_type} :- ::snake-cased-type-info]
-  (some #(isa? % tyype) [base-type effective-type]))
+  (if (nil? effective-type)
+    (isa? base-type tyype)
+    (isa? effective-type tyype)))
 
 (mu/defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value

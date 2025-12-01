@@ -4,6 +4,7 @@ import { Component, createRef } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { Popover } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
@@ -62,6 +63,7 @@ export default class LegendVertical extends Component {
       titles,
       colors,
       hovered,
+      dotSize,
       hiddenIndices = [],
       onHoverChange,
       onToggleSeriesVisibility,
@@ -121,6 +123,7 @@ export default class LegendVertical extends Component {
                 }}
                 title={legendItemTitle}
                 color={colors[index % colors.length]}
+                dotSize={dotSize}
                 isMuted={isMuted}
                 isVisible={isVisible}
                 showTooltip={false}
@@ -137,6 +140,7 @@ export default class LegendVertical extends Component {
                 <span
                   className={cx(
                     LegendS.LegendItem,
+                    DashboardS.DashboardChartLegend,
                     CS.flex,
                     CS.alignCenter,
                     CS.flexAlignRight,
@@ -157,6 +161,7 @@ export default class LegendVertical extends Component {
                 <LegendItem
                   title={overflowCount + 1 + " " + t`more`}
                   color="gray"
+                  dotSize={dotSize}
                   showTooltip={false}
                 />
               </li>
@@ -165,6 +170,7 @@ export default class LegendVertical extends Component {
               <LegendVertical
                 className={CS.p2}
                 titles={extraItems}
+                dotSize={dotSize}
                 colors={extraColors}
                 hiddenIndices={hiddenIndices
                   .filter((i) => i >= items.length - 1)

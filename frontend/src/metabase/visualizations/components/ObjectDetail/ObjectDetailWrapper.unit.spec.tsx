@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupTableEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import {
@@ -36,6 +37,8 @@ const MOCK_CARD = createMockCard({
 });
 
 async function setup(options?: Partial<ObjectDetailProps>) {
+  setupTableEndpoints(MOCK_TABLE);
+
   const state = createMockState({
     entities: createMockEntitiesState({
       questions: [MOCK_CARD],

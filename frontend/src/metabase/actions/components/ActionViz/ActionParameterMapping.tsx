@@ -66,7 +66,7 @@ export const ActionParameterMappingForm = ({
         setParameterMapping(
           dashboardParameterId,
           dashcard.id,
-          -1, // this is irrelevant for action parameters
+          null, // this is irrelevant for action parameters
           target,
         ),
       );

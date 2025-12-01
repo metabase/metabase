@@ -287,28 +287,23 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it(
-          "1st stage implicit join (joined data source)",
-          { tags: "@skip" },
-          () => {
-            QSHelpers.setup1stStageImplicitJoinFromJoinFilter();
+        it("1st stage implicit join (joined data source)", () => {
+          QSHelpers.setup1stStageImplicitJoinFromJoinFilter();
 
-            QSHelpers.verifyDashcardRowsCount({
-              dashcardIndex: 0,
-              dashboardCount: 1077,
-              queryBuilderCount: "Showing 1,077 rows",
-            });
+          QSHelpers.verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: 1077,
+            queryBuilderCount: "Showing 1,077 rows",
+          });
 
-            QSHelpers.goBackToDashboard();
+          QSHelpers.goBackToDashboard();
 
-            QSHelpers.verifyDashcardRowsCount({
-              dashcardIndex: 1,
-              dashboardCount: 1077,
-              queryBuilderCount: "Showing 1,077 rows",
-            });
-          },
-        );
+          QSHelpers.verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: 1077,
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
 
         it("1st stage custom column", () => {
           QSHelpers.setup1stStageCustomColumnFilter();
@@ -346,8 +341,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage breakout", { tags: "@skip" }, () => {
+        it("1st stage breakout", () => {
           QSHelpers.setup1stStageBreakoutFilter();
 
           QSHelpers.verifyDashcardRowsCount({

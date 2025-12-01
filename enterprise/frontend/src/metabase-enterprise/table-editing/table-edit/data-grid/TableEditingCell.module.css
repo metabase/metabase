@@ -1,10 +1,10 @@
 .inlineEditingTextInput {
   transition: none;
-  outline: 2px solid var(--mb-base-color-blue-50);
+  outline: 2px solid var(--mb-color-background-selected);
   outline-offset: -2px;
   border-color: transparent;
   box-sizing: border-box;
-  background-color: var(--mb-base-color-white);
+  background-color: var(--mb-color-background);
   border-radius: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -18,7 +18,7 @@
 
   /* Keep outline consistent for inline editing, since focused and non focused state is semantically the same */
   &:focus {
-    outline: 2px solid var(--mb-base-color-blue-50);
+    outline: 2px solid var(--mb-color-background-selected);
   }
 }
 
@@ -40,13 +40,13 @@
 }
 
 .errorCell {
-  background-color: var(--mb-base-color-dubloon-5);
-  outline: 2px solid var(--mb-base-color-dubloon-30);
+  background-color: var(--mb-color-bg-yellow);
+  outline: 2px solid var(--mb-color-warning);
   outline-offset: -2px;
   border-radius: 0.25rem;
 
   &:hover {
-    background-color: var(--mb-base-color-dubloon-5);
+    background-color: var(--mb-color-bg-yellow);
   }
 }
 

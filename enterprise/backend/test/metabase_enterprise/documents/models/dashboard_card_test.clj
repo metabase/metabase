@@ -1,4 +1,4 @@
-(ns backend.test.metabase-enterprise.documents.models.dashboard-card-test
+(ns metabase-enterprise.documents.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]

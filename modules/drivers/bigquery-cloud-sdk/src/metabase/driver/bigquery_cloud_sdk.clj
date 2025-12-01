@@ -1,4 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk
+  (:refer-clojure :exclude [mapv some empty? not-empty])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -12,14 +13,18 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.normalize :as driver.sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv some empty? not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -29,6 +34,7 @@
     BigQuery
     BigQuery$DatasetListOption
     BigQuery$JobOption
+    BigQuery$QueryResultsOption
     BigQuery$TableDataListOption
     BigQuery$TableOption
     BigQueryException
@@ -38,6 +44,9 @@
     Field$Mode
     FieldValue
     FieldValueList
+    InsertAllRequest
+    InsertAllRequest$RowToInsert
+    JobInfo
     QueryJobConfiguration
     Schema
     Table
@@ -45,6 +54,7 @@
     TableId
     TableResult)
    (com.google.common.collect ImmutableMap)
+   (com.google.gson JsonParser)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
@@ -229,6 +239,33 @@
     "NUMERIC"    :type/Decimal
     "BIGNUMERIC" :type/Decimal
     :type/*))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for BigQuery that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+;; we can't recover the parameterized types
+(defmethod type->database-type :type/Array [_] [[:raw "JSON"]])
+(defmethod type->database-type :type/Dictionary [_] [[:raw "JSON"]])
+
+(defmethod type->database-type :type/Boolean [_] [[:raw "BOOL"]])
+(defmethod type->database-type :type/Float [_] [[:raw "FLOAT64"]])
+(defmethod type->database-type :type/Integer [_] [[:raw "INT"]])
+(defmethod type->database-type :type/Number [_] [[:raw "INT"]])
+(defmethod type->database-type :type/Text [_] [[:raw "STRING"]])
+(defmethod type->database-type :type/TextLike [_] [[:raw "STRING"]])
+(defmethod type->database-type :type/Date [_] [[:raw "DATE"]])
+(defmethod type->database-type :type/DateTime [_] [[:raw "DATETIME"]])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "TIMESTAMP"]])
+(defmethod type->database-type :type/Time [_] [[:raw "TIME"]])
+(defmethod type->database-type :type/JSON [_] [[:raw "JSON"]])
+(defmethod type->database-type :type/SerializedJSON [_] [[:raw "JSON"]])
+(defmethod type->database-type :type/Decimal [_] [[:raw "BIGDECIMAL"]])
+
+(defmethod driver/type->database-type :bigquery-cloud-sdk
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
@@ -663,18 +700,22 @@
   (let [^BigQuery client (database-details->client database-details)
         result-promise (promise)
         request (build-bigquery-request sql parameters)
+        job (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+        job-id (.getJobId job)
         query-future (future
                        ;; ensure the classloader is available within the future.
                        (driver-api/the-classloader)
                        (try
                          (*page-callback*)
-                         (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
-                           (deliver result-promise [:ready result])
-                           (throw (ex-info "Null response from query" {})))
+                         (let [result-options (if *page-size* [(BigQuery$QueryResultsOption/pageSize *page-size*)] [])
+                               result (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
+                           (if result
+                             (deliver result-promise [:ready result])
+                             (throw (ex-info "Null response from query" {}))))
                          (catch Throwable t
                            (deliver result-promise [:error t]))))]
 
-    ;; This `go` is responsible for cancelling the *initial* .query call.
+    ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
       (a/go
@@ -687,7 +728,12 @@
     (let [[status result] @result-promise]
       (case status
         :error  (handle-bigquery-exception result sql parameters)
-        :cancel (throw-cancelled sql parameters)
+        :cancel (try
+                  (.cancel client job-id)
+                  (catch Throwable t
+                    (log/warnf t "Couldn't cancel job %s" job-id))
+                  (finally
+                    (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*
@@ -735,6 +781,9 @@
                               :expressions                      true
                               :now                              true
                               :percentile-aggregations          true
+                              ;; we can't support `alter table .. rename ..`  in general
+                              ;; since it won't work for streaming tables
+                              :rename                           false
                               :metadata/key-constraints         false
                               :identifiers-with-spaces          true
                               :expressions/integer              true
@@ -750,6 +799,7 @@
                               :expression-literals              true
                               :database-routing                 true
                               :metadata/table-existence-check   true
+                              :transforms/python                true
                               :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
@@ -828,13 +878,101 @@
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]}]
-  (let [table-str (get-table-str output-table)]
-    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+  (let [{sql-query :query sql-params :params} query
+        table-str (get-table-str output-table)]
+    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str sql-query)
+     sql-params]))
+
+(defmethod driver/compile-insert :bigquery-cloud-sdk
+  [_driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        table-str (get-table-str output-table)]
+    [(format "INSERT INTO %s %s" table-str sql-query)
+     sql-params]))
 
 (defmethod driver/compile-drop-table :bigquery-cloud-sdk
   [_driver table]
   (let [table-str (get-table-str table)]
     [(str "DROP TABLE IF EXISTS " table-str)]))
+
+(defmethod driver/create-table! :bigquery-cloud-sdk
+  [driver database-id table-name column-definitions & {:keys [primary-key]}]
+  (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+
+(defmethod driver/drop-table! :bigquery-cloud-sdk
+  [driver database-id table-name]
+  (let [sql (driver/compile-drop-table driver table-name)]
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+
+(defn- convert-value-for-insertion
+  [base-type value]
+  (condp #(isa? %2 %1) base-type
+    :type/JSON
+    (.toString (JsonParser/parseString value))
+
+    :type/Dictionary
+    (JsonParser/parseString value)
+
+    :type/Array
+    (JsonParser/parseString value)
+
+    :type/Integer
+    (parse-long value)
+
+    :type/Float
+    (parse-double value)
+
+    :type/Boolean
+    (parse-boolean value)
+
+    :type/Numeric
+    (bigdec value)
+
+    :type/Decimal
+    (bigdec value)
+
+    :type/Date
+    (u.date/format (u.date/parse value))
+
+    :type/DateTime
+    (u.date/format :iso-local-date-time (u.date/parse value))
+
+    :type/DateTimeWithLocalTZ
+    (u.date/format (u.date/parse value))
+
+    value))
+
+(defmethod driver/insert-col->val [:bigquery-cloud-sdk :jsonl-file]
+  [_driver _ column-def v]
+  (if (string? v)
+    (convert-value-for-insertion (:type column-def) v)
+    v))
+
+(defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
+  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (let [col-names (map :name columns)
+        {:keys [details]} (t2/select-one :model/Database db-id)
+
+        client (database-details->client details)
+        project-id (get-project-id details)
+
+        dataset-id (namespace table-name)
+        table-name (name table-name)
+
+        table-id (.getTableId (get-table client project-id dataset-id table-name))
+
+        prepared-rows (map #(into {} (map vector col-names %)) data)]
+    (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
+      (let [insert-request-builder (InsertAllRequest/newBuilder table-id)]
+        (doseq [^java.util.Map row chunk]
+          (.addRow insert-request-builder (InsertAllRequest$RowToInsert/of row)))
+        (let [insert-request (.build insert-request-builder)
+              response (.insertAll client insert-request)]
+          (when (.hasErrors response)
+            (let [errors (.getInsertErrors response)]
+              (throw (ex-info "BigQuery insert failed"
+                              {:errors (into [] (map str errors))})))))))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
   [_driver connection-details queries]
@@ -843,15 +981,17 @@
   (let [details (get connection-details :details connection-details)
         client (database-details->client details)]
     (try
-      (for [query queries]
-        (let [sql (if (string? query) query (first query))
-              _ (log/debugf "Executing BigQuery DDL: %s" sql)
-              job-config (-> (QueryJobConfiguration/newBuilder sql)
-                             (.setUseLegacySql false)
-                             (.build))
-              table-result (.query client job-config (into-array BigQuery$JobOption []))]
-          (or (and table-result (.getTotalRows table-result))
-              0)))
+      (doall
+       (for [query queries]
+         (let [[sql params] (if (string? query) [query] query)
+               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               job-config (-> (QueryJobConfiguration/newBuilder sql)
+                              (bigquery.params/set-parameters! params)
+                              (.setUseLegacySql false)
+                              (.build))
+               table-result (.query client job-config (into-array BigQuery$JobOption []))]
+           (or (and table-result (.getTotalRows table-result))
+               0))))
       (catch Exception e
         (log/error e "Error executing BigQuery DDL")
         (throw e)))))
@@ -865,7 +1005,7 @@
     (driver/execute-raw-queries! driver database [drop-sql])
     nil))
 
-(defmethod driver/connection-details :bigquery-cloud-sdk
+(defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
   ;; Return the database details directly since we don't use a JDBC spec for bigquery
   (:details database))
@@ -874,15 +1014,38 @@
   [_]
   nil)
 
-(defmethod driver/native-query-deps :bigquery-cloud-sdk
-  [driver query]
-  (->> query
-       macaw/parsed-query
-       macaw/query->components
-       :tables
-       (map :component)
-       (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
-       (map #(let [parts (str/split (:table %) #"\.")]
-               {:schema (first parts) :table (second parts)}))
-       (keep #(driver.sql/find-table driver %))
-       set))
+(mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (let [db-tables (driver-api/tables query)
+        transforms (t2/select [:model/Transform :id :target])]
+    (into #{} (comp
+               (map :component)
+               (map #(assoc % :table (driver.sql.normalize/normalize-name driver (:table %))))
+               (map #(let [parts (str/split (:table %) #"\.")]
+                       {:schema (first parts) :table (second parts)}))
+               (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
+          (-> query
+              driver-api/raw-native-query
+              macaw/parsed-query
+              macaw/query->components
+              :tables))))
+
+(defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
+  [driver conn-spec schema]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/schema-exists? :bigquery-cloud-sdk
+  [_driver db-id schema]
+  (driver-api/with-metadata-provider db-id
+    (->> (driver-api/metadata-provider)
+         driver-api/database
+         :details
+         list-datasets
+         (some #{schema}))))
+
+(defmethod driver/table-name-length-limit :bigquery-cloud-sdk
+  [_driver]
+  ;; https://cloud.google.com/bigquery/docs/tables
+  1024)

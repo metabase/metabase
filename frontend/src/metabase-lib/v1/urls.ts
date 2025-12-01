@@ -48,7 +48,10 @@ export function getUrlWithParameters(
   question: Question,
   originalQuestion: Question,
   parameters: ParameterWithTarget[],
-  parameterValues: Record<ParameterId, ParameterValueOrArray>,
+  parameterValues: Record<
+    ParameterId,
+    ParameterValueOrArray | undefined | null
+  >,
   { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;
@@ -101,7 +104,7 @@ export function getAutomaticDashboardUrl(
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const filterQuery = questionWithFilters.datasetQuery();
+  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
   const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
   const cellQuery = filter
     ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
@@ -122,7 +125,7 @@ export function getComparisonDashboardUrl(
 ) {
   const questionId = question.id();
   const tableId = question.legacyQueryTableId();
-  const filterQuery = questionWithFilters.datasetQuery();
+  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
   const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
   const cellQuery = filter
     ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`

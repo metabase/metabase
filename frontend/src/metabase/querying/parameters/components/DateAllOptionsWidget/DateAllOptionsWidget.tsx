@@ -5,7 +5,9 @@ import { t } from "ttag";
 import { DatePicker } from "metabase/querying/filters/components/DatePicker";
 import type {
   DatePickerOperator,
+  DatePickerShortcut,
   DatePickerValue,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import {
   deserializeDateParameterValue,
@@ -17,6 +19,8 @@ import type { ParameterValueOrArray } from "metabase-types/api";
 type DateAllOptionsWidgetProps = {
   value: ParameterValueOrArray | null | undefined;
   availableOperators?: DatePickerOperator[];
+  availableShortcuts?: DatePickerShortcut[];
+  availableDirections?: RelativeIntervalDirection[];
   submitButtonLabel?: string;
   onChange: (value: string) => void;
 };
@@ -24,8 +28,10 @@ type DateAllOptionsWidgetProps = {
 export function DateAllOptionsWidget({
   value,
   availableOperators,
+  availableDirections,
   submitButtonLabel = t`Apply`,
   onChange,
+  availableShortcuts,
 }: DateAllOptionsWidgetProps) {
   const pickerValue = useMemo(() => getPickerValue(value), [value]);
 
@@ -37,6 +43,8 @@ export function DateAllOptionsWidget({
     <DatePicker
       value={pickerValue}
       availableOperators={availableOperators}
+      availableShortcuts={availableShortcuts}
+      availableDirections={availableDirections}
       renderSubmitButton={({ isDisabled }) => (
         <Button type="submit" variant="filled" disabled={isDisabled}>
           {submitButtonLabel}

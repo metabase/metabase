@@ -43,12 +43,12 @@
     (testing "uuid field filters"
       (mt/dataset uuid-dogs
         (let [query (assoc (mt/native-query
-                             (assoc (mt/count-with-field-filter-query driver/*driver* :people :id "27e164bc-54f8-47a0-a85a-9f0e90dd7667")
-                                    :template-tags {"id" {:name         "id"
-                                                          :display-name "id"
-                                                          :type         :dimension
-                                                          :widget-type  :id
-                                                          :dimension    [:field (mt/id :people :id) nil]}}))
+                            (assoc (mt/count-with-field-filter-query driver/*driver* :people :id "27e164bc-54f8-47a0-a85a-9f0e90dd7667")
+                                   :template-tags {"id" {:name         "id"
+                                                         :display-name "id"
+                                                         :type         :dimension
+                                                         :widget-type  :id
+                                                         :dimension    [:field (mt/id :people :id) nil]}}))
                            :parameters [{:type   :id
                                          :name   "id"
                                          :target [:dimension [:template-tag "id"]]

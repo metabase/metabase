@@ -18,8 +18,8 @@ const units = (px: number) => ({
 const FONT_SIZES = {
   tableCell: units(12.5),
   pivotTableCell: units(12),
-  label: units(12),
-  goalLabel: units(14),
+  label: units(13),
+  goalLabel: units(13),
 };
 
 /**
@@ -88,7 +88,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     splitLine: {
       lineStyle: {
-        color: "var(--mb-color-border)",
+        color: "var(--mb-color-cartesian-grid-line)",
       },
     },
   },

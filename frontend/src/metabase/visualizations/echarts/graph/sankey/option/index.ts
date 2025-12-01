@@ -64,7 +64,7 @@ export const getSankeyChartOption = (
       show: settings["sankey.show_edge_labels"],
       formatter: (params) =>
         typeof params.value === "number" ? valueFormatter(params.value) : "",
-      color: renderingContext.getColor("text-dark"),
+      color: renderingContext.getColor("text-primary"),
       fontSize: SANKEY_CHART_STYLE.edgeLabels.size,
       textBorderWidth: SANKEY_CHART_STYLE.edgeLabels.textBorderWidth,
       textBorderColor: renderingContext.getColor("bg-white"),
@@ -83,7 +83,7 @@ export const getSankeyChartOption = (
       curveness: 0.5,
     },
     label: {
-      color: renderingContext.getColor("text-dark"),
+      color: renderingContext.getColor("text-primary"),
       fontSize: nodeLabelStyle.size,
       fontWeight: nodeLabelStyle.weight,
       fontFamily: nodeLabelStyle.family,

@@ -1,32 +1,66 @@
 import type {
+  DatabaseId,
+  PythonTransformTableAliases,
   Transform,
   TransformJob,
   TransformRun,
   TransformSource,
   TransformTag,
   TransformTarget,
+  UpdateTransformRequest,
 } from "metabase-types/api";
 
 import { createMockStructuredDatasetQuery } from "./query";
 
-export function createMockTransformSource(
-  opts?: Partial<TransformSource>,
-): TransformSource {
+export function createMockTransformSource(): TransformSource {
   return {
     type: "query",
     query: createMockStructuredDatasetQuery(),
-    ...opts,
+  };
+}
+
+export function createMockPythonTransformSource({
+  sourceDatabase = 1,
+  sourceTables = {},
+  body = "# Python script\nprint('Hello, world!')",
+}: {
+  sourceDatabase?: DatabaseId;
+  sourceTables?: PythonTransformTableAliases;
+  body?: string;
+}): TransformSource {
+  return {
+    type: "python",
+    body,
+    "source-database": sourceDatabase,
+    "source-tables": sourceTables,
   };
 }
 
 export function createMockTransformTarget(
   opts?: Partial<TransformTarget>,
 ): TransformTarget {
-  return {
-    type: "table",
+  const base = {
+    type: "table" as const,
     name: "Table",
     schema: null,
+    database: 1,
+  };
+
+  if (opts?.type === "table-incremental") {
+    return {
+      ...base,
+      ...opts,
+      type: "table-incremental",
+      "target-incremental-strategy": opts["target-incremental-strategy"] ?? {
+        type: "append",
+      },
+    };
+  }
+
+  return {
+    ...base,
     ...opts,
+    type: "table",
   };
 }
 
@@ -77,8 +111,18 @@ export function createMockTransformJob(
     name: "Job",
     description: null,
     schedule: "0 0 0 * * ? *",
+    ui_display_type: "cron/builder",
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockUpdateTransformRequest(
+  opts?: Partial<UpdateTransformRequest>,
+): UpdateTransformRequest {
+  return {
+    id: 1,
     ...opts,
   };
 }

@@ -61,6 +61,7 @@ export const SearchResults = <
                     searchEngine: searchEngine || "unknown",
                     requestId: searchRequestId,
                     entityModel: item.model,
+                    entityId: typeof item.id === "number" ? item.id : null,
                     searchTerm,
                   });
                   onItemSelect(item as unknown as Item);

@@ -1,0 +1,7 @@
+.row {
+  cursor: pointer;
+}
+
+.wrap {
+  overflow-wrap: anywhere;
+}

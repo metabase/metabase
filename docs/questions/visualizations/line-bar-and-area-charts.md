@@ -44,7 +44,7 @@ By default, Metabase will automatically choose a good way to bin your results. B
 
 ## Settings for line, bar, and area charts
 
-These three charting types have very similar options, which are broken up into the following tabs. You can access these chart settings by clicking the **gear** icon in the lower left of the chart.
+These three charting types have similar options, which are broken up into the following tabs. You can access these chart settings by clicking the **gear** icon in the lower left of the chart.
 
 - [Data settings](#data-settings)
 - [Display settings](#display-settings)

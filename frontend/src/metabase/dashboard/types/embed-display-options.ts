@@ -1,4 +1,3 @@
-import type { DashboardNightModeControls } from "metabase/dashboard/types/display-options";
 import type {
   DisplayTheme,
   EmbedResourceDownloadOptions,
@@ -18,8 +17,7 @@ export type EmbedFont = string | null;
 
 export type EmbedThemeControls = {
   theme: DisplayTheme;
-  setTheme: (theme: DisplayTheme) => void;
-} & DashboardNightModeControls;
+};
 
 export type EmbedDisplayParams = {
   background: EmbedBackground;

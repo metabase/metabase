@@ -7,7 +7,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (deftest ^:parallel quick-filter-on-bucketed-date-test

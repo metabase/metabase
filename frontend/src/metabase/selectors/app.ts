@@ -28,6 +28,7 @@ export interface RouterProps {
 const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
+  /^\/data-studio/,
   /\/model\/.*\/query/,
   /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,
@@ -62,8 +63,8 @@ export const getIsAdminApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/admin/");
 });
 
-export const getIsEmbeddingSetup = createSelector([getRouterPath], (path) => {
-  return path.startsWith("/setup/embedding");
+export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/data-studio");
 });
 
 export const getIsCollectionPathVisible = createSelector(
@@ -151,6 +152,7 @@ export const getIsAppBarVisible = createSelector(
     getRouterPath,
     getRouterHash,
     getIsAdminApp,
+    getIsDataStudioApp,
     getIsEditingDashboard,
     getIsEmbeddingIframe,
     getIsEmbeddedAppBarVisible,
@@ -160,6 +162,7 @@ export const getIsAppBarVisible = createSelector(
     path,
     hash,
     isAdminApp,
+    isDataStudioApp,
     isEditingDashboard,
     isEmbedded,
     isEmbeddedAppBarVisible,
@@ -170,6 +173,7 @@ export const getIsAppBarVisible = createSelector(
       !currentUser ||
       (isEmbedded && !isEmbeddedAppBarVisible) ||
       isAdminApp ||
+      isDataStudioApp ||
       isEditingDashboard ||
       isFullscreen
     ) {

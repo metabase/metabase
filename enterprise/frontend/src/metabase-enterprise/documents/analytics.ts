@@ -49,3 +49,18 @@ export const trackDocumentPrint = (document?: Document | null) => {
     target_id: document?.id || null,
   });
 };
+
+export const trackDocumentBookmark = () => {
+  trackSimpleEvent({
+    event: "bookmark_added",
+    event_detail: "document",
+    triggered_from: "document_header",
+  });
+};
+
+export const trackDocumentAddSupportingText = (document?: Document | null) => {
+  trackSimpleEvent({
+    event: "document_add_supporting_text",
+    target_id: document?.id || null,
+  });
+};

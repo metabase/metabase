@@ -157,3 +157,13 @@
   :export? false
   :visibility :internal
   :doc false)
+
+(defsetting repair-table-retention-hours
+  (deferred-tru "Number of hours until repair tables are considered stale and eligible for cleanup, if they were not
+    cleaned up successfully after use.")
+  :type :integer
+  :default 2
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc false)

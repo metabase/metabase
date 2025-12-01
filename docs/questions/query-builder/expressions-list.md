@@ -126,7 +126,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the query builder.
+Aggregation expressions consider all values in a field. They can only be used in the **Summarize** section of the query builder.
 
 ### Average
 

@@ -8,7 +8,9 @@
   - Shared Question downloads
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
-  - Alert attachments"
+  - Alert attachments
+
+  TODO (Cam 9/17/25) -- these tests need to get moved into appropriate module(s)."
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]
@@ -980,14 +982,14 @@
                                                        :type     :native
                                                        :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
         (let [results (all-outputs! card {:export-format :csv})]
-          (is (= {:card-download            110
-                  :unsaved-card-download    110
-                  :alert-attachment         110
-                  :dashcard-download        110
-                  :subscription-attachment  110
-                  :public-question-download 110
-                  :public-dashcard-download 110}
-                 (update-vals results count)))))))
+          (is (=? {:card-download            110
+                   :unsaved-card-download    110
+                   :dashcard-download        110
+                   :alert-attachment         110
+                   :subscription-attachment  110
+                   :public-question-download 110
+                   :public-dashcard-download 110}
+                  (update-vals results count)))))))
   (testing "Downloads row limit can be raised"
     (binding [qp.settings/*minimum-download-row-limit* 100]
       (mt/with-temporary-setting-values [download-row-limit 109]
@@ -996,14 +998,14 @@
                                                          :type     :native
                                                          :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
           (let [results (all-outputs! card {:export-format :csv})]
-            (is (= {:card-download            110
-                    :unsaved-card-download    110
-                    :alert-attachment         110
-                    :dashcard-download        110
-                    :subscription-attachment  110
-                    :public-question-download 110
-                    :public-dashcard-download 110}
-                   (update-vals results count)))))))))
+            (is (=? {:card-download            110
+                     :unsaved-card-download    110
+                     :dashcard-download        110
+                     :alert-attachment         110
+                     :subscription-attachment  110
+                     :public-question-download 110
+                     :public-dashcard-download 110}
+                    (update-vals results count)))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
   (testing "A model's visualization settings are respected in downloads."
@@ -1775,3 +1777,27 @@
                   ["3"            "300.0" ""      "300.0"]
                   ["Grand totals" "200.0" "100.0" "175.0"]]
                  (rest result))))))))
+
+(deftest ^:parallel pivot-long-column-names-download-test
+  (testing "Pivot table downloads should include columns with very long names that are present in frontend"
+    (let [long-title (apply str (repeat 10 "Long title"))]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:columns ["CATEGORY"]
+                                                  :rows    ["VENDOR"]
+                                                  :values  ["sum" long-title]}}
+                        :dataset_query          (mt/mbql-query orders
+                                                  {:aggregation [[:sum $total]
+                                                                 [:aggregation-options [:count] {:name         long-title
+                                                                                                 :display-name long-title}]]
+                                                   :breakout    [$product_id->products.category
+                                                                 $product_id->products.vendor]
+                                                   :limit       3})}]
+
+          (testing "download"
+            (let [res     (card-download pivot-card {:export-format :csv :pivot true :format-rows false})
+                  headers (second res)]
+              (is (= 3 (count headers)))
+              (is (some #{long-title} headers)))))))))

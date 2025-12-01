@@ -76,12 +76,12 @@
 
 (deftest load-entrypoint-template-contains-user-locale
   (binding [i18n/*user-locale* "es"]
-    (is (= "es" (:language (#'index/template-parameters false {})))))
+    (is (= "es" (:language (#'index/template-parameters "index" false {})))))
   (binding [i18n/*user-locale* "en"]
-    (is (= "en" (:language (#'index/template-parameters false {})))))
+    (is (= "en" (:language (#'index/template-parameters "index" false {})))))
   (mt/with-temporary-setting-values [site-locale "es"]
     ;; site locale is used as the default
-    (is (= "es" (:language (#'index/template-parameters false {}))))
+    (is (= "es" (:language (#'index/template-parameters "index" false {}))))
     ;; but we can override with the user locale
     (binding [i18n/*user-locale* "fr"]
-      (is (= "fr" (:language (#'index/template-parameters false {})))))))
+      (is (= "fr" (:language (#'index/template-parameters "index" false {})))))))

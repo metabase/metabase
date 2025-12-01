@@ -56,9 +56,12 @@ describe("scenarios > admin > datamodel > segments", () => {
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       }).then(({ body }) => {
         cy.wrap(body.id).as("segmentId");
@@ -212,7 +215,6 @@ describe("scenarios > admin > datamodel > segments", () => {
         .find(".Icon-ellipsis")
         .click();
       H.popover().findByText("Retire Segment").click();
-      H.modal().find("textarea").type("delete it");
       H.modal().contains("button", "Retire").click();
     });
 
@@ -276,6 +278,64 @@ describe("scenarios > admin > datamodel > segments", () => {
           .should("contain", `You created "${SEGMENT_NAME}"`)
           .and("contain", "All orders with a total under $100.");
       }
+    });
+  });
+
+  describe("x-ray", () => {
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track x-raying a segment", () => {
+      cy.intercept("GET", "/api/automagic-dashboards/**").as(
+        "getXrayDashboard",
+      );
+
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+
+      H.createSegment({
+        name: "Foo",
+        description: "All orders with a total under $100.",
+        table_id: ORDERS_ID,
+        definition: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
+        },
+      }).then(({ body: { id } }) => {
+        cy.visit(`/reference/segments/${id}`);
+        cy.findAllByRole("listitem")
+          .filter(":contains(X-ray this segment)")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "segment",
+        triggered_from: "data_reference",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByRole("heading", { name: "Compare" })
+          .parent()
+          .findByText("Compare with entire dataset")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "compare",
+        triggered_from: "suggestion_sidebar",
+      });
     });
   });
 });

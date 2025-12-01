@@ -1,0 +1,62 @@
+(ns metabase-enterprise.transforms.schema
+  (:require
+   [metabase.lib.metadata.column :as lib.metadata.column]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
+
+(mr/def ::checkpoint-strategy
+  [:map
+   [:type [:= "checkpoint"]]
+   ;; for native
+   [:checkpoint-filter {:optional true} :string]
+   ;; for mbql and python
+   [:checkpoint-filter-unique-key {:optional true}
+    ::lib.metadata.column/column-unique-key]])
+
+(mr/def ::source-incremental-strategy
+  [:multi {:dispatch :type}
+   ["checkpoint" ::checkpoint-strategy]])
+
+(mr/def ::transform-source
+  [:multi {:dispatch (comp keyword :type)}
+   [:query
+    [:map
+     [:type [:= "query"]]
+     [:query ::queries.schema/query]
+     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
+   [:python
+    [:map
+     [:source-database {:optional true} :int]
+     ;; NB: if source is checkpoint, only one table allowed
+     [:source-tables   [:map-of :string :int]]
+     [:type [:= "python"]]
+     [:body :string]
+     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
+
+(mr/def ::append-config
+  [:map [:type [:= "append"]]])
+
+(mr/def ::target-incremental-strategy
+  [:multi {:dispatch :type}
+   ["append" ::append-config]])
+
+(mr/def ::table-target
+  [:map
+   [:database {:optional true} :int]
+   [:type [:= "table"]]
+   [:schema {:optional true} [:or ms/NonBlankString :nil]]
+   [:name :string]])
+
+(mr/def ::table-incremental-target
+  [:map
+   [:database {:optional true} :int]
+   [:type [:= "table-incremental"]]
+   [:schema {:optional true} [:or ms/NonBlankString :nil]]
+   [:name :string]
+   [:target-incremental-strategy ::target-incremental-strategy]])
+
+(mr/def ::transform-target
+  [:multi {:dispatch :type}
+   ["table" ::table-target]
+   ["table-incremental" ::table-incremental-target]])

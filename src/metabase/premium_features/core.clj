@@ -30,7 +30,7 @@
   plan-alias
   quotas
   TokenStatus
-  clear-cache]
+  clear-cache!]
 
  (metabase.premium-features.settings
   active-users-count
@@ -52,6 +52,7 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-dependencies?
   enable-documents?
   enable-email-allow-list?
   enable-email-restrict-recipients?
@@ -62,6 +63,7 @@
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
+  enable-remote-sync?
   enable-sandboxes?
   enable-scim?
   enable-semantic-search?
@@ -72,13 +74,16 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-support-users?
   enable-transforms?
+  enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
-  offer-metabase-ai?
+  offer-metabase-ai-trial?
+  offer-metabase-ai-paid?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

@@ -1,18 +1,20 @@
 (ns metabase.query-processor.middleware.desugar
+  (:refer-clojure :exclude [select-keys])
   (:require
-   [metabase.lib.filter.desugar :as lib.filter.desugar]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (defn- desugar*
   [stage-or-join]
   (letfn [(desugar** [x]
             (lib.util.match/replace x
               (clause :guard lib.util/clause?)
-              (lib.filter.desugar/desugar-filter-clause clause)))]
+              (lib/desugar-filter-clause clause)))]
     (merge
      (desugar** (dissoc stage-or-join :joins :stages :lib/stage-metadata :parameters))
      (select-keys stage-or-join [:joins :stages :lib/stage-metadata :parameters]))))

@@ -11,7 +11,6 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -21,6 +20,7 @@ import {
 } from "metabase/querying/expressions";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";

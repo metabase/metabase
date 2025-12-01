@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -23,8 +22,7 @@
                                                                                 [(lib/=
                                                                                   (lib.metadata/field mp (mt/id :products :id))
                                                                                   (lib.metadata/field mp (mt/id :reviews :product_id)))])
-                                                               (lib/with-join-fields :all)))
-                                                 lib.convert/->legacy-MBQL)
+                                                               (lib/with-join-fields :all))))
                               :database-id   (mt/id)
                               :name          "Products+Reviews"
                               :type          :model}]})
@@ -40,8 +38,7 @@
                                                                                  (m/find-first (comp #{"Price"} :display-name)))))
                                                  (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
                                                                                     (lib/breakoutable-columns $q))
-                                                                      (lib/with-temporal-bucket :month)))
-                                                 (lib.convert/->legacy-MBQL $q)))
+                                                                      (lib/with-temporal-bucket :month)))))
                               :database-id   (mt/id)
                               :name          "Products+Reviews Summary"
                               :type          :model}]})

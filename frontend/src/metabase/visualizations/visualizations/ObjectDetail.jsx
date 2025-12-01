@@ -27,7 +27,7 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    ...tableColumnSettings,
+    ...tableColumnSettings({ isShowingDetailsOnlyColumns: true }),
   },
   columnSettings: (column) => {
     const settings = {

@@ -117,6 +117,7 @@ config:
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
     default-maps-enabled: true
+    disable-cors-on-localhost: false
     download-row-limit: null
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
@@ -134,7 +135,7 @@ config:
     email-smtp-username: null
     email-smtp-username-override: null
     embedding-app-origins-interactive: null
-    embedding-app-origins-sdk: localhost:*
+    embedding-app-origins-sdk: ''
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
@@ -154,6 +155,7 @@ config:
     health-check-logging-enabled: true
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
+    hide-stacktraces: false
     http-channel-host-strategy: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
@@ -187,6 +189,7 @@ config:
     ldap-security: none
     ldap-sync-user-attributes: true
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
+    ldap-timeout-seconds: 15.0
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
@@ -206,6 +209,7 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
+    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
@@ -213,6 +217,9 @@ config:
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
+    remote-sync-auto-import: false
+    remote-sync-auto-import-rate: 5
+    remote-sync-task-time-limit-ms: 300000
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
@@ -270,6 +277,5 @@ config:
     synchronous-batch-updates: false
     unaggregated-query-row-limit: null
     uploads-settings: null
-    use-tenants: false
     user-visibility: all
 ```

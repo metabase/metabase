@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
-   [metabase.warehouse-schema.api.table-test :as oss-test]))
+   [metabase.warehouse-schema-rest.api.table-test :as oss-test]))
 
 (def list-url "ee/upload-management/tables")
 

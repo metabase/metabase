@@ -1,4 +1,3 @@
-import "regenerator-runtime/runtime";
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 

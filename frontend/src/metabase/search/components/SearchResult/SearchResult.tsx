@@ -97,6 +97,7 @@ export function SearchResult({
       searchEngine: searchEngine || "unknown",
       requestId: searchRequestId,
       entityModel: result.model,
+      entityId: typeof result.id === "number" ? result.id : null,
       searchTerm,
     });
     onChangeLocation(result.getUrl());

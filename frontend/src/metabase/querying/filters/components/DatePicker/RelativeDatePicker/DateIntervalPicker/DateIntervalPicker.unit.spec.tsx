@@ -18,7 +18,7 @@ function getDefaultValue(
 ): RelativeDatePickerValue {
   return {
     type: "relative",
-    value: direction === "last" ? -30 : 30,
+    value: direction === "past" ? -30 : 30,
     unit: "day",
   };
 }
@@ -56,7 +56,7 @@ describe("DateIntervalPicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
-  describe.each<RelativeIntervalDirection>(["last", "next"])(
+  describe.each<RelativeIntervalDirection>(["past", "future"])(
     "%s",
     (direction) => {
       const defaultValue = getDefaultValue(direction);
@@ -72,7 +72,7 @@ describe("DateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -20 : 20,
+          value: direction === "past" ? -20 : 20,
         });
         expect(onSubmit).not.toHaveBeenCalled();
 
@@ -91,7 +91,7 @@ describe("DateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -10 : 10,
+          value: direction === "past" ? -10 : 10,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -108,7 +108,7 @@ describe("DateIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -1 : 1,
+          value: direction === "past" ? -1 : 1,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -194,7 +194,7 @@ describe("DateIntervalPicker", () => {
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
           offsetUnit: "day",
-          offsetValue: direction === "last" ? -7 : 7,
+          offsetValue: direction === "past" ? -7 : 7,
           options: undefined,
         });
         expect(onSubmit).not.toHaveBeenCalled();
@@ -206,7 +206,7 @@ describe("DateIntervalPicker", () => {
         });
 
         const rangeText =
-          direction === "last" ? "Dec 2–31, 2019" : "Jan 2–31, 2020";
+          direction === "past" ? "Dec 2–31, 2019" : "Jan 2–31, 2020";
         expect(screen.getByText(rangeText)).toBeInTheDocument();
       });
 
@@ -219,7 +219,7 @@ describe("DateIntervalPicker", () => {
         });
 
         const rangeText =
-          direction === "last" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
+          direction === "past" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
         expect(screen.getByText(rangeText)).toBeInTheDocument();
       });
 

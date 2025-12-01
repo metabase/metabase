@@ -6,6 +6,7 @@ import { t } from "ttag";
 import Select, { Option } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
 import type {
   EmbedResourceParameter,
   EmbedResourceType,
@@ -13,7 +14,6 @@ import type {
   EmbeddingParameters,
   EmbeddingParametersValues,
 } from "metabase/public/lib/types";
-import type { IconName } from "metabase/ui";
 import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
@@ -65,7 +65,7 @@ export const ParametersSettings = ({
 
           {resourceParameters.map((parameter) => (
             <div key={parameter.id} className={cx(CS.flex, CS.alignCenter)}>
-              <Icon name={getIconForParameter(parameter)} className={CS.mr2} />
+              <Icon name={getParameterIconName(parameter)} className={CS.mr2} />
               <h3>
                 {parameter.name}
                 {parameter.required && (
@@ -148,16 +148,4 @@ export const ParametersSettings = ({
       <Divider />
     </>
   );
-};
-
-const getIconForParameter = (parameter: EmbedResourceParameter): IconName => {
-  if (parameter.type === "category") {
-    return "string";
-  }
-
-  if (parameter.type.indexOf("date/") === 0) {
-    return "calendar";
-  }
-
-  return "unknown";
 };

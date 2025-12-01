@@ -68,6 +68,7 @@
 
      In other words, this bin adds a filter for the selected bin and then divides the bin width in the breakout binning
      options by 10."
+  (:refer-clojure :exclude [some every?])
   (:require
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
@@ -82,7 +83,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some every?]]))
 
 ;;;
 ;;; available-drill-thrus

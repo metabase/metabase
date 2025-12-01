@@ -1,3 +1,4 @@
+import Color from "color";
 import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -113,7 +114,7 @@ const BrandColorRow = memo(function BrandColorRow({
       <TableBodyCell>
         <ColorPicker
           value={color ?? originalColor}
-          placeholder={originalColor}
+          placeholder={Color(originalColor).hex()}
           onChange={handleChange}
         />
       </TableBodyCell>

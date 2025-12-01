@@ -1,9 +1,11 @@
 (ns metabase.driver.druid.sync
+  (:refer-clojure :exclude [select-keys])
   (:require
    [medley.core :as m]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.druid.client :as druid.client]
-   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]))
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
+   [metabase.util.performance :refer [select-keys]]))
 
 (defn- do-segment-metadata-query [details datasource]
   {:pre [(map? details) (string? datasource)]}

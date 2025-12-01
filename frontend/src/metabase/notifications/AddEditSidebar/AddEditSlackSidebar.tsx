@@ -25,7 +25,7 @@ import type {
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
-import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
+import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
