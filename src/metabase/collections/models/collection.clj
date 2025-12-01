@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.audit-app.settings :as audit.settings]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
@@ -222,7 +223,8 @@
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
-  (= id (:id (audit/default-audit-collection))))
+  (when (audit.settings/load-analytics-content)
+    (= id (:id (audit/default-audit-collection)))))
 
 (defmethod mi/can-write? :model/Collection
   ([instance]

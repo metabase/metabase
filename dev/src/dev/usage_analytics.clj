@@ -27,8 +27,6 @@
   "The creator email used in YAMLs for all analytics content."
   "internal@metabase.com")
 
-(def ^:private dev-db-name "Analytics Development DB")
-
 ;;; ============================================================================
 ;;; Database Management
 ;;; ============================================================================
@@ -50,7 +48,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (t2/select-one :model/Database :name dev-db-name))
+  (t2/select-one :model/Database :name canonical-db-id))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -69,7 +67,7 @@
         existing)
       (let [db-details (get-app-db-connection-details)
             db (t2/insert-returning-instance! :model/Database
-                                              {:name dev-db-name
+                                              {:name canonical-db-id
                                                :description "Development database for analytics views and content"
                                                :engine (name db-type)
                                                :details db-details
@@ -79,7 +77,7 @@
                                                :creator_id user-id
                                                :auto_run_queries true})]
         (log/info "Created analytics dev database:" (:id db))
-        (sync/analyze-db! db)
+        (sync/sync-database! db)
         db))))
 
 (defn delete-analytics-dev-database!
@@ -103,7 +101,6 @@
        :from-canonical
        (condp = node
 
-         canonical-db-id (:dev-db-name opts)
          canonical-creator-id (:user-id opts)
 
          node)
@@ -111,7 +108,6 @@
        :to-canonical
        (condp = node
 
-         (:dev-db-name opts) canonical-db-id
          (:user-id opts) canonical-creator-id
 
          node)))
@@ -125,11 +121,10 @@
   "Copy YAMLs from source to temp directory, transforming them.
 
   Returns the temp directory path."
-  [source-dir dev-db-name user-id dev-collection-entity-id]
+  [source-dir user-id dev-collection-entity-id]
   (let [temp-dir (Files/createTempDirectory "analytics-dev-import" (make-array FileAttribute 0))
         temp-path (.toFile temp-dir)
-        opts {:dev-db-name dev-db-name
-              :user-id user-id
+        opts {:user-id user-id
               :dev-collection-entity-id dev-collection-entity-id}]
     (log/info "Copying and transforming YAMLs from" source-dir "to" temp-path)
 
@@ -137,8 +132,7 @@
     ;; Skip databases/ directory since we create the dev DB ourselves
     (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
-                       (.endsWith (.getName file) ".yaml")
-                       (not (.contains (.getPath file) "/databases/")))]
+                       (.endsWith (.getName file) ".yaml"))]
       (let [relative-path (str/replace (.getPath file)
                                        (str (.getPath (io/file source-dir)) "/")
                                        "")
@@ -161,12 +155,12 @@
   1. Copy YAMLs from resources/instance_analytics/ to temp dir
   2. Transform YAMLs (canonical -> dev format)
   3. Load using v2.ingest/ingest-yaml and v2.load/load-metabase!"
-  [dev-db-name user-id dev-collection-entity-id]
+  [user-id dev-collection-entity-id]
   (let [source-dir "resources/instance_analytics"
         _ (when-not (.exists (io/file source-dir))
             (throw (ex-info "Analytics source directory not found" {:path source-dir})))
 
-        temp-dir (copy-and-transform-yamls! source-dir dev-db-name user-id dev-collection-entity-id)]
+        temp-dir (copy-and-transform-yamls! source-dir user-id dev-collection-entity-id)]
 
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
