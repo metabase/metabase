@@ -21,7 +21,6 @@ Currently, editable tables are available for the following databases:
 
 ## Setting up editable tables
 
-_Currently, editable table data is only available for PostgreSQL, MySQL, and Metabase Sample Database._
 
 To set up table editing, admins can:
 
