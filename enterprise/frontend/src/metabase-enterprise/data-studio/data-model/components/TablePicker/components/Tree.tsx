@@ -24,7 +24,12 @@ import type {
   TreeNode,
   TreePath,
 } from "../types";
-import { isSchemaNode, isTableOrSchemaNode } from "../types";
+import {
+  isDatabaseNode,
+  isSchemaNode,
+  isTableNode,
+  isTableOrSchemaNode,
+} from "../types";
 import { flatten } from "../utils";
 
 import { EmptyState } from "./EmptyState";
@@ -68,9 +73,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   useEffect(() => {
     const expandedDatabases = items.filter(
       (item) =>
-        item.type === "database" &&
-        item.isExpanded &&
-        item.children.length === 0,
+        isDatabaseNode(item) && item.isExpanded && item.children.length === 0,
     );
 
     expandedDatabases.forEach((database) => {
@@ -100,9 +103,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
 
   useEffect(() => {
     // When we detect only one database, we automatically select and expand it.
-    const databases = tree.children.filter(
-      (node) => (node as DatabaseNode).type === "database",
-    ) as DatabaseNode[];
+    const databases = tree.children.filter((node) => isDatabaseNode(node));
 
     if (databases.length !== 1) {
       return;
@@ -123,8 +124,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     // When we detect a database with just one schema, we automatically
     // select and expand that schema.
     const database = tree.children.find(
-      (node) =>
-        node.type === "database" && node.value.databaseId === databaseId,
+      (node) => isDatabaseNode(node) && node.value.databaseId === databaseId,
     );
     if (
       databaseId &&
@@ -183,7 +183,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   useEffect(() => {
     const expandedSelectedDatabaseItems = items.filter(
       (x) =>
-        x.type === "database" &&
+        isDatabaseNode(x) &&
         selectedDatabases.has(x.value?.databaseId ?? -1) &&
         x.children.length > 0,
     ) as unknown as DatabaseNode[];
@@ -254,7 +254,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     };
     const isSelected = isItemSelected(item as unknown as TreeNode, selection);
 
-    if (item.type === "table") {
+    if (isTableNode(item)) {
       const tableId = item.value?.tableId ?? -1;
       if (tableId === -1) {
         return;
@@ -334,7 +334,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
       return newSet;
     });
 
-    if (targetItem.type === "table" && targetItem.value) {
+    if (isTableNode(targetItem) && targetItem.value) {
       onChange(targetItem.value);
     }
   }

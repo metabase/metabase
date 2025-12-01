@@ -213,14 +213,12 @@ export function SearchNew({
   };
 
   const handleRangeSelect = (items: FlatItem[]) => {
-    const tableItems = items.filter(
-      (item) => item.type === "table" && item.table,
-    );
+    const tableItems = items.filter((item) => isTableNode(item) && item.table);
 
     setSelectedTables((prev) => {
       const newSet = new Set(prev);
       tableItems.forEach((item) => {
-        if (item.type === "table" && item.table) {
+        if (isTableNode(item) && item.table) {
           newSet.add(item.table.id);
         }
       });

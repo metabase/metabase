@@ -9,7 +9,12 @@ import type {
   SchemaNode,
   TreeNode,
 } from "./types";
-import { isExpandedItem, isSchemaNode, isTableOrSchemaNode } from "./types";
+import {
+  isExpandedItem,
+  isSchemaNode,
+  isTableNode,
+  isTableOrSchemaNode,
+} from "./types";
 
 export interface NodeSelection {
   tables: Set<TableId>;
@@ -24,7 +29,7 @@ export function isItemSelected(
   if (!selection) {
     return "no";
   }
-  if (node.type === "table") {
+  if (isTableNode(node)) {
     return selection.tables.has(node.value.tableId) ? "yes" : "no";
   }
   if (isSchemaNode(node)) {
@@ -53,8 +58,7 @@ function areChildTablesSelected(
   }
 
   const selectedTablesCount = node.children.filter(
-    (child) =>
-      child.type === "table" && selectedTables.has(child.value.tableId),
+    (child) => isTableNode(child) && selectedTables.has(child.value.tableId),
   ).length;
 
   return selectedTablesCount === node.children.length
@@ -97,7 +101,7 @@ export function isParentSchemaSelected(
   item: FlatItem,
   selectedSchemas: Set<string>,
 ) {
-  if (item.type !== "table") {
+  if (!isTableNode(item)) {
     return false;
   }
 

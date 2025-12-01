@@ -23,7 +23,7 @@ import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import { TYPE_ICONS } from "../constants";
-import type { FlatItem, TreePath } from "../types";
+import { type FlatItem, type TreePath, isTableNode } from "../types";
 import { hasChildren } from "../utils";
 
 import S from "./Results.module.css";
@@ -85,7 +85,7 @@ export function TablePickerResults({
         return;
       }
       const index = latestItems.current.findIndex(
-        (item) => item.type === "table" && item.value?.tableId === path.tableId,
+        (item) => isTableNode(item) && item.value?.tableId === path.tableId,
       );
       if (index === -1) {
         return;
@@ -133,7 +133,7 @@ export function TablePickerResults({
     }
 
     const isShiftPressed = Boolean(options?.isShiftPressed);
-    const isTable = item.type === "table";
+    const isTable = isTableNode(item);
     const hasRangeAnchor =
       lastSelectedTableIndex.current != null && onRangeSelect != null;
     const isRangeSelection = isShiftPressed && isTable && hasRangeAnchor;
@@ -333,7 +333,7 @@ function isTableActive(
 ): boolean {
   return (
     selectedItemsCount === 0 &&
-    item.type === "table" &&
+    isTableNode(item) &&
     item.value?.tableId === path.tableId
   );
 }
@@ -507,8 +507,10 @@ const ResultsItem = ({
       to={getUrl(baseUrl, {
         databaseId: value?.databaseId,
         schemaName:
-          type === "schema" || type === "table" ? value?.schemaName : undefined,
-        tableId: type === "table" ? value?.tableId : undefined,
+          type === "schema" || isTableNode(item)
+            ? item.value?.schemaName
+            : undefined,
+        tableId: isTableNode(item) ? item.value?.tableId : undefined,
       })}
       data-testid="tree-item"
       data-type={type}
@@ -552,7 +554,7 @@ const ResultsItem = ({
             <Box
               className={S.label}
               c={
-                type === "table" &&
+                isTableNode(item) &&
                 item.table &&
                 item.table.visibility_type != null &&
                 !isActive
@@ -567,7 +569,7 @@ const ResultsItem = ({
           )}
         </Flex>
 
-        {type === "table" && (
+        {isTableNode(item) && (
           <>
             <Box
               className={cx(S.column, S.ownerColumn)}
@@ -601,7 +603,7 @@ function getOwnerDisplay(
   item: FlatItem,
   ownerNameById: Map<UserId, string>,
 ): string {
-  if (item.type !== "table" || item.isLoading || !item.table) {
+  if (!isTableNode(item) || item.isLoading || !item.table) {
     return "";
   }
 
@@ -621,7 +623,7 @@ function getExpectedRowsDisplay(
   item: FlatItem,
   formatNumber: NumberFormatter,
 ): string | null {
-  if (item.type !== "table" || item.isLoading || !item.table) {
+  if (!isTableNode(item) || item.isLoading || !item.table) {
     return null;
   }
 
@@ -636,7 +638,7 @@ function getExpectedRowsDisplay(
 }
 
 function getPublishedDisplay(item: FlatItem): React.ReactNode {
-  if (item.type !== "table" || item.isLoading || !item.table) {
+  if (!isTableNode(item) || item.isLoading || !item.table) {
     return null;
   }
 

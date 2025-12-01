@@ -117,9 +117,11 @@ export function isExpandedItem(node: FlatItem): node is ExpandedItem {
   return node.isLoading === undefined;
 }
 
+export function isDatabaseNode(node: FlatItem): node is ExpandedDatabaseItem;
+export function isDatabaseNode(node: TreeNode): node is DatabaseNode;
 export function isDatabaseNode(
-  node: ExpandedItem | TreeNode,
-): node is ExpandedDatabaseItem {
+  node: ExpandedItem | TreeNode | FlatItem,
+): node is ExpandedDatabaseItem | DatabaseNode {
   return node.type === "database";
 }
 
@@ -142,6 +144,10 @@ export function isTableOrSchemaNode(
   );
 }
 
-export function isTableNode(node: FlatItem): node is ExpandedTableItem {
+export function isTableNode(node: FlatItem): node is ExpandedTableItem;
+export function isTableNode(node: TreeNode): node is TableNode;
+export function isTableNode(
+  node: FlatItem | TreeNode,
+): node is ExpandedTableItem | TableNode {
   return node.type === "table";
 }
