@@ -2342,28 +2342,29 @@
 
 (deftest fetch-root-items-shared-tenant-collection-namespace-test
   (testing "GET /api/collection/root/items"
-    (testing "collections with namespace 'shared-tenant-collection' at root are returned when namespace parameter is set"
-      (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Root Collection"
-                                                        :location "/"}
-                     :model/Collection {tenant-id :id} {:name "Shared Tenant Collection"
-                                                        :location "/"
-                                                        :namespace "shared-tenant-collection"}]
-        (letfn [(collection-names [items]
-                  (->> (:data items)
-                       (filter #(and (= (:model %) "collection")
-                                     (#{normal-id tenant-id} (:id %))))
-                       (map :name)))]
-          (mt/with-temporary-setting-values [use-tenants true]
-            (testing "should only show collections in the default namespace by default"
-              (is (= ["Normal Root Collection"]
-                     (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items")))))
-            (testing "should show shared-tenant-collection namespace when requested"
-              (is (= ["Shared Tenant Collection"]
-                     (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items?namespace=shared-tenant-collection"))))))
-          (mt/with-temporary-setting-values [use-tenants false]
-            (testing "should not show shared tenant collection when setting is off"
-              (is (empty?
-                   (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items?namespace=shared-tenant-collection")))))))))))
+    (mt/with-temporary-setting-values [use-tenants true]
+      (testing "collections with namespace 'shared-tenant-collection' at root are returned when namespace parameter is set"
+        (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Root Collection"
+                                                          :location "/"}
+                       :model/Collection {tenant-id :id} {:name "Shared Tenant Collection"
+                                                          :location "/"
+                                                          :namespace "shared-tenant-collection"}]
+          (letfn [(collection-names [items]
+                    (->> (:data items)
+                         (filter #(and (= (:model %) "collection")
+                                       (#{normal-id tenant-id} (:id %))))
+                         (map :name)))]
+            (mt/with-temporary-setting-values [use-tenants true]
+              (testing "should only show collections in the default namespace by default"
+                (is (= ["Normal Root Collection"]
+                       (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items")))))
+              (testing "should show shared-tenant-collection namespace when requested"
+                (is (= ["Shared Tenant Collection"]
+                       (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items?namespace=shared-tenant-collection"))))))
+            (mt/with-temporary-setting-values [use-tenants false]
+              (testing "should not show shared tenant collection when setting is off"
+                (is (empty?
+                     (collection-names (mt/user-http-request :crowberto :get 200 "collection/root/items?namespace=shared-tenant-collection"))))))))))))
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
