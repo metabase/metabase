@@ -185,22 +185,13 @@
 
 (defn- input-tables
   [graph]
-  (into []
-        (map #(update-keys %
-                           (fn [k]
-                             (case k
-                               :schema :schema-name
-                               :name :table-name
-                               k))))
-        (t2/select [:model/Table :id :schema :name]
-                   :id [:in (map :id (:inputs graph))])))
+  (t2/select [:model/Table :id :schema :name [:name :table]]
+             :id [:in (map :id (:inputs graph))]))
 
 (defn- outputs-with-transforms
   [graph]
-  (let [;; duplicated and original data
-        id->transform-data (t2/select-fn->fn :id identity :model/Transform
-                                             :id [:in (concat (map :id (:transforms graph))
-                                                              (map (comp :id :mapping) (:transforms graph)))])
+  (let [id->transform-data (t2/select-fn->fn :id identity :model/Transform
+                                             :id [:in (map (comp :id :mapping) (:transforms graph))])
         s+t->transform-data (into {}
                                   (map (fn [[_id td]]
                                          (let [{:keys [schema name]} (:target td)]
@@ -208,27 +199,25 @@
                                   id->transform-data)]
     (mapv
      (fn [{:keys [schema name mapping] :as _output}]
-       {:global {:schema-name schema
-                 :table-name name}
+       {:global {:schema schema
+                 :table name}
         :workspace {:transform-id (:id (s+t->transform-data [(:schema mapping) (:name mapping)]))
                     :table-id (:id mapping)}})
      (:outputs graph))))
 
 (api.macros/defendpoint :get "/:id/tables" :- [:map
-                                               [:inputs [:maybe
-                                                         [:sequential
+                                               [:inputs [:sequential
+                                                         [:map
+                                                          [:schema [:maybe :string]]
+                                                          [:table [:maybe :string]]]]]
+                                               [:outputs [:sequential
                                                           [:map
-                                                           [:schema-name [:maybe :string]]
-                                                           [:table-name [:maybe :string]]]]]]
-                                               [:outputs [:maybe
-                                                          [:sequential
-                                                           [:map
-                                                            [:global [:map
-                                                                      [:schema-name [:maybe :string]]
-                                                                      [:table-name [:maybe :string]]]]
-                                                            [:workspace [:map
-                                                                         [:transform-id :int]
-                                                                         [:table-id :int]]]]]]]]
+                                                           [:global [:map
+                                                                     [:schema [:maybe :string]]
+                                                                     [:table [:maybe :string]]]]
+                                                           [:workspace [:map
+                                                                        [:transform-id :int]
+                                                                        [:table-id :int]]]]]]]
   "Get a single workspace by ID"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
