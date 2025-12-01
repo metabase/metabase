@@ -312,8 +312,14 @@
 
   -test {:doc      "run all mage tests"
          :requires [[mage.core-test] ;; loads the actual tests
+                    [mage.util :as u]
                     [clojure.test]]
-         :task     (clojure.test/run-all-tests (re-pattern "^mage\\..*"))}
+         :task     (let [results (clojure.test/run-all-tests (re-pattern "^mage\\..*"))]
+                     (if (zero? (+ (:fail results) (:error results)))
+                       (println (c/green "All mage tests passed!"))
+                       (do
+                         (println (c/red "Some mage tests failed."))
+                         (u/exit 1))))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
