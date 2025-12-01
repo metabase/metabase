@@ -678,7 +678,7 @@ describe("scenarios > data studio > datamodel", () => {
         cy.get<TableId>("@silverTableId").then(expectTableNotVisible);
       });
 
-      it("should filter tables owned by no one", () => {
+      it("should filter tables owned by unspecified", () => {
         cy.request("GET", "/api/user/current")
           .its("body")
           .then(({ id }) => {
@@ -697,7 +697,7 @@ describe("scenarios > data studio > datamodel", () => {
         H.DataModel.visitDataStudio();
 
         openFilterPopover();
-        selectFilterOption("Owner", "No one");
+        selectFilterOption("Owner", "Unspecified");
         applyFilters();
 
         cy.get<TableId>("@unownedTableId").then(expectTableVisible);
