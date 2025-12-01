@@ -102,12 +102,6 @@
   (= (some-> namespace name)
      (name shared-tenant-ns)))
 
-(defn tenant-collection-where-clause
-  "Returns a HoneySQL clause that will be true if this is a tenant collection, false otherwise."
-  [& [column-name]]
-  [:and [:not= (or column-name :namespace) nil]
-   [:= (or column-name :namespace) (name shared-tenant-ns)]])
-
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -1585,15 +1579,8 @@
       (when (= :api-key (t2/select-one-fn :type :model/User user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
-(defn- assert-type-ok [collection]
-  (when (and (:type collection)
-             (tenant-collection? collection)
-             (not (perms/use-tenants)))
-    (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)}))))
-
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [location type] :as collection}]
-  (assert-type-ok collection)
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
@@ -1654,26 +1641,10 @@
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
 
-(defn- set-tenant-collection-permissions!
-  "When creating a new Shared Tenant Collection, if its parent collection is not also a Shared Tenant Collection, we
-  should apply the default Shared Tenant Collection permissions which are :read for all user groups. If a Shared Tenant
-  Collection is a descendant of another Shared Tenant Collection we should apply the standard [[copy-parent-permissions!]]
-  defaults."
-  [collection]
-  (if (tenant-collection? (parent collection))
-    (copy-parent-permissions! collection)
-    ;; TODO(edpaget - 2025-11-17): this is potentially inserting a lot of rows but since the impl of
-    ;; [[copy-collection-permissions!]] doesn't do any batching this seems acceptable
-    (t2/insert! :model/Permissions
-                (for [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
-                  {:group_id group-id :object (perms/collection-read-path collection)}))))
-
 (t2/define-after-insert :model/Collection
   [collection]
   (u/prog1 (t2.realize/realize collection)
-    (if (tenant-collection? <>)
-      (set-tenant-collection-permissions! <>)
-      (copy-parent-permissions! <>))))
+    (copy-parent-permissions! <>)))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 

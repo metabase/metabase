@@ -669,14 +669,12 @@
 
 (defn- collection-query
   [collection {:keys [archived? collection-namespace pinned-state collection-type include-library? include-tenant-collections?]}]
+  #p collection-namespace
   (-> (assoc
        (collection/effective-children-query
         collection
         {:cte-name :visible_collection_ids}
         [:and
-         (if include-tenant-collections?
-           (collection/tenant-collection-where-clause)
-           [:not (collection/tenant-collection-where-clause)])
          (when collection-type
            (if (= collection-type "remote-synced")
              [:= :is_remote_synced true]
