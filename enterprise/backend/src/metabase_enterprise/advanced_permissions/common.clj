@@ -61,10 +61,12 @@
   (let [permissions-set      @api/*current-user-permissions-set*
         non-sample-db-ids    (t2/select-pks-set :model/Database :is_sample false)
         user-id              api/*current-user-id*
+        _                    (data-perms/prime-db-cache non-sample-db-ids)
         create-query-perms   (into {}
-                                   (for [db-id non-sample-db-ids]
-                                     [db-id (data-perms/most-permissive-database-permission-for-user
-                                             user-id :perms/create-queries db-id)]))
+                                   (map (fn [db-id]
+                                          [db-id (data-perms/most-permissive-database-permission-for-user
+                                                  user-id :perms/create-queries db-id)]))
+                                   non-sample-db-ids)
         can-create-queries?  (some #(data-perms/at-least-as-permissive?
                                      :perms/create-queries % :query-builder)
                                    (vals create-query-perms))
