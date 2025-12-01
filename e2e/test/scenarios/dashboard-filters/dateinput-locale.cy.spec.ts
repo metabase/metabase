@@ -28,11 +28,15 @@ const localesAndExpected = [
 ];
 
 const selectLocale = (localeName: string) => {
-  cy.visit("/account/profile");
-  cy.findByTestId("user-locale-select").findByRole("textbox").click();
-  H.popover().within(() => cy.findByText(localeName).click());
-
-  cy.get("[type=submit]").click();
+  cy.visit("/", {
+    // set the browser language as per:
+    // https://glebbahmutov.com/blog/cypress-tips-and-tricks/index.html#control-navigatorlanguage
+    onBeforeLoad(win) {
+      Object.defineProperty(win.navigator, "language", {
+        value: localeName,
+      });
+    },
+  });
 };
 
 const dashboard = () => cy.findByTestId("dashboard");
@@ -49,13 +53,9 @@ describe("scenarios > dashboard > date filter locale", () => {
         selectLocale(localeName);
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         H.editDashboard();
-        // Wait for dashboard to load
-        cy.findByTestId("dashcard-container").should("exist");
         const filterType = "Date Range";
         H.setFilter("Date picker", filterType);
-        dashboard().within(() => {
-          cy.findByText("Select…").click();
-        });
+        dashboard().findByText("Select…").click();
 
         H.popover().contains("Created At").first().click();
         H.saveDashboard();
@@ -73,15 +73,13 @@ describe("scenarios > dashboard > date filter locale", () => {
           );
           cy.findByText("Add filter").click();
         });
-
-        dashboard().within(() => {
-          cy.findByLabelText("Date").within(() => {
-            cy.findByTestId("parameter-value").should(
-              "have.text",
-              `${expectedDateRange.startDate} - ${expectedDateRange.endDate}`,
-            );
-          });
-        });
+        dashboard()
+          .findByLabelText("Date")
+          .findByTestId("parameter-value")
+          .should(
+            "have.text",
+            `${expectedDateRange.startDate} - ${expectedDateRange.endDate}`,
+          );
       });
     });
   });
