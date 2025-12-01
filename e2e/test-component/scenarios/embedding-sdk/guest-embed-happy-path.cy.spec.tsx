@@ -209,7 +209,7 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
                   target: ["dimension", ["template-tag", "user_id_pk"]],
                   values_source_type: "static-list",
                   values_source_config: {
-                    values: ["foo", "bar"],
+                    values: ["74"],
                   },
                 }),
               ],
@@ -259,6 +259,21 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
         cy.get("@parameterValuesApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length(1);
+        });
+
+        cy.findByTestId("table-body")
+          .findAllByRole("row")
+          .should("have.length.above", 10);
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("parameter-value-dropdown").contains("74").click();
+          cy.findByTestId("parameter-value-dropdown")
+            .contains("Add filter")
+            .click();
+
+          cy.findByTestId("table-body")
+            .findAllByRole("row")
+            .should("have.length", 1);
         });
       });
     });
