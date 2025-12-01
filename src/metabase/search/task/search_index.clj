@@ -60,9 +60,6 @@
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
-(defmethod queue/init-listener! ::SearchIndexUpdate [_]
-  (ingestion/start-listener!))
-
 (comment
   (task/job-exists? reindex-job-key)
   (task/trigger-now! reindex-job-key))

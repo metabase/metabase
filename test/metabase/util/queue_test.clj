@@ -4,98 +4,25 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.queue :as queue])
+   [metabase.util.queue :as queue]
+   [metabase.util.queue.protocols :as proto])
   (:import (java.util.concurrent LinkedBlockingQueue)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private timeout-ms 5000)
 
-(defn- simulate-queue! [queue &
-                        {:keys [realtime-threads realtime-events backfill-events]
-                         :or   {realtime-threads 5}}]
-  (let [sent          (atom 0)
-        dropped       (atom 0)
-        skipped       (atom 0)
-        realtime-fn   (fn []
-                        (let [id (rand-int 1000)]
-                          (doseq [e realtime-events]
-                            (case (queue/maybe-put! queue {:thread (str "real-" id) :payload e})
-                              true  (swap! sent inc)
-                              false (swap! dropped inc)
-                              nil   (swap! skipped inc)))))
-        background-fn (fn []
-                        (doseq [e backfill-events]
-                          (queue/blocking-put! queue timeout-ms {:thread "back", :payload e})))
-        run!          (fn [f]
-                        (future (f)))]
-
-    (run! background-fn)
-    (future
-      (dotimes [_ realtime-threads]
-        (run! realtime-fn)))
-
-    (let [processed (volatile! [])]
-      (try
-        (while true
-          ;; Stop the consumer once we are sure that there are no more events coming.
-          (u/with-timeout timeout-ms
-            (vswap! processed conj (:payload (queue/blocking-take! queue timeout-ms)))
-            ;; Sleep to provide some backpressure
-            (Thread/sleep 1)))
-        (assert false "this is never reached")
-        (catch Exception _
-          {:processed @processed
-           :sent      @sent
-           :dropped   @dropped
-           :skipped   @skipped})))))
-
-(deftest bounded-transfer-queue-test
-  (let [realtime-event-count 500
-        backfill-event-count 1000
-        capacity             (- realtime-event-count 100)
-        ;; Enqueue background events from oldest to newest
-        backfill-events      (range backfill-event-count)
-        ;; Enqueue realtime events from newest to oldest
-        realtime-events      (take realtime-event-count (reverse backfill-events))
-        queue                (queue/bounded-transfer-queue capacity :sleep-ms 10 :block-ms 10)
-
-        {:keys [processed sent dropped skipped] :as _result}
-        (simulate-queue! queue
-                         :backfill-events backfill-events
-                         :realtime-events realtime-events)]
-
-    (testing "We processed all the events that were enqueued"
-      (is (= (+ (count backfill-events) sent)
-             (count processed))))
-
-    (testing "No items are skipped"
-      (is (zero? skipped)))
-
-    (testing "Some items are dropped"
-      (is (pos? dropped)))
-
-    (let [expected-events  (set (concat backfill-events realtime-events))
-          processed-events (set processed)]
-      (testing "All expected events are processed"
-        (is (zero? (count (set/difference expected-events processed-events)))))
-      (testing "There are no unexpected events processed"
-        (is (zero? (count (set/difference processed-events expected-events))))))
-
-    (testing "The realtime events are processed in order"
-      (mt/ordered-subset? realtime-events processed))))
-
 (deftest ^:synchronized take-batch-test
-  (let [q           (queue/delay-queue)
+  (let [q           (#'queue/delay-queue)
         n           5
         first-delay 300
         extra-delay 200
         buffer      50
         msg-delay   #(+ first-delay (* extra-delay %))]
     (dotimes [i n]
-      (queue/put-with-delay! q (msg-delay i) i))
+      (#'queue/-put-with-delay! q (msg-delay i) i))
     ;; queue an outlier
-    (queue/put-with-delay! q (msg-delay 10) 10)
+    (#'queue/-put-with-delay! q (msg-delay 10) 10)
     (let [started-roughly (u/start-timer)
           since-start     #(u/since-ms started-roughly)
           time-until-nth  #(max 0 (+ buffer (- (msg-delay %) (since-start))))
@@ -124,127 +51,148 @@
       (is (= [0 1 2] (#'queue/take-batch! q 500 3 10)))
       (is (= [3 4] (#'queue/take-batch! q 500 3 10))))))
 
-(defn- thread-name-running? [name]
-  (some #(= name (.getName ^Thread %)) (keys (Thread/getAllStackTraces))))
+(defn with-stopped-queue-fn [queue f]
+  (try
+    (proto/-stop queue)
+    ;; give the queue some time to finish processing
+    (when-not (proto/-await-termination queue 1500)
+      (throw (ex-info "Queue did not terminate" {})))
+    (f)
+    (finally
+      (proto/-start queue))))
 
-(defmacro ^:private await-test-while
-  "Wait 100 times 10 milliseconds or until `delay-condition` becomes false and evaluate `body`.
-  Reaching 100 tries results in the test failing."
-  {:style/indent 1}
-  [delay-condition & body]
-  ;; make tries and the sleep time macro parameters if needed
-  `(loop [tries# 100]
-     (Thread/sleep 10)
-     (cond
-       (zero? tries#)   (is false "Max waiting time exceeded")
-       ~delay-condition (recur (dec tries#))
-       :else            (do ~@body))))
+(defmacro with-stopped-queue [queue & body]
+  `(with-stopped-queue-fn ~queue (fn [] ~@body)))
+
+(defn with-queue-fn [queue body-fn]
+  (try
+    (proto/-start queue)
+    (body-fn)
+    (finally
+      (proto/-stop! queue))))
+
+(defmacro with-queue [queue & body]
+  `(with-queue-fn ~queue (fn [] ~@body)))
 
 (deftest listener-handler-test
   (testing "Standard behavior with a handler"
     (let [listener-name "test-listener"
           items-handled (atom 0)
           last-batch (atom nil)
-          queue (queue/delay-queue)
-          thread-name "queue-test-listener-0"]
-      (is (not (thread-name-running? thread-name)))
-      (is (not (queue/listener-exists? listener-name)))
-
-      (queue/listen! listener-name queue
-                     (fn [batch] (swap! items-handled + (count batch)) (reset! last-batch batch))
-                     {:max-next-ms 5})
-      (is (thread-name-running? thread-name))
-      (is (queue/listener-exists? listener-name))
-
-      (is (nil? (queue/listen! listener-name queue
-                               (fn [batch] (throw (ex-info "Second listener with the same name cannot be created" {:batch batch})))
-                               {:max-next-ms 5})))
-      (try
+          queue (queue/create-delay-queue-listener listener-name
+                                                   (fn [batch] (swap! items-handled + (count batch)) (reset! last-batch batch))
+                                                   {:max-next-ms 5
+                                                    :register? false})]
+      (with-queue queue
         (queue/put-with-delay! queue 0 "a")
-        (await-test-while (zero? @items-handled)
+        (with-stopped-queue queue
           (is (= 1 @items-handled))
           (is (= ["a"] @last-batch)))
-
         (queue/put-with-delay! queue 0 "b")
         (queue/put-with-delay! queue 0 "c")
         (queue/put-with-delay! queue 0 "d")
-        (await-test-while (< @items-handled 4)
+        (with-stopped-queue queue
           (is (= 4 @items-handled))
-          (is (some #{"d"} @last-batch)))
-
-        (finally
-          (queue/stop-listening! listener-name)))
-
-      (is (not (thread-name-running? thread-name)))
-      (is (not (queue/listener-exists? listener-name)))
-
-      ; additional calls to stop are no-ops
-      (is (nil? (queue/stop-listening! listener-name))))))
+          (is (some #{"d"} @last-batch)))))))
 
 (deftest result-listener-test
   (testing "When result and error handlers are defined, they are called correctly"
     (let [listener-name "test-result-listener"
-          queue (queue/delay-queue)
-          result-count (atom 0)
-          error-count (atom 0)
-          last-error (atom nil)]
-      (queue/listen! listener-name queue
-                     (fn [batch]
-                       (if (some #{"err"} batch)
-                         (throw (ex-info "Test Error" {:batch batch}))
-                         (count batch)))
-                     {:success-handler (fn [result duration name]
-                                         (is (= listener-name name))
-                                         (is (< 0 duration))
-                                         (swap! result-count + result))
-                      :err-handler     (fn [e _] (swap! error-count inc) (reset! last-error e))
-                      :max-next-ms    5})
-      (try
+          result-count  (atom 0)
+          error-count   (atom 0)
+          last-error    (atom nil)
+          queue         (queue/create-delay-queue-listener listener-name
+                                                           (fn [batch]
+                                                             (if (some #{"err"} batch)
+                                                               (throw (ex-info "Test Error" {:batch batch}))
+                                                               (count batch)))
+                                                           {:success-handler (fn [_ql result duration name]
+                                                                               (is (= listener-name name))
+                                                                               (is (< 0 duration))
+                                                                               (swap! result-count + result))
+                                                            :error-handler   (fn [_ql e _] (swap! error-count inc) (reset! last-error e))
+                                                            :max-next-ms     5
+                                                            :register?       false})]
+      (with-queue queue
         (queue/put-with-delay! queue 0 "a")
-        (await-test-while (zero? @result-count)
+        (with-stopped-queue queue
           (is (= 0 @error-count))
           (is (= 1 @result-count)))
-
         (queue/put-with-delay! queue 0 "err")
-        (await-test-while (zero? @error-count)
+        (with-stopped-queue queue
           (is (= 1 @error-count))
           (is (= 1 @result-count))
-          (is (= "Test Error" (.getMessage ^Exception @last-error))))
-
-        (finally
-          (queue/stop-listening! listener-name))))))
+          (is (= "Test Error" (.getMessage ^Exception @last-error))))))))
 
 (deftest multithreaded-listener-test
   (testing "Test behavior with a multithreaded listener"
-    (let [listener-name "test-multithreaded-listener"
+    (let [listener-name "test-multithreaded-listenerr"
           batches-handled (atom 0)
           handlers-used (atom #{})
-          queue (queue/delay-queue)]
-      (is (not (thread-name-running? (str "queue-" listener-name "-0"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
+          queue (queue/create-delay-queue-listener listener-name
+                                                   (fn [batch] (is (<= (count batch) 10)) (count batch))
+                                                   {:success-handler    (fn [_ result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
+                                                    :pool-size          3
+                                                    :max-batch-messages 10
+                                                    :max-next-ms        5
+                                                    :register?          false})]
 
-      (queue/listen! listener-name
-                     queue
-                     (fn [batch] (is (<= (count batch) 10)) (count batch))
-                     {:success-handler    (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
-                      :pool-size          3
-                      :max-batch-messages 10
-                      :max-next-ms        5})
-      (try
-        (is (thread-name-running? (str "queue-" listener-name "-0")))
-        (is (thread-name-running? (str "queue-" listener-name "-1")))
-        (is (thread-name-running? (str "queue-" listener-name "-2")))
-
+      (with-queue queue
         (dotimes [i 100]
-          (queue/put-with-delay! queue 0 i))
-
-        (await-test-while (< @batches-handled 100)
+          (queue/put-with-delay! queue 100 i))
+        (with-stopped-queue queue
           (is (= 100 @batches-handled))
-          (is (contains? @handlers-used listener-name)))
+          (is (contains? @handlers-used listener-name)))))))
 
-        (finally
-          (queue/stop-listening! listener-name)))
-      (is (not (thread-name-running? (str "queue-" listener-name "-0"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
-      (is (not (thread-name-running? (str "queue-" listener-name "-2ˇ")))))))
+(deftest can-put-to-unstarted-queues
+  (let [batches (atom #{})
+        queue (queue/create-delay-queue-listener (str (random-uuid))
+                                                 (fn [batch] (swap! batches into (set batch)))
+                                                 {:register? false})]
+    ;; not using the `with-queue` helper here bc we don't want to start it
+    (try
+      (testing "Before starting, we can `put!` to the queue"
+        (queue/put! queue :a)
+        (queue/put! queue :b)
+        (queue/put! queue :c)
+        (testing "but nothing gets processed"
+          (is (= #{} @batches)))
+        (testing "once we start, we process the queued items"
+          (proto/-start queue)
+          (with-stopped-queue queue
+            (is (= #{:a :b :c} @batches)))))
+      (finally (proto/-stop queue)))))
+
+(deftest slow-handlers-test
+  (let [batches (atom #{})
+        waiter (promise)
+        queue (queue/create-delay-queue-listener (str (random-uuid))
+                                                 (fn [batch]
+                                                   (deref waiter)
+                                                   (swap! batches into (set batch)))
+                                                 {:register? false})]
+    (with-queue queue
+      (queue/put! queue :a)
+      (queue/put-with-delay! queue 100 :b)
+      ;; begin a graceful shutdown
+      (proto/-stop queue)
+      (deliver waiter :a-value)
+      (with-stopped-queue queue
+        (is (= #{:a :b} @batches))))))
+
+(deftest can-forcibly-shutdown-test
+  (let [batches (atom #{})
+        waiter (promise)
+        queue (queue/create-delay-queue-listener (str (random-uuid))
+                                                 (fn [batch]
+                                                   (deref waiter)
+                                                   (swap! batches into (set batch)))
+                                                 {:register? false})]
+    (with-queue queue
+      (queue/put! queue :a)
+      (queue/put-with-delay! queue 100 :b)
+      ;; force immediate shutdown
+      (proto/-stop! queue)
+      (deliver waiter :a-value)
+      (with-stopped-queue queue
+        (is (= #{} @batches))))))
