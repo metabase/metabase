@@ -37,6 +37,8 @@ jobs:
         with:
           sparse-checkout: release
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: prepare dependencies in release directory
         run: pnpm --dir release install --frozen-lockfile
       - name: Run frontend type-check
@@ -52,6 +54,8 @@ jobs:
         with:
           sparse-checkout: release
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: prepare dependencies in release directory
         run: pnpm --dir release install --frozen-lockfile
       - name: Run release unit tests
@@ -67,6 +71,8 @@ jobs:
         with:
           sparse-checkout: release
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: prepare dependencies in release directory
         run: pnpm --dir release install --frozen-lockfile
       - name: Build release bundle
