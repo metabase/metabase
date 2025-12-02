@@ -148,3 +148,23 @@
   [workspace database]
   ;; TODO: Make this check the ws existence aka fail closed ~atm
   (init-workspace-database-isolation! database workspace))
+
+(defn- drop-isolated-tables-dispatch
+  [database _s+t-tuples]
+  (driver.u/database->driver database))
+
+(defmulti drop-isolated-tables!
+  "Drop isolated tables"
+  {:added "0.59.0" :arglists '([database s+t-tuples])}
+  #'drop-isolated-tables-dispatch)
+
+(defmethod drop-isolated-tables! :postgres
+  [database s+t-tuples]
+  (let [driver      (driver.u/database->driver database)
+        jdbc-spec   (sql-jdbc.conn/connection-details->spec driver (:details database))]
+    (run!
+     (fn [[schema-name table-name]]
+       (jdbc/execute! jdbc-spec
+                      [(format "DROP TABLE IF EXISTS \"%s\".\"%s\""
+                               schema-name table-name)]))
+     s+t-tuples)))

@@ -344,10 +344,9 @@
    _query-params
    body :- ModifyEntities]
 
-  (api/check-400 (nil? (:remove body)) "Not implemented yet")
-
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        upstream  (:add body)]
+        upstream  (:add body)
+        to-remove (:remove body)]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot add entities to an archived workspace")
 
     (when-let [transform-ids (seq (get upstream :transforms []))]
@@ -364,7 +363,13 @@
       (when db-id
         (api/check-400 (= db-id (:database_id workspace)) "All entities must belong to the workspace's database")))
 
-    (ws.common/add-entities! workspace upstream)
+    ;; Add new entities
+    (when (not-empty upstream)
+      (ws.common/add-entities! workspace upstream))
+
+    ;; Remove existing entities
+    (when (not-empty to-remove)
+      (ws.common/remove-entities! workspace to-remove))
 
     {:contents (:contents (t2/hydrate (t2/select-one :model/Workspace :id id) :contents))}))
 
