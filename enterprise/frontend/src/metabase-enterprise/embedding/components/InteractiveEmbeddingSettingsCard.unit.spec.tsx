@@ -36,14 +36,14 @@ describe("InteractiveEmbeddingSettingsCard", () => {
     await setup({ enabled: true });
 
     expect(
-      await screen.findByText("Enable legacy interactive embedding"),
+      await screen.findByText("Enable full app embedding"),
     ).toBeInTheDocument();
   });
 
   it("should toggle interactive embedding on", async () => {
     await setup({ enabled: false });
     const toggle = await screen.findByLabelText(
-      "Enable legacy interactive embedding toggle",
+      "Enable full app embedding toggle",
     );
 
     await userEvent.click(toggle);
