@@ -96,7 +96,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     hasUnsavedChanges,
   } = useWorkspace();
 
-  const workspaceTransforms = workspace?.contents?.transforms;
+  const workspaceTransforms = useMemo(
+    () => workspace?.contents?.transforms ?? [],
+    [workspace],
+  );
 
   useEffect(() => {
     if (activeTransform) {
