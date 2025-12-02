@@ -7,7 +7,9 @@ import {
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -20,6 +22,9 @@ export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
+  const { hosting: isCloudPlan = false } = useSelector((state) =>
+    getSetting(state, "token-features"),
+  );
 
   return (
     <SettingsPageWrapper title={t`General`}>
@@ -50,7 +55,7 @@ export function GeneralSettingsPage() {
           inputType="text"
         />
 
-        <AnonymousTrackingInput />
+        {!isCloudPlan && <AnonymousTrackingInput />}
       </SettingsSection>
 
       <SettingsSection title={t`Tables, X-Rays and domains`}>
