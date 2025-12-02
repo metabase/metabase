@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [macaw.core :as macaw]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
@@ -8,47 +9,39 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql PreparedStatement)
+   (net.sf.jsqlparser.statement.select PlainSelect)))
 
 (comment metabase-enterprise.transforms.api.transform-job/keep-me
          metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query ::queries.schema/query]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     [:source-tables   [:map-of :string :int]]
-     [:type [:= "python"]]
-     [:body :string]]]])
+(mr/def ::transform-source ::transforms.schema/transform-source)
 
-(mr/def ::transform-target
-  [:map
-   [:database {:optional true} :int]
-   [:type [:enum "table"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
-   [:name :string]])
+(mr/def ::transform-target ::transforms.schema/transform-target)
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
@@ -70,13 +63,13 @@
   [transform]
   (let [database (api/check-400 (t2/select-one :model/Database (transforms.i/target-db-id transform))
                                 (deferred-tru "The target database cannot be found."))
-        feature (transforms.util/required-database-feature transform)]
+        features (transforms.util/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))
+    (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
+                   (deferred-tru "The database does not support the requested transform features."))
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
@@ -117,13 +110,14 @@
    body :- [:map
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            [:source ::transform-source]
-            [:target ::transform-target]
+            [:source ::transforms.schema/transform-source]
+            [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
+
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -200,8 +194,8 @@
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transform-source]
-            [:target {:optional true} ::transform-target]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
@@ -280,6 +274,86 @@
       (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
+
+(defn- extract-columns-from-query
+  "Attempts to extract column names from an MBQL query without executing it.
+
+  Returns a vector of column names (as strings), or nil if extraction fails.
+
+  The query is first compiled to native SQL, hen uses PreparedStatement.getMetaData()
+  to inspect the query structure. This works for most modern JDBC drivers but may not
+  be supported by all drivers or for all query types."
+  [driver database-id query]
+  (try
+    (let [{:keys [query]} (qp.compile/compile query)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database-id
+       {}
+       (fn [conn]
+         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
+           (when-let [rsmeta (.getMetaData stmt)]
+             (let [columns (sql-jdbc.execute/column-metadata driver rsmeta)]
+               (seq (mapv :name columns))))))))
+    (catch Exception e
+      (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
+      nil)))
+
+(defn- simple-native-query?
+  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
+  [sql-string]
+  (try
+    (let [^PlainSelect parsed (macaw/parsed-query sql-string)]
+      (cond
+        (not (instance? PlainSelect parsed))
+        {:is_simple false
+         :reason "Not a simple SELECT"}
+
+        (.getLimit parsed)
+        {:is_simple false
+         :reason "Contains a LIMIT"}
+
+        (.getOffset ^PlainSelect parsed)
+        {:is_simple false
+         :reason "Contains an OFFSET"}
+
+        (seq (.getWithItemsList ^PlainSelect parsed))
+        {:is_simple false
+         :reason "Contains a CTE"}
+
+        :else
+        {:is_simple true}))
+    (catch Exception e
+      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      {:is_simple false})))
+
+(api.macros/defendpoint :post "/is-simple-query"
+  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
+  [_route-params
+   _query-params
+   {:keys [query]} :- [:map [:query string?]]]
+  (api/check-superuser)
+  (simple-native-query? query))
+
+(api.macros/defendpoint :post "/extract-columns"
+  "Extract column names from an MBQL query without executing it.
+
+  Compiles the query to native SQL using [[qp.compile/compile-with-inline-parameters]],
+  which handles parameterized queries with template tags. Then extracts column names
+  using PreparedStatement metadata.
+
+  Returns a map with a :columns key containing a vector of column names (strings).
+  If extraction fails, returns nil for :columns."
+  [_route-params
+   _query-params
+   {:keys [query]} :- [:map
+                       [:query ::qp.schema/any-query]]]
+  (api/check-superuser)
+  (let [database-id (:database query)
+        database (api/check-404 (t2/select-one :model/Database :id database-id))
+        driver-name (driver/the-initialized-driver (:engine database))
+        columns (extract-columns-from-query driver-name database-id query)]
+    {:columns columns}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

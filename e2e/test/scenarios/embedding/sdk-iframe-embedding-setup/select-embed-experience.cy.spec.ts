@@ -84,8 +84,6 @@ describe(suiteTitle, () => {
         event_detail: "custom=chart",
       });
 
-      cy.wait("@cardQuery");
-
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title is visible");
         cy.findByText(questionName).should("be.visible");
@@ -193,6 +191,7 @@ describe(suiteTitle, () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
+    H.embedModalEnableEmbedding();
 
     cy.get("#iframe-embed-container")
       .findByTestId("preview-loading-indicator", { timeout: 20_000 })

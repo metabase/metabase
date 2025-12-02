@@ -7,13 +7,12 @@ import type {
 
 export type DisplayTheme = "light" | "night" | "transparent";
 
-export type EmbedModalStep = "application" | "legalese" | null;
-
 export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters | null;
 };
 
 export type EmbedResourceType = "dashboard" | "question" | "document";
+export type GuestEmbedResourceType = "dashboard" | "question";
 
 export type EmbedResourceParameter = {
   id: string;
@@ -29,7 +28,7 @@ export type EmbedResourceDownloadOptions = {
   results?: boolean;
 };
 
-export type EmbeddingType = "static-legacy";
+export type EmbeddingType = "static-legacy" | "guest-embed";
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 

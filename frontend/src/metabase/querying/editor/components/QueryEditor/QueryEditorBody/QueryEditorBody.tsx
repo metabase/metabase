@@ -55,6 +55,7 @@ type QueryEditorBodyProps = {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
   ) => boolean;
+  shouldShowLibrary?: boolean;
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
@@ -82,6 +83,7 @@ export function QueryEditorBody({
   isShowingSnippetSidebar,
   shouldDisableDatabase,
   shouldDisableItem,
+  shouldShowLibrary,
   onChange,
   onRunQuery,
   onToggleDataReference,
@@ -99,8 +101,8 @@ export function QueryEditorBody({
   const editorHeight = useInitialEditorHeight(isNative);
 
   const dataPickerOptions = useMemo(
-    () => ({ shouldDisableItem, shouldDisableDatabase }),
-    [shouldDisableItem, shouldDisableDatabase],
+    () => ({ shouldDisableItem, shouldDisableDatabase, shouldShowLibrary }),
+    [shouldDisableItem, shouldDisableDatabase, shouldShowLibrary],
   );
 
   const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(

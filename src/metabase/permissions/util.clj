@@ -158,9 +158,10 @@
   "Any path starting with /application is a permissions that is not scoped by database or collection
   /application/setting/      -> permissions to access /admin/settings page
   /application/monitoring/   -> permissions to access tools, audit and troubleshooting
-  /application/subscription/ -> permisisons to create/edit subscriptions and alerts"
+  /application/subscription/ -> permisisons to create/edit subscriptions and alerts
+  /application/data-studio/  -> permissions to access data studio"
   [:and "application/"
-   [:or "setting/" "monitoring/" "subscription/"]])
+   [:or "setting/" "monitoring/" "subscription/" "data-studio/"]])
 
 (def ^:private block-permissions-rx
   "Any path starting with /block/ is for BLOCK aka anti-permissions.
