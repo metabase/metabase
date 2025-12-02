@@ -13,6 +13,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
+   [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
@@ -214,7 +215,8 @@
                      (or (not (.contains (.getPath file) "/databases/"))
                          (and (.contains (.getPath file) (str "/databases/" canonical-db-id))
                               (or (= (.getName file) (str canonical-db-id ".yaml"))
-                                  (.contains (.getPath file) "/tables/v_")))))]
+                                  (some #(.contains (.getPath file) (str "/tables/" %))
+                                        audit-ee.permissions/audit-db-view-names)))))]
     (let [relative-path (str/replace (.getPath file)
                                      (str (.getPath (io/file export-dir)) "/")
                                      "")
