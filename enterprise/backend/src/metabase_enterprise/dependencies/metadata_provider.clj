@@ -245,8 +245,10 @@
 (defmethod add-override :sandbox [^OverridingMetadataProvider mp _entity-type _id _updates]
   mp)
 
-(defmethod add-override :segment [^OverridingMetadataProvider mp _entity-type _id _updates]
-  mp)
+(defmethod add-override :segment [^OverridingMetadataProvider mp _entity-type id updates]
+  {[:metadata/segment id] (delay (merge (when id
+                                          (lib.metadata/segment (inner-mp mp) id))
+                                        updates))})
 
 (defn all-overrides
   "Returns all the overrides by ID, in the same form as the map input to [[with-deps]]:

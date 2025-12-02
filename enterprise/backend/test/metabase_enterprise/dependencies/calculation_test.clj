@@ -460,3 +460,15 @@
         (is (= {:table #{products-id}
                 :segment #{segment-a-id segment-b-id}}
                (calculation/upstream-deps:segment segment-c)))))))
+
+(deftest ^:parallel upstream-deps-segment-implicit-join-test
+  (testing "Segment depending on implicitly joined field adds dep on that field's table"
+    (let  [checkins-id (mt/id :checkins)
+           venues-id (mt/id :venues)
+           venue-fk-field-id (mt/id :checkins :venue_id)
+           venue-name-field-id (mt/id :venues :name)]
+      (mt/with-temp [:model/Segment segment {:table_id checkins-id
+                                             :definition {:filter [:= [:field venue-name-field-id {:source-field venue-fk-field-id}] "Bird's Nest"]}}]
+        (is (= {:segment #{}
+                :table #{checkins-id venues-id}}
+               (calculation/upstream-deps:segment segment)))))))
