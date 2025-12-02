@@ -1694,9 +1694,19 @@ describe("scenarios > dashboard > caching", () => {
    */
   it("should guard closing caching form if it's dirty on different actions", () => {
     interceptPerformanceRoutes();
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    /**
+     * we need to populate the history via react router by clicking route's links
+     * in order to imitate a user who clicks "back" and "forward" button
+     */
+    cy.visit("/");
+    cy.findByTestId("main-navbar-root").findByText("Our analytics").click();
+    cy.findByTestId("collection-table")
+      .findByText("Orders in a dashboard")
+      .click();
+    cy.findByTestId("main-logo-link").click();
+    cy.go("back");
 
-    openSidebarCacheStrategyForm("question");
+    openSidebarCacheStrategyForm("dashboard");
 
     cacheStrategySidesheet().within(() => {
       cy.findByText(/Caching settings/).should("be.visible");
@@ -1715,7 +1725,7 @@ describe("scenarios > dashboard > caching", () => {
       () =>
         cy
           .findAllByTestId("modal-overlay")
-          .should("have.length", 2)
+          .should("have.length", 1)
           .last()
           .click(),
       // // clicking on title with back icon on it
@@ -1723,6 +1733,10 @@ describe("scenarios > dashboard > caching", () => {
         cacheStrategySidesheet()
           .findByRole("button", { name: /Caching settings/ })
           .click(),
+      // browser's Back action
+      () => cy.go("back"),
+      // browser's Forward action
+      () => cy.go("forward"),
     ].forEach((attempt) => {
       attempt();
       // cancel to attempt closing other way

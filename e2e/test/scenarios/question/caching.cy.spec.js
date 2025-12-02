@@ -72,7 +72,15 @@ describe("scenarios > question > caching", () => {
    */
   it("should guard closing caching form if it's dirty on different actions", () => {
     interceptPerformanceRoutes();
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    /**
+     * we need to populate the history via react router by clicking route's links
+     * in order to imitate a user who clicks "back" and "forward" button
+     */
+    cy.visit("/");
+    cy.findByTestId("main-navbar-root").findByText("Our analytics").click();
+    cy.findByTestId("collection-table").findByText("Orders").click();
+    cy.findByTestId("main-logo-link").click();
+    cy.go("back");
 
     openSidebarCacheStrategyForm("question");
 
@@ -95,11 +103,15 @@ describe("scenarios > question > caching", () => {
           .should("have.length", 2)
           .last()
           .click(),
-      // // clicking on title with back icon on it
+      // clicking on title with back icon on it
       () =>
         cacheStrategySidesheet()
           .findByRole("button", { name: /Caching settings/ })
           .click(),
+      // browser's Back action
+      () => cy.go("back"),
+      // browser's Forward action
+      () => cy.go("forward"),
     ].forEach((attempt) => {
       attempt();
       // cancel to attempt closing other way
