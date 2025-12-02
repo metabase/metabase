@@ -304,7 +304,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
       .and("match", /\/metric\/\d+/);
   });
 
-  it.skip("should duplicate metric via more menu", () => {
+  it("should duplicate metric via more menu", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
@@ -346,6 +346,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     H.modal().button("Duplicate").click();
 
     cy.wait("@createCard");
+    H.modal().should("not.exist");
 
     cy.log("Verify duplicate metric is created");
     H.DataStudio.Metrics.overviewPage()

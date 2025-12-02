@@ -17,6 +17,5 @@ export const IndexedEntities = createEntity({
   schema: IndexedEntitySchema,
   objectSelectors: {
     getUrl: indexedEntityUrl,
-    getIcon: () => ({ name: "index" }),
   },
 });

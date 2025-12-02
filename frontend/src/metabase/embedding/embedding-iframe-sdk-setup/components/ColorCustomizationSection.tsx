@@ -1,11 +1,21 @@
-import { useCallback, useState } from "react";
+import cx from "classnames";
+import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
 import { useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { originalColors, staticVizOverrides } from "metabase/lib/colors";
-import { ActionIcon, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
@@ -16,12 +26,16 @@ const defaultMetabaseColorsWithoutAlpha = {
 
 interface ColorCustomizationSectionProps {
   theme?: { colors?: Partial<MetabaseColors> };
+  disabled: boolean;
+  hoverCard: ReactNode;
   onColorChange: (colors: Partial<MetabaseColors>) => void;
   onColorReset?: () => void;
 }
 
 export const ColorCustomizationSection = ({
   theme,
+  disabled,
+  hoverCard,
   onColorChange,
   onColorReset,
 }: ColorCustomizationSectionProps) => {
@@ -43,26 +57,40 @@ export const ColorCustomizationSection = ({
 
   return (
     <>
-      <Group justify="space-between" align="center" mb="lg">
+      <Group
+        justify="space-between"
+        align="center"
+        mb="lg"
+        data-testid="appearance-section"
+      >
         <Text size="lg" fw="bold">
           {t`Appearance`}
         </Text>
 
-        {hasColorChanged && (
-          <Tooltip label={t`Reset colors`}>
-            <ActionIcon
-              variant="subtle"
-              size="sm"
-              onClick={resetColors}
-              aria-label={t`Reset colors`}
-            >
-              <Icon name="revert" c="brand" />
-            </ActionIcon>
-          </Tooltip>
-        )}
+        <Flex gap="md" align="center">
+          {hasColorChanged && (
+            <Tooltip label={t`Reset colors`}>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={resetColors}
+                aria-label={t`Reset colors`}
+              >
+                <Icon name="revert" c="brand" />
+              </ActionIcon>
+            </Tooltip>
+          )}
+
+          {hoverCard}
+        </Flex>
       </Group>
 
-      <Group align="start" gap="xl">
+      <Group
+        align="start"
+        gap="xl"
+        opacity={!disabled ? 1 : 0.5}
+        className={cx(disabled && CS.pointerEventsNone)}
+      >
         {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
           // Use the default from appearance settings. If not set, use the default Metabase color.
           const originalColor =
