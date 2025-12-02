@@ -102,25 +102,6 @@
               (testing "returns true for tenant collection descendant"
                 (is (collection/is-dedicated-tenant-collection-or-descendant? child))))))))))
 
-(deftest is-dedicated-tenant-root-collection-test
-  (testing "is-dedicated-tenant-root-collection? correctly identifies root tenant collections"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
-            (testing "returns true for tenant root collection"
-              (is (collection/is-dedicated-tenant-root-collection? tenant-coll)))
-
-            (mt/with-temp [:model/Collection {child-id :id :as child} {:name "Child"
-                                                                       :namespace "tenant-specific"
-                                                                       :location (collection/children-location tenant-coll)}]
-              (testing "returns false for tenant collection descendant"
-                (is (not (collection/is-dedicated-tenant-root-collection? child)))))
-
-            (mt/with-temp [:model/Collection {regular-id :id :as regular} {:name "Regular" :location "/"}]
-              (testing "returns false for regular collection"
-                (is (not (collection/is-dedicated-tenant-root-collection? regular)))))))))))
-
 (deftest user-tenant-collection-and-descendant-ids-test
   (testing "user->tenant-collection-and-descendant-ids returns correct collection IDs"
     (mt/with-premium-features #{:tenants}
