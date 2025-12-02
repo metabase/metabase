@@ -33,6 +33,11 @@ const CypressBackend = {
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Dmail.smtps.ssl.trust=*", // trust self signed certs for testing
         "-Duser.timezone=US/Pacific",
+        // FIXME @nemanjaglumac 2025-11-28
+        // This is a bit convoluted because this particular log4j config outputs all logs to a file (logs/test.log)
+        // See: https://github.com/metabase/metabase/pull/21360
+        // If we want them in the console, we'd have to unset the log4j config, to let stdio inherit the logs.
+        // Override in your .env if you need to see the logs in the console locally.
         process.env.SHOW_BACKEND_LOGS === "true"
           ? null
           : `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
@@ -49,7 +54,8 @@ const CypressBackend = {
         MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
         MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
         MB_HTTP_CHANNEL_HOST_STRATEGY: "allow-all", // we use a local webhook service for testing
-        MB_IS_CYPRESS: "true", // custom flag so we can detect we're running in Cypress, used in tests.
+        MB_SNOWPLOW_AVAILABLE: true,
+        MB_SNOWPLOW_URL: "http://localhost:9090",
       };
 
       this.server.process = spawn("java", [...javaFlags, "-jar", jarPath], {

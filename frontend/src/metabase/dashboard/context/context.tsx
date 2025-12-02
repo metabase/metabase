@@ -51,6 +51,7 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
+  token?: string | null;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -69,6 +70,7 @@ export type DashboardContextOwnProps = {
         >,
       ) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
+  isGuestEmbed?: boolean;
   /**
    * I want this to be optional, and error out when it's not passed, so it's obvious we need to pass it.
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
@@ -116,6 +118,7 @@ const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
       dashboardId,
+      token,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -156,6 +159,7 @@ const DashboardContextProviderInner = forwardRef(
       isLoadingWithoutCards,
       parameters,
       isEmbeddingIframe,
+      isGuestEmbed,
 
       // redux actions
       addCardToDashboard,
@@ -204,7 +208,16 @@ const DashboardContextProviderInner = forwardRef(
     );
 
     const fetchData = useCallback(
-      async (dashboardId: DashboardId, option: FetchOption = {}) => {
+      async (
+        {
+          dashboardId,
+          token,
+        }: {
+          dashboardId: DashboardId;
+          token: string | null | undefined;
+        },
+        option: FetchOption = {},
+      ) => {
         const hasDashboardChanged = dashboardId !== previousDashboardId;
         const { forceRefetch } = option;
         // When forcing a refetch, we want to clear the cache
@@ -215,7 +228,7 @@ const DashboardContextProviderInner = forwardRef(
 
           initialize({ clearCache: !effectiveIsNavigatingBackToDashboard });
           fetchDashboard({
-            dashId: dashboardId,
+            dashId: token ?? dashboardId,
             queryParams: parameterQueryParams,
             options: {
               clearCache: !effectiveIsNavigatingBackToDashboard,
@@ -271,20 +284,26 @@ const DashboardContextProviderInner = forwardRef(
       return {
         refetchDashboard() {
           if (dashboardId) {
-            fetchData(dashboardId, {
-              forceRefetch: true,
-            });
+            fetchData(
+              {
+                dashboardId,
+                token,
+              },
+              {
+                forceRefetch: true,
+              },
+            );
           }
         },
       };
-    }, [dashboardId, fetchData]);
+    }, [dashboardId, token, fetchData]);
 
     useEffect(() => {
       if (dashboardId && dashboardId !== previousDashboardId) {
         reset();
-        fetchData(dashboardId);
+        fetchData({ dashboardId, token });
       }
-    }, [dashboardId, fetchData, previousDashboardId, reset]);
+    }, [dashboardId, token, fetchData, previousDashboardId, reset]);
 
     useEffect(() => {
       if (dashboard) {
@@ -379,6 +398,7 @@ const DashboardContextProviderInner = forwardRef(
       <DashboardContext.Provider
         value={{
           dashboardId,
+          token,
           dashboard: dashboardWithFilteredCards,
           parameterQueryParams,
           onLoad,
@@ -420,6 +440,7 @@ const DashboardContextProviderInner = forwardRef(
           parameters,
           parameterValues,
           isEmbeddingIframe,
+          isGuestEmbed,
 
           // redux actions
           addCardToDashboard,
