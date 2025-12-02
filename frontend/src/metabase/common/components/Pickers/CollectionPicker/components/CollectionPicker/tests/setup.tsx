@@ -4,7 +4,7 @@ import { useState } from "react";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
-  setupTenantRootCollectionItemsEndpoint,
+  setupTenantCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { mockGetBoundingClientRect, renderWithProviders } from "__support__/ui";
@@ -130,6 +130,7 @@ const flattenCollectionTree = (
       name: n.name,
       id: n.id,
       is_personal: !!n.is_personal,
+      is_tenant_collection: n.is_tenant_collection,
       location: n.location,
       effective_location: n.effective_location,
       here: n.here,
@@ -152,14 +153,33 @@ const setupCollectionTreeMocks = (node: MockCollection[]) => {
   node.forEach((n) => {
     const collectionItems = n.collections.map(mockCollectionToCollectionItem);
 
-    setupCollectionItemsEndpoint({
+    // Skip root since it's handled separately (tenant-aware in EE mode)
+    if (n.id !== "root") {
+      setupCollectionItemsEndpoint({
+        collection: createMockCollection({ id: n.id }),
+        collectionItems,
+        models: ["collection"],
+      });
+    }
+
+    if (collectionItems.length > 0) {
+      setupCollectionTreeMocks(n.collections);
+    }
+  });
+};
+
+const setupTenantCollectionTreeMocks = (node: MockCollection[]) => {
+  node.forEach((n) => {
+    const collectionItems = n.collections.map(mockCollectionToCollectionItem);
+
+    setupTenantCollectionItemsEndpoint({
       collection: createMockCollection({ id: n.id }),
       collectionItems,
       models: ["collection"],
     });
 
     if (collectionItems.length > 0) {
-      setupCollectionTreeMocks(n.collections);
+      setupTenantCollectionTreeMocks(n.collections);
     }
   });
 };
@@ -191,6 +211,42 @@ export const setup = ({
 
   setupCollectionTreeMocks(collectionTree);
 
+  // Setup root collection items endpoint (handles both regular and tenant requests)
+  const rootCollectionItems = collectionTree[0].collections.map(
+    mockCollectionToCollectionItem,
+  );
+  const tenantRootItems = ee
+    ? [mockCollectionToCollectionItem(tenantCollectionsTree[0])]
+    : [];
+
+  fetchMock.get(
+    `path:/api/collection/root/items`,
+    (call: { url: string }) => {
+      const url = new URL(call.url);
+      const models = url.searchParams.getAll("models");
+
+      // Check if it's a tenant request
+      if (call.url.includes("namespace=shared-tenant-collection")) {
+        return {
+          data: tenantRootItems,
+          total: tenantRootItems.length,
+          models,
+          limit: null,
+          offset: null,
+        };
+      }
+
+      return {
+        data: rootCollectionItems,
+        total: rootCollectionItems.length,
+        models,
+        limit: null,
+        offset: null,
+      };
+    },
+    { name: "root-collection-items" },
+  );
+
   const settings = mockSettings(
     createMockSettings({
       "token-features": createMockTokenFeatures({
@@ -200,14 +256,10 @@ export const setup = ({
     }),
   );
 
+  // Update root mock to handle tenant namespace in EE mode
   if (ee) {
     setupEnterprisePlugins();
-    setupCollectionTreeMocks(tenantCollectionsTree);
-    setupTenantRootCollectionItemsEndpoint({
-      collectionItems: [
-        mockCollectionToCollectionItem(tenantCollectionsTree[0]),
-      ],
-    });
+    setupTenantCollectionTreeMocks(tenantCollectionsTree);
 
     const allTenantCollections = flattenCollectionTree(tenantCollectionsTree);
 
@@ -223,13 +275,17 @@ export const setup = ({
   function TestComponent() {
     const [path, setPath] = useState<CollectionPickerStatePath>();
 
+    const handlePathChange = (newPath: CollectionPickerStatePath) => {
+      setPath(newPath);
+    };
+
     return (
       <CollectionPicker
         initialValue={initialValue}
         path={path}
         onInit={jest.fn()}
         onItemSelect={onItemSelect}
-        onPathChange={setPath}
+        onPathChange={handlePathChange}
       />
     );
   }

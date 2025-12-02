@@ -161,8 +161,13 @@ export function setupCollectionItemsEndpoint({
 }) {
   fetchMock.get(
     `path:/api/collection/${collection.id}/items`,
-    (call) =>
-      handleCollectionItemsResponse({ call, collectionItems, modelsParam }),
+    (call) => {
+      return handleCollectionItemsResponse({
+        call,
+        collectionItems,
+        modelsParam,
+      });
+    },
     { name: `collection-${collection.id}-items` },
   );
 }
@@ -185,10 +190,37 @@ export function setupTenantRootCollectionItemsEndpoint({
           modelsParam,
         });
       }
+      // Otherwise skip this mock and let others handle it
+      throw new Error("MOCK_SKIP");
+    },
+    { name: "tenant-root-collection-items", overwriteRoutes: false },
+  );
+}
+
+export function setupTenantCollectionItemsEndpoint({
+  collection,
+  collectionItems = [],
+  models: modelsParam,
+}: {
+  collection: Pick<Collection, "id">;
+  collectionItems: CollectionItem[];
+  models?: string[];
+}) {
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items`,
+    (call: { url: string }) => {
+      // Check if this is a tenant collection request
+      if (call.url.includes("namespace=shared-tenant-collection")) {
+        return handleCollectionItemsResponse({
+          call,
+          collectionItems,
+          modelsParam,
+        });
+      }
       // Otherwise let it fall through to other mocks
       return 404;
     },
-    { name: "tenant-root-collection-items" },
+    { name: `tenant-collection-${collection.id}-items` },
   );
 }
 
