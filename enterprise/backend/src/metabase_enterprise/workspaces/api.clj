@@ -185,11 +185,11 @@
 
 (defn- input-tables
   [graph]
-  ;; As of 2025-12-02 graph is unusable, return empty to unblock FE
-  (if-some [ids (not-empty (set (map :id (:inputs graph))))]
-    (t2/select-fn-vec identity [:model/Table :id :schema :name [:name :table]]
-                      :id [:in ids])
-    []))
+  (let [table-ids (not-empty (set (map :id (:inputs graph))))]
+    (if (empty? table-ids)
+      []
+      (t2/select-fn-vec identity [:model/Table :id :schema [:name :table]]
+                        :id [:in table-ids]))))
 
 (defn- output-tables
   [workspace-id]
@@ -202,7 +202,6 @@
       (let [id->table-data (t2/select-fn->fn :id identity :model/Table
                                              :id [:in (filter pos-int? (concat (keys src-table-id->dst-table-id)
                                                                                (vals src-table-id->dst-table-id)))])
-
             workspace-transforms-data (t2/select :model/Transform :workspace_id workspace-id)
             s+t->workspace-transform (u/for-map
                                       [{:keys [target] :as transform} workspace-transforms-data]
