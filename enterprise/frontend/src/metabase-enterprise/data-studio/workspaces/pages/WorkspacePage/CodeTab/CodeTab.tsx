@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import EmptyState from "metabase/common/components/EmptyState";
 import { Stack, Text } from "metabase/ui";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type { Transform, WorkspaceId } from "metabase-types/api";
@@ -50,45 +51,48 @@ export const CodeTab = ({
 
   return (
     <Stack h="100%" gap={0}>
-      {workspaceTransforms.length > 0 && (
-        <Stack
-          gap="xs"
-          pb="sm"
-          style={{
-            borderBottom: "1px solid var(--mb-color-border)",
-          }}
-        >
-          <Stack gap={0}>
-            <Text fw={600}>{t`Workspace Transforms`}</Text>
-            {workspaceTransforms.map((transform) => {
-              const edited = editedTransforms.get(transform.id);
-              const isEdited =
-                edited != null &&
-                (!isSameSource(edited.source, transform.source) ||
-                  edited.name !== transform.name ||
-                  edited.target.name !== transform.target.name);
+      <Stack
+        gap="xs"
+        pb="sm"
+        style={{
+          borderBottom: "1px solid var(--mb-color-border)",
+        }}
+      >
+        <Stack gap={0}>
+          <Text fw={600}>{t`Workspace Transforms`}</Text>
+          {workspaceTransforms.map((transform) => {
+            const edited = editedTransforms.get(transform.id);
+            const isEdited =
+              edited != null &&
+              (!isSameSource(edited.source, transform.source) ||
+                edited.name !== transform.name ||
+                edited.target.name !== transform.target.name);
 
-              return (
-                <TransformListItem
-                  key={transform.id}
-                  name={transform.name}
-                  icon="pivot_table"
-                  fw={600}
-                  isActive={activeTransformId === transform.id}
-                  isEdited={isEdited}
-                  menu={
-                    <TransformListItemMenu
-                      transform={transform}
-                      workspaceId={workspaceId}
-                    />
-                  }
-                  onClick={() => handleTransformClick(transform)}
-                />
-              );
-            })}
-          </Stack>
+            return (
+              <TransformListItem
+                key={transform.id}
+                name={transform.name}
+                icon="pivot_table"
+                fw={600}
+                isActive={activeTransformId === transform.id}
+                isEdited={isEdited}
+                menu={
+                  <TransformListItemMenu
+                    transform={transform}
+                    workspaceId={workspaceId}
+                  />
+                }
+                onClick={() => handleTransformClick(transform)}
+              />
+            );
+          })}
         </Stack>
-      )}
+
+        {workspaceTransforms.length === 0 && (
+          <EmptyState message={t`Workspace is empty`} />
+        )}
+      </Stack>
+
       <Stack py="sm" gap="xs">
         {availableTransforms.map((transform) => (
           <TransformListItem
