@@ -1716,37 +1716,25 @@ describe("scenarios > dashboard > caching", () => {
       durationRadioButton().click();
     });
 
-    [
-      // clicking on cross button
-      () =>
-        cacheStrategySidesheet().within(() =>
-          cy.findByRole("button", { name: /Close/ }).click(),
-        ),
-      // ESC button
-      () => cy.get("body").type("{esc}"),
-      // click outside
-      () =>
-        cy
-          .findAllByTestId("modal-overlay")
-          .should("have.length", 1)
-          .last()
-          .click(),
-      // // clicking on title with back icon on it
-      () =>
-        cacheStrategySidesheet()
-          .findByRole("button", { name: /Caching settings/ })
-          .click(),
-      // browser's Back action
-      () => cy.go("back"),
-      // browser's Forward action
-      () => cy.go("forward"),
-    ].forEach((attempt) => {
-      attempt();
-      // cancel to attempt closing other way
+    const cancelModal = () =>
       confirmModal()
         .findByRole("button", { name: /Cancel/ })
         .click();
-    });
+    // Action 1: clicking on cross button
+    cacheStrategySidesheet().findByRole("button", { name: /Close/ }).click();
+    cancelModal();
+    // Action 2: ESC button
+    cy.get("body").type("{esc}");
+    cancelModal();
+    // Action 3: click outside
+    cy.findAllByTestId("modal-overlay").should("have.length", 2).last().click();
+    cancelModal();
+    // Action 4: browser's Back action
+    cy.go("back");
+    cancelModal();
+    // Action 5:  browser's Forward action
+    cy.go("forward");
+    cancelModal();
   });
 
   it("can click 'Clear cache' for a dashboard", () => {
