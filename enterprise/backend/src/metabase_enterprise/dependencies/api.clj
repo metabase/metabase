@@ -445,6 +445,11 @@
                           [:transform.id :entity_id]
                           [(case sort_column
                              :name :transform.name
+                             :view_count [:coalesce
+                                          {:select [[[:count :*]]]
+                                           :from [:transform_run]
+                                           :where [:= :transform_run.transform_id :transform.id]}
+                                          0]
                              :transform.name) :sort_key]]
                  :from [:transform]
                  :where (let [unreffed-where [:not [:exists
@@ -542,10 +547,18 @@
                             (assoc table :owner (get id->owner (:owner_user_id table)))]))
                     tables)))
    :transform (when-let [transform-ids (seq (map :entity_id (get ids-by-type "transform")))]
-                (-> (t2/select :model/Transform :id [:in transform-ids])
-                    (t2/hydrate :creator :table-with-db-and-fields :last_run)
-                    (->> (map (fn [transform] [(:id transform) transform]))
-                         (into {}))))
+                (let [transforms (-> (t2/select :model/Transform :id [:in transform-ids])
+                                     (t2/hydrate :creator :table-with-db-and-fields :last_run))
+                      run-counts (t2/query {:select [:transform_id [[:count :*] :count]]
+                                            :from [:transform_run]
+                                            :where [:in :transform_id transform-ids]
+                                            :group-by [:transform_id]})
+                      id->run-count (into {} (map (juxt :transform_id :count) run-counts))]
+                  (->> transforms
+                       (map (fn [transform]
+                              [(:id transform)
+                               (assoc transform :view_count (get id->run-count (:id transform) 0))]))
+                       (into {}))))
    :snippet (when-let [snippet-ids (seq (map :entity_id (get ids-by-type "snippet")))]
               (->> (t2/select :model/NativeQuerySnippet :id [:in snippet-ids])
                    (map (fn [snippet] [(:id snippet) snippet]))
@@ -574,7 +587,7 @@
    :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
           :collection :dashboard :creator :last-edit-info]
    :snippet [:name]
-   :transform [:name :table :creator :last_run :target]
+   :transform [:name :table :creator :last_run :target :view_count]
    :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
    :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
    :sandbox [:table :table_id]})
@@ -594,8 +607,8 @@
 (defn- validate-unreferenced-items-params
   [sort_column query selected-types card-types]
   (when (= sort_column :view_count)
-    (when (some #{:sandbox :transform :snippet} selected-types)
-      (throw (ex-info (tru "Sorting by view_count is only supported for cards, tables, dashboards and documents")
+    (when (some #{:sandbox :snippet} selected-types)
+      (throw (ex-info (tru "Sorting by view_count is only supported for cards, tables, dashboards, documents and transforms")
                       {:status-code 400
                        :selected_types selected-types})))
     (when (and (some #{:card} selected-types)
