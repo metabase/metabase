@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest testing is]]
    [medley.core :as m]
    [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase.driver.sql-jdbc.connection :as driver.conn]
    [metabase.lib.core :as lib]
@@ -220,3 +221,66 @@
           (throw t))
         (finally
           (teardown! (:id @new-workspace)))))))
+
+(deftest python-transforms-checkout-test
+  (mt/test-driver
+    :postgres
+    (let [target-schema "public"]
+      (try (transforms.tu/with-transform-cleanup! [t1 "t1"
+                                                   t2 "t2"]
+             (mt/with-temp
+               [:model/Transform x1 {:name   "initial"
+                                     :source {:type  "python"
+                                              :source-database (mt/id)
+                                              :source-tables {"checkins" (mt/id :checkins)
+                                                              "venues" (mt/id :venues)}
+                                              :body  (str "import pandas as pd\n"
+                                                          "\n"
+                                                          "def transform(checkins, venues):\n"
+                                                          "    return checkins.set_index('venue_id').join(venues.set_index('id'), lsuffix='_venues')\n")}
+                                     :target {:type "table"
+                                              :database (mt/id)
+                                              :schema target-schema
+                                              :name t1}}]
+               (transforms.i/execute! x1 {:run-method :manual})
+               (let [t1-table (t2/select-one :model/Table :name t1)]
+                 (mt/with-temp [:model/Transform x2 {:name   "dependent"
+                                                     :source {:type  "python"
+                                                              :source-database (mt/id)
+                                                              :source-tables {"t1" (:id t1-table)}
+                                                              :body  (str "import pandas as pd\n"
+                                                                          "\n"
+                                                                          "def transform(t1):\n"
+                                                                          "    return t1")}
+                                                     :target {:type "table"
+                                                              :database (mt/id)
+                                                              :schema target-schema
+                                                              :name t2}}]
+                   (transforms.i/execute! x2 {:run-method :manual})
+                   (let [user-id (mt/user->id :crowberto)
+                         result-workspace (mt/with-test-user :crowberto
+                                            (ws.common/create-workspace! user-id
+                                                                         {:name "my test workspace x"
+                                                                          :database_id (mt/id)
+                                                                          :upstream {:transforms [(:id x1) (:id x2)]}}))
+                         mirror-initial (t2/select-one :model/Transform :name "initial" :workspace_id (:id result-workspace))
+                         mirror-dependent (t2/select-one :model/Transform :name "dependent" :workspace_id (:id result-workspace))
+                         t1-mirror (t2/select-one :model/Table
+                                                  :schema (-> mirror-initial :target :schema)
+                                                  :name (-> mirror-initial :target :name))]
+                     (testing "targets"
+                       (is (=? {:name (str "public__" (-> x1 :target :name))
+                                :schema (:schema result-workspace)}
+                               (:target mirror-initial)))
+                       (is (=? {:name (str "public__" (-> x2 :target :name))
+                                :schema (:schema result-workspace)}
+                               (:target mirror-dependent))))
+                     (testing "sources"
+                       (is (=? {:source-tables {"venues" (mt/id :venues)
+                                                "checkins" (mt/id :checkins)}}
+                               (:source mirror-initial)))
+                       (is (=? {:source-tables {"t1" (:id t1-mirror)}}
+                               (:source mirror-dependent)))))))))
+           (catch Throwable t
+             (def ttt t)
+             (throw t))))))

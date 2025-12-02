@@ -1,6 +1,12 @@
 import type { CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
-import type { TransformId } from "./transform";
+import type {
+  Transform,
+  TransformId,
+  TransformSource,
+  TransformTagId,
+  TransformTarget,
+} from "./transform";
 
 export type WorkspaceId = number;
 
@@ -78,3 +84,26 @@ export type WorkspaceUpdateContentsRequest = {
     transforms?: TransformId[];
   };
 };
+
+export type ValidateTableNameRequest = {
+  db_id: DatabaseId;
+  target: {
+    type: "table";
+    name: string;
+    schema: string | null;
+  };
+};
+
+export type ValidateTableNameResponse =
+  | "OK"
+  | "A table with that name already exists";
+
+export type CreateWorkspaceTransformRequest = {
+  name: string;
+  description?: string | null;
+  source: TransformSource;
+  target: TransformTarget;
+  tag_ids?: TransformTagId[];
+};
+
+export type CreateWorkspaceTransformResponse = Transform;

@@ -9,7 +9,27 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
+
+(defn check-no-card-dependencies!
+  "Check that transforms don't depend on cards. Throws 400 if they do."
+  [transform-ids]
+  (when-let [card-ids (seq (ws.dag/card-dependencies transform-ids))]
+    (api/check-400 false
+                   (format "Cannot add transforms that depend on saved questions (cards). Found dependencies on card IDs: %s"
+                           (pr-str (vec card-ids))))))
+
+(defn check-transforms-not-in-workspace!
+  "Check that none of the transforms already belong to a workspace. Throws 400 if any do."
+  [transform-ids]
+  (when-let [ws-txs (seq (t2/select [:model/Transform :id :workspace_id]
+                                    :id [:in transform-ids]
+                                    :workspace_id [:not= nil]))]
+    (throw (ex-info (tru "Cannot add transforms that belong to another workspace")
+                    {:status-code   400
+                     :transform-ids (mapv :id ws-txs)
+                     :workspace-ids (->> ws-txs (map :workspace_id) distinct sort vec)}))))
 
 (defn- extract-suffix-number
   "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."
@@ -127,7 +147,7 @@
                upstream      :upstream}]
   ;; TODO put this in the malli schema for a request
   (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
-  (let [ws-name (or ws-name-maybe (str (random-uuid)))
+  (let [ws-name  (or ws-name-maybe (str (random-uuid)))
         graph    (build-graph upstream)
         db-id    (or (:db_id graph) maybe-db-id)
         _        (when (and maybe-db-id (:db_id graph))

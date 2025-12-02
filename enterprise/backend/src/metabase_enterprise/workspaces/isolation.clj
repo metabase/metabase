@@ -49,6 +49,13 @@
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
 
+;; TODO Either support h2 fully, or update tests not to use h2
+(defmethod init-workspace-database-isolation! :h2 [database workspace]
+  (let [driver      (driver.u/database->driver database)
+        schema-name (isolation-schema-name (:id workspace))
+        jdbc-spec   (sql-jdbc.conn/connection-details->spec driver (:details database))]
+    (jdbc/execute! jdbc-spec [(format "CREATE SCHEMA %s" schema-name)])))
+
 (defmethod init-workspace-database-isolation! :postgres [database workspace]
   (let [driver      (driver.u/database->driver database)
         schema-name (isolation-schema-name (:id workspace))

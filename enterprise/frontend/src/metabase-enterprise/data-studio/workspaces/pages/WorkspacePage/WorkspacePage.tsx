@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -24,14 +25,19 @@ import {
   useListTransformsQuery,
   useMergeWorkspaceMutation,
 } from "metabase-enterprise/api";
-import type { DraftTransformSource, Transform } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
+import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab";
 import styles from "./WorkspacePage.module.css";
-import { WorkspaceProvider, useWorkspace } from "./WorkspaceProvider";
+import {
+  type EditedTransform,
+  WorkspaceProvider,
+  useWorkspace,
+} from "./WorkspaceProvider";
 
 type WorkspacePageProps = {
   params: {
@@ -62,11 +68,17 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const dbTransforms = useMemo(
     () =>
       allTransforms.filter((t) => {
+        // TODO: @uladzimirdev add guards
         if (t.source_type === "python") {
-          return t.source["source-database"] === sourceDb?.id;
+          return (
+            "source-database" in t.source &&
+            t.source["source-database"] === sourceDb?.id
+          );
         }
         if (t.source_type === "native") {
-          return t.source.query.database === sourceDb?.id;
+          return (
+            "query" in t.source && t.source.query.database === sourceDb?.id
+          );
         }
         return false;
       }),
@@ -80,14 +92,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     setActiveTransform,
     addOpenedTransform,
     removeOpenedTransform,
-    setEditedTransform,
-    hasChangedAndRunTransforms,
+    patchEditedTransform,
+    hasUnsavedChanges,
   } = useWorkspace();
 
-  const workspaceTransforms = useMemo(
-    () => dbTransforms.filter((transform) => transform.workspace_id === id),
-    [dbTransforms, id],
-  );
+  const workspaceTransforms = workspace?.contents?.transforms;
 
   useEffect(() => {
     if (activeTransform) {
@@ -98,19 +107,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   }, [id, activeTransform]);
 
   const handleTransformChange = useCallback(
-    (source: DraftTransformSource) => {
-      if (activeTransform) {
-        setEditedTransform(activeTransform.id, {
-          name: activeTransform.name,
-          source,
-          target: {
-            name: activeTransform.target.name,
-            type: activeTransform.target.type,
-          },
-        });
-      }
+    (patch: Partial<EditedTransform>) => {
+      patchEditedTransform(checkNotNull(activeTransform).id, patch);
     },
-    [activeTransform, setEditedTransform],
+    [activeTransform, patchEditedTransform],
   );
 
   const handleCloseClick = useCallback(
@@ -156,7 +156,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         );
         return;
       }
-      dispatch(push(Urls.dataStudioWorkspaceList()));
+      dispatch(push(Urls.transformList()));
     } catch (error) {
       sendErrorToast(t`Failed to merge workspace`);
     }
@@ -191,7 +191,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           variant="filled"
           onClick={handleMergeWorkspace}
           loading={isMerging}
-          disabled={!hasChangedAndRunTransforms()}
+          disabled={hasUnsavedChanges()}
           size="xs"
         >
           {t`Merge`}
@@ -286,6 +286,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   </Text>
                 ) : (
                   <TransformTab
+                    databaseId={checkNotNull(workspace.database_id)}
                     transform={activeTransform}
                     editedTransform={activeEditedTransform}
                     workspaceId={id}
@@ -301,14 +302,25 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         </Box>
         <Box style={{ flex: "1 0 auto", width: "30%" }}>
           <Tabs defaultValue="code">
-            <Box
+            <Flex
               px="md"
+              align="center"
               style={{ borderBottom: "1px solid var(--mb-color-border)" }}
             >
               <Tabs.List className={styles.tabsPanel}>
                 <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
               </Tabs.List>
-            </Box>
+              {sourceDb && (
+                <AddTransformMenu
+                  databaseId={sourceDb.id}
+                  workspaceId={id}
+                  onCreate={(transform) => {
+                    addOpenedTransform(transform);
+                    setActiveTransform(transform);
+                  }}
+                />
+              )}
+            </Flex>
             <Tabs.Panel value="code" p="md">
               <CodeTab
                 workspaceTransforms={workspaceTransforms}

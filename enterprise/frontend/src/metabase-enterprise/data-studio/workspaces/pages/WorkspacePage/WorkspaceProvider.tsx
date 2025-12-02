@@ -7,6 +7,8 @@ import {
   useState,
 } from "react";
 
+import { checkNotNull } from "metabase/lib/types";
+import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type {
   DraftTransformSource,
   Transform,
@@ -30,11 +32,14 @@ export interface WorkspaceContextValue {
   addOpenedTransform: (transform: Transform) => void;
   removeOpenedTransform: (transformId: number) => void;
   editedTransforms: Map<number, EditedTransform>;
-  setEditedTransform: (transformId: number, data: EditedTransform) => void;
+  patchEditedTransform: (
+    transformId: number,
+    patch: Partial<EditedTransform>,
+  ) => void;
   removeEditedTransform: (transformId: number) => void;
   runTransforms: Set<number>;
   markTransformAsRun: (transformId: number) => void;
-  hasChangedAndRunTransforms: () => boolean;
+  hasUnsavedChanges: () => boolean;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -133,13 +138,28 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
-  const setEditedTransform = useCallback(
-    (transformId: number, data: EditedTransform) => {
+  const patchEditedTransform = useCallback(
+    (transformId: number, patch: Partial<EditedTransform>) => {
       updateWorkspaceState((state) => {
-        const newEditedTransforms = new Map(state.editedTransforms).set(
-          transformId,
-          data,
-        );
+        const activeTransform = checkNotNull(state.activeTransform);
+        const newEditedTransform = {
+          name: patch.name ? patch.name : activeTransform.name,
+          source: patch.source ? patch.source : activeTransform.source,
+          target: patch.target ? patch.target : activeTransform.target,
+        };
+
+        const hasChanges =
+          !isSameSource(newEditedTransform.source, activeTransform.source) ||
+          newEditedTransform.name !== activeTransform.name ||
+          newEditedTransform.target.name !== activeTransform.target.name;
+
+        const newEditedTransforms = new Map(state.editedTransforms);
+
+        if (hasChanges) {
+          newEditedTransforms.set(transformId, newEditedTransform);
+        } else {
+          newEditedTransforms.delete(transformId);
+        }
         const newRunTransforms = new Set(state.runTransforms);
         newRunTransforms.delete(transformId);
         return {
@@ -176,9 +196,9 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
-  const hasChangedAndRunTransforms = useCallback(() => {
-    return runTransforms.size > 0;
-  }, [runTransforms]);
+  const hasUnsavedChanges = useCallback(() => {
+    return editedTransforms.size > 0;
+  }, [editedTransforms]);
 
   const activeEditedTransform = activeTransform
     ? (editedTransforms.get(activeTransform.id) ?? activeTransform)
@@ -193,11 +213,11 @@ export const WorkspaceProvider = ({
       addOpenedTransform,
       removeOpenedTransform,
       editedTransforms,
-      setEditedTransform,
+      patchEditedTransform,
       removeEditedTransform,
       runTransforms,
       markTransformAsRun,
-      hasChangedAndRunTransforms,
+      hasUnsavedChanges,
     }),
     [
       openedTransforms,
@@ -208,10 +228,10 @@ export const WorkspaceProvider = ({
       setActiveTransform,
       addOpenedTransform,
       removeOpenedTransform,
-      setEditedTransform,
+      patchEditedTransform,
       removeEditedTransform,
       markTransformAsRun,
-      hasChangedAndRunTransforms,
+      hasUnsavedChanges,
     ],
   );
 

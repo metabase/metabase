@@ -1,8 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -117,14 +119,16 @@
   (testing "Add entities to workspace"
     (mt/with-premium-features [:workspaces :dependencies :transforms]
       (mt/with-model-cleanup [:model/Collection :model/Workspace :model/Transform :model/WorkspaceMappingTransform]
+        ;; TODO (sanya) - I shouldn't write tests like this, I must create my own stuff
         (let [transform-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:limit 2 :order-by [[:id :asc]]})
               first-tx-id   (first transform-ids)
               second-tx-id  (second transform-ids)]
+          (is (and first-tx-id second-tx-id) "Send Sanya to metajail for this test")
           (when (and first-tx-id second-tx-id)
-            (let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                          {:name     "Add Entities Test"
-                                                           :upstream {:transforms [first-tx-id]}}))]
-
+            ;; Subsequent routes are invalid without an id
+            (when-let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                               {:name     "Add Entities Test"
+                                                                :upstream {:transforms [first-tx-id]}}))]
               (testing "Can add new entities to workspace"
                 (is (=? {:contents {:transforms #(>= (count %) 2)}}
                         (mt/user-http-request :crowberto :post 200
@@ -183,3 +187,127 @@
                                                       :query (mt/mbql-query transforms_products)}
                                              :target {:type   "table"
                                                       :name   table-name}}))))))))))
+
+(deftest tables-endpoint-test
+  (mt/test-driver
+    :postgres
+    (mt/with-model-cleanup [:model/Workspace :model/Transform :model/Collection]
+      (let [mp (mt/metadata-provider)
+            query (lib/native-query mp "select * from orders limit 10;")
+            orig-schema "public"]
+        (with-transform-cleanup! [orig-name "ws_tables_test"]
+          (mt/with-temp [:model/Transform x1 {:source_type "native"
+                                              :name "My X1"
+                                              :source {:type "query"
+                                                       :query query}
+                                              :target {:type "table"
+                                                       :database (mt/id)
+                                                       :schema "public"
+                                                       :name orig-name}}]
+            ;; create the target table
+            (transforms.i/execute! x1 {:run-method :manual})
+            ;; create the workspace
+            (let [workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                  {:name        "Test Workspace"
+                                                   :database_id (mt/id)
+                                                   :upstream {:transforms [(:id x1)]}})
+                  tables-result (mt/user-http-request :crowberto :get 200
+                                                      (str "ee/workspace/" (:id workspace) "/tables"))
+                  mirror-transform (t2/select-one :model/Transform :workspace_id (:id workspace))
+                  mirror-table (t2/select-one :model/Table
+                                              :schema (-> mirror-transform :target :schema)
+                                              :name (-> mirror-transform :target :name))]
+              (testing "/tables returns expected results"
+                (is (=? {:inputs [{:id (mt/id :orders) :schema orig-schema :table "orders"}]
+                         :outputs
+                         [{:global {:schema orig-schema :table orig-name}
+                           :workspace {:transform-id (:id mirror-transform)
+                                       :table-id (:id mirror-table)}}]}
+                        tables-result))))))))))
+
+;;;; Card dependency rejection tests
+
+(defn- query-with-source-card
+  "Create a pMBQL query that uses a card as its source."
+  [card-id]
+  {:lib/type :mbql/query
+   :database (mt/id)
+   :stages   [{:lib/type    :mbql.stage/mbql
+               :source-card card-id}]})
+
+(defn- create-transform-with-card-source!
+  "Create a transform whose source query depends on a card.
+   The after-insert hook triggers dependency calculation automatically."
+  [card]
+  (t2/insert-returning-instance! :model/Transform
+                                 {:name   "Transform depending on card"
+                                  :source {:type  :query
+                                           :query (query-with-source-card (:id card))}
+                                  :target {:type     "table"
+                                           :database (mt/id)
+                                           :schema   "public"
+                                           :name     "card_dep_output"}}))
+
+(deftest create-workspace-rejects-card-dependencies-test
+  (testing "Cannot create workspace with transforms that depend on cards"
+    (mt/with-premium-features #{:workspaces :dependencies :transforms}
+      (mt/with-model-cleanup [:model/Dependency :model/Transform]
+        (mt/with-temp [:model/Card card {:name          "Test Card"
+                                         :database_id   (mt/id)
+                                         :dataset_query (mt/mbql-query venues)}]
+          (let [tx       (create-transform-with-card-source! card)
+                response (mt/user-http-request :crowberto :post 400 "ee/workspace"
+                                               {:name        "Card Dep Workspace"
+                                                :database_id (mt/id)
+                                                :upstream    {:transforms [(:id tx)]}})]
+            (is (re-find #"Cannot add transforms that depend on saved questions" response))))))))
+
+(deftest create-workspace-rejects-transitive-card-dependencies-test
+  (testing "Cannot create workspace with transforms that transitively depend on cards"
+    (mt/with-premium-features #{:workspaces :dependencies :transforms}
+      (mt/with-model-cleanup [:model/Dependency :model/Transform]
+        (mt/with-temp [:model/Card card {:name          "Base Card"
+                                         :database_id   (mt/id)
+                                         :dataset_query (mt/mbql-query venues)}]
+          ;; tx1 depends on card
+          (let [tx1 (create-transform-with-card-source! card)
+                ;; tx2 depends on tx1 (via a manually created dependency - simulating transform chain)
+                tx2 (t2/insert-returning-instance! :model/Transform
+                                                   {:name   "Transform 2 - depends on tx1"
+                                                    :source {:type  :query
+                                                             :query {:database (mt/id)
+                                                                     :type     :native
+                                                                     :native   {:query "SELECT 1"}}}
+                                                    :target {:type     "table"
+                                                             :database (mt/id)
+                                                             :schema   "public"
+                                                             :name     "tx2_output"}})]
+            ;; Create dependency: tx2 depends on tx1
+            (t2/insert! :model/Dependency
+                        {:from_entity_type "transform"
+                         :from_entity_id   (:id tx2)
+                         :to_entity_type   "transform"
+                         :to_entity_id     (:id tx1)})
+            ;; Try to create workspace with tx2 (which transitively depends on card via tx1)
+            (let [response (mt/user-http-request :crowberto :post 400 "ee/workspace"
+                                                 {:name        "Transitive Card Dep Workspace"
+                                                  :database_id (mt/id)
+                                                  :upstream    {:transforms [(:id tx2)]}})]
+              (is (re-find #"Cannot add transforms that depend on saved questions" response)))))))))
+
+(deftest add-entities-rejects-card-dependencies-test
+  (testing "Cannot add transforms with card dependencies to existing workspace"
+    (mt/with-premium-features #{:workspaces :dependencies :transforms}
+      (mt/with-model-cleanup [:model/Workspace :model/Dependency :model/Collection :model/Transform]
+        (mt/with-temp [:model/Card card {:name          "Test Card"
+                                         :database_id   (mt/id)
+                                         :dataset_query (mt/mbql-query venues)}]
+          (let [tx (create-transform-with-card-source! card)
+                ;; Create a workspace without the card-dependent transform
+                workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                        {:name        "Empty Workspace"
+                                                         :database_id (mt/id)}))
+                response     (mt/user-http-request :crowberto :post 400
+                                                   (str "ee/workspace/" workspace-id "/contents")
+                                                   {:add {:transforms [(:id tx)]}})]
+            (is (re-find #"Cannot add transforms that depend on saved questions" response))))))))

@@ -91,3 +91,15 @@
        (-> (select-keys src-output-id->dst-output deps-ids)
            (update-keys src-id->schema+table)
            (update-vals (juxt :schema :name))))))
+
+(defn transform-node->py-tables-remaps
+  "Remaps for python transform node"
+  [ctx transform-node]
+  (let [{:keys [source]} (transform-node->data ctx transform-node)
+        all-mappings (:src-output-id->dst-output ctx)
+        transform-table-ids (-> source :source-tables vals set)]
+    (into {}
+          (keep (fn [src-id]
+                  (when-some [dst-id (get-in all-mappings [src-id :id])]
+                    [src-id dst-id])))
+          transform-table-ids)))
