@@ -431,14 +431,14 @@
                    (assoc transform :workspace (get workspaces-by-id (tid->wid (:id transform)))))}))
 
 (api.macros/defendpoint :post "/:id/merge"
-  #_#_:- [:or
-          [:map
-           [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
-           [:errors {:optional true} [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]
-           [:workspace [:map [:id ms/PositiveInt] [:name :string]]]
-           [:archived_at [:maybe :any]]]
+  :- [:or
+      [:map
+       [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
+       [:errors [:maybe [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]]
+       [:workspace [:map [:id ms/PositiveInt] [:name :string]]]
+       [:archived_at [:maybe :any]]]
       ;; error message from check-404 or check-400
-          :string]
+      :string]
   "Promote workspace transforms back to main Metabase and archive the workspace.
 
   This will:
