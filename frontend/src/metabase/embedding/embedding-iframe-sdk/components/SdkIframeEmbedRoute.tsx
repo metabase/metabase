@@ -12,12 +12,12 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
-import { applyThemePreset } from "embedding-sdk-bundle/lib/theme/apply-theme-preset";
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createTracker } from "metabase/lib/analytics-untyped";

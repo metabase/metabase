@@ -4,9 +4,9 @@ import { useContext, useId, useMemo } from "react";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk-bundle/lib/theme";
-import { applyThemePreset } from "embedding-sdk-bundle/lib/theme/apply-theme-preset";
 import type { MetabaseTheme } from "embedding-sdk-bundle/types/ui";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";

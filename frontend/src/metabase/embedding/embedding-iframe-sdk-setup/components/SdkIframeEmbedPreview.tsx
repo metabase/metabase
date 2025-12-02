@@ -8,7 +8,7 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 
-import { applyThemePreset } from "embedding-sdk-bundle/lib/theme/apply-theme-preset";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time

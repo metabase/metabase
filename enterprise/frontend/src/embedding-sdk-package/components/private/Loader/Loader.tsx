@@ -1,7 +1,10 @@
+import { useMemo } from "react";
+
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import { getSdkLoaderCss } from "embedding/sdk-common/lib/get-sdk-loader-css";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 
 type SpinnerProps = {
   size?: string;
@@ -31,6 +34,8 @@ export const Loader = ({ className, style }: CommonStylingProps) => {
   const LoaderComponent = metabaseProviderProps?.loaderComponent;
   const theme = metabaseProviderProps?.theme;
 
+  const adjustedTheme = useMemo(() => applyThemePreset(theme), [theme]);
+
   return (
     <div
       className={className}
@@ -46,7 +51,7 @@ export const Loader = ({ className, style }: CommonStylingProps) => {
       {LoaderComponent ? (
         <LoaderComponent />
       ) : (
-        <Spinner color={theme?.colors?.brand} />
+        <Spinner color={adjustedTheme?.colors?.brand} />
       )}
     </div>
   );
