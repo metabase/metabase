@@ -62,24 +62,21 @@ export type ItemType = Item["type"];
 
 export type FlatItem = LoadingItem | ExpandedItem;
 
-interface ExpandedItemBase {
+interface ExpandedItemBase<TChild = TreeNode> {
   isExpanded?: boolean;
   isLoading?: false;
   parent?: NodeKey;
   level: number;
   disabled?: boolean;
   isSelected?: "yes" | "no" | "some";
-  children: TreeNode[];
+  children: TChild[];
 }
 
 export type ExpandedItem = Item & ExpandedItemBase;
 
-export type ExpandedSchemaItem = SchemaItem &
-  ExpandedItemBase & {
-    children: TableNode[];
-  };
+export type ExpandedSchemaItem = SchemaItem & ExpandedItemBase<TableNode>;
 
-export type ExpandedDatabaseItem = DatabaseItem & ExpandedItemBase;
+export type ExpandedDatabaseItem = DatabaseItem & ExpandedItemBase<SchemaNode>;
 
 export type ExpandedTableItem = TableItem & ExpandedItemBase;
 
@@ -117,11 +114,17 @@ export function isExpandedItem(node: FlatItem): node is ExpandedItem {
   return node.isLoading === undefined;
 }
 
-export function isDatabaseNode(node: FlatItem): node is ExpandedDatabaseItem;
-export function isDatabaseNode(node: TreeNode): node is DatabaseNode;
-export function isDatabaseNode(
-  node: ExpandedItem | TreeNode | FlatItem,
-): node is ExpandedDatabaseItem | DatabaseNode {
+export function isDatabaseItem(node: FlatItem): node is ExpandedDatabaseItem {
+  if ("isLoading" in node && node.isLoading === true) {
+    return false;
+  }
+  return node.type === "database";
+}
+
+export function isDatabaseNode(node: TreeNode): node is DatabaseNode {
+  if ("isLoading" in node && node.isLoading === true) {
+    return false;
+  }
   return node.type === "database";
 }
 
@@ -130,6 +133,9 @@ export function isSchemaNode(node: TreeNode): node is SchemaNode;
 export function isSchemaNode(
   node: ExpandedItem | TreeNode | FlatItem,
 ): node is ExpandedSchemaItem | SchemaNode {
+  if ("isLoading" in node && node.isLoading === true) {
+    return false;
+  }
   return node.type === "schema";
 }
 
@@ -148,5 +154,8 @@ export function isTableNode(node: TreeNode): node is TableNode;
 export function isTableNode(
   node: FlatItem | TreeNode,
 ): node is ExpandedTableItem | TableNode {
+  if ("isLoading" in node && node.isLoading === true) {
+    return false;
+  }
   return node.type === "table";
 }

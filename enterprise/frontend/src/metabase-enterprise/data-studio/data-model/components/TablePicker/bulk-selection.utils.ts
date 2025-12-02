@@ -22,10 +22,12 @@ export interface NodeSelection {
   databases: Set<DatabaseId>;
 }
 
+type NodeSelectionValues = "yes" | "no" | "some";
+
 export function isItemSelected(
   node: TreeNode,
   selection: NodeSelection,
-): "yes" | "no" | "some" {
+): NodeSelectionValues {
   if (!selection) {
     return "no";
   }
@@ -52,7 +54,7 @@ export function isItemSelected(
 function areChildTablesSelected(
   node: TreeNode,
   selectedTables: Set<TableId>,
-): "yes" | "no" | "some" {
+): NodeSelectionValues {
   if (node.children.length === 0) {
     return "no";
   }
@@ -72,7 +74,7 @@ function areChildTablesSelected(
 function areChildSchemasSelected(
   node: TreeNode,
   selection: NodeSelection,
-): "yes" | "no" | "some" {
+): NodeSelectionValues {
   if (node.children.length === 0) {
     return "no";
   }
@@ -341,7 +343,7 @@ export function toggleDatabaseSelection(
   item: ExpandedDatabaseItem,
   selection: NodeSelection,
 ): NodeSelection {
-  const isSelected = isItemSelected(item as unknown as TreeNode, selection);
+  const isSelected = isItemSelected(item, selection);
   const targetChecked = isSelected === "yes" ? "no" : "yes";
 
   return markAllSchemas(item, targetChecked, selection);
@@ -351,7 +353,7 @@ export function toggleSchemaSelection(
   item: ExpandedSchemaItem,
   selection: NodeSelection,
 ): NodeSelection {
-  const isSelected = isItemSelected(item as unknown as TreeNode, selection);
+  const isSelected = isItemSelected(item, selection);
   const tables = new Set(selection.tables);
 
   if (isSelected === "yes") {
@@ -371,14 +373,4 @@ export function toggleSchemaSelection(
     schemas: selection.schemas,
     databases: selection.databases,
   };
-}
-
-export function toggleTableSelection(
-  item: ExpandedItem,
-  selection: NodeSelection,
-): NodeSelection {
-  const isSelected = isItemSelected(item as unknown as TreeNode, selection);
-  const targetChecked = isSelected === "yes" ? "no" : "yes";
-
-  return markAllSchemas(item, targetChecked, selection);
 }

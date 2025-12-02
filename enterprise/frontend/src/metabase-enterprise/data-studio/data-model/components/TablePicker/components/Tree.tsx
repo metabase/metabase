@@ -25,6 +25,7 @@ import type {
   TreePath,
 } from "../types";
 import {
+  isDatabaseItem,
   isDatabaseNode,
   isSchemaNode,
   isTableNode,
@@ -73,7 +74,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   useEffect(() => {
     const expandedDatabases = items.filter(
       (item) =>
-        isDatabaseNode(item) && item.isExpanded && item.children.length === 0,
+        isDatabaseItem(item) && item.isExpanded && item.children.length === 0,
     );
 
     expandedDatabases.forEach((database) => {
@@ -183,7 +184,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   useEffect(() => {
     const expandedSelectedDatabaseItems = items.filter(
       (x) =>
-        isDatabaseNode(x) &&
+        isDatabaseItem(x) &&
         selectedDatabases.has(x.value?.databaseId ?? -1) &&
         x.children.length > 0,
     ) as unknown as DatabaseNode[];
@@ -272,7 +273,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         return newSet;
       });
     }
-    if (isDatabaseNode(item)) {
+    if (isDatabaseItem(item)) {
       if (item.children.length > 0) {
         const { schemas, tables, databases } = toggleDatabaseSelection(
           item,
