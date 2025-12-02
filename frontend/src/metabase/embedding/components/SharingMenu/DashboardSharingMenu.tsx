@@ -1,10 +1,6 @@
 import { useState } from "react";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
-import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
@@ -16,16 +12,6 @@ import { SharingModals } from "./SharingModals";
 import type { DashboardSharingModalType } from "./types";
 
 export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
-  const dispatch = useDispatch();
-
-  const isDashboardSubscriptionSidebarOpen = useSelector(
-    getIsDashboardSubscriptionSidebarOpen,
-  );
-  const toggleSubscriptionSidebar = () =>
-    dispatch(
-      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
-    );
-
   const [modalType, setModalType] = useState<DashboardSharingModalType | null>(
     null,
   );
@@ -44,10 +30,6 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   return (
     <Flex>
       <SharingMenu>
-        <DashboardSubscriptionMenuItem
-          onClick={toggleSubscriptionSidebar}
-          dashboard={dashboard}
-        />
         <ExportPdfMenuItem dashboard={dashboard} />
         {canShare && (
           <>
