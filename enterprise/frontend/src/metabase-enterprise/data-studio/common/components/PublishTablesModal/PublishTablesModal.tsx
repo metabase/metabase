@@ -123,7 +123,7 @@ function ModalBody({
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack>
+        <Stack gap="sm">
           <Text>{t`Publishing a table saves it to the Library.`}</Text>
           {unpublished_upstream_tables.length > 0 && (
             <>
@@ -135,20 +135,20 @@ function ModalBody({
               </List>
             </>
           )}
-          <Group wrap="nowrap">
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={getSubmitButtonLabel(
-                selectedTables,
-                unpublished_upstream_tables,
-              )}
-              variant="filled"
-            />
-          </Group>
         </Stack>
+        <Group mt="xl" gap="sm" wrap="nowrap">
+          <Box flex={1}>
+            <FormErrorMessage />
+          </Box>
+          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+          <FormSubmitButton
+            label={getSubmitButtonLabel(
+              selectedTables,
+              unpublished_upstream_tables,
+            )}
+            variant="filled"
+          />
+        </Group>
       </Form>
     </FormProvider>
   );

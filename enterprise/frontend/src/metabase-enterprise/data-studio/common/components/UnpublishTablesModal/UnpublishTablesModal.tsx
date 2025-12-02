@@ -123,7 +123,7 @@ function ModalBody({
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack>
+        <Stack gap="sm">
           <Text>
             {getInfoMessage(selectedTables, published_downstream_tables)}
           </Text>
@@ -137,20 +137,21 @@ function ModalBody({
               </List>
             </>
           )}
-          <Group wrap="nowrap">
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={getSubmitButtonLabel(
-                selectedTables,
-                published_downstream_tables,
-              )}
-              variant="filled"
-            />
-          </Group>
         </Stack>
+        <Group mt="xl" gap="sm" wrap="nowrap">
+          <Box flex={1}>
+            <FormErrorMessage />
+          </Box>
+          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+          <FormSubmitButton
+            label={getSubmitButtonLabel(
+              selectedTables,
+              published_downstream_tables,
+            )}
+            variant="filled"
+            color="error"
+          />
+        </Group>
       </Form>
     </FormProvider>
   );
