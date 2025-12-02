@@ -107,6 +107,7 @@ export function ModelingSectionLayout() {
             { id: "name", grow: true, name: "Name" },
             { id: "updated_at", width: "150px", name: "Updated At" },
           ]}
+          onSelect={handleCollectionSelect}
         />
       </Stack>
     </SectionLayout>

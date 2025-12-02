@@ -8,10 +8,12 @@ import {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 
-import { Badge, Box, Card, Flex, Icon } from "metabase/ui";
+import { Badge, Box, Card, Flex, Icon, IconName } from "metabase/ui";
 
 import S from "./Table.module.css";
 import React, { CSSProperties } from "react";
+import { useTreeSorting } from "./useTreeSorting";
+import { SortDirection } from "metabase-types/api/sorting";
 
 type Column = {
   id: string;
@@ -20,7 +22,9 @@ type Column = {
   name: string;
 };
 
-export function Table<T extends ITreeNodeItem>({
+export function Table<
+  T extends Omit<ITreeNodeItem, "icon"> & { icon?: IconName },
+>({
   data,
   columns,
   onSelect,
@@ -29,11 +33,40 @@ export function Table<T extends ITreeNodeItem>({
   columns: Column[];
   onSelect: TreeNodeProps["onSelect"];
 }) {
+  const {
+    sortedTree,
+    sortColumn,
+    sortDirection,
+    setSortColumn,
+    setSortDirection,
+  } = useTreeSorting({
+    data,
+    defaultSortDirection: SortDirection.Asc,
+    defaultSortColumn: columns[0].id,
+    formatValueForSorting: (row, columnName) => row[columnName],
+  });
+
+  const handleHeaderClick = (columnId) => {
+    if (columnId === sortColumn) {
+      setSortDirection((s) =>
+        s === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc,
+      );
+    } else {
+      setSortColumn(columnId);
+      setSortDirection(SortDirection.Asc);
+    }
+  };
+
   return (
     <Card withBorder p={0}>
-      <Headers columns={columns} />
+      <Headers
+        columns={columns}
+        onHeaderClick={handleHeaderClick}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+      />
       <Tree
-        data={data}
+        data={sortedTree}
         TreeNode={(props: TreeNodeProps) => (
           <TableNode {...props} columns={columns} />
         )}
@@ -45,12 +78,38 @@ export function Table<T extends ITreeNodeItem>({
   );
 }
 
-const Headers = ({ columns }: { columns: Column[] }) => {
+const Headers = ({
+  columns,
+  onHeaderClick,
+  sortColumn,
+  sortDirection,
+}: {
+  columns: Column[];
+  onHeaderClick: (id: string) => void;
+  sortColumn: string;
+  sortDirection: SortDirection;
+}) => {
   return (
     <Flex className={cx(S.Header, S.Row)} pl="2rem" py="md">
       {columns.map((c) => (
         <Box key={`header-${c.id}`} {...getColumnProps(c)}>
-          <Badge>{c.name}</Badge>
+          <Badge
+            onClick={() => onHeaderClick(c.id)}
+            rightSection={
+              sortColumn === c.id ? (
+                <Icon
+                  name={
+                    sortDirection === SortDirection.Asc
+                      ? "chevronup"
+                      : "chevrondown"
+                  }
+                  size={10}
+                />
+              ) : null
+            }
+          >
+            {c.name}
+          </Badge>
         </Box>
       ))}
     </Flex>
