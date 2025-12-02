@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -59,14 +60,32 @@
   This function is meant to be used for GET /api/user/current "
   [user]
   (let [permissions-set      @api/*current-user-permissions-set*
-        user-id              api/*current-user-id*]
+        db-ids               (t2/select-pks-set :model/Database)
+        user-id              api/*current-user-id*
+        _                    (data-perms/prime-db-cache db-ids)
+        create-query-perms   (into #{}
+                                   (map (fn [db-id]
+                                          (data-perms/most-permissive-database-permission-for-user
+                                           user-id :perms/create-queries db-id)))
+                                   db-ids)
+        can-create-queries?  (or (-> (some #(data-perms/at-least-as-permissive?
+                                             :perms/create-queries % :query-builder)
+                                           create-query-perms)
+                                     boolean)
+                                 (t2/exists? :model/Table
+                                             {:where [:and
+                                                      (collection/visible-collection-filter-clause)
+                                                      [:= :is_published true]]}))
+        can-create-native?   (contains? create-query-perms :query-builder-and-native)]
     (update user :permissions assoc
             :can_access_setting        (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription   (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring     (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model     (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
             :can_access_db_details     (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
-            :is_group_manager          api/*is-group-manager?*)))
+            :is_group_manager          api/*is-group-manager?*
+            :can_create_queries        can-create-queries?
+            :can_create_native_queries can-create-native?)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
