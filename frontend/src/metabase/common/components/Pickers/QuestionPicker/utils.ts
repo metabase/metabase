@@ -1,24 +1,43 @@
 import _ from "underscore";
 
-import type { Card, CardType, CollectionItemModel } from "metabase-types/api";
+import type { Card, CardType } from "metabase-types/api";
+
+import type { CollectionPickerItem } from "../CollectionPicker";
+import {
+  type TablePickerFolderItem,
+  type TablePickerItem,
+  isTablePickerFolder,
+  isTablePickerItem,
+} from "../TablePicker";
 
 import type {
   QuestionPickerItem,
+  QuestionPickerModel,
   QuestionPickerValue,
   QuestionPickerValueModel,
 } from "./types";
 
 export const isFolder = (
   item: QuestionPickerItem,
-  models: CollectionItemModel[],
+  models: QuestionPickerModel[],
 ) => {
   return (
     item.id === "root" ||
-    item.is_personal ||
+    (item as CollectionPickerItem).is_personal ||
     ((item?.model === "collection" || item?.model === "dashboard") &&
       _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
         .length > 0)
   );
+};
+
+export const isTablePickerFolderOrQuestionPickerFolder = (
+  item: QuestionPickerItem | TablePickerItem,
+  models: QuestionPickerModel[],
+): item is TablePickerFolderItem | QuestionPickerItem => {
+  if (isTablePickerItem(item)) {
+    return isTablePickerFolder(item);
+  }
+  return isFolder(item, models);
 };
 
 export const getQuestionPickerValue = ({

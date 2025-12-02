@@ -92,7 +92,6 @@ const Pulses = createEntity({
   objectSelectors: {
     getName: (pulse) => pulse && pulse.name,
     getUrl: (pulse) => pulse && Urls.pulse(pulse.id),
-    getIcon: (pulse) => ({ name: "pulse" }),
     getColor: (pulse) => color("pulse"),
   },
 

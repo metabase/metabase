@@ -6,6 +6,7 @@ PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 import "./shared";
 
 // CORE APP PLUGINS THAT USE hasPremiumFeature (import initialization functions):
+import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeEmbedding } from "./embedding";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeMetabot } from "./metabot";
@@ -22,6 +23,7 @@ export function initializePlugins() {
   initializeMetabot?.();
   initializeWhitelabelPlugin?.();
   initializeWhitelabelOverridePlugin?.();
+  initializeContentTranslation?.();
 }
 
 // "SDK EE-plugins", that are specific to the embedding sdk.

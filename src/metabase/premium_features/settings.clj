@@ -315,6 +315,10 @@
   "Should users be allowed to enable support users in-app?"
   :support-users)
 
+(define-premium-feature ^{:added "0.58.0"} enable-data-studio?
+  "Should we enable the Data Studio?"
+  :data-studio)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -332,6 +336,7 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
+   :data_studio                    (enable-data-studio?)
    :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)

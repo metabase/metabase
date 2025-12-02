@@ -3,6 +3,7 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import { initAuth } from "embedding-sdk-bundle/store/auth";
+import { initGuestEmbed } from "embedding-sdk-bundle/store/guest-embed";
 import {
   setFetchRefreshTokenFn,
   setMetabaseClientUrl,
@@ -23,6 +24,7 @@ const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
+  isGuestEmbed?: boolean;
   authConfig: MetabaseAuthConfig;
   isLocalHost?: boolean;
 }
@@ -41,23 +43,28 @@ export const useInitData = () => {
     );
   }
 
+  const isGuestEmbed = !!props.authConfig.isGuest;
+
   useInitDataInternal({
     reduxStore,
+    isGuestEmbed,
     authConfig,
   });
 };
 
 export const useInitDataInternal = ({
   reduxStore,
+  isGuestEmbed,
   authConfig,
   isLocalHost,
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
 
-  const isAuthUninitialized = () =>
-    reduxStore.getState().sdk.loginStatus.status === "uninitialized";
+  const isDataUninitialized = () =>
+    reduxStore.getState().sdk.initStatus.status === "uninitialized";
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
+
   const sdkPackageVersion =
     getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
 
@@ -99,7 +106,13 @@ export const useInitDataInternal = ({
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
-    if (isAuthUninitialized()) {
+    if (!isDataUninitialized()) {
+      return;
+    }
+
+    if (isGuestEmbed) {
+      dispatch(initGuestEmbed());
+    } else {
       dispatch(initAuth({ ...authConfig, isLocalHost }));
     }
   });

@@ -209,9 +209,10 @@ describe("issue 35954", () => {
         H.updateSetting("show-static-embed-terms", false);
 
         H.visitDashboard(id);
-        H.openSharingMenu("Embed");
-
-        H.modal().findByText("Static embedding").click();
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: id,
+        });
 
         cy.findByTestId("embedding-preview").within(() => {
           cy.intercept("GET", "api/preview_embed/dashboard/**").as(
