@@ -13,7 +13,7 @@ import {
 const options = {
   MB_EDITION: "ee", // ee | oss
   CYPRESS_TESTING_TYPE: "e2e", // e2e | component
-  OPEN_UI: true,
+  CYPRESS_GUI: true,
   GENERATE_SNAPSHOTS: true,
   ...booleanify(process.env),
 };
@@ -36,8 +36,8 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 printBold(`Running Cypress with options:
   - MB_EDITION           : ${options.MB_EDITION}
   - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
+  - CYPRESS_GUI          : ${options.CYPRESS_GUI}
   - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
-  - OPEN_UI              : ${options.OPEN_UI}
 `);
 
 const init = async () => {
@@ -66,14 +66,14 @@ const init = async () => {
     shell("rm -f e2e/support/cypress_sample_instance_data.json");
 
     printBold("⏳ Generating app db snapshots");
-    process.env.OPEN_UI = "false";
+    process.env.CYPRESS_GUI = "false";
     await runCypress({
       configFile: "e2e/support/cypress-snapshots.config.js",
       ...(options.CYPRESS_TESTING_TYPE === "component" && {
         env: { grepTags: "-@external" }, // component tests do not need QA DB snapshots for now
       }),
     });
-    process.env.OPEN_UI = `${options.OPEN_UI}`;
+    process.env.CYPRESS_GUI = `${options.CYPRESS_GUI}`;
   } else {
     printBold("Skipping snapshot generation, beware of stale snapshot caches");
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");

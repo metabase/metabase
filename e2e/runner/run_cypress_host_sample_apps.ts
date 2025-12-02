@@ -8,13 +8,13 @@ import { resolveSdkE2EConfig } from "./resolve-sdk-e2e-config";
 // if you want to change these, set them as environment variables in your shell
 const options = {
   SDK_TEST_SUITE: "vite-6-host-app-e2e", // one of the many sample-app, or host-app Embedding SDK suites
-  OPEN_UI: false,
+  CYPRESS_GUI: false,
   ...booleanify(process.env),
 };
 
 printBold(`Running Cypress with options:
   - SDK_TEST_SUITE       : ${options.SDK_TEST_SUITE}
-  - OPEN_UI              : ${options.OPEN_UI}
+  - CYPRESS_GUI          : ${options.CYPRESS_GUI}
 `);
 
 const init = async () => {
