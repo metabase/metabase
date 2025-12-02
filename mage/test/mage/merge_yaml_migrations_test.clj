@@ -42,6 +42,7 @@
                                           (fixture-path "base-conflict.yaml")
                                           (fixture-path "ours-modifies.yaml")
                                           (fixture-path "theirs-modifies.yaml"))]
+      (is (= 1 cnt))
       (is (seq conflicts) "Should have conflicts")
       (is (str/includes? result "MERGE CONFLICT")
           "Result should contain conflict markers"))))

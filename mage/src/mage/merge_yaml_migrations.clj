@@ -2,7 +2,8 @@
   (:require
    [clj-yaml.core :as yaml]
    [clojure.string :as str]
-   [mage.util :as u]))
+   [mage.util :as u]
+   [medley.core :as m]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,44 +70,41 @@
 (defn- cs-id [cs]
   (-> cs :changeSet :id))
 
-(defn- index-by [func xs]
-  (zipmap xs (map func xs)))
-
 (defn- merge-changesets [base-data ours-data theirs-data]
-  (let [base-cs   (index-by cs-id (extract-changesets base-data))
-        ours-cs   (index-by cs-id (extract-changesets ours-data))
-        theirs-cs (index-by cs-id (extract-changesets theirs-data))
-        all-ids   (into #{}
-                        (comp (map keys) cat)
-                        [base-cs ours-cs theirs-cs])]
+  (let [base-cs (m/index-by cs-id (extract-changesets base-data))
+        ours-cs (m/index-by cs-id (extract-changesets ours-data))
+        theirs-cs (m/index-by cs-id (extract-changesets theirs-data))
+        all-ids (into #{}
+                      (comp (map keys) cat)
+                      [base-cs ours-cs theirs-cs])]
     (reduce
      (fn [acc id]
-       (let [base   (get base-cs id)
-             ours   (get ours-cs id)
+       (let [base (get base-cs id)
+             ours (get ours-cs id)
              theirs (get theirs-cs id)]
          (cond
            (and ours (not theirs) (not base)) ; Added by us
            (conj acc {:id id :source :ours})
            (and theirs (not ours) (not base)) ; Added by them
            (conj acc {:id id :source :theirs})
-           (and base ours (not theirs))       ; they have deleted it
+           (and base ours (not theirs)) ; they have deleted it
            acc
-           (and base theirs (not ours))       ; we have deleted it
+           (and base theirs (not ours)) ; we have deleted it
            acc
            (and base (not ours) (not theirs)) ; only in base, so both deleted
            acc
-           (and base ours theirs)             ; check for modifications
+           (and base ours theirs) ; check for modifications
            (cond
-             (= ours theirs)                        ; identical
+             (= ours theirs) ; identical
              (conj acc {:id id :source :ours})
              (and (= theirs base) (not= ours base)) ; our mod
              (conj acc {:id id :source :ours})
              (and (= ours base) (not= theirs base)) ; their mod
              (conj acc {:id id :source :theirs})
-             :else                                  ; CONFLICT
-             (conj acc {:id     id
+             :else ; CONFLICT
+             (conj acc {:id id
                         :source :conflict
-                        :ours   ours
+                        :ours ours
                         :theirs theirs}))
            :else ; was I diligent enough?
            (do
@@ -126,42 +124,42 @@
    id ours theirs))
 
 (defn- merge-files [base ours theirs {:keys [_marker-size]}]
-  (let [ours-text       (slurp ours)
-        theirs-text     (slurp theirs)
+  (let [ours-text (slurp ours)
+        theirs-text (slurp theirs)
         ;; Parse yaml
-        base-data       (parse-yaml base)
-        ours-data       (parse-yaml ours)
-        theirs-data     (parse-yaml theirs)
+        base-data (parse-yaml base)
+        ours-data (parse-yaml ours)
+        theirs-data (parse-yaml theirs)
         ;; Extract raw text for each changeset
-        ours-cs-texts   (extract-changeset-texts ours-text ours-data)
+        ours-cs-texts (extract-changeset-texts ours-text ours-data)
         theirs-cs-texts (extract-changeset-texts theirs-text theirs-data)
         ;; Extract footer from ours file
-        footer          (extract-footer ours-text)
+        footer (extract-footer ours-text)
         ;; Perform merge
-        merged          (merge-changesets base-data ours-data theirs-data)
+        merged (merge-changesets base-data ours-data theirs-data)
         ;; Sort merged changesets by ID (chronological order)
-        sorted-merged   (sort-by :id merged)
+        sorted-merged (sort-by :id merged)
         ;; Build result by concatenating raw text blocks
-        header          "databaseChangeLog:\n  - objectQuotingStrategy: QUOTE_ALL_OBJECTS\n"
+        header "databaseChangeLog:\n  - objectQuotingStrategy: QUOTE_ALL_OBJECTS\n"
         changeset-texts
         (for [cs sorted-merged]
           (let [text (case (:source cs)
-                       :ours     (get ours-cs-texts (:id cs))
-                       :theirs   (get theirs-cs-texts (:id cs))
+                       :ours (get ours-cs-texts (:id cs))
+                       :theirs (get theirs-cs-texts (:id cs))
                        :conflict (format-conflict-changeset ;; TODO: use marker-size here
                                   (:id cs)
                                   (get ours-cs-texts (:id cs))
                                   (get theirs-cs-texts (:id cs))))]
             ;; Remove trailing blank lines from each changeset
             (str/replace text #"\n+$" "")))]
-    {:result    (str header
-                     "\n"
-                     (str/join "\n\n" (filter some? changeset-texts))
-                     "\n"
-                     (when (seq footer) (str "\n" footer))
-                     (when-not (str/ends-with? footer "\n") "\n"))
+    {:result (str header
+                  "\n"
+                  (str/join "\n\n" (filter some? changeset-texts))
+                  "\n"
+                  (when (seq footer) (str "\n" footer))
+                  (when-not (str/ends-with? footer "\n") "\n"))
      :conflicts (vec (keep #(when (= (:source %) :conflict) (:id %)) sorted-merged))
-     :cnt       (count sorted-merged)}))
+     :cnt (count sorted-merged)}))
 
 ;; 
 
@@ -187,11 +185,11 @@
     (u/exit 2))
 
   (let [[base ours theirs marker-size target] arguments
-        {:keys [result conflicts cnt]}        (merge-files
-                                               base
-                                               ours
-                                               theirs
-                                               {:marker-size marker-size})]
+        {:keys [result conflicts cnt]} (merge-files
+                                        base
+                                        ours
+                                        theirs
+                                        {:marker-size marker-size})]
     (spit (or target *out*) result)
 
     ;; Exit with appropriate code

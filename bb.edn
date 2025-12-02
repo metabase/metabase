@@ -2,12 +2,14 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
- :deps           {dev.weavejester/cljfmt {:mvn/version "0.15.3"}
-                  io.github.paintparty/bling {:mvn/version "0.8.8"}
-                  metosin/malli     {:mvn/version "0.17.0"}
-                  mvxcvi/puget      {:mvn/version "1.3.4"}
-                  org.babashka/json {:mvn/version "0.1.6"}
-                  table/table       {:mvn/version "0.5.0"}}
+ :deps           {dev.weavejester/cljfmt     {:mvn/version "0.15.3"} ;; run cljfmt from bb
+                  io.github.paintparty/bling {:mvn/version "0.8.8"} ;; printing bells and whistles
+                  medley/medley              {:mvn/version "1.3.0"} ;; utilities
+                  metosin/malli              {:mvn/version "0.17.0"} ;; data validation
+                  mvxcvi/puget               {:mvn/version "1.3.4"} ;; pretty printing
+                  org.babashka/json          {:mvn/version "0.1.6"} ;; json parsing
+                  table/table                {:mvn/version "0.5.0"} ;; table printing
+                  }
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
