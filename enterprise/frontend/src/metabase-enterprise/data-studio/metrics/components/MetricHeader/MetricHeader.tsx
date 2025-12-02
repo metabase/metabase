@@ -140,5 +140,11 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
     });
   }
 
+  // TODO: Add "is allowed" condition
+  tabs.push({
+    label: t`Settings`,
+    to: Urls.dataStudioMetricSettings(card.id),
+  });
+
   return tabs;
 }

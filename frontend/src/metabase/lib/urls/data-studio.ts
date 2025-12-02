@@ -87,6 +87,10 @@ export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
 
+export function dataStudioMetricSettings(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/settings`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudioModeling()}/glossary`;
 }

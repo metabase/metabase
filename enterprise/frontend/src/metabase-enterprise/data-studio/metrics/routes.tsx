@@ -5,6 +5,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
 import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
+import { MetricSettingsPage } from "./pages/MetricSettingsPage";
 import { NewMetricPage } from "./pages/NewMetricPage";
 
 export function getDataStudioMetricRoutes() {
@@ -18,6 +19,8 @@ export function getDataStudioMetricRoutes() {
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
+      {/* TODO: Add "is allowed" condition */}
+      <Route path=":cardId/settings" component={MetricSettingsPage} />
     </Route>
   );
 }
