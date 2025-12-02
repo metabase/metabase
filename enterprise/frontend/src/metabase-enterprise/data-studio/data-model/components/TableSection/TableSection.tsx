@@ -158,8 +158,9 @@ const TableSectionBase = ({
   const handlePublishToggle = () => {
     if (!hasLibrary) {
       setModalType("library");
+    } else {
+      setModalType(table.is_published ? "unpublish" : "publish");
     }
-    setModalType(table.is_published ? "unpublish" : "publish");
   };
 
   const handleCloseModal = () => {
