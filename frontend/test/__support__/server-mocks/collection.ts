@@ -75,13 +75,12 @@ export function setupCollectionsEndpoints({
       const isTenantCollection =
         collection.namespace === "shared-tenant-collection";
 
-      if (includeTenantCollections) {
-        // When include-tenant-collections=true, return ONLY tenant collections
-        return isTenantCollection;
-      } else {
-        // When include-tenant-collections=false/undefined, return ONLY non-tenant collections
-        return !isTenantCollection;
+      // Exclude tenant collections if `includeTenantCollections` is false
+      if (!includeTenantCollections && isTenantCollection) {
+        return false;
       }
+
+      return true;
     });
   });
 }
