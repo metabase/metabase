@@ -238,3 +238,13 @@
 (defn since-ms
   "Called on the return value of start-timer, returns the elapsed time in milliseconds."
   [timer] (/ (- (System/nanoTime) timer) 1e6))
+
+(defn exit
+  "When invoked from a babashka namespace spawned from mage, exits with the given exit code.
+  Will not crash your repl. Prefer this to System/exit!"
+  ([exit-code]
+   (throw (ex-info "" {:mage/quiet true
+                       :babashka/exit exit-code})))
+  ([message exit-code]
+   (println message)
+   (throw (ex-info "" {:mage/quiet true :babashka/exit exit-code}))))

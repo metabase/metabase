@@ -3,11 +3,13 @@
    [babashka.tasks :as bt]
    [clojure.string :as str]
    [clojure.test :as t :refer [deftest is testing]]
+   [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.token-scan-test :as token-scan-test]
    [mage.util :as u]))
 
 (comment
-  token-scan-test/keep-me)
+  token-scan-test/keep-me
+  merge-yaml-migrations-test/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -51,4 +53,5 @@
   (testing "Invalid task name prints help"
     (invalid-task-names-print-help-test))
 
-  (t/run-tests 'mage.token-scan-test))
+  (t/run-tests 'mage.token-scan-test)
+  (t/run-tests 'mage.merge-yaml-migrations-test))
