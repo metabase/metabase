@@ -605,12 +605,20 @@ describe("Remote Sync", () => {
       cy.findByTestId("admin-layout-content").findByText("Read-only").click();
 
       // Tenant collections toggle should be visible when tenants is enabled
-      cy.findByLabelText("Sync tenant collections").should("exist");
-      cy.findByLabelText("Sync tenant collections").should("not.be.checked");
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "exist",
+      );
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "not.be.checked",
+      );
 
       // Enable tenant collections remote sync
-      cy.findByLabelText("Sync tenant collections").click();
-      cy.findByLabelText("Sync tenant collections").should("be.checked");
+      cy.findByRole("switch", { name: /Sync tenant collections/ })
+        .parent("label")
+        .click();
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "be.checked",
+      );
 
       cy.button("Set up Remote Sync").click();
       cy.findByTestId("admin-layout-content")
@@ -619,7 +627,9 @@ describe("Remote Sync", () => {
 
       // Verify the setting persists
       cy.reload();
-      cy.findByLabelText("Sync tenant collections").should("be.checked");
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "be.checked",
+      );
     });
 
     it("can enable tenant collections remote sync in read-write mode when tenants feature is enabled", () => {
@@ -634,12 +644,20 @@ describe("Remote Sync", () => {
       cy.findByTestId("admin-layout-content").findByText("Read-write").click();
 
       // Tenant collections toggle should be visible in read-write mode too
-      cy.findByLabelText("Sync tenant collections").should("exist");
-      cy.findByLabelText("Sync tenant collections").should("not.be.checked");
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "exist",
+      );
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "not.be.checked",
+      );
 
       // Enable tenant collections remote sync
-      cy.findByLabelText("Sync tenant collections").click();
-      cy.findByLabelText("Sync tenant collections").should("be.checked");
+      cy.findByRole("switch", { name: /Sync tenant collections/ })
+        .parent("label")
+        .click();
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "be.checked",
+      );
 
       cy.button("Set up Remote Sync").click();
       cy.findByTestId("admin-layout-content")
@@ -648,7 +666,9 @@ describe("Remote Sync", () => {
 
       // Verify the setting persists
       cy.reload();
-      cy.findByLabelText("Sync tenant collections").should("be.checked");
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "be.checked",
+      );
     });
 
     it("does not show tenant collections toggle when tenants feature is disabled", () => {
@@ -663,7 +683,9 @@ describe("Remote Sync", () => {
       cy.findByTestId("admin-layout-content").findByText("Read-only").click();
 
       // Tenant collections toggle should not be visible
-      cy.findByLabelText("Sync tenant collections").should("not.exist");
+      cy.findByRole("switch", { name: /Sync tenant collections/ }).should(
+        "not.exist",
+      );
     });
   });
 
