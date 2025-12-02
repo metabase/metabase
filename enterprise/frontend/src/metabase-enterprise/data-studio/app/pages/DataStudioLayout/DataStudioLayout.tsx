@@ -107,7 +107,7 @@ function DataStudioNav({
         />
         <DataStudioTab
           label={t`Library`}
-          icon="model"
+          icon="repository"
           to={Urls.dataStudioModeling()}
           isSelected={isModelingTab}
           showLabel={isNavbarOpened}
@@ -116,7 +116,7 @@ function DataStudioNav({
         {canAccessDataModel && (
           <DataStudioTab
             label={t`Data structure`}
-            icon="database"
+            icon="open_folder"
             to={Urls.dataStudioData()}
             isSelected={isDataTab}
             showLabel={isNavbarOpened}
@@ -125,7 +125,7 @@ function DataStudioNav({
         {canAccessDataModel && (
           <DataStudioTab
             label={t`Glossary`}
-            icon="reference"
+            icon="glossary"
             to={Urls.dataStudioGlossary()}
             isSelected={isGlossaryTab}
             showLabel={isNavbarOpened}
@@ -134,7 +134,7 @@ function DataStudioNav({
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
             label={t`Dependency graph`}
-            icon="schema"
+            icon="dependencies"
             to={Urls.dependencyGraph()}
             isSelected={isDependenciesTab}
             showLabel={isNavbarOpened}
@@ -163,7 +163,7 @@ function DataStudioNav({
         {canAccessTransforms && (
           <DataStudioTab
             label={t`Runs`}
-            icon="play"
+            icon="play_outlined"
             to={Urls.transformRunList()}
             isSelected={isRunsTab}
             showLabel={isNavbarOpened}
@@ -171,7 +171,7 @@ function DataStudioNav({
         )}
         <DataStudioTab
           label={t`Exit`}
-          icon="return"
+          icon="exit"
           to={"/"}
           showLabel={isNavbarOpened}
         />
@@ -269,7 +269,7 @@ function DataStudioNavbarToggle({
         bdrs="md"
         onClick={() => !isNavbarOpened && onNavbarToggle(true)}
       >
-        <FixedSizeIcon name="data_studio" />
+        <FixedSizeIcon name="data_studio" size={27} mx="-5px" />
       </UnstyledButton>
       {isNavbarOpened && (
         <UnstyledButton
