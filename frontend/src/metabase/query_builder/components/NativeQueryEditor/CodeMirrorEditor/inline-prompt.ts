@@ -1,4 +1,5 @@
 import { StateEffect, StateField } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import {
   Decoration,
   type DecorationSet,
@@ -10,14 +11,12 @@ import { useMemo } from "react";
 import S from "./CodeMirrorEditor.module.css";
 
 export type InlinePromptOptions = {
-  /** Line number (1-indexed) where the prompt should appear above */
-  line: number;
   placeholder: string;
   onSubmit: (value: string) => void;
   onCancel: () => void;
 };
 
-const showPromptEffect = StateEffect.define<InlinePromptOptions>();
+const togglePromptEffect = StateEffect.define<InlinePromptOptions>();
 const hidePromptEffect = StateEffect.define<void>();
 
 class InlinePromptWidget extends WidgetType {
@@ -29,7 +28,7 @@ class InlinePromptWidget extends WidgetType {
     super();
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
     const wrapper = document.createElement("div");
     wrapper.className = S.inlinePromptWrapper;
 
@@ -45,10 +44,14 @@ class InlinePromptWidget extends WidgetType {
         const value = input.value;
         input.value = "";
         this.onSubmit(value);
+        view.dispatch({ effects: hidePromptEffect.of() });
+        view.focus();
       } else if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         this.onCancel();
+        view.dispatch({ effects: hidePromptEffect.of() });
+        view.focus();
       }
     });
 
@@ -74,56 +77,65 @@ class InlinePromptWidget extends WidgetType {
 }
 
 function inlinePromptField() {
-  return StateField.define<DecorationSet>({
+  return StateField.define<{ decorations: DecorationSet; visible: boolean }>({
     create() {
-      return Decoration.none;
+      return { decorations: Decoration.none, visible: false };
     },
-    update(decorations, transaction) {
+    update(state, transaction) {
+      let { decorations, visible } = state;
       decorations = decorations.map(transaction.changes);
 
       for (const effect of transaction.effects) {
-        if (effect.is(showPromptEffect)) {
-          const { line, placeholder, onSubmit, onCancel } = effect.value;
-          const doc = transaction.state.doc;
-          const targetLine = Math.min(Math.max(1, line), doc.lines);
-          const lineInfo = doc.line(targetLine);
+        if (effect.is(togglePromptEffect)) {
+          if (visible) {
+            // Hide the prompt
+            decorations = Decoration.none;
+            visible = false;
+          } else {
+            // Show the prompt at cursor line
+            const { placeholder, onSubmit, onCancel } = effect.value;
+            const cursorPos = transaction.state.selection.main.head;
+            const line = transaction.state.doc.lineAt(cursorPos);
 
-          const widget = Decoration.widget({
-            widget: new InlinePromptWidget(placeholder, onSubmit, onCancel),
-            block: true,
-            side: -1,
-          });
+            const widget = Decoration.widget({
+              widget: new InlinePromptWidget(placeholder, onSubmit, onCancel),
+              block: true,
+              side: -1,
+            });
 
-          decorations = Decoration.set([widget.range(lineInfo.from)]);
+            decorations = Decoration.set([widget.range(line.from)]);
+            visible = true;
+          }
         } else if (effect.is(hidePromptEffect)) {
           decorations = Decoration.none;
+          visible = false;
         }
       }
 
-      return decorations;
+      return { decorations, visible };
     },
-    provide: (field) => EditorView.decorations.from(field),
+    provide: (field) =>
+      EditorView.decorations.from(field, (state) => state.decorations),
   });
 }
 
 export function useInlinePrompt(options: InlinePromptOptions | undefined) {
   return useMemo(() => {
     if (!options) {
-      return [inlinePromptField()];
+      return [];
     }
-
-    let initialized = false;
 
     return [
       inlinePromptField(),
-      EditorView.updateListener.of((update) => {
-        if (!initialized) {
-          initialized = true;
-          update.view.dispatch({
-            effects: showPromptEffect.of(options),
-          });
-        }
-      }),
+      keymap.of([
+        {
+          key: "Mod-k",
+          run: (view) => {
+            view.dispatch({ effects: togglePromptEffect.of(options) });
+            return true;
+          },
+        },
+      ]),
     ];
   }, [options]);
 }
