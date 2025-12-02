@@ -81,6 +81,42 @@ function delay(durationMs) {
   return new Promise((resolve) => setTimeout(resolve, durationMs));
 }
 
+async function isReady(host) {
+  try {
+    const response = await fetch(`${host}/api/health`);
+    const { status } = await response.json();
+    return status === "ok";
+  } catch (e) {
+    return false;
+  }
+}
+
+async function waitUntilReady(backend, attempt = 0) {
+  const { dbFile, host } = backend;
+  const TIMEOUT_MS = 1000;
+  const MAX_MINUTES = 5;
+  const MAX_ATTEMPTS = 60 * MAX_MINUTES;
+
+  if (attempt === 0) {
+    process.stdout.write(
+      `\nWaiting for backend (host=${host}, dbFile=${dbFile})`,
+    );
+  }
+
+  if (await isReady(host)) {
+    console.log(`\nBackend ready host=${host}, dbFile=${dbFile}`);
+    return;
+  }
+
+  if (attempt >= MAX_ATTEMPTS) {
+    throw new Error(`\nBackend failed to start within ${MAX_MINUTES} minutes`);
+  }
+
+  process.stdout.write(".");
+  await delay(TIMEOUT_MS);
+  return waitUntilReady(backend, attempt + 1);
+}
+
 module.exports = {
   booleanify,
   unBooleanify,
@@ -88,4 +124,5 @@ module.exports = {
   printBold,
   shell,
   delay,
+  waitUntilReady,
 };

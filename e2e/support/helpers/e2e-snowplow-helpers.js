@@ -1,6 +1,6 @@
 import { updateSetting } from "e2e/support/helpers";
 
-const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
+const SNOWPLOW_URL = "http://localhost:9090";
 const SNOWPLOW_INTERVAL = 100;
 const SNOWPLOW_TIMEOUT = 1000;
 

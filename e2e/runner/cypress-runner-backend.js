@@ -1,104 +1,70 @@
 #!/usr/bin/env node
 
-const { spawn } = require("child_process");
+const { execSync, spawn } = require("child_process");
 const fs = require("fs");
-const http = require("http");
 const os = require("os");
 const path = require("path");
 
-const { BACKEND_PORT } = require("./constants/backend-port");
-const { delay } = require("./cypress-runner-utils");
+const { waitUntilReady, shell } = require("./cypress-runner-utils");
+
+const tempDbPath = path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
+
+function getJvmOptsFromDepsEdn(alias = "e2e") {
+  const cmd = `clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :${alias} :jvm-opts) (clojure.string/join " ") println)'`;
+  return execSync(cmd, { encoding: "utf8" }).trim().split(" ");
+}
+
+// Ensure that the only two required env vars have values
+process.env.MB_DB_FILE = process.env.MB_DB_FILE || tempDbPath;
+process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
+
+if (!process.CI) {
+  // Use a temporary copy of the sample db so it won't use and lock the db used for local development
+  process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = path.resolve(
+    __dirname,
+    "../../e2e/tmp", // already exists and is .gitignored
+  );
+}
 
 const CypressBackend = {
-  server: null,
-  createServer(port = BACKEND_PORT) {
-    const generateTempDbPath = () =>
-      path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
-
-    const server = {
-      dbFile: generateTempDbPath(),
-      host: `http://localhost:${port}`,
-    };
-
-    this.server = server;
+  server: {
+    dbFile: process.env.MB_DB_FILE,
+    host: `http://localhost:${process.env.MB_JETTY_PORT}`,
   },
   async start(jarPath = "target/uberjar/metabase.jar") {
-    if (!this.server) {
-      this.createServer();
-    }
     if (!this.server.process) {
-      const metabaseConfig = {
-        MB_DB_FILE: this.server.dbFile,
-        MB_JETTY_PORT: BACKEND_PORT,
-      };
-
+      process.env.JDK_JAVA_OPTIONS = getJvmOptsFromDepsEdn();
       this.server.process = spawn("java", ["-jar", jarPath], {
-        env: {
-          ...process.env,
-          ...metabaseConfig,
-        },
-        stdio:
-          process.env["DISABLE_LOGGING"] ||
-          process.env["DISABLE_LOGGING_BACKEND"]
-            ? "ignore"
-            : "inherit",
+        env: process.env,
+        stdio: "inherit",
         detached: true,
       });
-    }
-
-    if (!(await isReady(this.server.host))) {
-      process.stdout.write(
-        `Waiting for backend (host=${this.server.host}, dbFile=${this.server.dbFile})`,
-      );
-      while (!(await isReady(this.server.host))) {
-        if (!process.env["CI"]) {
-          // disable for CI since it breaks CircleCI's no_output_timeout
-          process.stdout.write(".");
-        }
-        await delay(500);
+      await waitUntilReady(this.server);
+      if (process.env.CI) {
+        this.server.process.unref(); // detach console
       }
-      process.stdout.write("\n");
-    }
-
-    console.log(
-      `Backend ready host=${this.server.host}, dbFile=${this.server.dbFile}`,
-    );
-
-    if (process.env.CI) {
-      this.server.process.unref(); // detach console
-    }
-
-    async function isReady(host) {
-      // This is needed until we can use NodeJS native `fetch`.
-      function request(url) {
-        return new Promise((resolve, reject) => {
-          const req = http.get(url, (res) => {
-            let body = "";
-
-            res.on("data", (chunk) => {
-              body += chunk;
-            });
-
-            res.on("end", () => {
-              resolve(JSON.parse(body));
-            });
-          });
-
-          req.on("error", (e) => {
-            reject(e);
-          });
-        });
-      }
-
-      try {
-        const { status } = await request(`${host}/api/health`);
-        if (status === "ok") {
-          return true;
-        }
-      } catch (e) {}
-      return false;
     }
   },
+  async run() {
+    if (!this.server.process) {
+      const edition = process.env.MB_EDITION || "ee";
+
+      this.server.process = spawn(
+        "clojure",
+        [`-M:run:${edition}:dev:dev-start:e2e`, "--hot"],
+        {
+          env: process.env,
+          stdio: "ignore",
+          detached: true,
+        },
+      );
+      await waitUntilReady(this.server);
+      if (process.env.CI) {
+        this.server.process.unref(); // detach console
+      }
+    }
+  },
+
   async stop() {
     if (this?.server?.process) {
       this.server.process.kill("SIGKILL");
@@ -109,9 +75,15 @@ const CypressBackend = {
     try {
       if (this?.server?.dbFile) {
         fs.unlinkSync(`${this.server.dbFile}.mv.db`);
+        fs.unlinkSync(`${this.server.dbFile}.trace.db`);
       }
     } catch (e) {}
   },
 };
 
-module.exports = CypressBackend;
+const isBackendRunning = shell(
+  `lsof -ti:${process.env.MB_JETTY_PORT} || echo ""`,
+  { quiet: true },
+);
+
+module.exports = { ...CypressBackend, isBackendRunning };

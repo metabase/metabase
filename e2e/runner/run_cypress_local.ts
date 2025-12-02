@@ -1,6 +1,3 @@
-import path from "path";
-
-import { BACKEND_PORT } from "./constants/backend-port";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import runCypress from "./cypress-node-js-runner";
 import CypressBackend from "./cypress-runner-backend";
@@ -14,10 +11,8 @@ import {
 
 // if you want to change these, set them as environment variables in your shell
 const options = {
-  CYPRESS_TESTING_TYPE: "e2e", // e2e | component
   MB_EDITION: "ee", // ee | oss
-  BUILD_BACKEND: true,
-  BACKEND_PORT: BACKEND_PORT, // override with MB_JETTY_PORT in your env
+  CYPRESS_TESTING_TYPE: "e2e", // e2e | component
   OPEN_UI: true,
   GENERATE_SNAPSHOTS: true,
   ...booleanify(process.env),
@@ -39,10 +34,8 @@ if (options.MB_EDITION === "ee" && missingTokens.length > 0) {
 }
 
 printBold(`Running Cypress with options:
-  - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
   - MB_EDITION           : ${options.MB_EDITION}
-  - BACKEND_PORT         : ${options.BACKEND_PORT}
-  - BUILD_BACKEND        : ${options.BUILD_BACKEND}
+  - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
   - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
   - OPEN_UI              : ${options.OPEN_UI}
 `);
@@ -51,40 +44,21 @@ const init = async () => {
   const cliArguments = process.argv.slice(2);
   const userOverrides = await parseArguments(cliArguments);
 
+  const { isBackendRunning } = CypressBackend;
+
   printBold("⏳ Starting containers");
   shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
 
-  if (options.BUILD_BACKEND) {
-    printBold("⏳ Building backend");
-    shell("./bin/build-backend-for-test");
-
-    const isBackendRunning = shell(
-      `lsof -ti:${options.BACKEND_PORT} || echo ""`,
-      { quiet: true },
-    );
-    if (isBackendRunning) {
-      printBold(
-        "⚠️ Your backend is already running, you may want to kill pid " +
-          isBackendRunning,
-      );
-      process.exit(FAILURE_EXIT_CODE);
-    }
-
-    // Use a temporary copy of the sample db so it won't use and lock the db used for local development
-    process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = path.resolve(
-      __dirname,
-      "../../e2e/tmp", // already exists and is .gitignored
-    );
-
-    printBold("⏳ Starting backend");
-    await CypressBackend.start("target/uberjar/metabase-backend.jar");
+  if (isBackendRunning) {
+    printBold("⚠️ Your backend is already running");
+    console.log(`If tests fail or if something doesn't work:
+      - Kill the pid ${isBackendRunning}
+      - Run *yarn test-cypress* again
+      - This will spin up the live backend with the correct settings for e2e tests
+    `);
   } else {
-    printBold(
-      `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT}. Make sure your metabase instance is running with an h2 app db and the following environment variables:
-  - MB_ENABLE_TEST_ENDPOINTS=true
-  - MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE=true
-    `,
-    );
+    printBold("⏳ Starting live backend with hot reloading");
+    await CypressBackend.run();
   }
 
   if (options.GENERATE_SNAPSHOTS) {
@@ -129,10 +103,8 @@ const init = async () => {
 };
 
 const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
-  if (options.BUILD_BACKEND) {
-    printBold("⏳ Cleaning up...");
-    await CypressBackend.stop();
-  }
+  printBold("⏳ Cleaning up...");
+  await CypressBackend.stop();
 
   printBold(
     "🧹 Containers are running in background. If you wish to stop them, run:\n`docker compose -f ./e2e/test/scenarios/docker-compose.yml down`",
