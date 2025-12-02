@@ -180,7 +180,7 @@
       (do
         (println (c/red "Unable to find a backend nrepl."))
         (println "Running via " (c/bold (c/magenta "the command line")) "."
-                 (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECCOMENDED!! "))
+                 (c/red " This is " (c/bold "SLOW") " and " (c/bold "NOT RECOMMENDED!! "))
                  "Please consider starting a backend \nFor quicker test runs, use: " (c/magenta "  clj -M:test:dev:ee:ee-dev:drivers:drivers-dev:dev-start"))
         (println "\n" (banner {:text "Please open a REPL!"
                                :font bling.fonts.drippy/drippy
