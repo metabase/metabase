@@ -117,7 +117,7 @@
     {:published_tables (t2/select fields {:where [:and [:= :is_published true] where]})
      :unpublished_tables (t2/select fields {:where [:and [:= :is_published false] where]})
      :published_downstream_tables []
-     :unpublished_downstream_tables []}))
+     :unpublished_upstream_tables []}))
 
 (api.macros/defendpoint :post "/publish-tables"
   "Set collection for each of selected tables"

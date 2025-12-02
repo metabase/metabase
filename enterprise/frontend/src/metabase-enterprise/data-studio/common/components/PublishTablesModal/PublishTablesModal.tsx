@@ -75,8 +75,8 @@ function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
     return null;
   }
 
-  const { unpublished_tables, unpublished_downstream_tables } = data;
-  return <>{getTitle(unpublished_tables, unpublished_downstream_tables)}</>;
+  const { unpublished_tables, unpublished_upstream_tables } = data;
+  return <>{getTitle(unpublished_tables, unpublished_upstream_tables)}</>;
 }
 
 type ModalBodyProps = {
@@ -105,7 +105,7 @@ function ModalBody({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { unpublished_tables, unpublished_downstream_tables } = data;
+  const { unpublished_tables, unpublished_upstream_tables } = data;
 
   const handleSubmit = async () => {
     await publishTables({
@@ -121,11 +121,11 @@ function ModalBody({
       <Form>
         <Stack>
           <Text>{t`Publishing a table saves it to the Library.`}</Text>
-          {unpublished_downstream_tables.length > 0 && (
+          {unpublished_upstream_tables.length > 0 && (
             <>
               <Text>{getForeignKeyMessage(unpublished_tables)}</Text>
               <List spacing="sm">
-                {unpublished_downstream_tables.map((table) => (
+                {unpublished_upstream_tables.map((table) => (
                   <List.Item key={table.id}>{table.display_name}</List.Item>
                 ))}
               </List>
@@ -139,7 +139,7 @@ function ModalBody({
             <FormSubmitButton
               label={getSubmitButtonLabel(
                 unpublished_tables,
-                unpublished_downstream_tables,
+                unpublished_upstream_tables,
               )}
               variant="filled"
             />
