@@ -90,7 +90,7 @@ const getCollections = (state: State) =>
 
 const getTenantCollections = (state: State) =>
   Collections.selectors.getList(state, {
-    entityQuery: { ...collectionsQuery, "include-tenant-collections": true },
+    entityQuery: { ...collectionsQuery, "namespace": "shared-tenant-collection" },
   }) ?? [];
 
 const getCollectionsTree = createSelector([getCollections], (collections) => {
