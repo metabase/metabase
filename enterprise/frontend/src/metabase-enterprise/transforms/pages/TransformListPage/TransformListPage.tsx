@@ -13,6 +13,7 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
+import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
 import { TransformListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/TransformListItem";
@@ -31,6 +32,7 @@ import {
   nameSorter,
 } from "../TransformSidebarLayout/utils";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 
 const DEFAULT_SORT_TYPE = "tree";
 
@@ -98,7 +100,12 @@ export const TransformListPageSidebar = ({
 
   return (
     <>
-      <Flex direction="column" gap="md" p="md">
+      <TransformsSectionHeader
+        leftSection={
+          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
+        }
+      />
+      <Flex direction="column" gap="md" p="lg">
         <SidebarSearchAndControls
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}

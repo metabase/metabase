@@ -30,7 +30,10 @@ export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
           {tabs}
         </Stack>
         <Group>
-          <PLUGIN_METABOT.MetabotDataStudioButton />
+          <PLUGIN_METABOT.MetabotDataStudioButton
+            variant="subtle"
+            bd="1px solid var(--mb-color-border)"
+          />
           <Button component={Link} to="/">
             {t`Exit data studio`}
           </Button>

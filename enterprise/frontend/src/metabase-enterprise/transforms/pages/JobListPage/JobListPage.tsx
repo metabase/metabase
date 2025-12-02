@@ -10,6 +10,9 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
+import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
 
@@ -22,7 +25,6 @@ import {
   lastModifiedSorter,
   nameSorter,
 } from "../TransformSidebarLayout/utils";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
 
 const DEFAULT_SORT_TYPE = "alphabetical";
 
@@ -77,6 +79,9 @@ export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
 
   return (
     <>
+      <TransformsSectionHeader
+        leftSection={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
+      />
       <Flex direction="column" gap="md" px="md" pt="md" pb="md">
         <SidebarSearchAndControls
           searchValue={searchQuery}

@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import {
   PaneHeader,
@@ -31,19 +32,23 @@ export function TransformHeader({
   hasMenu = true,
 }: TransformHeaderProps) {
   return (
-    <PaneHeader
-      title={<TransformNameInput transform={transform} />}
-      menu={hasMenu && <TransformMoreMenu transform={transform} />}
-      tabs={<TransformTabs transform={transform} />}
-      actions={actions}
-      data-testid="transforms-header"
-      breadcrumbs={
-        <DataStudioBreadcrumbs>
-          <Link to={Urls.transformList()}>{t`Transforms`}</Link>
-          <span>{transform.name}</span>
-        </DataStudioBreadcrumbs>
-      }
-    />
+    <>
+      <TransformsSectionHeader
+        leftSection={
+          <DataStudioBreadcrumbs>
+            <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+            {transform.name}
+          </DataStudioBreadcrumbs>
+        }
+      />
+      <PaneHeader
+        title={<TransformNameInput transform={transform} />}
+        menu={hasMenu && <TransformMoreMenu transform={transform} />}
+        tabs={<TransformTabs transform={transform} />}
+        actions={actions}
+        data-testid="transforms-header"
+      />
+    </>
   );
 }
 
