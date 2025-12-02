@@ -229,6 +229,20 @@
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
+  -play
+  {:doc        "Play sounds from mage.sound"
+   :examples   [["./bin/mage -play success" "play success sound"] ["./bin/mage -play s" "play success sound"]
+                ["./bin/mage -play error" "play error sound"]     ["./bin/mage -play e" "play error sound"]
+                ["./bin/mage -play ping" "play ping sound"]       ["./bin/mage -play p" "play ping sound"]
+                ["./bin/mage -play warning" "play warning sound"] ["./bin/mage -play w" "play warning sound"]]
+   :requires   [[mage.sound :as sound]]
+   :arg-schema [:tuple [:enum "s" "success" "e" "error" "p" "ping" "w" "warning"]]
+   :task       (task! (case (first (:arguments parsed))
+                        ("s" "success") (sound/success)
+                        ("e" "error")   (sound/error)
+                        ("p" "ping")    (sound/ping)
+                        ("w" "warning") (sound/warning)))}
+  
   -token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
    :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]

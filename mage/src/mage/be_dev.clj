@@ -72,8 +72,7 @@
             {:read-cond :allow}
             ~(if (str/blank? code) "::loaded" code)))))
 
-(def ^{:private true
-       :dynamic true
+(def ^{:dynamic true
        :doc "Set this to true to suppress stdout output from nrepl-eval."}
   *quiet-nrepl-eval* false)
 
@@ -89,10 +88,10 @@
         _           (u/debug "Code:\n-----\n" code-str "\n-----")
         _           (bencode/write-bencode out {:op "eval" :code code-str})
         final-value (atom nil)
-        safe-print (fn [& msg] (when-not *quiet-nrepl-eval* (apply print msg) (flush)))]
+        safe-print (fn [& msg] (when-not *quiet-nrepl-eval* (apply print (map #(str/replace % #"\n$" "") msg)) (flush)))]
     (loop []
       (let [response (->> (bencode/read-bencode in) (walk/postwalk consume))]
-        (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "\n-----")
+        (u/debug "Response:\n-----\n" (with-out-str (pp/pprint response)) "-----")
         (safe-print "\n")
         (doseq [[k v] response]
           (case k
@@ -106,7 +105,7 @@
 
         (if (some #{"done"} (get response "status"))
           (some->> @final-value
-                   (safe-print "\n=> \n"))
+                   (safe-print "\n=>\n"))
           (recur))))
     @final-value))
 
