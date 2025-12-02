@@ -4,10 +4,9 @@ import querystring from "querystring";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
+import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
 import { delay } from "metabase/lib/promise";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-
-import { IS_EMBED_PREVIEW } from "./embed";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
@@ -80,7 +79,7 @@ export class Api extends EventEmitter {
        * This header is only used for analytics and for checking if we want to disable some features in the
        * embedding iframe (only for Documents at the time of this comment)
        */
-      if (!IS_EMBED_PREVIEW) {
+      if (!IFRAMED_IN_SELF) {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = "embedding-iframe";
       }
