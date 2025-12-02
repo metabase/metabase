@@ -1,8 +1,11 @@
 import type {
   DataPermissionValue,
   EntityId,
+  PermissionSectionConfig,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
+import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { buildDataModelPermission } from "./data-model-permission";
@@ -18,7 +21,7 @@ export const getFeatureLevelDataPermissions = (
   dataAccessPermissionValue: DataPermissionValue,
   defaultGroup: Group,
   permissionSubject: PermissionSubject,
-) => {
+): PermissionSectionConfig[] => {
   const downloadPermission = buildDownloadPermission(
     entityId,
     groupId,
@@ -47,19 +50,21 @@ export const getFeatureLevelDataPermissions = (
     permissionSubject,
   );
 
-  const transformsPermission = buildTransformsPermission(
-    entityId,
-    groupId,
-    isAdmin,
-    permissions,
-    defaultGroup,
-    permissionSubject,
-  );
+  const transformsPermission = PLUGIN_TRANSFORMS.isEnabled
+    ? buildTransformsPermission(
+        entityId,
+        groupId,
+        isAdmin,
+        permissions,
+        defaultGroup,
+        permissionSubject,
+      )
+    : null;
 
   return [
     downloadPermission,
     dataModelPermission,
     detailsPermission,
     transformsPermission,
-  ].filter(Boolean);
+  ].filter(isNotNull);
 };
