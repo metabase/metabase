@@ -65,6 +65,7 @@
             :can_access_data_studio  (perms/set-has-application-permission-of-type? permissions-set :data-studio)
             :can_access_data_model   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
             :can_access_db_details   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
+            :can_access_transforms   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms)
             :is_group_manager        api/*is-group-manager?*})))
 
 (defenterprise current-user-has-application-permissions?

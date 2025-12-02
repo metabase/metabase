@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { PermissionSubject } from "metabase/admin/permissions/types";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import type { AdminPathKey, State } from "metabase-types/store";
 
@@ -44,6 +45,12 @@ export const getDataColumns = (subject: PermissionSubject) => {
     allSubjectsColumns.push({
       name: t`Manage database`,
     });
+
+    if (PLUGIN_TRANSFORMS.isEnabled) {
+      allSubjectsColumns.push({
+        name: t`Transforms`,
+      });
+    }
   }
 
   return allSubjectsColumns;

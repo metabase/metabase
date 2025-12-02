@@ -26,7 +26,8 @@
    :perms/create-queries        :create-queries
    :perms/download-results      :download
    :perms/manage-table-metadata :data-model
-   :perms/manage-database       :details})
+   :perms/manage-database       :details
+   :perms/transforms            :transforms})
 
 (def ^:private ->api-vals
   {:perms/view-data             {:unrestricted           :unrestricted
@@ -39,7 +40,8 @@
                                  :ten-thousand-rows :limited
                                  :no                nil}
    :perms/manage-table-metadata {:yes :all :no nil}
-   :perms/manage-database       {:yes :yes :no :no}})
+   :perms/manage-database       {:yes :yes :no :no}
+   :perms/transforms            {:yes :yes :no :no}})
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
@@ -119,7 +121,8 @@
    :create-queries :query-builder-and-native
    :download       {:schemas :full}
    :data-model     {:schemas :all}
-   :details        :yes})
+   :details        :yes
+   :transforms     :yes})
 
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
@@ -329,6 +332,10 @@
   [group-id db-id value]
   (perms/set-database-permission! group-id db-id :perms/manage-database value))
 
+(defn- update-transforms-perms!
+  [group-id db-id value]
+  (perms/set-database-permission! group-id db-id :perms/transforms value))
+
 (defn- update-table-level-create-queries-permissions!
   [group-id db-id schema new-table-perms]
   (let [new-table-perms (update-keys
@@ -415,14 +422,15 @@
              ;; instead of iterating the provided cb-changes object we need to go in a specific order
              ;; so backend consistency rules like setting create-queries and download to no when view-data
              ;; is blocked can happen in the correct order despite what may come in the API request
-             perm-type [:details :data-model :download :create-queries :view-data]]
+             perm-type [:details :data-model :download :create-queries :view-data :transforms]]
        (when-let [new-perms (perm-type db-changes)]
          (case perm-type
            :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
            :create-queries (update-db-level-create-queries-permissions! group-id db-id new-perms)
            :download       (update-db-level-download-permissions! group-id db-id new-perms)
            :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
-           :details        (update-details-perms! group-id db-id new-perms))))))
+           :details        (update-details-perms! group-id db-id new-perms)
+           :transforms     (update-transforms-perms! group-id db-id new-perms))))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

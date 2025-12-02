@@ -267,6 +267,70 @@ export function restrictCreateQueriesPermissionsIfNeeded(
   return permissions;
 }
 
+const hasFullViewDataAccess = (viewDataValue: DataPermissionValue): boolean => {
+  return viewDataValue === DataPermissionValue.UNRESTRICTED;
+};
+
+const hasFullCreateQueriesAccess = (
+  createQueriesValue: DataPermissionValue,
+): boolean => {
+  return createQueriesValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+};
+
+export function revokeTransformsPermissionIfNeeded(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  permission: DataPermission,
+  value: DataPermissionValue,
+): GroupsPermissions {
+  if (
+    permission !== DataPermission.VIEW_DATA &&
+    permission !== DataPermission.CREATE_QUERIES
+  ) {
+    return permissions;
+  }
+
+  const { databaseId } = entityId;
+
+  const viewDataValue =
+    permission === DataPermission.VIEW_DATA
+      ? value
+      : getSchemasPermission(
+          permissions,
+          groupId,
+          { databaseId },
+          DataPermission.VIEW_DATA,
+        );
+
+  const createQueriesValue =
+    permission === DataPermission.CREATE_QUERIES
+      ? value
+      : getSchemasPermission(
+          permissions,
+          groupId,
+          { databaseId },
+          DataPermission.CREATE_QUERIES,
+        );
+
+  const hasRequiredPermissions =
+    hasFullViewDataAccess(viewDataValue) &&
+    hasFullCreateQueriesAccess(createQueriesValue);
+
+  if (!hasRequiredPermissions) {
+    return updatePermission(
+      permissions,
+      groupId,
+      databaseId,
+      DataPermission.TRANSFORMS,
+      [],
+      DataPermissionValue.NO,
+    );
+  }
+
+  return permissions;
+}
+
 function inferEntityPermissionValueFromChildTables(
   permissions: GroupsPermissions,
   groupId: number,
