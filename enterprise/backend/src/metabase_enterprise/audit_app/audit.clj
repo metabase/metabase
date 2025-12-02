@@ -191,14 +191,14 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(defn- instance-analytics-plugin-dir
+(defn instance-analytics-plugin-dir
   "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
   [plugins-dir]
   (fs/path (fs/absolutize plugins-dir) "instance_analytics"))
 
 (def ^:private jar-resource-path "instance_analytics/")
 
-(defn- ia-content->plugins
+(defn ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and copies it into the provided directory (by default, plugins/instance_analytics)."
   [plugins-dir]

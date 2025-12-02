@@ -18,6 +18,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.models.serialization :as serdes]
+   [metabase.plugins.core :as plugins]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
@@ -154,15 +155,16 @@
   "Import transformed YAMLs using serialization API.
 
   Steps:
-  1. Copy YAMLs from resources/instance_analytics/ to temp dir
-  2. Transform YAMLs (canonical -> dev format)
+  1. Copy analytics content from resources (or jar) to plugins dir using ia-content->plugins
+  2. Transform YAMLs (canonical -> dev format) from plugins dir to temp dir
   3. Load using v2.ingest/ingest-yaml and v2.load/load-metabase!"
   [user-email]
-  (let [source-dir "resources/instance_analytics"
-        _ (when-not (.exists (io/file source-dir))
-            (throw (ex-info "Analytics source directory not found" {:path source-dir})))
+  (let [_ (audit-ee/ia-content->plugins (plugins/plugins-dir))
+        plugins-dir (str (audit-ee/instance-analytics-plugin-dir (plugins/plugins-dir)))
+        _ (when-not (.exists (io/file plugins-dir))
+            (throw (ex-info "Analytics plugin directory not found after copy" {:path plugins-dir})))
 
-        temp-dir (copy-and-transform-yamls! source-dir user-email)]
+        temp-dir (copy-and-transform-yamls! plugins-dir user-email)]
 
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
