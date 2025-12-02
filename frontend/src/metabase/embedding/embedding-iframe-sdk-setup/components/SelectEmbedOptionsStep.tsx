@@ -7,9 +7,13 @@ import {
   UPSELL_CAMPAIGN_AUTH,
   UPSELL_CAMPAIGN_BEHAVIOR,
 } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
+import { SimpleThemeSwitcherSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
-import type { MetabaseColors } from "metabase/embedding-sdk/theme";
+import type {
+  MetabaseColors,
+  MetabaseThemePreset,
+} from "metabase/embedding-sdk/theme";
 import {
   Card,
   Checkbox,
@@ -24,7 +28,7 @@ import {
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
-import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
@@ -323,6 +327,13 @@ const AppearanceSection = () => {
 
   const { theme } = settings;
 
+  const updateThemePreset = useCallback(
+    (preset: MetabaseThemePreset) => {
+      updateSettings({ theme: { preset } });
+    },
+    [updateSettings],
+  );
+
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
       updateSettings({
@@ -361,13 +372,21 @@ const AppearanceSection = () => {
         campaign={UPSELL_CAMPAIGN_BEHAVIOR}
       >
         {({ disabled, hoverCard }) => (
-          <ColorCustomizationSection
-            theme={theme}
-            disabled={disabled}
-            hoverCard={hoverCard}
-            onColorChange={updateColors}
-            onColorReset={() => updateSettings({ theme: undefined })}
-          />
+          <>
+            {disabled ? (
+              <SimpleThemeSwitcherSection
+                preset={theme?.preset}
+                upsellIcon={hoverCard}
+                onPresetChange={updateThemePreset}
+              />
+            ) : (
+              <ColorCustomizationSection
+                theme={theme}
+                onColorChange={updateColors}
+                onColorReset={() => updateSettings({ theme: undefined })}
+              />
+            )}
+          </>
         )}
       </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
 

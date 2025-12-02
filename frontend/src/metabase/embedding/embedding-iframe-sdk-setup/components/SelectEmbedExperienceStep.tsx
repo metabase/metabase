@@ -59,6 +59,7 @@ export const SelectEmbedExperienceStep = () => {
         initialState,
         experience,
         resourceId: defaultResourceId,
+        isSimpleEmbedFeatureAvailable,
         isGuestEmbedsEnabled,
       }),
     });

@@ -97,6 +97,7 @@ export const useSdkIframeEmbedSettings = ({
             initialState,
             experience: "dashboard",
             resourceId: initialState.resourceId,
+            isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
           }),
       )
@@ -107,6 +108,7 @@ export const useSdkIframeEmbedSettings = ({
             initialState,
             experience: "chart",
             resourceId: initialState.resourceId,
+            isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
           }),
       )
@@ -115,10 +117,16 @@ export const useSdkIframeEmbedSettings = ({
           initialState,
           experience: "dashboard",
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+          isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
         }),
       );
-  }, [recentDashboards, initialState, isGuestEmbedsEnabled]);
+  }, [
+    recentDashboards,
+    initialState,
+    isSimpleEmbedFeatureAvailable,
+    isGuestEmbedsEnabled,
+  ]);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 

@@ -30,16 +30,27 @@ const PRIMARY_COLORS = [
  * @param appColors Optional application colors from instance settings
  * @returns A new MetabaseTheme with derived colors added
  */
-export function getDerivedDefaultColorsForEmbedFlow(
-  theme: MetabaseTheme,
-  appColors: ColorPalette = {},
-): MetabaseTheme {
+export function getDerivedDefaultColorsForEmbedFlow({
+  isSimpleEmbedFeatureAvailable,
+  theme,
+  applicationColors = {},
+}: {
+  isSimpleEmbedFeatureAvailable: boolean;
+  theme: MetabaseTheme;
+  applicationColors?: ColorPalette;
+}): MetabaseTheme {
+  if (!isSimpleEmbedFeatureAvailable) {
+    return {
+      preset: theme.preset,
+    };
+  }
+
   const userColors = theme.colors ?? {};
 
   const backgroundColor = getSdkColorByName(
     "background",
     userColors,
-    appColors,
+    applicationColors,
   );
   const isDarkTheme = backgroundColor && isDark(backgroundColor);
 
@@ -48,7 +59,7 @@ export function getDerivedDefaultColorsForEmbedFlow(
   // Ensure the primary colors are defined, as they cannot be derived.
   for (const colorKey of PRIMARY_COLORS) {
     derivedColors[colorKey] =
-      getSdkColorByName(colorKey, userColors, appColors) ?? undefined;
+      getSdkColorByName(colorKey, userColors, applicationColors) ?? undefined;
   }
 
   // Apply theme-aware derived colors for SDK colors not defined by the user
@@ -75,7 +86,7 @@ export function getDerivedDefaultColorsForEmbedFlow(
     const sourceColor = getSdkColorByName(
       operation.source,
       userColors,
-      appColors,
+      applicationColors,
     );
 
     if (sourceColor === null) {
