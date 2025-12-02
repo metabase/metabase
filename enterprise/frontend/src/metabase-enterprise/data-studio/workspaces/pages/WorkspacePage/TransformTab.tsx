@@ -130,10 +130,9 @@ export const TransformTab = ({
               onSubmit={handleFormSubmit}
             >
               <Form>
-                <Group align="flex-start">
+                <Group>
                   <Text
                     c="text-dark"
-                    mt="xs"
                     component="label"
                     fw="bold"
                   >{t`Output table`}</Text>
