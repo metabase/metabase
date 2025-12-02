@@ -18,18 +18,14 @@ import { getLocation } from "metabase/selectors/routing";
 import {
   ActionIcon,
   Box,
-  Button,
   FixedSizeIcon,
   Flex,
   Icon,
   type IconName,
   Menu,
-  Modal,
-  Select,
   Skeleton,
   Stack,
   Text,
-  TextInput,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -39,6 +35,7 @@ import {
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
 import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
+import { CreateWorkspaceModal } from "metabase-enterprise/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
 import type { Database, WorkspaceId } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
@@ -231,10 +228,6 @@ function WorkspacesSection({
   const dispatch = useDispatch();
   const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [workspaceName, setWorkspaceName] = useState("");
-  const [selectedDatabaseId, setSelectedDatabaseId] = useState<string | null>(
-    null,
-  );
   const { pathname } = useSelector(getLocation);
   const { data: workspacesData, isLoading } = useGetWorkspacesQuery();
   const { data: databaseData, isLoading: isLoadingDatabases } =
@@ -268,49 +261,36 @@ function WorkspacesSection({
   );
 
   const handleOpenCreateModal = useCallback(() => {
-    setWorkspaceName(t`New workspace`);
-    setSelectedDatabaseId(null);
     setIsCreateModalOpen(true);
   }, []);
 
   const handleCloseCreateModal = useCallback(() => {
     setIsCreateModalOpen(false);
-    setWorkspaceName("");
-    setSelectedDatabaseId(null);
   }, []);
 
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const handleCreateWorkspace = useCallback(async () => {
-    if (!selectedDatabaseId) {
-      sendErrorToast(t`Please select a database`);
-      return;
-    }
-
-    if (!workspaceName.trim()) {
-      sendErrorToast(t`Please enter a workspace name`);
-      return;
-    }
-
-    try {
-      const workspace = await createWorkspace({
-        name: workspaceName.trim(),
-        database_id: Number(selectedDatabaseId),
-        upstream: {},
-      }).unwrap();
-      handleCloseCreateModal();
-      handleOpenWorkspace(workspace.id);
-    } catch (error) {
-      sendErrorToast(t`Failed to create workspace`);
-    }
-  }, [
-    createWorkspace,
-    selectedDatabaseId,
-    workspaceName,
-    handleCloseCreateModal,
-    handleOpenWorkspace,
-    sendErrorToast,
-  ]);
+  const handleCreateWorkspace = useCallback(
+    async ({ name, databaseId }: { name: string; databaseId: string }) => {
+      try {
+        const workspace = await createWorkspace({
+          name,
+          database_id: Number(databaseId),
+          upstream: {},
+        }).unwrap();
+        handleCloseCreateModal();
+        handleOpenWorkspace(workspace.id);
+      } catch (error) {
+        sendErrorToast(t`Failed to create workspace`);
+      }
+    },
+    [
+      createWorkspace,
+      handleCloseCreateModal,
+      handleOpenWorkspace,
+      sendErrorToast,
+    ],
+  );
 
   const [archiveWorkspace] = useArchiveWorkspaceMutation();
   const handleWorkspaceArchive = async (id: WorkspaceId) => {
@@ -415,53 +395,13 @@ function WorkspacesSection({
         </>
       )}
 
-      <Modal
+      <CreateWorkspaceModal
         opened={isCreateModalOpen}
         onClose={handleCloseCreateModal}
-        title={t`Create new workspace`}
-      >
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleCreateWorkspace();
-          }}
-        >
-          <Stack gap="md">
-            <TextInput
-              autoFocus
-              label={t`Workspace name`}
-              placeholder={t`Enter workspace name`}
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
-              required
-            />
-            <Select
-              label={t`Database`}
-              placeholder={t`Select a database`}
-              data={databaseOptions}
-              value={selectedDatabaseId}
-              onChange={setSelectedDatabaseId}
-              required
-              searchable
-            />
-            <Flex gap="sm" justify="flex-end">
-              <Button variant="subtle" onClick={handleCloseCreateModal}>
-                {t`Cancel`}
-              </Button>
-              <Button
-                variant="filled"
-                disabled={
-                  !selectedDatabaseId || !workspaceName.trim() || isCreating
-                }
-                type="submit"
-                loading={isCreating}
-              >
-                {t`Create`}
-              </Button>
-            </Flex>
-          </Stack>
-        </form>
-      </Modal>
+        onSubmit={handleCreateWorkspace}
+        databaseOptions={databaseOptions}
+        isSubmitting={isCreating}
+      />
     </Stack>
   );
 }
