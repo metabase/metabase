@@ -25,7 +25,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
-  isEmbeddedAnalyticsJs,
+  isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
@@ -124,7 +124,7 @@ const refreshTokenImpl = async (
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
   const state = getState() as SdkStoreState;
 
-  if (isEmbeddedAnalyticsJs()) {
+  if (isEmbeddingEajs()) {
     return requestSessionTokenFromEmbedJs();
   }
 

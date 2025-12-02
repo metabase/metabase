@@ -1,12 +1,9 @@
 import { PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK } from "embedding-sdk-bundle/components/public/subscriptions";
-import {
-  isEmbeddedAnalyticsJs,
-  isEmbeddingSdk,
-} from "metabase/embedding-sdk/config";
+import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 
 export function DashboardSubscriptionsButton() {
-  if (isEmbeddedAnalyticsJs()) {
+  if (isEmbeddingEajs()) {
     return <PLUGIN_EMBEDDING_IFRAME_SDK.DashboardSubscriptionsButton />;
   }
 
