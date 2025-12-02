@@ -156,16 +156,13 @@ function getTitle(
   publishedTables: PublishTableInfo[],
   publishedRemappedTables: PublishTableInfo[],
 ) {
-  const isSinglePublishedTable = publishedTables.length;
-  const hasPublishedRemappedTables = publishedRemappedTables.length > 0;
-
-  if (isSinglePublishedTable) {
-    return hasPublishedRemappedTables
+  if (publishedTables.length === 1) {
+    return publishedRemappedTables.length > 0
       ? t`Unpublish ${publishedTables[0].display_name} and the tables that depend on it?`
-      : t`Unpublish ${publishedTables[0]}?`;
+      : t`Unpublish ${publishedTables[0].display_name}?`;
   }
 
-  return hasPublishedRemappedTables
+  return publishedRemappedTables.length > 0
     ? t`Unpublish these tables and the tables that depend on them?`
     : t`Unpublish these tables?`;
 }
@@ -180,8 +177,7 @@ function getInfoMessage(
 }
 
 function getForeignKeyMessage(unpublishedTables: PublishTableInfo[]) {
-  const isSingleUnpublishedTable = unpublishedTables.length;
-  return isSingleUnpublishedTable === 1
+  return unpublishedTables.length === 1
     ? jt`Because values in ${(
         <strong key="table">{unpublishedTables[0].display_name}</strong>
       )} are used as display values in other published tables, you'll need to unpublish these, too:`

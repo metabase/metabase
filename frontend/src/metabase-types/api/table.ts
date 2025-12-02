@@ -235,7 +235,10 @@ export type TableData = {
 
 export interface PublishTableInfo {
   id: TableId;
+  db_id: DatabaseId;
+  name: string;
   display_name: string;
+  schema: string | null;
 }
 
 export interface GetTableSelectionInfoRequest {

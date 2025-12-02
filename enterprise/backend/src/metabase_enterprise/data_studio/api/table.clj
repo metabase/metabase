@@ -106,6 +106,19 @@
       (maybe-sync-unhidden-tables! existing-tables set-map))
     {}))
 
+(api.macros/defendpoint :post "/selection"
+  "Gets information about selected tables"
+  [_route-params
+   _query-params
+   body :- ::table-selectors]
+  (api/check-superuser)
+  (let [fields [:model/Table :id :db_id :name :display_name :schema]
+        where (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))]
+    {:published_tables (t2/select fields {:where [:and [:= :is_published true] where]})
+     :unpublished_tables (t2/select fields {:where [:and [:= :is_published false] where]})
+     :published_remapped_tables []
+     :unpublished_remapped_tables []}))
+
 (api.macros/defendpoint :post "/publish-tables"
   "Set collection for each of selected tables"
   [_route-params

@@ -154,23 +154,19 @@ function getTitle(
   unpublishedTables: PublishTableInfo[],
   unpublishedRemappedTables: PublishTableInfo[],
 ) {
-  const isSingleUnpublishedTable = unpublishedTables.length;
-  const hasUnpublishedRemappedTables = unpublishedRemappedTables.length > 0;
-
-  if (isSingleUnpublishedTable) {
-    return hasUnpublishedRemappedTables
+  if (unpublishedTables.length === 1) {
+    return unpublishedRemappedTables.length > 0
       ? t`Publish ${unpublishedTables[0].display_name} and the tables it depends on?`
-      : t`Publish ${unpublishedTables[0]}?`;
+      : t`Publish ${unpublishedTables[0].display_name}?`;
   }
 
-  return hasUnpublishedRemappedTables
+  return unpublishedRemappedTables.length > 0
     ? t`Publish these tables and the tables they depend on?`
     : t`Publish these tables?`;
 }
 
 function getForeignKeyMessage(unpublishedTables: PublishTableInfo[]) {
-  const isSingleUnpublishedTable = unpublishedTables.length;
-  return isSingleUnpublishedTable === 1
+  return unpublishedTables.length === 1
     ? jt`Because ${(
         <strong key="table">{unpublishedTables[0].display_name}</strong>
       )} uses foreign keys to display values from other tables, you'll need to publish these, too:`
