@@ -265,6 +265,17 @@
   (-> (ws.common/create-workspace! api/*current-user-id* body)
       ws->response))
 
+(api.macros/defendpoint :post "/:id/name" :- Workspace
+  "Update a workspace's name"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [name]} :- [:map [:name [:string {:min 1}]]]]
+  (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+    (api/check-400 (nil? (:archived_at <>)) "Cannot update an archived workspace"))
+  (t2/update! :model/Workspace id {:name name})
+  (-> (t2/select-one :model/Workspace :id id)
+      ws->response))
+
 (api.macros/defendpoint :post "/:id/archive" :- Workspace
   "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -345,7 +356,7 @@
 
     (let [existing-upstream-ids (t2/select-fn-set :upstream_id :model/WorkspaceMappingTransform
                                                   :workspace_id id)
-          combined-upstream     (update upstream :transforms #(into (vec existing-upstream-ids) %))
+          combined-upstream     (update upstream :transforms #(into (set existing-upstream-ids) %))
           graph                 (ws.dag/path-induced-subgraph combined-upstream)
           table-ids             (seq (keep :id (concat (:inputs graph) (:outputs graph))))
           db-ids                (when table-ids (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))

@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.lib.core :as lib]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -117,36 +118,41 @@
 
 (deftest add-entities-to-workspace-test
   (testing "Add entities to workspace"
-    (mt/with-premium-features [:workspaces :dependencies :transforms]
-      (mt/with-model-cleanup [:model/Collection :model/Workspace :model/Transform :model/WorkspaceMappingTransform]
-        ;; TODO (sanya) - I shouldn't write tests like this, I must create my own stuff
-        (let [transform-ids (t2/select-pks-vec :model/Transform :workspace_id nil {:limit 2 :order-by [[:id :asc]]})
-              first-tx-id   (first transform-ids)
-              second-tx-id  (second transform-ids)]
-          (is (and first-tx-id second-tx-id) "Send Sanya to metajail for this test")
-          (when (and first-tx-id second-tx-id)
-            ;; Subsequent routes are invalid without an id
-            (when-let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                               {:name     "Add Entities Test"
-                                                                :upstream {:transforms [first-tx-id]}}))]
-              (testing "Can add new entities to workspace"
-                (is (=? {:contents {:transforms #(>= (count %) 2)}}
-                        (mt/user-http-request :crowberto :post 200
-                                              (str "ee/workspace/" workspace-id "/contents")
-                                              {:add {:transforms [second-tx-id]}}))))
+    (search.tu/with-index-disabled
+      (mt/with-premium-features [:workspaces :dependencies :transforms]
+        (with-transform-cleanup! [orig-name "ws_tables_test"]
+          (mt/with-temp [:model/Transform {x1-id :id} {:target      {:type     "table"
+                                                                     :database (mt/id)
+                                                                     :schema   "public"
+                                                                     :name     orig-name}}
+                         :model/Transform {x2-id :id} {:target      {:type     "table"
+                                                                     :database (mt/id)
+                                                                     :schema   "public"
+                                                                     :name     orig-name}}]
+            (mt/with-model-cleanup [:model/Collection :model/Workspace :model/Transform :model/WorkspaceMappingTransform]
+              ;; Subsequent routes are invalid without an id
+              (when-let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                                 {:name        "Add Entities Test"
+                                                                  :database_id (mt/id)
+                                                                  :upstream    {:transforms [x1-id]}}))]
+                (testing "Can add new entities to workspace"
+                  (is (=? {:contents {:transforms #(>= (count %) 2)}}
+                          (mt/user-http-request :crowberto :post 200
+                                                (str "ee/workspace/" workspace-id "/contents")
+                                                {:add {:transforms [x2-id]}}))))
 
-              (testing "Cannot add duplicate entities"
-                (is (= "Transforms 1 are already in workspace"
-                       (mt/user-http-request :crowberto :post 400
-                                             (str "ee/workspace/" workspace-id "/contents")
-                                             {:add {:transforms [first-tx-id]}}))))
+                (testing "Adding duplicate entity is a noop"
+                  (is (=? {:contents {:transforms #(>= (count %) 2)}}
+                          (mt/user-http-request :crowberto :post 200
+                                                (str "ee/workspace/" workspace-id "/contents")
+                                                {:add {:transforms [x1-id]}}))))
 
-              (testing "Cannot add entities to archived workspace"
-                (t2/update! :model/Workspace workspace-id {:archived_at (java.time.OffsetDateTime/now)})
-                (is (= "Cannot add entities to an archived workspace"
-                       (mt/user-http-request :crowberto :post 400
-                                             (str "ee/workspace/" workspace-id "/contents")
-                                             {:add {:transforms [second-tx-id]}})))))))))))
+                (testing "Cannot add entities to archived workspace"
+                  (t2/update! :model/Workspace workspace-id {:archived_at (java.time.OffsetDateTime/now)})
+                  (is (= "Cannot add entities to an archived workspace"
+                         (mt/user-http-request :crowberto :post 400
+                                               (str "ee/workspace/" workspace-id "/contents")
+                                               {:add {:transforms [x2-id]}}))))))))))))
 
 (deftest add-entities-requires-superuser-test
   (testing "POST /api/ee/workspace/:id/add requires superuser"
@@ -294,6 +300,35 @@
                                                   :database_id (mt/id)
                                                   :upstream    {:transforms [(:id tx2)]}})]
               (is (re-find #"Cannot add transforms that depend on saved questions" response)))))))))
+
+(deftest rename-workspace-test
+  (search.tu/with-index-disabled
+    (testing "POST /api/ee/workspace/:id/name updates the workspace name"
+      (mt/with-model-cleanup [:model/Collection :model/Workspace]
+        (let [workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                              {:name        "Original Name"
+                                               :database_id (mt/id)})
+              response  (mt/user-http-request :crowberto :post 200
+                                              (str "ee/workspace/" (:id workspace) "/name")
+                                              {:name "Updated Name"})]
+          (is (= "Updated Name"
+                 (:name response)
+                 (t2/select-one-fn :name :model/Workspace :id (:id workspace))))))))
+
+  (testing "Requires superuser"
+    (mt/with-temp [:model/Workspace workspace {:name "Permission Test"}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403
+                                   (str "ee/workspace/" (:id workspace) "/name")
+                                   {:name "Should Fail"})))))
+
+  (testing "Cannot rename an archived workspace"
+    (mt/with-temp [:model/Workspace workspace {:name        "Archived"
+                                               :archived_at (java.time.OffsetDateTime/now)}]
+      (is (= "Cannot update an archived workspace"
+             (mt/user-http-request :crowberto :post 400
+                                   (str "ee/workspace/" (:id workspace) "/name")
+                                   {:name "Should Fail"}))))))
 
 (deftest add-entities-rejects-card-dependencies-test
   (testing "Cannot add transforms with card dependencies to existing workspace"
