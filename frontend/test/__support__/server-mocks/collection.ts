@@ -75,8 +75,7 @@ export function setupCollectionsEndpoints({
     const excludeOtherUserCollections =
       url.searchParams.get("exclude-other-user-collections") === "true";
 
-    const includeTenantCollections =
-      url.searchParams.get("include-tenant-collections") === "true";
+    const namespace = url.searchParams.get("namespace");
 
     return collections.filter((collection) => {
       // Filter out personal collections if requested
@@ -92,12 +91,15 @@ export function setupCollectionsEndpoints({
         return false;
       }
 
-      // Filter by tenant collection status
+      // Filter by namespace if specified
+      if (namespace && collection.namespace !== namespace) {
+        return false;
+      }
+
+      // By default, exclude tenant collections unless explicitly requested via namespace
       const isTenantCollection =
         collection.namespace === "shared-tenant-collection";
-
-      // Exclude tenant collections if `includeTenantCollections` is false
-      if (!includeTenantCollections && isTenantCollection) {
+      if (isTenantCollection && namespace !== "shared-tenant-collection") {
         return false;
       }
 

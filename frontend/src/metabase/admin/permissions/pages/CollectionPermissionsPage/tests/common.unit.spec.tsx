@@ -33,15 +33,15 @@ describe("Admin > CollectionPermissionsPage", () => {
       )[0];
       expect(screen.queryAllByText("Nested One")).toHaveLength(0);
       await userEvent.click(collection1);
-      expect(await screen.findAllByText("Nested One")).toHaveLength(2);
+      expect(await screen.findByText("Nested One")).toBeInTheDocument();
     });
 
     it("should not show personal collection", async () => {
       await setup();
 
       expect(
-        await screen.findAllByRole("menuitem", { name: /Collection One/ }),
-      ).toHaveLength(2);
+        await screen.findByRole("menuitem", { name: /Collection One/ }),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("menuitem", { name: /Personal/ }),
       ).not.toBeInTheDocument();
