@@ -678,7 +678,7 @@
            [:or [:= nil :type]
             [:not [:in :type [collection/library-collection-type
                               collection/library-metrics-collection-type
-                              collection/library-models-collection-type]]]])
+                              collection/library-data-collection-type]]]])
          (if archived?
            [:or
             [:= :archived true]

@@ -58,7 +58,6 @@ export const CollectionItemPickerResolver = ({
   if (query.id === "tenant") {
     return (
       <PLUGIN_TENANTS.TenantCollectionItemList
-        query={query}
         onClick={onClick}
         selectedItem={selectedItem}
         isFolder={isFolder}
