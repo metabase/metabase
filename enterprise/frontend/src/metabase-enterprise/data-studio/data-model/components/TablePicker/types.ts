@@ -122,17 +122,17 @@ export function isDatabaseItem(node: FlatItem): node is ExpandedDatabaseItem {
 }
 
 export function isDatabaseNode(node: TreeNode): node is DatabaseNode {
-  if ("isLoading" in node && node.isLoading === true) {
-    return false;
-  }
   return node.type === "database";
 }
 
-export function isSchemaNode(node: FlatItem): node is ExpandedSchemaItem;
-export function isSchemaNode(node: TreeNode): node is SchemaNode;
-export function isSchemaNode(
-  node: ExpandedItem | TreeNode | FlatItem,
-): node is ExpandedSchemaItem | SchemaNode {
+export function isSchemaNode(node: TreeNode): node is SchemaNode {
+  if ("isLoading" in node && node.isLoading === true) {
+    return false;
+  }
+  return node.type === "schema";
+}
+
+export function isSchemaItem(node: FlatItem): node is ExpandedSchemaItem {
   if ("isLoading" in node && node.isLoading === true) {
     return false;
   }

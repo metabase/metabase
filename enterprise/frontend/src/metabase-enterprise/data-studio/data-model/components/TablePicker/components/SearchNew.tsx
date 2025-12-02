@@ -23,7 +23,7 @@ import type {
   TableNode,
   TreePath,
 } from "../types";
-import { isDatabaseItem, isSchemaNode, isTableNode } from "../types";
+import { isDatabaseItem, isSchemaItem, isTableNode } from "../types";
 import { flatten, rootNode, toKey } from "../utils";
 
 import { TablePickerResults } from "./Results";
@@ -188,7 +188,7 @@ export function SearchNew({
       setSelectedTables(toggleDatabaseSelection(item, selection).tables);
     }
 
-    if (isSchemaNode(item)) {
+    if (isSchemaItem(item)) {
       setSelectedTables(toggleSchemaSelection(item, selection).tables);
     }
     if (isTableNode(item)) {

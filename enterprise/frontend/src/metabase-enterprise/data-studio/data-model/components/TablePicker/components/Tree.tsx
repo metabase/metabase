@@ -19,6 +19,7 @@ import type {
   ChangeOptions,
   DatabaseNode,
   ExpandedItem,
+  ExpandedSchemaItem,
   FlatItem,
   SchemaItem,
   TreeNode,
@@ -27,6 +28,7 @@ import type {
 import {
   isDatabaseItem,
   isDatabaseNode,
+  isSchemaItem,
   isSchemaNode,
   isTableNode,
   isTableOrSchemaNode,
@@ -134,7 +136,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
       schemaName == null
     ) {
       const schema = database.children[0];
-      if (schema.type === "schema") {
+      if (isSchemaNode(schema)) {
         toggle(schema.key, true);
         onChange(schema.value, { isAutomatic: true });
       }
@@ -143,31 +145,31 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
 
   useEffect(() => {
     const expandedSelectedSchemaItems = items.filter(
-      (x) =>
-        x.type === "schema" &&
-        selectedSchemas.has(getSchemaId(x) ?? "") &&
-        x.children.length > 0,
-    );
+      (item) =>
+        isSchemaItem(item) &&
+        selectedSchemas.has(getSchemaId(item) ?? "") &&
+        item.children.length > 0,
+    ) as ExpandedSchemaItem[];
 
-    expandedSelectedSchemaItems.forEach((x) => {
-      if (noManuallySelectedTables(x, items, selectedTables)) {
+    expandedSelectedSchemaItems.forEach((schemaItem) => {
+      if (noManuallySelectedTables(schemaItem, items, selectedTables)) {
         // when expanding a schema, let's select all the tables in that schema
-        const tableIds = getSchemaTableIds(x, items);
+        const tableIds = getSchemaTableIds(schemaItem, items);
         if (tableIds.length === 0) {
           return;
         }
 
         setSelectedTables((prev) => {
           const newSet = new Set(prev);
-          tableIds.forEach((x) => {
-            newSet.add(x);
+          tableIds.forEach((tableId) => {
+            newSet.add(tableId);
           });
           return newSet;
         });
 
         setSelectedSchemas((prev) => {
           const newSet = new Set(prev);
-          newSet.delete(getSchemaId(x) ?? "");
+          newSet.delete(getSchemaId(schemaItem) ?? "");
           return newSet;
         });
       }
@@ -183,33 +185,30 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
 
   useEffect(() => {
     const expandedSelectedDatabaseItems = items.filter(
-      (x) =>
-        isDatabaseItem(x) &&
-        selectedDatabases.has(x.value?.databaseId ?? -1) &&
-        x.children.length > 0,
-    ) as unknown as DatabaseNode[];
+      (item) =>
+        isDatabaseItem(item) &&
+        selectedDatabases.has(item.value?.databaseId ?? -1) &&
+        item.children.length > 0,
+    ) as DatabaseNode[];
 
-    expandedSelectedDatabaseItems.forEach((x) => {
+    expandedSelectedDatabaseItems.forEach((dbNode) => {
       if (
-        noManuallySelectedSchemas(x, items, selectedSchemas) &&
-        noManuallySelectedDatabaseChildrenTables(
-          x as unknown as DatabaseNode,
-          selectedTables,
-        )
+        noManuallySelectedSchemas(dbNode, items, selectedSchemas) &&
+        noManuallySelectedDatabaseChildrenTables(dbNode, selectedTables)
       ) {
         // single schema that's not rendered and it's not part of flattened list
-        if (x.children.length === 1) {
+        if (dbNode.children.length === 1) {
           setSelectedTables((prev) => {
             const newSet = new Set(prev);
-            x.children[0].children.forEach((y) => {
+            dbNode.children[0].children.forEach((y) => {
               newSet.add(y.value?.tableId ?? -1);
             });
             return newSet;
           });
         } else {
           // when expanding a db, let's select all the schemas in that db
-          const schemaIds = (x as unknown as DatabaseNode).children.map((y) =>
-            getSchemaId(y as unknown as FlatItem),
+          const schemaIds = dbNode.children.map((schemaNode) =>
+            getSchemaId(schemaNode),
           );
 
           if (schemaIds.length === 0) {
@@ -218,8 +217,8 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
 
           setSelectedSchemas((prev) => {
             const newSet = new Set(prev);
-            schemaIds.forEach((z) => {
-              newSet.add(z ?? "");
+            schemaIds.forEach((schemaId) => {
+              newSet.add(schemaId ?? "");
             });
             return newSet;
           });
@@ -227,7 +226,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
 
         setSelectedDatabases((prev) => {
           const newSet = new Set(prev);
-          newSet.delete((x as unknown as DatabaseNode).value?.databaseId ?? -1);
+          newSet.delete(dbNode.value?.databaseId ?? -1);
           return newSet;
         });
       }
@@ -289,7 +288,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
         }
       }
     }
-    if (isSchemaNode(item)) {
+    if (isSchemaItem(item)) {
       if (item.children.length > 0) {
         const { tables } = toggleSchemaSelection(item, selection);
         setSelectedTables(tables);
