@@ -24,7 +24,7 @@ type UnpublishTablesModalProps = {
   schemaIds?: SchemaId[];
   tableIds?: TableId[];
   isOpened: boolean;
-  onUnpublish?: () => void;
+  onUnpublish: () => void;
   onClose: () => void;
 };
 
@@ -83,7 +83,7 @@ type ModalBodyProps = {
   databaseIds: DatabaseId[] | undefined;
   schemaIds: SchemaId[] | undefined;
   tableIds: TableId[] | undefined;
-  onUnpublish?: () => void;
+  onUnpublish: () => void;
   onClose: () => void;
 };
 
@@ -113,8 +113,7 @@ function ModalBody({
       schema_ids: schemaIds,
       table_ids: tableIds,
     }).unwrap();
-    onUnpublish?.();
-    onClose();
+    onUnpublish();
   };
 
   return (

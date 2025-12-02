@@ -28,6 +28,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
@@ -45,12 +46,12 @@ interface Props {
   onSyncOptionsClick: () => void;
 }
 
-type TableModalType = "publish" | "unpublish";
+type TableModalType = "library" | "publish" | "unpublish";
 
 const TableSectionBase = ({
   table,
   activeFieldId,
-  hasLibrary: _hasLibrary,
+  hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
   const [updateTable] = useUpdateTableMutation();
@@ -154,6 +155,17 @@ const TableSectionBase = ({
     }
   };
 
+  const handlePublishToggle = () => {
+    if (!hasLibrary) {
+      setModalType("library");
+    }
+    setModalType(table.is_published ? "unpublish" : "publish");
+  };
+
+  const handleCloseModal = () => {
+    setModalType(undefined);
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box className={S.header} bg="accent-gray-light" px="lg" mt="lg">
@@ -177,9 +189,7 @@ const TableSectionBase = ({
             leftSection={
               <Icon name={table.is_published ? "unpublish" : "publish"} />
             }
-            onClick={() =>
-              setModalType(table.is_published ? "unpublish" : "publish")
-            }
+            onClick={handlePublishToggle}
           >
             {table.is_published ? t`Unpublish` : t`Publish`}
           </Button>
@@ -310,15 +320,22 @@ const TableSectionBase = ({
           )}
         </Stack>
       </Box>
+      <CreateLibraryModal
+        isOpened={modalType === "library"}
+        onCreate={() => setModalType("publish")}
+        onClose={handleCloseModal}
+      />
       <PublishTablesModal
-        tableIds={[table.id]}
         isOpened={modalType === "publish"}
-        onClose={() => setModalType(undefined)}
+        tableIds={[table.id]}
+        onPublish={handleCloseModal}
+        onClose={handleCloseModal}
       />
       <UnpublishTablesModal
-        tableIds={[table.id]}
         isOpened={modalType === "unpublish"}
-        onClose={() => setModalType(undefined)}
+        tableIds={[table.id]}
+        onUnpublish={handleCloseModal}
+        onClose={handleCloseModal}
       />
     </Stack>
   );

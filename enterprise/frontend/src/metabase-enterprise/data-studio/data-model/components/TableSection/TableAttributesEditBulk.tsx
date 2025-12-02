@@ -13,6 +13,7 @@ import {
   useEditTablesMutation,
   useGetTableSelectionInfoQuery,
 } from "metabase-enterprise/api";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type {
@@ -31,10 +32,10 @@ type TableAttributesEditBulkProps = {
   hasLibrary: boolean;
 };
 
-type TableModalType = "sync" | "publish" | "unpublish";
+type TableModalType = "library" | "publish" | "unpublish" | "sync";
 
 export function TableAttributesEditBulk({
-  hasLibrary: _hasLibrary,
+  hasLibrary,
 }: TableAttributesEditBulkProps) {
   const {
     selectedDatabases,
@@ -117,6 +118,10 @@ export function TableAttributesEditBulk({
     }
   };
 
+  const handleCloseModal = () => {
+    setModalType(undefined);
+  };
+
   useEffect(() => {
     setDataLayer(null);
     setDataSource(null);
@@ -159,7 +164,7 @@ export function TableAttributesEditBulk({
               p="sm"
               leftSection={<Icon name="publish" />}
               disabled={isFetching || !hasUnpublishedTables}
-              onClick={() => setModalType("publish")}
+              onClick={() => setModalType(hasLibrary ? "publish" : "library")}
             >
               {t`Publish`}
             </Button>
@@ -257,12 +262,19 @@ export function TableAttributesEditBulk({
         </Box>
       </Stack>
 
+      <CreateLibraryModal
+        isOpened={modalType === "library"}
+        onCreate={() => setModalType("publish")}
+        onClose={handleCloseModal}
+      />
+
       <PublishTablesModal
         isOpened={modalType === "publish"}
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}
         tableIds={Array.from(selectedTables)}
-        onClose={() => setModalType(undefined)}
+        onPublish={handleCloseModal}
+        onClose={handleCloseModal}
       />
 
       <UnpublishTablesModal
@@ -270,7 +282,8 @@ export function TableAttributesEditBulk({
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}
         tableIds={Array.from(selectedTables)}
-        onClose={() => setModalType(undefined)}
+        onUnpublish={handleCloseModal}
+        onClose={handleCloseModal}
       />
 
       <SyncOptionsModal
@@ -278,7 +291,7 @@ export function TableAttributesEditBulk({
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}
         tableIds={Array.from(selectedTables)}
-        onClose={() => setModalType(undefined)}
+        onClose={handleCloseModal}
       />
     </>
   );

@@ -19,24 +19,18 @@ import type { Collection } from "metabase-types/api";
 
 type CreateLibraryModalProps = {
   isOpened: boolean;
-  withPublishInfo?: boolean;
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
 export function CreateLibraryModal({
   isOpened,
-  withPublishInfo,
   onCreate,
   onClose,
 }: CreateLibraryModalProps) {
   return (
     <Modal title={<ModalTitle />} opened={isOpened} onClose={onClose}>
-      <ModalBody
-        withPublishInfo={withPublishInfo}
-        onCreate={onCreate}
-        onClose={onClose}
-      />
+      <ModalBody onCreate={onCreate} onClose={onClose} />
     </Modal>
   );
 }
@@ -53,12 +47,11 @@ function ModalTitle() {
 }
 
 type ModalBodyProps = {
-  withPublishInfo?: boolean;
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
-function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
+function ModalBody({ onCreate, onClose }: ModalBodyProps) {
   const [createLibrary] = useCreateLibraryMutation();
 
   const handleSubmit = async () => {
@@ -71,11 +64,6 @@ function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
       <Form>
         <FocusTrap.InitialFocus />
         <Stack gap="sm">
-          {withPublishInfo && (
-            <Text>
-              {t`Publishing a table means placing it in a collection in the Library so that it’s easy for your end users to find and use it in their explorations.`}
-            </Text>
-          )}
           <Text>
             {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
           </Text>
@@ -104,9 +92,7 @@ function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
           </Box>
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
           <Button variant="filled" type="submit">
-            {withPublishInfo
-              ? t`Create my Library and publish`
-              : t`Create my Library`}
+            {t`Create my Library`}
           </Button>
         </Group>
       </Form>
