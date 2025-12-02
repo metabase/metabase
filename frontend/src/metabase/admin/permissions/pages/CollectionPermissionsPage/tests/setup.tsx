@@ -9,7 +9,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { reinitialize as reinitializePlugins } from "metabase/plugins";
 import type {
   Collection,
   CollectionPermissionsGraph,
@@ -216,9 +215,6 @@ export function setup({
   permissionGroups = defaultPermissionGroups,
   tokenFeatures,
 }: Partial<SetupOptions> = {}) {
-  // Always reinitialize plugins to avoid duplicate tabs from previous tests
-  reinitializePlugins();
-
   const initialState = createMockState({
     settings: mockSettings({
       "application-colors": {},

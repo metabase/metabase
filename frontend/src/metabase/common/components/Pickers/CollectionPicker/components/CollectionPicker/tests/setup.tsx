@@ -8,7 +8,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { mockGetBoundingClientRect, renderWithProviders } from "__support__/ui";
-import { reinitialize as reinitializePlugins } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
@@ -179,9 +178,6 @@ export const setup = ({
   onItemSelect = jest.fn<void, [CollectionPickerItem]>(),
   ee = false,
 }: SetupOpts = {}) => {
-  // Always reinitialize plugins to avoid issues from previous tests
-  reinitializePlugins();
-
   mockGetBoundingClientRect();
 
   const allCollections = flattenCollectionTree(collectionTree).map((c) =>
