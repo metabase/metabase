@@ -281,7 +281,7 @@
                             ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
-                            (:is-audit db)
+                            (or (:is-audit db) (get-in db [:details :is-audit-dev]))
                             {:datasource (driver-api/data-source)}
 
                             (= ::not-found details)

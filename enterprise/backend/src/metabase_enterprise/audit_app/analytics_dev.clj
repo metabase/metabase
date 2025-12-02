@@ -15,8 +15,6 @@
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as mdb]
-   ^{:clj-kondo/ignore [:metabase/modules]}
-   [metabase.app-db.env :as mdb.env] ;; TODO
    [metabase.audit-app.core :as audit]
    [metabase.models.serialization :as serdes]
    [metabase.setup.core :as setup]
@@ -43,18 +41,10 @@
 ;;; Database Management
 ;;; ============================================================================
 
-(defn- get-app-db-connection-details
-  "Get the application database connection details.
-
-  Returns a map suitable for creating a Metabase Database entry."
-  []
-  ;; TODO: won't work if using connection URI
-  (@#'mdb.env/broken-out-details (mdb/db-type) mdb.env/env))
-
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (t2/select-one :model/Database :name canonical-db-id))
+  (t2/select-one :model/Database :name canonical-db-id :is_audit false))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -71,12 +61,11 @@
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db-details (get-app-db-connection-details)
-            db (t2/insert-returning-instance! :model/Database
+      (let [db (t2/insert-returning-instance! :model/Database
                                               {:name canonical-db-id
                                                :description "Development database for analytics views and content"
                                                :engine (name db-type)
-                                               :details db-details
+                                               :details {:is-audit-dev true}
                                                :is_audit false ; Important: not an audit DB
                                                :is_full_sync true
                                                :is_on_demand false
@@ -269,6 +258,10 @@
   (and (find-analytics-dev-database)
        (find-analytics-collection)))
 
+(defn- cleanup-real-analytics []
+  (t2/delete! :model/Database :is_audit true)
+  (t2/delete! :model/Collection :namespace "analytics"))
+
 (defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
   [_]
   (when (audit/analytics-dev-mode)
@@ -283,6 +276,7 @@
         (if (analytics-content-loaded?)
           (log/info "Analytics dev environment already set up, skipping initialization")
           (when-let [admin-user (first-admin-user)]
+            (cleanup-real-analytics)
             (log/info "Setting up analytics dev environment with user:" (:email admin-user))
             (create-analytics-dev-database! (:id admin-user))
             (import-analytics-content! (:email admin-user))
