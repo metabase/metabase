@@ -230,7 +230,7 @@
                                                            [:workspace [:map
                                                                         [:transform-id :int]
                                                                         [:table-id :int]]]]]]]
-  "Get a single workspace by ID"
+  "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [workspace (-> (api/check-404 (t2/select-one :model/Workspace :id id))
