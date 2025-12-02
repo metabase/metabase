@@ -16,7 +16,7 @@
       (when (and last-known-update
                  (try (> (compare cookie-timestamp last-known-update) 0)
                       (catch Exception _e
-                        (log/infof "Strange last konwn update cookie: %s" last-known-update)
+                        (log/infof "Strange last known update cookie: %s" cookie-timestamp)
                         false)))
         (log/info "Settings cookie indicates cache is out of date. Refreshing...")
         (setting/restore-cache!)))))
@@ -24,13 +24,14 @@
 (defn- maybe-set-settings-last-updated-cookie
   [response]
   (if (-> response :mb/cookies :cookie/settings-cache-timestamp)
-    (let [timestamp (setting/cache-last-updated-at)]
+    (if-let [timestamp (setting/cache-last-updated-at)]
       (response/set-cookie (update response :mb/cookies dissoc :cookie/settings-cache-timestamp)
                            settings-last-updated-cookie-name
                            timestamp
                            {:path      "/"
                             :max-age   (* 5 60)
-                            :same-site :lax}))
+                            :same-site :lax})
+      response)
     response))
 
 (defn wrap-settings-cache-check
