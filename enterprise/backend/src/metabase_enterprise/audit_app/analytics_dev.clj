@@ -6,22 +6,19 @@
   - Importing analytics content as editable (not read-only)
   - Exporting modified analytics content back to YAML files
 
-  See metabase-enterprise.audit-app.settings/analytics-dev-mode for the setting."
-  ^{:clj-kondo/ignore [:metabase/modules]}
+  See metabase.audit-app.settings/analytics-dev-mode for the setting."
   (:require
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase-enterprise.audit-app.settings :as audit.settings]
-   [metabase-enterprise.serialization.v2.extract :as v2.extract]
-   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
-   [metabase-enterprise.serialization.v2.load :as v2.load]
-   [metabase-enterprise.serialization.v2.storage :as v2.storage]
-   [metabase.models.serialization :as serdes]
-   [metabase.audit-app.impl :as audit-app.impl]
+   [metabase-enterprise.audit-app.audit :as audit-ee]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.env :as mdb.env]
+   ^{:clj-kondo/ignore [:metabase/modules]}
+   [metabase.app-db.env :as mdb.env] ;; TODO
+   [metabase.audit-app.core :as audit]
+   [metabase.models.serialization :as serdes]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
@@ -36,7 +33,7 @@
 
 (def ^:private canonical-db-id
   "The serdes ID used in YAMLs for the audit database."
-  "Internal Metabase Database")
+  audit-ee/default-db-name)
 
 (def ^:private canonical-creator-id
   "The creator email used in YAMLs for all analytics content."
@@ -46,19 +43,13 @@
 ;;; Database Management
 ;;; ============================================================================
 
-(defn- get-app-db-type
-  "Get the type of the application database."
-  []
-  (mdb/db-type))
-
 (defn- get-app-db-connection-details
-  "Get the application database connection details including password.
+  "Get the application database connection details.
 
-  Returns a map suitable for creating a Metabase Database entry.
-  Uses the same connection details as the app DB (from environment variables)."
+  Returns a map suitable for creating a Metabase Database entry."
   []
-  (let [db-type (get-app-db-type)]
-    (@#'mdb.env/broken-out-details db-type mdb.env/env)))
+  ;; TODO: won't work if using connection URI
+  (@#'mdb.env/broken-out-details (mdb/db-type) mdb.env/env))
 
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
@@ -75,7 +66,7 @@
 
   Returns the created database map."
   [user-id]
-  (let [db-type (get-app-db-type)]
+  (let [db-type (mdb/db-type)]
     (if-let [existing (find-analytics-dev-database)]
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
@@ -185,8 +176,8 @@
 
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
-      (let [ingestion (v2.ingest/ingest-yaml temp-dir)
-            report (v2.load/load-metabase! ingestion {:backfill? false})]
+      (let [ingestion (serialization/ingest-yaml temp-dir)
+            report (serialization/load-metabase! ingestion {:backfill? false})]
         (log/info "Import complete:" (count (:seen report)) "entities loaded")
         (when (seq (:errors report))
           (log/warn "Import had errors:" (:errors report)))
@@ -209,9 +200,9 @@
         temp-path (.toFile temp-dir)]
     (log/info "Exporting dev collection" collection-id "to" temp-path)
     (try
-      (let [opts {:targets (v2.extract/make-targets-of-type "Collection" [collection-id])
+      (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
                   :no-settings true :no-transforms true}
-            report (serdes/with-cache (v2.storage/store! (v2.extract/extract opts) (.getPath temp-path)))]
+            report (serdes/with-cache (serialization/store! (serialization/extract opts) (.getPath temp-path)))]
         (log/info "Export complete:" (count (:seen report)) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))
@@ -270,7 +261,7 @@
 (defn find-analytics-collection
   "Get the analytics collection"
   []
-  (t2/select-one :model/Collection :entity_id @#'audit-app.impl/default-audit-collection-entity-id))
+  (t2/select-one :model/Collection :entity_id audit/default-audit-collection-entity-id))
 
 (defn- analytics-content-loaded?
   "Check if analytics content has already been imported."
@@ -280,7 +271,7 @@
 
 (defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
   [_]
-  (when (audit.settings/analytics-dev-mode)
+  (when (audit/analytics-dev-mode)
     (future
       (try
         (log/info "Analytics dev mode enabled, waiting for user setup...")
@@ -288,6 +279,7 @@
         (while (not (setup/has-user-setup))
           (Thread/sleep 1000))
         (log/info "User setup complete, checking analytics dev environment...")
+        ;; TODO: migrate from non-dev
         (if (analytics-content-loaded?)
           (log/info "Analytics dev environment already set up, skipping initialization")
           (when-let [admin-user (first-admin-user)]

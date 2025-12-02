@@ -76,6 +76,10 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
+(def default-db-name
+  "Default Audit DB name"
+  "Internal Metabase Database")
+
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 
@@ -84,7 +88,7 @@
   [engine id]
   (t2/insert! :model/Database {:is_audit         true
                                :id               id
-                               :name             "Internal Metabase Database"
+                               :name             default-db-name
                                :description      "Internal Audit DB used to power metabase analytics."
                                :engine           engine
                                :is_full_sync     true

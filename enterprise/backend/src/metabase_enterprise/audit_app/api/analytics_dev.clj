@@ -3,9 +3,9 @@
   (:require
    [clojure.java.io :as io]
    [metabase-enterprise.audit-app.analytics-dev :as analytics-dev]
-   [metabase-enterprise.audit-app.settings :as audit.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.audit-app.core :as audit]
    [metabase.util.compress :as u.compress]
    [metabase.util.log :as log]
    [ring.core.protocols :as ring.protocols])
@@ -89,7 +89,7 @@
   (api/check-superuser)
 
   (api/check-400
-   (audit.settings/analytics-dev-mode)
+   (audit/analytics-dev-mode)
    "Analytics dev mode is not enabled")
 
   (let [start              (System/nanoTime)

@@ -1,23 +1,13 @@
 (ns metabase-enterprise.audit-app.settings
   (:require
+   [metabase.audit-app.core :as audit]
    [metabase.settings.core :refer [defsetting]]))
-
-(defsetting analytics-dev-mode
-  "Enable analytics development mode. When true, disables analytics database installation and makes analytics content editable."
-  :type       :boolean
-  :default    false
-  :visibility :public
-  :setter     :none
-  :audit      :never
-  :export?    false
-  :doc        (str "Setting this environment variable to true will prevent installing the analytics database and content, "
-                   "and make the Usage analytics collection editable for local development."))
 
 (defsetting install-analytics-database
   "Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
   via environmment variable."
   :type       :boolean
-  :default    (not (analytics-dev-mode))
+  :default    (not (audit/analytics-dev-mode))
   :visibility :internal
   :setter     :none
   :audit      :never
