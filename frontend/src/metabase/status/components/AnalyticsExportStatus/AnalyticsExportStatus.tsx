@@ -36,10 +36,9 @@ export const AnalyticsExportStatus = () => {
     title,
     items: [
       {
-        id: "analytics-export",
         title: t`Usage analytics`,
         icon: "download" as const,
-        description: hasError ? exportState.message ?? t`Export failed` : "",
+        description: hasError ? (exportState.message ?? t`Export failed`) : "",
         isInProgress: isLoading,
         isCompleted: isDone,
         isAborted: hasError,
