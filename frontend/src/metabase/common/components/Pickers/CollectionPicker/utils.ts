@@ -20,9 +20,16 @@ export const isFolderFactory =
 
 export const getParentCollectionId = (
   location?: string | null,
+  namespace?: string | null,
 ): CollectionId => {
   const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
-  return parentCollectionId ? Number(parentCollectionId) : "root";
+  if (parentCollectionId) {
+    return Number(parentCollectionId);
+  }
+  if (namespace === "shared-tenant-collection") {
+    return "tenant";
+  }
+  return "root";
 };
 
 export const getPathLevelForItem = (
@@ -44,7 +51,10 @@ export const getPathLevelForItem = (
 
   const parentCollectionId =
     item.collection_id ??
-    getParentCollectionId(item?.effective_location ?? item?.location);
+    getParentCollectionId(
+      item?.effective_location ?? item?.location,
+      item?.namespace,
+    );
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(
