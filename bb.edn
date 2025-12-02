@@ -201,9 +201,9 @@
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
                 [:string {:description "Files or directories (recursive) to test"}]]
-   :requires   [[mage.quick-test-runner :as qtr]] 
+   :requires   [[mage.quick-test-runner :as qtr]]
    :task       (task! (qtr/go parsed))}
-  
+
   affected-modules
   {:doc      "Prints information about which backend modules have changes compared to a Git ref e.g. `master`"
    :examples [["./bin/mage affected-modules master"]
@@ -242,7 +242,7 @@
                         ("e" "error")   (sound/error)
                         ("p" "ping")    (sound/ping)
                         ("w" "warning") (sound/warning)))}
-  
+
   -token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
    :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
