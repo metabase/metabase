@@ -38,6 +38,8 @@ describe("scenarios > embedding-sdk > requests", () => {
     });
 
     it("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
       const expiredInSeconds = 60;
       cy.clock(Date.now());
 
@@ -63,9 +65,10 @@ describe("scenarios > embedding-sdk > requests", () => {
         cy.findByRole("dialog").contains(/^ID$/).click();
         cy.findByRole("dialog").findByTestId("badge-remove-button").click();
 
-        cy.wait("@jwtProvider");
+        // The requests should be done after we refresh the token, so where we should have 0
+        cy.get("@dataset.all").should("have.length", 0);
 
-        cy.intercept("POST", "/api/dataset").as("dataset");
+        cy.wait("@jwtProvider");
         // We ensure that both `dataset` requests are made after the token refresh request
         cy.get("@dataset.all").should("have.length", 2);
       });
