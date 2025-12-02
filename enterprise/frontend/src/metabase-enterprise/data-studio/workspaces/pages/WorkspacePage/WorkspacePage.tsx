@@ -211,7 +211,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           variant="filled"
           onClick={handleMergeWorkspace}
           loading={isMerging}
-          disabled={hasUnsavedChanges()}
+          disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
           size="xs"
         >
           {t`Merge`}

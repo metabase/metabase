@@ -118,8 +118,9 @@ export const TransformTab = ({
       <Group
         flex="0 0 auto"
         justify="space-between"
+        mih={rem(73)} // avoid CLS when showing/hiding output table input
         p="md"
-        style={{ borderBottom: "1px solid var(--mb-color-border" }}
+        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
         <Group>
           {isSaved && (
