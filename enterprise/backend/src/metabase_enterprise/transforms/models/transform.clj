@@ -5,7 +5,6 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -25,61 +24,20 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+;; Users with the transform permission can read ALL transforms, regardless of the database they are associated with.
 (defmethod mi/can-read? :model/Transform
-  ([instance]
-   (transforms.util/current-user-has-transforms-permission-for-db?
-    (transforms.i/target-db-id instance)))
-  ([_model pk]
-   (when-let [transform (t2/select-one :model/Transform :id pk)]
-     (mi/can-read? transform))))
+  ([_instance]
+   (transforms.util/current-user-has-transforms-read-permission?))
+  ([_model _pk]
+   (transforms.util/current-user-has-transforms-read-permission?)))
 
+;; Users with the transform permission can only write transforms where they have access to the associated db.
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (transforms.util/current-user-has-transforms-permission-for-db?
-    (transforms.i/target-db-id instance)))
+   (transforms.util/current-user-has-transforms-write-permission? (:source_database_id instance)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-write? transform))))
-
-(defn- transform-db-filter-clause
-  "Returns a HoneySQL clause that extracts the database ID from the transform's source column.
-   Uses database-specific JSON extraction syntax. Returns nil for H2 since it doesn't support
-   JSON extraction - filtering must be done at the application layer for H2."
-  [allowed-db-ids]
-  (case (mdb/db-type)
-    :postgres
-    [:or
-     [:in [:cast [:->> [:cast :source :jsonb] "query" "database"] :integer]
-      allowed-db-ids]
-     [:in [:cast [:->> [:cast :source :jsonb] "source-database"] :integer]
-      allowed-db-ids]]
-    :mysql
-    [:or
-     [:in [:json_extract :source "$.query.database"]
-      allowed-db-ids]
-     [:in [:json_extract :source "$.source-database"]
-      allowed-db-ids]]
-    ;; H2 doesn't support JSON extraction functions - return nil to signal
-    ;; that filtering must be done at the application layer
-    :h2
-    nil))
-
-(defmethod mi/visible-filter-clause :model/Transform
-  [_model column-or-exp {:keys [user-id is-superuser?]} _permission-mapping]
-  (let [allowed-db-ids (if is-superuser?
-                         (set (t2/select-pks-vec :model/Database))
-                         (transforms.util/databases-with-transforms-permission-for-user user-id))]
-    (if (seq allowed-db-ids)
-      (if-let [db-filter (transform-db-filter-clause allowed-db-ids)]
-        ;; PostgreSQL/MySQL: filter at SQL level
-        [:in column-or-exp {:select [:id]
-                            :from [:transform]
-                            :where db-filter}]
-        ;; H2: select all transforms, filtering done at application layer via mi/can-read?
-        [:in column-or-exp {:select [:id]
-                            :from [:transform]}])
-      ;; User has no transforms permission for any database
-      [:= [:inline 0] [:inline 1]])))
 
 (defn- transform-source-out [m]
   (-> m
@@ -99,14 +57,27 @@
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
+(defn- extract-transform-db-id
+  "Return the database ID from transform source; else nil."
+  [{:keys [source]}]
+  (let [parsed-source (transform-source-out source)]
+    (case (:type parsed-source)
+      :query (get-in parsed-source [:query :database])
+      :python (parsed-source :source-database)
+      nil)))
+
 (t2/define-before-insert :model/Transform
   [{:keys [source] :as transform}]
-  (assoc transform :source_type (transforms.util/transform-source-type source)))
+  (assoc transform
+         :source_type (transforms.util/transform-source-type source)
+         :source_database_id (extract-transform-db-id transform)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
   (if source
-    (assoc transform :source_type (transforms.util/transform-source-type source))
+    (assoc transform
+           :source_type (transforms.util/transform-source-type source)
+           :source_database_id (extract-transform-db-id transform))
     transform))
 
 (t2/define-after-select :model/Transform
@@ -306,15 +277,6 @@
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
-(defn- extract-transform-db-id
-  "Return the database ID from transform source; else nil."
-  [{:keys [source]}]
-  (let [parsed-source (transform-source-out source)]
-    (case (:type parsed-source)
-      :query (get-in parsed-source [:query :database])
-      :python (parsed-source :source-database)
-      nil)))
-
 ;;; ------------------------------------------------- Search ---------------------------------------------------
 
 (search.spec/define-spec "transform"
@@ -328,8 +290,7 @@
                   :view-count    false
                   :native-query  {:fn maybe-extract-transform-query-text
                                   :fields [:source :source_type]}
-                  :database-id   {:fn extract-transform-db-id
-                                  :fields [:source]}}
+                  :database-id   :source_database_id}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})

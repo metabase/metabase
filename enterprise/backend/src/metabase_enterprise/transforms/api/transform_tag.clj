@@ -12,10 +12,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- check-transforms-permission-for-any-db!
+(defn- check-transforms-read-permission
   "Check that the current user has transforms permission for at least one database."
   []
-  (api/check-403 (transforms.util/current-user-has-any-transforms-permission?)))
+  (api/check-403 (transforms.util/current-user-has-transforms-read-permission?)))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform tag."
@@ -24,7 +24,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag:" name)
-  (check-transforms-permission-for-any-db!)
+  (check-transforms-read-permission)
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
@@ -37,7 +37,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id "with name:" name)
-  (check-transforms-permission-for-any-db!)
+  (check-transforms-read-permission)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
@@ -49,7 +49,7 @@
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (check-transforms-permission-for-any-db!)
+  (check-transforms-read-permission)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
@@ -59,7 +59,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (check-transforms-permission-for-any-db!)
+  (check-transforms-read-permission)
   (t2/select :model/TransformTag {:order-by [[:name :asc]]}))
 
 (def ^{:arglists '([request respond raise])} routes

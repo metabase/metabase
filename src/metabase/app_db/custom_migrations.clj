@@ -1819,3 +1819,13 @@
                                (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
                                                {:transform-id id :source-type source-type})))]
           (t2/update! :transform id {:source_type transform-type})))))
+
+(define-migration SetTransformSourceDatabaseId
+  (doseq [transform (t2/select [:transform :id :source])]
+    (let [parsed-source (-> transform :source json/decode+kw)
+          db-id       (case (keyword (:type parsed-source))
+                        :query (get-in parsed-source [:query :database])
+                        :python (parsed-source :source-database)
+                        nil)]
+      (t2/update! :transform (:id transform) {:source_database_id db-id}))))
+

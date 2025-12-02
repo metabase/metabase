@@ -90,17 +90,18 @@
          (premium-features/has-feature? :transforms-python))
     (premium-features/has-feature? :transforms)))
 
-(defn current-user-has-transforms-permission-for-db?
-  "Returns true if the current user has transforms permission for the given database."
-  [database-id]
+(defn current-user-has-transforms-write-permission?
+  "Returns true if the current user has the ability to write transforms for the given source db."
+  [{:keys [database-id]}]
   (or api/*is-superuser?*
       (perms/user-has-permission-for-database? api/*current-user-id*
                                                :perms/transforms
                                                :yes
                                                database-id)))
 
-(defn current-user-has-any-transforms-permission?
-  "Returns true if the current user has transforms permission for at least one database."
+(defn current-user-has-transforms-read-permission?
+  "If users have any 'transforms' permissions, they can read all transforms.
+  This allows users to see transform dependencies etc."
   []
   (or api/*is-superuser?*
       (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms)))

@@ -1910,7 +1910,8 @@
            settings
            task
            util
-           enterprise/documents}}
+           enterprise/documents
+           enterprise/transforms}}
 
   enterprise/documents
   {:team "UX West"
@@ -2255,6 +2256,7 @@
            lib
            lib-be
            models
+           permissions
            premium-features
            queries
            query-processor

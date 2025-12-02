@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -210,13 +211,14 @@
   Returns a compound [:or ...] clause checking whether entities at those columns are readable.
 
   Handles different entity types:
-  - Superuser-only (:model/Transform, :model/Sandbox): Only if api/*is-superuser?* is true
+  - Superuser-only (:model/Sandbox): Only if api/*is-superuser?* is true
   - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
     Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
     Native query snippets have additional restrictions for sandboxed users.
   - Table: Uses mi/visible-filter-clause with appropriate permissions and filters by active/visibility_type.
     Follows search API conventions: active=true AND visibility_type=nil for non-archived tables.
-    Note: archived_at is not checked separately as archived tables always have active=false."
+    Note: archived_at is not checked separately as archived tables always have active=false.
+  - Transform: Only if they have transforms permission for any db"
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
   ([entity-type-field entity-id-field {:keys [include-archived-items] :or {include-archived-items :exclude}}]
@@ -232,16 +234,12 @@
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id] :from [table-name]}]])
 
-                     ;; Transform requires transforms permission for the specific database
+                     ;; Transform requires transforms app permission for any specific database
                      :model/Transform
-                     [:and
-                      [:= entity-type-field (name entity-type)]
-                      (mi/visible-filter-clause
-                       model
-                       entity-id-field
-                       {:user-id       api/*current-user-id*
-                        :is-superuser? api/*is-superuser?*}
-                       nil)]
+                     (when (transforms.util/current-user-has-transforms-read-permission?)
+                       [:and
+                        [:= entity-type-field (name entity-type)]
+                        [:in entity-id-field {:select [:id] :from [table-name]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
@@ -333,13 +331,8 @@
                            (m/map-vals #(map second %)))]
     (mapcat (fn [[entity-type entity-ids]]
               (let [model (entity-model entity-type)
-                    fields (entity-select-fields entity-type)
-                    ;; For transforms, H2 doesn't support SQL-level JSON extraction so we need
-                    ;; application-layer filtering via mi/can-read? (following established pattern
-                    ;; in custom_migrations.clj where H2 falls back to Clojure-level processing)
-                    entities (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
-                               (= entity-type :transform) (->> (filter mi/can-read?)))]
-                (->> (cond-> entities
+                    fields (entity-select-fields entity-type)]
+                (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
                        (= entity-type :card) (-> (t2/hydrate :creator :dashboard [:collection :is_personal] :moderation_reviews)
                                                  (->> (map collection.root/hydrate-root-collection))
                                                  (revisions/with-last-edit-info :card))
