@@ -261,6 +261,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
             key={`${item.model}-${item.id}`}
             name={item.name}
             model={item.model}
+            display={item.display}
             isFolder={isFolder(item)}
             isHidden={isHidden(item)}
             onClick={() => {
