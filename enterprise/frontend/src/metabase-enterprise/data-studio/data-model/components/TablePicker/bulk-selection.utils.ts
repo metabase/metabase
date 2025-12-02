@@ -335,8 +335,6 @@ function markAllTables(
       ? tablesSelection.add(tableId)
       : tablesSelection.delete(tableId);
   });
-
-  return tablesSelection;
 }
 
 export function toggleDatabaseSelection(
