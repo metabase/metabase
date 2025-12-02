@@ -471,7 +471,6 @@ const NativeQueryEditorWrapper = forwardRef<
 
   const inlinePromptOptions = useMemo(
     () => ({
-      line: 1,
       placeholder: t`Describe what SQL you want...`,
       // eslint-disable-next-line no-console
       onSubmit: (value: string) => console.log("Submitted:", value),
