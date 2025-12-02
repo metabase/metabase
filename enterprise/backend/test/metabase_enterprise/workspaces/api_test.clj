@@ -103,16 +103,17 @@
 
 (deftest create-workspace-transform-archived-test
   (testing "Cannot create transform in archived workspace"
-    (mt/with-temp [:model/Workspace workspace {:name "Archived"
-                                               :archived_at (java.time.OffsetDateTime/now)}]
-      (is (= "Cannot create transforms in an archived workspace"
-             (mt/user-http-request :crowberto :post 400
-                                   (str "ee/workspace/" (:id workspace) "/transform")
-                                   {:name "Should Fail"
-                                    :source {:type "query"
-                                             :query (mt/mbql-query venues)}
-                                    :target {:type "table"
-                                             :name "should_fail"}}))))))
+    (mt/with-premium-features [:transforms]
+      (mt/with-temp [:model/Workspace workspace {:name "Archived"
+                                                 :archived_at (java.time.OffsetDateTime/now)}]
+        (is (= "Cannot create transforms in an archived workspace"
+               (mt/user-http-request :crowberto :post 400
+                                     (str "ee/workspace/" (:id workspace) "/transform")
+                                     {:name "Should Fail"
+                                      :source {:type "query"
+                                               :query (mt/mbql-query venues)}
+                                      :target {:type "table"
+                                               :name "should_fail"}})))))))
 
 (deftest add-entities-to-workspace-test
   (testing "Add entities to workspace"

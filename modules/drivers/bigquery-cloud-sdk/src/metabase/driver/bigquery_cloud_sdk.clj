@@ -800,7 +800,9 @@
                               :database-routing                 true
                               :metadata/table-existence-check   true
                               :transforms/python                true
-                              :transforms/table                 true}]
+                              :transforms/table                 true
+                              ;; should support, will implement later
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
