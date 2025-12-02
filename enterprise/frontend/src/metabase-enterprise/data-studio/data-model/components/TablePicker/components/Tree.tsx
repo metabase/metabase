@@ -252,7 +252,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
       schemas: selectedSchemas,
       databases: selectedDatabases,
     };
-    const isSelected = isItemSelected(item as unknown as TreeNode, selection);
+    const isSelected = isItemSelected(item as TreeNode, selection);
 
     if (isTableNode(item)) {
       const tableId = item.value?.tableId ?? -1;
