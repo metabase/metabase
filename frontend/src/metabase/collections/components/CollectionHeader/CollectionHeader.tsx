@@ -11,12 +11,12 @@ import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
+import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
 import { CollectionPermissions } from "./CollectionPermissions";
 import CollectionTimeline from "./CollectionTimeline";
-import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import { CollectionUpload } from "./CollectionUpload";
 
 export interface CollectionHeaderProps {

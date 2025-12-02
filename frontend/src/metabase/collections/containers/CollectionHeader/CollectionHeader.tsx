@@ -1,9 +1,7 @@
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import { uploadFile } from "metabase/redux/uploads";
-import { getSetting } from "metabase/selectors/settings";
 import type { Collection } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import CollectionHeader from "../../components/CollectionHeader";
 
