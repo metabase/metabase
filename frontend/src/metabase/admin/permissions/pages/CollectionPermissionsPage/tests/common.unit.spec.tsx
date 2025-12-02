@@ -42,11 +42,9 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(
         await screen.findAllByRole("menuitem", { name: /Collection One/ }),
       ).toHaveLength(2);
-      // Note: Personal collection is now shown in the tree, so this test verifies it exists
-      // The original test expected it not to be shown, but behavior appears to have changed
       expect(
         await screen.findByRole("menuitem", { name: /Personal/ }),
-      ).toBeInTheDocument();
+      ).not.toBeInTheDocument();
     });
 
     it("should show a permissions table for the selected collection", async () => {
