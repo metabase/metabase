@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -12,6 +12,7 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
+import { applyThemePreset } from "embedding-sdk-bundle/lib/theme/apply-theme-preset";
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
@@ -50,6 +51,11 @@ export const SdkIframeEmbedRoute = () => {
     onSettingsChanged,
   });
 
+  const adjustedTheme = useMemo(
+    () => applyThemePreset(embedSettings?.theme),
+    [embedSettings?.theme],
+  );
+
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
   if (!embedSettings || !embedSettings.instanceUrl) {
@@ -58,7 +64,7 @@ export const SdkIframeEmbedRoute = () => {
 
   const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
 
-  const { isGuest, theme, locale } = embedSettings;
+  const { isGuest, locale } = embedSettings;
   const isProduction = !embedSettings._isLocalhost;
 
   // If the parent page is not running on localhost, it's not the unauthenticated embedding, and
@@ -86,14 +92,14 @@ export const SdkIframeEmbedRoute = () => {
   return (
     <ComponentProvider
       authConfig={authConfig}
-      theme={theme}
+      theme={adjustedTheme}
       locale={locale}
       reduxStore={store}
       isLocalHost={embedSettings._isLocalhost}
     >
       <Stack
         mih="100vh"
-        bg={theme?.colors?.background}
+        bg={adjustedTheme?.colors?.background}
         style={{
           display: "grid",
           width: "100%",
