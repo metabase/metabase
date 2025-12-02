@@ -3,6 +3,7 @@ import {
   type NativeQuestionDetails,
   type StructuredQuestionDetails,
   createNativeQuestion,
+  createNativeQuestionAndDashboard,
   createQuestion,
   createQuestionAndDashboard,
   getSignedJwtForResource,
@@ -20,6 +21,60 @@ import { createMockParameter } from "metabase-types/api/mocks";
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const WAIT_FOR_INTERNAL_API_REQUESTS_MS = 1000;
+
+const PARAMETERS = [
+  createMockParameter({
+    id: "quantity",
+    name: "Internal",
+    slug: "quantity",
+    type: "number/=",
+    target: ["dimension", ["template-tag", "quantity"]],
+  }),
+  createMockParameter({
+    id: "product_id_fk",
+    name: "FK",
+    slug: "product_id_fk",
+    type: "id",
+    target: ["dimension", ["template-tag", "product_id_fk"]],
+  }),
+  createMockParameter({
+    id: "user_id_pk",
+    name: "PK->Name",
+    slug: "user_id_pk",
+    type: "id",
+    target: ["dimension", ["template-tag", "user_id_pk"]],
+    values_source_type: "static-list",
+    values_source_config: {
+      values: ["74"],
+    },
+  }),
+];
+const TEMPLATE_TAGS = {
+  quantity: {
+    id: "quantity",
+    name: "quantity",
+    "display-name": "Internal",
+    type: "dimension",
+    "widget-type": "number/=",
+    dimension: ["field", ORDERS.QUANTITY, null],
+  },
+  product_id_fk: {
+    id: "product_id_fk",
+    name: "product_id_fk",
+    "display-name": "FK",
+    type: "dimension",
+    "widget-type": "id",
+    dimension: ["field", ORDERS.PRODUCT_ID, null],
+  },
+  user_id_pk: {
+    id: "user_id_pk",
+    name: "user_id_pk",
+    "display-name": "PK->Name",
+    type: "dimension",
+    "widget-type": "id",
+    dimension: ["field", PEOPLE_ID, null],
+  },
+};
 
 describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
   describe("question", () => {
@@ -159,60 +214,9 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
                   "FROM ORDERS " +
                   "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
                   "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
-                "template-tags": {
-                  quantity: {
-                    id: "quantity",
-                    name: "quantity",
-                    "display-name": "Internal",
-                    type: "dimension",
-                    "widget-type": "number/=",
-                    dimension: ["field", ORDERS.QUANTITY, null],
-                  },
-                  product_id_fk: {
-                    id: "product_id_fk",
-                    name: "product_id_fk",
-                    "display-name": "FK",
-                    type: "dimension",
-                    "widget-type": "id",
-                    dimension: ["field", ORDERS.PRODUCT_ID, null],
-                  },
-                  user_id_pk: {
-                    id: "user_id_pk",
-                    name: "user_id_pk",
-                    "display-name": "PK->Name",
-                    type: "dimension",
-                    "widget-type": "id",
-                    dimension: ["field", PEOPLE_ID, null],
-                  },
-                },
+                "template-tags": TEMPLATE_TAGS,
               },
-              parameters: [
-                createMockParameter({
-                  id: "quantity",
-                  name: "Internal",
-                  slug: "quantity",
-                  type: "number/=",
-                  target: ["dimension", ["template-tag", "quantity"]],
-                }),
-                createMockParameter({
-                  id: "product_id_fk",
-                  name: "FK",
-                  slug: "product_id_fk",
-                  type: "id",
-                  target: ["dimension", ["template-tag", "product_id_fk"]],
-                }),
-                createMockParameter({
-                  id: "user_id_pk",
-                  name: "PK->Name",
-                  slug: "user_id_pk",
-                  type: "id",
-                  target: ["dimension", ["template-tag", "user_id_pk"]],
-                  values_source_type: "static-list",
-                  values_source_config: {
-                    values: ["74"],
-                  },
-                }),
-              ],
+              parameters: PARAMETERS,
               enable_embedding: true,
               embedding_params: {
                 quantity: "enabled",
@@ -397,6 +401,117 @@ describe("scenarios > embedding-sdk > guest-embed-happy-path", () => {
 
         cy.get("@mapTilesApiRequest.all").then((interceptions) => {
           expect(interceptions).to.have.length.greaterThan(1);
+        });
+      });
+    });
+
+    it("should properly work with dashboard parameters", () => {
+      signInAsAdminAndSetupGuestEmbedding({
+        token: "starter",
+      });
+
+      createNativeQuestionAndDashboard({
+        questionDetails: {
+          name: "Orders native question",
+          native: {
+            query:
+              "SELECT * " +
+              "FROM ORDERS " +
+              "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
+              "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
+            "template-tags": TEMPLATE_TAGS,
+          },
+        },
+        dashboardDetails: {
+          name: "Embedding SDK Test Dashboard",
+          embedding_type: "guest-embed",
+          parameters: PARAMETERS,
+          enable_embedding: true,
+          embedding_params: {
+            quantity: "enabled",
+            product_id_fk: "locked",
+            user_id_pk: "enabled",
+          },
+        },
+      }).then(({ body: { id: dashcardId, card_id, dashboard_id } }) => {
+        // Connect dashboard parameters to the card's template-tags
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id: dashcardId,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: "quantity",
+                  card_id,
+                  target: ["dimension", ["template-tag", "quantity"]],
+                },
+                {
+                  parameter_id: "product_id_fk",
+                  card_id,
+                  target: ["dimension", ["template-tag", "product_id_fk"]],
+                },
+                {
+                  parameter_id: "user_id_pk",
+                  card_id,
+                  target: ["dimension", ["template-tag", "user_id_pk"]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.wrap(dashboard_id).as("dashboardId");
+      });
+
+      cy.signOut();
+
+      cy.intercept("GET", "/api/embed/dashboard/*/params/*/values").as(
+        "parameterValuesApiRequest",
+      );
+
+      cy.get("@dashboardId").then(async (dashboardId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: dashboardId as unknown as number,
+          resourceType: "dashboard",
+          params: {
+            product_id_fk: 1,
+          },
+        });
+
+        mountGuestEmbedDashboard({ token });
+
+        getSdkRoot().within(() => {
+          cy.findAllByTestId("parameter-widget").should("have.length", 2);
+
+          cy.findAllByTestId("parameter-widget")
+            .filter(':contains("PK->Name")')
+            .click();
+        });
+
+        cy.wait("@parameterValuesApiRequest");
+
+        cy.get("@parameterValuesApiRequest.all").then((interceptions) => {
+          expect(interceptions).to.have.length(1);
+        });
+
+        cy.findByTestId("table-body")
+          .findAllByRole("row")
+          .should("have.length.above", 10);
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("parameter-value-dropdown").contains("74").click();
+          cy.findByTestId("parameter-value-dropdown")
+            .contains("Add filter")
+            .click();
+
+          cy.findByTestId("table-body")
+            .findAllByRole("row")
+            .should("have.length", 1);
         });
       });
     });
