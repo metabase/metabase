@@ -74,7 +74,7 @@ If set to 0, Metabase will keep all rows.")
   "Enable analytics development mode. When true, makes analytics content editable."
   :type       :boolean
   :default    false
-  :visibility :public
+  :visibility :internal
   :setter     :none
   :audit      :never
   :export?    false

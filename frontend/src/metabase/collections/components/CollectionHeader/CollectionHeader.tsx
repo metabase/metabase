@@ -29,7 +29,6 @@ export interface CollectionHeaderProps {
   canUpload: boolean;
   uploadsEnabled: boolean;
   saveFile: (file: File) => void;
-  analyticsDevMode?: boolean;
 }
 
 const CollectionHeader = ({
@@ -42,7 +41,6 @@ const CollectionHeader = ({
   saveFile,
   canUpload,
   uploadsEnabled,
-  analyticsDevMode,
 }: CollectionHeaderProps): JSX.Element => {
   const isTrash = isTrashedCollection(collection);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
@@ -52,7 +50,7 @@ const CollectionHeader = ({
   const showNewButton = hasCuratePermissions && !isInstanceAnalytics;
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
-  const showExportButton = isInstanceAnalytics && isAdmin && analyticsDevMode;
+  const showExportButton = isInstanceAnalytics && isAdmin && showUploadButton;
   const showTimelinesButton = !isInstanceAnalytics;
   const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
 

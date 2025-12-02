@@ -7,10 +7,6 @@ import type { State } from "metabase-types/store";
 
 import CollectionHeader from "../../components/CollectionHeader";
 
-const mapStateToProps = (state: State) => ({
-  analyticsDevMode: getSetting(state, "analytics-dev-mode"),
-});
-
 const mapDispatchToProps = {
   onUpdateCollection: (collection: Collection, values: Partial<Collection>) =>
     Collections.actions.update(collection, values),
@@ -19,4 +15,4 @@ const mapDispatchToProps = {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(CollectionHeader);
+export default connect(null, mapDispatchToProps)(CollectionHeader);
