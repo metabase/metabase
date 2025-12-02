@@ -366,7 +366,7 @@
                ;; test self-signed certificates for testing
                "-Dmail.smtps.ssl.trust=*"
                ;; Writes all logs to a file logs/test.log
-              ;;  "-Dlog4j.configurationFile=file:frontend/test/__runner__/log4j2.xml"
+               "-Dlog4j.configurationFile=file:frontend/test/__runner__/log4j2.xml"
                "-Duser.timezone=US/Pacific"
                "-Dmb.db.type=h2"
                "-Dmb.enable.test.endpoints=true"
