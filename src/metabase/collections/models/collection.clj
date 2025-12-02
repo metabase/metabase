@@ -560,8 +560,7 @@
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
   ;; API key users and tenant users do not get personal collections
-  (when-not (or (api-key/is-api-key-user? (u/the-id user-or-id))
-                (t2/select-one-fn :tenant_id :model/User (u/the-id user-or-id)))
+  (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
     (or (user->existing-personal-collection user-or-id)
         (try
           (first (t2/insert-returning-instances! :model/Collection
