@@ -8,6 +8,35 @@ import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 
+const localesAndExpected = [
+  {
+    localeName: "English",
+    expectedDateRange: {
+      startDate: "January 2, 2025",
+      endDate: "February 3, 2025",
+    },
+  },
+  {
+    localeName: "German",
+    expectedDateRange: {
+      startDate: "2. Januar 2025",
+      endDate: "3. Februar 2025",
+    },
+  },
+];
+
+const setupBrowserLocale = (localeName) => {
+  cy.visit("/", {
+    // set the browser language as per:
+    // https://glebbahmutov.com/blog/cypress-tips-and-tricks/index.html#control-navigatorlanguage
+    onBeforeLoad(win) {
+      Object.defineProperty(win.navigator, "language", {
+        value: localeName,
+      });
+    },
+  });
+};
+
 describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
@@ -190,6 +219,63 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.findByText("Ajouter un filtre").click(); // "Add filter"
 
     cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
+  });
+});
+
+const dashboard = () => cy.findByTestId("dashboard");
+const createDashboardWithDateRangeDefault = () =>
+  H.createDashboard({
+    name: "Date Range Locale Test",
+    parameters: [
+      {
+        id: "date-param",
+        name: "Date",
+        slug: "date",
+        type: "date/range",
+        sectionId: "date",
+        // Set default as ISO date strings; UI should format per locale
+        default: ["2025-01-02", "2025-02-03"],
+      },
+    ],
+  }).then(({ body: { id } }) => {
+    cy.wrap(id).as("dashboardId");
+    return id;
+  });
+
+describe("Dashboard date picker format should respect locale settings", () => {
+  before(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  localesAndExpected.forEach(({ localeName, expectedDateRange }) => {
+    it(`shows correctly formatted values for a date range default in ${localeName} language`, () => {
+      // override the browser language for this test run
+      setupBrowserLocale(localeName);
+      createDashboardWithDateRangeDefault().then(H.visitDashboard);
+
+      dashboard()
+        .findByLabelText("Date")
+        .findByTestId("parameter-value")
+        .should(
+          "have.text",
+          `${expectedDateRange.startDate} - ${expectedDateRange.endDate}`,
+        );
+
+      dashboard().findByLabelText("Date").click();
+
+      // Verify the start and end date input values inside the popover/dialog
+      cy.findByRole("dialog").within(() => {
+        cy.findByLabelText("Start date").should(
+          "have.value",
+          expectedDateRange.startDate,
+        );
+        cy.findByLabelText("End date").should(
+          "have.value",
+          expectedDateRange.endDate,
+        );
+      });
+    });
   });
 });
 
