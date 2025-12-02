@@ -26,10 +26,7 @@ describe(suiteTitle, () => {
   it("pre-selects dashboard in embed flow when opened from dashboard sharing modal", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
-    });
+    H.embedModalEnableEmbedding();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
@@ -55,10 +52,7 @@ describe(suiteTitle, () => {
   it("pre-selects question in embed flow when opened from question sharing modal", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane()
-      .findByRole("button", { name: "Embedded Analytics JS" })
-      .click();
+    H.embedModalEnableEmbedding();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
@@ -84,10 +78,7 @@ describe(suiteTitle, () => {
   it("tracks default resources for pre-selected dashboard", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
-    });
+    H.embedModalEnableEmbedding();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
@@ -100,17 +91,14 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
+      event_detail: "isDefaultResource=true,experience=dashboard",
     });
   });
 
   it("tracks default resources for pre-selected question", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
-    });
+    H.embedModalEnableEmbedding();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
@@ -123,7 +111,7 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
+      event_detail: "isDefaultResource=true,experience=chart",
     });
   });
 });
