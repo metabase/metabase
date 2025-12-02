@@ -265,8 +265,7 @@
   (t2/delete! :model/Database :is_audit true)
   (t2/delete! :model/Collection :namespace "analytics"))
 
-(defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
-  [_]
+(defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)
     (future
       (try
@@ -288,3 +287,6 @@
             (log/info "Analytics dev environment ready")))
         (catch Exception e
           (log/error e "Failed to set up analytics dev environment"))))))
+
+(defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
+  [_] (analytics-dev-mode-setup))
