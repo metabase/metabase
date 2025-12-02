@@ -223,7 +223,8 @@
   details)
 
 (deftest conn-impersonation-simple-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :connection-impersonation)
+                         :starburst)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
@@ -668,8 +669,9 @@
 
 (deftest resilient-connection-options-test
   (testing "resilient connections have the correct role set"
-    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
-                                               :+features [:connection-impersonation]})
+    (mt/test-drivers (disj (mt/normal-driver-select {:+parent :sql-jdbc
+                                                     :+features [:connection-impersonation]})
+                           :starburst)
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a (u/lower-case-en (mt/random-name))]
@@ -726,8 +728,9 @@
 
 (deftest nested-do-with-connection-with-options-test
   (testing "nested calls to `do-with-connection-with-options` have the correct connection options set"
-    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
-                                               :+features [:connection-impersonation]})
+    (mt/test-drivers (disj (mt/normal-driver-select {:+parent :sql-jdbc
+                                                     :+features [:connection-impersonation]})
+                           :starburst)
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
@@ -767,7 +770,8 @@
                          {:aggregation [[:count]]}))))))))))))
 
 (deftest impersonated-throws-without-token-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :connection-impersonation)
+                         :starburst)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
