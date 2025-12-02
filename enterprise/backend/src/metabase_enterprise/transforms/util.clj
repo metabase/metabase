@@ -1,5 +1,7 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as hash]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -292,6 +294,7 @@
 
   Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
   [outer-query driver {:keys [source-incremental-strategy] :as source} {checkpoint-query :query :as checkpoint}]
+  (t2/select-one :model/Table 10484)
   (let [{:keys [checkpoint-filter]} source-incremental-strategy]
     (if (and (lib.query/native? (:query source))
              (not (get-in (:query source) [:stages 0 :template-tags "checkpoint"]))
@@ -466,3 +469,41 @@
     (if tag-ids
       (filter #(some tag-ids (get-in % field-path)))
       identity)))
+
+(def ^:private incremental-filter-index-prefix "mb_incr_filter_idx_")
+
+(defn- incremental-filter-index-name [schema table-name filter-column-name]
+  (let [prefix incremental-filter-index-prefix
+        suffix (codecs/bytes->hex (hash/md5 (str/join "|" [schema table-name filter-column-name])))]
+    (str prefix suffix)))
+
+(defn incremental-filter-index-status [transform target database]
+  (let [table-name        (:name target)
+        checkpoint        (next-checkpoint (:id transform))
+        driver            (:engine database)
+        indexes           (driver/describe-table-indexes driver database (select-keys target [:schema :name]))
+        match-index       (fn [{:keys [index-name value]}]
+                            (when (str/starts-with? index-name incremental-filter-index-prefix)
+                              {:database      database
+                               :table-name    table-name
+                               :index-name    index-name
+                               :index-columns [value]}))
+        current           (some match-index indexes)
+        filter-name       (:name (:filter-column checkpoint))
+        desired           (when checkpoint
+                            {:database      database
+                             :table-name    table-name
+                             :index-name    (incremental-filter-index-name (:schema target) table-name filter-name)
+                             :index-columns [filter-name]})]
+    {:desired desired
+     :current current}))
+
+(defn drop-incremental-filter-index! [{:keys [database schema index-name]}]
+  ;; todo incl details in log
+  (log/info "Dropping existing incremental filter index, either the filter column has changed or the transform is no longer incremental")
+  (driver/drop-index! (:engine database) (:id database) schema index-name))
+
+(defn create-incremental-filter-index! [{:keys [database table-name schema index-name index-columns]}]
+  ;; todo incl details in log
+  (log/info "Creating incremental filter index")
+  (driver/create-index! (:engine database) (:id database) schema table-name index-name index-columns))

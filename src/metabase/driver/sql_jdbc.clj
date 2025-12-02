@@ -168,6 +168,30 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defn- create-index!-sql
+  [driver table-name index-name column-names]
+  (with-quoting driver
+    (let [index-spec (into [(keyword table-name)] (map keyword) column-names)]
+      (first (sql/format {:create-index [(keyword index-name) index-spec]}
+                         :quoted true
+                         :dialect (sql.qp/quote-style driver))))))
+
+(defmethod driver/create-index! :sql-jdbc
+  [driver database-id schema table-name index-name column-names & _]
+  ;; todo schema
+  (let [sql (create-index!-sql driver table-name index-name column-names)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))))
+
+(defmethod driver/drop-index! :sql-jdbc
+  [driver database-id schema index-name & _]
+  ;; todo schema
+  (let [sql (first (sql/format {:drop-index [(keyword index-name)]}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))))
+
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
   (let [table-name (keyword table-name)

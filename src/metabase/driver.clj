@@ -1351,7 +1351,19 @@
   "Create a table named `table-name`. If the table already exists it will throw an error.
   `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names
   that make up the primary key."
-  {:added "0.47.0", :arglists '([driver database-id table-name column-definitions & args])}
+  {:added "0.47.0", :arglists '([driver database-id schema table-name column-definitions & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti drop-index!
+  "Drops an index named `index-name` created by [[metabase.driver/create-index!]]. Throws if the index does not exist."
+  {:added "0.58.0", :arglists '([driver database-id schema index-name & args])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti create-index!
+  "Create a (sorted/btree) index named `index-name`. Throws if the index already exists."
+  {:added "0.58.0", :arglists '([driver database-id table-name index-name column-names & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
