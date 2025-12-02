@@ -18,41 +18,58 @@ import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
 type CreateLibraryModalProps = {
+  title?: string;
+  explanatorySentence?: string;
   isOpened: boolean;
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
 export function CreateLibraryModal({
+  title = t`Create your Library`,
+  explanatorySentence,
   isOpened,
   onCreate,
   onClose,
 }: CreateLibraryModalProps) {
   return (
-    <Modal title={<ModalTitle />} opened={isOpened} onClose={onClose}>
+    <Modal
+      title={<ModalTitle title={title} />}
+      opened={isOpened}
+      onClose={onClose}
+    >
       <FocusTrap.InitialFocus />
-      <ModalBody onCreate={onCreate} onClose={onClose} />
+      <ModalBody
+        explanatorySentence={explanatorySentence}
+        onCreate={onCreate}
+        onClose={onClose}
+      />
     </Modal>
   );
 }
 
-function ModalTitle() {
+type ModalTitleProps = {
+  title: string;
+};
+
+function ModalTitle({ title }: ModalTitleProps) {
   return (
     <Group gap="sm">
       <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
         <FixedSizeIcon name="repository" />
       </Center>
-      <Title order={3}>{t`Create your Library`}</Title>
+      <Title order={3}>{title}</Title>
     </Group>
   );
 }
 
 type ModalBodyProps = {
+  explanatorySentence?: string;
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
-function ModalBody({ onCreate, onClose }: ModalBodyProps) {
+function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
   const [createLibrary] = useCreateLibraryMutation();
 
   const handleSubmit = async () => {
@@ -65,6 +82,7 @@ function ModalBody({ onCreate, onClose }: ModalBodyProps) {
       <Form>
         <FocusTrap.InitialFocus />
         <Stack gap="sm">
+          {explanatorySentence && <Text>{explanatorySentence}</Text>}
           <Text>
             {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
           </Text>

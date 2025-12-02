@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -13,9 +14,8 @@ import {
   useEditTablesMutation,
   useGetTableSelectionInfoQuery,
 } from "metabase-enterprise/api";
-import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
-import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
-import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
+import { usePublishTables } from "metabase-enterprise/data-studio/common/hooks/use-publish-tables";
+import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
 import type {
   TableDataLayer,
   TableDataSource,
@@ -32,15 +32,13 @@ type TableAttributesEditBulkProps = {
   hasLibrary: boolean;
 };
 
-type TableModalType = "library" | "publish" | "unpublish" | "sync";
-
 export function TableAttributesEditBulk({
   hasLibrary,
 }: TableAttributesEditBulkProps) {
   const {
-    selectedDatabases,
-    selectedSchemas,
     selectedTables,
+    selectedSchemas,
+    selectedDatabases,
     selectedItemsCount,
   } = useSelection();
   const { data: selectionData, isFetching } = useGetTableSelectionInfoQuery({
@@ -48,6 +46,10 @@ export function TableAttributesEditBulk({
     schema_ids: Array.from(selectedSchemas),
     table_ids: Array.from(selectedTables),
   });
+  const { publishModal, isPublishing, handlePublish } = usePublishTables({
+    hasLibrary,
+  });
+  const { unpublishModal, handleUnpublish } = useUnpublishTables();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [editTables] = useEditTablesMutation();
   const [dataLayer, setDataLayer] = useState<TableDataLayer | null>(null);
@@ -57,7 +59,8 @@ export function TableAttributesEditBulk({
   const [email, setEmail] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<string | null>(null);
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
-  const [modalType, setModalType] = useState<TableModalType>();
+  const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
+    useDisclosure();
 
   const hasPublishedTables =
     selectionData != null && selectionData.published_tables.length > 0;
@@ -118,10 +121,6 @@ export function TableAttributesEditBulk({
     }
   };
 
-  const handleCloseModal = () => {
-    setModalType(undefined);
-  };
-
   useEffect(() => {
     setDataLayer(null);
     setDataSource(null);
@@ -161,26 +160,36 @@ export function TableAttributesEditBulk({
           <Group gap="sm">
             <Button
               flex={1}
-              p="sm"
+              disabled={isFetching || isPublishing || !hasUnpublishedTables}
               leftSection={<Icon name="publish" />}
-              disabled={isFetching || !hasUnpublishedTables}
-              onClick={() => setModalType(hasLibrary ? "publish" : "library")}
+              onClick={() =>
+                handlePublish({
+                  databaseIds: Array.from(selectedDatabases),
+                  schemaIds: Array.from(selectedSchemas),
+                  tableIds: Array.from(selectedTables),
+                })
+              }
             >
               {t`Publish`}
             </Button>
             <Button
               flex={1}
-              p="sm"
               leftSection={<Icon name="unpublish" />}
               disabled={isFetching || !hasPublishedTables}
-              onClick={() => setModalType("unpublish")}
+              onClick={() =>
+                handleUnpublish({
+                  databaseIds: Array.from(selectedDatabases),
+                  schemaIds: Array.from(selectedSchemas),
+                  tableIds: Array.from(selectedTables),
+                })
+              }
             >
               {t`Unpublish`}
             </Button>
             <Button
               flex={1}
               leftSection={<Icon name="settings" />}
-              onClick={() => setModalType("sync")}
+              onClick={openSyncModal}
             >
               {t`Sync settings`}
             </Button>
@@ -262,36 +271,15 @@ export function TableAttributesEditBulk({
         </Box>
       </Stack>
 
-      <CreateLibraryModal
-        isOpened={modalType === "library"}
-        onCreate={() => setModalType("publish")}
-        onClose={handleCloseModal}
-      />
-
-      <PublishTablesModal
-        isOpened={modalType === "publish"}
-        databaseIds={Array.from(selectedDatabases)}
-        schemaIds={Array.from(selectedSchemas)}
-        tableIds={Array.from(selectedTables)}
-        onPublish={handleCloseModal}
-        onClose={handleCloseModal}
-      />
-
-      <UnpublishTablesModal
-        isOpened={modalType === "unpublish"}
-        databaseIds={Array.from(selectedDatabases)}
-        schemaIds={Array.from(selectedSchemas)}
-        tableIds={Array.from(selectedTables)}
-        onUnpublish={handleCloseModal}
-        onClose={handleCloseModal}
-      />
+      {publishModal}
+      {unpublishModal}
 
       <SyncOptionsModal
-        isOpen={modalType === "sync"}
+        isOpen={isSyncModalOpen}
         databaseIds={Array.from(selectedDatabases)}
         schemaIds={Array.from(selectedSchemas)}
         tableIds={Array.from(selectedTables)}
-        onClose={handleCloseModal}
+        onClose={closeSyncModal}
       />
     </>
   );

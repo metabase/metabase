@@ -22,6 +22,7 @@ import {
   usePublishTablesMutation,
 } from "metabase-enterprise/api";
 import type {
+  Collection,
   DatabaseId,
   PublishTableInfo,
   SchemaId,
@@ -33,7 +34,7 @@ type PublishTablesModalProps = {
   schemaIds?: SchemaId[];
   tableIds?: TableId[];
   isOpened: boolean;
-  onPublish: () => void;
+  onPublish: (collection: Collection) => void;
   onClose: () => void;
 };
 
@@ -95,7 +96,7 @@ type ModalBodyProps = {
   databaseIds: DatabaseId[] | undefined;
   schemaIds: SchemaId[] | undefined;
   tableIds: TableId[] | undefined;
-  onPublish: () => void;
+  onPublish: (collection: Collection) => void;
   onClose: () => void;
 };
 
@@ -122,12 +123,12 @@ function ModalBody({
   const selectedTables = [...published_tables, ...unpublished_tables];
 
   const handleSubmit = async () => {
-    await publishTables({
+    const { target_collection } = await publishTables({
       database_ids: databaseIds,
       schema_ids: schemaIds,
       table_ids: tableIds,
     }).unwrap();
-    onPublish();
+    onPublish(target_collection);
   };
 
   return (

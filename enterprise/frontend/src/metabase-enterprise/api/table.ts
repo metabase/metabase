@@ -96,6 +96,7 @@ export const tableApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetTableSelectionInfoQuery,
+  useLazyGetTableSelectionInfoQuery,
   useEditTablesMutation,
   useRescanTablesFieldValuesMutation,
   useSyncTablesSchemasMutation,
