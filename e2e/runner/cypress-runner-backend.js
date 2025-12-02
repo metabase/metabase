@@ -36,7 +36,7 @@ const CypressBackend = {
       process.env.JDK_JAVA_OPTIONS = getJvmOptsFromDepsEdn();
       this.server.process = spawn("java", ["-jar", jarPath], {
         env: process.env,
-        stdio: "inherit",
+        stdio: process.env.CI ? "ignore" : "inherit",
         detached: true,
       });
       await waitUntilReady(this.server);
@@ -54,7 +54,7 @@ const CypressBackend = {
         [`-M:run:${edition}:dev:dev-start:e2e`, "--hot"],
         {
           env: process.env,
-          stdio: "ignore",
+          stdio: process.env.CI ? "ignore" : "inherit",
           detached: true,
         },
       );
