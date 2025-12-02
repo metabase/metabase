@@ -621,6 +621,7 @@
    :uses #{api
            events
            models
+           permissions
            util}}
 
   graph
@@ -1998,7 +1999,9 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features}}
+           permissions
+           premium-features
+           request}}
 
   enterprise/llm
   {:team "Metabot"
