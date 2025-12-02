@@ -185,8 +185,11 @@
 
 (defn- input-tables
   [graph]
-  (t2/select [:model/Table :id :schema :name [:name :table]]
-             :id [:in (map :id (:inputs graph))]))
+  ;; As of 2025-12-02 graph is unusable, return empty to unblock FE
+  (if-some [ids (not-empty (set (map :id (:inputs graph))))]
+    (t2/select-fn-vec identity [:model/Table :id :schema :name [:name :table]]
+                      :id [:in ids])
+    []))
 
 (defn- output-tables
   [workspace-id]
