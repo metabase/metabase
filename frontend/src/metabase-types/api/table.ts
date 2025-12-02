@@ -248,14 +248,10 @@ export interface GetTableSelectionInfoRequest {
 }
 
 export interface GetTableSelectionInfoResponse {
-  // list of selected tables that are published
   published_tables: PublishTableInfo[];
-  // list of published tables that use selected published tables for remapping
-  published_remapped_tables: PublishTableInfo[];
-  // list of selected tables that are not published
+  published_downstream_tables: PublishTableInfo[];
   unpublished_tables: PublishTableInfo[];
-  // list of unpublished tables that are used by selected unpublished tables for remapping
-  unpublished_remapped_tables: PublishTableInfo[];
+  unpublished_upstream_tables: PublishTableInfo[];
 }
 
 export interface PublishTablesRequest {

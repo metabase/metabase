@@ -75,8 +75,8 @@ function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
     return null;
   }
 
-  const { published_tables, published_remapped_tables } = data;
-  return <>{getTitle(published_tables, published_remapped_tables)}</>;
+  const { published_tables, published_downstream_tables } = data;
+  return <>{getTitle(published_tables, published_downstream_tables)}</>;
 }
 
 type ModalBodyProps = {
@@ -105,7 +105,7 @@ function ModalBody({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { published_tables, published_remapped_tables } = data;
+  const { published_tables, published_downstream_tables } = data;
 
   const handleSubmit = async () => {
     await unpublishTables({
@@ -121,13 +121,13 @@ function ModalBody({
       <Form>
         <Stack>
           <Text>
-            {getInfoMessage(published_tables, published_remapped_tables)}
+            {getInfoMessage(published_tables, published_downstream_tables)}
           </Text>
-          {published_remapped_tables.length > 0 && (
+          {published_downstream_tables.length > 0 && (
             <>
               <Text>{getForeignKeyMessage(published_tables)}</Text>
               <List spacing="sm">
-                {published_remapped_tables.map((table) => (
+                {published_downstream_tables.map((table) => (
                   <List.Item key={table.id}>{table.display_name}</List.Item>
                 ))}
               </List>
@@ -141,7 +141,7 @@ function ModalBody({
             <FormSubmitButton
               label={getSubmitButtonLabel(
                 published_tables,
-                published_remapped_tables,
+                published_downstream_tables,
               )}
               variant="filled"
             />
