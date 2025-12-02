@@ -1,0 +1,24 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.inputWrapper {
+  min-height: 1.5rem;
+}
+
+.inputWrapper :global(.ProseMirror) {
+  font-size: 0.75rem;
+  min-height: 1.25rem;
+  padding: 0.25rem 0;
+}
+
+.buttonRow {
+  padding-top: 0.25rem;
+}

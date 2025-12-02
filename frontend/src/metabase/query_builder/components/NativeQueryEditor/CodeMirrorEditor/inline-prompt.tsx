@@ -16,17 +16,14 @@ import { ThemeProvider } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 // TODO: Use the plugin system to inject enterprise components instead of importing directly
 // eslint-disable-next-line no-restricted-imports
-import {
-  MetabotPromptInput,
-  type MetabotPromptInputRef,
-} from "metabase-enterprise/metabot/components/MetabotPromptInput";
+import { InlinePromptView } from "metabase-enterprise/metabot/components/MetabotPromptInput";
 // eslint-disable-next-line no-restricted-imports
 import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
 import S from "./CodeMirrorEditor.module.css";
 
 export type InlinePromptOptions = {
-  placeholder: string;
+  placeholder?: string;
   suggestionModels: SuggestionModel[];
   onSubmit: (value: string) => void;
   onCancel: () => void;
@@ -41,11 +38,10 @@ const hidePromptEffect = StateEffect.define<void>();
 
 class InlinePromptWidget extends WidgetType {
   private root: Root | null = null;
-  private inputRef: MetabotPromptInputRef | null = null;
 
   constructor(
     private readonly store: Store,
-    private readonly placeholder: string,
+    private readonly placeholder: string | undefined,
     private readonly suggestionModels: SuggestionModel[],
     private readonly onSubmit: (value: string) => void,
     private readonly onCancel: () => void,
@@ -57,9 +53,7 @@ class InlinePromptWidget extends WidgetType {
     const wrapper = document.createElement("div");
     wrapper.className = S.inlinePromptWrapper;
 
-    const handleSubmit = () => {
-      const value = this.inputRef?.getValue() ?? "";
-      this.inputRef?.clear();
+    const handleSubmit = (value: string) => {
       this.onSubmit(value);
       view.dispatch({ effects: hidePromptEffect.of() });
       view.focus();
@@ -76,15 +70,9 @@ class InlinePromptWidget extends WidgetType {
       <MetabaseReduxProvider store={this.store}>
         <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
           <ThemeProvider>
-            <MetabotPromptInput
-              ref={(ref) => {
-                this.inputRef = ref;
-              }}
-              value=""
+            <InlinePromptView
               placeholder={this.placeholder}
-              autoFocus
               suggestionModels={this.suggestionModels}
-              onChange={() => {}}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
             />
