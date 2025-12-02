@@ -123,6 +123,7 @@
   (get-transforms query-params))
 
 (api.macros/defendpoint :post "/validate-target"
+  "Validate the name of a transform target."
   [_route-params
    _query-params
    {:keys [db_id target]} :- [:map
