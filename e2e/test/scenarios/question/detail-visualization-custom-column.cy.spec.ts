@@ -35,8 +35,8 @@ describe("scenarios > question > detail visualization + custom column preview", 
     cy.findByTestId("object-detail").should("be.visible");
 
     // The newly added custom column should be rendered in the Detail view preview
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText(CUSTOM_COLUMN_NAME).should("exist");
-    });
+    cy.findByTestId("object-detail")
+      .findByText(CUSTOM_COLUMN_NAME)
+      .should("exist");
   });
 });
