@@ -1,6 +1,6 @@
-import type { TableSelectors } from "metabase-types/api";
+import type { PublishTablesRequest } from "metabase-types/api";
 
-export const publishTables = (request: TableSelectors) => {
+export const publishTables = (request: PublishTablesRequest) => {
   return cy.request(
     "POST",
     "/api/ee/data-studio/table/publish-tables",

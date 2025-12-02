@@ -49,8 +49,8 @@ export function TableMoreMenu({ table }: TableMoreMenuProps) {
         </Menu.Dropdown>
       </Menu>
       <UnpublishTablesModal
-        selection={{ table_ids: [table.id] }}
         isOpened={modalType === "unpublish"}
+        tableIds={[table.id]}
         onUnpublish={handleUnpublish}
         onClose={() => setModalType(undefined)}
       />

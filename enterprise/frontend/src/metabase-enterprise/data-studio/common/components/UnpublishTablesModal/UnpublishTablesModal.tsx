@@ -12,29 +12,46 @@ import {
   useGetTableSelectionInfoQuery,
   useUnpublishTablesMutation,
 } from "metabase-enterprise/api";
-import type { PublishTableInfo, TableSelectors } from "metabase-types/api";
+import type {
+  DatabaseId,
+  PublishTableInfo,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
 
 type UnpublishTablesModalProps = {
-  selection: TableSelectors;
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
   isOpened: boolean;
   onUnpublish?: () => void;
   onClose: () => void;
 };
 
 export function UnpublishTablesModal({
-  selection,
+  databaseIds,
+  schemaIds,
+  tableIds,
   isOpened,
   onUnpublish,
   onClose,
 }: UnpublishTablesModalProps) {
   return (
     <Modal
-      title={<ModalTitle selection={selection} />}
+      title={
+        <ModalTitle
+          databaseIds={databaseIds}
+          schemaIds={schemaIds}
+          tableIds={tableIds}
+        />
+      }
       opened={isOpened}
       onClose={onClose}
     >
       <ModalBody
-        selection={selection}
+        databaseIds={databaseIds}
+        schemaIds={schemaIds}
+        tableIds={tableIds}
         onUnpublish={onUnpublish}
         onClose={onClose}
       />
@@ -43,28 +60,45 @@ export function UnpublishTablesModal({
 }
 
 type ModalTitleProps = {
-  selection: TableSelectors;
+  databaseIds: DatabaseId[] | undefined;
+  schemaIds: SchemaId[] | undefined;
+  tableIds: TableId[] | undefined;
 };
 
-function ModalTitle({ selection }: ModalTitleProps) {
-  const { data } = useGetTableSelectionInfoQuery(selection);
+function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
+  const { data } = useGetTableSelectionInfoQuery({
+    database_ids: databaseIds,
+    schema_ids: schemaIds,
+    table_ids: tableIds,
+  });
   if (!data) {
     return null;
   }
 
   const { published_tables, published_remapped_tables } = data;
-
   return <>{getTitle(published_tables, published_remapped_tables)}</>;
 }
 
 type ModalBodyProps = {
-  selection: TableSelectors;
+  databaseIds: DatabaseId[] | undefined;
+  schemaIds: SchemaId[] | undefined;
+  tableIds: TableId[] | undefined;
   onUnpublish?: () => void;
   onClose: () => void;
 };
 
-function ModalBody({ selection, onUnpublish, onClose }: ModalBodyProps) {
-  const { data, isLoading, error } = useGetTableSelectionInfoQuery(selection);
+function ModalBody({
+  databaseIds,
+  schemaIds,
+  tableIds,
+  onUnpublish,
+  onClose,
+}: ModalBodyProps) {
+  const { data, isLoading, error } = useGetTableSelectionInfoQuery({
+    database_ids: databaseIds,
+    schema_ids: schemaIds,
+    table_ids: tableIds,
+  });
   const [unpublishTables] = useUnpublishTablesMutation();
 
   if (isLoading || error != null || data == null) {
@@ -74,7 +108,11 @@ function ModalBody({ selection, onUnpublish, onClose }: ModalBodyProps) {
   const { published_tables, published_remapped_tables } = data;
 
   const handleSubmit = async () => {
-    await unpublishTables(selection).unwrap();
+    await unpublishTables({
+      database_ids: databaseIds,
+      schema_ids: schemaIds,
+      table_ids: tableIds,
+    }).unwrap();
     onUnpublish?.();
     onClose();
   };
@@ -145,7 +183,9 @@ function getInfoMessage(
 function getForeignKeyMessage(unpublishedTables: PublishTableInfo[]) {
   const isSingleUnpublishedTable = unpublishedTables.length;
   return isSingleUnpublishedTable === 1
-    ? jt`Because values in ${(<strong key="table">{unpublishedTables[0].display_name}</strong>)} are used as display values in other published tables, you'll need to unpublish these, too:`
+    ? jt`Because values in ${(
+        <strong key="table">{unpublishedTables[0].display_name}</strong>
+      )} are used as display values in other published tables, you'll need to unpublish these, too:`
     : t`Because values in some of the tables you've selected are used as display values in other published tables, you'll need to unpublish the tables below, too:`;
 }
 

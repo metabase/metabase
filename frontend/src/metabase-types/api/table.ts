@@ -233,13 +233,18 @@ export type TableData = {
   started_at?: string;
 };
 
-export interface TableSelectors {
+export interface PublishTableInfo {
+  id: TableId;
+  display_name: string;
+}
+
+export interface GetTableSelectionInfoRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
 }
 
-export interface TableSelectionInfo {
+export interface GetTableSelectionInfoResponse {
   // list of selected tables that are published
   published_tables: PublishTableInfo[];
   // list of published tables that use selected published tables for remapping
@@ -250,11 +255,18 @@ export interface TableSelectionInfo {
   unpublished_remapped_tables: PublishTableInfo[];
 }
 
-export interface PublishTableInfo {
-  id: TableId;
-  display_name: string;
+export interface PublishTablesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
 }
 
 export interface PublishTablesResponse {
   target_collection: Collection;
+}
+
+export interface UnpublishTablesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
 }

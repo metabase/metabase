@@ -12,29 +12,46 @@ import {
   useGetTableSelectionInfoQuery,
   usePublishTablesMutation,
 } from "metabase-enterprise/api";
-import type { PublishTableInfo, TableSelectors } from "metabase-types/api";
+import type {
+  DatabaseId,
+  PublishTableInfo,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
 
 type PublishTablesModalProps = {
-  selection: TableSelectors;
+  databaseIds?: DatabaseId[];
+  schemaIds?: SchemaId[];
+  tableIds?: TableId[];
   isOpened: boolean;
   onPublish?: () => void;
   onClose: () => void;
 };
 
 export function PublishTablesModal({
-  selection,
+  databaseIds,
+  schemaIds,
+  tableIds,
   isOpened,
   onPublish,
   onClose,
 }: PublishTablesModalProps) {
   return (
     <Modal
-      title={<ModalTitle selection={selection} />}
+      title={
+        <ModalTitle
+          databaseIds={databaseIds}
+          schemaIds={schemaIds}
+          tableIds={tableIds}
+        />
+      }
       opened={isOpened}
       onClose={onClose}
     >
       <ModalBody
-        selection={selection}
+        databaseIds={databaseIds}
+        schemaIds={schemaIds}
+        tableIds={tableIds}
         onPublish={onPublish}
         onClose={onClose}
       />
@@ -43,28 +60,45 @@ export function PublishTablesModal({
 }
 
 type ModalTitleProps = {
-  selection: TableSelectors;
+  databaseIds: DatabaseId[] | undefined;
+  schemaIds: SchemaId[] | undefined;
+  tableIds: TableId[] | undefined;
 };
 
-function ModalTitle({ selection }: ModalTitleProps) {
-  const { data } = useGetTableSelectionInfoQuery(selection);
+function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
+  const { data } = useGetTableSelectionInfoQuery({
+    database_ids: databaseIds,
+    schema_ids: schemaIds,
+    table_ids: tableIds,
+  });
   if (!data) {
     return null;
   }
 
   const { unpublished_tables, unpublished_remapped_tables } = data;
-
   return <>{getTitle(unpublished_tables, unpublished_remapped_tables)}</>;
 }
 
 type ModalBodyProps = {
-  selection: TableSelectors;
+  databaseIds: DatabaseId[] | undefined;
+  schemaIds: SchemaId[] | undefined;
+  tableIds: TableId[] | undefined;
   onPublish?: () => void;
   onClose: () => void;
 };
 
-function ModalBody({ selection, onPublish, onClose }: ModalBodyProps) {
-  const { data, isLoading, error } = useGetTableSelectionInfoQuery(selection);
+function ModalBody({
+  databaseIds,
+  schemaIds,
+  tableIds,
+  onPublish,
+  onClose,
+}: ModalBodyProps) {
+  const { data, isLoading, error } = useGetTableSelectionInfoQuery({
+    database_ids: databaseIds,
+    schema_ids: schemaIds,
+    table_ids: tableIds,
+  });
   const [publishTables] = usePublishTablesMutation();
 
   if (isLoading || error != null || data == null) {
@@ -74,7 +108,11 @@ function ModalBody({ selection, onPublish, onClose }: ModalBodyProps) {
   const { unpublished_tables, unpublished_remapped_tables } = data;
 
   const handleSubmit = async () => {
-    await publishTables(selection).unwrap();
+    await publishTables({
+      database_ids: databaseIds,
+      schema_ids: schemaIds,
+      table_ids: tableIds,
+    }).unwrap();
     onPublish?.();
     onClose();
   };

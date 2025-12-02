@@ -1,11 +1,13 @@
 import type {
   DiscardTablesValuesRequest,
   EditTablesRequest,
+  GetTableSelectionInfoRequest,
+  GetTableSelectionInfoResponse,
+  PublishTablesRequest,
   PublishTablesResponse,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
-  TableSelectionInfo,
-  TableSelectors,
+  UnpublishTablesRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -13,7 +15,10 @@ import { invalidateTags, listTag, tag } from "./tags";
 
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getTableSelectionInfo: builder.query<TableSelectionInfo, TableSelectors>({
+    getTableSelectionInfo: builder.query<
+      GetTableSelectionInfoResponse,
+      GetTableSelectionInfoRequest
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/selection",
@@ -65,7 +70,10 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    publishTables: builder.mutation<PublishTablesResponse, TableSelectors>({
+    publishTables: builder.mutation<
+      PublishTablesResponse,
+      PublishTablesRequest
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/publish-tables",
@@ -74,7 +82,7 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
     }),
-    unpublishTables: builder.mutation<void, TableSelectors>({
+    unpublishTables: builder.mutation<void, UnpublishTablesRequest>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/unpublish-tables",

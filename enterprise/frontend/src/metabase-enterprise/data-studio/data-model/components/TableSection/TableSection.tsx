@@ -311,12 +311,12 @@ const TableSectionBase = ({
         </Stack>
       </Box>
       <PublishTablesModal
-        selection={{ table_ids: [table.id] }}
+        tableIds={[table.id]}
         isOpened={modalType === "publish"}
         onClose={() => setModalType(undefined)}
       />
       <UnpublishTablesModal
-        selection={{ table_ids: [table.id] }}
+        tableIds={[table.id]}
         isOpened={modalType === "unpublish"}
         onClose={() => setModalType(undefined)}
       />

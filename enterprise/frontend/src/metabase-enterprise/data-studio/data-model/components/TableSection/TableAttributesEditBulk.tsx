@@ -259,21 +259,17 @@ export function TableAttributesEditBulk({
 
       <PublishTablesModal
         isOpened={modalType === "publish"}
-        selection={{
-          database_ids: Array.from(selectedDatabases),
-          schema_ids: Array.from(selectedSchemas),
-          table_ids: Array.from(selectedTables),
-        }}
+        databaseIds={Array.from(selectedDatabases)}
+        schemaIds={Array.from(selectedSchemas)}
+        tableIds={Array.from(selectedTables)}
         onClose={() => setModalType(undefined)}
       />
 
       <UnpublishTablesModal
         isOpened={modalType === "unpublish"}
-        selection={{
-          database_ids: Array.from(selectedDatabases),
-          schema_ids: Array.from(selectedSchemas),
-          table_ids: Array.from(selectedTables),
-        }}
+        databaseIds={Array.from(selectedDatabases)}
+        schemaIds={Array.from(selectedSchemas)}
+        tableIds={Array.from(selectedTables)}
         onClose={() => setModalType(undefined)}
       />
 
