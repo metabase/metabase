@@ -1,8 +1,8 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { TagType } from "metabase/api/tags";
 import {
   TAG_TYPES,
-  type TagType,
   provideCollectionTags,
   provideDatabaseTags,
   provideFieldListTags,

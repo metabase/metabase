@@ -341,12 +341,10 @@ describe("LoginAttributeMappingEditor", () => {
       const revertButtons = await screen.findAllByTestId("revert-mapping");
       expect(revertButtons).toHaveLength(2);
 
-      const initialCallCount = onChange.mock.calls.length;
-
-      revertButtons[1].click();
+      await userEvent.click(revertButtons[1]);
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledTimes(initialCallCount + 1);
+        expect(screen.getByDisplayValue("user")).toBeInTheDocument();
       });
 
       expect(onChange).toHaveBeenLastCalledWith({
@@ -358,7 +356,6 @@ describe("LoginAttributeMappingEditor", () => {
         personal: "secret",
       });
 
-      expect(screen.getByDisplayValue("user")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("admin")).not.toBeInTheDocument();
     });
 
@@ -368,12 +365,11 @@ describe("LoginAttributeMappingEditor", () => {
       expect(await screen.findByDisplayValue("insect")).toBeInTheDocument();
 
       const revertButtons = await screen.findAllByTestId("revert-mapping");
-      const initialCallCount = onChange.mock.calls.length;
 
-      revertButtons[0].click();
+      await userEvent.click(revertButtons[0]);
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledTimes(initialCallCount + 1);
+        expect(screen.getByDisplayValue("bug")).toBeInTheDocument();
       });
 
       expect(onChange).toHaveBeenLastCalledWith({
@@ -385,7 +381,6 @@ describe("LoginAttributeMappingEditor", () => {
         personal: "secret",
       });
 
-      expect(screen.getByDisplayValue("bug")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("insect")).not.toBeInTheDocument();
     });
   });

@@ -131,9 +131,13 @@ function handleCollectionItemsResponse({
 }) {
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
-  const matchedItems = collectionItems.filter(({ model }) =>
-    models.includes(model),
-  );
+
+  // When the models filter is an empty array, return all items.
+  // In the API, omitting the `models` param returns all collection items.
+  const matchedItems =
+    models.length === 0
+      ? collectionItems
+      : collectionItems.filter(({ model }) => models.includes(model));
 
   const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
@@ -173,7 +177,7 @@ export function setupTenantRootCollectionItemsEndpoint({
 }) {
   fetchMock.get(
     `path:/api/collection/root/items`,
-    (call, request) => {
+    (call: { url: string }, request: Request) => {
       // Check if this is a tenant collection request
       if (request.url.includes("namespace=shared-tenant-collection")) {
         return handleCollectionItemsResponse({

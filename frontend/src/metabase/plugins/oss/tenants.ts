@@ -1,9 +1,9 @@
 import type React from "react";
 
+import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
 import type { Collection, Group, User } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
-import type { CollectionItemListProps } from "../types";
 
 const getDefaultPluginTenants = () => ({
   userStrategyRoute: null as React.ReactElement | null,
