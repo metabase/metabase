@@ -420,39 +420,46 @@ function WorkspacesSection({
         onClose={handleCloseCreateModal}
         title={t`Create new workspace`}
       >
-        <Stack gap="md">
-          <TextInput
-            label={t`Workspace name`}
-            placeholder={t`Enter workspace name`}
-            value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-            required
-          />
-          <Select
-            label={t`Database`}
-            placeholder={t`Select a database`}
-            data={databaseOptions}
-            value={selectedDatabaseId}
-            onChange={setSelectedDatabaseId}
-            required
-            searchable
-          />
-          <Flex gap="sm" justify="flex-end">
-            <Button variant="subtle" onClick={handleCloseCreateModal}>
-              {t`Cancel`}
-            </Button>
-            <Button
-              variant="filled"
-              onClick={handleCreateWorkspace}
-              disabled={
-                !selectedDatabaseId || !workspaceName.trim() || isCreating
-              }
-              loading={isCreating}
-            >
-              {t`Create`}
-            </Button>
-          </Flex>
-        </Stack>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleCreateWorkspace();
+          }}
+        >
+          <Stack gap="md">
+            <TextInput
+              label={t`Workspace name`}
+              placeholder={t`Enter workspace name`}
+              value={workspaceName}
+              onChange={(e) => setWorkspaceName(e.target.value)}
+              required
+            />
+            <Select
+              label={t`Database`}
+              placeholder={t`Select a database`}
+              data={databaseOptions}
+              value={selectedDatabaseId}
+              onChange={setSelectedDatabaseId}
+              required
+              searchable
+            />
+            <Flex gap="sm" justify="flex-end">
+              <Button variant="subtle" onClick={handleCloseCreateModal}>
+                {t`Cancel`}
+              </Button>
+              <Button
+                variant="filled"
+                disabled={
+                  !selectedDatabaseId || !workspaceName.trim() || isCreating
+                }
+                type="submit"
+                loading={isCreating}
+              >
+                {t`Create`}
+              </Button>
+            </Flex>
+          </Stack>
+        </form>
       </Modal>
     </Stack>
   );
