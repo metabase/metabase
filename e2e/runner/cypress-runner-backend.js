@@ -11,7 +11,7 @@ const tempDbPath = path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
 function getJvmOptsFromDepsEdn(alias = "e2e") {
   const cmd = `clojure -Sdeps '{:deps {}}' -M -e '(->> (-> "deps.edn" slurp clojure.edn/read-string :aliases :${alias} :jvm-opts) (clojure.string/join " ") println)'`;
-  return execSync(cmd, { encoding: "utf8" }).trim().split(" ");
+  return execSync(cmd, { encoding: "utf8" }).trim().toString();
 }
 
 // Ensure that the only two required env vars have values
