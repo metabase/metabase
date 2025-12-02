@@ -18,6 +18,9 @@
      (testing "POST /api/ee/data-studio/table/(un)publish-table"
        (testing "publishes tables into the library-models collection"
          (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-models-collection-type}]
+           (testing "normal users are not allowed to publish"
+             (mt/user-http-request :rasta :post 403 "ee/data-studio/table/publish-table"
+                                   {:table_ids [(mt/id :users) (mt/id :venues)]}))
            (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-table"
                                                 {:table_ids [(mt/id :users) (mt/id :venues)]})]
              (is (=? {:id collection-id} (:target_collection response)))
@@ -30,6 +33,9 @@
                          :is_published true}]
                        (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
              (testing "unpublishing"
+               (testing "normal users are not allowed"
+                 (mt/user-http-request :rasta :post 403 "ee/data-studio/table/unpublish-table"
+                                       {:table_ids [(mt/id :venues)]}))
                (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-table"
                                      {:table_ids [(mt/id :venues)]})
                (is (=? {:display_name "Venues"
