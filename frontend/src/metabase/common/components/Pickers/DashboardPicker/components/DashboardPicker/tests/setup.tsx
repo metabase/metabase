@@ -186,7 +186,9 @@ const flattenCollectionTree = (
 const mockCollectionToCollectionItem = (c: NestedCollectionItem) =>
   createMockCollectionItem({
     ...c,
-    ...(c.is_tenant_collection && { namespace: "shared-tenant-collection" }),
+    ...(c.is_shared_tenant_collection && {
+      namespace: "shared-tenant-collection",
+    }),
   });
 
 const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {

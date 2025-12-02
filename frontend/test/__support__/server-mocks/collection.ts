@@ -216,7 +216,10 @@ export function setupTenantCollectionItemsEndpoint({
 
       throw new Error("MOCK_SKIP");
     },
-    { name: `tenant-collection-${collection.id}-items` },
+    {
+      name: `tenant-collection-${collection.id}-items`,
+      overwriteRoutes: false,
+    },
   );
 }
 
