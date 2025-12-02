@@ -25,7 +25,6 @@ interface Props {
   disabled?: boolean;
   suggestionModels: SuggestionModel[];
   onChange: (value: string) => void;
-  onSubmit: () => void;
   onCancel: () => void;
 }
 
@@ -38,7 +37,6 @@ export const MetabotPromptInput = forwardRef<MetabotPromptInputRef, Props>(
       disabled = false,
       suggestionModels,
       onChange,
-      onSubmit,
       onCancel,
     },
     ref,
@@ -50,7 +48,6 @@ export const MetabotPromptInput = forwardRef<MetabotPromptInputRef, Props>(
       suggestionModels,
       smartLinkClassName: S.smartLink,
       onChange,
-      onSubmit,
       onCancel,
     });
 

@@ -31,7 +31,7 @@ export interface UsePromptEditorOptions {
   suggestionModels: SuggestionModel[];
   smartLinkClassName?: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit?: () => void;
   onCancel: () => void;
 }
 
@@ -108,7 +108,7 @@ export function usePromptEditor({
         },
       },
       handleKeyDown: (view, event) => {
-        if (event.key === "Enter") {
+        if (event.key === "Enter" && onSubmit) {
           // Defer enter handling to mention UI if open
           const mentionState = MetabotMentionPluginKey.getState(view.state);
           if (mentionState?.active) {
