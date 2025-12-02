@@ -32,7 +32,7 @@
 (mr/def ::downstream-entity
   [:map
    [:id ms/PositiveInt]
-   [:upstream_id ms/PositiveInt]
+   [:upstream_id [:maybe ms/PositiveInt]]
    [:type ::entity-type]
    [:name :string]])
 
