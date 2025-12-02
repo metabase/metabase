@@ -22,6 +22,7 @@ import {
 } from "metabase/ui";
 import {
   useGetWorkspaceQuery,
+  useGetWorkspaceTablesQuery,
   useListTransformsQuery,
   useMergeWorkspaceMutation,
   useUpdateWorkspaceNameMutation,
@@ -30,6 +31,7 @@ import type { Transform } from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
+import { DataTab } from "./DataTab/DataTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab";
@@ -58,6 +60,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: allTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+  const { data: workspaceTables = { inputs: [], outputs: [] } } =
+    useGetWorkspaceTablesQuery(id);
 
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
@@ -359,6 +363,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             >
               <Tabs.List className={styles.tabsPanel}>
                 <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
+                <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
               </Tabs.List>
               {sourceDb && (
                 <AddTransformMenu
@@ -383,6 +388,9 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   setActiveTransform(transform);
                 }}
               />
+            </Tabs.Panel>
+            <Tabs.Panel value="data" p="md">
+              <DataTab tables={workspaceTables} />
             </Tabs.Panel>
           </Tabs>
         </Box>

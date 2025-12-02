@@ -12,6 +12,7 @@ import type {
   WorkspaceId,
   WorkspaceListResponse,
   WorkspaceMergeResponse,
+  WorkspaceTablesResponse,
   WorkspaceUpdateContentsRequest,
 } from "metabase-types/api";
 
@@ -155,6 +156,13 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("workspace", id)]),
     }),
+    getWorkspaceTables: builder.query<WorkspaceTablesResponse, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace/${id}/tables`,
+      }),
+      providesTags: (_, __, id) => [idTag("workspace", id)],
+    }),
   }),
 });
 
@@ -172,4 +180,5 @@ export const {
   useArchiveWorkspaceMutation,
   useValidateTableNameMutation,
   useUpdateWorkspaceNameMutation,
+  useGetWorkspaceTablesQuery,
 } = workspaceApi;
