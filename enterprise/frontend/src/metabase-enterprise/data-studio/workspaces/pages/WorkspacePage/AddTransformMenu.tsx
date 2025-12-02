@@ -5,9 +5,13 @@ import * as Yup from "yup";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { useValidateTableNameMutation } from "metabase-enterprise/api";
+import {
+  useCreateWorkspaceTransformMutation,
+  useValidateTableNameMutation,
+} from "metabase-enterprise/api";
 import {
   CreateTransformModal,
+  type NewTransformValues,
   type ValidationSchemaExtension,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import {
@@ -20,14 +24,17 @@ type TransformType = "sql" | "python";
 
 type AddTransformMenuProps = {
   databaseId: number;
+  workspaceId: number;
   onCreate: (transform: Transform) => void;
 };
 
 export const AddTransformMenu = ({
   databaseId,
+  workspaceId,
   onCreate,
 }: AddTransformMenuProps) => {
   const [modalType, setModalType] = useState<TransformType | null>(null);
+  const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
 
   const { data: fetchedSchemas = [] } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: false } : skipToken,
@@ -38,7 +45,7 @@ export const AddTransformMenu = ({
     [fetchedSchemas],
   );
 
-  const getSource = (type: TransformType): TransformSource => {
+  const getSource = useCallback((type: TransformType): TransformSource => {
     if (type === "sql") {
       const source = getInitialNativeSource();
       return {
@@ -50,14 +57,56 @@ export const AddTransformMenu = ({
       ...getInitialPythonSource(),
       "source-database": databaseId,
     };
-  };
+  }, [databaseId]);
 
   const handleClose = () => setModalType(null);
 
-  const handleCreate = (transform: Transform) => {
-    onCreate(transform);
-    handleClose();
-  };
+  const handleSubmit = useCallback(
+    async (values: NewTransformValues): Promise<Transform> => {
+      const source = getSource(modalType!);
+      const request = values.incremental
+        ? {
+            id: workspaceId,
+            name: values.name,
+            description: null,
+            source,
+            target: {
+              type: "table-incremental" as const,
+              name: values.targetName,
+              schema: values.targetSchema,
+              database: databaseId,
+              "target-incremental-strategy": {
+                type: "append" as const,
+              },
+            },
+          }
+        : {
+            id: workspaceId,
+            name: values.name,
+            description: null,
+            source,
+            target: {
+              type: "table" as const,
+              name: values.targetName,
+              schema: values.targetSchema,
+              database: databaseId,
+            },
+          };
+
+      const transform = await createWorkspaceTransform(request).unwrap();
+      onCreate(transform);
+      handleClose();
+      return transform;
+    },
+    [
+      databaseId,
+      workspaceId,
+      modalType,
+      createWorkspaceTransform,
+      onCreate,
+      getSource,
+    ],
+  );
 
   const validationSchemaExtension = useTransformValidation(databaseId);
 
@@ -88,11 +137,11 @@ export const AddTransformMenu = ({
         <CreateTransformModal
           source={getSource(modalType)}
           defaultValues={{ name: t`New transform` }}
-          onCreate={handleCreate}
           onClose={handleClose}
           schemas={allowedSchemas}
           showIncrementalSettings={false}
           validationSchemaExtension={validationSchemaExtension}
+          handleSubmit={handleSubmit}
         />
       )}
     </>

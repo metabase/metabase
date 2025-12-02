@@ -1,5 +1,7 @@
 import type {
   CreateWorkspaceRequest,
+  CreateWorkspaceTransformRequest,
+  CreateWorkspaceTransformResponse,
   TransformDownstreamMapping,
   TransformId,
   TransformUpstreamMapping,
@@ -80,8 +82,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [idTag("workspace", id), tag("transform")]),
     }),
     createWorkspaceTransform: builder.mutation<
-      WorkspaceContents,
-      WorkspaceUpdateContentsRequest
+      CreateWorkspaceTransformResponse,
+      { id: WorkspaceId } & CreateWorkspaceTransformRequest
     >({
       query: ({ id, ...body }) => ({
         method: "POST",
@@ -151,6 +153,7 @@ export const {
   useGetWorkspaceContentsQuery,
   useUpdateWorkspaceContentsMutation,
   useLazyGetWorkspaceContentsQuery,
+  useCreateWorkspaceTransformMutation,
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,

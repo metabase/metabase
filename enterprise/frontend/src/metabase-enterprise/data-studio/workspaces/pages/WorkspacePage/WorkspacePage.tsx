@@ -316,6 +316,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               {sourceDb && (
                 <AddTransformMenu
                   databaseId={sourceDb.id}
+                  workspaceId={id}
                   onCreate={(transform) => {
                     addOpenedTransform(transform);
                     setActiveTransform(transform);

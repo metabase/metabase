@@ -60,11 +60,12 @@ function getValidationSchema(extension?: ValidationSchemaExtension) {
 type CreateTransformModalProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
-  onCreate: (transform: Transform) => void;
+  onCreate?: (transform: Transform) => void;
   onClose: () => void;
   schemas?: string[] | null;
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
 };
 
 export function CreateTransformModal({
@@ -75,6 +76,7 @@ export function CreateTransformModal({
   schemas,
   showIncrementalSettings = true,
   validationSchemaExtension,
+  handleSubmit,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -86,6 +88,7 @@ export function CreateTransformModal({
         schemas={schemas}
         showIncrementalSettings={showIncrementalSettings}
         validationSchemaExtension={validationSchemaExtension}
+        handleSubmit={handleSubmit}
       />
     </Modal>
   );
@@ -94,11 +97,12 @@ export function CreateTransformModal({
 type CreateTransformFormProps = {
   source: TransformSource;
   defaultValues: Partial<NewTransformValues>;
-  onCreate: (transform: Transform) => void;
+  onCreate?: (transform: Transform) => void;
   onClose: () => void;
   schemas?: string[] | null;
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
 };
 
 function CreateTransformForm({
@@ -109,6 +113,7 @@ function CreateTransformForm({
   schemas: schemasProp,
   showIncrementalSettings = true,
   validationSchemaExtension,
+  handleSubmit,
 }: CreateTransformFormProps) {
   const [sendToast] = useToast();
   const databaseId =
@@ -158,7 +163,7 @@ function CreateTransformForm({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const handleSubmit = async (values: NewTransformValues) => {
+  const defaultHandleSubmit = async (values: NewTransformValues) => {
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
@@ -166,7 +171,7 @@ function CreateTransformForm({
     try {
       const transform = await createTransform(request).unwrap();
       trackTransformCreated({ transformId: transform.id });
-      onCreate(transform);
+      onCreate?.(transform);
     } catch (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to create transform`),
@@ -179,7 +184,7 @@ function CreateTransformForm({
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit || defaultHandleSubmit}
     >
       <Form>
         <Stack gap="lg" mt="sm">
