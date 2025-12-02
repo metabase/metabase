@@ -2000,16 +2000,20 @@
                     result   (driver/with-driver :h2
                                (qp (qp/userland-query query) qp.reducible/default-rff))]
                 (cond-> result
-                  (map? result) (update :data dissoc :rows))))]
+                  (map? result) (update :data dissoc :rows))))
+            (cancel-messages []
+              (comp
+               (filter (comp #(str/includes? % "canceling statement due to user request")
+                             :message))
+               ;; grab first line of the log message to exclude huge stacktrace
+               (map (comp first str/split-lines :message))))]
       (mt/with-log-messages-for-level [log-messages :error]
         (testing "Regular exceptions are logged"
-          catch-exceptions
-          (is (>= 1 (count (log-messages)))
-              "Regular exceptions should be logged"))
-
-        ;; Reset log messages for next test
-        (testing "Query cancellation exceptions are not logged"
-          ;; Create a Postgres query cancellation exception (SQLState 57014)
+          (catch-exceptions (fn [] (throw (ex-info "Regular error during query" {}))))
+          (is (>= (count (log-messages)) 1)
+              "Regular exceptions should be logged")))
+      (testing "Query cancellation exceptions are not logged"
+        (mt/with-log-messages-for-level [log-messages :error]
           (let [pg-cancel-ex (PSQLException. "canceling statement due to user request" PSQLState/QUERY_CANCELED)]
             ;; Wrap it in an ExceptionInfo with the :query-canceled? flag, as our code does
             (catch-exceptions
@@ -2020,23 +2024,16 @@
                                      :type   qp.error-type/invalid-query
                                      :query/query-canceled? true}
                                     pg-cancel-ex)))))
-          (is (= 0 (count (log-messages)))
-              "Query cancellation exceptions should not be logged"))))
+          (is (= 0 (count (into [] (cancel-messages) (log-messages))))
+              "Query cancellation exceptions should not be logged")))
 
-    (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-      (future
-        (Thread/sleep 400)
-        (a/put! qp.pipeline/*canceled-chan* :cancel))
-      (mt/with-log-messages-for-level [messages :error]
-        (let [response (qp/process-query (assoc-in (mt/native-query {:query "select pg_sleep(8), false"})
-                                                   [:middleware :userland-query?] true))]
-          (is (= "ERROR: canceling statement due to user request" (:error response)))
-          (let [bad-messages (into []
-                                   (comp
-                                    (filter (comp #(str/includes? % "canceling statement due to user request")
-                                                  :message))
-                                    ;; should be empty, but in case it's not grab first line of the log message to
-                                    ;; exclude huge stacktrace
-                                    (map (comp first str/split-lines :message)))
-                                   (messages))]
-            (is (empty? bad-messages))))))))
+      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+        (future
+          (Thread/sleep 400)
+          (a/put! qp.pipeline/*canceled-chan* :cancel))
+        (mt/with-log-messages-for-level [messages :error]
+          (let [response (qp/process-query (assoc-in (mt/native-query {:query "select pg_sleep(8), false"})
+                                                     [:middleware :userland-query?] true))]
+            (is (= "ERROR: canceling statement due to user request" (:error response)))
+            (let [bad-messages (into [] (cancel-messages) (messages))]
+              (is (empty? bad-messages)))))))))
