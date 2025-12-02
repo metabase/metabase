@@ -428,6 +428,7 @@ function WorkspacesSection({
         >
           <Stack gap="md">
             <TextInput
+              autoFocus
               label={t`Workspace name`}
               placeholder={t`Enter workspace name`}
               value={workspaceName}
