@@ -768,10 +768,12 @@
                                    (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                    (catch Throwable e
                                      (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                     {:driver driver
-                                                      :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                      :params params
-                                                      :type   driver-api/qp.error-type.invalid-query}
+                                                     (cond-> {:driver driver
+                                                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                              :params params
+                                                              :type   driver-api/qp.error-type.invalid-query}
+                                                       (driver/query-canceled? driver e)
+                                                       (assoc :query/query-canceled? true))
                                                      e))))]
          (let [rsmeta           (.getMetaData rs)
                results-metadata {:cols (column-metadata driver rsmeta)}]

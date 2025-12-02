@@ -42,7 +42,7 @@ type DocsUtm = Required<Pick<UtmProps, "utm_campaign" | "utm_content">>;
 
 export type StepperCardClickAction =
   | { type: "link"; to: string }
-  | { type: "docs"; docsPath: string; utm: DocsUtm }
+  | { type: "docs"; docsPath: string; anchor?: string; utm: DocsUtm }
   | { type: "click"; onClick: () => void };
 
 export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
@@ -209,8 +209,8 @@ const CardAction = ({
   children: ReactNode;
 }) =>
   match(card.clickAction)
-    .with({ type: "docs" }, ({ docsPath, utm }) => (
-      <DocsLink docsPath={docsPath} utm={utm}>
+    .with({ type: "docs" }, ({ docsPath, anchor, utm }) => (
+      <DocsLink docsPath={docsPath} anchor={anchor} utm={utm}>
         {children}
       </DocsLink>
     ))
