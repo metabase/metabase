@@ -30,6 +30,7 @@ import {
   lastModifiedSorter,
   nameSorter,
 } from "../TransformSidebarLayout/utils";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
 
 const DEFAULT_SORT_TYPE = "tree";
 
@@ -89,6 +90,12 @@ export const TransformListPageSidebar = ({
     return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
+  const handleSelect = (item) => {
+    if (typeof item.id === "number") {
+      dispatch(push(Urls.transform(item.id)));
+    }
+  };
+
   return (
     <>
       <Flex direction="column" gap="md" p="md">
@@ -102,7 +109,9 @@ export const TransformListPageSidebar = ({
           sortLabel={t`Sort transforms`}
         />
       </Flex>
-      <Flex direction="column" flex={1} mih={0}>
+
+      <Table data={filteredTransforms} columns={[]} onSelect={handleSelect} />
+      {/* <Flex direction="column" flex={1} mih={0}>
         {isLoading ? (
           <SidebarLoadingState />
         ) : transformsSorted.length === 0 ? (
@@ -146,7 +155,7 @@ export const TransformListPageSidebar = ({
             subtitle={t`Shared helper functions`}
           />
         </Box>
-      )}
+      )} */}
     </>
   );
 };

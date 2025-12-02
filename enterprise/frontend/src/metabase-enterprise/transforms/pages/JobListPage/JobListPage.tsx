@@ -22,6 +22,7 @@ import {
   lastModifiedSorter,
   nameSorter,
 } from "../TransformSidebarLayout/utils";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
 
 const DEFAULT_SORT_TYPE = "alphabetical";
 
@@ -66,6 +67,10 @@ export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
     dispatch(push(Urls.newTransformJob()));
   };
 
+  const handleSelect = (item) => {
+    dispatch(push(Urls.transformJob(item.id)));
+  };
+
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
@@ -104,28 +109,30 @@ export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
             label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
           />
         ) : (
-          <SidebarList>
-            {jobsSorted.map((job) => {
-              const subtitle =
-                job.last_run?.start_time &&
-                `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${new Date(
-                  job.last_run.start_time,
-                ).toLocaleString("en-US", {
-                  timeZone: systemTimezone ?? undefined,
-                })}`;
+          // <SidebarList>
+          //   {jobsSorted.map((job) => {
+          //     const subtitle =
+          //       job.last_run?.start_time &&
+          //       `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${new Date(
+          //         job.last_run.start_time,
+          //       ).toLocaleString("en-US", {
+          //         timeZone: systemTimezone ?? undefined,
+          //       })}`;
 
-              return (
-                <SidebarListItem
-                  key={job.id}
-                  icon="play_outlined"
-                  href={Urls.transformJob(job.id)}
-                  label={job.name}
-                  subtitle={subtitle}
-                  isActive={job.id === selectedJobId}
-                />
-              );
-            })}
-          </SidebarList>
+          //     return (
+          //       <SidebarListItem
+          //         key={job.id}
+          //         icon="play_outlined"
+          //         href={Urls.transformJob(job.id)}
+          //         label={job.name}
+          //         subtitle={subtitle}
+          //         isActive={job.id === selectedJobId}
+          //       />
+          //     );
+          //   })}
+          // </SidebarList>
+
+          <Table data={jobsSorted} columns={[]} onSelect={handleSelect} />
         )}
       </Flex>
     </>

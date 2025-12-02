@@ -18,6 +18,7 @@ import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { getWritableCollection } from "./ModelingSidebar/LibrarySection/LibraryCollectionTree/utils";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
 
 export function ModelingSectionLayout() {
   usePageTitle(t`Modeling`);
@@ -66,14 +67,23 @@ export function ModelingSectionLayout() {
 
   const modelsTree = {
     ...modelCollection,
-    icon: "model",
-    children: libraryModels?.data.map((x) => ({ ...x, icon: "model" })) || [],
+    icon: { name: "model", c: "brand" },
+    children:
+      libraryModels?.data.map((x) => ({
+        ...x,
+        icon: { name: "model", c: "brand" },
+        updated_at: new Date(x["last-edit-info"]?.timestamp).toDateString(),
+      })) || [],
   };
 
   const metricsTree = {
     ...metricCollection,
-    icon: "metric",
-    children: libraryMetrics?.data.map((x) => ({ ...x, icon: "metric" })) || [],
+    icon: { name: "metric", c: "brand" },
+    children:
+      libraryMetrics?.data.map((x) => ({
+        ...x,
+        icon: { name: "metric", c: "brand" },
+      })) || [],
   };
 
   // Missing Snippets
@@ -90,12 +100,11 @@ export function ModelingSectionLayout() {
           />
           <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
         </Flex>
-        <Card withBorder>
-          <Tree
-            data={[modelsTree, metricsTree]}
-            onSelect={handleCollectionSelect}
-          />
-        </Card>
+
+        <Table
+          data={[modelsTree, metricsTree]}
+          columns={[{ id: "updated_at", width: 200 }]}
+        />
       </Stack>
     </SectionLayout>
   );
