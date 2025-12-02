@@ -1,14 +1,15 @@
 import type { ComponentProviderProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { getHasTokenFeature } from "embedding-sdk-bundle/store/selectors";
+import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 
 export const useNormalizeComponentProviderProps = (
   props: Omit<ComponentProviderProps, "children">,
 ): Omit<ComponentProviderProps, "children"> => {
-  const isEmbeddingSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const hasTokenFeature = useLazySelector(getHasTokenFeature);
   const normalizedProps = { ...props };
 
   // For OSS usage we prevent defining a locale or theme
-  if (!isEmbeddingSdkFeatureEnabled) {
+  if (!hasTokenFeature) {
     delete normalizedProps.locale;
     delete normalizedProps.theme;
   }
