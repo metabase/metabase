@@ -137,7 +137,7 @@ const collectionTree: NestedCollectionItem[] = [
 
 const tenantCollectionsTree: NestedCollectionItem[] = [
   {
-    name: "Shared Tenant Collection",
+    name: "tcoll",
     id: 6,
     location: "/",
     effective_location: "/",
@@ -152,7 +152,7 @@ const tenantCollectionsTree: NestedCollectionItem[] = [
         id: 7,
         location: "/6/",
         effective_location: "/6/",
-        name: "Tenant Sub Collection",
+        name: "tsubcoll",
         model: "collection",
         is_personal: false,
         is_shared_tenant_collection: true,
