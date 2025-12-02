@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (defn check-no-card-dependencies!
@@ -25,7 +26,7 @@
   (when-let [ws-txs (seq (t2/select [:model/Transform :id :workspace_id]
                                     :id [:in transform-ids]
                                     :workspace_id [:not= nil]))]
-    (throw (ex-info "Cannot add transforms that belong to another workspace"
+    (throw (ex-info (tru "Cannot add transforms that belong to another workspace")
                     {:status-code   400
                      :transform-ids (mapv :id ws-txs)
                      :workspace-ids (->> ws-txs (map :workspace_id) distinct sort vec)}))))
@@ -148,7 +149,7 @@
   (assert (or maybe-db-id (some seq (vals upstream))) "Must provide a database_id unless initial entities are given.")
   (let [ws-name  (or ws-name-maybe (str (random-uuid)))
         graph    (build-graph upstream)
-        db-id    (or (:db_id #p graph) maybe-db-id)
+        db-id    (or (:db_id graph) maybe-db-id)
         _        (when (and maybe-db-id (:db_id graph))
                    (assert (= maybe-db-id (:db_id graph))
                            "The database_id provided must match that of the upstream entities."))
