@@ -13,14 +13,22 @@ const { H } = cy;
 
 const localesAndExpected = [
   {
-    localeName: "English",
+    locale: "en",
+    ariaLabel: {
+      startDate: "Start date",
+      endDate: "End date",
+    },
     expectedDateRange: {
       startDate: "January 2, 2025",
       endDate: "February 3, 2025",
     },
   },
   {
-    localeName: "German",
+    locale: "de",
+    ariaLabel: {
+      startDate: "Startdatum",
+      endDate: "Enddatum",
+    },
     expectedDateRange: {
       startDate: "2. Januar 2025",
       endDate: "3. Februar 2025",
@@ -28,16 +36,13 @@ const localesAndExpected = [
   },
 ];
 
-const setupBrowserLocale = (localeName) => {
-  cy.visit("/", {
-    // set the browser language as per:
-    // https://glebbahmutov.com/blog/cypress-tips-and-tricks/index.html#control-navigatorlanguage
-    onBeforeLoad(win) {
-      Object.defineProperty(win.navigator, "language", {
-        value: localeName,
-      });
-    },
-  });
+const visitDashboardWithLocale = (locale, dashboardId) => {
+  /**
+   * without this Metabase will override browser settings.
+   * So there is no chance to test whether browser's settings are respected.
+   */
+  cy.request("PUT", "/api/setting/site-locale", { value: locale });
+  cy.visit(`/dashboard/${dashboardId}`);
 };
 
 describe("scenarios > dashboard > filters > date", () => {
@@ -229,64 +234,70 @@ const dashboard = () => cy.findByTestId("dashboard");
 const createDashboardWithDateRangeDefault = () =>
   H.createQuestionAndDashboard({
     questionDetails: {
+      name: "Orders by Created At",
       query: {
-        "source-table": SAMPLE_DATABASE.PRODUCTS_ID,
-        fields: [
-          ["field", SAMPLE_DATABASE.PRODUCTS.ID, null],
-          ["field", SAMPLE_DATABASE.PRODUCTS.RATING, null],
-        ],
+        "source-table": SAMPLE_DATABASE.ORDERS_ID,
+        fields: [["field", SAMPLE_DATABASE.ORDERS.CREATED_AT, null]],
       },
     },
     dashboardDetails: {
       name: "Date Range Locale Test",
       parameters: [
         createMockParameter({
-          name: "Date",
+          id: "created_at_param",
+          name: "Created At",
           type: "date/range",
-          default: ["2025-01-02", "2025-02-03"],
+          default: "2025-01-02~2025-02-03",
         }),
+      ],
+    },
+    cardDetails: {
+      parameter_mappings: [
+        {
+          parameter_id: "created_at_param",
+          target: [
+            "dimension",
+            ["field", SAMPLE_DATABASE.ORDERS.CREATED_AT, null],
+          ],
+        },
       ],
     },
   });
 
-describe("Dashboard date picker format should respect locale settings", () => {
+describe("Dashboard date picker format should respect browser's locale settings", () => {
   before(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  localesAndExpected.forEach(({ localeName, expectedDateRange }) => {
-    it(`shows correctly formatted values for a date range default in ${localeName} language`, () => {
-      createDashboardWithDateRangeDefault().then(
-        ({ body: { dashboard_id } }) => {
-          // override the browser language for this test run
-          setupBrowserLocale(localeName);
-          H.visitDashboard(dashboard_id);
+  it("shows correctly formatted values for a date range default in different languages", () => {
+    createDashboardWithDateRangeDefault().then(({ body: { dashboard_id } }) => {
+      localesAndExpected.forEach(({ locale, expectedDateRange, ariaLabel }) => {
+        // override the browser language for this test run
+        visitDashboardWithLocale(locale, dashboard_id);
 
-          // Verify the selected date value rendered respecting locale
-          dashboard()
-            .findByLabelText("Date")
-            .findByTestId("parameter-value")
-            .should(
-              "have.text",
-              `${expectedDateRange.startDate} - ${expectedDateRange.endDate}`,
-            );
+        // Verify the selected date value rendered respecting locale
+        dashboard()
+          .findByLabelText("Created At")
+          .findByTestId("parameter-value")
+          .should(
+            "have.text",
+            `${expectedDateRange.startDate} - ${expectedDateRange.endDate}`,
+          );
 
-          dashboard().findByLabelText("Date").click();
-
-          // Verify the start and end date input values inside the popover/dialog
-          cy.findByRole("dialog").within(() => {
-            cy.findByLabelText("Start date").should(
-              "have.value",
-              expectedDateRange.startDate,
-            );
-            cy.findByLabelText("End date").should(
-              "have.value",
-              expectedDateRange.endDate,
-            );
-          });
-        },
-      );
+        // Verify the start and end date input values inside the popover/dialog
+        dashboard().findByLabelText("Created At").click();
+        cy.findByRole("dialog").within(() => {
+          cy.findByLabelText(ariaLabel.startDate).should(
+            "have.value",
+            expectedDateRange.startDate,
+          );
+          cy.findByLabelText(ariaLabel.endDate).should(
+            "have.value",
+            expectedDateRange.endDate,
+          );
+        });
+      });
     });
   });
 });
