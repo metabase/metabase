@@ -451,6 +451,10 @@ const collectionPermissions = handleActions(
           value,
         );
 
+        /**
+         * Check if shouldPropagate is explicitly set (true or false) vs unset (null or undefined).
+         * If it's a boolean, we either propagate the new value or restore the original. When not a boolean, we do nothing.
+         */
         if (isBoolean(shouldPropagate)) {
           for (const descendent of getDecendentCollections(collection)) {
             newPermissionsState = assocIn(
