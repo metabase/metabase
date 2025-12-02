@@ -638,7 +638,69 @@
                (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))
     (testing "should just return nothing for 'virtual' tables"
       (is (= []
-             (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
+             (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))
+    (testing "should return foreign keys from only active tables"
+      (mt/with-temp [:model/Table table {:active true
+                                         :schema "temp-schema"
+                                         :name "table"
+                                         :display_name "table"}
+                     :model/Table fk-table {:active true
+                                            :schema "temp-schema"
+                                            :name "fk-table"
+                                            :display_name "fk-table"}
+                     :model/Table inactive-fk-table {:active false}
+                     :model/Field table-field {:active true
+                                               :table_id (:id table)
+                                               :name "table-field"
+                                               :display_name "table-field"}
+                     :model/Field fk-table-field {:active true
+                                                  :fk_target_field_id (:id table-field)
+                                                  :table_id (:id fk-table)
+                                                  :name "fk-table-field"
+                                                  :display_name "fk-table-field"}
+                     :model/Field _ {:active true
+                                     :fk_target_field_id (:id table-field)
+                                     :table_id (:id inactive-fk-table)}]
+        (is (= [{:origin_id (:id fk-table-field)
+                 :destination_id (:id table-field)
+                 :relationship "Mt1"
+                 :origin (-> (field-details fk-table-field)
+                             (dissoc :dimensions :target)
+                             (assoc :table_id (:id fk-table)
+                                    :name (:name fk-table-field)
+                                    :display_name (:display_name fk-table-field)
+                                    :position 1
+                                    :base_type "type/Text"
+                                    :table (merge
+                                            (dissoc (table-defaults :h2) :segments :field_values :metrics)
+                                            (t2/select-one [:model/Table
+                                                            :id :created_at :updated_at
+                                                            :initial_sync_status :view_count]
+                                                           :id (:id fk-table))
+                                            {:schema       "temp-schema"
+                                             :name         "fk-table"
+                                             :display_name "fk-table"
+                                             :entity_type  nil
+                                             :is_writable nil})))
+                 :destination (-> (field-details table-field)
+                                  (dissoc :dimensions :target)
+                                  (assoc :table_id (:id table)
+                                         :name (:name table-field)
+                                         :display_name (:display_name table-field)
+                                         :position 1
+                                         :base_type "type/Text"
+                                         :table (merge
+                                                 (dissoc (table-defaults :h2) :db :segments :field_values :metrics)
+                                                 (t2/select-one [:model/Table
+                                                                 :id :created_at :updated_at
+                                                                 :initial_sync_status :view_count]
+                                                                :id (:id table))
+                                                 {:schema "temp-schema"
+                                                  :name "table"
+                                                  :display_name "table"
+                                                  :entity_type nil
+                                                  :is_writable nil})))}]
+               (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (:id table)))))))))
 
 (deftest ^:parallel basic-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"

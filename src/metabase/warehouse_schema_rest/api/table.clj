@@ -301,6 +301,31 @@
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
+(api.macros/defendpoint :get "/:id/fks"
+  "Get all foreign keys from active tables whose destination is a `Field` that belongs to
+  this `Table`."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/read-check :model/Table id)
+  (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
+    (for [origin-field (t2/select :model/Field
+                                  {:select [:f.*]
+                                   :from [[(t2/table-name :model/Field) :f]]
+                                   :inner-join [[(t2/table-name :model/Table) :t]
+                                                [:= :f.table_id :t.id]]
+                                   :where
+                                   [:and
+                                    [:is :t.active true]
+                                    [:is :f.active true]
+                                    [:in :f.fk_target_field_id field-ids]]})]
+      ;; it's silly to be hydrating some of these tables/dbs
+      {:relationship   :Mt1
+       :origin_id      (:id origin-field)
+       :origin         (-> (t2/hydrate origin-field [:table :db])
+                           (update :table schema.table/present-table))
+       :destination_id (:fk_target_field_id origin-field)
+       :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/rescan_values"
