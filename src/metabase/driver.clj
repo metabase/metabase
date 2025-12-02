@@ -7,7 +7,7 @@
    SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
-  (:refer-clojure :exclude [some mapv])
+  (:refer-clojure :exclude [some mapv empty?])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.java.io :as io]
@@ -21,9 +21,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]
+   [metabase.util.performance :refer [mapv empty?]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -109,7 +110,10 @@
   For other drivers (e.g., MongoDB), this should be called in their connection creation logic."
   [database-id details]
   (if-let [swap-map (get *swapped-connection-details* database-id)]
-    (apply-detail-swaps details swap-map)
+    (do
+      (log/debugf "Applying swapped connection details for database %d, swap keys: %s"
+                  database-id (keys swap-map))
+      (apply-detail-swaps details swap-map))
     details))
 
 (defn do-with-swapped-connection-details
@@ -118,6 +122,8 @@
   (when (contains? *swapped-connection-details* database-id)
     (throw (ex-info "Nested connection detail swaps are not supported for the same database"
                     {:database-id database-id})))
+  (log/debugf "Entering swapped connection details scope for database %d, swap keys: %s"
+              database-id (keys swap-map))
   (binding [*swapped-connection-details* (assoc *swapped-connection-details* database-id swap-map)]
     (thunk)))
 
@@ -778,6 +784,9 @@
     ;; Does this driver support splitting strings and extracting a part?
     :split-part
 
+    ;; Does this driver support collation settings on text fields?
+    :collate
+
     ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
     ;; bucketing was specified in the query.
     ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.
@@ -870,7 +879,10 @@
     :describe-is-nullable
 
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
-    :describe-is-generated})
+    :describe-is-generated
+
+    ;; Does this driver support the workspace feature
+    :workspace})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -916,7 +928,8 @@
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
                               :metadata/table-existence-check         false
-                              :metadata/table-writable-check          false}]
+                              :metadata/table-writable-check          false
+                              :workspace                              false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1244,8 +1257,14 @@
   :hierarchy #'hierarchy)
 
 (defmulti compile-transform
-  "Compiles the sql for a transform statement, given an inner sql query and a destination."
+  "Compiles the sql for a transform statement (CREATE TABLE AS), given a compiled inner sql query and a destination."
   {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-insert
+  "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given a compiled inner sql query and a destination."
+  {:added "0.58.0", :arglists '([driver {:keys [query output-table]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1287,6 +1306,10 @@
   (fn [driver _database transform-details]
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
+
+(defmethod drop-transform-target! [::driver :table-incremental]
+  [driver database target]
+  ((get-method drop-transform-target! [driver :table]) driver database target))
 
 (mr/def ::native-query-deps.table-dep
   [:map
@@ -1530,14 +1553,14 @@
 (defmethod insert-from-source! [::driver :jsonl-file]
   [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
   (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)
+    (let [lines     (line-seq rdr)
           data-rows (map (fn [line]
                            (let [m (json/decode line)]
                              (mapv (fn [column]
                                      (let [raw-val (get m (:name column))]
                                        (insert-col->val driver :jsonl-file column raw-val)))
                                    columns)))
-                         lines)]
+                         (filter (comp not empty?) lines))]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmulti add-columns!

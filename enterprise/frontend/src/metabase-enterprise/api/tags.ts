@@ -18,12 +18,16 @@ import type {
   PythonLibrary,
   SandboxDependencyNode,
   SnippetDependencyNode,
+  SupportAccessGrant,
   TableDependencyNode,
   Transform,
   TransformDependencyNode,
   TransformJob,
   TransformRun,
   TransformTag,
+  Workspace,
+  WorkspaceContentItem,
+  WorkspaceContents,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -49,6 +53,9 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-current-task",
   "python-transform-library",
   "workspace",
+  "support-access-grant",
+  "support-access-grant-current",
+  "library-collection",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -77,6 +84,32 @@ export function invalidateTags(
   tags: TagDescription<EnterpriseTagType>[],
 ): TagDescription<EnterpriseTagType>[] {
   return !error ? tags : [];
+}
+
+export function provideWorkspacesTags(
+  workspaces: Workspace[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
+}
+
+export function provideWorkspaceTags(
+  workspace: Workspace,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("workspace", workspace.id)];
+}
+
+export function provideWorkspaceContentsTags(
+  workspaceContents: WorkspaceContents,
+): TagDescription<EnterpriseTagType>[] {
+  return provideWorkspaceContentItemsTags(
+    workspaceContents.contents.transforms,
+  );
+}
+
+export function provideWorkspaceContentItemsTags(
+  items: WorkspaceContentItem[],
+): TagDescription<EnterpriseTagType>[] {
+  return items.flatMap((transform) => idTag("transform", transform.id));
 }
 
 export function provideTransformTags(
@@ -273,4 +306,19 @@ export function provideDependencyGraphTags(
   graph: DependencyGraph,
 ): TagDescription<EnterpriseTagType>[] {
   return provideDependencyNodeListTags(graph.nodes);
+}
+
+export function provideSupportAccessGrantTags(
+  grant: SupportAccessGrant,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("support-access-grant", grant.id)];
+}
+
+export function provideSupportAccessGrantListTags(
+  grants: SupportAccessGrant[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("support-access-grant"),
+    ...grants.flatMap(provideSupportAccessGrantTags),
+  ];
 }

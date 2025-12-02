@@ -115,8 +115,8 @@ describe("scenarios > joins > custom expressions", () => {
           H.openOrdersTable({ mode: "notebook" });
 
           H.join();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Reviews").click();
           });
           H.popover().within(() => {
@@ -151,8 +151,8 @@ describe("scenarios > joins > custom expressions", () => {
     H.openNotebook();
 
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders Model").click();
     });
     H.popover().within(() => {
@@ -181,8 +181,8 @@ describe("scenarios > joins > custom expressions", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
     H.popover().within(() => {

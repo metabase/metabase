@@ -469,19 +469,39 @@
 
 (deftest ^:parallel maybe-swap-details-test
   (testing "maybe-swap-details merges swap map into details"
-    (binding [#'driver/*swapped-connection-details* {1 {:user "swap-user" :password "swap-pass"}}]
+    (driver/with-swapped-connection-details 1 {:user "swap-user" :password "swap-pass"}
       (is (= {:host "localhost" :user "swap-user" :password "swap-pass"}
              (driver/maybe-swap-details 1 {:host "localhost" :user "original-user" :password "original-pass"})))))
 
   (testing "maybe-swap-details returns details unchanged when no swap exists"
-    (binding [#'driver/*swapped-connection-details* {1 {:user "swap-user"}}]
+    (driver/with-swapped-connection-details 1 {:user "swap-user"}
       (is (= {:host "localhost" :user "original-user"}
              (driver/maybe-swap-details 2 {:host "localhost" :user "original-user"})))))
 
   (testing "maybe-swap-details supports deep merge for nested maps"
-    (binding [#'driver/*swapped-connection-details* {1 {:ssl {:key-store-password "new-pass"}}}]
+    (driver/with-swapped-connection-details 1 {:ssl {:key-store-password "new-pass"}}
       (is (= {:host "localhost" :ssl {:enabled true :key-store-password "new-pass"}}
              (driver/maybe-swap-details 1 {:host "localhost" :ssl {:enabled true :key-store-password "old-pass"}})))))
+
+  (testing "deep merge adds new keys to nested maps"
+    (driver/with-swapped-connection-details 1 {:ssl {:new-key "new-value"}}
+      (is (= {:host "localhost" :ssl {:enabled true :new-key "new-value"}}
+             (driver/maybe-swap-details 1 {:host "localhost" :ssl {:enabled true}})))))
+
+  (testing "deep merge replaces nested map with non-map value"
+    (driver/with-swapped-connection-details 1 {:ssl "disabled"}
+      (is (= {:host "localhost" :ssl "disabled"}
+             (driver/maybe-swap-details 1 {:host "localhost" :ssl {:enabled true :key-store "path"}})))))
+
+  (testing "deep merge adds nested map where none existed"
+    (driver/with-swapped-connection-details 1 {:ssl {:enabled true}}
+      (is (= {:host "localhost" :ssl {:enabled true}}
+             (driver/maybe-swap-details 1 {:host "localhost"})))))
+
+  (testing "deep merge works with multiple levels of nesting"
+    (driver/with-swapped-connection-details 1 {:advanced {:ssl {:cert {:path "/new/path"}}}}
+      (is (= {:host "localhost" :advanced {:timeout 30 :ssl {:enabled true :cert {:path "/new/path"}}}}
+             (driver/maybe-swap-details 1 {:host "localhost" :advanced {:timeout 30 :ssl {:enabled true :cert {:path "/old/path"}}}})))))
 
   (testing "nested swaps for the same database throw an exception"
     (driver/with-swapped-connection-details 1 {:user "outer"}

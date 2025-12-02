@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
@@ -47,6 +48,25 @@
       :source-column "category"
       :filter-fn     lib/=
       :filter-values [category]})))
+
+(deftest validate-target-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (testing "Unique"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/validate-target"
+                                             {:db_id  (mt/id)
+                                              :target {:type   "table"
+                                                       :schema "public"
+                                                       :name   (str/replace (str (random-uuid)) "-" "_")}})]
+          (is (= "OK" response))))
+      (testing "Conflict"
+        (let [table    (t2/select-one :model/Table :active true)
+              response (mt/user-http-request :crowberto :post 403 "ee/transform/validate-target"
+                                             {:db_id  (:db_id table)
+                                              :target {:type   "table"
+                                                       :schema (:schema table)
+                                                       :name   (:name table)}})]
+          (is (= "A table with that name already exists." response)))))))
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -268,6 +288,96 @@
                     (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag1-id])))
             (is (=? [{:id t2-id}]
                     (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag2-id])))))))))
+
+(deftest filter-transforms-by-workspace-test
+  (testing "GET /api/ee/transform filters out workspace transforms by default"
+    (mt/with-premium-features #{:transforms :workspaces}
+      (mt/with-temp [:model/Transform {global-id :id}    {}
+                     :model/Workspace {ws-id :id}        {:name "Test Workspace"}
+                     :model/Transform {ws-transform-id :id} {:workspace_id ws-id}]
+        (testing "by default, only global transforms (workspace_id=null) are returned"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform")
+                ids (set (map :id transforms))]
+            (is (contains? ids global-id))
+            (is (not (contains? ids ws-transform-id)))))))))
+
+(deftest exclude-workspace-id-filter-test
+  (testing "GET /api/ee/transform with exclude_workspace_id excludes mirrored transforms"
+    (mt/with-premium-features #{:transforms :workspaces}
+      (mt/with-temp [;; Global transforms (workspace_id = null)
+                     :model/Transform                 {global1-id :id} {:name "Global Transform 1"}
+                     :model/Transform                 {global2-id :id} {:name "Global Transform 2"}
+                     :model/Transform                 {global3-id :id} {:name "Global Transform 3"}
+                     ;; Workspace
+                     :model/Workspace                 {ws-id :id}      {:name "Test Workspace"}
+                     ;; Workspace transforms (mirrored from global1 and global2)
+                     :model/Transform                 {ws-xf1-id :id}  {:name         "Workspace Transform 1"
+                                                                        :workspace_id ws-id}
+                     :model/Transform                 {ws-xf2-id :id}  {:name         "Workspace Transform 2"
+                                                                        :workspace_id ws-id}
+                     ;; Mappings: global1 -> ws-xf1, global2 -> ws-xf2
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global1-id
+                                                                        :downstream_id ws-xf1-id
+                                                                        :workspace_id  ws-id}
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global2-id
+                                                                        :downstream_id ws-xf2-id
+                                                                        :workspace_id  ws-id}]
+        (testing "without exclude_workspace_id, returns all global transforms"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform")
+                ids (set (map :id transforms))]
+            (is (contains? ids global1-id))
+            (is (contains? ids global2-id))
+            (is (contains? ids global3-id))
+            ;; workspace transforms should NOT be returned (they have workspace_id set)
+            (is (not (contains? ids ws-xf1-id)))
+            (is (not (contains? ids ws-xf2-id)))))
+
+        (testing "with exclude_workspace_id, excludes global transforms mirrored into that workspace"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                 :exclude_workspace_id ws-id)
+                ids (set (map :id transforms))]
+            ;; global1 and global2 are mirrored into the workspace, so they should be excluded
+            (is (not (contains? ids global1-id)))
+            (is (not (contains? ids global2-id)))
+            ;; global3 is NOT mirrored, so it should be returned
+            (is (contains? ids global3-id))
+            ;; workspace transforms should still NOT be returned
+            (is (not (contains? ids ws-xf1-id)))
+            (is (not (contains? ids ws-xf2-id))))))))
+
+  (testing "exclude_workspace_id only excludes transforms mirrored into that specific workspace"
+    (mt/with-premium-features #{:transforms :workspaces}
+      (mt/with-temp [;; Global transforms
+                     :model/Transform                 {global1-id :id} {:name "Global Transform 1"}
+                     :model/Transform                 {global2-id :id} {:name "Global Transform 2"}
+                     ;; Two workspaces
+                     :model/Workspace                 {ws1-id :id}     {:name "Workspace 1"}
+                     :model/Workspace                 {ws2-id :id}     {:name "Workspace 2"}
+                     ;; global1 mirrored only into ws1
+                     :model/Transform                 {ws1-xf-id :id}  {:name         "WS1 Transform"
+                                                                        :workspace_id ws1-id}
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global1-id
+                                                                        :downstream_id ws1-xf-id
+                                                                        :workspace_id  ws1-id}
+                     ;; global2 mirrored only into ws2
+                     :model/Transform                 {ws2-xf-id :id}  {:name         "WS2 Transform"
+                                                                        :workspace_id ws2-id}
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global2-id
+                                                                        :downstream_id ws2-xf-id
+                                                                        :workspace_id  ws2-id}]
+        (testing "exclude_workspace_id=ws1 excludes only global1"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                 :exclude_workspace_id ws1-id)
+                ids (set (map :id transforms))]
+            (is (not (contains? ids global1-id)))
+            (is (contains? ids global2-id))))
+
+        (testing "exclude_workspace_id=ws2 excludes only global2"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                 :exclude_workspace_id ws2-id)
+                ids (set (map :id transforms))]
+            (is (contains? ids global1-id))
+            (is (not (contains? ids global2-id)))))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -912,3 +1022,85 @@
                                      :schema (get-test-schema)
                                      :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
+
+(deftest ^:parallel extract-columns-from-query-test
+  (testing "POST /api/ee/transform/extract-columns"
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
+                           :clickhouse :redshift :bigquery-cloud-sdk)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (letfn [(make-native-query [sql]
+                    {:lib/type :mbql/query
+                     :database (mt/id)
+                     :stages [{:lib/type :mbql.stage/native
+                               :native sql}]})]
+            (testing "Successfully extracts columns from a simple SELECT query"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
+                (is (= ["id" "name" "category" "price"] (:columns response)))))
+
+            (testing "Returns nil for invalid SQL"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT * FORM invalid_table")})]
+                (is (nil? (:columns response)))))
+
+            (testing "Extracts columns from query with aliases"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
+                (is (= ["product_id" "product_name"] (:columns response)))))
+
+            (testing "Requires superuser permissions"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "ee/transform/extract-columns"
+                                           {:query (make-native-query "SELECT * FROM transforms_products")}))))
+
+            (testing "Returns 404 for non-existent database"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 "ee/transform/extract-columns"
+                                           {:query {:lib/type :mbql/query
+                                                    :database 999999
+                                                    :stages [{:lib/type :mbql.stage/native
+                                                              :native "SELECT * FROM transforms_products"}]}}))))))))))
+
+(deftest ^:parallel is-simple-query-test
+  (testing "POST /api/ee/transform/is-simple-query"
+    (mt/with-premium-features #{:transforms}
+      (testing "Returns true for simple SELECT queries"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products"})]
+          (is (true? (:is_simple response)))
+          (is (nil? (:reason response)))))
+
+      (testing "Returns true for simple SELECT with WHERE clause"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products WHERE category = 'Electronics'"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns true for simple SELECT with JOIN"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT p.id, p.name, c.name FROM products p JOIN categories c ON p.category_id = c.id"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns false for query with LIMIT"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains an OFFSET" (:reason response)))))
+
+      (testing "Returns false for query with LIMIT and OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10 OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with CTE"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a CTE" (:reason response))))))))

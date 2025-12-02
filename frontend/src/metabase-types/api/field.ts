@@ -1,5 +1,5 @@
 import type { RowValue } from "./dataset";
-import type { FieldReference } from "./query";
+import type { DimensionReference, FieldReference } from "./query";
 import type { Table, TableId } from "./table";
 
 export type FieldId = number;
@@ -70,7 +70,7 @@ export interface Field {
   id: FieldId | FieldReference;
   table_id: TableId;
   table?: Table;
-  field_ref?: FieldReference;
+  field_ref?: DimensionReference;
 
   name: string;
   display_name: string;
@@ -86,7 +86,7 @@ export interface Field {
   preview_display: boolean;
   position: number;
 
-  parent_id?: FieldId;
+  parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];

@@ -19,7 +19,7 @@
   [site-uuid-string]
   (apply str (map first (str/split site-uuid-string #"-"))))
 
-(defn- isolation-schema-name
+(defn isolation-schema-name
   "Generate schema/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern."
   [workspace-id]
   (assert (some? workspace-id))
@@ -27,7 +27,7 @@
         clean-workspace-id (str/replace (str workspace-id) #"[^a-zA-Z0-9]" "_")]
     (format "mb__isolation_%s_%s" instance-slug clean-workspace-id)))
 
-(defn- isolated-table-name
+(defn isolated-table-name
   "Generate name for a table mirroring transform target table in the isolated database namespace."
   [{:keys [schema name] :as _source-table}]
   ;; the schema that original transform target lives in
@@ -94,6 +94,14 @@
     {:schema           schema-name
      :database_details read-user}))
 
+;; TODO Either support h2 fully, or update tests not to use h2
+(defmethod init-workspace-database-isolation! :h2 [database workspace]
+  (let [driver      (driver.u/database->driver database)
+        schema-name (isolation-schema-name (:id workspace))
+        jdbc-spec   (sql-jdbc.conn/connection-details->spec driver (:details database))]
+    (jdbc/execute! jdbc-spec [(format "CREATE SCHEMA %s" schema-name)])))
+
+
 ;;;; Transform table duplication
 
 (defmulti duplicate-output-table!
@@ -126,26 +134,56 @@
 
 ;;;; To be public when things are settled
 
+;; TODO: Should be part of mirroring!
 (defn create-isolated-output-tables!
   "Create new _isolated tables_ to correspond to the outputs of the upstream graph.
-   Decorate the graph outputs with the mapping to the new tables."
-  [workspace database graph]
-  (let [output-ids    (map :id (:outputs graph))
+   Decorate the graph outputs with the mapping to the new tables.
+   For outputs where the table doesn't exist yet (id=nil), includes them in the graph with the intended
+   isolated table location, but skips actual table duplication."
+  [workspace database ctx]
+  (let [graph (:graph ctx)
+        existing-output-ids (keep :id (:outputs graph))
         ;; TODO (Chris 2025-11-20) Avoid querying again here, let's have this data passed down as part of the graph
-        table-by-id   (when (seq output-ids)
-                        (into {}
-                              (map (juxt :id identity))
-                              (t2/select [:model/Table :id :name :schema] :id [:in output-ids])))]
-    (assoc graph :outputs (vec
-                           (for [upstream-output (:outputs graph)
-                                 :let [hydrated-output (merge upstream-output
-                                                              (get table-by-id (:id upstream-output)))]]
-                             (let [isolated-table (duplicate-output-table! database workspace hydrated-output)]
-                               (t2/insert! :model/WorkspaceMappingTable
-                                           {:upstream_id   (:id upstream-output)
-                                            :downstream_id (:id isolated-table)
-                                            :workspace_id  (:id workspace)})
-                               (assoc hydrated-output :mapping isolated-table)))))))
+        table-by-id         (when (seq existing-output-ids)
+                              (into {}
+                                    (map (juxt :id identity))
+                                    (t2/select [:model/Table :id :name :schema] :id [:in existing-output-ids])))
+        outputs             (for [upstream-output (:outputs graph)]
+                              (if (:id upstream-output)
+                                ;; Table exists, duplicate it
+                                (let [hydrated-output (merge upstream-output (get table-by-id (:id upstream-output)))
+                                      isolated-table  (duplicate-output-table! database workspace hydrated-output)]
+                                  (t2/insert! :model/WorkspaceMappingTable
+                                              {:upstream_id   (:id upstream-output)
+                                               :downstream_id (:id isolated-table)
+                                               :workspace_id  (:id workspace)})
+                                  (assoc hydrated-output :mapping isolated-table))
+                                ;; Table doesn't exist yet, provide the intended isolated location
+                                (let [isolated-schema (isolation-schema-name (:id workspace))
+                                      isolated-name   (isolated-table-name upstream-output)]
+                                  (assoc upstream-output :mapping {:id     nil
+                                                                   :schema isolated-schema
+                                                                   :name   isolated-name}))))
+        src-output-id->dst-output
+        (into {}
+              (comp (filter :id)
+                    (map (fn [{:keys [id mapping]}]
+                           [id mapping])))
+              outputs)
+        src-schema+table->dst->schema+table
+        (into {}
+              (map (fn [{:keys [mapping] :as output}]
+                     (let [src-schema (:schema output)
+                           src-table (:name output)
+                           dst-schema (:schema mapping)
+                           dst-table (:name mapping)]
+                       [[src-schema src-table]
+                        [dst-schema dst-table]])))
+              outputs)]
+    (-> ctx
+        (update :graph assoc :outputs (vec outputs))
+        (assoc :src-output-id->dst-output src-output-id->dst-output)
+        (assoc :src-schema+table->dst->schema+table src-schema+table->dst->schema+table))))
 
 (defn ensure-database-isolation!
   "Wrapper around the driver method, to make migrations easier in future."

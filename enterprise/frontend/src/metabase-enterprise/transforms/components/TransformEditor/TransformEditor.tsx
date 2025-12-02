@@ -3,90 +3,75 @@ import { useMemo } from "react";
 import { useSelector } from "metabase/lib/redux";
 import {
   QueryEditor,
+  type QueryEditorUiOptions,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database, QueryTransformSource } from "metabase-types/api";
 
-import { EditorHeader } from "./EditorHeader";
-import { getEditorOptions, getQuery, getValidationResult } from "./utils";
+import { getEditorOptions } from "./utils";
 
-type TransformEditorProps = {
-  name?: string;
+export type TransformEditorProps = {
   source: QueryTransformSource;
   uiState: QueryEditorUiState;
+  uiOptions?: QueryEditorUiOptions;
   proposedSource: QueryTransformSource | undefined;
   databases: Database[];
-  isNew: boolean;
-  isDirty: boolean;
-  isSaving: boolean;
   onChangeSource: (source: QueryTransformSource) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
-  onSave: () => void;
-  onCancel: () => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
 };
 
 export function TransformEditor({
-  name,
   source,
   proposedSource,
   databases,
   uiState,
-  isNew,
-  isDirty,
-  isSaving,
-  onSave,
+  uiOptions,
   onChangeSource,
   onChangeUiState,
-  onCancel,
   onAcceptProposed,
   onRejectProposed,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
-  const query = useMemo(() => getQuery(source, metadata), [source, metadata]);
+  const query = useMemo(
+    () => Lib.fromJsQueryAndMetadata(metadata, source.query),
+    [source, metadata],
+  );
   const proposedQuery = useMemo(
-    () => (proposedSource ? getQuery(proposedSource, metadata) : undefined),
+    () =>
+      proposedSource
+        ? Lib.fromJsQueryAndMetadata(metadata, proposedSource.query)
+        : undefined,
     [proposedSource, metadata],
   );
-  const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
-  const validationResult = useMemo(() => getValidationResult(query), [query]);
+  const mergedUiOptions = useMemo(
+    () => ({ ...getEditorOptions(databases), ...uiOptions }),
+    [databases, uiOptions],
+  );
 
   const handleQueryChange = (query: Lib.Query) => {
-    onChangeSource({ type: "query", query: Lib.toJsQuery(query) });
+    const newSource: QueryTransformSource = {
+      ...source,
+      type: "query",
+      query: Lib.toJsQuery(query),
+    };
+
+    onChangeSource(newSource);
   };
 
   return (
-    <Stack
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
-      data-testid="transform-query-editor"
-      gap={0}
-    >
-      <EditorHeader
-        name={name}
-        validationResult={validationResult}
-        isNew={isNew}
-        isDirty={isDirty}
-        isSaving={isSaving}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-      <QueryEditor
-        query={query}
-        uiState={uiState}
-        uiOptions={uiOptions}
-        proposedQuery={proposedQuery}
-        onChangeQuery={handleQueryChange}
-        onChangeUiState={onChangeUiState}
-        onAcceptProposed={onAcceptProposed}
-        onRejectProposed={onRejectProposed}
-      />
-    </Stack>
+    <QueryEditor
+      query={query}
+      uiState={uiState}
+      uiOptions={mergedUiOptions}
+      proposedQuery={proposedQuery}
+      onChangeQuery={handleQueryChange}
+      onChangeUiState={onChangeUiState}
+      onAcceptProposed={onAcceptProposed}
+      onRejectProposed={onRejectProposed}
+    />
   );
 }
