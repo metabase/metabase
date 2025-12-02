@@ -239,7 +239,6 @@
            app-db
            collections
            config
-           premium-features
            queries
            util}}
 
@@ -1818,6 +1817,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
    :uses #{cache
+           premium-features
            query-processor
            task
            util}}
