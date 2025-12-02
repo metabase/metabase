@@ -23,14 +23,19 @@ export const CodeTab = ({
   onTransformClick,
 }: CodeTabProps) => {
   const { editedTransforms } = useWorkspace();
+
+  const workspaceTransformsUpstreamIds = useMemo(
+    () => new Set(workspaceTransforms.map((t) => t.upstream_id)),
+    [workspaceTransforms],
+  );
   const availableTransforms = useMemo(() => {
     return transforms.filter((transform) => {
       return (
         transform.workspace_id == null &&
-        !workspaceTransforms.some((t) => t.id === transform.id)
+        !workspaceTransformsUpstreamIds.has(transform.id)
       );
     });
-  }, [workspaceTransforms, transforms]);
+  }, [workspaceTransformsUpstreamIds, transforms]);
 
   const handleTransformClick = (transform: Transform) => {
     const edited = editedTransforms.get(transform.id);
