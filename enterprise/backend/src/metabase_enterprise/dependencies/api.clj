@@ -466,8 +466,10 @@
                         [(case sort_column
                            :name :native_query_snippet.name
                            :view_count [:inline 0]
+                           :location :collection.name
                            :native_query_snippet.name) :sort_key]]
                :from [:native_query_snippet]
+               :left-join [:collection [:= :collection.id :native_query_snippet.collection_id]]
                :where (let [unreffed-where [:not [:exists
                                                   {:select [1]
                                                    :from [:dependency]
@@ -562,9 +564,10 @@
                                (assoc transform :view_count (get id->run-count (:id transform) 0))]))
                        (into {}))))
    :snippet (when-let [snippet-ids (seq (map :entity_id (get ids-by-type "snippet")))]
-              (->> (t2/select :model/NativeQuerySnippet :id [:in snippet-ids])
-                   (map (fn [snippet] [(:id snippet) (assoc snippet :view_count 0)]))
-                   (into {})))
+              (-> (t2/select :model/NativeQuerySnippet :id [:in snippet-ids])
+                  (t2/hydrate :collection)
+                  (->> (map (fn [snippet] [(:id snippet) (assoc snippet :view_count 0)]))
+                       (into {}))))
    :dashboard (when-let [dashboard-ids (seq (map :entity_id (get ids-by-type "dashboard")))]
                 (-> (t2/select :model/Dashboard :id [:in dashboard-ids])
                     (t2/hydrate :creator [:collection :is_personal])
@@ -588,7 +591,7 @@
   {:table [:name :display_name :db_id :schema :db :view_count :owner]
    :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
           :collection :dashboard :creator :last-edit-info]
-   :snippet [:name :view_count]
+   :snippet [:name :view_count :collection_id :collection]
    :transform [:name :table :creator :last_run :target :view_count]
    :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
    :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
@@ -610,7 +613,7 @@
   [sort_column selected-types]
 
   (when (= sort_column :location)
-    (when (some #{:sandbox :transform :snippet} selected-types)
+    (when (some #{:sandbox :transform} selected-types)
       (throw (ex-info (tru "Sorting by location is only supported for cards, tables, dashboards and documents")
                       {:status-code 400
                        :types selected-types})))))
