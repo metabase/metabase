@@ -450,6 +450,7 @@
                                            :from [:transform_run]
                                            :where [:= :transform_run.transform_id :transform.id]}
                                           0]
+                             :location [:inline nil]
                              :transform.name) :sort_key]]
                  :from [:transform]
                  :where (let [unreffed-where [:not [:exists
@@ -521,6 +522,7 @@
                            (case sort_column
                              :name sort-col
                              :view_count [:inline 0]
+                             :location [:inline nil]
                              sort-col)) :sort_key]]
                :from [:sandboxes]
                :where [:not [:exists
@@ -609,15 +611,6 @@
    [:sort_column {:optional true} (ms/enum-decode-keyword [:name :location :view_count])]
    [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
 
-(defn- validate-unreferenced-items-params
-  [sort_column selected-types]
-
-  (when (= sort_column :location)
-    (when (some #{:sandbox :transform} selected-types)
-      (throw (ex-info (tru "Sorting by location is only supported for cards, tables, dashboards and documents")
-                      {:status-code 400
-                       :types selected-types})))))
-
 (api.macros/defendpoint :get "/unreferenced-items"
   "Returns a paginated list of all unreferenced items in the instance.
    An unreferenced item is one that is not a dependency of any other item.
@@ -650,7 +643,6 @@
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        _ (validate-unreferenced-items-params sort_column selected-types)
         entity-queries (unreferenced-entity-queries sort_column card-types query)
         union-queries (keep #(get entity-queries %) selected-types)
         union-query {:union-all union-queries}
