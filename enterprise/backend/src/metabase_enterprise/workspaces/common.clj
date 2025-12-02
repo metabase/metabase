@@ -256,9 +256,13 @@
         tables-where-clause (mirror-table-to-delete-where (:database_id workspace) targets)
         tables-data (t2/select :model/Table {:where tables-where-clause})
         tables-ids (into #{} (map :id) tables-data)]
-    (ws.isolation/drop-isolated-tables! database targets)
-    (t2/delete! :model/Table :id [:in tables-ids])
-    (t2/delete! :model/Transform :id [:in mirror-transforms-ids])))
+    (assert (every? pos-int? tables-ids))
+    (when (seq targets)
+      (ws.isolation/drop-isolated-tables! database targets))
+    (when (seq tables-ids)
+      (t2/delete! :model/Table :id [:in tables-ids]))
+    (when (seq mirror-transforms-ids)
+      (t2/delete! :model/Transform :id [:in mirror-transforms-ids]))))
 
 #_:clj-kondo/ignore
 (comment
