@@ -13,6 +13,7 @@ import { getIsLocalhost } from "./get-is-localhost";
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
   isEnabled: boolean;
+  isGuestEmbed: boolean | null;
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
   session: MetabaseEmbeddingSessionToken | null;
@@ -67,6 +68,7 @@ export function getSdkUsageProblem(
 ): SdkUsageProblem | null {
   const {
     isEnabled,
+    isGuestEmbed,
     hasTokenFeature,
     authConfig,
     isDevelopmentMode,
@@ -83,6 +85,14 @@ export function getSdkUsageProblem(
   // in case of a local app running a distant MB instance
   const isLocalhost = isLocalHost ?? getIsLocalhost();
 
+  if (isDevelopmentMode) {
+    return toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE");
+  }
+
+  if (isGuestEmbed === null || isGuestEmbed) {
+    return null;
+  }
+
   /**
    * TODO: these checks for non-localhost environments are pending on
    *       the "allowing CORS for /api/session/properties" PR to be merged
@@ -98,12 +108,8 @@ export function getSdkUsageProblem(
       isApiKey,
       isLocalhost,
       isEnabled,
-      isDevelopmentMode,
       session,
     })
-      .with({ isDevelopmentMode: true }, () =>
-        toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
-      )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
