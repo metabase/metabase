@@ -680,6 +680,7 @@
            metabase.lib.join.util
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
+           metabase.lib.metadata.column
            metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
            metabase.lib.metadata.result-metadata
@@ -1895,7 +1896,6 @@
    :uses #{analyze
            api
            collections
-           config
            driver
            events
            graph
@@ -2176,6 +2176,7 @@
            app-db
            appearance
            collections
+           config
            logger
            models
            plugins
@@ -2276,6 +2277,8 @@
            app-db
            config
            driver
+           lib
+           lib-be
            query-processor
            settings
            util

@@ -11,6 +11,7 @@ import {
   useUpdateFieldValuesMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { MetadataEventSource } from "metabase/metadata/pages/DataModelV1/types";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -51,12 +52,14 @@ import {
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   database: Database;
   field: Field;
+  eventSource: MetadataEventSource;
 }
 
 export const RemappingPicker = ({
   comboboxProps,
   database,
   field,
+  eventSource,
   ...props
 }: Props) => {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -131,7 +134,7 @@ export const RemappingPicker = ({
         t`Failed to update display values of ${field.display_name}`,
       );
     } else {
-      trackMetadataChange("display_values");
+      trackMetadataChange("display_values", eventSource);
       sendSuccessToast(
         t`Display values of ${field.display_name} updated`,
         async () => {
