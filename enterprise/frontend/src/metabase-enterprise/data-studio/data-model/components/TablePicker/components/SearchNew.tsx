@@ -54,12 +54,12 @@ function buildResultTree(tables: Table[]): RootNode {
     });
 
     if (!databases.has(dbKey)) {
-      const dbName = table.db?.name;
+      const label = table.db?.name || String(databaseId);
 
       const databaseNode: DatabaseNode = {
         type: "database",
         key: dbKey,
-        label: dbName || `Database ${databaseId}`,
+        label,
         value: { databaseId: databaseId },
         children: [],
       };
