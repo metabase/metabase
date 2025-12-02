@@ -1,12 +1,15 @@
-const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
+
+const { H } = cy;
 
 const localesAndExpected = [
   {
@@ -224,22 +227,26 @@ describe("scenarios > dashboard > filters > date", () => {
 
 const dashboard = () => cy.findByTestId("dashboard");
 const createDashboardWithDateRangeDefault = () =>
-  H.createDashboard({
-    name: "Date Range Locale Test",
-    parameters: [
-      {
-        id: "date-param",
-        name: "Date",
-        slug: "date",
-        type: "date/range",
-        sectionId: "date",
-        // Set default as ISO date strings; UI should format per locale
-        default: ["2025-01-02", "2025-02-03"],
+  H.createQuestionAndDashboard({
+    questionDetails: {
+      query: {
+        "source-table": SAMPLE_DATABASE.PRODUCTS_ID,
+        fields: [
+          ["field", SAMPLE_DATABASE.PRODUCTS.ID, null],
+          ["field", SAMPLE_DATABASE.PRODUCTS.RATING, null],
+        ],
       },
-    ],
-  }).then(({ body: { id } }) => {
-    cy.wrap(id).as("dashboardId");
-    return id;
+    },
+    dashboardDetails: {
+      name: "Date Range Locale Test",
+      parameters: [
+        createMockParameter({
+          name: "Date",
+          type: "date/range",
+          default: ["2025-01-02", "2025-02-03"],
+        }),
+      ],
+    },
   });
 
 describe("Dashboard date picker format should respect locale settings", () => {
@@ -250,31 +257,36 @@ describe("Dashboard date picker format should respect locale settings", () => {
 
   localesAndExpected.forEach(({ localeName, expectedDateRange }) => {
     it(`shows correctly formatted values for a date range default in ${localeName} language`, () => {
-      // override the browser language for this test run
-      setupBrowserLocale(localeName);
-      createDashboardWithDateRangeDefault().then(H.visitDashboard);
+      createDashboardWithDateRangeDefault().then(
+        ({ body: { dashboard_id } }) => {
+          // override the browser language for this test run
+          setupBrowserLocale(localeName);
+          H.visitDashboard(dashboard_id);
 
-      dashboard()
-        .findByLabelText("Date")
-        .findByTestId("parameter-value")
-        .should(
-          "have.text",
-          `${expectedDateRange.startDate} - ${expectedDateRange.endDate}`,
-        );
+          // Verify the selected date value rendered respecting locale
+          dashboard()
+            .findByLabelText("Date")
+            .findByTestId("parameter-value")
+            .should(
+              "have.text",
+              `${expectedDateRange.startDate} - ${expectedDateRange.endDate}`,
+            );
 
-      dashboard().findByLabelText("Date").click();
+          dashboard().findByLabelText("Date").click();
 
-      // Verify the start and end date input values inside the popover/dialog
-      cy.findByRole("dialog").within(() => {
-        cy.findByLabelText("Start date").should(
-          "have.value",
-          expectedDateRange.startDate,
-        );
-        cy.findByLabelText("End date").should(
-          "have.value",
-          expectedDateRange.endDate,
-        );
-      });
+          // Verify the start and end date input values inside the popover/dialog
+          cy.findByRole("dialog").within(() => {
+            cy.findByLabelText("Start date").should(
+              "have.value",
+              expectedDateRange.startDate,
+            );
+            cy.findByLabelText("End date").should(
+              "have.value",
+              expectedDateRange.endDate,
+            );
+          });
+        },
+      );
     });
   });
 });
