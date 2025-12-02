@@ -74,10 +74,22 @@
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
-        pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+  (let [like       (fn [field pattern]
+                     (case (app-db/db-type)
+                       (:h2 :postgres) [:ilike field pattern]
+                       [:raw [:like field pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]]))
+        pattern    (some-> term
+                           (str/replace "\\" "\\\\")
+                           (str/replace "_" "\\_")
+                           (str/replace "%" "\\%")
+                           (str/replace "*" "%")
+                           (cond-> (not (str/ends-with? term "%")) (str "%")))
         where      (cond-> [:and [:= :active true]]
-                     (not (str/blank? term)) (conj [like :name pattern])
+                     (not (str/blank? term)) (conj [:or
+                                                    (like :name pattern)
+                                                    (like :display_name pattern)
+                                                    ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
+                                                    (like :display_name (str "% " pattern))])
                      visibility-type         (conj [:= :visibility_type visibility-type])
                      data-layer              (conj [:= :data_layer      (name data-layer)])
                      data-source             (conj [:= :data_source     (name data-source)])

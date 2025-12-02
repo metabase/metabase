@@ -3,7 +3,10 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
-import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModelV1/types";
+import type {
+  MetadataEditAnalyticsDetail,
+  MetadataEventSource,
+} from "metabase/metadata/pages/DataModelV1/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
@@ -215,7 +218,7 @@ export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
 
 export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
   event: "embed_wizard_resource_selection_completed";
-  event_detail: "default" | "custom";
+  event_detail: string;
 }>;
 
 export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
@@ -225,7 +228,7 @@ export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
 
 export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
-  event_detail: "sso" | "user_session";
+  event_detail: string;
 }>;
 
 export type TableEditingSettingsToggledEvent = ValidateEvent<{
@@ -410,7 +413,7 @@ export type LearnAboutDataClickedEvent = ValidateEvent<{
 export type MetadataEditEvent = ValidateEvent<{
   event: "metadata_edited";
   event_detail: MetadataEditAnalyticsDetail;
-  triggered_from: "admin";
+  triggered_from: MetadataEventSource;
 }>;
 
 export type BookmarkQuestionEvent = ValidateEvent<{

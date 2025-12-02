@@ -1,10 +1,11 @@
 import { jt, t } from "ttag";
 
 const RocketGlobeIllustrationSrc = "app/assets/img/rocket-globe.svg";
+import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
-import { UpsellBanner, UpsellCard } from "./components";
+import { UpsellBanner } from "./components";
 
 // the default 200px width will break the title into two lines
 const UPSELL_CARD_WIDTH = 202;

@@ -17,7 +17,6 @@ export const Transforms = createEntity({
   objectSelectors: {
     getName: (transform: Transform) => transform && transform.name,
     getUrl: (transform: Transform) => transform && Urls.transform(transform.id),
-    getIcon: () => ({ name: "transform" }),
     getColor: () => color("brand"),
   },
 });

@@ -22,9 +22,9 @@ import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessMo
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import {
-  EmbeddingSdkSettings,
   EmbeddingSecuritySettings,
-  StaticEmbeddingSettings,
+  EmbeddingSettings,
+  GuestEmbedsSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
 import { Help } from "metabase/admin/tools/components/Help";
 import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
@@ -40,9 +40,9 @@ import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { isEEBuild } from "metabase/lib/utils";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
-  PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
@@ -55,7 +55,6 @@ import {
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { PerformanceTabId } from "./performance/types";
-import { InteractiveEmbeddingUpsellPage } from "./settings/components/EmbeddingSettings/InteractiveEmbeddingUpsellPage";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
@@ -146,57 +145,59 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* EMBEDDING */}
       <Route path="embedding" component={createAdminRouteGuard("embedding")}>
         <Route title={t`Embedding`} component={AdminEmbeddingApp}>
-          <IndexRedirect to="modular" />
+          <IndexRoute component={EmbeddingSettings} />
+
           <Route
             path="setup-guide"
             title={t`Setup guide`}
             component={EmbeddingHubAdminSettingsPage}
           />
-          <Route
-            path="modular"
-            title={t`Modular`}
-            component={EmbeddingSdkSettings}
-          />
-          <Route
-            path="interactive"
-            title={t`Interactive`}
-            component={() => {
-              if (PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings) {
-                return <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings />;
-              }
 
-              return <InteractiveEmbeddingUpsellPage />;
-            }}
-          />
-          <Route
-            path="static"
-            title={t`Static`}
-            component={StaticEmbeddingSettings}
-          />
-          <Route
-            path="security"
-            title={t`Security`}
-            component={EmbeddingSecuritySettings}
-          />
+          {isEEBuild() && (
+            <>
+              <Route
+                path="guest"
+                title={t`Unauthenticated embeds`}
+                component={GuestEmbedsSettings}
+              />
+
+              <Route
+                path="security"
+                title={t`Security`}
+                component={EmbeddingSecuritySettings}
+              />
+            </>
+          )}
         </Route>
       </Route>
 
+      {/* EE has all embedding settings on the same page */}
+      {!isEEBuild() && (
+        <>
+          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
+
+          <Redirect from="/admin/embedding/security" to="/admin/embedding" />
+        </>
+      )}
+
       {/* Backwards compatibility for embedding settings */}
+      <Redirect from="/admin/embedding/modular" to="/admin/embedding" />
+      <Redirect from="/admin/embedding/interactive" to="/admin/embedding" />
       <Redirect
         from="/admin/settings/embedding-in-other-applications"
-        to="/admin/embedding/modular"
+        to="/admin/embedding"
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/full-app"
-        to="/admin/embedding/interactive"
+        to="/admin/embedding"
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/standalone"
-        to="/admin/embedding/static"
+        to="/admin/embedding/guest"
       />
       <Redirect
         from="/admin/settings/embedding-in-other-applications/sdk"
-        to="/admin/embedding/modular"
+        to="/admin/embedding"
       />
 
       {/* SETTINGS */}
