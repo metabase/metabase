@@ -1,5 +1,4 @@
-import { useField } from "formik";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -12,7 +11,6 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import {
   Form,
   FormErrorMessage,
@@ -21,15 +19,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import {
-  Box,
-  Button,
-  Group,
-  Loader,
-  Modal,
-  Stack,
-  TextInput,
-} from "metabase/ui";
+import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
 import type {
@@ -42,29 +32,30 @@ import { trackTransformCreated } from "../../../analytics";
 
 import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
 
-function getValidationSchema() {
-  return Yup.object({
-    name: Yup.string().required(Errors.required),
-    targetName: Yup.string().required(Errors.required),
-    targetSchema: Yup.string().nullable().defined(),
-    incremental: Yup.boolean().required(),
-    // For native queries, use checkpointFilter (plain string)
-    checkpointFilter: Yup.string().nullable(),
-    // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
-    checkpointFilterUniqueKey: Yup.string().nullable(),
-    sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-    targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
-  });
+const DEFAULT_VALIDATION_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required),
+  targetName: Yup.string().required(Errors.required),
+  targetSchema: Yup.string().nullable().defined(),
+  incremental: Yup.boolean().required(),
+  // For native queries, use checkpointFilter (plain string)
+  checkpointFilter: Yup.string().nullable(),
+  // For MBQL/Python queries, use checkpointFilterUniqueKey (prefixed format)
+  checkpointFilterUniqueKey: Yup.string().nullable(),
+  sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
+  targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
+});
+
+export type NewTransformValues = Yup.InferType<typeof DEFAULT_VALIDATION_SCHEMA>;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ValidationSchemaExtension = Record<string, Yup.AnySchema>;
+
+function getValidationSchema(extension?: ValidationSchemaExtension) {
+  if (!extension) {
+    return DEFAULT_VALIDATION_SCHEMA;
+  }
+  return DEFAULT_VALIDATION_SCHEMA.shape(extension);
 }
-
-export type NewTransformValues = Yup.InferType<
-  ReturnType<typeof getValidationSchema>
->;
-
-export type ValidateTableNameFn = (
-  tableName: string,
-  schema: string | null,
-) => Promise<{ valid: boolean; error?: string }>;
 
 type CreateTransformModalProps = {
   source: TransformSource;
@@ -73,7 +64,7 @@ type CreateTransformModalProps = {
   onClose: () => void;
   schemas?: string[] | null;
   showIncrementalSettings?: boolean;
-  validateTableName?: ValidateTableNameFn;
+  validationSchemaExtension?: ValidationSchemaExtension;
 };
 
 export function CreateTransformModal({
@@ -83,7 +74,7 @@ export function CreateTransformModal({
   onClose,
   schemas,
   showIncrementalSettings = true,
-  validateTableName,
+  validationSchemaExtension,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -94,7 +85,7 @@ export function CreateTransformModal({
         onClose={onClose}
         schemas={schemas}
         showIncrementalSettings={showIncrementalSettings}
-        validateTableName={validateTableName}
+        validationSchemaExtension={validationSchemaExtension}
       />
     </Modal>
   );
@@ -107,7 +98,7 @@ type CreateTransformFormProps = {
   onClose: () => void;
   schemas?: string[] | null;
   showIncrementalSettings?: boolean;
-  validateTableName?: ValidateTableNameFn;
+  validationSchemaExtension?: ValidationSchemaExtension;
 };
 
 function CreateTransformForm({
@@ -117,7 +108,7 @@ function CreateTransformForm({
   onClose,
   schemas: schemasProp,
   showIncrementalSettings = true,
-  validateTableName,
+  validationSchemaExtension,
 }: CreateTransformFormProps) {
   const [sendToast] = useToast();
   const databaseId =
@@ -158,7 +149,10 @@ function CreateTransformForm({
     [schemas, defaultValues],
   );
 
-  const validationSchema = useMemo(() => getValidationSchema(), []);
+  const validationSchema = useMemo(
+    () => getValidationSchema(validationSchemaExtension),
+    [validationSchemaExtension],
+  );
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -202,17 +196,11 @@ function CreateTransformForm({
               data={schemas}
             />
           )}
-          {validateTableName ? (
-            <AsyncValidatedTableNameInput
-              validateTableName={validateTableName}
-            />
-          ) : (
-            <FormTextInput
-              name="targetName"
-              label={t`Table name`}
-              placeholder={t`descriptive_name`}
-            />
-          )}
+          <FormTextInput
+            name="targetName"
+            label={t`Table name`}
+            placeholder={t`descriptive_name`}
+          />
           {showIncrementalSettings && (
             <IncrementalTransformSettings source={source} />
           )}
@@ -226,69 +214,6 @@ function CreateTransformForm({
         </Stack>
       </Form>
     </FormProvider>
-  );
-}
-
-const DEBOUNCE_DELAY = 300;
-
-type AsyncValidatedTableNameInputProps = {
-  validateTableName: ValidateTableNameFn;
-};
-
-function AsyncValidatedTableNameInput({
-  validateTableName,
-}: AsyncValidatedTableNameInputProps) {
-  const [{ value }, { error, touched }, { setValue, setTouched, setError }] =
-    useField("targetName");
-  const [{ value: schemaValue }] = useField("targetSchema");
-  const [isValidating, setIsValidating] = useState(false);
-  const debouncedValue = useDebouncedValue(value, DEBOUNCE_DELAY);
-  const debouncedSchema = useDebouncedValue(schemaValue, DEBOUNCE_DELAY);
-
-  useEffect(() => {
-    if (!debouncedValue) {
-      return;
-    }
-
-    let cancelled = false;
-    setIsValidating(true);
-
-    validateTableName(debouncedValue, debouncedSchema)
-      .then((result) => {
-        if (cancelled) {
-          return;
-        }
-        if (!result.valid && result.error) {
-          setError(result.error);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError(t`The "${debouncedValue}" table name is already taken.`);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsValidating(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedValue, debouncedSchema, validateTableName, setError]);
-
-  return (
-    <TextInput
-      name="targetName"
-      label={t`Table name`}
-      placeholder={t`descriptive_name`}
-      value={value ?? ""}
-      error={touched && error ? error : null}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => setTouched(true)}
-      rightSection={isValidating ? <Loader size="xs" /> : null}
-    />
   );
 }
 

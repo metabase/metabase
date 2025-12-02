@@ -88,7 +88,6 @@ export type ValidateTableNameRequest = {
   };
 };
 
-export type ValidateTableNameResponse = {
-  valid: boolean;
-  error?: string;
-};
+export type ValidateTableNameResponse =
+  | "OK"
+  | "A table with that name already exists";

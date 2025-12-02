@@ -1,15 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
+import * as Yup from "yup";
 
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { useValidateTableNameMutation } from "metabase-enterprise/api";
-import { CreateTransformModal } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
+import {
+  CreateTransformModal,
+  type ValidationSchemaExtension,
+} from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import {
   getInitialNativeSource,
   getInitialPythonSource,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
 import type { Transform, TransformSource } from "metabase-types/api";
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 
 type TransformType = "sql" | "python";
 
@@ -23,7 +28,6 @@ export const AddTransformMenu = ({
   onCreate,
 }: AddTransformMenuProps) => {
   const [modalType, setModalType] = useState<TransformType | null>(null);
-  const [validateTableName] = useValidateTableNameMutation();
 
   const { data: fetchedSchemas = [] } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: false } : skipToken,
@@ -55,16 +59,7 @@ export const AddTransformMenu = ({
     handleClose();
   };
 
-  const handleValidateTableName = useCallback(
-    async (tableName: string, schema: string | null) => {
-      const result = await validateTableName({
-        db_id: databaseId,
-        target: { type: "table", name: tableName, schema },
-      }).unwrap();
-      return result;
-    },
-    [databaseId, validateTableName],
-  );
+  const validationSchemaExtension = useTransformValidation(databaseId);
 
   return (
     <>
@@ -97,9 +92,111 @@ export const AddTransformMenu = ({
           onClose={handleClose}
           schemas={allowedSchemas}
           showIncrementalSettings={false}
-          validateTableName={handleValidateTableName}
+          validationSchemaExtension={validationSchemaExtension}
         />
       )}
     </>
+  );
+};
+
+type ValidationResult = true | Yup.ValidationError;
+type DebouncedValidateFn = ((value: string, schema: string | null) => void) & {
+  cancel: () => void;
+};
+
+const useTransformValidation = (
+  databaseId: number,
+): ValidationSchemaExtension => {
+  /**
+   * Async Yup validation for targetName field uniqueness with proper cancellation.
+   */
+  const [validateTableName] = useValidateTableNameMutation();
+  const debouncedValidateRef = useRef<{
+    validate: DebouncedValidateFn;
+    pendingResolve: ((result: ValidationResult) => void) | null;
+    abortController: AbortController | null;
+  }>();
+
+  const VALIDATION_DEBOUNCE_MS = 500;
+
+  const getDebouncedValidate = useCallback(() => {
+    if (!debouncedValidateRef.current) {
+      const validate = _.debounce(
+        async (value: string, schema: string | null) => {
+          if (!value) {
+            return new Yup.ValidationError("Table name is required");
+          }
+
+          // Cancel any pending request
+          debouncedValidateRef.current?.abortController?.abort();
+          const abortController = new AbortController();
+          if (debouncedValidateRef.current) {
+            debouncedValidateRef.current.abortController = abortController;
+          }
+
+          try {
+            const result = await validateTableName({
+              db_id: databaseId,
+              target: { type: "table", name: value, schema },
+            }).unwrap();
+
+            // Check if this request was aborted
+            if (abortController.signal.aborted) {
+              return;
+            }
+
+            const validationResult =
+              result === "OK" ||
+              new Yup.ValidationError(result ?? "Invalid table name");
+            debouncedValidateRef.current?.pendingResolve?.(validationResult);
+          } catch (error: unknown) {
+            // Ignore aborted requests
+            if (abortController.signal.aborted) {
+              return;
+            }
+
+            const errorMessage =
+              (error as { data?: string })?.data ?? "Validation failed";
+            debouncedValidateRef.current?.pendingResolve?.(
+              new Yup.ValidationError(errorMessage),
+            );
+          }
+        },
+        VALIDATION_DEBOUNCE_MS,
+      );
+      debouncedValidateRef.current = {
+        validate,
+        pendingResolve: null,
+        abortController: null,
+      };
+    }
+    return debouncedValidateRef.current;
+  }, [databaseId, validateTableName]);
+
+  return useMemo(
+    () => ({
+      targetName: Yup.string()
+        .required("Target table name is required")
+        .test(async (value, context) => {
+          const debounced = getDebouncedValidate();
+          debounced.validate.cancel();
+          debounced.abortController?.abort();
+
+          if (!value) {
+            return context.createError({
+              message: "Target table name is required",
+            });
+          }
+          const schema = context.parent.targetSchema;
+
+          return new Promise<true | Yup.ValidationError>((resolve) => {
+            debounced.pendingResolve = resolve;
+            debounced.validate(value, schema);
+          }).then((result) => {
+            return result === true || context.createError(result);
+          });
+        }),
+    }),
+    [getDebouncedValidate],
   );
 };
