@@ -265,6 +265,17 @@
   (-> (ws.common/create-workspace! api/*current-user-id* body)
       ws->response))
 
+(api.macros/defendpoint :post "/:id/name" :- Workspace
+  "Update a workspace's name"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [name]} :- [:map [:name [:string {:min 1}]]]]
+  (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+    (api/check-400 (nil? (:archived_at <>)) "Cannot update an archived workspace"))
+  (t2/update! :model/Workspace id {:name name})
+  (-> (t2/select-one :model/Workspace :id id)
+      ws->response))
+
 (api.macros/defendpoint :post "/:id/archive" :- Workspace
   "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -333,10 +344,9 @@
    _query-params
    body :- ModifyEntities]
 
-  (api/check-400 (nil? (:remove body)) "Not implemented yet")
-
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        upstream  (:add body)]
+        upstream  (:add body)
+        to-remove (:remove body)]
     (api/check-400 (nil? (:archived_at workspace)) "Cannot add entities to an archived workspace")
 
     (when-let [transform-ids (seq (get upstream :transforms []))]
@@ -345,7 +355,7 @@
 
     (let [existing-upstream-ids (t2/select-fn-set :upstream_id :model/WorkspaceMappingTransform
                                                   :workspace_id id)
-          combined-upstream     (update upstream :transforms #(into (vec existing-upstream-ids) %))
+          combined-upstream     (update upstream :transforms #(into (set existing-upstream-ids) %))
           graph                 (ws.dag/path-induced-subgraph combined-upstream)
           table-ids             (seq (keep :id (concat (:inputs graph) (:outputs graph))))
           db-ids                (when table-ids (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
@@ -353,7 +363,13 @@
       (when db-id
         (api/check-400 (= db-id (:database_id workspace)) "All entities must belong to the workspace's database")))
 
-    (ws.common/add-entities! workspace upstream)
+    ;; Add new entities
+    (when (not-empty upstream)
+      (ws.common/add-entities! workspace upstream))
+
+    ;; Remove existing entities
+    (when (not-empty to-remove)
+      (ws.common/remove-entities! workspace to-remove))
 
     {:contents (:contents (t2/hydrate (t2/select-one :model/Workspace :id id) :contents))}))
 

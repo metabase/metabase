@@ -30,6 +30,7 @@ import {
 
 type PythonDataPickerProps = {
   database?: DatabaseId;
+  disabled?: boolean;
   canChangeDatabase?: boolean;
   tables: PythonTransformTableAliases;
   onChange: (
@@ -41,6 +42,7 @@ type PythonDataPickerProps = {
 
 export function PythonDataPicker({
   database,
+  disabled,
   tables,
   onChange,
   canChangeDatabase = true,
@@ -161,6 +163,7 @@ export function PythonDataPicker({
 
           <DatabaseDataSelector
             className={S.databaseSelector}
+            readOnly={disabled}
             selectedDatabaseId={database}
             setDatabaseFn={handleDatabaseChange}
             databases={databases?.data ?? []}
@@ -189,12 +192,12 @@ export function PythonDataPicker({
                   handleSelectionChange(index, selection)
                 }
                 onRemove={() => handleRemoveTable(index)}
-                disabled={isLoadingTables}
+                disabled={disabled || isLoadingTables}
               />
             ))}
             <AddTableButton
               onClick={handleAddTable}
-              disabled={availableTables.length === 0}
+              disabled={disabled || availableTables.length === 0}
             />
           </Stack>
         </Box>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -96,7 +96,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     hasUnsavedChanges,
   } = useWorkspace();
 
-  const workspaceTransforms = workspace?.contents?.transforms;
+  const workspaceTransforms = useMemo(
+    () => workspace?.contents?.transforms ?? [],
+    [workspace],
+  );
 
   useEffect(() => {
     if (activeTransform) {
@@ -105,6 +108,23 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       setTab("setup");
     }
   }, [id, activeTransform]);
+
+  const tabsListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (tabsListRef.current && tab) {
+      const activeTabElement = tabsListRef.current.querySelector(
+        `[data-active="true"]`,
+      ) as HTMLElement;
+
+      if (activeTabElement) {
+        activeTabElement.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }, [tab]);
 
   const handleTransformChange = useCallback(
     (patch: Partial<EditedTransform>) => {
@@ -191,7 +211,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           variant="filled"
           onClick={handleMergeWorkspace}
           loading={isMerging}
-          disabled={hasUnsavedChanges()}
+          disabled={hasUnsavedChanges() || workspaceTransforms.length === 0}
           size="xs"
         >
           {t`Merge`}
@@ -225,7 +245,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               px="md"
               style={{ borderBottom: "1px solid var(--mb-color-border)" }}
             >
-              <Tabs.List className={styles.tabsPanel}>
+              <Tabs.List ref={tabsListRef} className={styles.tabsPanel}>
                 <Tabs.Tab value="setup">
                   <Group gap="xs" wrap="nowrap">
                     <Icon name="database" aria-hidden />

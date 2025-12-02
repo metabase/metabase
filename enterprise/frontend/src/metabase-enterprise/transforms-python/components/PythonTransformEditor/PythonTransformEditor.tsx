@@ -72,6 +72,7 @@ export function PythonTransformEditor({
   return (
     <Flex h="100%" w="100%">
       <PythonDataPicker
+        disabled={uiOptions?.readOnly}
         database={source["source-database"]}
         canChangeDatabase={uiOptions?.canChangeDatabase}
         tables={source["source-tables"]}
@@ -79,6 +80,7 @@ export function PythonTransformEditor({
       />
       <Stack w="100%" h="100%" gap={0}>
         <PythonEditorBody
+          disabled={uiOptions?.readOnly}
           isRunnable={isPythonTransformSource(source)}
           isRunning={isRunning}
           isDirty={isDirty}

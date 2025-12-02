@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as driver.conn]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
@@ -284,3 +285,79 @@
            (catch Throwable t
              (def ttt t)
              (throw t))))))
+
+(deftest remove-transforms-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          q1 (lib/native-query mp "select * from orders limit 10;")
+          q2 (lib/native-query mp "select * from products limit 10;")
+          test-schema "my_test_schema"
+          ws-id (atom nil)]
+      (try
+        (setup! test-schema)
+        (transforms.tu/with-transform-cleanup! [t1 "t1"
+                                                t2 "t2"]
+          (mt/with-temp
+            [:model/Transform x1 {:source_type :native
+                                  :source {:type :query
+                                           :query q1}
+                                  :target {:type :table
+                                           :database (mt/id)
+                                           :schema test-schema
+                                           :name t1}}
+             :model/Transform x2 {:source_type :native
+                                  :source {:type :query
+                                           :query q2}
+                                  :target {:type :table
+                                           :database (mt/id)
+                                           :schema test-schema
+                                           :name t2}}]
+         ;; Create the target tables
+            (transforms.i/execute! x1 {:run-method :manual})
+            (transforms.i/execute! x2 {:run-method :manual})
+         ;; Add into a workspace
+            (let [creator-id (mt/user->id :crowberto)
+                  ws (mt/with-test-user :crowberto
+                       (ws.common/create-workspace! creator-id {:name "my test ws xxx"
+                                                                :database_id (mt/id)
+                                                                :upstream {:transforms [(:id x1) (:id x2)]}}))
+                  _ (reset! ws-id (:id ws))
+                  mirrored-transforms-ids (t2/select-fn-vec :downstream_id :model/WorkspaceMappingTransform :workspace_id (:id ws))
+                  ws-db (t2/select-one :model/Database :id (:database_id ws))
+                  mirrored-tables-ids (t2/select-fn-vec :downstream_id :model/WorkspaceMappingTable :workspace_id (:id ws))
+                  mirrored-tables (t2/select :model/Table :id [:in mirrored-tables-ids])]
+              (testing "Sanity"
+                (testing "Mirrored transforms created"
+                  (is (= 2 (count mirrored-transforms-ids))))
+                (testing "Mirrored tables created in isolated schema"
+                  (run!
+                   (fn [{:keys [schema name]}]
+                     (is (true? (driver/table-exists? :postgres ws-db {:schema schema :name name}))))
+                   mirrored-tables))
+                (testing "Mirrored tables created in appdb"
+                  (is (= 2 (count mirrored-tables-ids)))))
+              (testing "Remove transforms from a workspace"
+                (mt/with-test-user :crowberto
+                 ;; ACT!
+                  (ws.common/remove-entities! ws {:transforms mirrored-transforms-ids}))
+                (testing "Mirrored transforms deleted"
+                  (is (empty? (t2/select :model/Transform :id [:in mirrored-transforms-ids]))))
+                (testing "Mirrored tables dropped from the isolated schema"
+                  (run!
+                   (fn [{:keys [schema name]}]
+                    ;; driver/table-exists? -- _prints_ exception on non-existent relation, while having correct
+                    ;; return value.
+                    ;; one way or another -- this test will be rewritten completely. Then we will handle that.
+                     (is (false? (driver/table-exists? :postgres ws-db {:schema schema :name name}))))
+                   mirrored-tables))
+                (testing "Mirrored tables deleted from the appdb"
+                  (is (empty? (t2/select :model/Table :id [:in mirrored-tables-ids]))))
+                (testing "Mirrored entites are not present in the mapping tables"
+                  (is (empty? (t2/select :model/WorkspaceMappingTable :workspace_id (:id ws))))
+                  (is (empty? (t2/select :model/WorkspaceMappingTransform :workspace_id (:id ws)))))))))
+        (catch Throwable t
+          (def ttt t)
+          (throw t))
+        (finally
+          (teardown! @ws-id))))))

@@ -1,16 +1,9 @@
-import type { ChangeEvent } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import * as Yup from "yup";
 
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  TextInput,
-  rem,
-} from "metabase/ui";
+import { Form, FormProvider, FormTextInput } from "metabase/forms";
+import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import { useRunTransformMutation } from "metabase-enterprise/api";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type {
@@ -21,6 +14,7 @@ import type {
   WorkspaceId,
 } from "metabase-types/api";
 
+import { useTransformValidation } from "./AddTransformMenu";
 import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
@@ -70,41 +64,89 @@ export const TransformTab = ({
     onChange({ source });
   };
 
-  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const name = event.target.value;
+  const handleNameChange = useCallback(
+    (name: string) => {
+      onChange({
+        target: {
+          type: editedTransform.target.type,
+          name,
+        },
+      });
+    },
+    [onChange, editedTransform.target.type],
+  );
 
-    onChange({
-      target: {
-        type: editedTransform.target.type,
-        name,
-      },
-    });
-  };
+  const validationSchemaExtension = useTransformValidation(databaseId);
+
+  const validationSchema = useMemo(
+    () =>
+      Yup.object({
+        targetName:
+          validationSchemaExtension?.targetName ||
+          Yup.string().required("Target table name is required"),
+        targetSchema: Yup.string().nullable(),
+      }),
+    [validationSchemaExtension],
+  );
+
+  const initialValues = useMemo(
+    () => ({
+      targetName: editedTransform.target.name,
+      targetSchema: transform.target.schema || null,
+    }),
+    [editedTransform.target.name, transform.target.schema],
+  );
+
+  const handleFormSubmit = useCallback(
+    (values: typeof initialValues) => {
+      handleNameChange(values.targetName);
+    },
+    [handleNameChange],
+  );
+
+  const handleFieldChange = useCallback(
+    (field: string, value: string) => {
+      if (field === "targetName") {
+        handleNameChange(value);
+      }
+    },
+    [handleNameChange],
+  );
 
   return (
     <Stack gap={0} h="100%">
       <Group
         flex="0 0 auto"
         justify="space-between"
+        mih={rem(73)} // avoid CLS when showing/hiding output table input
         p="md"
-        style={{ borderBottom: "1px solid var(--mb-color-border" }}
+        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
         <Group>
           {isSaved && (
-            <form>
-              <Group>
-                <Text
-                  c="text-dark"
-                  component="label"
-                  fw="bold"
-                >{t`Output table`}</Text>
-                <TextInput
-                  miw={rem(300)}
-                  value={editedTransform.target.name}
-                  onChange={handleNameChange}
-                />
-              </Group>
-            </form>
+            <FormProvider
+              key={transform.id}
+              initialValues={initialValues}
+              validationSchema={validationSchema}
+              onSubmit={handleFormSubmit}
+            >
+              <Form>
+                <Group>
+                  <Text
+                    c="text-dark"
+                    component="label"
+                    fw="bold"
+                  >{t`Output table`}</Text>
+                  <FormTextInput
+                    name="targetName"
+                    miw={rem(300)}
+                    onChange={(e) =>
+                      handleFieldChange("targetName", e.target.value)
+                    }
+                  />
+                </Group>
+              </Form>
+            </FormProvider>
           )}
         </Group>
 
@@ -139,6 +181,7 @@ export const TransformTab = ({
       {editedTransform && (
         <Box flex="1">
           <TransformEditor
+            disabled={!isSaved}
             source={editedTransform.source}
             onChange={handleSourceChange}
           />

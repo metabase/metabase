@@ -153,7 +153,7 @@ type DebouncedValidateFn = ((value: string, schema: string | null) => void) & {
   cancel: () => void;
 };
 
-const useTransformValidation = (
+export const useTransformValidation = (
   databaseId: number,
 ): ValidationSchemaExtension => {
   /**

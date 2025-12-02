@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import _ from "underscore";
 
 import {
@@ -8,15 +8,24 @@ import {
 import type { DraftTransformSource } from "metabase-types/api";
 
 type TransformEditorProps = {
+  disabled: boolean;
   source: DraftTransformSource;
   onChange: (source: DraftTransformSource) => void;
 };
 
-export function TransformEditor({ source, onChange }: TransformEditorProps) {
+export function TransformEditor({
+  disabled,
+  source,
+  onChange,
+}: TransformEditorProps) {
   const [uiState, setUiState] = useState(getInitialUiStateForTransform);
-  const [uiOptions] = useState({
-    canChangeDatabase: false,
-  });
+  const uiOptions = useMemo(
+    () => ({
+      canChangeDatabase: false,
+      readOnly: disabled,
+    }),
+    [disabled],
+  );
 
   const handleSourceChange = (source: DraftTransformSource) => {
     onChange?.(source);
