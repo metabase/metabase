@@ -8,7 +8,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Stack, TextInput, Tooltip } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
@@ -82,64 +82,68 @@ export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
       <TransformsSectionHeader
         leftSection={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
       />
-      <Flex direction="column" gap="md" px="md" pt="md" pb="md">
-        <SidebarSearchAndControls
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortValue={sortType}
-          sortOptions={JOB_SORT_OPTIONS}
-          onSortChange={setSortType}
-          sortLabel={t`Sort jobs`}
-          addButton={
-            <Tooltip label={t`Create a job`}>
-              <Button
-                variant="filled"
-                p="sm"
-                w={32}
-                h={32}
-                leftSection={<Icon name="add" size={16} />}
-                aria-label={t`Create a job`}
-                onClick={handleAdd}
-                classNames={{ root: S.button }}
-              />
-            </Tooltip>
-          }
-        />
-      </Flex>
-      <Flex direction="column" flex={1} mih={0}>
-        {isLoading ? (
-          <SidebarLoadingState />
-        ) : jobsSorted.length === 0 ? (
-          <ListEmptyState
-            label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
+      <Stack px="3.5rem">
+        <Flex gap="0.5rem">
+          <TextInput
+            placeholder="Search..."
+            leftSection={<Icon name="search" />}
+            bdrs="md"
+            flex="1"
           />
-        ) : (
-          // <SidebarList>
-          //   {jobsSorted.map((job) => {
-          //     const subtitle =
-          //       job.last_run?.start_time &&
-          //       `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${new Date(
-          //         job.last_run.start_time,
-          //       ).toLocaleString("en-US", {
-          //         timeZone: systemTimezone ?? undefined,
-          //       })}`;
+          <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
+        </Flex>
 
-          //     return (
-          //       <SidebarListItem
-          //         key={job.id}
-          //         icon="play_outlined"
-          //         href={Urls.transformJob(job.id)}
-          //         label={job.name}
-          //         subtitle={subtitle}
-          //         isActive={job.id === selectedJobId}
-          //       />
-          //     );
-          //   })}
-          // </SidebarList>
+        <Flex direction="column" flex={1} mih={0}>
+          {isLoading ? (
+            <SidebarLoadingState />
+          ) : jobsSorted.length === 0 ? (
+            <ListEmptyState
+              label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
+            />
+          ) : (
+            // <SidebarList>
+            //   {jobsSorted.map((job) => {
+            //     const subtitle =
+            //       job.last_run?.start_time &&
+            //       `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${new Date(
+            //         job.last_run.start_time,
+            //       ).toLocaleString("en-US", {
+            //         timeZone: systemTimezone ?? undefined,
+            //       })}`;
 
-          <Table data={jobsSorted} columns={[]} onSelect={handleSelect} />
-        )}
-      </Flex>
+            //     return (
+            //       <SidebarListItem
+            //         key={job.id}
+            //         icon="play_outlined"
+            //         href={Urls.transformJob(job.id)}
+            //         label={job.name}
+            //         subtitle={subtitle}
+            //         isActive={job.id === selectedJobId}
+            //       />
+            //     );
+            //   })}
+            // </SidebarList>
+
+            <Table
+              data={jobsSorted.map((j) => ({
+                ...j,
+                last_run_time: j.last_run
+                  ? new Date(j.last_run.start_time).toDateString()
+                  : "Never",
+              }))}
+              columns={[
+                {
+                  id: "name",
+                  name: "Name",
+                  grow: true,
+                },
+                { id: "last_run_time", name: "Last Run", width: "150px" },
+              ]}
+              onSelect={handleSelect}
+            />
+          )}
+        </Flex>
+      </Stack>
     </>
   );
 };

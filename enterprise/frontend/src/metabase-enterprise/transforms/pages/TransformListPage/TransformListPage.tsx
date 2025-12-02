@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Flex } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
@@ -105,20 +105,43 @@ export const TransformListPageSidebar = ({
           <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
         }
       />
-      <Flex direction="column" gap="md" p="lg">
-        <SidebarSearchAndControls
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortValue={sortType}
-          sortOptions={TRANSFORM_SORT_OPTIONS}
-          onSortChange={setSortType}
-          addButton={<CreateTransformMenu />}
-          sortLabel={t`Sort transforms`}
-        />
-      </Flex>
+      <Stack px="3.5rem">
+        <Flex gap="md">
+          <TextInput
+            placeholder="Search..."
+            leftSection={<Icon name="search" />}
+            bdrs="md"
+            flex="1"
+          />
+          <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
+        </Flex>
 
-      <Table data={filteredTransforms} columns={[]} onSelect={handleSelect} />
-      {/* <Flex direction="column" flex={1} mih={0}>
+        <Table
+          data={filteredTransforms.map((t) => ({
+            ...t,
+            out_table: t.target.name,
+            last_modified: new Date(t.updated_at).toDateString(),
+          }))}
+          columns={[
+            {
+              id: "name",
+              grow: true,
+              name: "Name",
+            },
+            {
+              id: "last_modified",
+              width: "150px",
+              name: "Last Modified",
+            },
+            {
+              id: "out_table",
+              width: "150px",
+              name: "Output table",
+            },
+          ]}
+          onSelect={handleSelect}
+        />
+        {/* <Flex direction="column" flex={1} mih={0}>
         {isLoading ? (
           <SidebarLoadingState />
         ) : transformsSorted.length === 0 ? (
@@ -163,6 +186,7 @@ export const TransformListPageSidebar = ({
           />
         </Box>
       )} */}
+      </Stack>
     </>
   );
 };

@@ -1,19 +1,35 @@
 .Column {
   flex-basis: var(--column-width);
+
+  &.Grow {
+    flex-grow: 1;
+  }
 }
 
 .Table {
-  li {
-    border-bottom: 1px solid var(--mb-color-border);
-    color: var(--mb-color-text-primary);
-    font-weight: normal;
-    padding-top: 0.375rem;
-    padding-bottom: 0.375rem;
-  }
-
   ul:last-child {
-    li:last-child {
+    .Row:last-child {
       border-bottom: none;
     }
   }
+}
+
+.Row {
+  border-bottom: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-primary);
+  font-weight: normal;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  padding-left: var(--row-indent);
+  padding-right: 1rem;
+  cursor: pointer;
+
+  &:not(.Header):hover {
+    background-color: var(--mb-color-brand-light);
+    color: var(--mb-color-text-brand);
+  }
+}
+
+.Header {
+  cursor: unset;
 }

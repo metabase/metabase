@@ -11,7 +11,7 @@ export const TransformsSectionHeader = ({
   leftSection: breadcrumbs,
 }: TransformsSectionHeaderProps) => {
   return (
-    <Flex px="lg" my="md">
+    <Flex px="3.5rem" my="md">
       {breadcrumbs}
       <Box ml="auto">
         <PLUGIN_METABOT.MetabotDataStudioButton />

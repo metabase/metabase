@@ -103,7 +103,10 @@ export function ModelingSectionLayout() {
 
         <Table
           data={[modelsTree, metricsTree]}
-          columns={[{ id: "updated_at", width: 200 }]}
+          columns={[
+            { id: "name", grow: true, name: "Name" },
+            { id: "updated_at", width: "150px", name: "Updated At" },
+          ]}
         />
       </Stack>
     </SectionLayout>
