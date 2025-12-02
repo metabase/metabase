@@ -619,7 +619,7 @@
       (assoc :location (or (when parent-collection
                              (collection/children-location parent-collection))
                            "/"))
-      (assoc :is_tenant_dashboard (collection/is-shared-tenant-collection? parent-collection))
+      (assoc :is_tenant_dashboard (collection/shared-tenant-collection? parent-collection))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
@@ -1316,7 +1316,7 @@
   means 'any tenant collection.'"
   metabase-enterprise.tenants.core
   [collection]
-  (when (collection/is-shared-tenant-collection? collection)
+  (when (collection/shared-tenant-collection? collection)
     (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400})))
   collection)
 
@@ -1411,7 +1411,7 @@
                                                   (collection/perms-for-moving collection-before-update new-parent)))
 
         (api/check
-         (not (collection/is-shared-tenant-collection? new-parent)))
+         (not (collection/shared-tenant-collection? new-parent)))
 
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location

@@ -96,7 +96,7 @@
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
 
-(mu/defn is-shared-tenant-collection?
+(mu/defn shared-tenant-collection?
   "Whether or not a collection is a tenant collection."
   [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
   (= (some-> namespace name)
@@ -378,7 +378,7 @@
   Collection."
   [{:keys [location], owner-id :personal_owner_id, collection-namespace :namespace, :as collection}]
   {:pre [(contains? collection :namespace)]}
-  (when (and namespace (is-shared-tenant-collection? collection) (not (perms/use-tenants)))
+  (when (and namespace (shared-tenant-collection? collection) (not (perms/use-tenants)))
     (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)})))
   (when location
     (when-let [parent-id (location-path->parent-id location)]
@@ -627,7 +627,7 @@
   :is_shared_tenant_collection
   "Hydrate the `is_shared_tenant_collection` property of collections - whether or not they're a tenant coll."
   [collection]
-  (is-shared-tenant-collection? collection))
+  (shared-tenant-collection? collection))
 
 (mi/define-batched-hydration-method collection-is-personal
   :is_personal

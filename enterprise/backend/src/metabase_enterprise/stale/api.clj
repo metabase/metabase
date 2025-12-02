@@ -98,7 +98,7 @@
     (assoc dashboard
            :location (or (some-> parent-coll collection/children-location)
                          "/")
-           :is_tenant_dashboard (some-> parent-coll collection/is-shared-tenant-collection?))))
+           :is_tenant_dashboard (some-> parent-coll collection/shared-tenant-collection?))))
 
 (defmethod present-model-items :model/Dashboard [_ dashboards]
   (->> (t2/hydrate (t2/select [:model/Dashboard
