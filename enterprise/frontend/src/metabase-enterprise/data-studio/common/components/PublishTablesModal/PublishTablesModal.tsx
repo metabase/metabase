@@ -17,7 +17,7 @@ import type { PublishTableInfo, TableSelectors } from "metabase-types/api";
 type PublishTablesModalProps = {
   selection: TableSelectors;
   isOpened: boolean;
-  onPublish: () => void;
+  onPublish?: () => void;
   onClose: () => void;
 };
 
@@ -59,7 +59,7 @@ function ModalTitle({ selection }: ModalTitleProps) {
 
 type ModalBodyProps = {
   selection: TableSelectors;
-  onPublish: () => void;
+  onPublish?: () => void;
   onClose: () => void;
 };
 
@@ -75,7 +75,8 @@ function ModalBody({ selection, onPublish, onClose }: ModalBodyProps) {
 
   const handleSubmit = async () => {
     await publishTables(selection).unwrap();
-    onPublish();
+    onPublish?.();
+    onClose();
   };
 
   return (

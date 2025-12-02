@@ -17,14 +17,14 @@ import type { PublishTableInfo, TableSelectors } from "metabase-types/api";
 type UnpublishTablesModalProps = {
   selection: TableSelectors;
   isOpened: boolean;
-  onPublish: () => void;
+  onUnpublish?: () => void;
   onClose: () => void;
 };
 
 export function UnpublishTablesModal({
   selection,
   isOpened,
-  onPublish,
+  onUnpublish,
   onClose,
 }: UnpublishTablesModalProps) {
   return (
@@ -35,7 +35,7 @@ export function UnpublishTablesModal({
     >
       <ModalBody
         selection={selection}
-        onPublish={onPublish}
+        onUnpublish={onUnpublish}
         onClose={onClose}
       />
     </Modal>
@@ -59,11 +59,11 @@ function ModalTitle({ selection }: ModalTitleProps) {
 
 type ModalBodyProps = {
   selection: TableSelectors;
-  onPublish: () => void;
+  onUnpublish?: () => void;
   onClose: () => void;
 };
 
-function ModalBody({ selection, onPublish, onClose }: ModalBodyProps) {
+function ModalBody({ selection, onUnpublish, onClose }: ModalBodyProps) {
   const { data, isLoading, error } = useGetTableSelectionInfoQuery(selection);
   const [unpublishTables] = useUnpublishTablesMutation();
 
@@ -75,14 +75,17 @@ function ModalBody({ selection, onPublish, onClose }: ModalBodyProps) {
 
   const handleSubmit = async () => {
     await unpublishTables(selection).unwrap();
-    onPublish();
+    onUnpublish?.();
+    onClose();
   };
 
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
         <Stack>
-          <Text>{t`Publishing a table saves it to the Library.`}</Text>
+          <Text>
+            {getInfoMessage(published_tables, published_remapped_tables)}
+          </Text>
           {published_remapped_tables.length > 0 && (
             <>
               <Text>{getForeignKeyMessage(published_tables)}</Text>
@@ -121,7 +124,7 @@ function getTitle(
 
   if (isSinglePublishedTable) {
     return hasPublishedRemappedTables
-      ? t`Unpublish ${publishedTables[0].display_name} and the tables that depend on them?`
+      ? t`Unpublish ${publishedTables[0].display_name} and the tables that depend on it?`
       : t`Unpublish ${publishedTables[0]}?`;
   }
 
@@ -130,13 +133,20 @@ function getTitle(
     : t`Unpublish these tables?`;
 }
 
+function getInfoMessage(
+  publishedTables: PublishTableInfo[],
+  publishedRemappedTables: PublishTableInfo[],
+) {
+  return publishedTables.length === 1 && publishedRemappedTables.length === 0
+    ? t`This will remove this table from the Library.`
+    : t`This will remove these tables from the Library.`;
+}
+
 function getForeignKeyMessage(unpublishedTables: PublishTableInfo[]) {
   const isSingleUnpublishedTable = unpublishedTables.length;
   return isSingleUnpublishedTable === 1
-    ? jt`Because some of the published tables use foreign keys to display values from ${(
-        <strong key="table">{unpublishedTables[0].display_name}</strong>
-      )}, you'll need to unpublish these, too:`
-    : t`Because some of the published tables use foreign keys to display values from the tables you've selected, you'll need to unpublish the tables below, too:`;
+    ? jt`Because values in ${(<strong key="table">{unpublishedTables[0].display_name}</strong>)} are used as display values in other published tables, you'll need to unpublish these, too:`
+    : t`Because values in some of the tables you've selected are used as display values in other published tables, you'll need to unpublish the tables below, too:`;
 }
 
 function getSubmitButtonLabel(

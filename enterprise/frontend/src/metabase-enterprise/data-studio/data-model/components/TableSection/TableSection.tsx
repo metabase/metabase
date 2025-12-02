@@ -28,10 +28,9 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
+import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
+import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
-
-import { usePublishTables } from "../../../common/hooks/use-publish-tables";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
@@ -46,23 +45,23 @@ interface Props {
   onSyncOptionsClick: () => void;
 }
 
+type TableModalType = "publish" | "unpublish";
+
 const TableSectionBase = ({
   table,
   activeFieldId,
-  hasLibrary,
+  hasLibrary: _hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
+  const [modalType, setModalType] = useState<TableModalType>();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
-  const { publishConfirmationModal, isPublishing, handlePublish } =
-    usePublishTables({ hasLibrary });
-  const { unpublishConfirmationModal, handleUnpublish } = useUnpublishTables();
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -178,11 +177,8 @@ const TableSectionBase = ({
             leftSection={
               <Icon name={table.is_published ? "unpublish" : "publish"} />
             }
-            disabled={isPublishing}
             onClick={() =>
-              table.is_published
-                ? handleUnpublish({ tableIds: [table.id] })
-                : handlePublish({ tableIds: [table.id] })
+              setModalType(table.is_published ? "unpublish" : "publish")
             }
           >
             {table.is_published ? t`Unpublish` : t`Publish`}
@@ -314,8 +310,16 @@ const TableSectionBase = ({
           )}
         </Stack>
       </Box>
-      {publishConfirmationModal}
-      {unpublishConfirmationModal}
+      <PublishTablesModal
+        selection={{ table_ids: [table.id] }}
+        isOpened={modalType === "publish"}
+        onClose={() => setModalType(undefined)}
+      />
+      <UnpublishTablesModal
+        selection={{ table_ids: [table.id] }}
+        isOpened={modalType === "unpublish"}
+        onClose={() => setModalType(undefined)}
+      />
     </Stack>
   );
 };
