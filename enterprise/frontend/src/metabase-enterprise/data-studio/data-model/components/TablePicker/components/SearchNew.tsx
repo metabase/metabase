@@ -24,7 +24,7 @@ import type {
   TreePath,
 } from "../types";
 import { isDatabaseNode, isSchemaNode, isTableNode } from "../types";
-import { flatten, rootNode } from "../utils";
+import { flatten, rootNode, toKey } from "../utils";
 
 import { TablePickerResults } from "./Results";
 
@@ -36,19 +36,22 @@ interface SearchNewProps {
   path: TreePath;
 }
 
-type DatabaseKey = `db-${number}`;
-type SchemaKey = `schema-${number}-${string}`;
-
 function buildResultTree(tables: Table[]): RootNode {
-  const databases = new Map<DatabaseKey, DatabaseNode>();
-  const seenSchemas = new Map<SchemaKey, SchemaNode>();
+  const databases = new Map<string, DatabaseNode>();
+  const seenSchemas = new Map<string, SchemaNode>();
   const root = rootNode();
 
   tables.forEach((table) => {
-    const dbKey = `db-${table.db_id}` as const;
+    const tableId = table.id;
+    const databaseId = table.db_id;
     const schemaName = table.schema;
-    const schemaKey = `schema-${table.db_id}-${schemaName}` as const;
-    const tableKey = `table-${table.id}` as const;
+    const dbKey = toKey({ databaseId });
+    const schemaKey = toKey({ databaseId, schemaName });
+    const tableKey = toKey({
+      databaseId,
+      schemaName,
+      tableId,
+    });
 
     if (!databases.has(dbKey)) {
       const dbName = table.db?.name;
@@ -56,8 +59,8 @@ function buildResultTree(tables: Table[]): RootNode {
       const databaseNode: DatabaseNode = {
         type: "database",
         key: dbKey,
-        label: dbName || `Database ${table.db_id}`,
-        value: { databaseId: table.db_id },
+        label: dbName || `Database ${databaseId}`,
+        value: { databaseId: databaseId },
         children: [],
       };
       databases.set(dbKey, databaseNode);
@@ -69,7 +72,7 @@ function buildResultTree(tables: Table[]): RootNode {
         type: "schema",
         key: schemaKey,
         label: schemaName,
-        value: { databaseId: table.db_id, schemaName: schemaName },
+        value: { databaseId, schemaName },
         children: [],
       };
       seenSchemas.set(schemaKey, schemaNode);
@@ -81,9 +84,9 @@ function buildResultTree(tables: Table[]): RootNode {
       key: tableKey,
       label: table.display_name || table.name,
       value: {
-        databaseId: table.db_id,
-        schemaName: schemaName,
-        tableId: table.id,
+        databaseId,
+        schemaName,
+        tableId,
       },
       children: [],
       table,
