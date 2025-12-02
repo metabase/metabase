@@ -161,8 +161,6 @@ export function PermissionsPageLayout({
           closeButtonText={t`Cancel`}
         />
 
-        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
-
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
