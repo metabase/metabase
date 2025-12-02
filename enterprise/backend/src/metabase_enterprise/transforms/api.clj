@@ -170,6 +170,7 @@
                     [:id ms/PositiveInt]]]
   (check-transforms-read-permission)
   (let [id->transform   (t2/select-pk->fn identity :model/Transform)
+        _               (api/check-404 (get id->transform id))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
@@ -272,10 +273,9 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (api/check-403 (mi/can-write? transform))
-    (check-feature-enabled! transform))
-  (let [transform (t2/select-one :model/Transform id)
+  (check-transforms-read-permission)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        _         (check-feature-enabled! transform)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.i/execute! transform {:start-promise start-promise
