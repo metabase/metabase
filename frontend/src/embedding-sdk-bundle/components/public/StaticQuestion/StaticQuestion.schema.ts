@@ -10,7 +10,12 @@ const propsSchema: Yup.SchemaOf<StaticQuestionProps> = Yup.object({
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
-  questionId: Yup.mixed().required(),
+  questionId: Yup.mixed().when("token", {
+    is: (token: unknown) => token !== undefined,
+    then: (schema) => schema.optional(),
+    otherwise: (schema) => schema.required(),
+  }),
+  token: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   title: Yup.mixed().optional(),
   width: Yup.mixed().optional(),

@@ -184,7 +184,7 @@ describe("scenarios > data studio > modeling > models", () => {
       .and("match", /\/model\/\d+/);
   });
 
-  it.skip("should duplicate model via more menu", () => {
+  it("should duplicate model via more menu", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
@@ -224,6 +224,7 @@ describe("scenarios > data studio > modeling > models", () => {
     H.modal().button("Duplicate").click();
 
     cy.wait("@createCard");
+    H.modal().should("not.exist");
 
     cy.log("Verify duplicate model is created");
     H.DataStudio.Models.overviewPage()
