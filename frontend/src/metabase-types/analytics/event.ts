@@ -515,10 +515,6 @@ export type DataStudioTablePublishedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
-export type DataStudioDependencyGraphOpenedEvent = ValidateEvent<{
-  event: "data_studio_dependency_graph_opened";
-}>;
-
 export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
   event: "data_studio_glossary_term_created";
   target_id: number | null;
@@ -537,7 +533,6 @@ export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
 export type DataStudioEvent =
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
-  | DataStudioDependencyGraphOpenedEvent
   | DataStudioGlossaryCreatedEvent
   | DataStudioGlossaryEditedEvent
   | DataStudioGlossaryDeletedEvent;

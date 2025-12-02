@@ -15,12 +15,6 @@ export const trackDataStudioTablePublished = (id: number | null) => {
   });
 };
 
-export const trackDataStudioDependencyGraphOpened = () => {
-  trackSimpleEvent({
-    event: "data_studio_dependency_graph_opened",
-  });
-};
-
 export const trackDataStudioGlossaryTermCreated = (id: number | null) => {
   trackSimpleEvent({
     event: "data_studio_glossary_term_created",

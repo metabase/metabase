@@ -63,9 +63,6 @@ describe("Table editing", () => {
       cy.findByRole("heading", { name: "Dependency graph" }).should(
         "be.visible",
       );
-      H.expectUnstructuredSnowplowEvent({
-        event: "data_studio_dependency_graph_opened",
-      });
     });
   });
 

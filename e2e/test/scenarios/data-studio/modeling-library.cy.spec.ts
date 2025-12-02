@@ -37,9 +37,6 @@ describe("scenarios > data studio > modeling > library", () => {
       cy.button("Create my Library").click();
     });
 
-    cy.wait("@createLibrary");
-    cy.wait("@getCollectionTree");
-
     cy.log("Verify library collections appear in sidebar");
     H.DataStudio.ModelingSidebar.collectionsTree().within(() => {
       cy.findByText("Data").should("be.visible");
