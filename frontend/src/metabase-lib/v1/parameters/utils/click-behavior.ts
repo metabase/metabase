@@ -31,6 +31,7 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Parameter,
+  ParameterValuesMap,
   QuestionDashboardCard,
   UserAttributeMap,
 } from "metabase-types/api";
@@ -64,10 +65,7 @@ export function getDataFromClicked({
 }: {
   extraData?: {
     dashboard?: Dashboard;
-    parameterValuesBySlug?: Record<
-      string,
-      string | number | boolean | Array<string | number | boolean | null>
-    >;
+    parameterValuesBySlug?: ParameterValuesMap;
     userAttributes?: UserAttributeMap | null;
   };
   dimensions?: DimensionType[];
@@ -112,18 +110,9 @@ export function getDataFromClicked({
     ]),
   );
 
-  const parameterBySlug = _.mapObject(
-    parameterValuesBySlug,
-    (
-      value:
-        | string
-        | number
-        | boolean
-        | Array<string | number | boolean | null>,
-    ) => ({
-      value,
-    }),
-  );
+  const parameterBySlug = _.mapObject(parameterValuesBySlug, (value) => ({
+    value,
+  }));
 
   const parameter = Object.fromEntries(
     dashboardParameters.map(({ id, slug }) => [
