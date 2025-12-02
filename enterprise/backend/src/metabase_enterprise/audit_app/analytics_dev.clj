@@ -73,7 +73,7 @@
                                                :creator_id user-id
                                                :auto_run_queries true})]
         (log/info "Created analytics dev database:" (:id db))
-        (sync/sync-database! db)
+        (sync/sync-database! db {:scan :schema})
         db))))
 
 (defn delete-analytics-dev-database!
@@ -166,8 +166,7 @@
 
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
-      (let [ingestion (serialization/ingest-yaml temp-dir)
-            report (serialization/load-metabase! ingestion {:backfill? false})]
+      (let [report (serdes/with-cache (serialization/load-metabase! (serialization/ingest-yaml temp-dir) {:backfill? false}))]
         (log/info "Import complete:" (count (:seen report)) "entities loaded")
         (when (seq (:errors report))
           (log/warn "Import had errors:" (:errors report)))
