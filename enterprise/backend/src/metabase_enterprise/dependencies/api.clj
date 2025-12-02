@@ -465,6 +465,7 @@
                         [:native_query_snippet.id :entity_id]
                         [(case sort_column
                            :name :native_query_snippet.name
+                           :view_count [:inline 0]
                            :native_query_snippet.name) :sort_key]]
                :from [:native_query_snippet]
                :where (let [unreffed-where [:not [:exists
@@ -517,6 +518,7 @@
                         [(let [sort-col [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]
                            (case sort_column
                              :name sort-col
+                             :view_count [:inline 0]
                              sort-col)) :sort_key]]
                :from [:sandboxes]
                :where [:not [:exists
@@ -561,7 +563,7 @@
                        (into {}))))
    :snippet (when-let [snippet-ids (seq (map :entity_id (get ids-by-type "snippet")))]
               (->> (t2/select :model/NativeQuerySnippet :id [:in snippet-ids])
-                   (map (fn [snippet] [(:id snippet) snippet]))
+                   (map (fn [snippet] [(:id snippet) (assoc snippet :view_count 0)]))
                    (into {})))
    :dashboard (when-let [dashboard-ids (seq (map :entity_id (get ids-by-type "dashboard")))]
                 (-> (t2/select :model/Dashboard :id [:in dashboard-ids])
@@ -579,18 +581,18 @@
    :sandbox (when-let [sandbox-ids (seq (map :entity_id (get ids-by-type "sandbox")))]
               (-> (t2/select :model/Sandbox :id [:in sandbox-ids])
                   (t2/hydrate [:table :db :fields])
-                  (->> (map (fn [sandbox] [(:id sandbox) sandbox]))
+                  (->> (map (fn [sandbox] [(:id sandbox) (assoc sandbox :view_count 0)]))
                        (into {}))))})
 
 (def ^:private unreferenced-items-keys
   {:table [:name :display_name :db_id :schema :db :view_count :owner]
    :card [:name :type :display :collection_id :dashboard_id :view_count :creator_id :created_at
           :collection :dashboard :creator :last-edit-info]
-   :snippet [:name]
+   :snippet [:name :view_count]
    :transform [:name :table :creator :last_run :target :view_count]
    :dashboard [:name :creator_id :created_at :collection_id :creator :last-edit-info :collection :view_count]
    :document [:name :creator_id :created_at :collection_id :creator :collection :view_count]
-   :sandbox [:table :table_id]})
+   :sandbox [:table :table_id :view_count]})
 
 (def ^:private unreferenced-items-args
   [:map
@@ -605,17 +607,7 @@
    [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
 
 (defn- validate-unreferenced-items-params
-  [sort_column query selected-types card-types]
-  (when (= sort_column :view_count)
-    (when (some #{:sandbox :snippet} selected-types)
-      (throw (ex-info (tru "Sorting by view_count is only supported for cards, tables, dashboards, documents and transforms")
-                      {:status-code 400
-                       :selected_types selected-types})))
-    (when (and (some #{:card} selected-types)
-               (some #{:model :metric} card-types))
-      (throw (ex-info (tru "Sorting by view_count is only supported for questions")
-                      {:status-code 400
-                       :card_types card-types}))))
+  [sort_column query selected-types]
 
   (when (= sort_column :location)
     (when (some #{:sandbox :transform :snippet} selected-types)
@@ -659,7 +651,7 @@
         offset (or (request/offset) 0)
         selected-types (if (sequential? types) types [types])
         card-types (if (sequential? card_types) card_types [card_types])
-        _ (validate-unreferenced-items-params sort_column query selected-types card-types)
+        _ (validate-unreferenced-items-params sort_column query selected-types)
         entity-queries (unreferenced-entity-queries sort_column card-types query)
         union-queries (keep #(get entity-queries %) selected-types)
         union-query {:union-all union-queries}
