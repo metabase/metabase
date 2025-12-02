@@ -131,7 +131,9 @@ const flattenCollectionTree = (
       name: n.name,
       id: n.id,
       is_personal: !!n.is_personal,
-      is_tenant_collection: n.is_tenant_collection,
+      ...(n.is_tenant_collection !== undefined && {
+        is_tenant_collection: n.is_tenant_collection,
+      }),
       location: n.location,
       effective_location: n.effective_location,
       here: n.here,
