@@ -45,6 +45,7 @@ export type QuestionDetails = {
    * Defaults to false.
    */
   enable_embedding?: Card["enable_embedding"];
+  embedding_type?: Card["embedding_type"];
 };
 
 export type StructuredQuestionDetails = Omit<

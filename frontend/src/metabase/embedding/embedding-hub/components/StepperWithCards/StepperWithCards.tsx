@@ -105,6 +105,8 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                     >
                       <CardAction card={card}>
                         <Card
+                          h="100%"
+                          mih="8.75rem"
                           className={cx(S.stepCard, {
                             [S.lockedStepCard]: card.locked,
                             [S.nextStepCard]: isNextCard,

@@ -59,6 +59,9 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       });
 
     cy.wait("@dashboard");
+
+    H.embedModalEnableEmbedding();
+
     cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
 
     H.modal().should("exist");
