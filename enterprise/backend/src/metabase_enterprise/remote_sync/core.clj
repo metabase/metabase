@@ -34,7 +34,7 @@
   :feature :none
   [collection]
   (and (settings/tenant-collections-remote-sync-enabled)
-       (collections/is-shared-tenant-collection? collection)))
+       (collections/shared-tenant-collection? collection)))
 
 (defenterprise tenant-collections-remote-sync-enabled?
   "Returns the current value of the tenant-collections-remote-sync-enabled setting."
