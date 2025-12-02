@@ -9,8 +9,8 @@ export const useNormalizeComponentProviderProps = (
 
   // For OSS usage we prevent defining a locale or theme
   if (!isEmbeddingSdkFeatureEnabled) {
-    delete props.locale;
-    delete props.theme;
+    delete normalizedProps.locale;
+    delete normalizedProps.theme;
   }
 
   return normalizedProps;

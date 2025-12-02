@@ -29,7 +29,7 @@ export function InteractiveEmbeddingSettingsCard() {
 
   return (
     <EmbeddingSettingsCard
-      title={t`Enable legacy interactive embedding`}
+      title={t`Enable interactive embedding`}
       description={t`A way to embed the entire Metabase app in an iframe. It integrates your permissions and SSO to give people the right level ofaccess to query and drill-down into your data.`}
       settingKey="enable-embedding-interactive"
       alertInfoText={c(
