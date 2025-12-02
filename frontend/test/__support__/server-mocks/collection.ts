@@ -199,6 +199,42 @@ export function setupTenantCollectionItemsEndpoint({
   );
 }
 
+export function setupRootCollectionItemsEndpoint({
+  rootCollectionItems,
+  tenantRootItems = [],
+}: {
+  rootCollectionItems: CollectionItem[];
+  tenantRootItems?: CollectionItem[];
+}) {
+  fetchMock.get(
+    `path:/api/collection/root/items`,
+    (call: { url: string }) => {
+      const url = new URL(call.url);
+      const models = url.searchParams.getAll("models");
+
+      // Check if it's a tenant request
+      if (call.url.includes("namespace=shared-tenant-collection")) {
+        return {
+          data: tenantRootItems,
+          total: tenantRootItems.length,
+          models,
+          limit: null,
+          offset: null,
+        };
+      }
+
+      return {
+        data: rootCollectionItems,
+        total: rootCollectionItems.length,
+        models,
+        limit: null,
+        offset: null,
+      };
+    },
+    { name: "root-collection-items" },
+  );
+}
+
 export function setupDashboardItemsEndpoint({
   dashboard,
   dashboardItems,

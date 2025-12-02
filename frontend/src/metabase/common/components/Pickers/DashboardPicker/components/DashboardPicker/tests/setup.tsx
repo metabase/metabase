@@ -5,6 +5,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupRootCollectionItemsEndpoint,
   setupSearchEndpoints,
   setupTenantCollectionItemsEndpoint,
 } from "__support__/server-mocks";
@@ -261,40 +262,14 @@ const commonSetup = ({ ee = false }: { ee?: boolean } = {}) => {
   setupCollectionTreeMocks(collectionTree);
 
   // Setup root collection items endpoint (handles both regular and tenant requests)
-  const rootCollectionItems = collectionTree[0].descendants.map(
-    createMockCollectionItem,
-  );
-  const tenantRootItems = ee
-    ? [mockCollectionToCollectionItem(tenantCollectionsTree[0])]
-    : [];
-
-  fetchMock.get(
-    `path:/api/collection/root/items`,
-    (call: { url: string }) => {
-      const url = new URL(call.url);
-      const models = url.searchParams.getAll("models");
-
-      // Check if it's a tenant request
-      if (call.url.includes("namespace=shared-tenant-collection")) {
-        return {
-          data: tenantRootItems,
-          total: tenantRootItems.length,
-          models,
-          limit: null,
-          offset: null,
-        };
-      }
-
-      return {
-        data: rootCollectionItems,
-        total: rootCollectionItems.length,
-        models,
-        limit: null,
-        offset: null,
-      };
-    },
-    { name: "root-collection-items" },
-  );
+  setupRootCollectionItemsEndpoint({
+    rootCollectionItems: collectionTree[0].descendants.map(
+      createMockCollectionItem,
+    ),
+    tenantRootItems: ee
+      ? [mockCollectionToCollectionItem(tenantCollectionsTree[0])]
+      : [],
+  });
 
   if (ee) {
     const allTenantItems = flattenCollectionTree(tenantCollectionsTree).map(
