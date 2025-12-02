@@ -182,6 +182,7 @@ export type ListCollectionItemsRequest = {
   namespace?: "snippets";
   collection_type?: CollectionType;
   include_editable_data_model?: boolean;
+  include_can_run_adhoc_query?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 

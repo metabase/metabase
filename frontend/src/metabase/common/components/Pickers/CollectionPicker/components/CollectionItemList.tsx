@@ -40,6 +40,7 @@ export const CollectionItemList = ({
       ? {
           ...query,
           models: getValidCollectionItemModels(query.models),
+          include_can_run_adhoc_query: true,
         }
       : skipToken,
   );

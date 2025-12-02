@@ -1,3 +1,4 @@
+import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { isNullOrUndefined } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
@@ -133,6 +134,15 @@ export const createShouldShowItem = (
 
     if (item.model === "schema") {
       return isNullOrUndefined(databaseId) || item.dbId === databaseId;
+    }
+
+    if (item.model === "card") {
+      return (
+        canCollectionCardBeUsed(item) &&
+        (isNullOrUndefined(databaseId) ||
+          !hasDatabaseId(item) ||
+          isNullOrUndefined(item.database_id))
+      );
     }
 
     if (
