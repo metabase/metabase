@@ -225,6 +225,51 @@
                                                       :query (mt/mbql-query transforms_products)}
                                              :target {:type   "table"
                                                       :name   table-name}}))))))))))
+(deftest tables-endpoint-empty-ws-test
+  (mt/test-driver
+    :postgres
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [user-id (mt/user->id :crowberto)
+            ws (mt/user-http-request :crowberto :post 200 "ee/workspace/"
+                                     {:name "My test ws"
+                                      :creator_id user-id
+                                      :database_id (mt/id)})]
+        (is (= {:inputs []
+                :outputs []}
+               (mt/user-http-request :crowberto :get 200
+                                     (str "ee/workspace/" (:id ws) "/tables"))))))))
+
+(deftest tables-endpoint-transform-not-run-test
+  (mt/test-driver
+    :postgres
+    (mt/with-model-cleanup [:model/Workspace :model/Transform :model/Collection]
+      (let [mp (mt/metadata-provider)
+            query (lib/native-query mp "select * from orders limit 10;")
+            orig-schema "public"]
+        (with-transform-cleanup! [orig-name "ws_tables_test"]
+          (mt/with-temp [:model/Transform x1 {:source_type "native"
+                                              :name "My X1"
+                                              :source {:type "query"
+                                                       :query query}
+                                              :target {:type "table"
+                                                       :database (mt/id)
+                                                       :schema "public"
+                                                       :name orig-name}}]
+            (let [;; create the workspace
+                  workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                  {:name        "Test Workspace"
+                                                   :database_id (mt/id)})
+                 ;; add the transform
+                  _ (mt/user-http-request :crowberto :post 200
+                                          (str "ee/workspace/" (:id workspace) "/contents")
+                                          {:add {:transforms [(:id x1)]}})
+                 ;; get the tables
+                  tables-result (mt/user-http-request :crowberto :get 200
+                                                      (str "ee/workspace/" (:id workspace) "/tables"))]
+              (testing "/tables returns expected results"
+                (is (= {:inputs [{:id (mt/id :orders) :schema orig-schema :table "orders"}]
+                        :outputs []}
+                       tables-result))))))))))
 
 (deftest tables-endpoint-test
   (mt/test-driver
@@ -244,11 +289,15 @@
                                                        :name orig-name}}]
             ;; create the target table
             (transforms.i/execute! x1 {:run-method :manual})
-            ;; create the workspace
-            (let [workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
+            (let [;; create the workspace
+                  workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                   {:name        "Test Workspace"
-                                                   :database_id (mt/id)
-                                                   :upstream {:transforms [(:id x1)]}})
+                                                   :database_id (mt/id)})
+                  ;; add the transform
+                  _ (mt/user-http-request :crowberto :post 200
+                                          (str "ee/workspace/" (:id workspace) "/contents")
+                                          {:add {:transforms [(:id x1)]}})
+                 ;; get the tables
                   tables-result (mt/user-http-request :crowberto :get 200
                                                       (str "ee/workspace/" (:id workspace) "/tables"))
                   mirror-transform (t2/select-one :model/Transform :workspace_id (:id workspace))

@@ -193,27 +193,30 @@
 
 (defn- output-tables
   [workspace-id]
-  (let [src-table-id->dst-table-id (t2/select-fn->fn :src-id :dst-id
-                                                     [:model/WorkspaceMappingTable [:upstream_id :src-id] [:downstream_id :dst-id]]
-                                                     :workspace_id workspace-id)
-        id->table-data (t2/select-fn->fn :id identity :model/Table
-                                         :id [:in (filter pos-int? (concat (keys src-table-id->dst-table-id)
-                                                                           (vals src-table-id->dst-table-id)))])
+  (let [src-table-id->dst-table-id
+        (t2/select-fn->fn :src-id :dst-id
+                          [:model/WorkspaceMappingTable [:upstream_id :src-id] [:downstream_id :dst-id]]
+                          :workspace_id workspace-id)]
+    (if (empty? src-table-id->dst-table-id)
+      []
+      (let [id->table-data (t2/select-fn->fn :id identity :model/Table
+                                             :id [:in (filter pos-int? (concat (keys src-table-id->dst-table-id)
+                                                                               (vals src-table-id->dst-table-id)))])
 
-        workspace-transforms-data (t2/select :model/Transform :workspace_id workspace-id)
-        s+t->workspace-transform (u/for-map
-                                  [{:keys [target] :as transform} workspace-transforms-data]
-                                   [[(:schema target) (:name target)] transform])]
-    (mapv (fn [[src-table-id dst-table-id]]
-            (let [src-schema (get-in id->table-data [src-table-id :schema])
-                  src-table (get-in id->table-data [src-table-id :name])
-                  dst-schema (get-in id->table-data [dst-table-id :schema])
-                  dst-table (get-in id->table-data [dst-table-id :name])]
-              {:global {:schema src-schema
-                        :table src-table}
-               :workspace {:transform-id (get-in s+t->workspace-transform [[dst-schema dst-table] :id])
-                           :table-id dst-table-id}}))
-          src-table-id->dst-table-id)))
+            workspace-transforms-data (t2/select :model/Transform :workspace_id workspace-id)
+            s+t->workspace-transform (u/for-map
+                                      [{:keys [target] :as transform} workspace-transforms-data]
+                                       [[(:schema target) (:name target)] transform])]
+        (mapv (fn [[src-table-id dst-table-id]]
+                (let [src-schema (get-in id->table-data [src-table-id :schema])
+                      src-table (get-in id->table-data [src-table-id :name])
+                      dst-schema (get-in id->table-data [dst-table-id :schema])
+                      dst-table (get-in id->table-data [dst-table-id :name])]
+                  {:global {:schema src-schema
+                            :table src-table}
+                   :workspace {:transform-id (get-in s+t->workspace-transform [[dst-schema dst-table] :id])
+                               :table-id dst-table-id}}))
+              src-table-id->dst-table-id)))))
 
 (api.macros/defendpoint :get "/:id/tables" :- [:map
                                                [:inputs [:sequential
