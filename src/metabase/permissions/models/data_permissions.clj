@@ -290,7 +290,9 @@
                            (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
 
-(defn- user-published-table-query [user-id table-id]
+(defn- user-published-table-query
+  "Tables published into the root collection are not supported."
+  [user-id table-id]
   {:pre [(pos-int? user-id) (pos-int? table-id)]}
   {:with   [[:user_group_ids {:select    [:pg.id]
                               :from      [[:permissions_group :pg]]
@@ -302,13 +304,13 @@
                                 :where           [:and
                                                   [:in :group_id {:select [:id]
                                                                   :from   [:user_group_ids]}]
+                                                  [:= :perm_type [:inline "perms/collection-access"]]
                                                   [:in :perm_value [[:inline "read"] [:inline "read-and-write"]]]]}]]
    :select [[[:inline true] :has-published-table]]
    :from   [:metabase_table]
    :where  [:and
             [:= :id [:inline table-id]]
             [:= :is_published true]
-            [:is-not :collection_id nil]
             [:in :collection_id {:select [:collection_id]
                                  :from   [:user_collections]}]]
    :limit  1})

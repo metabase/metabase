@@ -342,8 +342,9 @@
               (is (not (query-perms/can-run-query? native-query)) "Native queries should still be blocked"))
             (testing "WITH collection permission, but perms/view-data is set to BLOCKED"
               (mt/with-no-data-perms-for-all-users!
-                (is (not (query-perms/can-run-query? mbql-query)) "Blocked view-data should override collection perms")
-                (is (not (query-perms/can-run-query? native-query)))))))))))
+                (perms/with-relevant-permissions-for-user (mt/user->id :rasta)
+                  (is (not (query-perms/can-run-query? mbql-query)) "Blocked view-data should override collection perms")
+                  (is (not (query-perms/can-run-query? native-query))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
   (testing "Published tables with collection permissions should NOT grant view-data permissions"
@@ -353,6 +354,7 @@
         (perms/grant-collection-read-permissions! (perms/all-users-group) (u/the-id collection))
 
         (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
 
         (let [user-id (mt/user->id :rasta)]
           (testing "Should grant create-queries via collection permissions"
@@ -360,7 +362,7 @@
                    (perms/table-permission-for-user user-id :perms/create-queries (mt/id) (mt/id :venues)))
                 "Collection permissions should grant query-builder permission"))
 
-          (testing "Should NOT grant view-data via collection permissions (without explicit grant)"
+          (testing "Should NOT grant view-data via collection permissions (view-data is blocked)"
             (is (= :blocked
                    (perms/table-permission-for-user user-id :perms/view-data (mt/id) (mt/id :venues)))
-                "Without explicit view-data grant, All Users defaults to blocked")))))))
+                "view-data should remain blocked, collection perms don't grant view-data")))))))
