@@ -128,12 +128,37 @@ export const WorkspaceProvider = ({
 
   const removeOpenedTransform = useCallback(
     (transformId: number) => {
-      updateWorkspaceState((state) => ({
-        ...state,
-        openedTransforms: state.openedTransforms.filter(
+      updateWorkspaceState((state) => {
+        const filteredTransforms = state.openedTransforms.filter(
           (item) => item.id !== transformId,
-        ),
-      }));
+        );
+
+        // If the removed transform was active, update to a neighboring transform
+        let newActiveTransform = state.activeTransform;
+        if (state.activeTransform?.id === transformId) {
+          const currentIndex = state.openedTransforms.findIndex(
+            (item) => item.id === transformId,
+          );
+
+          // Prefer the transform before (previous), otherwise use the one after (next)
+          if (currentIndex > 0) {
+            // Use the previous transform
+            newActiveTransform = state.openedTransforms[currentIndex - 1];
+          } else if (filteredTransforms.length > 0) {
+            // Use the next transform (which is now at index 0 after filtering)
+            newActiveTransform = filteredTransforms[0];
+          } else {
+            // No more transforms, set to undefined
+            newActiveTransform = undefined;
+          }
+        }
+
+        return {
+          ...state,
+          openedTransforms: filteredTransforms,
+          activeTransform: newActiveTransform,
+        };
+      });
     },
     [updateWorkspaceState],
   );

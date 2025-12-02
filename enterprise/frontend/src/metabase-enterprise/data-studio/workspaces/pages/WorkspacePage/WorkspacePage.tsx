@@ -343,9 +343,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             </Flex>
             <Tabs.Panel value="code" p="md">
               <CodeTab
-                workspaceTransforms={workspaceTransforms}
-                transforms={dbTransforms}
                 activeTransformId={activeTransform?.id}
+                transforms={dbTransforms}
+                workspaceId={workspace.id}
+                workspaceTransforms={workspaceTransforms}
                 onTransformClick={(transform) => {
                   setTab(String(transform.id));
                   addOpenedTransform(transform);

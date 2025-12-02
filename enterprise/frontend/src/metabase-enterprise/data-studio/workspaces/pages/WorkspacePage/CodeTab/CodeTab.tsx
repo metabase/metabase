@@ -3,23 +3,26 @@ import { t } from "ttag";
 
 import { Stack, Text } from "metabase/ui";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
-import type { Transform } from "metabase-types/api";
+import type { Transform, WorkspaceId } from "metabase-types/api";
 
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { TransformListItem } from "./TransformListItem";
+import { TransformListItemMenu } from "./TransformListItemMenu";
 
 type CodeTabProps = {
-  workspaceTransforms: Transform[];
-  transforms: Transform[];
   activeTransformId?: number;
+  transforms: Transform[];
+  workspaceId: WorkspaceId;
+  workspaceTransforms: Transform[];
   onTransformClick: (transform: Transform) => void;
 };
 
 export const CodeTab = ({
-  workspaceTransforms,
-  transforms,
   activeTransformId,
+  transforms,
+  workspaceId,
+  workspaceTransforms,
   onTransformClick,
 }: CodeTabProps) => {
   const { editedTransforms } = useWorkspace();
@@ -73,6 +76,12 @@ export const CodeTab = ({
                   fw={600}
                   isActive={activeTransformId === transform.id}
                   isEdited={isEdited}
+                  menu={
+                    <TransformListItemMenu
+                      transform={transform}
+                      workspaceId={workspaceId}
+                    />
+                  }
                   onClick={() => handleTransformClick(transform)}
                 />
               );
