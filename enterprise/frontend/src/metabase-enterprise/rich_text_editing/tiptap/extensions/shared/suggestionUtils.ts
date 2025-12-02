@@ -83,7 +83,7 @@ export function buildUserMenuItems(
   return users.map((user) => {
     return {
       icon: "unknown",
-      label: user.common_name,
+      label: user.common_name || "",
       id: user.id,
       model: "user",
       action: () => onSelect(user),

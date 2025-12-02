@@ -86,7 +86,7 @@ export function useEntitySearch({
   const users = useMemo(() => {
     return (usersResponse?.data ?? [])
       .filter((user) => {
-        return user.common_name.toLowerCase().includes(query.toLowerCase());
+        return user.common_name?.toLowerCase().includes(query.toLowerCase());
       })
       .slice(0, USER_SEARCH_LIMIT);
   }, [usersResponse, query]);
