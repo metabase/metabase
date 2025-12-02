@@ -227,6 +227,21 @@
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
+  -merge-yaml-migrations
+  {:doc "Custom git merge driver for YAML migration files."
+   :usage-fn (fn [_]
+               (str
+                "Treats each changeset as an atomic unit to avoid conflicts within changesets.\n"
+                "Preserves original formatting including blank lines and footer warnings"))
+   :arg-schema [:tuple
+                [:string {:description "ancestor's version (base)"}]
+                [:string {:description "current version (ours)"}]
+                [:string {:description "other branch's version (theirs)"}]
+                [:int    {:optional true :description "conflict marker size" :min 0}]
+                [:string {:optional true :description "file path"}]]
+   :requires [[mage.merge-yaml-migrations]]
+   :task (task! (mage.merge-yaml-migrations/-main parsed))}
+  
   -token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
    :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]

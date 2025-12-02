@@ -1,94 +1,78 @@
-#!/usr/bin/env bb
+(ns mage.merge-yaml-migrations
+  (:require
+   [clj-yaml.core :as yaml]
+   [clojure.string :as str]
+   [mage.util :as u]))
 
-;; Custom git merge driver for YAML migration files
-;; Treats each changeset as an atomic unit to avoid conflicts within changesets
-;; Preserves original formatting including blank lines and footer warnings
-;;
-;; Usage (called by git):
-;;   merge-yaml-migrations %O %A %B %L %P
-;;   %O = ancestor's version (base)
-;;   %A = current version (ours)
-;;   %B = other branch's version (theirs)
-;;   %L = conflict marker size
-;;   %P = file path
-;;
-;; Exit codes:
-;;   0 = clean merge
-;;   1 = conflicts detected (conflict markers added to file)
-;;   >1 = merge failed
-
-(require
- '[clj-yaml.core :as yaml]
- '[clojure.string :as str])
+(set! *warn-on-reflection* true)
 
 ;; Parse YAML file to Clojure data structure
-(defn parse-yaml [file-path]
+(defn- parse-yaml [file-path]
   (try
     (yaml/parse-string (slurp file-path))
     (catch Exception e
       (binding [*out* *err*]
         (println "Error parsing YAML file:" file-path)
         (println (.getMessage e)))
-      (System/exit 2))))
+      (u/exit 2))))
 
-(def FOOTER-PREFIX
+(def ^:private FOOTER-PREFIX
   "# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<")
 
-(defn extract-footer [content]
+(defn- extract-footer [content]
   (let [idx (some-> content (str/index-of FOOTER-PREFIX))]
     (if (and idx (pos? idx))
       (subs content idx)
       "")))
 
 ;; Extract raw text for each changeset from the file
-(defn extract-changeset-texts [file-content parsed-yaml]
+(defn- extract-changeset-texts [file-content parsed-yaml]
   (let [lines (str/split-lines file-content)
         changelog (get parsed-yaml :databaseChangeLog)
         changesets (filterv #(contains? % :changeSet) changelog)]
     ;; For each changeset, find its text in the original file
-    (into {}
-          (for [cs changesets]
-            (let [cs-id (get-in cs [:changeSet :id])
-                  ;; Find the line with "id: <cs-id>"
-                  id-line-idx (first (keep-indexed
-                                      (fn [idx line]
-                                        (when (str/includes? line (str "id: " cs-id))
-                                          idx))
-                                      lines))
-                  ;; Find the changeset start (line before with "  - changeSet:")
-                  cs-start-idx (when id-line-idx
-                                 (loop [idx (dec id-line-idx)]
-                                   (cond
-                                     (< idx 0) 0
-                                     (str/starts-with? (get lines idx) "  - changeSet:") idx
-                                     :else (recur (dec idx)))))
-                  ;; Find the changeset end (next line with "  - changeSet:" or "  - " at root level or "#" or end)
-                  cs-end-idx (when cs-start-idx
-                               (loop [idx (inc cs-start-idx)]
-                                 (cond
-                                   (>= idx (count lines)) (dec (count lines))
-                                   (let [line (get lines idx)]
-                                     (or (str/starts-with? line "  - changeSet:")
-                                         (and (str/starts-with? line "  - ")
-                                              (not (re-find #"^  - (changeSet|sql|addColumn|createTable|dropTable|addForeignKeyConstraint|dropForeignKeyConstraint|createIndex|dropIndex|addUniqueConstraint|dropUniqueConstraint|addPrimaryKey|dropPrimaryKey):" line)))
-                                         (str/starts-with? line "# ")))
-                                   (dec idx)
-                                   :else (recur (inc idx)))))]
-              (when (and cs-start-idx cs-end-idx)
-                [cs-id (str/join "\n" (subvec (vec lines) cs-start-idx (inc cs-end-idx)))])))
-          )))
+    (->> (for [cs changesets]
+           (let [cs-id (get-in cs [:changeSet :id])
+                 ;; Find the line with "id: <cs-id>"
+                 id-line-idx (first (keep-indexed
+                                     (fn [idx line]
+                                       (when (str/includes? line (str "id: " cs-id))
+                                         idx))
+                                     lines))
+                 ;; Find the changeset start (line before with "  - changeSet:")
+                 cs-start-idx (when id-line-idx
+                                (loop [idx (dec id-line-idx)]
+                                  (cond
+                                    (< idx 0) 0
+                                    (str/starts-with? (get lines idx) "  - changeSet:") idx
+                                    :else (recur (dec idx)))))
+                 ;; Find the changeset end (next line with "  - changeSet:" or "  - " at root level or "#" or end)
+                 cs-end-idx (when cs-start-idx
+                              (loop [idx (inc cs-start-idx)]
+                                (cond
+                                  (>= idx (count lines)) (dec (count lines))
+                                  (let [line (get lines idx)]
+                                    (or (str/starts-with? line "  - changeSet:")
+                                        (and (str/starts-with? line "  - ")
+                                             (not (re-find #"^  - (changeSet|sql|addColumn|createTable|dropTable|addForeignKeyConstraint|dropForeignKeyConstraint|createIndex|dropIndex|addUniqueConstraint|dropUniqueConstraint|addPrimaryKey|dropPrimaryKey):" line)))
+                                        (str/starts-with? line "# ")))
+                                  (dec idx)
+                                  :else (recur (inc idx)))))]
+             (when (and cs-start-idx cs-end-idx)
+               [cs-id (str/join "\n" (subvec (vec lines) cs-start-idx (inc cs-end-idx)))])))
+         (into {}))))
 
-(defn extract-changesets [parsed-yaml]
+(defn- extract-changesets [parsed-yaml]
   (->> (:databaseChangeLog parsed-yaml)
        (filterv :changeSet)))
 
-(defn cs-id [cs]
+(defn- cs-id [cs]
   (-> cs :changeSet :id))
 
-(defn index-by [func xs]
-  (into {} (map (juxt func identity) xs)))
+(defn- index-by [func xs]
+  (zipmap xs (map func xs)))
 
-(defn merge-changesets [base-data ours-data theirs-data]
+(defn- merge-changesets [base-data ours-data theirs-data]
   (let [base-cs   (index-by cs-id (extract-changesets base-data))
         ours-cs   (index-by cs-id (extract-changesets ours-data))
         theirs-cs (index-by cs-id (extract-changesets theirs-data))
@@ -132,7 +116,7 @@
      []
      all-ids)))
 
-(defn format-conflict-changeset [id ours theirs]
+(defn- format-conflict-changeset [id ours theirs]
   (format
    (str "<<<<<<< MERGE CONFLICT for changeset: %s, our version:\n"
         "%s\n"
@@ -141,7 +125,7 @@
         ">>>>>>>\n")
    id ours theirs))
 
-(defn merge-files [base ours theirs {:keys [_marker-size]}]
+(defn- merge-files [base ours theirs {:keys [_marker-size]}]
   (let [ours-text       (slurp ours)
         theirs-text     (slurp theirs)
         ;; Parse yaml
@@ -179,18 +163,35 @@
      :conflicts (vec (keep #(when (= (:source %) :conflict) (:id %)) sorted-merged))
      :cnt       (count sorted-merged)}))
 
-(defn -main [args]
-  (when (< (count args) 3)
+;; 
+
+;;
+;; Usage (called by git):
+;;   merge-yaml-migrations %O %A %B %L %P
+;;   %O = ancestor's version (base)
+;;   %A = current version (ours)
+;;   %B = other branch's version (theirs)
+;;   %L = conflict marker size
+;;   %P = file path
+;;
+;; Exit codes:
+;;   0 = clean merge
+;;   1 = conflicts detected (conflict markers added to file)
+;;   >1 = merge failed
+
+(defn -main [{:keys [arguments]}]
+  (when (< (count arguments) 3)
     (binding [*out* *err*]
       (println "Usage: merge-yaml-migrations <base> <ours> <theirs> [conflict-marker-size] [file-path]")
       (println "Will modify <ours>!"))
-    (System/exit 2))
+    (u/exit 2))
 
-  (let [[base ours theirs marker-size target] args
-        {:keys [result
-                conflicts
-                cnt]}                         (merge-files base ours theirs {:marker-size marker-size})]
-
+  (let [[base ours theirs marker-size target] arguments
+        {:keys [result conflicts cnt]}        (merge-files
+                                               base
+                                               ours
+                                               theirs
+                                               {:marker-size marker-size})]
     (spit (or target *out*) result)
 
     ;; Exit with appropriate code
@@ -198,10 +199,10 @@
       (binding [*out* *err*]
         (println "Merge conflicts detected in changesets:" (str/join ", " conflicts))
         (println "Conflict markers added to file. Please resolve manually."))
-      (System/exit 1))
+      (u/exit 1))
 
     (println "Clean merge of" cnt "changesets")
-    (System/exit 0)))
+    (u/exit 0)))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (-main *command-line-args*))
