@@ -11,13 +11,7 @@ import {
   TextInput,
   rem,
 } from "metabase/ui";
-import {
-  useLazyGetTransformQuery,
-  useRunTransformJobMutation,
-  useRunTransformMutation,
-  useUpdateTransformMutation,
-  useUpdateWorkspaceContentsMutation,
-} from "metabase-enterprise/api";
+import { useRunTransformMutation } from "metabase-enterprise/api";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type {
   DatabaseId,
@@ -27,6 +21,8 @@ import type {
   WorkspaceId,
 } from "metabase-types/api";
 
+import { CheckOutTransformButton } from "./CheckOutTransformButton";
+import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
 import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
 
@@ -47,18 +43,7 @@ export const TransformTab = ({
   onChange,
   onOpenTransform,
 }: Props) => {
-  const [getTransform] = useLazyGetTransformQuery();
-  const [updateTransform] = useUpdateTransformMutation();
-  const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
-  useRunTransformJobMutation();
-
-  const {
-    addOpenedTransform,
-    removeOpenedTransform,
-    setActiveTransform,
-    markTransformAsRun,
-    removeEditedTransform,
-  } = useWorkspace();
+  const { markTransformAsRun } = useWorkspace();
 
   const hasSourceChanged = !isSameSource(
     editedTransform.source,
@@ -94,50 +79,6 @@ export const TransformTab = ({
         name,
       },
     });
-  };
-
-  const handleSave = async () => {
-    if (isSaved) {
-      const response = await updateTransform({
-        id: transform.id,
-        source: editedTransform.source,
-        name: editedTransform.name,
-        target: {
-          type: "table",
-          name: editedTransform.target.name,
-          schema: transform.target.schema,
-          database: databaseId,
-        },
-      });
-
-      removeEditedTransform(transform.id);
-      setActiveTransform(response.data);
-    } else {
-      const response = await updateWorkspaceContents({
-        id: workspaceId,
-        add: {
-          transforms: [transform.id],
-        },
-      });
-
-      const newTransform = response.data?.contents.transforms.find(
-        (t) => t.upstream_id === transform.id,
-      );
-      const newTransformId = newTransform?.id;
-
-      if (newTransformId != null) {
-        // TODO: remove when backend adds contents hydration to previous request
-        const newTransform = await getTransform(newTransformId).unwrap();
-
-        if (newTransform) {
-          removeEditedTransform(transform.id);
-          addOpenedTransform(newTransform);
-          removeOpenedTransform(transform.id);
-          setActiveTransform(newTransform);
-          onOpenTransform(newTransform.id);
-        }
-      }
-    }
   };
 
   return (
@@ -177,12 +118,21 @@ export const TransformTab = ({
             >{t`Run`}</Button>
           )}
 
-          <Button
-            disabled={!hasChanges}
-            size="sm"
-            variant="filled"
-            onClick={handleSave}
-          >{t`Save`}</Button>
+          {isSaved && (
+            <SaveTransformButton
+              databaseId={databaseId}
+              editedTransform={editedTransform}
+              transform={transform}
+            />
+          )}
+
+          {!isSaved && (
+            <CheckOutTransformButton
+              transform={transform}
+              workspaceId={workspaceId}
+              onOpenTransform={onOpenTransform}
+            />
+          )}
         </Group>
       </Group>
 
