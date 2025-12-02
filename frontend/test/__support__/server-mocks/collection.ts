@@ -43,29 +43,50 @@ export function setupCollectionsEndpoints({
   fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection, {
     name: `collection-${trashCollection.id}`,
   });
-  fetchMock.get("path:/api/collection", collections, {
-    name: "collection-list",
-  });
-
-  // Simple fallback handlers (will be overridden by the smart handler below)
   fetchMock.get(
-    "path:/api/collection/tree",
-    collections.filter((collection) => !collection.archived),
-    { name: "collection-tree-exclude-archived" },
-  );
-  fetchMock.get("path:/api/collection/tree", collections, {
-    name: "collection-tree-all",
-  });
+    "path:/api/collection",
+    (call) => {
+      const url = new URL(call.url);
 
-  // Smart collection tree endpoint with query parameter support
-  // Uses overwriteRoutes to override the simple handlers above
-  fetchMock.get("path:/api/collection/tree", (uri: string) => {
-    const url = new URL(uri, "http://localhost");
+      const excludeOtherUserCollections =
+        url.searchParams.get("exclude-other-user-collections") === "true";
+
+      return collections.filter((collection) => {
+        // Filter out personal collections if requested
+        if (
+          excludeOtherUserCollections &&
+          typeof collection.personal_owner_id === "number"
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+    },
+    {
+      name: "collection-list",
+    },
+  );
+
+  fetchMock.get("path:/api/collection/tree", (call) => {
+    const url = new URL(call.url);
     const excludeArchived = url.searchParams.get("exclude-archived") === "true";
+
+    const excludeOtherUserCollections =
+      url.searchParams.get("exclude-other-user-collections") === "true";
+
     const includeTenantCollections =
       url.searchParams.get("include-tenant-collections") === "true";
 
     return collections.filter((collection) => {
+      // Filter out personal collections if requested
+      if (
+        excludeOtherUserCollections &&
+        typeof collection.personal_owner_id === "number"
+      ) {
+        return false;
+      }
+
       // Filter out archived collections if requested
       if (excludeArchived && collection.archived) {
         return false;

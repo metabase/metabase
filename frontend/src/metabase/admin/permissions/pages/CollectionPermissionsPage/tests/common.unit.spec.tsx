@@ -43,7 +43,7 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findAllByRole("menuitem", { name: /Collection One/ }),
       ).toHaveLength(2);
       expect(
-        await screen.findByRole("menuitem", { name: /Personal/ }),
+        screen.queryByRole("menuitem", { name: /Personal/ }),
       ).not.toBeInTheDocument();
     });
 
