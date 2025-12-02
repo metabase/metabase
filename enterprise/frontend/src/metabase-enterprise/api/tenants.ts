@@ -1,7 +1,6 @@
 import { provideCollectionItemListTags } from "metabase/api/tags";
 import type {
   CreateTenantInput,
-  ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   Tenant,
   UpdateTenantInput,
@@ -52,17 +51,20 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
           "user",
         ]),
     }),
-    listTenantCollectionItems: builder.query<
+    listRootTenantCollectionItems: builder.query<
       ListCollectionItemsResponse,
-      ListCollectionItemsRequest
+      void
     >({
-      query: ({ id: _id, ...params }) => ({
+      query: () => ({
         method: "GET",
         url: `/api/collection/root/items`,
-        params: { ...params, namespace: "shared-tenant-collection" },
+        params: {
+          models: ["collection"],
+          namespace: "shared-tenant-collection",
+        },
       }),
-      providesTags: (response, _error, { models }) =>
-        provideCollectionItemListTags(response?.data ?? [], models),
+      providesTags: (response, _error, _args) =>
+        provideCollectionItemListTags(response?.data ?? [], ["collection"]),
     }),
   }),
 });
@@ -72,5 +74,5 @@ export const {
   useGetTenantQuery,
   useListTenantsQuery,
   useUpdateTenantMutation,
-  useListTenantCollectionItemsQuery,
+  useListRootTenantCollectionItemsQuery,
 } = tenantsApi;

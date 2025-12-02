@@ -1,13 +1,11 @@
-import { skipToken } from "metabase/api";
 import { ItemList } from "metabase/common/components/EntityPicker/components/ItemList";
 import type {
   CollectionItemListProps,
   CollectionPickerItem,
 } from "metabase/common/components/Pickers/CollectionPicker/types";
-import { useListTenantCollectionItemsQuery } from "metabase-enterprise/api";
+import { useListRootTenantCollectionItemsQuery } from "metabase-enterprise/api";
 
 export const TenantCollectionItemList = ({
-  query,
   onClick,
   selectedItem,
   isFolder,
@@ -19,13 +17,13 @@ export const TenantCollectionItemList = ({
     data: collectionItems,
     error,
     isLoading,
-  } = useListTenantCollectionItemsQuery<{
+  } = useListRootTenantCollectionItemsQuery<{
     data: {
       data: CollectionPickerItem[];
     };
     error: any;
     isLoading: boolean;
-  }>(query ? query : skipToken);
+  }>();
 
   return (
     <ItemList

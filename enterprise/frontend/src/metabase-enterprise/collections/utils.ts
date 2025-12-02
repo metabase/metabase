@@ -63,7 +63,7 @@ export const getIcon = (item: ObjectWithModel): IconData => {
     };
   }
 
-  if (item.is_remote_synced) {
+  if (item.model === "collection" && item.is_remote_synced) {
     return {
       name: REMOTE_SYNC_COLLECTION.icon,
     };
