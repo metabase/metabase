@@ -1727,7 +1727,7 @@ describe("scenarios > dashboard > caching", () => {
     cy.get("body").type("{esc}");
     cancelModal();
     // Action 3: click outside
-    cy.findAllByTestId("modal-overlay").should("have.length", 2).last().click();
+    cy.findAllByTestId("modal-overlay").should("have.length", 1).last().click();
     cancelModal();
     // Action 4: browser's Back action
     cy.go("back");
