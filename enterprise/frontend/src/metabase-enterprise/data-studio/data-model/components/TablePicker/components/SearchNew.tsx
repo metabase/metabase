@@ -21,7 +21,6 @@ import type {
   RootNode,
   SchemaNode,
   TableNode,
-  TreePath,
 } from "../types";
 import { isDatabaseItem, isSchemaItem, isTableNode } from "../types";
 import { flatten, rootNode, toKey } from "../utils";
@@ -33,7 +32,6 @@ interface SearchNewProps {
   params: RouteParams;
   filters: FilterState;
   setOnUpdateCallback: (callback: (() => void) | null) => void;
-  path: TreePath;
 }
 
 function buildResultTree(tables: Table[]): RootNode {
@@ -102,7 +100,6 @@ export function SearchNew({
   params,
   filters,
   setOnUpdateCallback,
-  path,
 }: SearchNewProps) {
   const {
     selectedTables,
@@ -133,7 +130,12 @@ export function SearchNew({
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
-  const { isExpanded: getIsExpanded, toggle } = useExpandedState(path);
+  const { isExpanded: getIsExpanded, toggle } = useExpandedState(
+    {}, // we expand all nodes, so need to pass path to expand specific branch
+    {
+      defaultClosed: false,
+    },
+  );
 
   const allowedDatabaseIds = useMemo(
     () => new Set(databases?.data.map((database) => database.id) ?? []),
@@ -167,7 +169,7 @@ export function SearchNew({
   }, [tables, resetSelection]);
 
   const flatItems = flatten(resultTree, {
-    isExpanded: (key: string) => !getIsExpanded(key), // we want to expand all nodes by default
+    isExpanded: getIsExpanded,
     addLoadingNodes: false,
     canFlattenSingleSchema: true,
     selection: {

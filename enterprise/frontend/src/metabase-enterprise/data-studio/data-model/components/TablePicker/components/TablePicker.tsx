@@ -156,7 +156,6 @@ export function TablePicker({
             params={params}
             filters={filters}
             setOnUpdateCallback={setOnUpdateCallback}
-            path={path}
           />
         )}
       </Box>
