@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
+   [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.log :as log]
    [ring.core.protocols :as ring.protocols])
@@ -92,13 +93,13 @@
    (audit/analytics-dev-mode)
    "Analytics dev mode is not enabled")
 
-  (let [start              (System/nanoTime)
+  (let [timer (u/start-timer)
         {:keys [archive
                 error-message
                 callback]} (export-and-pack)
-        duration-ms        (int (/ (- (System/nanoTime) start) 1e6))]
+        duration (u/since-ms timer)]
 
-    (log/infof "Analytics export completed in %dms" duration-ms)
+    (log/infof "Analytics export completed in %.0fms" duration)
 
     (if archive
       {:status  200
