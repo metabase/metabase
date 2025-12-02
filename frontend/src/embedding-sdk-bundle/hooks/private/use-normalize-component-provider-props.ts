@@ -1,10 +1,10 @@
-import type { ComponentProviderProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import type { ComponentProviderInternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getHasTokenFeature } from "embedding-sdk-bundle/store/selectors";
 
 export const useNormalizeComponentProviderProps = (
-  props: Omit<ComponentProviderProps, "children">,
-): Omit<ComponentProviderProps, "children"> => {
+  props: ComponentProviderInternalProps,
+): ComponentProviderInternalProps => {
   const hasTokenFeature = useSdkSelector(getHasTokenFeature);
   const normalizedProps = { ...props };
 
