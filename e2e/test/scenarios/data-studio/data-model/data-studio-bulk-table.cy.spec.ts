@@ -37,10 +37,10 @@ describe("bulk table operations", () => {
       "GET",
       `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true&include_editable_data_model=true`,
     ).as("getSchema");
-    cy.intercept("POST", "/api/ee/data-studio/table/publish-table").as(
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
     );
-    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-table").as(
+    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-tables").as(
       "unpublishTables",
     );
   });

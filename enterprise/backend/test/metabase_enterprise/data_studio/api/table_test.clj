@@ -18,7 +18,7 @@
      (testing "POST /api/ee/data-studio/table/(un)publish-table"
        (testing "publishes tables into the library-models collection"
          (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-models-collection-type}]
-           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-table"
+           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
                                                 {:table_ids [(mt/id :users) (mt/id :venues)]})]
              (is (=? {:id collection-id} (:target_collection response)))
              (testing "collection_id and is_published are set"
@@ -30,7 +30,7 @@
                          :is_published true}]
                        (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
              (testing "unpublishing"
-               (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-table"
+               (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
                                      {:table_ids [(mt/id :venues)]})
                (is (=? {:display_name "Venues"
                         :collection_id nil
@@ -43,13 +43,13 @@
                    (t2/select-one :model/Table (mt/id :users))))))
        (testing "returns 404 when no library-models collection exists"
          (is (= "Not found."
-                (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-table"
+                (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
                                       {:table_ids [(mt/id :users)]}))))
        (testing "returns 409 when multiple library-models collections exist"
          (mt/with-temp [:model/Collection _ {:type collection/library-models-collection-type}
                         :model/Collection _ {:type collection/library-models-collection-type}]
            (is (= "Multiple library-models collections found."
-                  (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-table"
+                  (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
                                         {:table_ids [(mt/id :users)]})))))))))
 
 (deftest bulk-edit-visibility-sync-test

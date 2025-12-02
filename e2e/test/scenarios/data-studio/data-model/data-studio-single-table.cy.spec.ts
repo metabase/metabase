@@ -28,10 +28,10 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("POST", "/api/ee/data-studio/table/publish-table").as(
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
     );
-    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-table").as(
+    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-tables").as(
       "unpublishTables",
     );
   });

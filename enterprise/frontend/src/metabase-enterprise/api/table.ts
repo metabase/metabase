@@ -1,11 +1,11 @@
 import type {
   DiscardTablesValuesRequest,
   EditTablesRequest,
-  PublishTablesRequest,
   PublishTablesResponse,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
-  UnpublishTablesRequest,
+  TableSelectionInfo,
+  TableSelectors,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -13,6 +13,13 @@ import { invalidateTags, listTag, tag } from "./tags";
 
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getTableSelectionInfo: builder.query<TableSelectionInfo, TableSelectors>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/data-studio/table/selection",
+        body,
+      }),
+    }),
     editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
       query: (body) => ({
         method: "POST",
@@ -58,22 +65,19 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    publishTables: builder.mutation<
-      PublishTablesResponse,
-      PublishTablesRequest
-    >({
+    publishTables: builder.mutation<PublishTablesResponse, TableSelectors>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/data-studio/table/publish-table",
+        url: "/api/ee/data-studio/table/publish-tables",
         body,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
     }),
-    unpublishTables: builder.mutation<void, UnpublishTablesRequest>({
+    unpublishTables: builder.mutation<void, TableSelectors>({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/data-studio/table/unpublish-table",
+        url: "/api/ee/data-studio/table/unpublish-tables",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -83,6 +87,7 @@ export const tableApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetTableSelectionInfoQuery,
   useEditTablesMutation,
   useRescanTablesFieldValuesMutation,
   useSyncTablesSchemasMutation,

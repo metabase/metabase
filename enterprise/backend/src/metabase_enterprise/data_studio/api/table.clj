@@ -106,7 +106,7 @@
       (maybe-sync-unhidden-tables! existing-tables set-map))
     {}))
 
-(api.macros/defendpoint :post "/publish-table"
+(api.macros/defendpoint :post "/publish-tables"
   "Set collection for each of selected tables"
   [_route-params
    _query-params
@@ -126,7 +126,7 @@
                :where  where})
     {:target_collection target-collection}))
 
-(api.macros/defendpoint :post "/unpublish-table"
+(api.macros/defendpoint :post "/unpublish-tables"
   "Unset collection for each of selected tables"
   [_route-params
    _query-params
