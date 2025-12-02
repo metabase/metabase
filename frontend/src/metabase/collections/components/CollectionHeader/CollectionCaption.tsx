@@ -6,7 +6,6 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { useToast } from "metabase/common/hooks";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -30,39 +29,21 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const [sendToast] = useToast();
-
   const isEditable = isEditableCollection(collection);
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(
     (name: string) => {
-      if (name.length > 100) {
-        sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "var(--mb-color-warning)",
-          message: t`Title must be 100 characters or less`,
-        });
-        return;
-      }
       onUpdateCollection(collection, { name });
     },
-    [collection, onUpdateCollection, sendToast],
+    [collection, onUpdateCollection],
   );
 
   const handleChangeDescription = useCallback(
     (description: string) => {
-      if (description?.length > 255) {
-        sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "var(--mb-color-warning)",
-          message: t`Description must be 255 characters or less`,
-        });
-        return;
-      }
       onUpdateCollection(collection, { description: description || null });
     },
-    [collection, onUpdateCollection, sendToast],
+    [collection, onUpdateCollection],
   );
 
   return (
