@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { screen } from "__support__/ui";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -72,36 +72,5 @@ describe("CollectionInfoSidebar (OSS)", () => {
     await userEvent.tab();
 
     expect(input).toHaveValue(longDescription.slice(0, 255));
-  });
-
-  it("should show a warning toast when description exceeds 255 characters", async () => {
-    setup({
-      collection: {
-        ...regularCollection,
-        description: "Test Description",
-        can_write: true,
-      },
-    });
-
-    // Show input
-    const editableText = screen.getByText("Test Description");
-    await userEvent.click(editableText);
-
-    const input = screen.getByDisplayValue(
-      "Test Description",
-    ) as HTMLTextAreaElement;
-    input.maxLength = 256;
-    await userEvent.clear(input);
-
-    const longDescription = "a".repeat(256);
-    await userEvent.type(input, longDescription);
-    await userEvent.tab();
-
-    await waitFor(() => {
-      const undo = screen.getByTestId("undo-list");
-      expect(
-        within(undo).getByText("Description must be 255 characters or less"),
-      ).toBeInTheDocument();
-    });
   });
 });

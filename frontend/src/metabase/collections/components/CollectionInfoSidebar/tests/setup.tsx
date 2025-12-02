@@ -1,7 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
 import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
@@ -34,22 +33,19 @@ export const setup = ({
   if (enableEnterprisePlugins) {
     setupEnterprisePlugins();
   }
-  return {
-    ...renderWithProviders(
-      <>
-        {collection.name}
-        <CollectionInfoSidebar
-          collection={collection}
-          onClose={jest.fn()}
-          onUpdateCollection={jest.fn()}
-        />
-        <UndoListing />
-      </>,
-      {
-        storeInitialState: state,
-      },
-    ),
-  };
+  return renderWithProviders(
+    <>
+      {collection.name}
+      <CollectionInfoSidebar
+        collection={collection}
+        onClose={jest.fn()}
+        onUpdateCollection={jest.fn()}
+      />
+    </>,
+    {
+      storeInitialState: state,
+    },
+  );
 };
 
 export const regularCollection = createMockCollection({

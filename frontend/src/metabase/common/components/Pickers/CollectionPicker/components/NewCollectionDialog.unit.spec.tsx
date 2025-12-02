@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { NewCollectionDialog } from "./NewCollectionDialog";
@@ -84,11 +84,9 @@ describe("new collection dialog", () => {
     await userEvent.type(input, longName);
     await userEvent.tab();
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/must be 100 characters or less/),
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText(/must be 100 characters or less/),
+    ).toBeInTheDocument();
 
     const createButton = screen.getByRole("button", { name: "Create" });
     expect(createButton).toBeDisabled();

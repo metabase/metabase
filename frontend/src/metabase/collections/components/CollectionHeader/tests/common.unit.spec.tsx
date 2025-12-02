@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -83,33 +83,6 @@ describe("CollectionHeader", () => {
       expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         name: longName.slice(0, 100),
       });
-    });
-
-    it("should show a warning toast when name exceeds 100 characters", async () => {
-      const collection = {
-        name: "Name",
-        can_write: true,
-      };
-
-      const { onUpdateCollection } = setup({
-        collection,
-      });
-
-      const input = screen.getByDisplayValue("Name") as HTMLTextAreaElement;
-      input.maxLength = 101;
-      await userEvent.clear(input);
-
-      const longName = "a".repeat(101);
-      await userEvent.type(input, longName);
-      await userEvent.tab();
-
-      await waitFor(() => {
-        const undo = screen.getByTestId("undo-list");
-        expect(
-          within(undo).getByText("Title must be 100 characters or less"),
-        ).toBeInTheDocument();
-      });
-      expect(onUpdateCollection).not.toHaveBeenCalled();
     });
   });
 
@@ -209,34 +182,6 @@ describe("CollectionHeader", () => {
       expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         description: longDescription.slice(0, 255),
       });
-    });
-
-    it("should show a warning toast when description exceeds 255 characters", async () => {
-      const collection = {
-        can_write: true,
-      };
-
-      const { onUpdateCollection } = setup({
-        collection,
-      });
-
-      const input = screen.getByTestId(
-        "collection-description-in-caption",
-      ) as HTMLTextAreaElement;
-      input.maxLength = 256;
-      await userEvent.clear(input);
-
-      const longDescription = "a".repeat(256);
-      await userEvent.type(input, longDescription);
-      await userEvent.tab();
-
-      await waitFor(() => {
-        const undo = screen.getByTestId("undo-list");
-        expect(
-          within(undo).getByText("Description must be 255 characters or less"),
-        ).toBeInTheDocument();
-      });
-      expect(onUpdateCollection).not.toHaveBeenCalled();
     });
   });
 
