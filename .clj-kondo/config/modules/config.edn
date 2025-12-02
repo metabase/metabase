@@ -621,6 +621,7 @@
    :uses #{api
            events
            models
+           permissions
            util}}
 
   graph
