@@ -607,17 +607,11 @@
    [:sort_direction {:optional true} (ms/enum-decode-keyword [:asc :desc])]])
 
 (defn- validate-unreferenced-items-params
-  [sort_column query selected-types]
+  [sort_column selected-types]
 
   (when (= sort_column :location)
     (when (some #{:sandbox :transform :snippet} selected-types)
       (throw (ex-info (tru "Sorting by location is only supported for cards, tables, dashboards and documents")
-                      {:status-code 400
-                       :types selected-types}))))
-
-  (when query
-    (when (some #{:sandbox} selected-types)
-      (throw (ex-info (tru "Searching by query is not supported for sandboxes")
                       {:status-code 400
                        :types selected-types})))))
 
@@ -649,9 +643,11 @@
          card_types [:model :metric]}} :- unreferenced-items-args]
   (let [limit (or (request/limit) 50)
         offset (or (request/offset) 0)
-        selected-types (if (sequential? types) types [types])
+        selected-types (cond->> (if (sequential? types) types [types])
+                         ;; Sandboxes don't support query filtering, so exclude them when a query is provided
+                         query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        _ (validate-unreferenced-items-params sort_column query selected-types)
+        _ (validate-unreferenced-items-params sort_column selected-types)
         entity-queries (unreferenced-entity-queries sort_column card-types query)
         union-queries (keep #(get entity-queries %) selected-types)
         union-query {:union-all union-queries}
