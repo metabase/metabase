@@ -191,13 +191,6 @@
       (do
         (println "Running tests via ⏩🏎️✨" (c/green (c/bold "THE REPL")) "✨🏎️⏪.")
         (run-tests-over-nrepl tests options))
-      (and nrepl-open? (= :bb nrepl-type))
-      (println "You have a babashka repl open, and its port is in .nrepl-port.\n"
-               "Either use -p <backend port>, or put the clojure repl port into .nrepl-port to run tests via the backend repl.")
-
-      :else
-      (throw (ex-info "Unknown issue."
-                      {:port port
-                       :nrepl-open? nrepl-open?
-                       :nrepl-type nrepl-type
-                       :babashka/exit 1})))))
+      (and nrepl-open? (not= :clj nrepl-type))
+      (println (str "You have a non-clojure nrepl: " (c/yellow (name nrepl-type)) " at port " (c/yellow port) ".\n"
+                    "Either use -p <backend port>, or run 'echo {server-nrepl-port} > .nrepl-port' to run tests via the backend repl.")))))
