@@ -12,7 +12,6 @@ import * as Urls from "metabase/lib/urls";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Stack } from "metabase/ui";
-import { trackDataStudioLibraryModelCreated } from "metabase-enterprise/data-studio/analytics";
 import { getResultMetadata } from "metabase-enterprise/data-studio/common/utils";
 import * as Lib from "metabase-lib";
 import type { Card, CollectionId } from "metabase-types/api";
@@ -83,7 +82,6 @@ function NewModelPage({
   );
 
   const handleCreate = (card: Card) => {
-    trackDataStudioLibraryModelCreated(card.id);
     dispatch(push(Urls.dataStudioModel(card.id)));
   };
 

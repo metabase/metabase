@@ -63,10 +63,6 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.wait("@createCard");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_library_metric_created",
-    });
-
     cy.log("Verify metric overview page");
     cy.url().should("match", /\/data-studio\/modeling\/metrics\/\d+$/);
 

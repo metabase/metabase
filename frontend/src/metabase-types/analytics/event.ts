@@ -505,23 +505,8 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
-export type DataStudioOpenedEvent = ValidateEvent<{
-  event: "data_studio_opened";
-  triggered_from: "profile-menu";
-}>;
-
 export type DataStudioLibraryCreatedEvent = ValidateEvent<{
   event: "data_studio_library_created";
-  target_id: number | null;
-}>;
-
-export type DataStudioLibraryModelCreatedEvent = ValidateEvent<{
-  event: "data_studio_library_model_created";
-  target_id: number | null;
-}>;
-
-export type DataStudioLibraryMetricCreatedEvent = ValidateEvent<{
-  event: "data_studio_library_metric_created";
   target_id: number | null;
 }>;
 
@@ -550,10 +535,7 @@ export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
 }>;
 
 export type DataStudioEvent =
-  | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
-  | DataStudioLibraryModelCreatedEvent
-  | DataStudioLibraryMetricCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioDependencyGraphOpenedEvent
   | DataStudioGlossaryCreatedEvent

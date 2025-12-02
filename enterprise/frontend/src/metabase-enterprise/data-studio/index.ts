@@ -1,8 +1,7 @@
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { NavbarLibrarySection } from "metabase-enterprise/data-studio/nav/components/NavbarLibrarySection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { trackDataStudioOpened } from "./analytics";
-import { NavbarLibrarySection } from "./nav/components/NavbarLibrarySection";
 import { DataStudioToolbarButton } from "./query-builder/components/DataStudioToolbarButton";
 import { getDataStudioRoutes } from "./routes";
 import {
@@ -28,6 +27,5 @@ export function initializePlugin() {
     PLUGIN_DATA_STUDIO.useGetLibraryCollection = useGetLibraryCollection;
     PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType =
       useGetLibraryChildCollectionByType;
-    PLUGIN_DATA_STUDIO.trackDataStudioOpened = trackDataStudioOpened;
   }
 }

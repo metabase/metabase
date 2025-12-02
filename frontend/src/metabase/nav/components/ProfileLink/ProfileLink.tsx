@@ -110,9 +110,6 @@ function ProfileLinkInner({
         title: t`Data studio`,
         icon: null,
         link: Urls.dataStudio(),
-        action: () => {
-          PLUGIN_DATA_STUDIO.trackDataStudioOpened("profile-menu");
-        },
       });
     }
     menuItems.push({ separator: true });
