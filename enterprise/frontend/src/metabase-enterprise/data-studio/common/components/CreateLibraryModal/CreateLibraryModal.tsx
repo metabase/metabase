@@ -30,6 +30,7 @@ export function CreateLibraryModal({
 }: CreateLibraryModalProps) {
   return (
     <Modal title={<ModalTitle />} opened={isOpened} onClose={onClose}>
+      <FocusTrap.InitialFocus />
       <ModalBody onCreate={onCreate} onClose={onClose} />
     </Modal>
   );

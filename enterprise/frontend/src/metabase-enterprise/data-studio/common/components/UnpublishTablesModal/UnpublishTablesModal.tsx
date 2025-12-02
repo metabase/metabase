@@ -7,7 +7,16 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Box, Button, Group, List, Modal, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  FocusTrap,
+  Group,
+  List,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
 import {
   useGetTableSelectionInfoQuery,
   useUnpublishTablesMutation,
@@ -48,6 +57,7 @@ export function UnpublishTablesModal({
       opened={isOpened}
       onClose={onClose}
     >
+      <FocusTrap.InitialFocus />
       <ModalBody
         databaseIds={databaseIds}
         schemaIds={schemaIds}
