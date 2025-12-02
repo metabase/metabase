@@ -5,6 +5,7 @@ import {
   createRef,
   forwardRef,
   useCallback,
+  useMemo,
 } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import { t } from "ttag";
@@ -42,6 +43,7 @@ import {
   type CodeMirrorEditorProps,
   type CodeMirrorEditorRef,
 } from "./CodeMirrorEditor";
+import { useInlinePrompt } from "./CodeMirrorEditor/inline-prompt";
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
@@ -259,6 +261,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       runQuery,
       highlightedLineNumbers,
       placeholder,
+      extensions,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -349,6 +352,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 readOnly={readOnly}
                 placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
+                extensions={extensions}
                 onChange={this.onChange}
                 onRunQuery={runQuery}
                 onSelectionChange={setNativeEditorSelectedRange}
@@ -465,11 +469,26 @@ const NativeQueryEditorWrapper = forwardRef<
     }
   }, [dispatch, isNativeEditorOpen, screenSize]);
 
+  const inlinePromptOptions = useMemo(
+    () => ({
+      line: 1,
+      placeholder: t`Describe what SQL you want...`,
+      // eslint-disable-next-line no-console
+      onSubmit: (value: string) => console.log("Submitted:", value),
+      // eslint-disable-next-line no-console
+      onCancel: () => console.log("Cancelled"),
+    }),
+    [],
+  );
+
+  const inlinePromptExtension = useInlinePrompt(inlinePromptOptions);
+
   return (
     <NativeQueryEditor
       runQuery={runQuery}
       toggleEditor={toggleEditor}
       {...props}
+      extensions={inlinePromptExtension}
       forwardedRef={ref}
     />
   );
