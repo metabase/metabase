@@ -77,8 +77,7 @@ const setup = async (
     </>,
   );
 
-  // NOTE: For cloud plans, "Site name" will appear, so we assert for it instead of "Redirect to HTTPS"
-  await screen.findByText(isCloudPlan ? "Site name" : "Redirect to HTTPS");
+  await screen.findByText("Site name");
 };
 
 describe("GeneralSettingsPage", () => {
