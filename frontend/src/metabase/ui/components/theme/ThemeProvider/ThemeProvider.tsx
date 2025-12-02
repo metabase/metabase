@@ -124,6 +124,7 @@ const getColorSchemeFromDisplayTheme = (
   switch (displayTheme) {
     case "light":
     case "transparent":
+    case undefined:
       return "light";
     case "night":
     case "dark":
