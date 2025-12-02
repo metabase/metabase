@@ -139,6 +139,7 @@ export const TransformTab = ({
       {editedTransform && (
         <Box flex="1">
           <TransformEditor
+            disabled={!isSaved}
             source={editedTransform.source}
             onChange={handleSourceChange}
           />
