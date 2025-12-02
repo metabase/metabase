@@ -157,3 +157,26 @@
       (is (= []
              @written-files)
           "Should write no files when none match"))))
+
+(deftest wrapping-source-write-files-removal-entries-test
+  (testing "WrappingSource filters removal entries based on path-filters"
+    (let [written-files (atom [])
+          mock-snap (reify source.p/SourceSnapshot
+                      (list-files [_]
+                        [])
+                      (read-file [_ _path]
+                        nil)
+                      (write-files! [_ _message files]
+                        (reset! written-files (vec files))
+                        nil)
+                      (version [_]
+                        "mock-version"))
+          wrapped-snap (source/->WrappingSnapshot mock-snap [#"collections/.*"])
+          files-to-write [{:path "collections/foo.yaml" :content "foo-content"}
+                          {:path "collections/abc123" :remove? true}
+                          {:path "databases/db1" :remove? true}]]
+      (source.p/write-files! wrapped-snap "test commit" files-to-write)
+      (is (= [{:path "collections/foo.yaml" :content "foo-content"}
+              {:path "collections/abc123" :remove? true}]
+             @written-files)
+          "Should pass through removal entries that match filter and filter out those that don't"))))

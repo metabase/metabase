@@ -1457,7 +1457,7 @@
   [collection-before-update collection-updates]
   (when (contains? collection-updates :is_remote_synced)
     (let [is-top-level? (= "/" (:location collection-before-update))
-          is-tenant-ns? (collection/tenant-collection? collection-before-update)]
+          is-tenant-ns? (collection/shared-tenant-collection? collection-before-update)]
       (when-not (and is-top-level? is-tenant-ns?)
         (throw (ex-info "is_remote_synced can only be set on top-level tenant collections"
                         {:status-code 400}))))))
@@ -1490,12 +1490,10 @@
   [collection-before-update collection-updates]
   (when (contains? collection-updates :is_remote_synced)
     (let [new-value (:is_remote_synced collection-updates)]
-      ;; Validation already done, now do checks and update
-      (check-remote-sync-toggle! collection-before-update new-value)
-      ;; Update the collection itself
-      (t2/update! :model/Collection (:id collection-before-update) {:is_remote_synced new-value})
-      ;; Cascade to descendants
-      (cascade-remote-synced-to-descendants! (:id collection-before-update) new-value))))
+      (t2/with-transaction [_]
+        (t2/update! :model/Collection (:id collection-before-update) {:is_remote_synced new-value})
+        (cascade-remote-synced-to-descendants! (:id collection-before-update) new-value)
+        (check-remote-sync-toggle! collection-before-update new-value)))))
 
 (api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."

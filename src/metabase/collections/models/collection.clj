@@ -64,10 +64,6 @@
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
 
-(def ^:constant remote-synced-collection-type
-  "The value of the `:type` field for remote-synced collections."
-  "remote-synced")
-
 (def ^:constant library-collection-type
   "The value of the `:type` field for library collections."
   "library")
@@ -136,7 +132,7 @@
   [collection-or-id]
   (cond
     (nil? collection-or-id) false ;; the root collection is never remote-synced
-    (map? collection-or-id) (boolean (:is_remote_synced collection-or-id))
+    (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
     :else (t2/select-one-fn :is_remote_synced :model/Collection :id (u/the-id collection-or-id))))
 
 (defn- is-library?
@@ -239,8 +235,8 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
-        (remote-sync/collection-editable? instance)
-        (mi/current-user-has-full-permissions? :write instance)))
+        (mi/current-user-has-full-permissions? :write instance)
+        (remote-sync/collection-editable? instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
 

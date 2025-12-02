@@ -182,8 +182,22 @@ width: fixed
       :write-files-error (throw (Exception. "Failed to write files"))
       :store-error (throw (Exception. "Store failed"))
       :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
-      ;; Default success case - write files to atom
-      (swap! files-atom assoc branch (into {} (map (juxt :path :content) files))))
+      ;; Default success case - handle both writes and removals
+      (let [write-entries (remove #(or (:remove? %) (str/blank? (:path %))) files)
+            removal-prefixes (into #{} (comp (filter :remove?)
+                                             (map :path)
+                                             (remove str/blank?))
+                                   files)
+            current-files (get @files-atom branch {})
+            ;; Remove files matching removal prefixes
+            after-removals (into {}
+                                 (remove (fn [[path _]]
+                                           (some #(or (= path %) (str/starts-with? path %))
+                                                 removal-prefixes))
+                                         current-files))
+            ;; Add new files
+            final-files (into after-removals (map (juxt :path :content) write-entries))]
+        (swap! files-atom assoc branch final-files)))
     "write-files-version")
 
   (version [_this]
