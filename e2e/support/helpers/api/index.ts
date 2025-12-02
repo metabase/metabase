@@ -7,6 +7,8 @@ export { createApiKey } from "./createApiKey";
 export { createCollection } from "./createCollection";
 export { createComment } from "./createComment";
 export { createDashboard } from "./createDashboard";
+export { createLibrary } from "./createLibrary";
+export type { LibraryCollections } from "./createLibrary";
 export type { DashboardDetails } from "./createDashboard";
 export { createDashboardWithQuestions } from "./createDashboardWithQuestions";
 export { createDashboardWithTabs } from "./createDashboardWithTabs";
@@ -26,6 +28,7 @@ export { createQuestionAndAddToDashboard } from "./createQuestionAndAddToDashboa
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
 export { createReaction } from "./createReaction";
 export { createSnippet } from "./createSnippet";
+export { createSnippetFolder } from "./createSnippetFolder";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";

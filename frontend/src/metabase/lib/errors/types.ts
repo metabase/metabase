@@ -16,3 +16,8 @@ export interface MaxLengthParams {
 export interface LengthParams {
   length: number;
 }
+
+export type StaticEmbeddingEntityError = {
+  status: number;
+  data: string;
+};

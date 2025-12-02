@@ -32,6 +32,10 @@ export function runButtonOverlay() {
   return cy.findByTestId("run-button-overlay");
 }
 
+export function runButtonInOverlay() {
+  return runButtonOverlay().findByTestId("run-button");
+}
+
 /**
  * Intercepts a request and returns resolve function that allows
  * the request to continue
@@ -101,11 +105,11 @@ export const cypressWaitAll = function (commands) {
  */
 export function visitQuestion(questionIdOrAlias) {
   if (typeof questionIdOrAlias === "number") {
-    visitQuestionById(questionIdOrAlias);
+    return visitQuestionById(questionIdOrAlias);
   }
 
   if (typeof questionIdOrAlias === "string") {
-    cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
+    return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
   }
 }
 
@@ -122,6 +126,8 @@ function visitQuestionById(id) {
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
+
+  return cy.wrap(id);
 }
 
 /**

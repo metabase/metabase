@@ -115,6 +115,7 @@ function DashCardInner({
     isEditingParameter,
     navigateToNewCardFromDashboard,
     reportAutoScrolledToDashcard,
+    isGuestEmbed,
   } = useDashboardContext();
 
   const dashcardData = useSelector((state) =>
@@ -206,7 +207,10 @@ function DashCardInner({
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 
-  const error = useMemo(() => getDashcardResultsError(series), [series]);
+  const error = useMemo(
+    () => getDashcardResultsError(series, !!isGuestEmbed),
+    [series, isGuestEmbed],
+  );
   const hasError = !!error;
 
   const gridSize = useMemo(

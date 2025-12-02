@@ -264,6 +264,7 @@
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
+   [:collection                          {:optional true} [:maybe ms/PositiveInt]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]
@@ -285,6 +286,7 @@
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           collection
            context
            calculate-available-models?
            created-at
@@ -337,6 +339,7 @@
                         :search-engine                       engine
                         :search-string                       search-string
                         :weights                             weights}
+                 (some? collection)                          (assoc :collection collection)
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -372,7 +375,7 @@
     :always
     (assoc :type (:collection_type collection))
     :always
-    collection/maybe-localize-trash-name))
+    collection/maybe-localize-system-collection-name))
 
 (defn- normalize-result [result]
   (let [instance (to-toucan-instance (t2.realize/realize result))]

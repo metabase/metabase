@@ -237,6 +237,7 @@
    :api  #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           collections
            config
            premium-features
            queries
@@ -620,6 +621,7 @@
    :uses #{api
            events
            models
+           permissions
            util}}
 
   graph
@@ -679,6 +681,7 @@
            metabase.lib.join.util
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
+           metabase.lib.metadata.column
            metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
            metabase.lib.metadata.result-metadata
@@ -1530,6 +1533,7 @@
            api
            app-db
            audit-app
+           config
            driver
            lib
            lib-be
@@ -1554,6 +1558,7 @@
            lib
            models
            parameters
+           premium-features
            query-processor
            request
            sync
@@ -1612,7 +1617,6 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
-
 
   xrays
   {:team "Querying"
@@ -1840,6 +1844,22 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-studio
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-studio.api}
+   :uses #{api
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           queries
+           request
+           sync
+           util
+           warehouse-schema}}
+
   enterprise/database-replication
   {:team "Cloud"
    :api  #{metabase-enterprise.database-replication.api
@@ -1876,7 +1896,6 @@
    :uses #{analyze
            api
            collections
-           config
            driver
            events
            graph
@@ -1974,6 +1993,15 @@
    :api  #{}
    :uses #{premium-features
            settings}}
+
+  enterprise/library
+  {:team "UX West"
+   :api  #{metabase-enterprise.library.api}
+   :uses #{api
+           collections
+           permissions
+           premium-features
+           request}}
 
   enterprise/llm
   {:team "Metabot"
@@ -2150,6 +2178,7 @@
            app-db
            appearance
            collections
+           config
            logger
            models
            plugins
@@ -2250,6 +2279,8 @@
            app-db
            config
            driver
+           lib
+           lib-be
            query-processor
            settings
            util

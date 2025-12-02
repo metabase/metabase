@@ -19,6 +19,7 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
+                              :data-studio
                               :development-mode
                               :documents
                               :email-allow-list
@@ -68,6 +69,7 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
+            :data_studio                    true
             :development_mode               true
             :documents                      true
             :email_allow_list               true

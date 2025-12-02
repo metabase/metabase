@@ -1,12 +1,14 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
-  CardDisplayType,
+  CardType,
   Collection,
   CollectionItemModel,
+  CollectionType,
   SearchModel,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 import type { ColorName } from "./colors/types";
@@ -25,9 +27,9 @@ export type ObjectWithModel = {
   authority_level?: "official" | string | null;
   collection_authority_level?: "official" | string | null;
   moderated_status?: "verified" | string | null;
-  display?: CardDisplayType | null;
-  type?: Collection["type"];
-  collection_type?: Collection["type"];
+  display?: VisualizationDisplay | null;
+  type?: CollectionType | CardType;
+  collection_type?: CollectionType;
   location?: Collection["location"];
   effective_location?: Collection["location"];
   is_personal?: boolean;
@@ -49,7 +51,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   snippet: "unknown",
   document: "document",
   timeline: "calendar",
-  transform: "refresh_downstream",
+  transform: "transform",
   user: "person",
 };
 
@@ -72,10 +74,30 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "person" };
   }
 
+  if (item.model === "collection" && item.id === "databases") {
+    return { name: "database" };
+  }
+
+  if (item.model === "collection") {
+    switch (
+      PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type as CollectionType)
+    ) {
+      case "root":
+        return { name: "repository" };
+      case "models":
+        return { name: "model" };
+      case "metrics":
+        return { name: "metric" };
+    }
+  }
+
   return { name: modelIconMap?.[item.model] ?? "unknown" };
 };
-
-export const getIcon = (item: ObjectWithModel) => {
+/**
+ * relies mainly on the `model` property to determine the icon to return
+ * also handle special collection icons and visualization types for cards
+ */
+export const getIcon = (item: ObjectWithModel): IconData => {
   if (PLUGIN_COLLECTIONS) {
     return PLUGIN_COLLECTIONS.getIcon(item);
   }
