@@ -118,7 +118,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
         activeTabElement.scrollIntoView({
           behavior: "smooth",
           block: "nearest",
-          inline: "center",
         });
       }
     }
