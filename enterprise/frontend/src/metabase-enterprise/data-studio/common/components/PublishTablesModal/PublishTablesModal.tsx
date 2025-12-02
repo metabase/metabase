@@ -75,8 +75,10 @@ function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
     return null;
   }
 
-  const { unpublished_tables, unpublished_upstream_tables } = data;
-  return <>{getTitle(unpublished_tables, unpublished_upstream_tables)}</>;
+  const { published_tables, unpublished_tables, unpublished_upstream_tables } =
+    data;
+  const selectedTables = [...published_tables, ...unpublished_tables];
+  return <>{getTitle(selectedTables, unpublished_upstream_tables)}</>;
 }
 
 type ModalBodyProps = {
@@ -105,7 +107,9 @@ function ModalBody({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { unpublished_tables, unpublished_upstream_tables } = data;
+  const { published_tables, unpublished_tables, unpublished_upstream_tables } =
+    data;
+  const selectedTables = [...published_tables, ...unpublished_tables];
 
   const handleSubmit = async () => {
     await publishTables({
@@ -123,7 +127,7 @@ function ModalBody({
           <Text>{t`Publishing a table saves it to the Library.`}</Text>
           {unpublished_upstream_tables.length > 0 && (
             <>
-              <Text>{getForeignKeyMessage(unpublished_tables)}</Text>
+              <Text>{getForeignKeyMessage(selectedTables)}</Text>
               <List spacing="sm">
                 {unpublished_upstream_tables.map((table) => (
                   <List.Item key={table.id}>{table.display_name}</List.Item>
@@ -138,7 +142,7 @@ function ModalBody({
             <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={getSubmitButtonLabel(
-                unpublished_tables,
+                selectedTables,
                 unpublished_upstream_tables,
               )}
               variant="filled"
@@ -151,13 +155,13 @@ function ModalBody({
 }
 
 function getTitle(
-  unpublishedTables: PublishTableInfo[],
+  selectedTables: PublishTableInfo[],
   unpublishedRemappedTables: PublishTableInfo[],
 ) {
-  if (unpublishedTables.length === 1) {
+  if (selectedTables.length === 1) {
     return unpublishedRemappedTables.length > 0
-      ? t`Publish ${unpublishedTables[0].display_name} and the tables it depends on?`
-      : t`Publish ${unpublishedTables[0].display_name}?`;
+      ? t`Publish ${selectedTables[0].display_name} and the tables it depends on?`
+      : t`Publish ${selectedTables[0].display_name}?`;
   }
 
   return unpublishedRemappedTables.length > 0
@@ -165,20 +169,19 @@ function getTitle(
     : t`Publish these tables?`;
 }
 
-function getForeignKeyMessage(unpublishedTables: PublishTableInfo[]) {
-  return unpublishedTables.length === 1
+function getForeignKeyMessage(selectedTables: PublishTableInfo[]) {
+  return selectedTables.length === 1
     ? jt`Because ${(
-        <strong key="table">{unpublishedTables[0].display_name}</strong>
+        <strong key="table">{selectedTables[0].display_name}</strong>
       )} uses foreign keys to display values from other tables, you'll need to publish these, too:`
     : t`Because some of the tables you've selected use foreign keys to display values from other tables, you'll need to publish the tables below, too:`;
 }
 
 function getSubmitButtonLabel(
-  unpublishedTables: PublishTableInfo[],
+  selectedTables: PublishTableInfo[],
   unpublishedRemappedTables: PublishTableInfo[],
 ) {
-  return unpublishedTables.length === 1 &&
-    unpublishedRemappedTables.length === 0
+  return selectedTables.length === 1 && unpublishedRemappedTables.length === 0
     ? t`Publish this table`
     : t`Publish these tables`;
 }

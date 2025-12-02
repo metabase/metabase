@@ -75,8 +75,10 @@ function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
     return null;
   }
 
-  const { published_tables, published_downstream_tables } = data;
-  return <>{getTitle(published_tables, published_downstream_tables)}</>;
+  const { published_tables, unpublished_tables, published_downstream_tables } =
+    data;
+  const selectedTables = [...published_tables, ...unpublished_tables];
+  return <>{getTitle(selectedTables, published_downstream_tables)}</>;
 }
 
 type ModalBodyProps = {
@@ -105,7 +107,9 @@ function ModalBody({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { published_tables, published_downstream_tables } = data;
+  const { published_tables, unpublished_tables, published_downstream_tables } =
+    data;
+  const selectedTables = [...published_tables, ...unpublished_tables];
 
   const handleSubmit = async () => {
     await unpublishTables({
@@ -121,11 +125,11 @@ function ModalBody({
       <Form>
         <Stack>
           <Text>
-            {getInfoMessage(published_tables, published_downstream_tables)}
+            {getInfoMessage(selectedTables, published_downstream_tables)}
           </Text>
           {published_downstream_tables.length > 0 && (
             <>
-              <Text>{getForeignKeyMessage(published_tables)}</Text>
+              <Text>{getForeignKeyMessage(selectedTables)}</Text>
               <List spacing="sm">
                 {published_downstream_tables.map((table) => (
                   <List.Item key={table.id}>{table.display_name}</List.Item>
@@ -140,7 +144,7 @@ function ModalBody({
             <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={getSubmitButtonLabel(
-                published_tables,
+                selectedTables,
                 published_downstream_tables,
               )}
               variant="filled"
@@ -153,13 +157,13 @@ function ModalBody({
 }
 
 function getTitle(
-  publishedTables: PublishTableInfo[],
+  selectedTables: PublishTableInfo[],
   publishedRemappedTables: PublishTableInfo[],
 ) {
-  if (publishedTables.length === 1) {
+  if (selectedTables.length === 1) {
     return publishedRemappedTables.length > 0
-      ? t`Unpublish ${publishedTables[0].display_name} and the tables that depend on it?`
-      : t`Unpublish ${publishedTables[0].display_name}?`;
+      ? t`Unpublish ${selectedTables[0].display_name} and the tables that depend on it?`
+      : t`Unpublish ${selectedTables[0].display_name}?`;
   }
 
   return publishedRemappedTables.length > 0
@@ -168,27 +172,27 @@ function getTitle(
 }
 
 function getInfoMessage(
-  publishedTables: PublishTableInfo[],
+  selectedTables: PublishTableInfo[],
   publishedRemappedTables: PublishTableInfo[],
 ) {
-  return publishedTables.length === 1 && publishedRemappedTables.length === 0
+  return selectedTables.length === 1 && publishedRemappedTables.length === 0
     ? t`This will remove this table from the Library.`
     : t`This will remove these tables from the Library.`;
 }
 
-function getForeignKeyMessage(unpublishedTables: PublishTableInfo[]) {
-  return unpublishedTables.length === 1
+function getForeignKeyMessage(selectedTables: PublishTableInfo[]) {
+  return selectedTables.length === 1
     ? jt`Because values in ${(
-        <strong key="table">{unpublishedTables[0].display_name}</strong>
+        <strong key="table">{selectedTables[0].display_name}</strong>
       )} are used as display values in other published tables, you'll need to unpublish these, too:`
     : t`Because values in some of the tables you've selected are used as display values in other published tables, you'll need to unpublish the tables below, too:`;
 }
 
 function getSubmitButtonLabel(
-  publishedTables: PublishTableInfo[],
+  selectedTables: PublishTableInfo[],
   publishedRemappedTables: PublishTableInfo[],
 ) {
-  return publishedTables.length === 1 && publishedRemappedTables.length === 0
+  return selectedTables.length === 1 && publishedRemappedTables.length === 0
     ? t`Unpublish this table`
     : t`Unpublish these tables`;
 }
