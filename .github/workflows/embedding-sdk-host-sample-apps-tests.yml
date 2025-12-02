@@ -104,8 +104,6 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      MB_RUN_MODE: e2e
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
@@ -236,8 +234,6 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      MB_RUN_MODE: e2e
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
