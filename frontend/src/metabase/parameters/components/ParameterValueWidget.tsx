@@ -11,7 +11,6 @@ import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   isBooleanParameter,
@@ -23,7 +22,7 @@ import {
   areParameterValuesIdentical,
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dashboard, ParameterId } from "metabase-types/api";
+import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 import {
   ParameterDropdownWidget,
@@ -43,8 +42,9 @@ export type ParameterValueWidgetProps = {
   isFullscreen?: boolean;
   className?: string;
   parameters?: UiParameter[];
-  dashboard?: Dashboard | null;
-  question?: Question;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
+  token?: string | null;
   setParameterValueToDefault?: (parameterId: ParameterId) => void;
   // This means the widget will take care of the default value.
   // Should be used for dashboards and native questions in the parameter bar,
@@ -58,7 +58,6 @@ export type ParameterValueWidgetProps = {
 export const ParameterValueWidget = ({
   className,
   commitImmediately = false,
-  dashboard,
   enableRequiredBehavior,
   focusChanged,
   isEditing = false,
@@ -68,7 +67,9 @@ export const ParameterValueWidget = ({
   parameter,
   parameters,
   placeholder,
-  question,
+  cardId,
+  dashboardId,
+  token,
   setParameterValueToDefault,
   setValue,
   value,
@@ -219,8 +220,9 @@ export const ParameterValueWidget = ({
           <ParameterDropdownWidget
             parameter={parameter}
             parameters={parameters}
-            question={question}
-            dashboard={dashboard}
+            cardId={cardId}
+            dashboardId={dashboardId}
+            token={token}
             value={value}
             setValue={setValue}
             isEditing={isEditing}
@@ -273,6 +275,7 @@ export const ParameterValueWidget = ({
               className={className}
               ariaLabel={placeholder}
               mimicMantine={mimicMantine}
+              hasPopover
             >
               {typeIcon}
               {prefix && <div className={S.Prefix}>{prefix}</div>}
@@ -285,8 +288,8 @@ export const ParameterValueWidget = ({
                 <FormattedParameterValue
                   parameter={parameter}
                   value={value}
-                  cardId={question?.id()}
-                  dashboardId={dashboard?.id}
+                  cardId={cardId}
+                  dashboardId={dashboardId}
                   placeholder={placeholderText}
                   isPopoverOpen={isOpen}
                 />
@@ -305,8 +308,9 @@ export const ParameterValueWidget = ({
         <ParameterDropdownWidget
           parameter={parameter}
           parameters={parameters}
-          question={question}
-          dashboard={dashboard}
+          cardId={cardId}
+          dashboardId={dashboardId}
+          token={token}
           value={value}
           setValue={setValue}
           isEditing={isEditing}

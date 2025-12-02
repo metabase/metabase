@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
+import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -12,6 +13,7 @@ import type {
 } from "metabase/collections/types";
 import {
   canArchiveItem,
+  canBookmarkItem,
   canCopyItem,
   canMoveItem,
   canPinItem,
@@ -85,6 +87,7 @@ function ActionMenu({
   const dispatch = useDispatch();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
+  const canBookmark = canBookmarkItem(item);
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
@@ -113,8 +116,13 @@ function ActionMenu({
     if (!createBookmark && !deleteBookmark) {
       return undefined;
     }
+
     const handler = () => {
       const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+      if (!isBookmarked) {
+        trackCollectionItemBookmarked(item);
+      }
       toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
     };
     return handler;
@@ -165,7 +173,7 @@ function ActionMenu({
         onMove={canMove ? handleMove : undefined}
         onCopy={canCopy ? handleCopy : undefined}
         onArchive={canArchive ? handleArchive : undefined}
-        onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
+        onToggleBookmark={canBookmark ? handleToggleBookmark : undefined}
         onTogglePreview={canPreview ? handleTogglePreview : undefined}
         onRestore={canRestore ? handleRestore : undefined}
         onDeletePermanently={canDelete ? openModal : undefined}

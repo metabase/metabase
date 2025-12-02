@@ -1,5 +1,7 @@
 (ns metabase.util.humanization
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
    [metabase.util :as u]))
 

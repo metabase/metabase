@@ -69,8 +69,8 @@
 
 (defmethod microseconds-test-expected-rows :sqlite
   [_driver]
-  [[1 4 "2015-06-06 10:40:00"]
-   [2 0 "2015-06-10 19:51:00"]])
+  [[1 4 "2015-06-06 10:40:00.000000"]
+   [2 0 "2015-06-10 19:51:00.000000"]])
 
 (deftest ^:parallel microseconds-test
   (mt/test-drivers (mt/normal-drivers)
@@ -169,16 +169,16 @@
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
         (let [query (mt/native-query
-                      (merge (mt/count-with-field-filter-query driver/*driver* :sightings :timestamp)
-                             (mt/$ids sightings
-                               {:template-tags {"timestamp" {:name         "timestamp"
-                                                             :display-name "Sighting Timestamp"
-                                                             :type         :dimension
-                                                             :dimension    $timestamp
-                                                             :widget-type  :date/range}}
-                                :parameters    [{:type   :date/range
-                                                 :target [:dimension [:template-tag "timestamp"]]
-                                                 :value  "2014-02-01~2015-02-29"}]})))]
+                     (merge (mt/count-with-field-filter-query driver/*driver* :sightings :timestamp)
+                            (mt/$ids sightings
+                              {:template-tags {"timestamp" {:name         "timestamp"
+                                                            :display-name "Sighting Timestamp"
+                                                            :type         :dimension
+                                                            :dimension    $timestamp
+                                                            :widget-type  :date/range}}
+                               :parameters    [{:type   :date/range
+                                                :target [:dimension [:template-tag "timestamp"]]
+                                                :value  "2014-02-01~2015-02-29"}]})))]
           (testing (format "\nquery = %s" (u/pprint-to-str query))
             (is (= [[41]]
                    (mt/formatted-rows

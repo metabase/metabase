@@ -1,3 +1,4 @@
+/* eslint-disable jest/expect-expect */
 import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
@@ -5,9 +6,11 @@ import { P, isMatching } from "ts-pattern";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   act,
+  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
@@ -15,7 +18,6 @@ import {
 } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { downloadObjectAsJson } from "metabase/lib/download";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import {
   type MockStreamedEndpointParams,
@@ -25,6 +27,7 @@ import {
 } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -50,12 +53,8 @@ import {
   setVisible,
 } from "./state";
 
-jest.mock("metabase/lib/download", () => ({
-  downloadObjectAsJson: jest.fn(),
-}));
-
 const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/v2/agent-streaming", params);
+  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
 
 function setup(
   options: {
@@ -88,6 +87,7 @@ function setup(
     `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
   );
+  setupDatabaseListEndpoint([]);
 
   return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
     storeInitialState: createMockState({
@@ -108,9 +108,26 @@ function setup(
 const chat = () => screen.findByTestId("metabot-chat");
 const chatMessages = () => screen.findAllByTestId("metabot-chat-message");
 const lastChatMessage = async () => (await chatMessages()).at(-1);
-const input = () => screen.findByTestId("metabot-chat-input");
-const enterChatMessage = async (message: string, send = true) =>
-  userEvent.type(await input(), `${message}${send ? "{Enter}" : ""}`);
+const input = async () => {
+  const chatInput = await screen.findByTestId("metabot-chat-input");
+  // get tiptap content editable node
+  // eslint-disable-next-line testing-library/no-node-access
+  return chatInput.querySelector('[contenteditable="true"]')!;
+};
+const enterChatMessage = async (message: string, send = true) => {
+  // using userEvent.type works locally but in CI characters are sometimes dropped
+  // so "Who is your favorite?" becomes something like "Woi or fvrite?"
+  const editor = await input();
+  editor.textContent = message;
+  fireEvent.input(editor, {
+    target: { textContent: message },
+  });
+  if (send) {
+    await userEvent.type(await input(), "{Enter}");
+  }
+};
+const sendMessageButton = () => screen.findByTestId("metabot-send-message");
+const stopResponseButton = () => screen.findByTestId("metabot-stop-response");
 const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 const responseLoader = () => screen.findByTestId("metabot-response-loader");
 const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
@@ -137,7 +154,7 @@ const assertConversation = async (
     });
   } else {
     const realMessages = await chatMessages();
-    expect(expectedMessages.length).toBe(realMessages.length);
+    expect(realMessages.length).toBe(expectedMessages.length);
     expectedMessages.forEach(([expectedRole, expectedMessage], index) => {
       const realMessage = realMessages[index];
       expect(realMessage).toHaveAttribute("data-message-role", expectedRole);
@@ -250,19 +267,7 @@ describe("metabot-streaming", () => {
       }
     });
 
-    it("should not render markdown for user messages", async () => {
-      setup();
-      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
-
-      const msg = "# Who is your favorite?";
-      await enterChatMessage(msg);
-      expect(await screen.findByText(msg)).toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { level: 1 }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should render markdown for metabot's replies", async () => {
+    it("should render markdown for messages", async () => {
       setup();
       mockAgentEndpoint({
         textChunks: [
@@ -271,15 +276,24 @@ describe("metabot-streaming", () => {
           `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         ],
       });
-      await enterChatMessage("Who is your favorite?");
 
-      const heading = await screen.findByRole("heading", { level: 1 });
-      expect(heading).toBeInTheDocument();
-      expect(heading).toHaveTextContent(`You, but don't tell anyone.`);
+      await enterChatMessage("# Who is your favorite?");
+
+      await screen.findByRole("heading", {
+        level: 1,
+        name: `Who is your favorite?`,
+      });
+      await screen.findByRole("heading", {
+        level: 1,
+        name: `You, but don't tell anyone.`,
+      });
     });
 
     it("should present the user an option to provide feedback", async () => {
+      const feedbackPath = "path:/api/ee/metabot-v3/feedback";
+
       setup();
+      fetchMock.post(feedbackPath, 204);
       mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       await enterChatMessage("Who is your favorite?");
@@ -291,10 +305,6 @@ describe("metabot-streaming", () => {
         within(lastMessage!).findByTestId("metabot-chat-message-thumbs-up");
       const thumbsDown = () =>
         within(lastMessage!).findByTestId("metabot-chat-message-thumbs-down");
-      const mockDownloadObjectAsJson =
-        downloadObjectAsJson as jest.MockedFunction<
-          typeof downloadObjectAsJson
-        >;
 
       expect(await thumbsUp()).toBeInTheDocument();
       expect(await thumbsDown()).toBeInTheDocument();
@@ -303,11 +313,11 @@ describe("metabot-streaming", () => {
       expect(await feedbackModal()).toBeInTheDocument();
       await userEvent.click(
         await within(await feedbackModal()).findByRole("button", {
-          name: /Download/,
+          name: /Submit/,
         }),
       );
 
-      expect(mockDownloadObjectAsJson).toHaveBeenCalledTimes(1);
+      expect(fetchMock.callHistory.calls(feedbackPath)).toHaveLength(1);
 
       expect(await thumbsUp()).toBeDisabled();
       expect(await thumbsDown()).toBeDisabled();
@@ -362,7 +372,7 @@ describe("metabot-streaming", () => {
 
     it("should not show retry option for error messages", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -391,9 +401,9 @@ describe("metabot-streaming", () => {
         ),
       });
 
-      expect(await input()).toHaveValue("");
+      expect(await input()).toHaveTextContent("");
       await userEvent.click(await screen.findByText("CLICK HERE"));
-      expect(await input()).toHaveValue("TEST VAL");
+      expect(await input()).toHaveTextContent("TEST VAL");
     });
 
     describe("prompt-suggestions", () => {
@@ -496,7 +506,7 @@ describe("metabot-streaming", () => {
       );
 
       await enterChatMessage("Who is your favorite?", false);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
 
       await enterChatMessage("Who is your favorite?");
       expect(await responseLoader()).toBeInTheDocument();
@@ -505,14 +515,27 @@ describe("metabot-streaming", () => {
       ).toBeInTheDocument();
 
       // should auto-clear input + refocus
-      expect(await input()).toHaveValue("");
+      expect(await input()).toHaveTextContent("");
       expect(await input()).toHaveFocus();
+    });
+
+    it("should be able to send a message via send button", async () => {
+      setup();
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
+      await enterChatMessage("Who is your favorite?", false);
+      expect(await input()).toHaveTextContent("Who is your favorite?");
+      (await sendMessageButton()).click();
+
+      expect(
+        await screen.findByText("You, but don't tell anyone."),
+      ).toBeInTheDocument();
     });
 
     it("should properly handle partial messages", async () => {
       setup();
 
-      const [pause1] = createPauses(2);
+      const [pause1] = createPauses(1);
       mockAgentEndpoint({
         stream: createMockReadableStream(
           (async function* () {
@@ -672,12 +695,68 @@ describe("metabot-streaming", () => {
         ["agent", "Response 2"],
       ]);
     });
+
+    it("should be able to stop a response via stop button", async () => {
+      setup();
+
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `0:"You, but "\n`;
+            await pause1.promise;
+            yield `0:"don't tell anyone."\n`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Who is your favorite?");
+      await userEvent.click(await stopResponseButton());
+      pause1.resolve();
+
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      await enterChatMessage("Who is your favorite?");
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but"],
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but don't tell anyone."],
+      ]);
+    });
+
+    it("should be able to stop a response via escape press", async () => {
+      setup();
+
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `0:"You, but "\n`;
+            await pause1.promise;
+            yield `0:"don't tell anyone."\n`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Who is your favorite?");
+      await userEvent.type(await input(), "{Escape}");
+      pause1.resolve();
+
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      await enterChatMessage("Who is your favorite?");
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but"],
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but don't tell anyone."],
+      ]);
+    });
   });
 
   describe("errors", () => {
     it("should handle service error response", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -685,12 +764,12 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.agentOffline],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
     });
 
     it("should handle non-successful responses", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 400);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 400);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -698,7 +777,7 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.default],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
     });
 
     it("should handle show error if data error part is in response", async () => {
@@ -711,7 +790,7 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.default],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
     });
 
     it("should not show a user error when an AbortError is triggered", async () => {
@@ -728,12 +807,12 @@ describe("metabot-streaming", () => {
       await userEvent.click(await resetChatButton());
 
       await assertConversation([]);
-      expect(await input()).toHaveValue("");
+      expect(await input()).toHaveTextContent("");
     });
 
     it("should remove previous error messages and prompt when submiting next prompt", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -741,7 +820,7 @@ describe("metabot-streaming", () => {
         ["user", "Who is your favorite?"],
         ["agent", METABOT_ERR_MSG.agentOffline],
       ]);
-      expect(await input()).toHaveValue("Who is your favorite?");
+      expect(await input()).toHaveTextContent("Who is your favorite?");
 
       mockAgentEndpoint({
         textChunks: whoIsYourFavoriteResponse,
@@ -769,6 +848,32 @@ describe("metabot-streaming", () => {
           (await lastReqBody(agentSpy))?.context,
         ),
       ).toEqual(true);
+    });
+
+    it("should send along available actions in context", async () => {
+      setup();
+      fetchMock.removeRoutes({ names: ["database-list"] });
+      setupDatabaseListEndpoint([
+        createMockDatabase({
+          is_saved_questions: false,
+          native_permissions: "none",
+        }),
+      ]);
+
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(
+        _.pick((await lastReqBody(agentSpy))?.context, "capabilities"),
+      ).toEqual({
+        capabilities: [
+          "frontend:navigate_user_v1",
+          "permission:save_questions",
+        ],
+      });
     });
 
     it("should allow components to register additional context", async () => {
@@ -847,6 +952,68 @@ describe("metabot-streaming", () => {
       expect(getState()).toEqual({});
       await enterChatMessage("Request");
       expect(getState()).toEqual({});
+    });
+
+    it("should preserve conversation state if aborted response didn't contain a state data object", async () => {
+      const { store } = setup();
+      const getState = () => getMetabotState(store.getState() as any);
+
+      // insert some state via previous convo
+      mockAgentEndpoint({
+        textChunks: [
+          `0:"here ya go"`,
+          `2:{"type":"state","version":1,"value":{"testing":123}}`,
+          `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        ],
+      });
+      await enterChatMessage("gimme state plz");
+      assertConversation([
+        ["user", "gimme state plz"],
+        ["agent", "here ya go"],
+      ]);
+      expect(getState()).toEqual({ testing: 123 });
+
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `0:"blah blah blah"\n`;
+            await pause1.promise;
+            yield `0:"something something"\n`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("i'm going to cancel this request...");
+      assertConversation([
+        ["user", "gimme state plz"],
+        ["agent", "here ya go"],
+        ["user", "i'm going to cancel this request..."],
+        ["agent", "blah blah blah"],
+      ]);
+      await userEvent.click(await stopResponseButton());
+      pause1.resolve();
+
+      expect(getState()).toEqual({ testing: 123 });
+    });
+
+    it("should use new state object if aborted response contained one", async () => {
+      const { store } = setup();
+      const getState = () => getMetabotState(store.getState() as any);
+
+      // insert some state via previous convo
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `2:{"type":"state","version":1,"value":{"testing":123}}`,
+              await pause1.promise;
+          })(),
+        ),
+      });
+      await enterChatMessage("hi");
+      await userEvent.click(await stopResponseButton());
+      expect(getState()).toEqual({ testing: 123 });
     });
   });
 
@@ -935,10 +1102,12 @@ describe("metabot-streaming", () => {
       expect(beforeResetState.conversationId).not.toBe(null);
       expect(_.omit(beforeResetState.messages[0], "id")).toStrictEqual({
         role: "user",
+        type: "text",
         message: "Who is your favorite?",
       });
       expect(_.omit(beforeResetState.messages[1], "id")).toStrictEqual({
         role: "agent",
+        type: "text",
         message: "You, but don't tell anyone.",
       });
 
@@ -957,7 +1126,9 @@ describe("metabot-streaming", () => {
 
       // adding messages this long via the ui's input makes the test hang
       act(() => {
-        store.dispatch(addUserMessage({ id: "1", message: longMsg }));
+        store.dispatch(
+          addUserMessage({ id: "1", type: "text", message: longMsg }),
+        );
       });
       expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
       expect(
@@ -965,7 +1136,9 @@ describe("metabot-streaming", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        store.dispatch(addUserMessage({ id: "2", message: longMsg }));
+        store.dispatch(
+          addUserMessage({ id: "2", type: "text", message: longMsg }),
+        );
       });
       expect(
         await screen.findByText(/This chat is getting long/),
@@ -980,6 +1153,86 @@ describe("metabot-streaming", () => {
         ).not.toBeInTheDocument();
       });
       expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
+    });
+
+    it("should manually insert synthetic tool results for aborted requests with unresolved tool calls", async () => {
+      const { store } = setup();
+
+      // insert some state via previous convo
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `9:{"toolCallId":"test","toolName":"test","args":""}`;
+            await pause1.promise;
+          })(),
+        ),
+      });
+      await enterChatMessage("hi");
+      await userEvent.click(await stopResponseButton());
+      pause1.resolve();
+      expect(getHistory(store.getState() as any)).toMatchObject([
+        { content: "hi", role: "user" },
+        {
+          role: "assistant",
+          tool_calls: [{ arguments: "", id: "test", name: "test" }],
+        },
+        {
+          content: "Tool execution interrupted by user",
+          role: "tool",
+          tool_call_id: "test",
+        },
+      ]);
+    });
+  });
+
+  describe("experimental", () => {
+    describe("debug mode", () => {
+      const mockResponse = () => {
+        mockAgentEndpoint({
+          textChunks: [
+            `0:"Before"`,
+            `9:{"toolCallId":"debug_test","toolName":"debug_test","args":""}`,
+            `a:{"toolCallId":"debug_test","result":""}`,
+            `0:"After"`,
+            `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+          ],
+        });
+      };
+
+      it("should not show tool_call messages in chat if debug mode is disabled", async () => {
+        setup();
+        mockResponse();
+
+        await enterChatMessage("Don't show me tool call messages");
+        await assertConversation([
+          ["user", "Don't show me tool call messages"],
+          ["agent", "Before"],
+          ["agent", "After"],
+        ]);
+      });
+
+      it("should show tool_call messages in chat if debug mode is enabled", async () => {
+        setup({
+          metabotPluginInitialState: {
+            ...getMetabotInitialState(),
+            visible: true,
+            experimental: {
+              ...getMetabotInitialState().experimental,
+              debugMode: true,
+            },
+          },
+        });
+        mockResponse();
+
+        await enterChatMessage("Don't show me tool call messages");
+        await assertConversation([
+          ["user", "Don't show me tool call messages"],
+          ["agent", "Before"],
+          ["agent", "debug_test"],
+          ["agent", "After"],
+        ]);
+      });
     });
   });
 });

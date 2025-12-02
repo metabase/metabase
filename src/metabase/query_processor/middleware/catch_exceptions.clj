@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
@@ -12,7 +13,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -138,10 +140,13 @@
           (catch Throwable e
             (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "failure"})
             ;; format the Exception and return it
-            (let [formatted-exception (format-exception* query e @extra-info)]
-              (log/errorf "Error processing query: %s\n%s"
-                          (or (:error formatted-exception) "Error running query")
-                          (u/pprint-to-str formatted-exception))
+            (let [formatted-exception (format-exception* query e @extra-info)
+                  query-canceled?     (some (comp :query/query-canceled? ex-data)
+                                            (u/full-exception-chain e))]
+              (when-not query-canceled?
+                (log/errorf "Error processing query: %s\n%s"
+                            (or (:error formatted-exception) "Error running query")
+                            (u/pprint-to-str formatted-exception)))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]

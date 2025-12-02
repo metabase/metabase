@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import {
   Box,
   Card,
@@ -40,7 +41,7 @@ export const BrowseCard = ({
 }: {
   icon: IconName;
   to: string;
-  iconColor?: string;
+  iconColor?: ColorName;
   title: string;
   size?: "md" | "lg";
   children?: React.ReactNode;

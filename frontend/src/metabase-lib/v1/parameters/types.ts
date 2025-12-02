@@ -1,8 +1,12 @@
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { Parameter, ParameterTarget } from "metabase-types/api";
+import type {
+  Parameter,
+  ParameterTarget,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 interface ValuePopulatedParameter extends ParameterWithTemplateTagTarget {
-  value?: any;
+  value?: ParameterValueOrArray | null;
 }
 
 export interface FieldFilterUiParameter extends ValuePopulatedParameter {

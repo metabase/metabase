@@ -50,7 +50,7 @@ export function StringInputWidget({
     event.preventDefault();
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {
-        setValue(parameter.default);
+        setValue(parameter.default as string[] | undefined);
       }
       return;
     }

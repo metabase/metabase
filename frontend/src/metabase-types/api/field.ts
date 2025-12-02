@@ -1,5 +1,5 @@
 import type { RowValue } from "./dataset";
-import type { FieldReference } from "./query";
+import type { DimensionReference, FieldReference } from "./query";
 import type { Table, TableId } from "./table";
 
 export type FieldId = number;
@@ -66,17 +66,11 @@ export type FieldDimension = {
   human_readable_field?: Field;
 };
 
-export type FieldDimensionOption = {
-  name: string;
-  mbql: unknown[] | null;
-  type: string;
-};
-
 export interface Field {
   id: FieldId | FieldReference;
   table_id: TableId;
   table?: Table;
-  field_ref?: FieldReference;
+  field_ref?: DimensionReference;
 
   name: string;
   display_name: string;
@@ -92,7 +86,7 @@ export interface Field {
   preview_display: boolean;
   position: number;
 
-  parent_id?: FieldId;
+  parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
@@ -100,8 +94,6 @@ export interface Field {
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
-  default_dimension_option?: FieldDimensionOption;
-  dimension_options?: FieldDimensionOption[];
   name_field?: Field;
 
   max_value?: number;
@@ -156,7 +148,7 @@ export interface GetFieldValuesResponse {
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string;
+  value?: string;
   limit: number;
 }
 

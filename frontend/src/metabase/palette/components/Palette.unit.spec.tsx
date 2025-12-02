@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -41,5 +42,31 @@ describe("command palette", () => {
 
     await userEvent.keyboard("[ControlLeft>]k");
     expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument();
+  });
+
+  it("should not call recents API when palette is disabled", async () => {
+    setup({ routeProps: { disableCommandPalette: true } });
+
+    await userEvent.keyboard("[ControlLeft>]k");
+
+    expect(fetchMock.callHistory.called(/\/api\/activity\/recents/)).toBe(
+      false,
+    );
+  });
+
+  it("should toggle dark mode", async () => {
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+    await userEvent.type(input, "dark mode");
+    await userEvent.click(await screen.findByText("Toggle dark/light mode"));
+
+    const getColorSchemeValue = () =>
+      window.localStorage.getItem("metabase-color-scheme");
+
+    expect(getColorSchemeValue()).toBe("dark");
+    await userEvent.click(await screen.findByText("Toggle dark/light mode"));
+    expect(getColorSchemeValue()).toBe("auto");
   });
 });

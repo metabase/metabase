@@ -62,6 +62,7 @@
            {:can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
+            :can_access_data_studio  (perms/set-has-application-permission-of-type? permissions-set :data-studio)
             :can_access_data_model   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
             :can_access_db_details   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
             :is_group_manager        api/*is-group-manager?*})))
@@ -163,7 +164,7 @@
                    :group_id group-id)
        (and
         (premium-features/enable-sandboxes?)
-        (t2/exists? :model/GroupTableAccessPolicy
+        (t2/exists? :model/Sandbox
                     :group_id group-id)))
     :blocked
     :unrestricted))
@@ -185,9 +186,9 @@
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists?
-         :model/GroupTableAccessPolicy
+         :model/Sandbox
          {:select [:s.id]
-          :from [[(t2/table-name :model/GroupTableAccessPolicy) :s]]
+          :from [[(t2/table-name :model/Sandbox) :s]]
           :join [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
           :where [:and
                   [:= :s.group_id group-id]
@@ -213,7 +214,7 @@
                      :db_id db-id)
          (and
           (premium-features/enable-sandboxes?)
-          (t2/exists? :model/GroupTableAccessPolicy
+          (t2/exists? :model/Sandbox
                       :group_id all-users-group-id
                       {:from [[:sandboxes :s]]
                        :join [[:metabase_table :t] [:= :s.table_id :t.id]]

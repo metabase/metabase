@@ -19,7 +19,6 @@ import type { SelectButtonProps } from "metabase/common/components/SelectButton"
 import SelectButton from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
-import { color } from "metabase/lib/colors";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -209,7 +208,7 @@ class BaseSelect<
         <Icon
           name={icon}
           size={(item as any).iconSize || 16}
-          color={(item as any).iconColor || color("text-dark")}
+          c={(item as any).iconColor || "text-dark"}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
       );
@@ -217,11 +216,7 @@ class BaseSelect<
 
     if (this.itemIsSelected(item)) {
       return (
-        <Icon
-          name="check"
-          color={color("text-dark")}
-          style={{ minWidth: MIN_ICON_WIDTH }}
-        />
+        <Icon name="check" c="text-dark" style={{ minWidth: MIN_ICON_WIDTH }} />
       );
     }
 

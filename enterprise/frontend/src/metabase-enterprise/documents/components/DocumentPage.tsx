@@ -3,7 +3,7 @@ import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
 import type { Location } from "history";
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
@@ -25,7 +25,7 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { SetTitle } from "metabase/hoc/Title";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -33,6 +33,7 @@ import { Box } from "metabase/ui";
 import {
   useCreateDocumentMutation,
   useGetDocumentQuery,
+  useListCommentsQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
 import type {
@@ -42,18 +43,27 @@ import type {
 } from "metabase-types/api";
 
 import {
+  trackDocumentBookmark,
+  trackDocumentCreated,
+  trackDocumentUpdated,
+} from "../analytics";
+import {
   clearDraftCards,
   openVizSettingsSidebar,
   resetDocuments,
+  setChildTargetId,
   setCurrentDocument,
+  setHasUnsavedChanges,
 } from "../documents.slice";
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import {
   getDraftCards,
+  getHasUnsavedChanges,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
+import { getListCommentsQuery } from "../utils/api";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
@@ -62,14 +72,20 @@ import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
 export const DocumentPage = ({
-  params: { entityId },
+  params,
   route,
   location,
+  children,
 }: {
-  params: { entityId?: string };
+  params: {
+    entityId?: string;
+    childTargetId?: string;
+  };
   location: Location;
   route: Route;
+  children?: ReactNode;
 }) => {
+  const { entityId, childTargetId: paramsChildTargetId } = params;
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
@@ -79,7 +95,7 @@ export const DocumentPage = ({
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
   );
-  const [hasUnsavedEditorChanges, setHasUnsavedEditorChanges] = useState(false);
+  const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
   const [updateDocument, { isLoading: isUpdating }] =
@@ -90,7 +106,6 @@ export const DocumentPage = ({
   const [sendToast] = useToast();
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
-  const previousDocumentId = usePrevious(documentId);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
   const isNewDocument = documentId === "new";
 
@@ -117,7 +132,14 @@ export const DocumentPage = ({
     documentData = undefined;
   }
 
-  const canWrite = isNewDocument ? true : documentData?.can_write;
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(documentData),
+  );
+  const hasComments =
+    !!commentsData?.comments && commentsData.comments.length > 0;
+
+  const canWrite =
+    !documentData?.archived && (isNewDocument || documentData?.can_write);
 
   useEffect(() => {
     if (error) {
@@ -144,30 +166,11 @@ export const DocumentPage = ({
     return hasUnsavedChanges();
   });
 
-  // Reset state when document changes
-  useEffect(() => {
-    if (documentId !== previousDocumentId) {
-      setHasUnsavedEditorChanges(false);
-      if (isNewDocument && previousDocumentId !== "new") {
-        setDocumentTitle("");
-        setDocumentContent(null);
-        dispatch(resetDocuments());
-      }
-    }
-  }, [
-    documentId,
-    previousDocumentId,
-    isNewDocument,
-    setDocumentTitle,
-    setDocumentContent,
-    dispatch,
-  ]);
-
   // Reset state when we navigate back to /new
   const resetDocument = useCallback(() => {
     setDocumentTitle("");
     setDocumentContent(null);
-    setHasUnsavedEditorChanges(false);
+    dispatch(setHasUnsavedChanges(false));
     editorInstance?.commands.clearContent();
     editorInstance?.commands.focus();
     dispatch(resetDocuments());
@@ -176,9 +179,9 @@ export const DocumentPage = ({
   // Reset dirty state when document content loads from API
   useEffect(() => {
     if (documentContent && !isNewDocument) {
-      setHasUnsavedEditorChanges(false);
+      dispatch(setHasUnsavedChanges(false));
     }
-  }, [documentContent, isNewDocument]);
+  }, [dispatch, documentContent, isNewDocument]);
 
   useEffect(() => {
     // Set current document when document loads (includes collection_id and all other data)
@@ -189,10 +192,17 @@ export const DocumentPage = ({
     }
   }, [documentData, documentId, dispatch, isNewDocument]);
 
+  useEffect(() => {
+    dispatch(setChildTargetId(paramsChildTargetId));
+  }, [dispatch, paramsChildTargetId]);
+
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
     const originalTitle = documentData?.name || "";
-    const titleChanged = currentTitle !== originalTitle;
+    // We call .trim() on documentTitle to ensure that no one can push the save button
+    // with a document name that is all whitespace, the API will reject it. However,
+    // when comparing saved with current titles, we need to use unmofidied values
+    const titleChanged = documentTitle !== originalTitle;
 
     // Check if there are any draft cards
     const hasDraftCards = Object.keys(draftCards).length > 0;
@@ -222,7 +232,9 @@ export const DocumentPage = ({
       // For new documents, any content means changes
       if (isNewDocument) {
         // when navigating to `/new`, handleChange is fired but the editor instance hasn't been set yet
-        setHasUnsavedEditorChanges(!!editorInstance && !editorInstance.isEmpty);
+        dispatch(
+          setHasUnsavedChanges(!!editorInstance && !editorInstance.isEmpty),
+        );
         return;
       }
 
@@ -232,15 +244,20 @@ export const DocumentPage = ({
 
       // For existing documents, compare with original content
       const hasChanges = !_.isEqual(currentContent, originalContent);
-      setHasUnsavedEditorChanges(hasChanges);
+      dispatch(setHasUnsavedChanges(hasChanges));
     },
-    [editorInstance, documentContent, isNewDocument],
+    [dispatch, editorInstance, documentContent, isNewDocument],
   );
 
   const handleToggleBookmark = useCallback(() => {
     if (!documentId) {
       return;
     }
+
+    if (!isBookmarked) {
+      trackDocumentBookmark();
+    }
+
     isBookmarked
       ? deleteBookmark({ type: "document", id: documentId })
       : createBookmark({ type: "document", id: documentId });
@@ -284,11 +301,13 @@ export const DocumentPage = ({
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
               (response) => {
                 if (response.data) {
+                  const _document = response.data;
+                  trackDocumentUpdated(_document);
                   scheduleNavigation(() => {
-                    dispatch(push(`/document/${response.data.id}`));
+                    dispatch(push(`/document/${_document.id}`));
                   });
                 }
-                return response.data;
+                return response;
               },
             )
           : createDocument({
@@ -296,20 +315,24 @@ export const DocumentPage = ({
               collection_id: collectionId || undefined,
             }).then((response) => {
               if (response.data) {
+                const _document = response.data;
+                trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(`/document/${response.data.id}`));
+                  dispatch(replace(`/document/${_document.id}`));
                 });
               }
-              return response.data;
+              return response;
             }));
 
-        if (result) {
+        if (result.data) {
           sendToast({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
           dispatch(clearDraftCards());
           // Mark document as clean
-          setHasUnsavedEditorChanges(false);
+          dispatch(setHasUnsavedChanges(false));
+        } else if (result.error) {
+          throw result.error;
         }
       } catch (error) {
         console.error("Failed to save document:", error);
@@ -329,6 +352,10 @@ export const DocumentPage = ({
       sendToast,
     ],
   );
+
+  const focusEditorBody = useCallback(() => {
+    editorInstance?.commands.focus("start");
+  }, [editorInstance]);
 
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
@@ -382,9 +409,10 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
+  usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
+
   return (
     <Box className={styles.documentPage}>
-      <SetTitle title={documentData?.name || t`New document`} />
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
@@ -397,12 +425,18 @@ export const DocumentPage = ({
               showSaveButton={showSaveButton ?? false}
               isBookmarked={isBookmarked}
               onTitleChange={setDocumentTitle}
+              onTitleSubmit={focusEditorBody}
               onSave={() => {
-                isNewDocument ? setCollectionPickerMode("save") : handleSave();
+                if (isNewDocument) {
+                  setCollectionPickerMode("save");
+                } else {
+                  handleSave();
+                }
               }}
               onMove={() => setCollectionPickerMode("move")}
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
+              hasComments={hasComments}
             />
             <Editor
               onEditorReady={setEditorInstance}
@@ -431,11 +465,11 @@ export const DocumentPage = ({
           <CollectionPickerModal
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
-            value={{ id: "root", model: "collection" }}
             options={{
               showPersonalCollections: true,
               showRootCollection: true,
             }}
+            entityType="document"
             onChange={async (collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));
@@ -448,6 +482,9 @@ export const DocumentPage = ({
             }}
           />
         )}
+
+        {children}
+
         <LeaveRouteConfirmModal
           // `key` remounts this modal when navigating between different documents or to a new document.
           // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.

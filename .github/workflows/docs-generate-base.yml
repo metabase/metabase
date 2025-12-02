@@ -9,10 +9,6 @@ on:
         description: "The branch to check out and create a PR against"
         required: true
         type: string
-      m2_cache_key_suffix:
-        description: "A unique suffix for the Maven cache key"
-        required: true
-        type: string
     secrets:
       automation_token:
         description: "A token with permissions to create branches and PRs"
@@ -37,8 +33,6 @@ jobs:
 
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "auto-update-docs-${{ inputs.m2_cache_key_suffix }}"
 
       - name: Generate environment variables documentation
         id: generate_env_docs
@@ -64,6 +58,14 @@ jobs:
           set -e  # Exit on any error
           echo "Generating API documentation..."
           clojure -M:ee:doc api-documentation
+        continue-on-error: false
+
+      - name: Generate command documentation
+        id: generate_command_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating API documentation..."
+          clojure -M:ee:doc command-documentation
         continue-on-error: false
 
       - name: Check for changes

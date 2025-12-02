@@ -15,6 +15,8 @@ Questions in Metabase are queries, their results, and their visualization. Quest
 
 You can create a new question from scratch, or build off of an existing question. To create a question from scratch, you can click on **+ New** and select how you want to query your data: either with the graphical query builder, or the SQL/native editor:
 
+You can also use [Metabot](../ai/metabot.md) to create questions using natural language. Just ask Metabot what you want to know about your data, and it can generate charts and queries for you.
+
 ### Query builder
 
 ![Query builder editor](./images/editor.png)
@@ -50,7 +52,17 @@ Questions that live in a dashboard are only visible in that dashboard. These que
 
 ### Saving questions to collections
 
-Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. In order to save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
+Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. To save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
+
+### Checking for breaking changes
+
+{% include plans-blockquote.html feature="Checking for breaking changes" %}
+
+When a question, model, or metric is saved, Metabase will try to detect whether the changes you made would break any dependent entities. For example, if you removed a column from a question that other questions rely on, Metabase will warn you that those downstream questions will break.
+
+![Check dependencies](./images/check-dependencies.png)
+
+Currently, Metabase will look for broken column references. If you rename or remove a column, Metabase will likely flag the change as breaking downstream entities. But Metabase can't detect other types of changes like changing the column type or computation logic as breaking changes.
 
 ## Moving questions from collections to dashboards (and vice versa)
 

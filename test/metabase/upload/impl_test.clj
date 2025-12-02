@@ -15,7 +15,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -586,6 +586,8 @@
                       (->> (t2/select :model/Field :table_id (:id table))
                            (sort-by :database_position)
                            (map (juxt (comp u/lower-case-en :name) identity))))))
+            (testing "Check that table can be written via data-editing"
+              (true? (t2/select-one-fn :is_writable [:model/Table :is_writable] (:id table))))
             (testing "Check the data was uploaded into the table"
               (is (= 2
                      (count (rows-for-table table)))))))))))
@@ -1146,14 +1148,14 @@
            {:schema-name schema-name, :auxiliary-sync-steps :synchronous}
            (fn [model]
              (with-upload-table! [new-table (card->table model)]
-               (is (=? {:display          :table
-                        :database_id      db-id
-                        :dataset_query    {:database db-id
-                                           :query    {:source-table (:id new-table)}
-                                           :type     :query}
-                        :creator_id       (mt/user->id :rasta)
-                        :name             #"(?i)example csv file(.*)"
-                        :collection_id    nil}
+               (is (=? {:display       :table
+                        :database_id   db-id
+                        :dataset_query {:database db-id
+                                        :stages   [{:source-table (:id new-table)}]
+                                        :lib/type :mbql/query}
+                        :creator_id    (mt/user->id :rasta)
+                        :name          #"(?i)example csv file(.*)"
+                        :collection_id nil}
                        (t2/select-one :model/Card :table_id (:id new-table)))
                    "A new model is created")
                (is (=? {:name      #"(?i)example(.*)"
@@ -1311,7 +1313,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (is (thrown-with-msg?
                java.lang.Exception
-               #"^You do not have curate permissions for this Collection\.$"
+               #"^You don't have permissions to do that\.$"
                (do-with-uploaded-example-csv!
                 {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"}
                 identity)))))
@@ -1913,7 +1915,7 @@
                 file        (csv-file-with csv-rows)
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table other-id)
-                mp          (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+                mp          (lib-be/application-database-metadata-provider (:db_id table))]
 
             (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
                            :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
@@ -2554,7 +2556,7 @@
               (io/delete-file file))))))))
 
 (deftest append-with-really-long-names-that-duplicate-test
-  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string\n"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
@@ -2568,22 +2570,22 @@
                     :file (csv-file-with [header original-row]))]
             (let [csv-rows [header appended-row]
                   file     (csv-file-with csv-rows (mt/random-name))]
-             ;; TODO: we should be able to make this work with smarter truncation
-              (is (= {:message "The CSV file contains duplicate column names."
-                      :data    {:status-code 422}}
-                     (catch-ex-info (update-csv! :metabase.upload/append {:file file, :table-id (:id table)}))))
-              (testing "Check the data was not uploaded into the table"
-                (is (= (rows-with-auto-pk (csv/read-csv original-row))
-                       (rows-for-table table))))
-              (io/delete-file file))))))))
+              (try
+                (testing "Column names get deduplicated"
+                  (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})
+                  (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
+                                                    (csv/read-csv appended-row)))
+                         (rows-for-table table))))
+                (finally
+                  (io/delete-file file))))))))))
 
 (driver/register! ::short-column-test-driver)
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
 
 (deftest unique-long-column-names-test
-  (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
-        expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
-        displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
+  (let [original ["αbcdεf_αbcdεf" "αbcdεfg_αbcdεf" "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
+        expected [:%ce%b1bcd      :%_a2ba0330      :%ce%b1bc_2        :%ce%b1bc_3]
+        displays ["αbcdεf"        "αbcdεfg"        "αbc 2 etc"        "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
     (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
       (is (= displays

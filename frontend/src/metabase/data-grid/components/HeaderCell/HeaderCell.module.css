@@ -38,7 +38,7 @@
 }
 
 .outline .content {
-  border: 1px solid var(--mb-base-color-brand-20);
+  border: 1px solid var(--mb-color-border);
 }
 
 .sortIndicator {

@@ -1,6 +1,8 @@
+import type { DOMAttributes, MouseEvent } from "react";
 import { t } from "ttag";
 
 import {
+  Avatar,
   Group,
   Icon,
   type IconName,
@@ -8,11 +10,11 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
+import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
 import S from "./MenuItems.module.css";
 
-interface ExtraItemProps {
+interface ExtraItemProps extends DOMAttributes<HTMLButtonElement> {
   isSelected?: boolean;
   onClick?: () => void;
 }
@@ -23,27 +25,36 @@ export interface MenuItem {
   label: string;
   description?: string;
   action: () => void;
-  model?: SearchModel;
+  model?: SuggestionModel;
   id?: number | string;
+  href?: string;
+  hasSubmenu?: boolean;
 }
 
 export const MenuItemComponent = ({
   item,
   isSelected,
   onClick,
+  ...rest
 }: {
   item: MenuItem;
   isSelected?: boolean;
-  onClick?: () => void;
-}) => (
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+} & DOMAttributes<HTMLButtonElement>) => (
   <UnstyledButton
     className={S.menuItem}
-    onClick={onClick || item.action}
+    onClick={onClick || (() => item.action())}
     role="option"
     aria-selected={isSelected}
+    {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
-      <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
+      {item.model === "user" && <Avatar name={item.label} size={16} />}
+
+      {item.model !== "user" && (
+        <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
+      )}
+
       <Stack gap={2} className={S.menuItemStack}>
         <Text size="md" lh="lg" c="inherit">
           {item.label}
@@ -54,6 +65,10 @@ export const MenuItemComponent = ({
           </Text>
         )}
       </Stack>
+
+      {item.hasSubmenu && (
+        <Icon name="chevronright" size=".75rem" color="text-light" />
+      )}
     </Group>
   </UnstyledButton>
 );
@@ -61,16 +76,37 @@ export const MenuItemComponent = ({
 export const SearchResultsFooter = ({
   isSelected,
   onClick,
+  ...rest
 }: ExtraItemProps) => (
   <UnstyledButton
     className={S.menuItem}
     onClick={onClick}
     role="option"
     aria-selected={isSelected}
+    {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
       <Icon name="search" size={16} color="inherit" />
       <Text size="md" lh="lg" c="inherit">{t`Browse all`}</Text>
+    </Group>
+  </UnstyledButton>
+);
+
+export const CreateNewQuestionFooter = ({
+  isSelected,
+  onClick,
+  ...rest
+}: ExtraItemProps) => (
+  <UnstyledButton
+    className={S.menuItem}
+    onClick={onClick}
+    role="option"
+    aria-selected={isSelected}
+    {...rest}
+  >
+    <Group gap="sm" wrap="nowrap" align="center">
+      <Icon name="add" size={16} color="inherit" />
+      <Text size="md" lh="lg" c="inherit">{t`New chart`}</Text>
     </Group>
   </UnstyledButton>
 );

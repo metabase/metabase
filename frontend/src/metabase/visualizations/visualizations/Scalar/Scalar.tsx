@@ -1,13 +1,9 @@
-import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
-  ScalarTitle,
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
@@ -27,10 +23,10 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
 
-import { LabelIcon, ScalarContainer } from "./Scalar.styled";
-import { TITLE_ICON_SIZE } from "./constants";
+import { ScalarContainer } from "./Scalar.styled";
 import { scalarToBarTransform } from "./scalars-bar-transform";
-import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
+
+const PADDING = 32;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -53,8 +49,6 @@ export class Scalar extends Component<
   static identifier = "scalar";
   static iconName = "number";
   static canSavePng = false;
-
-  static noHeader = true;
 
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");
@@ -144,15 +138,11 @@ export class Scalar extends Component<
 
   render() {
     const {
-      actionButtons,
       series: [
         {
-          card,
           data: { cols, rows },
         },
       ],
-      isDashboard,
-      onChangeCardAndRun,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
@@ -162,7 +152,6 @@ export class Scalar extends Component<
       totalNumGridCols,
       fontFamily,
       rawSeries,
-      showTitle = true,
     } = this.props;
 
     if (rawSeries.length > 1) {
@@ -191,56 +180,34 @@ export class Scalar extends Component<
       formatOptions,
     );
 
-    const clicked = {
-      value,
-      column,
-      data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
-      settings,
-    };
     const isClickable = onVisualizationClick != null;
 
-    const showSmallTitle =
-      !!settings["card.title"] &&
-      isDashboard &&
-      Boolean(
-        (gridSize?.width != null && gridSize.width < 2) ||
-          (gridSize?.height != null && gridSize.height < 2),
-      );
-
-    const titleLinesCount = getTitleLinesCount(height);
-
     const handleClick = () => {
+      if (this._scalar == null) {
+        return;
+      }
+
+      const clickData = {
+        value,
+        column,
+        data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
+        settings,
+        element: this._scalar,
+      };
+
       if (
         this._scalar &&
         onVisualizationClick &&
-        visualizationIsClickable(clicked)
+        visualizationIsClickable(clickData)
       ) {
-        onVisualizationClick({ ...clicked, element: this._scalar });
+        onVisualizationClick(clickData);
       }
     };
 
     return (
       <ScalarWrapper>
-        <div
-          className={cx(
-            DashboardS.CardTitle,
-            CS.textDefault,
-            CS.textSmaller,
-            CS.absolute,
-            CS.top,
-            CS.right,
-            CS.p1,
-            CS.px2,
-          )}
-        >
-          {actionButtons}
-        </div>
         <ScalarContainer
-          className={cx(
-            DashboardS.fullscreenNormalText,
-            DashboardS.fullscreenNightText,
-            EmbedFrameS.fullscreenNightText,
-          )}
+          className={DashboardS.fullscreenNormalText}
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
@@ -250,35 +217,13 @@ export class Scalar extends Component<
             <ScalarValue
               fontFamily={fontFamily}
               gridSize={gridSize}
-              height={getValueHeight(height, { isDashboard, showSmallTitle })}
+              height={Math.max(height - PADDING * 2, 0)}
               totalNumGridCols={totalNumGridCols}
               value={displayValue as string}
-              width={getValueWidth(width)}
+              width={Math.max(width - PADDING, 0)}
             />
           </span>
         </ScalarContainer>
-
-        {isDashboard &&
-          showTitle &&
-          (showSmallTitle ? (
-            <LabelIcon
-              data-testid="scalar-title-icon"
-              name="ellipsis"
-              tooltip={settings["card.title"]}
-              size={TITLE_ICON_SIZE}
-            />
-          ) : (
-            <ScalarTitle
-              lines={titleLinesCount}
-              title={settings["card.title"]}
-              description={settings["card.description"]}
-              onClick={
-                onChangeCardAndRun
-                  ? () => onChangeCardAndRun({ nextCard: card })
-                  : undefined
-              }
-            />
-          ))}
       </ScalarWrapper>
     );
   }

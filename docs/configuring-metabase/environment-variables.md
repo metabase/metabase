@@ -71,13 +71,6 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
-### `MB_AI_SERVICE_BASE_URL`
-
-- Type: string
-- Default: `http://localhost:8000`
-
-URL for the a AI Service.
-
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
@@ -400,6 +393,15 @@ Timeout in minutes for databases query execution, both Metabase application data
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DISABLE_CORS_ON_LOCALHOST`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `disable-cors-on-localhost`.
+- [Configuration file name](./config-file.md): `disable-cors-on-localhost`
+
+Prevents the server from sending CORS headers for requests originating from localhost.
+
 ### `MB_DOWNLOAD_ROW_LIMIT`
 
 - Type: positive-integer
@@ -407,118 +409,6 @@ Whether or not the default GeoJSON maps are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
 
 Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.
-
-### `MB_EE_AI_FEATURES_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `ee-ai-features-enabled`
-
-Enable AI features.
-
-This feature is experimental.
-
-### `MB_EE_EMBEDDING_MODEL`
-
-- Type: string
-- Default: `Snowflake/snowflake-arctic-embed-l-v2.0`
-- [Configuration file name](./config-file.md): `ee-embedding-model`
-
-Set the embedding model for the selected provider.
-
-This feature is experimental.
-
-### `MB_EE_EMBEDDING_MODEL_DIMENSIONS`
-
-- Type: positive-integer
-- Default: `1024`
-- [Configuration file name](./config-file.md): `ee-embedding-model-dimensions`
-
-Set the dimension size for the selected embedding model.
-
-This feature is experimental.
-
-### `MB_EE_EMBEDDING_PROVIDER`
-
-- Type: string
-- Default: `ai-service`
-- [Configuration file name](./config-file.md): `ee-embedding-provider`
-
-The embedding provider to use (:openai, :ollama, or :ai-service).
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_API_BASE_URL`
-
-- Type: string
-- Default: `https://api.openai.com`
-- [Configuration file name](./config-file.md): `ee-openai-api-base-url`
-
-The OpenAI embeddings base URL used in Metabase Enterprise.
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_API_KEY`
-
-- Type: string
-- Default: `null`
-- [Configuration file name](./config-file.md): `ee-openai-api-key`
-
-The OpenAI API Key used in Metabase Enterprise.
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_MODEL`
-
-- Type: string
-- Default: `gpt-4-turbo-preview`
-- [Configuration file name](./config-file.md): `ee-openai-model`
-
-The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo').
-
-This feature is experimental.
-
-### `MB_EE_SEARCH_GATE_MAX_BATCH_SIZE`
-
-- Type: integer
-- Default: `512`
-
-The maximum number of documents that can be sent to `gate-documents!` without causing an error.
-
-### `MB_EE_SEARCH_GATE_WRITE_TIMEOUT`
-
-- Type: integer
-- Default: `5`
-
-Timeout of gate write statements in seconds. Used to determine lag tolerance of the indexer (see the metabase-enterprise.semantic-search.gate/poll) in conjunction with `ee-search-indexer-lag-tolerance-multiplier`.
-
-### `MB_EE_SEARCH_INDEXER_EXIT_EARLY_COLD_DURATION`
-
-- Type: integer
-- Default: `30`
-
-Number of seconds indexer should wait to see new data before yielding back to quartz.
-
-### `MB_EE_SEARCH_INDEXER_LAG_TOLERANCE_MULTIPLIER`
-
-- Type: integer
-- Default: `2`
-
-Multiplier for computation of metabase-enterprise.semantic-search.indexer/lag-tolerance. The formula is `ee-search-gate-write-timeout * ee-search-indexer-lag-tolerance-multiplier`.
-
-### `MB_EE_SEARCH_INDEXER_MAX_RUN_DURATION`
-
-- Type: integer
-- Default: `60`
-
-Number of minutes we expect to run the indexer loop for before yielding to quartz.
-
-### `MB_EE_SEARCH_INDEXER_POLL_LIMIT`
-
-- Type: integer
-- Default: `1000`
-
-Indexer poll limit.
 
 ### `MB_EMAIL_FROM_ADDRESS`
 
@@ -681,7 +571,7 @@ Allow these space delimited origins to embed Metabase interactive.
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `localhost:*`
+- Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
 
 Allow Metabase SDK access to these space delimited origins.
@@ -856,6 +746,14 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
+
+### `MB_HIDE_STACKTRACES`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `hide-stacktraces`
+
+Prevent the exception middleware from including stacktraces in responses.
 
 ### `MB_HTTP_CHANNEL_HOST_STRATEGY`
 
@@ -1168,6 +1066,14 @@ Should we sync user attributes when someone logs in via LDAP?
 
 Comma-separated list of user attributes to skip syncing for LDAP users.
 
+### `MB_LDAP_TIMEOUT_SECONDS`
+
+- Type: double
+- Default: `15.0`
+- [Configuration file name](./config-file.md): `ldap-timeout-seconds`
+
+Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
 ### `MB_LDAP_USER_BASE`
 
 - Type: string
@@ -1348,6 +1254,15 @@ The base URL where dashboard notitification links will point to instead of the M
 
 The size of the thread pool used to send system event notifications.
 
+### `MB_NOTIFICATION_TEMP_FILE_SIZE_MAX_BYTES`
+
+- Type: integer
+- Default: `10485760`
+
+The maximum file size that will be created when storing notification query results on disk.
+  Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
+  value to 0.
+
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
 - Type: integer
@@ -1358,15 +1273,6 @@ The size of the thread pool used to send notifications.
 If Metabase stops sending notifications like alerts, it may be because long-running
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
-
-### `MB_OPENAI_MAX_TOKENS_PER_BATCH`
-
-- Type: integer
-- Default: `4000`
-
-The maximum number of tokens sent in a single embedding API call.
-
-The maximum number of tokens sent in a single embedding API call.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1416,6 +1322,30 @@ The absolute maximum time to keep any cached query results, in seconds.
 - [Configuration file name](./config-file.md): `redirect-all-requests-to-https`
 
 Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import`
+
+Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+- Type: integer
+- Default: `5`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
+
+If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+
+### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
+
+The maximum amount of time a remote sync task will be given to complete.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -1669,7 +1599,7 @@ Used for encrypting and checking whether SDK requests are signed.
 - Default: `null`
 
 When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
-  Value must be a valid configured langauge option in your database such as 'english' or 'simple'.
+  Value must be a valid configured language option in your database such as 'english' or 'simple'.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
@@ -1679,31 +1609,6 @@ When using the appdb engine against postgresql, override the language used for s
 - [Configuration file name](./config-file.md): `search-typeahead-enabled`
 
 Enable typeahead search in the Metabase navbar?
-
-### `MB_SEMANTIC_SEARCH_ENABLED`
-
-- Type: boolean
-- Default: `true`
-
-Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.
-
-### `MB_SEMANTIC_SEARCH_MIN_RESULTS_THRESHOLD`
-
-- Type: integer
-- Default: `100`
-
-Minimum number of semantic search results required before falling back to other engines.
-
-Minimum number of semantic search results required before falling back to other engines.
-
-### `MB_SEMANTIC_SEARCH_RESULTS_LIMIT`
-
-- Type: integer
-- Default: `1000`
-
-Maximum number of results to return from a single semantic search query.
-
-Maximum number of results to return from a single semantic search query.
 
 ### `MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`
 
@@ -1823,17 +1728,6 @@ Whether or not to display x-ray suggestions on the homepage. They will also be h
 
 Whether or not to display Metabase links outside admin settings.
 
-### `MB_SHOW_METABOT`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: boolean
-- Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-metabot`.
-- [Configuration file name](./config-file.md): `show-metabot`
-
-Enables Metabot character on the home page.
-
 ### `MB_SHOW_STATIC_EMBED_TERMS`
 
 - Type: boolean
@@ -1934,15 +1828,6 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 
 Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).
 
-### `MB_STALE_INDEX_RETENTION_HOURS`
-
-- Type: integer
-- Default: `24`
-
-Number of hours to retain stale semantic search indexes before cleanup.
-
-Number of hours to retain stale semantic search indexes before cleanup.
-
 ### `MB_START_OF_WEEK`
 
 - Type: keyword
@@ -2042,16 +1927,6 @@ Upload settings.
 
 Prefix for upload table names.
 
-### `MB_USE_TENANTS`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `use-tenants`
-
-Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.
-
 ### `MB_USER_VISIBILITY`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -2100,29 +1975,6 @@ Default: `50`<br>
 Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
-
-### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
-
-Type: integer<br>
-Default: `20`<br>
-
-Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
-
-### `MB_AUDIT_MAX_RETENTION_DAYS`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: integer<br>
-Default: 720 (Metabase keeps all rows)<br>
-
-Sets the maximum number of days Metabase preserves rows for the following application database tables:
-
-- `query_execution`
-- `audit_log`
-- `view_log`
-
-Twice a day, Metabase will delete rows older than this threshold.
-
-The minimum value is `30` days (Metabase will treat entered values of `1` to `29` the same as `30`). If set to `0`, Metabase will keep all rows.
 
 ### `MB_COLORIZE_LOGS`
 
@@ -2400,21 +2252,6 @@ Default: `null`
 
 Password for Java TrustStore file.
 
-### `MB_LANDING_PAGE`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: string<br>
-Default: `""`
-
-Default page to show people when they log in.
-
-### `MB_LOAD_ANALYTICS_CONTENT`
-
-Type: Boolean<br>
-Default: True
-
-If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
-
 ### `MB_LOAD_SAMPLE_CONTENT`
 
 Type: Boolean<br>
@@ -2473,45 +2310,12 @@ Path of the "plugins" directory, which is used to store the Metabase database dr
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
-### `MB_PREMIUM_EMBEDDING_TOKEN`
-
-Type: string<br>
-Default: `null`
-
-The license token used for Pro and Enterprise to enable premium features on the Enterprise edition. It is also used for the deprecated "Premium Embedding" functionality on the OSS edition.
-
 ### `MB_QP_CACHE_BACKEND`
 
 Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
-
-### `MB_SEARCH_TYPEAHEAD_ENABLED`
-
-Type: boolean<br>
-Default: `true`<br>
-Since: v39.0
-
-Show auto-suggestions when using the global search in the top navigation bar.
-
-### `MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`
-
-Type: boolean<br>
-Default: `true`<br>
-Since: v39.0
-
-Send email notification to user, when they login from a new device. Set to `false` to stop sending "We've noticed a new login on your Metabase account" emails for all users.
-
-Also, this variable controls the geocoding service that Metabase uses to know the location from where your users logged in. Setting this variable to false also disables this reverse geocoding functionality.
-
-### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: boolean<br>
-Default: `true`
-
-Send email notifications to users in Admin group, when a new SSO users is created on Metabase.
 
 ### `MB_SETUP_TOKEN`
 
@@ -2536,13 +2340,6 @@ Default: `"true"`<br>
 Since: v48.4
 
 Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
-
-### `MB_SOURCE_ADDRESS_HEADER`
-
-Type: string<br>
-Default: `X-Forwarded-For`
-
-Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#mb_disable_session_throttle).
 
 ### `MB_SSL_CERTIFICATE_PUBLIC_KEY`
 

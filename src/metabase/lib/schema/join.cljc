@@ -1,11 +1,14 @@
 (ns metabase.lib.schema.join
   "Schemas for things related to joins."
+  (:refer-clojure :exclude [mapv every? empty? not-empty])
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? mapv empty? not-empty]]))
 
 (mr/def ::fields
   "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
@@ -34,7 +37,8 @@
   `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias` in
   the options."
   [:schema
-   {:gen/fmap #(str % "-" (random-uuid))}
+   {:gen/fmap         #(str % "-" (random-uuid))
+    :decode/normalize #(cond-> % (keyword? %) u/qualified-name)}
    ::common/non-blank-string])
 
 (mr/def ::condition
@@ -113,9 +117,6 @@
    [:map
     {:default {}, :decode/normalize normalize-join}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
-    ;; TODO (Cam 7/23/25) -- why would a join need an options map? If we need to add extra keys we can just add them
-    ;; to the join itself.
-    [:lib/options ::common/options]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]
     [:alias       ::alias]

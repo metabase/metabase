@@ -1,7 +1,6 @@
 (ns metabase.driver.mongo.parameters
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
@@ -15,7 +14,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
@@ -128,6 +128,7 @@
       (let [no-value? (= (:value v) params/no-value)]
         (cond
           (params.ops/operator? (get-in v [:value :type]))
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
                 compiled-clause (-> (assoc param
                                            :target
@@ -138,7 +139,6 @@
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
                                     ;; desugars to [:or [:= 'field 1] ...].
-                                    #_{:clj-kondo/ignore [:deprecated-var]}
                                     driver-api/desugar-filter-clause
                                     driver-api/wrap-value-literals-in-mbql
                                     mongo.qp/compile-filter
@@ -212,4 +212,4 @@
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
   [_driver inner-query]
   (let [param->value (params.values/query->params-map inner-query)]
-    (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))
+    (update inner-query :query (partial perf/postwalk (partial parse-and-substitute param->value)))))

@@ -7,8 +7,10 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -213,13 +215,13 @@
                       {:replace-existing true})
         (log/info "Copying complete.")))))
 
-(def ^:constant SKIP_CHECKSUM_FLAG
-  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
-  analytics data."
+(def ^:private skip-checksum-flag
+  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload
+  the analytics data."
   -1)
 
 (defn- should-skip-checksum? [last-checksum]
-  (= SKIP_CHECKSUM_FLAG last-checksum))
+  (= skip-checksum-flag last-checksum))
 
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
@@ -239,11 +241,12 @@
            (not= last-checksum current-checksum))))
 
 (defn- get-last-and-current-checksum
-  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums entirely."
+  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums
+  entirely."
   []
   (let [last-checksum (audit/last-analytics-checksum)]
     (if (should-skip-checksum? last-checksum)
-      [SKIP_CHECKSUM_FLAG SKIP_CHECKSUM_FLAG]
+      [skip-checksum-flag skip-checksum-flag]
       [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
@@ -265,10 +268,24 @@
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
               (audit/last-analytics-checksum! current-checksum))))
-        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-          (adjust-audit-db-to-host! audit-db))))))
+        (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+          (let [original-engine engine]
+            (adjust-audit-db-to-host! audit-db)
+            ;; Only sync if we actually changed the engine type
+            (when (not= original-engine (mdb/db-type))
+              (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
+                ;; Sync the audit database to update field metadata to match the host database engine
+                ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
+                ;; to the correct types for the host database (e.g., datetime for MySQL)
+                (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
+                (let [sync-future (future
+                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
+                                    (log/info "Audit DB field sync complete."))]
+                  (when config/is-test?
+                    ;; Tests need the sync to complete before they run
+                    @sync-future))))))))))
 
-(defn- maybe-install-audit-db
+(defn- maybe-install-audit-db!
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (cond
@@ -294,7 +311,7 @@
   content if it is available."
   :feature :none
   []
-  (u/prog1 (maybe-install-audit-db)
+  (u/prog1 (maybe-install-audit-db!)
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; prevent sync while loading
       ((sync-util/with-duplicate-ops-prevented

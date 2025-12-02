@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { Button, Flex, Text } from "metabase/ui";
 
 export const ButtonBar = ({
@@ -63,7 +64,7 @@ export const ButtonBar = ({
               await onConfirm();
             } catch (e: any) {
               console.error(e);
-              setError(e?.data?.message ?? t`An error occurred`);
+              setError(getErrorMessage(e));
             }
           }}
           disabled={!canConfirm}

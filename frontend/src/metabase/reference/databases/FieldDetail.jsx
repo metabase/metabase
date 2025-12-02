@@ -11,7 +11,7 @@ import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
-import EditHeader from "metabase/reference/components/EditHeader";
+import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
@@ -21,7 +21,6 @@ import {
   getDatabase,
   getError,
   getField,
-  getForeignKeys,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
@@ -81,7 +80,6 @@ const mapStateToProps = (state, props) => {
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
   };
@@ -101,7 +99,6 @@ const propTypes = {
   table: PropTypes.object,
   user: PropTypes.object.isRequired,
   database: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object,
   isEditing: PropTypes.bool,
   startEditing: PropTypes.func.isRequired,
   endEditing: PropTypes.func.isRequired,
@@ -123,7 +120,6 @@ const FieldDetail = (props) => {
     loadingError,
     loading,
     user,
-    foreignKeys,
     isEditing,
     startEditing,
     endEditing,
@@ -247,9 +243,9 @@ const FieldDetail = (props) => {
                   <FieldTypeDetail
                     databaseId={table.db_id}
                     field={entity}
-                    foreignKeys={foreignKeys}
                     fieldTypeFormField={getFormField("semantic_type")}
                     foreignKeyFormField={getFormField("fk_target_field_id")}
+                    fieldSettingsFormField={getFormField("settings")}
                     isEditing={isEditing}
                   />
                 </li>

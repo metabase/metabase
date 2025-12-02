@@ -19,7 +19,7 @@ export const zoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
       section: "details",
       title: t`View details`,
       buttonType: "horizontal",
-      icon: "expand",
+      icon: "sidebar_open",
       default: true,
       ...(isDashboard
         ? { question: () => applyDrill(drill, objectId) }

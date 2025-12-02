@@ -1,5 +1,9 @@
 (ns metabase.query-processor.parameters.dates
-  "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  "Shared code for handling datetime parameters, used by both MBQL and native params implementations.
+
+  TODO -- move this into the `lib-be` module since it's not really QP-specific, it's something that would live in Lib
+  if it didn't have dependencies on [[metabase.util.date-2]]."
+  (:refer-clojure :exclude [every? some])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -15,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? some]]
    [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
@@ -253,7 +258,7 @@
               (let [last-unit (t/minus (maybe-reduce-resolution unit dt) (to-period 1))]
                 (unit-range last-unit last-unit)))
     :filter (fn [{:keys [unit]} field-clause]
-              [:time-interval field-clause :last (keyword unit)])}
+              (lib/time-interval field-clause :last (keyword unit)))}
 
    {:parser (regex->parser (re-pattern (str #"this" temporal-units-regex))
                            [:unit])
@@ -261,7 +266,7 @@
               (let [dt-adj (maybe-reduce-resolution unit dt)]
                 (unit-range dt-adj dt-adj)))
     :filter (fn [{:keys [unit]} field-clause]
-              [:time-interval field-clause :current (keyword unit)])}])
+              (lib/time-interval field-clause :current (keyword unit)))}])
 
 (defn- ->iso-8601-date [t]
   (t/format :iso-local-date t))
@@ -301,7 +306,7 @@
   (let [year (t/year date)]
     (case unit
       :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
-              (format "%sT%02d:00:00Z" date hour))
+              (format "%sT%02d:00:00" date hour))
       :day (when-let [day (short-day->day exclusion)]
              (str (t/adjust date :next-or-same-day-of-week day)))
       :month (when-let [month (short-month->month exclusion)]

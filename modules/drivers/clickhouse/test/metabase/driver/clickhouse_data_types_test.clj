@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -335,6 +337,23 @@
                     array_of_tuples_test
                     {})))))))))
 
+(deftest ^:parallel uuid-literals-test
+  (mt/test-driver :clickhouse
+    (mt/dataset
+      (mt/dataset-definition
+       "metabase_tests_uuids_nullable"
+       [["uuids_nullable"
+         [{:field-name "uuid1", :base-type {:native "Nullable(UUID)"}}]
+         [[#uuid "550e8400-e29b-41d4-a716-446655440000"]
+          [nil]]]])
+      (let [mp (mt/metadata-provider)]
+        (is (= [[1 #uuid "550e8400-e29b-41d4-a716-446655440000"]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :uuids_nullable)))
+                   (lib/filter (lib/= (lib.metadata/field mp (mt/id :uuids_nullable :uuid1))
+                                      "550e8400-e29b-41d4-a716-446655440000"))
+                   mt/process-query
+                   mt/rows)))))))
+
 #_(deftest ^:parallel clickhouse-array-of-uuids
     (mt/test-driver :clickhouse
       (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
@@ -591,17 +610,8 @@
                   unsigned_int_types
                   {}))))))))
 
-;; FIXME: blocked by https://github.com/ClickHouse/clickhouse-java/issues/2218
-#_(deftest ^:parallel clickhouse-fixed-strings
-    (mt/test-driver
-      :clickhouse
-      (is (= [["val1" "val2" "val3" "val4"]]
-             (qp.test/formatted-rows
-              [str str str str]
-              :format-nil-values
-              (ctd/do-with-test-db
-               (fn [db]
-                 (data/with-db db
-                   (data/run-mbql-query
-                    fixed_strings
-                    {})))))))))
+(deftest ^:parallel clickhouse-fixed-strings
+  (mt/test-driver :clickhouse
+    (mt/dataset metabase_test
+      (is (= [[1 "val1" "val2" "val3" "val4"]]
+             (mt/rows (mt/run-mbql-query fixed_strings)))))))

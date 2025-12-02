@@ -384,8 +384,8 @@ describe("scenarios > question > nested", () => {
       cy.findByText("New").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("be.visible").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("15725").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -469,7 +469,7 @@ describe("scenarios > question > nested", () => {
       "contain",
       "Swaniawski, Casper and Hilll",
     );
-    cy.findByTestId("object-detail-close-button").click();
+    cy.findByLabelText("Close").click();
 
     cy.log("Should be able to save a nested question (metabase#18364)");
     saveQuestion();

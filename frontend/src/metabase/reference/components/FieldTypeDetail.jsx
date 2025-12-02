@@ -4,26 +4,35 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
-import { SemanticTypePicker } from "metabase/metadata/components";
+import {
+  CurrencyPicker,
+  SemanticTypePicker,
+} from "metabase/metadata/components";
+import { getFieldCurrency } from "metabase/metadata/utils/field";
 import D from "metabase/reference/components/Detail.module.css";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import { Box } from "metabase/ui";
+import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
 
 const FieldTypeDetail = ({
   databaseId,
   field,
-  foreignKeys,
   fieldTypeFormField,
   foreignKeyFormField,
+  fieldSettingsFormField,
   isEditing,
 }) => {
   const semanticType =
     typeof fieldTypeFormField.value !== "undefined"
       ? fieldTypeFormField.value
       : field.semantic_type;
+  const settings =
+    typeof fieldSettingsFormField.value !== "undefined"
+      ? fieldSettingsFormField.value
+      : field.settings;
+  const currency = getFieldCurrency(settings);
 
   return (
     <div className={cx(D.detail)}>
@@ -59,31 +68,42 @@ const FieldTypeDetail = ({
               </span>
             )}
           </span>
-          <span className={CS.ml4}>
-            {isEditing
-              ? isTypeFK(semanticType) && (
-                  <FieldFkTargetPicker
-                    databaseId={databaseId}
-                    field={field}
-                    value={
-                      foreignKeyFormField.value || field.fk_target_field_id
-                    }
-                    onChange={(value) => {
-                      foreignKeyFormField.onChange({
-                        target: {
-                          name: foreignKeyFormField.name,
-                          value,
-                        },
-                      });
-                    }}
-                  />
-                )
-              : isTypeFK(field.semantic_type) && (
-                  <span>
-                    {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
-                  </span>
-                )}
-          </span>
+          {isEditing && isTypeCurrency(semanticType) && (
+            <Box mt="sm">
+              <CurrencyPicker
+                value={currency}
+                fw="bold"
+                onChange={(currency) => {
+                  fieldSettingsFormField.onChange({
+                    target: {
+                      name: fieldSettingsFormField.name,
+                      value: { ...field.settings, currency },
+                    },
+                  });
+                }}
+              />
+            </Box>
+          )}
+          {isEditing && isTypeFK(semanticType) && (
+            <Box mt="sm">
+              <FieldFkTargetPicker
+                databaseId={databaseId}
+                field={field}
+                value={foreignKeyFormField.value || field.fk_target_field_id}
+                /** bottom-start with flip: true opens down and shrinks height
+                 * of popover to one line */
+                comboboxProps={{ position: "top-start" }}
+                onChange={(value) => {
+                  foreignKeyFormField.onChange({
+                    target: {
+                      name: foreignKeyFormField.name,
+                      value,
+                    },
+                  });
+                }}
+              />
+            </Box>
+          )}
         </div>
       </div>
     </div>
@@ -93,9 +113,9 @@ const FieldTypeDetail = ({
 FieldTypeDetail.propTypes = {
   databaseId: PropTypes.number.isRequired,
   field: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object.isRequired,
   fieldTypeFormField: PropTypes.object.isRequired,
   foreignKeyFormField: PropTypes.object.isRequired,
+  fieldSettingsFormField: PropTypes.object.isRequired,
   isEditing: PropTypes.bool.isRequired,
 };
 

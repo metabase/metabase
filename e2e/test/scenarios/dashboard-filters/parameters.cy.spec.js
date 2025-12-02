@@ -10,6 +10,8 @@ import {
   createMockDashboardCard,
   createMockHeadingDashboardCard,
   createMockParameter,
+  createMockTextDashboardCard,
+  createMockVirtualCard,
 } from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1232,7 +1234,10 @@ describe("scenarios > dashboard > parameters", () => {
         H.editDashboard();
       });
 
-      H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
 
       H.getDashboardCard(2).within(() => {
         cy.findByDisplayValue("Heading Text").should("exist");
@@ -1420,11 +1425,74 @@ describe("scenarios > dashboard > parameters", () => {
         .should("exist");
     });
 
+    it("should not display a parameter widget if there are no linked with it cards after a text card variable is removed (UXW-751)", () => {
+      H.createDashboard({
+        parameters: [categoryParameter, countParameter],
+      }).then(({ body: dashboard }) => {
+        const virtualCard = createMockVirtualCard({
+          display: "text",
+        });
+
+        H.updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            createMockTextDashboardCard({
+              card: virtualCard,
+              text: "Value {{VAR1}} and {{VAR2}}",
+              size_x: 3,
+              size_y: 3,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: virtualCard.id,
+                  target: ["text-tag", "VAR1"],
+                },
+                {
+                  parameter_id: countParameter.id,
+                  card_id: virtualCard.id,
+                  target: ["text-tag", "VAR2"],
+                },
+              ],
+            }),
+          ],
+        });
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+
+      H.editDashboard();
+
+      H.getDashboardCard(0).click();
+      H.getDashboardCard(0).within(() => {
+        cy.get("textarea").clear();
+        cy.get("textarea").type("Value {{}{{}VAR1}}");
+      });
+
+      H.saveDashboard();
+
+      H.filterWidget({ isEditing: false }).contains("Category").should("exist");
+      cy.findByTestId("parameter-widget").contains("Count").should("not.exist");
+
+      H.editDashboard();
+
+      H.getDashboardCard(0).click();
+      H.getDashboardCard(0).within(() => {
+        cy.get("textarea").clear();
+        cy.get("textarea").type("Value null");
+      });
+
+      H.saveDashboard();
+
+      cy.findByTestId("parameter-widget").should("not.exist");
+    });
+
     it("should work correctly in public dashboards", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
         dashboardDetails: {
-          parameters: [categoryParameter],
+          parameters: [categoryParameter, countParameter],
         },
       }).then(({ body: dashcard }) => {
         const dashboardId = dashcard.dashboard_id;
@@ -1440,8 +1508,9 @@ describe("scenarios > dashboard > parameters", () => {
             {
               id: dashcard.id,
               row: 1,
-              size_x: 12,
+              size_x: 24,
               size_y: 6,
+              inline_parameters: [countParameter.id],
               parameter_mappings: [
                 {
                   parameter_id: categoryParameter.id,
@@ -1450,6 +1519,15 @@ describe("scenarios > dashboard > parameters", () => {
                     "dimension",
                     categoryFieldRef,
                     { "stage-number": 0 },
+                  ],
+                },
+                {
+                  parameter_id: countParameter.id,
+                  card_id: ORDERS_BY_YEAR_QUESTION_ID,
+                  target: [
+                    "dimension",
+                    ["field", "count", { "base-type": "type/Integer" }],
+                    { "stage-number": 1 },
                   ],
                 },
               ],
@@ -1483,11 +1561,15 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget");
+        expect(search).to.eq("?category=Gadget&count=");
       });
 
       // Verify filter doesn't show up in the dashboard header
       H.dashboardParametersContainer().should("not.exist");
+
+      cy.findByTestId("embed-frame").then(($el) => {
+        expect(H.isScrollableHorizontally($el[0])).to.be.false;
+      });
     });
 
     [
@@ -2236,7 +2318,14 @@ describe("scenarios > dashboard > parameters", () => {
       H.selectDashboardFilter(H.getDashboardCard(0), "Count");
       H.dashboardParameterSidebar().button("Done").click();
 
-      H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
+      H.getDashboardCard(0)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Duplicate")
+        .click();
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByTestId("chart-container").should("exist");
+      });
 
       H.getDashboardCard(1).within(() => {
         H.filterWidget({ isEditing: true })
@@ -2397,7 +2486,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should allow connecting inline parameters only to cards on the same tab", () => {
+    it("should not allow connecting inline parameters to cards on a different tab", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
       }).then(({ body: dashcard }) => {
@@ -2421,15 +2510,139 @@ describe("scenarios > dashboard > parameters", () => {
         H.setDashCardFilter(0, "Text or Category", null, "Category");
         H.selectDashboardFilter(H.getDashboardCard(0), "Category");
 
-        // Connect it to the second card
-        H.selectDashboardFilter(H.getDashboardCard(1), "Category");
-
         H.goToTab("Tab 2");
 
         // Ensure the filter can't be connected to the second card
         H.getDashboardCard(0)
           .findByText("The selected filter is on another tab.")
           .should("be.visible");
+      });
+    });
+
+    it("should allow connecting inline parameters only to their own card", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+      }).then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+
+        // Add a second card
+        H.openQuestionsSidebar();
+        H.sidebar().findByText("Orders, Count").click();
+        H.getDashboardCard(1).findByText("Count").should("exist");
+
+        // Add a filter to the first card
+        H.setDashCardFilter(0, "Text or Category", null, "Category");
+        H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+
+        // Ensure the filter can't be connected to the second card
+        H.getDashboardCard(1)
+          .findByText("This filter can only connect to its own card.")
+          .should("be.visible");
+
+        // Disconnect the filter from the first card
+        H.sidebar().findByText("Disconnect from card").click();
+
+        // Ensure it still can't be connected to the second card
+        H.getDashboardCard(1)
+          .findByText("This filter can only connect to its own card.")
+          .should("be.visible");
+      });
+    });
+
+    it("should show all inline parameters when editing one parameter mapping", () => {
+      const categoryFilter = createMockParameter({
+        id: "category123",
+        name: "Category",
+        type: "string/=",
+        slug: "category",
+        sectionId: "string",
+      });
+
+      const countFilter = createMockParameter({
+        id: "count456",
+        name: "Count",
+        type: "number/=",
+        slug: "count",
+        sectionId: "number",
+      });
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryFilter, countFilter],
+        },
+      }).then(({ body: dashcard }) => {
+        // Update the dashcard to have inline parameters
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryFilter.id, countFilter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryFilter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+
+        // Both filters should be visible
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).should(
+            "be.visible",
+          );
+          H.filterWidget({ isEditing: true, name: "Count" }).should(
+            "be.visible",
+          );
+        });
+
+        // Click on Category filter to open its mapping sidebar
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).click();
+        });
+
+        // Verify the sidebar opened for Category parameter
+        H.sidebar().findByLabelText("Label").should("have.value", "Category");
+
+        // Both filters should still be visible during mapping mode
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).should(
+            "be.visible",
+          );
+          H.filterWidget({ isEditing: true, name: "Count" }).should(
+            "be.visible",
+          );
+        });
+
+        // Should be able to click on Count filter while Category mapping is open
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Count" }).click();
+        });
+
+        // The sidebar should now show Count parameter settings
+        H.sidebar().findByLabelText("Label").should("have.value", "Count");
+
+        // Both filters should still be visible
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).should(
+            "be.visible",
+          );
+          H.filterWidget({ isEditing: true, name: "Count" }).should(
+            "be.visible",
+          );
+        });
       });
     });
 
@@ -2767,7 +2980,7 @@ describe("scenarios > dashboard > parameters", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard > parameters", () => {
+describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

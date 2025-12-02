@@ -15,6 +15,7 @@ import {
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
+import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -45,14 +46,12 @@ import {
   Body,
   ContentContainer,
   DashboardTabsContainer,
-  Footer,
   Header,
   Root,
   Separator,
   TitleAndButtonsContainer,
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
-import { LogoBadge } from "./LogoBadge";
 import { useGlobalTheme } from "./useGlobalTheme";
 
 export type EmbedFrameBaseProps = Partial<{
@@ -235,7 +234,7 @@ export const EmbedFrame = ({
               </TitleAndDescriptionContainer>
             )}
             {dashboardTabs && (
-              <DashboardTabsContainer>
+              <DashboardTabsContainer narrow={!titled && pdfDownloadsEnabled}>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-tabs"
                   isFixedWidth={dashboard?.width === "fixed"}
@@ -272,8 +271,8 @@ export const EmbedFrame = ({
               isFixedWidth={dashboard?.width === "fixed"}
             >
               <ParametersListComponent
-                question={question}
-                dashboard={dashboard}
+                cardId={question?.id()}
+                dashboardId={dashboard?.id}
                 parameters={valuePopulatedParameters}
                 setParameterValue={setParameterValue}
                 hideParameters={hideParameters}
@@ -290,16 +289,15 @@ export const EmbedFrame = ({
 
       {dashboard && <FilterApplyToast position="fixed" />}
       {isFooterEnabled && (
-        <Footer
-          data-testid="embed-frame-footer"
-          className={EmbedFrameS.EmbedFrameFooter}
+        <EmbeddingFooter
           variant={footerVariant}
+          isDarkMode={theme === "night"}
+          hasEmbedBranding={hasEmbedBranding}
         >
-          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}
-        </Footer>
+        </EmbeddingFooter>
       )}
     </Root>
   );

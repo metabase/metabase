@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -10,15 +11,16 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.parameters.operators :as params.ops]
-   [metabase.query-processor.util.temporal-bucket :as qp.u.temporal-bucket]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]))
 
 (set! *warn-on-reflection* true)
 
@@ -128,7 +130,7 @@
                       (when (integer? target-column)
                         (:base-type (lib.metadata/field metadata-providerable target-column))))]
     (assert (some? base-type) "`base-type` is not set.")
-    (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
+    (when-not (lib.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
                       {:type       qp.error-type/invalid-query
                        :is-curated true

@@ -8,7 +8,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- schema-pattern->re-pattern
+(defn schema-pattern->re-pattern
   "Converts a schema pattern, as entered in the UI, into regex pattern suitable to be passed into [[re-pattern]].  The
   conversion that happens is from commas into pipes (disjunction), and wildcard characters (`*`) into greedy wildcard
   matchers (`.*`).  These only occur if those characters are not preceded by a backslash, which serves as an escape

@@ -149,6 +149,17 @@
    nil
    (full-exception-chain e)))
 
+(defn all-ex-messages
+  "Returns a list of all non-nil messages in an exception, starting from the outermost and working inward.
+  If no messages are found, returns nil."
+  [^Throwable e]
+  (loop [ex e
+         messages []]
+    (if ex
+      (recur (.getCause ex)
+             (conj messages (.getMessage ex)))
+      (seq (remove nil? messages)))))
+
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.

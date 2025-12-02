@@ -1,10 +1,17 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type { DictionaryArray, Series } from "metabase-types/api";
+import type {
+  DictionaryArray,
+  MaybeTranslatedSeries,
+  RowValue,
+  Series,
+} from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -43,8 +50,11 @@ export const translateContentString: TranslateContentStringFunction = (
     return msgid;
   }
 
+  const lowerCaseMsgId = msgid.toLowerCase();
+
   const msgstr = dictionary?.find(
-    (row) => row.locale === locale && row.msgid === msgid,
+    (row) =>
+      row.locale === locale && row.msgid.toLowerCase() === lowerCaseMsgId,
   )?.msgstr;
 
   if (!msgstr || !msgstr.trim()) {
@@ -116,7 +126,7 @@ export const useTranslateFieldValuesInHoveredObject = (
 export const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
-) => {
+): MaybeTranslatedSeries => {
   if (!hasTranslations(tc)) {
     return series;
   }
@@ -124,12 +134,68 @@ export const translateFieldValuesInSeries = (
     if (!singleSeries.data) {
       return singleSeries;
     }
-    const translatedRows = singleSeries.data.rows.map((row) =>
-      row.map((value) => tc(value)),
-    );
+    const untranslatedRows = singleSeries.data.rows.concat();
+
+    const defaultFn = () => {
+      return singleSeries.data.rows.map((row) => row.map((value) => tc(value)));
+    };
+
+    const translatedRows: RowValue[][] = match(singleSeries.card?.display)
+      .with("pie", () => {
+        const pieRows =
+          singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
+        const keyToNameMap = Object.fromEntries(
+          pieRows.map((row) => [row.key, row.name]),
+        );
+
+        // The pie chart relies on the rows to generate its legend,
+        // which is why we need to translate them too
+        // They're in the format of:
+        // [
+        //   ["Doohickey", 123],
+        //   ["Widget", 456],
+        //   ...
+        // ]
+        //
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              keyToNameMap[value] !== undefined
+            ) {
+              return tc(keyToNameMap[value]);
+            }
+            return tc(value);
+          }),
+        );
+      })
+      .with(P.when(isCartesianChart), () => {
+        // cartesian charts have series settings that can provide display names
+        // for fields, which we should translate if available
+        const seriesSettings =
+          singleSeries.card.visualization_settings?.series_settings ?? {};
+
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              seriesSettings[value]?.title !== undefined
+            ) {
+              return tc(seriesSettings[value].title);
+            }
+            return tc(value);
+          }),
+        );
+      })
+      .otherwise(defaultFn);
+
     return {
       ...singleSeries,
-      data: { ...singleSeries.data, rows: translatedRows },
+      data: {
+        ...singleSeries.data,
+        untranslatedRows,
+        rows: translatedRows,
+      },
     };
   });
 };

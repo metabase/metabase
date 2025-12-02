@@ -175,6 +175,8 @@ Which cards you can connect a filter or parameter widget to depends on:
 - Whether the card has a relevant field (i.e., the field the widget is filtering).
 - Where the widget is located: on the dashboard, heading card, or question card. Only dashboard widgets can be connected to cards across all [dashboard tabs](./introduction.md#dashboard-tabs). Widgets on heading and question cards are restricted to the cards on their respective tabs.
 
+For cards built in the query builder, _filters_ can be connected to fields at any stage of the query. _Time grouping parameters_ can only be connected to fields in the last stage of the query, and so to make use of time grouping parameters, your query should have a summary by a datetime field as the last stage. For example, if you have a query that's just computing `Count` of products by `Category` and `Created At`, you'll be able to connect the time grouping parameter to the `Created At` grouping, but if you modify the query to filter for results with `Count > 100`, you won't be able to connect time grouping parameter on a dashboard to that query because the last stage is now a filter.
+
 ## Filtering dashboards with native/SQL questions
 
 To connect a dashboard filter widget to a card with a question created with the native editor, you'll need to [add a field filter or basic variable to your query](../questions/native-editor/sql-parameters.md).

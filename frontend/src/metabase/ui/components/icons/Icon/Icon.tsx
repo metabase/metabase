@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Box, type BoxProps } from "@mantine/core";
+import { Box, type BoxProps, type FloatingPosition } from "@mantine/core";
 import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
@@ -17,12 +17,20 @@ export type IconProps = SVGAttributes<SVGSVGElement> &
     name: IconName;
     size?: string | number;
     tooltip?: ReactNode;
+    tooltipPosition?: FloatingPosition;
     onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
     className?: string;
   };
 
 export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
-  { name, className, size = defaultSize, tooltip, ...restProps }: IconProps,
+  {
+    name,
+    className,
+    size = defaultSize,
+    tooltip,
+    tooltipPosition,
+    ...restProps
+  }: IconProps,
   ref,
 ) {
   const IconComponent = (Icons[name] ?? Icons["unknown"]).component;
@@ -41,7 +49,11 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   );
 
   return tooltip ? (
-    <Tooltip label={tooltip} data-testid="icon-tooltip">
+    <Tooltip
+      label={tooltip}
+      data-testid="icon-tooltip"
+      position={tooltipPosition}
+    >
       {icon}
     </Tooltip>
   ) : (

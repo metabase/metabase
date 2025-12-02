@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -98,7 +97,7 @@
           mp           (lib.tu/mock-metadata-provider
                         mp
                         {:cards [{:id            1
-                                  :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                  :dataset-query metric-query
                                   :database-id   (mt/id)
                                   :name          "Order Total"
                                   :type          :metric}]})

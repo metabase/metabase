@@ -52,10 +52,6 @@
   "Used to decide if routing details should be used for a db."
   false)
 
-(def ^:dynamic *use-routing-dataset*
-  "Used to override the dataset name for routing tests."
-  false)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -83,6 +79,8 @@
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
    [:pk?               {:optional true} [:maybe :boolean]]
+   [:default-expr      {:optional true} [:maybe :string]]
+   [:generated-expr    {:optional true} [:maybe :string]]
    ;; should we create an index for this field?
    [:indexed?          {:optional true} [:maybe :boolean]]
    [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]

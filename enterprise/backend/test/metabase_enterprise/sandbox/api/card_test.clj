@@ -4,6 +4,7 @@
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -18,8 +19,8 @@
                        :model/Table                      table {:db_id (u/the-id db)}
                        :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
-                       :model/GroupTableAccessPolicy     _ {:group_id (u/the-id group)
-                                                            :table_id (u/the-id table)}]
+                       :model/Sandbox     _ {:group_id (u/the-id group)
+                                             :table_id (u/the-id table)}]
           (perms/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
@@ -40,8 +41,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -64,8 +65,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -86,8 +87,8 @@
                      :model/Table                      other-table {:db_id (u/the-id db)}
                      :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                      :model/PermissionsGroup           group {}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -121,8 +122,8 @@
                            [:blocked :query-builder-and-native]
                            [:blocked :query-builder]]]
         (is (= (count cases)
-               (- (* (-> data-perms/Permissions :perms/view-data :values count)
-                     (-> data-perms/Permissions :perms/create-queries :values count))
+               (- (* (-> permissions.schema/data-permissions :perms/view-data :values count)
+                     (-> permissions.schema/data-permissions :perms/create-queries :values count))
                   (count invalid-cases)))
             "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
         (mt/with-no-data-perms-for-all-users!

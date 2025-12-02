@@ -6,18 +6,20 @@
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.driver.common.parameters.operators :as params.ops]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
@@ -261,14 +263,16 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(defn- field->clause
+(mu/defn- field->clause :- driver-api/mbql.schema.field
   [field other-opts]
-  [:field
-   (:id field)
-   (merge {:base-type                     (:base-type field)
-           driver-api/qp.add.source-table (:table-id field)
-           ::compiling-field-filter?      true}
-          other-opts)])
+  (driver-api/normalize
+   driver-api/mbql.schema.field
+   [:field
+    (:id field)
+    (merge {:base-type                     (:base-type field)
+            driver-api/qp.add.source-table (:table-id field)
+            ::compiling-field-filter?      true}
+           other-opts)]))
 
 (mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
   [driver     :- :keyword
@@ -315,9 +319,9 @@
             (sql.qp/->honeysql driver form))]
     (cond
       (params.ops/operator? param-type)
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (->> (assoc params :target [:dimension (field->field-filter-clause driver field param-type value)])
            params.ops/to-clause
-           #_{:clj-kondo/ignore [:deprecated-var]}
            driver-api/desugar-filter-clause
            driver-api/wrap-value-literals-in-mbql
            ->honeysql
@@ -325,8 +329,8 @@
 
       (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->field-filter-clause driver field param-type value)]
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (->> (params.dates/date-string->filter value field-clause)
-             #_{:clj-kondo/ignore [:deprecated-var]}
              driver-api/desugar-filter-clause
              driver-api/wrap-value-literals-in-mbql
              ->honeysql

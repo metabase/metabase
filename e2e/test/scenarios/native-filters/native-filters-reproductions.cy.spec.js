@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -771,28 +775,6 @@ describe("issue 17490", () => {
     H.restore();
     cy.signInAsAdmin();
   });
-
-  it(
-    "nav bar shouldn't cut off the popover with the tables for field filter selection (metabase#17490)",
-    { tags: "@skip" },
-    () => {
-      H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery("{{f}}");
-
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Field Filter");
-
-      /**
-       * Although `.click()` isn't neccessary for Cypress to fill out this input field,
-       * it's something that we can use to assert that the input field is covered by another element.
-       * Cypress fails to click any element that is not "actionable" (for example - when it's covered).
-       * In other words, the `.click()` part is essential for this repro to work. Don't remove it.
-       */
-      cy.findByPlaceholderText("Find...").click().type("Orders").blur();
-
-      cy.findByDisplayValue("Orders");
-    },
-  );
 });
 
 describe("issue 21160", () => {
@@ -975,8 +957,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       query: SQL_QUERY,
     });
 
-    // type a space to trigger fields
-    H.NativeEditor.type(" ");
+    cy.findByTestId("native-query-top-bar").icon("variable").click();
 
     cy.findByTestId("tag-editor-variable-f1")
       .findByTestId("variable-type-select")
@@ -1293,5 +1274,32 @@ describe("issue 58061", () => {
       cy.wait("@cardQuery");
       H.assertQueryBuilderRowCount(1);
     });
+  });
+});
+
+describe("issue 63537", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+  });
+
+  it("should allow to use postgres enums in field filters (metabase#63537)", () => {
+    H.startNewNativeQuestion({ database: WRITABLE_DB_ID });
+    H.NativeEditor.type("SELECT * FROM many_data_types WHERE {{f}}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({
+      table: "Many Data Types",
+      field: "Enum",
+    });
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(2);
   });
 });

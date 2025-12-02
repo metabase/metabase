@@ -1,0 +1,13 @@
+diff --git a/node_modules/prosemirror-dropcursor/dist/index.js b/node_modules/prosemirror-dropcursor/dist/index.js
+index c9bc7b5..ae9fcce 100644
+--- a/node_modules/prosemirror-dropcursor/dist/index.js
++++ b/node_modules/prosemirror-dropcursor/dist/index.js
+@@ -128,7 +128,7 @@ class DropCursorView {
+                     target = point;
+             }
+             this.setCursor(target);
+-            this.scheduleRemoval(5000);
++            this.scheduleRemoval(1000);
+         }
+     }
+     dragend() {

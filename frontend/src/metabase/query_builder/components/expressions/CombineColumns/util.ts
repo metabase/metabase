@@ -122,7 +122,7 @@ export const getExample = (
   return flatten(columnsAndSeparators).map(getColumnExample).join("");
 };
 
-const getColumnExample = (
+export const getColumnExample = (
   column: Lib.ColumnMetadata | string | null,
 ): string => {
   if (!column) {

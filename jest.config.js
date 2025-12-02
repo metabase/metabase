@@ -15,7 +15,6 @@ const esmPackages = [
   "jose",
   "property-information",
   "rehype-external-links",
-  "screenfull",
   "space-separated-tokens",
   "stringify-entities",
   "unist-util-visit-parents",
@@ -49,7 +48,7 @@ const baseConfig = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
-    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/plugins/noop.js",
     /**
      * SDK iframe embedding imports the embedding sdk and its components.
      * We want to exclude the SDK from the main app's bundle to reduce the bundle size.
@@ -62,6 +61,7 @@ const baseConfig = {
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
     "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
@@ -127,18 +127,20 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/setup-env.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.js",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/setup-after-env.js",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/console-restrictions.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.js",
       ],
     },
     {
@@ -146,7 +148,10 @@ const config = {
       displayName: "core",
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/",
+        "<rootDir>/frontend/src/embedding-sdk-bundle",
+        "<rootDir>/frontend/src/embedding-sdk-shared",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
       ],
     },
   ],

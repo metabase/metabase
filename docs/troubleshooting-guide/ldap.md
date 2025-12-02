@@ -36,7 +36,7 @@ services:
       - "MB_LDAP_ATTRIBUTE_FIRSTNAME=uid"
       - "MB_LDAP_ATTRIBUTE_LASTNAME=sn"
   openldap:
-    image: bitnami/openldap:2.4.57
+    image: bitnamilegacy/openldap:2.4.57
     hostname: openldap
     container_name: openldap
     ports:
@@ -57,7 +57,7 @@ networks:
     driver: bridge
 ```
 
-If you don't pass environment variables to Metabase and you want to configure the environment manually, you can go to the Admin Panel, selectin "Settings", select "Authentication", and then select "LDAP Configuration" and enter the following values:
+If you don't pass environment variables to Metabase and you want to configure the environment manually, you can go to the Admin Panel, select "Settings", select "Authentication", and then select "LDAP Configuration" and enter the following values:
 
 - `USERNAME OR DN`: `cn=admin,dc=example,dc=org`
 - `PASSWORD`: `adminpassword`

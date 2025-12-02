@@ -28,6 +28,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     autoCorrect,
     tabIndex,
     extensions,
+    readOnly,
     ...rest
   } = props;
 
@@ -53,6 +54,8 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
       className={cx(S.editor, className)}
       basicSetup={setup}
       extensions={extendedExtensions}
+      readOnly={readOnly}
+      editable={!readOnly}
     />
   );
 });

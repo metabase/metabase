@@ -49,7 +49,9 @@
    (chan-signal-cancel! run-id)
    (transform-run/timeout-run! run-id)))
 
-(defn- cancel-run! [run-id]
+(defn cancel-run!
+  "Cancel a run with id."
+  [run-id]
   (when (chan-signal-cancel! run-id)
     (transform-run/cancel-run! run-id)))
 
@@ -84,15 +86,17 @@
   (start-job!))
 
 (defmethod task/init! ::CancelRuns [_]
+  (log/info "Scheduling the cancelation background task.")
   ;; does not use the Quartz scheduler
   (.scheduleAtFixedRate scheduler
                         #(try
                            (log/trace "Checking for canceling items.")
-                           (run! (fn [{:keys [id]}]
-                                   (try
-                                     (cancel-run! id)
-                                     (catch Throwable t
-                                       (log/error t (str "Error canceling " id)))))
+                           (run! (fn [cancelation]
+                                   (let [id (:run_id cancelation)]
+                                     (try
+                                       (cancel-run! id)
+                                       (catch Throwable t
+                                         (log/error t (str "Error canceling " id))))))
                                  (wr.cancelation/reducible-canceled-local-runs))
                            (catch Throwable t
                              (log/error t "Error while canceling a transform run."))) 0 20 TimeUnit/SECONDS))

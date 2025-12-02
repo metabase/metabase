@@ -76,11 +76,13 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     for (let i = 0; i < max; i++) {
       if (i >= wrappedPoints.length) {
         pinMarkerLayer.removeLayer(markers[i]); // remove excess markers
+        continue;
       }
+
+      const index =
+        wrappedPoints.length > points.length ? wrappedPoints[i][2] : i;
       if (i >= markers.length) {
         // create new markers for new points
-        const index = shouldGetWrappedPoints ? wrappedPoints[i][2] : i;
-
         const marker = this._createMarker(index);
         pinMarkerLayer.addLayer(marker);
         markers.push(marker);
@@ -91,6 +93,8 @@ export default class LeafletMarkerPinMap extends LeafletMap {
         // if any marker doesn't match the point, update it
         if (lng !== wrappedPoints[i][0] || lat !== wrappedPoints[i][1]) {
           markers[i].setLatLng(wrappedPoints[i].slice(0, 2));
+          // we need to re-attach the pointer events because the indexes might have changed from zooming
+          this._setupMarkerEvents(markers[i], index);
         }
       }
     }
@@ -98,57 +102,71 @@ export default class LeafletMarkerPinMap extends LeafletMap {
 
   _createMarker = (rowIndex) => {
     const marker = L.marker([0, 0], { icon: this.pinMarkerIcon });
-    const { onHoverChange, onVisualizationClick, settings } = this.props;
-    if (onHoverChange) {
-      marker.on("mousemove", (e) => {
-        const {
-          series: [
-            {
-              data: { cols, rows },
-            },
-          ],
-        } = this.props;
-        const hover = {
-          dimensions: cols.map((col, colIndex) => ({
-            value: rows[rowIndex][colIndex],
-            column: col,
-          })),
-          element: marker._icon,
-        };
-        onHoverChange(hover);
-      });
-      marker.on("mouseout", () => {
-        onHoverChange(null);
-      });
-    }
-    if (onVisualizationClick) {
-      marker.on("click", () => {
-        const {
-          series: [
-            {
-              data: { cols, rows },
-            },
-          ],
-        } = this.props;
-        // if there is a primary key then associate a pin with it
-        const pkIndex = _.findIndex(cols, isPK);
-        const hasPk = pkIndex >= 0;
+    return this._setupMarkerEvents(marker, rowIndex);
+  };
 
-        const data = cols.map((col, index) => ({
-          col,
-          value: rows[rowIndex][index],
-        }));
+  _setupMarkerEvents = (marker, rowIndex) => {
+    marker.off("mousemove");
+    marker.off("mouseout");
+    marker.off("click");
+    marker.on("mousemove", () => {
+      const { onHoverChange } = this.props;
+      if (!onHoverChange) {
+        return;
+      }
+      const {
+        series: [
+          {
+            data: { cols, rows },
+          },
+        ],
+      } = this.props;
+      const hover = {
+        dimensions: cols.map((col, colIndex) => ({
+          value: rows[rowIndex][colIndex],
+          column: col,
+        })),
+        element: marker._icon,
+      };
+      onHoverChange(hover);
+    });
 
-        onVisualizationClick({
-          value: hasPk ? rows[rowIndex][pkIndex] : null,
-          column: hasPk ? cols[pkIndex] : null,
-          element: marker._icon,
-          origin: { row: rows[rowIndex], cols },
-          settings,
-          data,
-        });
+    marker.on("mouseout", () => {
+      const { onHoverChange } = this.props;
+      onHoverChange?.(null);
+    });
+
+    marker.on("click", () => {
+      const { onVisualizationClick, settings } = this.props;
+      if (!onVisualizationClick) {
+        return;
+      }
+      const {
+        series: [
+          {
+            data: { cols, rows },
+          },
+        ],
+      } = this.props;
+      // if there is a primary key then associate a pin with it
+      const pkIndex = _.findIndex(cols, isPK);
+      const hasPk = pkIndex >= 0;
+
+      const data = cols.map((col, index) => ({
+        col,
+        value: rows[rowIndex][index],
+      }));
+
+      onVisualizationClick({
+        value: hasPk ? rows[rowIndex][pkIndex] : null,
+        column: hasPk ? cols[pkIndex] : null,
+        element: marker._icon,
+        origin: { row: rows[rowIndex], cols },
+        settings,
+        data,
       });
-    }
+    });
+
     return marker;
   };
 }

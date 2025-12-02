@@ -114,6 +114,7 @@ export function DashCardCardParameterMapper({
       w="100%"
       pos="relative"
       my={!isMobile && dashcard.size_y < 2 ? "0" : "0.5rem"}
+      py="lg"
     >
       {hasSeries && (
         <Box maw="100px" mb="sm" fz="0.83em" className={S.CardLabel}>
@@ -155,7 +156,7 @@ export function DashCardCardParameterMapper({
               mt="sm"
               align="center"
               pos="absolute"
-              bottom={-20}
+              bottom={0}
               style={styles}
             >
               <Icon name="sparkles" size="16" />

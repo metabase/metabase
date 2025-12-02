@@ -57,7 +57,7 @@
     Segmented permissions allow a User to run ad-hoc MBQL queries against the Table in question; regardless of whether
     they have relevant Collection permissions, queries against the sandboxed Table are rewritten to replace the Table
     itself with a special type of nested query called a
-    [[metabase-enterprise.sandbox.models.group-table-access-policy]], or _GTAP_. Note that segmented permissions are
+    [[metabase-enterprise.sandbox.models.sandbox]], or _GTAP_. Note that segmented permissions are
     both additive and subtractive -- they are additive because they grant (sandboxed) ad-hoc query access for a Table,
     but subtractive in that any access thru a Saved Question will now be sandboxed as well.
 
@@ -68,7 +68,7 @@
     * Only one GTAP may defined per-Group per-Table (this is an application-DB-level constraint). A User may have
       multiple applicable GTAPs if they are members of multiple groups that have sandboxed anti-perms for that Table; in
       that case, the QP signals an error if multiple GTAPs apply to a given Table for the current User (see
-      [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/assert-one-gtap-per-table]]).
+      [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing/assert-one-gtap-per-table]]).
 
     * Segmented (sandboxing) permissions and GTAPs are tied together, and a Group should be given both (or both
       should be deleted) at the same time. This is *not* currently enforced as a hard application DB constraint, but is
@@ -77,12 +77,11 @@
 
     * Segmented permissions can also be used to enforce column-level permissions -- any column not returned by the
       underlying GTAP query is not allowed to be referenced by the parent query thru other means such as filter clauses.
-      See [[metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check]].
 
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
       something incompatible (this constraint is in place so we other things continue to work transparently regardless
       of whether the Table is swapped out.) See
-      [[metabase-enterprise.sandbox.models.group-table-access-policy/check-columns-match-table]]
+      [[metabase-enterprise.sandbox.models.sandbox/check-columns-match-table]]
 
   * *block \"anti-permissions\"* are per-Group, per-Table grants that tell Metabase to disallow running Saved
     Questions unless the User has data permissions (in other words, disregard Collection permissions). These are
@@ -114,7 +113,7 @@
   Users would still be prevented from poking around things on their own, however.
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
-  [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
+  [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing]], and
   [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 
@@ -170,6 +169,7 @@
    [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -278,7 +278,28 @@
 
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (perms-objects-set-for-parent-collection instance read-or-write))
+  (if (or (= read-or-write :read)
+          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
+    (perms-objects-set-for-parent-collection instance read-or-write)
+    ;; We need to return a dummy permissions string that cannot possibly be long to a user in
+    ;; the case where an instance is not syncable due to remote-sync being in ':read-only' mode
+    #{"___no-remote-sync-access"}))
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
+  [_model k models]
+  (mi/instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id mi/can-write?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))
+
+(defmethod mi/can-create? :perms/use-parent-collection-perms
+  [_model m]
+  (if-let [collection-id (:collection_id m)]
+    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+    (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
@@ -365,6 +386,24 @@
       (t2/delete! :model/Permissions where)
       (clear-current-user-cached-permissions!))))
 
+(declare grant-collection-readwrite-permissions!)
+
+(defn- grant-library-collection-permissions-for-data-studio!
+  "When granting data-studio application permission to a group, also grant them read-write access
+  to all existing library collections (Library, Data, Metrics).
+
+  This is idempotent - if permissions already exist, they are not duplicated."
+  [group-id]
+  (let [library-types [(var-get (requiring-resolve 'metabase.collections.models.collection/library-collection-type))
+                       (var-get (requiring-resolve 'metabase.collections.models.collection/library-models-collection-type))
+                       (var-get (requiring-resolve 'metabase.collections.models.collection/library-metrics-collection-type))]
+        library-collections (t2/select :model/Collection :type [:in library-types])]
+    (when (seq library-collections)
+      (log/debugf "Granting library collection permissions to group %s for %d collections"
+                  group-id (count library-collections))
+      (doseq [coll library-collections]
+        (grant-collection-readwrite-permissions! group-id coll)))))
+
 (defn grant-permissions!
   "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
   [group-or-id path]
@@ -373,6 +412,9 @@
                 (map (fn [path-object]
                        {:group_id (u/the-id group-or-id) :object path-object})
                      (distinct (conj (perms.u/->v2-path path) path))))
+    (when (= path (permissions.path/application-perms-path :data-studio))
+      (grant-library-collection-permissions-for-data-studio! (u/the-id group-or-id)))
+
     (clear-current-user-cached-permissions!)
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e

@@ -8,7 +8,8 @@ import type {
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
-import { Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/lib/colors/types";
+import { Flex, Tooltip } from "metabase/ui";
 
 import {
   CheckBoxContainer,
@@ -35,8 +36,8 @@ export interface CheckBoxProps
   indeterminate?: boolean;
   disabled?: boolean;
   size?: number;
-  checkedColor?: string;
-  uncheckedColor?: string;
+  checkedColor?: ColorName;
+  uncheckedColor?: ColorName;
   autoFocus?: boolean;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -85,7 +86,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
           hasTooltip={!!(labelEllipsis && hasLabelEllipsis)}
           tooltipLabel={label}
         >
-          <div>
+          <Flex>
             {/* the div is needed because CheckTooltip requires 1 child when hasTooltip is true */}
             <CheckBoxInput
               id={id ?? name}
@@ -126,7 +127,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
                   </CheckBoxLabel>
                 ))}
             </CheckBoxContainer>
-          </div>
+          </Flex>
         </CheckboxTooltip>
       </CheckBoxRoot>
     );

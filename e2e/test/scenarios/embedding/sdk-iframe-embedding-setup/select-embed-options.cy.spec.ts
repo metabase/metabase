@@ -1,4 +1,6 @@
 import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
 import {
   codeBlock,
@@ -14,7 +16,7 @@ const QUESTION_NAME = "Orders, Count";
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -33,14 +35,71 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("toggles drill-throughs for dashboards", () => {
+  it("should select user session auth method by default", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
 
+    getEmbedSidebar().within(() => {
+      cy.findByText("Authentication").should("be.visible");
+
+      cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+      cy.findByLabelText("Existing Metabase session")
+        .should("be.visible")
+        .should("not.be.checked");
+
+      cy.findByLabelText("Single sign-on (SSO)")
+        .should("be.visible")
+        .should("not.be.checked");
+    });
+  });
+
+  it("should disable SSO radio button when JWT and SAML are not configured", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
+    });
+  });
+
+  it("should enable SSO radio button when JWT is configured", () => {
+    enableJwtAuth();
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+    });
+  });
+
+  it("should enable SSO radio button when SAML is configured", () => {
+    enableSamlAuth();
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+    });
+  });
+
+  it("toggles drill-throughs for dashboards when non-authorized auth method is selected", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    cy.findByLabelText("Existing Metabase session").click();
+
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked");
 
     cy.log("drill-through should be enabled in the preview");
@@ -51,14 +110,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("turn off drill-through");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .click()
       .should("not.be.checked");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "drills",
-    });
 
     cy.log("drill-through should be disabled in the preview");
     H.getSimpleEmbedIframeContent().within(() => {
@@ -67,7 +121,14 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=default",
+    });
+
     codeBlock().should("contain", 'drills="false"');
   });
 
@@ -91,17 +152,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withDownloads",
-    });
-
     H.getSimpleEmbedIframeContent()
       .findByTestId("export-as-pdf-button")
       .should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+    });
+
     codeBlock().should("contain", 'with-downloads="true"');
   });
 
@@ -125,28 +188,31 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("not.be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withTitle",
-    });
-
     H.getSimpleEmbedIframeContent()
       .findByText("Orders in a dashboard")
       .should("not.exist");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+    });
+
     codeBlock().should("contain", 'with-title="false"');
   });
 
-  it("toggles drill-through for charts", () => {
+  it("toggles drill-through for charts for non-authorized auth mode", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked");
 
     cy.log("drill-through should be disabled by default in chart preview");
@@ -157,14 +223,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("turn off drill-through");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .click()
       .should("not.be.checked");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "drills",
-    });
 
     cy.log("drill-through should be disabled in chart preview");
     H.getSimpleEmbedIframeContent().within(() => {
@@ -176,7 +237,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'drills="false"');
   });
 
@@ -200,17 +261,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withDownloads",
-    });
-
     H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        'settings=custom,experience=chart,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+    });
+
     codeBlock().should("contain", 'with-downloads="true"');
   });
 
@@ -219,6 +282,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       experience: "chart",
       resourceName: QUESTION_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
@@ -233,18 +297,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("not.be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withTitle",
-    });
-
     H.getSimpleEmbedIframeContent()
       .findByText("Orders, Count")
       .should("not.exist");
 
     cy.log("set drills to false");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked")
       .click()
       .should("not.be.checked");
@@ -260,7 +319,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("not.exist");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'with-title="false"');
 
     cy.log("go back to embed options step");
@@ -277,49 +336,64 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.getSimpleEmbedIframeContent()
       .findByText("Orders, Count")
       .should("be.visible");
-
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "embed_wizard_option_changed",
-        event_detail: "withTitle",
-      },
-      2,
-    );
   });
 
-  it("toggles save button for exploration", () => {
-    navigateToEmbedOptionsStep({ experience: "exploration" });
+  ["exploration", "chart"].forEach((experience) => {
+    it(`toggles save button for ${experience}`, () => {
+      navigateToEmbedOptionsStep(
+        experience === "chart"
+          ? { experience: "chart", resourceName: QUESTION_NAME }
+          : { experience: "exploration" },
+      );
 
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Orders").click();
-      cy.findByText("Visualize").click();
+      cy.findByLabelText("Existing Metabase session").click();
+
+      if (experience === "exploration") {
+        cy.log("visualize a question to enable the save button");
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Orders").click();
+          cy.findByText("Visualize").click();
+        });
+      }
+
+      getEmbedSidebar()
+        .findByLabelText("Allow people to save new questions")
+        .should("not.be.checked");
+
+      cy.log("save button should be hidden by default");
+      H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+
+      cy.log("turn on save option");
+      getEmbedSidebar()
+        .findByLabelText("Allow people to save new questions")
+        .click()
+        .should("be.checked");
+
+      if (experience === "chart") {
+        cy.log("select a different visualization to enable the save button");
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Table").click();
+          H.popover().findByText("Number").click();
+        });
+      }
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Save").should("be.visible");
+      });
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get code").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_options_completed",
+        event_detail:
+          experience === "chart"
+            ? "settings=custom,experience=chart,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
+            : "settings=custom,experience=exploration,auth=user-session,isSaveEnabled=true,theme=default",
+      });
+
+      codeBlock().should("contain", 'is-save-enabled="true"');
     });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .should("not.be.checked");
-
-    cy.log("save button should be hidden by default");
-    H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
-
-    cy.log("turn on save option");
-    getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .click()
-      .should("be.checked");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "isSaveEnabled",
-    });
-
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("Save").should("be.visible");
-    });
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
   it("can toggle read-only setting for browser", () => {
@@ -333,7 +407,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("not.be.checked");
 
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("New Dashboard").should("not.exist");
+      cy.findByText("New dashboard").should("not.exist");
     });
 
     cy.log("turn on editing (set read-only to false)");
@@ -342,17 +416,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "readOnly",
-    });
-
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("New Dashboard").should("be.visible");
+      cy.findByText("New dashboard").should("be.visible");
     });
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=browser,auth=user-session,readOnly=false,theme=default",
+    });
+
     codeBlock().should("contain", 'read-only="false"');
   });
 
@@ -364,26 +440,21 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("brand color should be visible");
     getEmbedSidebar().within(() => {
-      cy.findByText("Brand Color").should("be.visible");
+      cy.findByText("Brand color").should("be.visible");
     });
 
     cy.log("reset button should not be visible initially");
     getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("click on brand color picker");
-    cy.findByLabelText("#509EE3").click();
+    cy.findByTestId("brand-color-picker").findByRole("button").click();
 
     cy.log("change brand color to red");
     H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3")
+      cy.findByDisplayValue("#509EE2")
         .should("be.visible")
         .clear()
         .type("rgb(255, 0, 0)");
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "theme",
     });
 
     cy.log("table header cell should now be red");
@@ -396,7 +467,13 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Reset colors").should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
+    });
 
     codeBlock().should("contain", '"theme": {');
     codeBlock().should("contain", '"colors": {');
@@ -408,23 +485,23 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.log("click reset button");
     getEmbedSidebar().findByLabelText("Reset colors").click();
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "theme",
-    });
-
     cy.log("table header should be back to default blue");
     H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
       .first()
-      .should("have.css", "color", "rgb(80, 158, 227)");
+      .should("have.css", "color", "rgb(80, 158, 226)");
 
     cy.log("reset button should be hidden again");
     getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("snippet should not contain theme colors");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("not.contain", '"theme": {');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
   });
 
   it("derives colors for dark theme palette", () => {
@@ -432,21 +509,23 @@ H.describeWithSnowplow(suiteTitle, () => {
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
-    cy.log("change brand color");
-    cy.findByLabelText("#509EE3").click();
+    cy.log("click on brand color picker");
+    cy.findByTestId("brand-color-picker").findByRole("button").click();
+
     H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3").clear().type("#BD51FD");
+      cy.findByDisplayValue("#509EE2").clear().type("#BD51FD");
     });
 
     cy.log("change primary text color");
-    cy.findByLabelText("#4C5773").click();
+    cy.findByTestId("text-primary-color-picker").findByRole("button").click();
     H.popover().within(() => {
-      cy.findByDisplayValue("#4C5773").clear().type("#F1F1F1");
+      cy.findByDisplayValue("#303D46").clear().type("#F1F1F1");
     });
 
     cy.log("change background color");
-    cy.findByLabelText("#FFFFFF").click();
+    cy.findByTestId("background-color-picker").findByRole("button").click();
     H.popover().within(() => {
       cy.findByDisplayValue("#FFFFFF").clear().type("#121212");
     });
@@ -457,12 +536,54 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("have.css", "background-color", "rgb(18, 18, 18)");
 
     cy.log("check that derived colors are applied to snippet");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=custom",
+    });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
     cy.log("dark mode colors should be derived");
     codeBlock().should("contain", '"background-hover": "rgb(27, 27, 27)"');
     codeBlock().should("contain", '"text-secondary": "rgb(169, 169, 169)"');
     codeBlock().should("contain", '"brand-hover": "rgba(189, 81, 253, 0.5)"');
+  });
+
+  it("can toggle the Metabot layout from auto to stacked to sidebar", () => {
+    navigateToEmbedOptionsStep({ experience: "metabot" });
+
+    getEmbedSidebar().findByLabelText("Auto").should("be.checked");
+    getEmbedSidebar().findByLabelText("Stacked").click().should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("metabot-question-container")
+      .should("have.attr", "data-layout", "stacked");
+
+    getEmbedSidebar().findByText("Get code").click();
+    codeBlock().should("contain", 'layout="stacked"');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=metabot,auth=user-session,layout=stacked,theme=default",
+    });
+
+    getEmbedSidebar().findByText("Back").click();
+    getEmbedSidebar().findByLabelText("Sidebar").click().should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("metabot-question-container")
+      .should("have.attr", "data-layout", "sidebar");
+
+    getEmbedSidebar().findByText("Get code").click();
+    codeBlock().should("contain", 'layout="sidebar"');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=metabot,auth=user-session,layout=sidebar,theme=default",
+    });
   });
 });

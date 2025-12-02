@@ -108,6 +108,9 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "error",
     });
+    expect(
+      await screen.findByRole("tab", { name: /CSV$/ }),
+    ).toBeInTheDocument();
     await assertSheetsOpened();
 
     const connectButton = await screen.findByRole("button", {

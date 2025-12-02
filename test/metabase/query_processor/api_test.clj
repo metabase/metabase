@@ -5,7 +5,8 @@
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -18,14 +19,14 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -34,6 +35,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -234,33 +236,34 @@
 
 (deftest native-query-with-long-column-alias
   (testing "nested native query with long column alias (#47584)"
-    (let [short-col-name "coun"
-          long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
-
+    (let [short-col-name       "coun"
+          long-col-name        "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
           ;; Lightly validate the native form that comes back. Resist the urge to check for exact equality.
           validate-native-form (fn [native-form-lines]
                                  (and (some #(str/includes? % short-col-name) native-form-lines)
                                       (some #(str/includes? % long-col-name) native-form-lines)))
-
           ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
           ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-          native-sub-query (with-redefs [lib.util/truncate-alias
-                                         (fn mock-truncate-alias
-                                           [ss & _] ss)]
-                             (-> (mt/mbql-query people
-                                   {:source-table $$people
-                                    :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
-                                    :breakout     [[:field %state {:name long-col-name}]]
-                                    :limit        5})
-                                 qp.compile/compile
-                                 :query))
-          native-query (mt/native-query {:query native-sub-query})
-
+          native-sub-query     (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                             (fn mock-truncate-alias
+                                               [ss & _] ss)]
+                                 ;; make sure the schema checks don't fail for aliases > 60 characters
+                                 (mu/disable-enforcement
+                                   (-> (mt/mbql-query people
+                                         {:source-table $$people
+                                          :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
+                                          :breakout     [[:field %state {:name long-col-name}]]
+                                          :limit        5})
+                                       qp.compile/compile
+                                       :query)))
+          _                    (is (not (str/includes? native-sub-query "_00028d48"))
+                                   "double-check that the native-sub-query was not truncated")
+          native-query         (mt/native-query {:query native-sub-query})
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
-          metadata-card     (lib.metadata/card metadata-provider 1)]
+          metadata-provider    (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
+          metadata-card        (lib.metadata/card metadata-provider 1)]
       (mt/with-temp
-        [:model/Card card {:dataset_query native-query
+        [:model/Card card {:dataset_query   native-query
                            :entity_id       (:entity-id metadata-card)
                            :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
@@ -333,11 +336,11 @@
                                   encoded? json/encode)]]
           (testing (format "encoded? %b" encoded?)
             (doseq [mp [(lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mt/id :categories :name))
                         (lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mapv first (mt/rows (qp/process-query
                                                (mt/mbql-query categories
@@ -666,7 +669,7 @@
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
-                :class "class com.databricks.client.support.exceptions.ErrorException"}
+                :class "class com.databricks.jdbc.exception.DatabricksSQLException"}
                (select-keys res [:error_type :status :class])))
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 
@@ -684,43 +687,6 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
-
-;; historical test: don't do this going forward
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-(deftest ^:parallel pivot-dataset-with-added-expression-test
-  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-    (mt/dataset test-data
-      (testing "POST /api/dataset/pivot"
-        ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
-        ;; the GROUP BY expression
-        (when (#{:mongo :h2 :sqlite} driver/*driver*)
-          (testing "with an added expression"
-            ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
-            ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
-            (let [query  (-> (qp.pivot.test-util/pivot-query)
-                             (assoc-in [:query :fields] [[:expression "test-expr"]])
-                             (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
-                  result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
-                  rows   (mt/rows result)]
-              (is (= 1144 (:row_count result)))
-              (is (= 1144 (count rows)))
-              (let [cols (mt/cols result)]
-                (is (= ["User → State"
-                        "User → Source"
-                        "Product → Category"
-                        "pivot-grouping"
-                        "Count"
-                        "Sum of Quantity"
-                        "test-expr"]
-                       (map :display_name cols)))
-                (is (=? {:base_type       "type/Integer"
-                         :effective_type  "type/Integer"
-                         :name            "pivot-grouping"
-                         :display_name    "pivot-grouping"
-                         :field_ref       ["expression" "pivot-grouping"]
-                         :source          "breakout"}
-                        (nth cols 3))))
-              (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
@@ -1056,8 +1022,9 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                    :query {:source-table (str "card__" card-id-1)}}}]
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"

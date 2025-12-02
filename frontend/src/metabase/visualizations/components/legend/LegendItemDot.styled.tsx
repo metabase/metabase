@@ -1,14 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
-import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 export const OuterCircle = styled.div`
   position: absolute;
   top: 0;
   left: 0;
-  width: 12px;
-  height: 12px;
   border-radius: 50%;
   background-color: var(--mb-color-border);
   transition: all 0.2s;
@@ -18,8 +14,6 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
   position: absolute;
   top: 0;
   left: 0;
-  width: 12px;
-  height: 12px;
   border-radius: 50%;
   color-adjust: exact;
   background-color: ${(props) =>
@@ -29,19 +23,12 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
   transition: all 0.2s;
 `;
 
-const rootStyle = css`
-  position: relative;
-  min-width: 12px;
-  width: 12px;
-  height: 12px;
-`;
-
 export const Root = styled.div`
-  ${rootStyle}
+  position: relative;
 `;
 
 export const RootButton = styled.button`
-  ${rootStyle}
+  position: relative;
   cursor: pointer;
 
   &:hover {

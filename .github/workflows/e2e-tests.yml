@@ -73,31 +73,77 @@ jobs:
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
 
-  # run this separately to make it non-blocking
-  flaky-e2e-tests:
-    name: Flaky e2e Tests
-    uses: ./.github/workflows/e2e-test.yml
-    needs:
-      - e2e-matrix-builder
-    # skip flaky test run if only e2e specs changed as an optimization
-    if: |
-      !cancelled() && !inputs.skip && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
-    secrets: inherit
-    with:
-      name: Flaky
-      tags: "@flaky"
+  collect-timings:
+    name: Collect E2E Timings
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: e2e-tests
+    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+            e2e/support
+          sparse-checkout-cone-mode: false
+
+      - name: Download all timing artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: timing-data-*
+          path: timing-files
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Merge split timings
+        id: merge
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const globber = await glob.create('timing-files/*/chunkTimings.json');
+            const chunkFiles = await globber.glob();
+
+            const specs = new Map();
+            chunkFiles.forEach(file => {
+              const { durations = [] } = JSON.parse(fs.readFileSync(file, 'utf8'));
+              durations.forEach(({ spec, duration }) => specs.set(spec, duration));
+            });
+
+            if (specs.size === 0) {
+              throw new Error('No timing data found - no specs had timing changes');
+            }
+
+            const outputPath = 'e2e/support/runTimings.json';
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+            const runTimings = {
+              durations: [...specs].map(([spec, duration]) => ({ spec, duration }))
+            };
+
+            fs.writeFileSync(outputPath, JSON.stringify(runTimings, null, 2));
+            console.log(`Merged timing data for ${specs.size} specs`);
+
+      - name: Upload merged timing files
+        if: steps.merge.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-e2e-timings
+          path: e2e/support/runTimings.json
+          retention-days: 7
 
   e2e-tests-result:
     needs:
       - e2e-tests
-      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
-      FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
     steps:
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}
@@ -107,7 +153,6 @@ jobs:
         if: ${{ needs.e2e-tests.result != 'skipped' }}
         run: | # sh
           echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-          echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
 
           if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
             echo "E2E Tests failed"

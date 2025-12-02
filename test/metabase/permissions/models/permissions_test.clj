@@ -2,9 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.impl :as audit.impl]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.path :as permissions.path]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -249,3 +253,54 @@
                             (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group
       (perms/grant-collection-read-permissions! normal-group-id coll-id))))
+
+(deftest can-create-use-parent-collection-perms-test
+  (testing "can-create? for models using :perms/use-parent-collection-perms checks parent collection write permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection coll {:name "Test Collection"}]
+        (testing "can create in collection when user has write permissions"
+          (mt/with-temp [:model/PermissionsGroup group {}
+                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                              :group_id (:id group)}]
+            (perms/grant-collection-readwrite-permissions! group coll)
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (true? (mi/can-create? :model/Card {:collection_id (:id coll)}))))))
+        (testing "cannot create in collection when user lacks write permissions"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-create? :model/Card {:collection_id (:id coll)})))))
+        (testing "cannot create without collection_id (root collection)"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-create? :model/Card {})))
+            (is (false? (mi/can-create? :model/Card {:collection_id nil})))))))
+    (testing "with root collection perms"
+      (testing "can create without collection_id (root collection)"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (true? (mi/can-create? :model/Card {})))
+          (is (true? (mi/can-create? :model/Card {:collection_id nil}))))))))
+
+(deftest ^:parallel can-create-use-parent-collection-perms-dashboard-test
+  (testing "can-create? works for dashboards using parent collection permissions"
+    (mt/with-temp [:model/Collection coll {:name "Dashboard Collection"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "admin can create dashboard in any collection"
+          (is (true? (mi/can-create? :model/Dashboard {:collection_id (:id coll)}))))
+
+        (testing "admin can create dashboard in root collection"
+          (is (true? (mi/can-create? :model/Dashboard {}))))))))
+
+(deftest assigning-data-studio-gives-library-access
+  (testing "If there is no library, nothing extra gets created"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}]
+      (perms/grant-application-permissions! group-id :data-studio)
+      (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/application-perms-path :data-studio)))))
+    (testing "Granting data-studio application permission also grants read-write access to Library collections"
+      (without-library
+       (let [library (collections/create-library-collection!)
+             models-col (t2/select-one :model/Collection :type collection/library-models-collection-type)
+             metrics-col (t2/select-one :model/Collection :type collection/library-metrics-collection-type)]
+         (mt/with-temp [:model/PermissionsGroup {group-id :id}]
+           (perms/grant-application-permissions! group-id :data-studio)
+           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/application-perms-path :data-studio))))
+           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/collection-readwrite-path library))))
+           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/collection-readwrite-path models-col))))
+           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/collection-readwrite-path metrics-col))))))))))

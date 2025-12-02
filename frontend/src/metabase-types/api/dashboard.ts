@@ -1,4 +1,7 @@
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingType,
+} from "metabase/public/lib/types";
 import type {
   BaseEntityId,
   CardDisplayType,
@@ -15,6 +18,7 @@ import type {
   ParameterValueOrArray,
   Table,
   UserId,
+  UserInfo,
   VirtualCardDisplay,
   VisualizerVizDefinition,
 } from "metabase-types/api";
@@ -44,6 +48,7 @@ export interface Dashboard {
   entity_id: BaseEntityId;
   created_at: string;
   creator_id: UserId;
+  creator?: UserInfo;
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;
@@ -73,6 +78,7 @@ export interface Dashboard {
   >;
   auto_apply_filters: boolean;
   archived: boolean;
+  is_remote_synced?: boolean;
   public_uuid: string | null;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
@@ -83,6 +89,7 @@ export interface Dashboard {
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
+  embedding_type?: EmbeddingType | null;
 
   /* For x-ray dashboards */
   transient_name?: string;
@@ -304,6 +311,7 @@ export type UpdateDashboardRequest = {
     | "tabs"
     | "show_in_getting_started"
     | "enable_embedding"
+    | "embedding_type"
     | "collection_id"
     | "name"
     | "width"

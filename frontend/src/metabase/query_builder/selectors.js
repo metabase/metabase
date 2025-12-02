@@ -5,11 +5,10 @@ import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -220,10 +219,6 @@ const getLastRunDatasetQuery = createSelector(
   [getLastRunCard],
   (card) => card && card.dataset_query,
 );
-export const getNextRunDatasetQuery = createSelector(
-  [getCard],
-  (card) => card && card.dataset_query,
-);
 
 const getLastRunParameters = createSelector(
   [getFirstQueryResult],
@@ -342,7 +337,7 @@ export const getTableForeignKeys = createSelector(
 export const getPKColumnIndex = createSelector(
   [getFirstQueryResult, getTableId],
   (result, tableId) => {
-    if (!result) {
+    if (!result || !result.data) {
       return;
     }
     const { cols } = result.data;
@@ -360,7 +355,7 @@ export const getPKColumnIndex = createSelector(
 export const getPKRowIndexMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
-    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+    if (!result || !result.data || !Number.isSafeInteger(PKColumnIndex)) {
       return {};
     }
     const { rows } = result.data;
@@ -494,7 +489,7 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      question && Lib.queryDisplayInfo(question.query()).isEditable;
+      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
 
     return (
       haveParametersChanged ||
@@ -511,7 +506,7 @@ export const getIsResultDirty = createSelector(
 
 export const getZoomedObjectId = (state) => state.qb.zoomedRowObjectId;
 
-const getZoomedObjectRowIndex = createSelector(
+export const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
   (PKRowIndexMap, objectId) => {
     if (!PKRowIndexMap) {
@@ -880,22 +875,25 @@ export function getOffsetForQueryAndPosition(queryText, { row, column }) {
 }
 
 export const getNativeEditorCursorOffset = createSelector(
-  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
-  (selectedRange, query) => {
-    if (selectedRange == null || query == null || query.native == null) {
+  [getNativeEditorSelectedRange, getQuestionWithoutComposing],
+  (selectedRange, question) => {
+    if (selectedRange == null || question == null || !question.isNative()) {
       return null;
     }
-    return getOffsetForQueryAndPosition(query.native.query, selectedRange.end);
+    const query = question.query();
+    const queryText = Lib.rawNativeQuery(query);
+    return getOffsetForQueryAndPosition(queryText, selectedRange.end);
   },
 );
 
 export const getNativeEditorSelectedText = createSelector(
-  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
-  (selectedRange, query) => {
-    if (selectedRange == null || query == null || query.native == null) {
+  [getNativeEditorSelectedRange, getQuestionWithoutComposing],
+  (selectedRange, question) => {
+    if (selectedRange == null || question == null || !question.isNative()) {
       return null;
     }
-    const queryText = query.native.query;
+    const query = question.query();
+    const queryText = Lib.rawNativeQuery(query);
     const start = getOffsetForQueryAndPosition(queryText, selectedRange.start);
     const end = getOffsetForQueryAndPosition(queryText, selectedRange.end);
     return queryText.slice(start, end);
@@ -903,17 +901,18 @@ export const getNativeEditorSelectedText = createSelector(
 );
 
 export const getAllNativeEditorSelectedText = createSelector(
-  [getNativeEditorSelectedRanges, getNextRunDatasetQuery],
-  (selectedRanges, query) => {
+  [getNativeEditorSelectedRanges, getQuestionWithoutComposing],
+  (selectedRanges, question) => {
     if (
       selectedRanges == null ||
       selectedRanges.length === 0 ||
-      query == null ||
-      query.native == null
+      question == null ||
+      !question.isNative()
     ) {
       return null;
     }
-    const queryText = query.native.query;
+    const query = question.query();
+    const queryText = Lib.rawNativeQuery(query);
     const selectedText = selectedRanges.map((range) =>
       queryText.slice(
         getOffsetForQueryAndPosition(queryText, range.start),
@@ -939,8 +938,12 @@ export const getIsVisualized = createSelector(
   (question, settings) =>
     question &&
     // table is the default
-    ((question.display() !== "table" && question.display() !== "pivot") ||
-      (settings != null && settings["table.pivot"])),
+    ((question.display() !== "table" &&
+      question.display() !== "pivot" &&
+      question.display() !== "list") ||
+      (settings != null &&
+        (settings["table.pivot"] ||
+          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
 );
 
 export const getIsLiveResizable = createSelector(
@@ -1018,16 +1021,15 @@ export const getDataReferenceStack = createSelector(
         : [],
 );
 
-export const getDashboardId = (state) => {
-  return state.qb.parentDashboard.dashboardId;
-};
-
 export const getIsEditingInDashboard = (state) => {
-  return state.qb.parentDashboard.isEditing;
+  return (
+    state.qb.parentEntity.model === "dashboard" &&
+    state.qb.parentEntity.isEditing
+  );
 };
 
-export const getDashboard = (state) => {
-  return getDashboardById(state, getDashboardId(state));
+export const getParentEntity = (state) => {
+  return state.qb.parentEntity;
 };
 
 export const getEmbeddingParameters = createSelector([getCard], (card) => {
@@ -1091,3 +1093,8 @@ export const getIsNotebookNativePreviewShown = (state) =>
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");
+
+export const getIsListViewConfigurationShown = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.isShowingListViewConfiguration,
+);

@@ -67,8 +67,8 @@ describe("getOptionType", () => {
     [">", SPECIFIC_VALUES[1]],
     ["<", SPECIFIC_VALUES[2]],
     ["between", SPECIFIC_VALUES[3]],
-    ["last", RELATIVE_VALUES[0]],
-    ["next", RELATIVE_VALUES[1]],
+    ["past", RELATIVE_VALUES[0]],
+    ["future", RELATIVE_VALUES[1]],
     ["current", RELATIVE_VALUES[2]],
     ["none", EXCLUDE_VALUES[0]],
     ["is-null", EXCLUDE_VALUES[1]],
@@ -272,11 +272,11 @@ describe("setOptionType", () => {
     });
   });
 
-  describe("last", () => {
+  describe("past", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
       (value) => {
-        expect(setOptionType(value, "last")).toEqual({
+        expect(setOptionType(value, "past")).toEqual({
           type: "relative",
           value: -30,
           unit: "day",
@@ -300,7 +300,7 @@ describe("setOptionType", () => {
           value: 0,
           unit,
         };
-        expect(setOptionType(value, "last")).toEqual({
+        expect(setOptionType(value, "past")).toEqual({
           type: "relative",
           value: -30,
           unit,
@@ -316,13 +316,13 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])('should preserve "%s" unit and value for "next" value', (unit) => {
+    ])('should preserve "%s" unit and value for "future" value', (unit) => {
       const value: DatePickerValue = {
         type: "relative",
         value: 10,
         unit,
       };
-      expect(setOptionType(value, "last")).toEqual({
+      expect(setOptionType(value, "past")).toEqual({
         type: "relative",
         value: -10,
         unit,
@@ -330,11 +330,11 @@ describe("setOptionType", () => {
     });
   });
 
-  describe("next", () => {
+  describe("future", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
       (value) => {
-        expect(setOptionType(value, "next")).toEqual({
+        expect(setOptionType(value, "future")).toEqual({
           type: "relative",
           value: 30,
           unit: "day",
@@ -358,7 +358,7 @@ describe("setOptionType", () => {
           value: 0,
           unit,
         };
-        expect(setOptionType(value, "next")).toEqual({
+        expect(setOptionType(value, "future")).toEqual({
           type: "relative",
           value: 30,
           unit,
@@ -374,13 +374,13 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])('should preserve "%s" unit and value for "next" value', (unit) => {
+    ])('should preserve "%s" unit and value for "future" value', (unit) => {
       const value: DatePickerValue = {
         type: "relative",
         value: -10,
         unit,
       };
-      expect(setOptionType(value, "next")).toEqual({
+      expect(setOptionType(value, "future")).toEqual({
         type: "relative",
         value: 10,
         unit,

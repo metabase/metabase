@@ -338,6 +338,7 @@ function DashCardActionsPanelInner({
       top={0}
       right="20px"
       data-testid="dashboardcard-actions-panel"
+      data-dontdrag // allows to interact with the actions panel while in the edit mode
       onMouseDown={onMouseDown}
     >
       <Box className={S.DashCardActionButtonsContainer} component="span">

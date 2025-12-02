@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
@@ -19,6 +20,7 @@ export const SearchBarRoot = styled.div`
   width: 100%;
 
   ${breakpointMinSmall} {
+    max-width: 14.5rem;
     position: relative;
   }
 `;
@@ -38,6 +40,7 @@ export const SearchInputContainer = styled.div<{
     }
     return css`
       background-color: var(--mb-color-bg-white);
+
       &:hover {
         background-color: var(--mb-color-bg-light);
       }
@@ -115,7 +118,7 @@ export const SearchInput = styled.input<{
 
 const ICON_MARGIN = "10px";
 
-export const SearchIcon = styled(Icon)<{
+export const SearchIcon = styled(Icon, { shouldForwardProp: isPropValid })<{
   isActive: boolean;
 }>`
   flex-basis: 1rem;

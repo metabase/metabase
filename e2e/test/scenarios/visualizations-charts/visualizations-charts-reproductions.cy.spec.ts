@@ -495,3 +495,39 @@ describe("issue 54755", () => {
     cy.findByTestId("visualization-placeholder").should("be.visible");
   });
 });
+
+describe("issue 63026", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)", () => {
+    const query = `select '${"a".repeat(1000)}' as category, 45 as count
+union all select 'Short name', 25 as count
+union all select 'Medium length category', 30 as count`;
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.chartPathWithFillColor("#88BF4D").trigger("mousemove");
+
+    cy.get("[data-testid='echarts-tooltip']")
+      .should("be.visible")
+      .then(($tooltip) => {
+        const width = $tooltip.width();
+        expect(width).to.be.lte(550);
+      });
+  });
+});

@@ -45,6 +45,18 @@ export function selectDropdown() {
   return popover().findByRole("listbox");
 }
 
+export function miniPicker() {
+  return cy.findByTestId("mini-picker");
+}
+
+export function miniPickerBrowseAll() {
+  return miniPicker().findByText("Browse all");
+}
+
+export function miniPickerHeader() {
+  return cy.findByTestId("mini-picker-header");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
@@ -56,7 +68,7 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("a");
@@ -121,7 +133,7 @@ export function assertNavigationSidebarItemSelected(name, value = "true") {
 
 export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
   navigationSidebar()
-    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("section", { name: "Bookmarks" })
     .findByRole("listitem", { name })
     .should("have.attr", "aria-selected", value);
 }
@@ -254,6 +266,10 @@ export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
 };
 
+export const queryBuilderFooterDisplayToggle = () => {
+  return cy.findByTestId("query-display-tabular-toggle");
+};
+
 export const closeQuestionActions = () => {
   queryBuilderHeader().click();
 };
@@ -284,6 +300,10 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
+/**
+ * @deprecated Use `moveDnDKitElementByAlias` instead.
+ * Otherwise, the chain will be broken due to "element was removed from the DOM" error
+ */
 export const moveDnDKitElement = (
   element,
   { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
@@ -401,6 +421,10 @@ export const undoToast = () => {
 
 export const undoToastList = () => {
   return cy.findAllByTestId("toast-undo");
+};
+
+export const undoToastListContainer = () => {
+  return cy.findByTestId("undo-list");
 };
 
 export function dashboardCards() {
@@ -629,4 +653,12 @@ export function waitForLoaderToBeRemoved() {
 
 export function leaveConfirmationModal() {
   return cy.findByTestId("leave-confirmation");
+}
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
 }

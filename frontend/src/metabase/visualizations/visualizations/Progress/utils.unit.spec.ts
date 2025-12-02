@@ -21,7 +21,7 @@ describe("Visualizations > Progress > utils", () => {
 
   valueTestCases.forEach(([input, output]) => {
     it(`should return ${output} for ${JSON.stringify(input)}`, () => {
-      expect(getValue(input as unknown[][])).toEqual(output);
+      expect(getValue(input as any)).toEqual(output);
     });
   });
 });

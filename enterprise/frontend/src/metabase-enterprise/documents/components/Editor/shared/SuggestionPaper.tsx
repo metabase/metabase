@@ -17,7 +17,12 @@ export const SuggestionPaper = ({
   children,
   "aria-label": ariaLabel,
 }: SuggestionPaperProps) => (
-  <Box aria-label={ariaLabel} role="dialog" className={S.suggestionPaper}>
+  <Box
+    aria-label={ariaLabel}
+    role="dialog"
+    className={S.suggestionPaper}
+    data-testid="mention-suggestions-popup"
+  >
     {children}
   </Box>
 );
@@ -25,7 +30,13 @@ export const SuggestionPaper = ({
 export const LoadingSuggestionPaper = ({
   "aria-label": ariaLabel,
 }: LoadingSuggestionPaperProps) => (
-  <Box aria-label={ariaLabel} ta="center" py="lg" className={S.suggestionPaper}>
+  <Box
+    aria-label={ariaLabel}
+    ta="center"
+    py="lg"
+    className={S.suggestionPaper}
+    data-testid="mention-suggestions-popup"
+  >
     <Loader size="sm" />
   </Box>
 );

@@ -225,7 +225,7 @@ export const DataPermissionsHelp = () => {
 
       <Text component="footer" ta="center" py="1.5rem" fw={600}>
         {jt`${(
-          <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
+          <ExternalLink key="link" href={docsUrl}>{t`Learn more`}</ExternalLink>
         )} about data permissions`}
       </Text>
     </Flex>

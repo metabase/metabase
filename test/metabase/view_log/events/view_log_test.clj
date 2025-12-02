@@ -2,12 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.dashboards.api-test :as api.dashboard-test]
-   [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-sharing.api-test :as public-test]
+   [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -219,8 +219,8 @@
   (mt/with-premium-features #{:audit-app}
     (testing "Card reads (views) via the API are recorded in the view_log"
       (mt/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
-        (testing "GET /api/card/:id"
-          (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
+        (testing "POST /api/card/:id/query"
+          (mt/user-http-request :crowberto :post 202 (format "card/%s/query" (u/id card)))
           (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (u/id card), :context :question}
                         (latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
@@ -251,8 +251,8 @@
     (testing "Viewing a public card logs the correct view log event."
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (public-test/with-temp-public-card [card]
-          (testing "GET /api/public/card/:uuid"
-            (client/client :get 200 (str "public/card/" (:public_uuid card)))
+          (testing "GET /api/public/card/:uuid/query"
+            (client/client :get 202 (str "public/card/" (:public_uuid card) "/query"))
             (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :question}
                           (latest-view nil (:id card))))))))))
 
@@ -261,7 +261,7 @@
     (testing "Running a query for a card in a public dashboard logs the correct view log event."
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (public-test/with-temp-public-dashboard-and-card [dash card dashcard]
-          (testing "GET /api/public/dashboard/:uuid/card/:card-id"
+          (testing "GET /api/public/dashboard/:uuid/card/:card-id/query"
             (client/client :get 202 (public-test/dashcard-url dash card dashcard))
             (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :dashboard}
                           (latest-view nil (:id card))))))))))
@@ -281,8 +281,8 @@
     (testing "Viewing an embedding logs the correct view log event."
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card {:enable_embedding true}]
-          (testing "GET /api/embed/card/:token"
-            (client/client :get 200 (embed-test/card-url card))
+          (testing "GET /api/embed/card/:token/query"
+            (client/client :get 202 (str (embed-test/card-url card) "/query"))
             (is (partial= {:model "card", :model_id (:id card), :has_access true}
                           (latest-view nil (:id card))))))))))
 

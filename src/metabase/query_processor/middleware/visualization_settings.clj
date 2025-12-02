@@ -1,12 +1,11 @@
 (ns metabase.query-processor.middleware.visualization-settings
   (:require
    [metabase.appearance.core :as appearance]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
@@ -19,11 +18,11 @@
 (defn- update-card-viz-settings
   "For each field, fetch its settings from the QP store, convert the settings into the normalized form
   for visualization settings, and then merge in the card-level column settings."
-  [column-viz-settings field-ids]
+  [metadata-providerable column-viz-settings field-ids]
   ;; Retrieve field-level settings
   (let [field-id->settings      (reduce
                                  (fn [m field-id]
-                                   (let [field-settings      (:settings (lib.metadata/field (qp.store/metadata-provider) field-id))
+                                   (let [field-settings      (:settings (lib.metadata/field metadata-providerable field-id))
                                          norm-field-settings (normalize-field-settings field-id field-settings)]
                                      (cond-> m
                                        (seq norm-field-settings)
@@ -52,7 +51,7 @@
    (or (let [viz (-> query :viz-settings)]
          (when (seq viz) viz))
        (when-let [card-id (-> query :info :card-id)]
-         (:visualization-settings (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))))))
+         (:visualization-settings (lib.metadata/card query card-id))))))
 
 (mu/defn update-viz-settings :- ::qp.schema/rff
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
@@ -65,17 +64,18 @@
   For native queries, viz settings passed from the frontend are used, without modification.
 
   Processed viz settings are added to the metadata under the key :viz-settings."
-  [{{:keys [process-viz-settings?]} :middleware, :as query} :- ::mbql.s/Query
+  [{{:keys [process-viz-settings?]} :middleware, :as query} :- ::lib.schema/query
    rff :- ::qp.schema/rff]
   (if process-viz-settings?
     (let [card-viz-settings            (viz-settings query)
           normalized-card-viz-settings (mb.viz/db->norm card-viz-settings)
           column-viz-settings          (::mb.viz/column-settings card-viz-settings)
-          fields                       (or (-> query :query :fields)
-                                           (-> query :query :source-query :fields))
-          field-ids                    (filter pos-int? (map second fields))
-          updated-column-viz-settings  (if (= (:type query) :query)
-                                         (update-card-viz-settings column-viz-settings field-ids)
+          fields                       (or (lib/fields query -1)
+                                           (when (lib/previous-stage query -1)
+                                             (lib/fields query -2)))
+          field-ids                    (filter pos-int? (map last fields))
+          updated-column-viz-settings  (if (= (:lib/type (lib/query-stage query -1)) :mbql.stage/mbql)
+                                         (update-card-viz-settings query column-viz-settings field-ids)
                                          column-viz-settings)
           global-settings              (update-vals (appearance/custom-formatting)
                                                     mb.viz/db->norm-column-settings-entries)

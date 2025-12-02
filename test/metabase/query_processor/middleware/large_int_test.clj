@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.middleware.large-int :as large-int]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)

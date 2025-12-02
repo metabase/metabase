@@ -16,6 +16,7 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   type NewParameterOpts,
   createParameter,
+  getFilteredParameterMappingsForDashcardText,
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
@@ -51,13 +52,13 @@ import {
 } from "../analytics";
 import {
   getAutoApplyFiltersToastId,
+  getCurrentDashcards,
   getDashCardById,
   getDashboard,
   getDashboardBeforeEditing,
   getDashboardComplete,
   getDashboardHeaderParameters,
   getDashboardId,
-  getDashcardList,
   getDashcards,
   getDraftParameterValues,
   getFiltersToReset,
@@ -274,7 +275,7 @@ export const setEditingParameter =
     const currentTabId = getSelectedTabId(getState());
     const parameterDashcard = findDashCardForInlineParameter(
       parameterId,
-      getDashcardList(getState()),
+      getCurrentDashcards(getState()),
     );
 
     if (
@@ -409,7 +410,7 @@ export const setParameterMapping = createThunkAction(
   (
     parameterId: ParameterId,
     dashcardId: DashCardId,
-    cardId: CardId,
+    cardId: CardId | null,
     target: ParameterTarget | null,
   ) => {
     return (dispatch, getState) => {
@@ -440,6 +441,39 @@ export const setParameterMapping = createThunkAction(
               cardId,
               target,
             ),
+          },
+        }),
+      );
+    };
+  },
+);
+
+export const UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT =
+  "metabase/dashboard/UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT";
+export const updateParameterMappingsForDashcardText = createThunkAction(
+  UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT,
+  (dashcardId: DashCardId) => {
+    return (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const parameterMappings = dashcard?.parameter_mappings;
+      const text = dashcard?.visualization_settings?.text;
+
+      if (typeof text !== "string") {
+        return;
+      }
+
+      const filteredParameterMappings =
+        getFilteredParameterMappingsForDashcardText(parameterMappings, text);
+
+      if (!filteredParameterMappings) {
+        return;
+      }
+
+      dispatch(
+        setDashCardAttributes({
+          id: dashcardId,
+          attributes: {
+            parameter_mappings: filteredParameterMappings,
           },
         }),
       );
@@ -861,7 +895,8 @@ export const setParameterTemporalUnits = createThunkAction(
         ...parameter,
         temporal_units: temporalUnits,
         default:
-          parameter.default && temporalUnits.includes(parameter.default)
+          parameter.default &&
+          temporalUnits.includes(parameter.default as TemporalUnit)
             ? parameter.default
             : undefined,
       }));
@@ -955,13 +990,11 @@ export const setOrUnsetParameterValues =
   (parameterIdValuePairs: any[][]) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameterValues = getParameterValues(getState());
+    const areAllSet = parameterIdValuePairs.every(([id, value]) =>
+      _.isEqual(value, parameterValues[id]),
+    );
     parameterIdValuePairs
-      .map(([id, value]) =>
-        setParameterValue(
-          id,
-          _.isEqual(value, parameterValues[id]) ? null : value,
-        ),
-      )
+      .map(([id, value]) => setParameterValue(id, areAllSet ? null : value))
       .forEach(dispatch);
   };
 

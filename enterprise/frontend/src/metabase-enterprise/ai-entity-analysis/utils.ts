@@ -27,6 +27,7 @@ const CHART_ANALYSIS_ENABLED = {
   smartscalar: false,
   table: false,
   text: false,
+  list: false,
 } as const satisfies { [display in VisualizationDisplay]: boolean };
 
 type EnabledChartTypes = {

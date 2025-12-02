@@ -60,3 +60,17 @@ x.com")
   :default    true
   :visibility :internal
   :export?    false)
+
+(defsetting disable-cors-on-localhost
+  (deferred-tru "Prevents the server from sending CORS headers for requests originating from localhost.")
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :export?    true)
+
+(defsetting hide-stacktraces
+  (deferred-tru "Prevent the exception middleware from including stacktraces in responses.")
+  :type       :boolean
+  :default    false
+  :visibility :admin
+  :export?    false)

@@ -9,7 +9,7 @@ import type { EntitiesStateOpts } from "./store";
 import { createMockEntitiesState } from "./store";
 
 export function createMockMetadata(
-  entities: EntitiesStateOpts,
+  entities: EntitiesStateOpts = {},
   settings?: Settings,
 ) {
   const state = createMockState({

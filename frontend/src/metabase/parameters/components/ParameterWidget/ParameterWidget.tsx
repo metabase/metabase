@@ -14,9 +14,13 @@ import CS from "metabase/css/core/index.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Flex } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
+import type {
+  CardId,
+  DashboardId,
+  Parameter,
+  ParameterId,
+} from "metabase-types/api";
 
 import { ParameterValueWidget } from "../ParameterValueWidget";
 
@@ -28,8 +32,9 @@ export type ParameterWidgetProps = PropsWithChildren<
   } & Partial<
     {
       setValue: (value: any) => void;
-      question: Question;
-      dashboard: Dashboard | null;
+      cardId?: CardId;
+      dashboardId?: DashboardId;
+      token?: string | null;
 
       editingParameter: Parameter | null;
       commitImmediately: boolean;
@@ -51,8 +56,9 @@ export type ParameterWidgetProps = PropsWithChildren<
 >;
 
 export const ParameterWidget = ({
-  question,
-  dashboard,
+  cardId,
+  dashboardId,
+  token,
   parameter,
   editingParameter,
   commitImmediately = false,
@@ -75,7 +81,8 @@ export const ParameterWidget = ({
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
   const wasEditingParameter = usePrevious(isEditingParameter);
-  const fieldHasValueOrFocus = parameter.value != null || isFocused;
+  const isEmptyValue = parameter.value == null || parameter.value === "";
+  const fieldHasValueOrFocus = !isEmptyValue || isFocused;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -146,8 +153,9 @@ export const ParameterWidget = ({
       <ParameterValueWidget
         parameter={parameter}
         parameters={parameters}
-        question={question}
-        dashboard={dashboard}
+        cardId={cardId}
+        dashboardId={dashboardId}
+        token={token}
         value={parameter.value}
         setValue={(value) => setValue?.(value)}
         isEditing={isEditingParameter}

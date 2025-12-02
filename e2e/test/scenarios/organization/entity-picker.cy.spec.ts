@@ -38,8 +38,9 @@ describe("scenarios > organization > entity picker", () => {
     describe("tables", () => {
       it("should select a table from local search results", () => {
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+          H.entityPickerModalItem(0, "Databases").click();
           enterSearchText({
             text: "prod",
             placeholder: "Search this database or everywhere…",
@@ -56,8 +57,9 @@ describe("scenarios > organization > entity picker", () => {
 
       it("should select a table from global search results", () => {
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+          H.entityPickerModalItem(0, "Databases").click();
           enterSearchText({
             text: "prod",
             placeholder: "Search this database or everywhere…",
@@ -77,8 +79,9 @@ describe("scenarios > organization > entity picker", () => {
         H.startNewQuestion();
 
         cy.log("create a recent item");
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+          H.entityPickerModalItem(0, "Databases").click();
           cy.findByText("Products").click();
         });
 
@@ -86,9 +89,11 @@ describe("scenarios > organization > entity picker", () => {
           "should search globally for recents and locally for tables by default",
         );
         H.getNotebookStep("data").findByText("Products").click();
+        H.miniPickerHeader().click();
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           cy.log("local -> global transition without changing search text");
-          H.entityPickerModalTab("Tables").click();
+          H.entityPickerModalTab("Data").click();
           enterSearchText({
             text: "Orders",
             placeholder: "Search this database or everywhere…",
@@ -103,7 +108,7 @@ describe("scenarios > organization > entity picker", () => {
           });
 
           cy.log("global -> local transition without changing search text");
-          H.entityPickerModalTab("Tables").click();
+          H.entityPickerModalTab("Data").click();
           existingSearchTab().click();
           localSearchTab("Sample Database").should("be.checked");
           assertSearchResults({
@@ -135,8 +140,9 @@ describe("scenarios > organization > entity picker", () => {
 
       it("should search for tables in the only database", () => {
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+          H.entityPickerModalItem(0, "Databases").click();
           enterSearchText({
             text: "prod",
             placeholder: "Search this database or everywhere…",
@@ -159,10 +165,11 @@ describe("scenarios > organization > entity picker", () => {
         });
         cy.signInAsNormalUser();
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
 
         cy.log("real table name should give no results");
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+          H.entityPickerModalItem(0, "Databases").click();
           enterSearchText({
             text: "Orders",
             placeholder: "Search this database or everywhere…",
@@ -203,8 +210,9 @@ describe("scenarios > organization > entity picker", () => {
 
           cy.log("first database - pre-selected");
           H.startNewQuestion();
+          H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+            H.entityPickerModalItem(0, "Databases").click();
             enterSearchText({
               text: "prod",
               placeholder: "Search this database or everywhere…",
@@ -219,7 +227,7 @@ describe("scenarios > organization > entity picker", () => {
 
           cy.log("second database");
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+            H.entityPickerModalTab("Data").click();
             cy.findByText("Writable Postgres12").click();
             enterSearchText({
               text: "s",
@@ -236,7 +244,7 @@ describe("scenarios > organization > entity picker", () => {
           cy.log("first database - manually selected");
           H.startNewQuestion();
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+            H.entityPickerModalTab("Data").click();
             cy.findByText("Sample Database").click();
             enterSearchText({
               text: "prod",
@@ -263,8 +271,9 @@ describe("scenarios > organization > entity picker", () => {
 
           cy.log("first schema");
           H.startNewQuestion();
+          H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+            H.entityPickerModalItem(0, "Databases").click();
             cy.findByText("Writable Postgres12").click();
             enterSearchText({
               text: "s",
@@ -280,7 +289,8 @@ describe("scenarios > organization > entity picker", () => {
 
           cy.log("second schema");
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+            H.entityPickerModalTab("Data").click();
+            cy.findByText("Writable Postgres12").click();
             cy.findByText("Wild").click();
             enterSearchText({
               text: "s",
@@ -302,8 +312,9 @@ describe("scenarios > organization > entity picker", () => {
           H.restore("mysql-8");
           cy.signInAsAdmin();
           H.startNewQuestion();
+          H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+            H.entityPickerModalItem(0, "Databases").click();
             cy.findByText("QA MySQL8").click();
             enterSearchText({
               text: "orders",
@@ -321,7 +332,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     describe("cards", () => {
-      const tabs = ["Collections"];
+      const tabs = ["Data"];
 
       it("should select a card from local search results", () => {
         cy.signInAsAdmin();
@@ -330,28 +341,25 @@ describe("scenarios > organization > entity picker", () => {
 
         const testCases = [
           {
-            tab: "Collections",
             cardName: "Root question 1",
             sourceName: "Root question 1",
           },
           {
-            tab: "Collections",
             cardName: "Root model 2",
             sourceName: "Root model 2",
           },
           {
-            tab: "Collections",
             cardName: "Root metric 1",
             sourceName: "Orders",
           },
         ];
-        testCases.forEach(({ tab, cardName, sourceName }) => {
+        testCases.forEach(({ cardName, sourceName }) => {
           H.startNewQuestion();
+          H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab(tab).click();
             enterSearchText({
               text: cardName,
-              placeholder: "Search this collection or everywhere…",
+              placeholder: /Search/,
             });
             cy.findByText(cardName).click();
           });
@@ -361,8 +369,9 @@ describe("scenarios > organization > entity picker", () => {
 
         cy.log("scope search in a dashboard");
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
+          H.entityPickerModalTab("Data").click();
           H.entityPickerModalItem(1, "Orders in a dashboard").click();
           enterSearchText({
             text: "Orders",
@@ -383,28 +392,28 @@ describe("scenarios > organization > entity picker", () => {
 
         const testCases = [
           {
-            tab: "Collections",
             cardName: "Regular question 1",
             sourceName: "Regular question 1",
           },
           {
-            tab: "Collections",
             cardName: "Regular model 2",
             sourceName: "Regular model 2",
           },
           {
-            tab: "Collections",
             cardName: "Regular metric 1",
             sourceName: "Orders",
           },
         ];
-        testCases.forEach(({ tab, cardName, sourceName }) => {
+        testCases.forEach(({ cardName, sourceName }, i) => {
           H.startNewQuestion();
+          H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab(tab).click();
+            if (i > 0) {
+              H.entityPickerModalTab("Data").click();
+            }
             enterSearchText({
               text: cardName,
-              placeholder: "Search this collection or everywhere…",
+              placeholder: /Search/,
             });
             selectGlobalSearchTab();
             cy.findByText(cardName).click();
@@ -415,8 +424,9 @@ describe("scenarios > organization > entity picker", () => {
 
         cy.log("should find dashboard questions in global search");
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
+          H.entityPickerModalTab("Data").click();
           enterSearchText({
             text: "Dashboard question 1",
             placeholder: "Search this collection or everywhere…",
@@ -435,6 +445,7 @@ describe("scenarios > organization > entity picker", () => {
         createTestCards();
         cy.signInAsNormalUser();
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
         testCardSearchForNormalUser({ tabs });
       });
 
@@ -449,6 +460,7 @@ describe("scenarios > organization > entity picker", () => {
 
         cy.signIn("nocollection");
         H.startNewQuestion();
+        H.miniPickerBrowseAll().click();
         testCardSearchForInaccessibleRootCollection({
           tabs,
           isRootSelected: true,
@@ -459,7 +471,8 @@ describe("scenarios > organization > entity picker", () => {
         cy.signInAsAdmin();
         createTestCards();
         H.startNewQuestion();
-        testCardSearchForAllPersonalCollections({ tabs });
+        H.miniPickerBrowseAll().click();
+        testCardSearchForAllPersonalCollections();
       });
     });
   });
@@ -545,7 +558,7 @@ describe("scenarios > organization > entity picker", () => {
       cy.signInAsAdmin();
       createTestCards();
       selectQuestionFromDashboard();
-      testCardSearchForAllPersonalCollections({ tabs });
+      testCardSearchForAllPersonalCollections();
     });
   });
 
@@ -1083,7 +1096,9 @@ describe("scenarios > organization > entity picker", () => {
       );
 
       H.newButton("Question").click();
-      H.entityPickerModalLevel(2).findByText("People").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalLevel(3).findByText("People").click();
       H.queryBuilderHeader().findByRole("button", { name: "Save" }).click();
 
       H.modal()
@@ -1155,7 +1170,7 @@ describe("scenarios > organization > entity picker", () => {
       //Entity picker should grow
       cy.findByRole("dialog", { name: "Select a collection" })
         .should("have.css", "width")
-        .and("eq", "1095px");
+        .and("eq", "1097px");
 
       H.entityPickerModalItem(2, "Second collection").click();
 
@@ -1168,7 +1183,7 @@ describe("scenarios > organization > entity picker", () => {
       //Entity picker should not shrink if we go back in the collection tree
       cy.findByRole("dialog", { name: "Select a collection" })
         .should("have.css", "width")
-        .and("eq", "1200px");
+        .and("eq", "1198px");
     });
   });
 });
@@ -1320,7 +1335,7 @@ function enterSearchText({
   placeholder,
 }: {
   text: string;
-  placeholder: string;
+  placeholder: string | RegExp;
 }) {
   cy.findByPlaceholderText(placeholder).clear().type(text);
 }
@@ -1378,7 +1393,9 @@ function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
   tabs.forEach((tab) => {
     cy.log("root collection - automatically selected");
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
+      if (tabs.length > 1) {
+        H.entityPickerModalTab(tab).click();
+      }
       enterSearchText({
         text: "2",
         placeholder: "Search this collection or everywhere…",
@@ -1478,7 +1495,6 @@ function testCardSearchForInaccessibleRootCollection({
     if (isRootSelected) {
       cy.log("inaccessible root collection - automatically selected");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab(tab).click();
         enterSearchText({
           text: "1",
           placeholder: "Search this collection or everywhere…",
@@ -1569,20 +1585,17 @@ function testCardSearchForInaccessibleRootCollection({
   });
 }
 
-function testCardSearchForAllPersonalCollections({ tabs }: { tabs: string[] }) {
-  tabs.forEach((tab) => {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
-      cy.findByText("All personal collections").click();
-      enterSearchText({
-        text: "root",
-        placeholder: "Search…",
-      });
-      globalSearchTab().should("not.exist");
-      localSearchTab("All personal collections").should("not.exist");
-      assertSearchResults({
-        foundItems: ["Root question 1", "Root model 1", "Root metric 1"],
-      });
+function testCardSearchForAllPersonalCollections() {
+  H.entityPickerModal().within(() => {
+    cy.findByText("All personal collections").click();
+    enterSearchText({
+      text: "root",
+      placeholder: "Search…",
+    });
+    globalSearchTab().should("not.exist");
+    localSearchTab("All personal collections").should("not.exist");
+    assertSearchResults({
+      foundItems: ["Root question 1", "Root model 1", "Root metric 1"],
     });
   });
 }

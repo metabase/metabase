@@ -137,10 +137,10 @@ describe("issue 44171", () => {
     H.sidebar().findByText("Metric 44171-A").click();
 
     H.showDashboardCardActions(0);
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.selectDataset("Metric 44171-B");
@@ -199,5 +199,52 @@ describe("issue 32037", () => {
     cy.get("@metricPathname").then((metricPathname) => {
       cy.location("pathname").should("eq", metricPathname);
     });
+  });
+});
+
+describe("issue 30574", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not throw when diving a metric by another metric with a custom aggregation expression with a custom name (metabase#30574)", () => {
+    cy.visit("/browse/metrics");
+
+    cy.log("create the first metric");
+    H.main().findByText("Create metric").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("edit-bar").button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("M1");
+      cy.button("Save").click();
+    });
+    H.queryBuilderHeader().should("be.visible");
+
+    cy.log("create the second metric");
+    H.openNavigationSidebar();
+    H.navigationSidebar().findByText("Metrics").click();
+    H.main().findByLabelText("Create a new metric").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    H.getNotebookStep("summarize").findByText("Count").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      name: "X",
+      formula: "[M1]/[M1]",
+    });
+    H.popover().button("Update").click();
+    cy.findByTestId("edit-bar").button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("M2");
+      cy.button("Save").click();
+    });
+    H.queryBuilderHeader().should("be.visible");
+    H.assertQueryBuilderRowCount(1);
   });
 });

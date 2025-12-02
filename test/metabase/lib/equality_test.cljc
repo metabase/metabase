@@ -320,6 +320,8 @@
                [:field {} "Cat__NAME"]]  ; 7
               refs))
       (testing (str "\n" (with-out-str
+                           ;; usage is ok since we're wrapping it in `with-out-str`
+                           #_{:clj-kondo/ignore [:discouraged-var]}
                            (pprint/print-table
                             [:name :lib/original-join-alias :lib/original-name :lib/deduplicated-name :lib/source-column-alias :lib/desired-column-alias]
                             cols)))
@@ -772,7 +774,6 @@
                     :lib/desired-column-alias  "CREATED_AT"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
-                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :year, :lib/uuid "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af", :effective-type :type/DateTime} 39]
                     :lib/source                :source/previous-stage
                     :lib/source-column-alias   "CREATED_AT"
                     :lib/source-uuid           "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af"
@@ -793,7 +794,6 @@
                     :lib/desired-column-alias  "CREATED_AT_2"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
-                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "1f16a57a-2afd-4c92-8d6c-b41062235a49", :effective-type :type/DateTime} 39]
                     :lib/source                :source/previous-stage
                     :lib/source-column-alias   "CREATED_AT_2"
                     :lib/source-uuid           "1f16a57a-2afd-4c92-8d6c-b41062235a49"

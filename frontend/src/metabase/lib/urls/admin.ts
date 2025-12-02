@@ -1,4 +1,9 @@
-import type { DatabaseId, UserId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  SchemaName,
+  TableId,
+  UserId,
+} from "metabase-types/api";
 
 export function newUser() {
   return `/admin/people/new`;
@@ -40,8 +45,27 @@ export function editDatabase(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/edit`;
 }
 
+export function dataModel() {
+  return `/admin/datamodel`;
+}
+
 export function dataModelDatabase(databaseId: DatabaseId) {
-  return `/admin/datamodel/database/${databaseId}`;
+  return `${dataModel()}/database/${databaseId}`;
+}
+
+export function dataModelSchema(
+  databaseId: DatabaseId,
+  schema: SchemaName | null,
+) {
+  return `${dataModelDatabase(databaseId)}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}`;
+}
+
+export function dataModelTable(
+  databaseId: DatabaseId,
+  schema: SchemaName | null,
+  tableId: TableId,
+) {
+  return `${dataModelSchema(databaseId, schema)}/table/${tableId}`;
 }
 
 export function uploadsSettings() {
@@ -50,4 +74,32 @@ export function uploadsSettings() {
 
 export function adminLicense() {
   return "/admin/settings/license";
+}
+
+export function adminToolsHelp() {
+  return "/admin/tools/help";
+}
+
+export function adminToolsTasks() {
+  return "/admin/tools/tasks";
+}
+
+export function adminToolsJobs() {
+  return "/admin/tools/jobs";
+}
+
+export function adminToolsLogs() {
+  return "/admin/tools/logs";
+}
+
+export function adminToolsErrors() {
+  return "/admin/tools/errors";
+}
+
+export function adminToolsModelCaching() {
+  return "/admin/tools/model-caching";
+}
+
+export function adminToolsGrantAccess() {
+  return "/admin/tools/help/grant-access";
 }

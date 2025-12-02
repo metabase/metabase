@@ -1,5 +1,6 @@
 ---
 title: Application permissions
+summary: Grant groups access to Metabase's administrative features like settings, monitoring tools, and notifications.
 redirect_from:
   - /docs/latest/administration-guide/application-permissions
 ---
@@ -19,6 +20,7 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Settings](../configuring-metabase/settings.md)
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
+- [Webhooks](../configuring-metabase/webhooks.md)
 - [Authentication](../people-and-groups/start.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
@@ -36,9 +38,11 @@ Monitoring access sets permissions for the following:
 
 ## Subscriptions and alerts
 
-This setting determines who can set up:
+This setting determines who can create:
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Alerts](../questions/alerts.md)
 
 People will need to be in groups with either view or edit access to the collection that contains the dashboard or question in order to set up alerts. See [Collection permissions](../permissions/collections.md).
+
+To prevent people from creating alerts and subscriptions, set the "Subscriptions and alerts" permission to "No".

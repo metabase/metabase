@@ -92,6 +92,7 @@
     (future
       #_:clj-kondo/ignore
       (println "Starting Metabase cider repl on port" port)
+      (spit ".nrepl-port" port)
       (nrepl-server/start-server
        :port port
        :bind "0.0.0.0"

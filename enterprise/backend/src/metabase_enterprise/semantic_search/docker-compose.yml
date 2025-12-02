@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: mb_semantic_search
       POSTGRES_USER: postgres
@@ -10,7 +10,7 @@ services:
     ports:
       - "55432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgvector17_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -30,5 +30,5 @@ services:
       retries: 3
 
 volumes:
-  postgres_data:
+  pgvector17_data:
   ollama_data:

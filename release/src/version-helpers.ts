@@ -106,6 +106,16 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+export const getMajorVersionFromRef = (ref: string) => {
+  if (ref.startsWith("refs/tags/")) {
+    const tagName = ref.replace("refs/tags/", "");
+    const versionParts = getVersionParts(tagName);
+    return versionParts.major;
+  }
+
+  return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
+};
+
 const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
 
 export const getSdkVersionFromReleaseTagName = (tagName: string) => {
@@ -216,6 +226,7 @@ export const versionRequirements: Record<
   54: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   55: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   56: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  57: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -400,4 +411,107 @@ export const getNextPatchVersion = async ({
   const nextPatch = findNextPatchVersion(lastRelease);
 
   return nextPatch;
+};
+
+type SdkVersionInfo = {
+  version: string;
+  preReleaseLabel: string;
+  majorVersion: string;
+};
+
+type PreReleaseInfo = {
+  label: string;
+  version: number | null;
+};
+
+const parsePreReleaseSuffix = (suffix: string | undefined): PreReleaseInfo => {
+  if (!suffix) {
+    return { label: "", version: null };
+  }
+
+  const [label, versionStr] = suffix.split(".");
+  const version = versionStr ? parseInt(versionStr, 10) : null;
+
+  return { label: label ?? "", version };
+};
+
+const getNextAlphaVersion = (
+  currentVersionBase: string,
+  preRelease: PreReleaseInfo,
+  majorVersion: string,
+): SdkVersionInfo => {
+  if (preRelease.label !== "alpha") {
+    throw new Error(
+      "Only `alpha` versions can be released from the `master` branch.",
+    );
+  }
+
+  const nextPreReleaseVersion = (preRelease.version ?? -1) + 1;
+
+  return {
+    version: `${currentVersionBase}-${preRelease.label}.${nextPreReleaseVersion}`,
+    preReleaseLabel: preRelease.label,
+    majorVersion,
+  };
+};
+
+const getNextReleaseBranchVersion = (
+  versionParts: string[],
+  preRelease: PreReleaseInfo,
+  majorVersion: string,
+): SdkVersionInfo => {
+  if (preRelease.label && preRelease.label !== "beta") {
+    throw new Error(
+      "Only `beta` versions can be released from the `release` branch.",
+    );
+  }
+
+  const updatedVersionParts = [...versionParts];
+  const lastIndex = updatedVersionParts.length - 1;
+  const patchVersion = updatedVersionParts[lastIndex] ?? "0";
+
+  // Handle .x placeholder versions
+  if (patchVersion === "x") {
+    updatedVersionParts[lastIndex] = "0";
+  } else if (!preRelease.label && preRelease.version === null) {
+    // Increment patch version for stable releases
+    const currentPatch = parseInt(patchVersion, 10) || 0;
+    updatedVersionParts[lastIndex] = String(currentPatch + 1);
+  }
+
+  const newVersionBase = updatedVersionParts.join(".");
+  const nextPreReleaseVersion = (preRelease.version ?? -1) + 1;
+
+  const versionSuffix = preRelease.label
+    ? `-${preRelease.label}.${nextPreReleaseVersion}`
+    : "";
+
+  return {
+    version: `${newVersionBase}${versionSuffix}`,
+    preReleaseLabel: "",
+    majorVersion,
+  };
+};
+
+export const getNextSdkVersion = (
+  branch: string,
+  currentVersion: string,
+): SdkVersionInfo => {
+  const [currentVersionBase, suffix] = currentVersion.split("-");
+  const versionParts = currentVersionBase.split(".");
+  const majorVersion = versionParts[1] ?? "";
+
+  if (branch === "master") {
+    if (!suffix) {
+      throw new Error(
+        `Expected pre-release suffix on master branch, got: ${currentVersion}`,
+      );
+    }
+
+    const preRelease = parsePreReleaseSuffix(suffix);
+    return getNextAlphaVersion(currentVersionBase, preRelease, majorVersion);
+  }
+
+  const preRelease = parsePreReleaseSuffix(suffix);
+  return getNextReleaseBranchVersion(versionParts, preRelease, majorVersion);
 };

@@ -1,6 +1,6 @@
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
@@ -51,7 +51,7 @@ export const ModerationReviewBanner = ({
       style={{ backgroundColor: alpha(iconColor, 0.2) }}
       className={className}
     >
-      <Icon name={iconName} color={color(iconColor)} size={ICON_BUTTON_SIZE} />
+      <Icon name={iconName} c={iconColor} size={ICON_BUTTON_SIZE} />
       <TextContainer>
         <Text>{bannerText}</Text>
         <Time dateTime={moderationReview.created_at}>
@@ -122,7 +122,7 @@ const ModerationReviewText = ({
     <Flex gap="sm" align="top">
       <FixedSizeIcon
         name={iconName}
-        color={color(iconColor)}
+        c={iconColor}
         size={ICON_BUTTON_SIZE}
         className={Styles.IconMargin}
       />

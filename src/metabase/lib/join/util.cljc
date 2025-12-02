@@ -43,12 +43,12 @@
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.join/alias]
   "Get the current join alias associated with something, if it has one."
-  [field-or-join :- [:maybe ::column-or-field-ref-or-partial-join]]
+  [field-or-join]
   (case (lib.dispatch/dispatch-value field-or-join)
-    :dispatch-type/nil nil
     :field             (:join-alias (lib.options/options field-or-join))
     :metadata/column   (:metabase.lib.join/join-alias field-or-join)
-    :mbql/join         (:alias field-or-join)))
+    :mbql/join         (:alias field-or-join)
+    nil))
 
 (mu/defn joined-field-desired-alias :- ::lib.schema.metadata/desired-column-alias
   "Desired alias for a Field that comes from a join, e.g.
@@ -56,7 +56,7 @@
     MyJoin__my_field
 
   You should pass the results thru a unique name function e.g. one returned
-  by [[metabase.lib.util/unique-name-generator]]."
+  by [[metabase.lib.util.unique-name-generator/unique-name-generator]]."
   [join-alias :- ::lib.schema.common/non-blank-string
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
@@ -71,9 +71,9 @@
     CATEGORIES__via__CATEGORY_ID__via__CATEGORIES
 
   You should make sure this gets ran thru a unique-name fn e.g. one returned
-  by [[metabase.lib.util/unique-name-generator]]."
-  [table-name              :- ::lib.schema.common/non-blank-string
-   fk-field-name    :- ::lib.schema.common/non-blank-string
+  by [[metabase.lib.util.unique-name-generator/unique-name-generator]]."
+  [table-name    :- ::lib.schema.common/non-blank-string
+   fk-field-name :- ::lib.schema.common/non-blank-string
    fk-join-alias :- [:maybe ::lib.schema.common/non-blank-string]]
   (if fk-join-alias
     (lib.util/format "%s__via__%s__via__%s" table-name fk-field-name fk-join-alias)

@@ -9,6 +9,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -570,6 +571,65 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.log("back to previous result button should not be visible");
       cy.findByText("No results!").should("be.visible");
       cy.findByText("Back to previous results").should("not.exist");
+    });
+  });
+
+  it("should show the `Save` button when a visualization type was changed (metabase#62396)", () => {
+    mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("chart-type-selector-button").click();
+
+      cy.findByTestId("sdk-question-save-button").should("not.exist");
+
+      cy.findByRole("menu").within(() => {
+        cy.findByText("Trend").click();
+      });
+
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
+      });
+    });
+  });
+
+  it("should show the `Save` button when a visualization setting was changed (metabase#62396)", () => {
+    mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
+
+    getSdkRoot().within(() => {
+      H.openVizSettingsSidebar();
+
+      cy.findByTestId("sdk-question-save-button").should("not.exist");
+
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.findByTestId("User ID-hide-button").click();
+      });
+
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
+      });
+    });
+  });
+
+  it("downloads should work when using entity IDs", () => {
+    cy.intercept("POST", "/api/card/*/query/xlsx").as("questionDownload");
+
+    cy.get<string>("@questionEntityId").then((questionEntityId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionEntityId} withDownloads />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("interactive-question-result-toolbar")
+        .findByTestId("question-download-widget-button")
+        .click();
+
+      cy.findByText(".xlsx").click();
+      cy.findByTestId("download-results-button").click();
+    });
+
+    cy.wait("@questionDownload").then((interception) => {
+      expect(interception.response?.statusCode).to.equal(200);
     });
   });
 });

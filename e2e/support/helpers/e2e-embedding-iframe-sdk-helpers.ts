@@ -1,9 +1,11 @@
 import { match } from "ts-pattern";
 
+import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type { CreateApiKeyResponse } from "metabase-types/api";
 
-import { createApiKey } from "./api";
+import { createApiKey, updateSetting } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
@@ -13,6 +15,8 @@ import {
   mockAuthProviderAndJwtSignIn,
 } from "./embedding-sdk-testing";
 
+const { IS_ENTERPRISE } = Cypress.env();
+
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
 /**
@@ -21,23 +25,17 @@ const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 export interface BaseEmbedTestPageOptions {
   // Passed to defineMetabaseConfig
   metabaseConfig?: {
+    isGuest?: boolean;
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
+    fetchRequestToken?: () => Promise<{ jwt: string }>;
     theme?: MetabaseTheme;
     preferredAuthMethod?: "jwt" | "saml";
     locale?: string;
   };
 
-  // The element to embed
-  element: "metabase-dashboard" | "metabase-question";
-
-  // Attributes passed serialized to the element
-  attributes: {
-    dashboardId?: number | string;
-    questionId?: number | string;
-    [key: string]: any;
-  };
+  elements: MetabaseElement[];
 
   // Options for the test page
   origin?: string;
@@ -47,9 +45,20 @@ export interface BaseEmbedTestPageOptions {
     afterEmbed?: string;
   };
 
-  onVisitPage?(): void;
+  onVisitPage?(win: Cypress.AUTWindow): void;
 }
 
+export interface MetabaseElement {
+  // The component to embed
+  component: "metabase-dashboard" | "metabase-question" | "metabase-browser";
+
+  // Attributes passed serialized to the element
+  attributes: {
+    dashboardId?: number | string;
+    questionId?: number | string;
+    [key: string]: any;
+  };
+}
 export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
   cy.get("iframe[data-metabase-embed]").should("have.length", n);
   cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
@@ -89,9 +98,10 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
  */
 export function loadSdkIframeEmbedTestPage({
   origin = "",
+  selector,
   onVisitPage,
   ...options
-}: BaseEmbedTestPageOptions) {
+}: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
 
   const testPageUrl = `${origin}/sdk-iframe-test-page`;
@@ -104,7 +114,7 @@ export function loadSdkIframeEmbedTestPage({
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
 
-  return getIframeBody();
+  return getIframeBody(selector);
 }
 
 /**
@@ -113,8 +123,7 @@ export function loadSdkIframeEmbedTestPage({
 function getSdkIframeEmbedHtml({
   insertHtml,
   metabaseConfig,
-  element,
-  attributes,
+  elements,
 }: BaseEmbedTestPageOptions) {
   return `
     <!DOCTYPE html>
@@ -138,8 +147,13 @@ function getSdkIframeEmbedHtml({
       ${getNewEmbedConfigurationScript(metabaseConfig)}
 
       ${insertHtml?.beforeEmbed ?? ""}
-
-      <${element} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+      ${elements
+        .map(
+          ({ component, attributes }) => `
+        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+      `,
+        )
+        .join("\n")}
 
       ${insertHtml?.afterEmbed ?? ""}
     </body>
@@ -148,7 +162,7 @@ function getSdkIframeEmbedHtml({
 }
 
 const convertPropertiesToEmbedTagAttributes = (
-  attributes: BaseEmbedTestPageOptions["attributes"],
+  attributes: MetabaseElement["attributes"],
 ) => {
   return Object.entries(attributes)
     .map(([key, value]) => {
@@ -207,6 +221,47 @@ export function prepareSdkIframeEmbedTest({
   }
 }
 
+/**
+ * Prepares the testing environment for sdk iframe embedding tests in guest embed mode.
+ */
+export function prepareGuestEmbedSdkIframeEmbedTest({
+  withTokenFeatures = true,
+  onPrepare,
+}: {
+  withTokenFeatures?: boolean;
+  onPrepare?: () => void;
+} = {}) {
+  restore();
+  cy.signInAsAdmin();
+
+  if (IS_ENTERPRISE) {
+    if (withTokenFeatures) {
+      activateToken("bleeding-edge");
+    } else {
+      activateToken("starter");
+    }
+  }
+
+  onPrepare?.();
+
+  cy.request("PUT", "/api/setting/enable-embedding-simple", {
+    value: true,
+  });
+  cy.request("PUT", "/api/setting/enable-embedding-static", {
+    value: true,
+  });
+
+  cy.intercept("GET", "/api/embed/card/*").as("getCard");
+  cy.intercept("GET", "/api/embed/card/*/query*").as("getCardQuery");
+  cy.intercept("GET", "/api/embed/pivot/card/*/query*").as("getCardPivotQuery");
+
+  updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
+
+  mockEmbedJsToDevServer();
+
+  cy.signOut();
+}
+
 type EnabledAuthMethods = "jwt" | "saml" | "api-key";
 
 function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
@@ -255,21 +310,16 @@ export const getNewEmbedScriptTag = ({
 
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
+  isGuest,
   theme,
   apiKey,
   useExistingUserSession,
   preferredAuthMethod,
   locale,
-}: {
-  instanceUrl?: string;
-  theme?: MetabaseTheme;
-  apiKey?: string;
-  useExistingUserSession?: boolean;
-  preferredAuthMethod?: "jwt" | "saml";
-  locale?: string;
-} = {}) => {
+}: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
+    isGuest,
     apiKey,
     useExistingUserSession,
     theme,
@@ -337,3 +387,7 @@ export const mockEmbedJsToDevServer = () => {
     }
   });
 };
+
+export function openEmbedJsModal() {
+  openSharingMenu("Embed");
+}

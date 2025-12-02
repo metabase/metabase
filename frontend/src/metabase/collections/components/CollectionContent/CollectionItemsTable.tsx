@@ -195,6 +195,7 @@ type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   onUnpinnedItemsSortingChange: (
     unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
+  visibleColumns: CollectionContentTableColumn[];
 };
 
 const CollectionItemsTableContentInner = ({
@@ -219,7 +220,7 @@ const CollectionItemsTableContentInner = ({
   toggleItem,
   total,
   unpinnedItemsSorting,
-  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
+  visibleColumns,
   onClick,
   onNextPage,
   onPreviousPage,
@@ -271,7 +272,14 @@ const CollectionItemsTableContentInner = ({
         onClick={onClick}
         visibleColumnsMap={visibleColumnsMap}
       />
-      <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+      <div
+        className={cx(
+          CS.flex,
+          CS.justifyEnd,
+          CS.my3,
+          CS.syncStatusAwarePagination,
+        )}
+      >
         {hasPagination && (
           <PaginationControls
             showTotal

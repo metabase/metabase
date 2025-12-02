@@ -6,6 +6,7 @@ import {
   createMockDataset,
   createMockDatetimeColumn,
   createMockNumericColumn,
+  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -878,7 +879,6 @@ describe("cartesian", () => {
       combineWithCartesianChart(
         nextState,
         settings,
-        {},
         createMockDataset({
           data: { cols: [newMetricColumn, newDimensionColumn] },
         }),
@@ -968,7 +968,6 @@ describe("cartesian", () => {
       combineWithCartesianChart(
         nextState,
         settings,
-        {},
         createMockDataset({
           data: {
             cols: [
@@ -1010,6 +1009,285 @@ describe("cartesian", () => {
         ...state.settings,
         "graph.metrics": ["COLUMN_1", "COLUMN_4", "COLUMN_5"],
         "graph.dimensions": ["COLUMN_2", "COLUMN_3", "COLUMN_6", "COLUMN_7"],
+      });
+    });
+
+    describe("dimension sorting based on x-axis scale", () => {
+      it("should prioritize date dimensions when x-axis scale is timeseries", () => {
+        const settings = createMockVisualizationSettings({
+          "graph.metrics": ["COLUMN_1"],
+          "graph.dimensions": ["COLUMN_2"],
+          "graph.x_axis.scale": "timeseries",
+        });
+        const state: VisualizerVizDefinitionWithColumns = {
+          display: "bar",
+          columns: [
+            createMockNumericColumn({
+              name: "COLUMN_1",
+              display_name: "Count",
+            }),
+            createMockCategoryColumn({
+              name: "COLUMN_2",
+              display_name: "Category",
+            }),
+          ],
+          columnValuesMapping: {
+            COLUMN_1: [
+              { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: "card:1",
+                name: "COLUMN_2",
+                originalName: "Category",
+              },
+            ],
+          },
+          settings,
+        };
+
+        const stringDimension = createMockCategoryColumn({
+          name: "STRING_DIM",
+          display_name: "String Dimension",
+        });
+        const dateDimension = createMockDatetimeColumn({
+          name: "DATE_DIM",
+          display_name: "Date Dimension",
+        });
+        const anotherStringDimension = createMockCategoryColumn({
+          name: "ANOTHER_STRING",
+          display_name: "Another String",
+        });
+
+        const nextState = _.clone(state);
+        combineWithCartesianChart(
+          nextState,
+          settings,
+          createMockDataset({
+            data: {
+              cols: [stringDimension, anotherStringDimension, dateDimension],
+            },
+          }),
+          createDataSource("card", 2, "Card 2"),
+        );
+
+        const addedDimensions =
+          nextState.settings["graph.dimensions"]?.slice(1) || [];
+        expect(addedDimensions[0]).toEqual("COLUMN_3");
+        const column3 = nextState.columns.find(
+          (col) => col.name === "COLUMN_3",
+        );
+        expect(column3?.display_name).toEqual("Date Dimension");
+      });
+
+      it("should prioritize numeric dimensions when x-axis scale is linear", () => {
+        const settings = createMockVisualizationSettings({
+          "graph.metrics": ["COLUMN_1"],
+          "graph.dimensions": ["COLUMN_2"],
+          "graph.x_axis.scale": "linear",
+        });
+        const state: VisualizerVizDefinitionWithColumns = {
+          display: "bar",
+          columns: [
+            createMockNumericColumn({
+              name: "COLUMN_1",
+              display_name: "Count",
+            }),
+            createMockCategoryColumn({
+              name: "COLUMN_2",
+              display_name: "Category",
+            }),
+          ],
+          columnValuesMapping: {
+            COLUMN_1: [
+              { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: "card:1",
+                name: "COLUMN_2",
+                originalName: "Category",
+              },
+            ],
+          },
+          settings,
+        };
+
+        const stringDimension = createMockCategoryColumn({
+          name: "STRING_DIM",
+          display_name: "String Dimension",
+        });
+        const dateDimension = createMockDatetimeColumn({
+          name: "DATE_DIM",
+          display_name: "Date Dimension",
+        });
+        // Create a numeric dimension that won't be filtered out as a metric
+        const numericDimension = createMockNumericColumn({
+          name: "NUMERIC_DIM",
+          display_name: "Numeric Dimension",
+          semantic_type: "type/PK", // Primary keys are not metrics
+        });
+
+        const nextState = _.clone(state);
+        combineWithCartesianChart(
+          nextState,
+          settings,
+          createMockDataset({
+            data: {
+              cols: [stringDimension, dateDimension, numericDimension],
+            },
+          }),
+          createDataSource("card", 2, "Card 2"),
+        );
+
+        const addedDimensions =
+          nextState.settings["graph.dimensions"]?.slice(1) || [];
+        expect(addedDimensions[0]).toEqual("COLUMN_3");
+        const column3 = nextState.columns.find(
+          (col) => col.name === "COLUMN_3",
+        );
+        expect(column3?.display_name).toEqual("Numeric Dimension");
+      });
+
+      it("should prioritize string dimensions when x-axis scale is ordinal", () => {
+        const settings = createMockVisualizationSettings({
+          "graph.metrics": ["COLUMN_1"],
+          "graph.dimensions": ["COLUMN_2"],
+          "graph.x_axis.scale": "ordinal",
+        });
+        const state: VisualizerVizDefinitionWithColumns = {
+          display: "bar",
+          columns: [
+            createMockNumericColumn({
+              name: "COLUMN_1",
+              display_name: "Count",
+            }),
+            createMockDatetimeColumn({
+              name: "COLUMN_2",
+              display_name: "Date",
+            }),
+          ],
+          columnValuesMapping: {
+            COLUMN_1: [
+              { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: "card:1",
+                name: "COLUMN_2",
+                originalName: "Date",
+              },
+            ],
+          },
+          settings,
+        };
+
+        const dateDimension = createMockDatetimeColumn({
+          name: "DATE_DIM",
+          display_name: "Date Dimension",
+        });
+        const stringDimension = createMockCategoryColumn({
+          name: "STRING_DIM",
+          display_name: "String Dimension",
+        });
+        const anotherDateDimension = createMockDatetimeColumn({
+          name: "ANOTHER_DATE",
+          display_name: "Another Date",
+        });
+
+        const nextState = _.clone(state);
+        combineWithCartesianChart(
+          nextState,
+          settings,
+          createMockDataset({
+            data: {
+              cols: [dateDimension, anotherDateDimension, stringDimension],
+            },
+          }),
+          createDataSource("card", 2, "Card 2"),
+        );
+
+        const addedDimensions =
+          nextState.settings["graph.dimensions"]?.slice(1) || [];
+        expect(addedDimensions[0]).toEqual("COLUMN_3");
+        const column3 = nextState.columns.find(
+          (col) => col.name === "COLUMN_3",
+        );
+        expect(column3?.display_name).toEqual("String Dimension");
+      });
+
+      it("should maintain original order when x-axis scale is undefined", () => {
+        const settings = createMockVisualizationSettings({
+          "graph.metrics": ["COLUMN_1"],
+          "graph.dimensions": ["COLUMN_2"],
+        });
+        const state: VisualizerVizDefinitionWithColumns = {
+          display: "bar",
+          columns: [
+            createMockNumericColumn({
+              name: "COLUMN_1",
+              display_name: "Count",
+            }),
+            createMockCategoryColumn({
+              name: "COLUMN_2",
+              display_name: "Category",
+            }),
+          ],
+          columnValuesMapping: {
+            COLUMN_1: [
+              { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: "card:1",
+                name: "COLUMN_2",
+                originalName: "Category",
+              },
+            ],
+          },
+          settings,
+        };
+
+        const stringDimension = createMockCategoryColumn({
+          name: "STRING_DIM",
+          display_name: "String Dimension",
+        });
+        const dateDimension = createMockDatetimeColumn({
+          name: "DATE_DIM",
+          display_name: "Date Dimension",
+        });
+        const anotherStringDimension = createMockCategoryColumn({
+          name: "ANOTHER_STRING",
+          display_name: "Another String",
+        });
+
+        const nextState = _.clone(state);
+        combineWithCartesianChart(
+          nextState,
+          settings,
+          createMockDataset({
+            data: {
+              cols: [stringDimension, dateDimension, anotherStringDimension],
+            },
+          }),
+          createDataSource("card", 2, "Card 2"),
+        );
+
+        const addedDimensions =
+          nextState.settings["graph.dimensions"]?.slice(1) || [];
+        expect(addedDimensions).toEqual(["COLUMN_3", "COLUMN_4", "COLUMN_5"]);
+        const column3 = nextState.columns.find(
+          (col) => col.name === "COLUMN_3",
+        );
+        const column4 = nextState.columns.find(
+          (col) => col.name === "COLUMN_4",
+        );
+        const column5 = nextState.columns.find(
+          (col) => col.name === "COLUMN_5",
+        );
+        expect(column3?.display_name).toEqual("String Dimension");
+        expect(column4?.display_name).toEqual("Date Dimension");
+        expect(column5?.display_name).toEqual("Another String");
       });
     });
   });

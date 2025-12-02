@@ -1,12 +1,14 @@
 (ns metabase.lib.schema.common
+  (:refer-clojure :exclude [update-keys every? #?@(:clj [some])])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [update-keys every? #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -32,7 +34,7 @@
   "Part of [[normalize-map]]; converts keys to keywords but DOES NOT convert to `kebab-case`."
   [m]
   (when (map? m)
-    (let [m (perf/update-keys m keyword)]
+    (let [m (update-keys m keyword)]
       (cond-> m
         (string? (:lib/type m)) (update :lib/type keyword)))))
 
@@ -46,13 +48,19 @@
    (fn [k]
      ;; sanity check: make sure we're not accidentally using this on a base type
      (assert (not= k :type/Text))
-     (u/->kebab-case-en k))))
+     ;; don't use [[u/->kebab-case-en]] here because it converts stuff like `:SuM` to `:su-m` which is not really what
+     ;; we want
+     (-> k
+         u/qualified-name
+         (str/replace #"_" "-")
+         u/lower-case-en
+         keyword))))
 
 (defn map->kebab-case
   "Convert a map to kebab case, for use with `:decode/normalize`."
   [m]
   (when (map? m)
-    (perf/update-keys m memoized-kebab-key)))
+    (update-keys m memoized-kebab-key)))
 
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
@@ -74,6 +82,7 @@
              ((some-fn keyword? string?) (first x)))
     (keyword (first x))))
 
+;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.util/clause-of-type?]]
 (mu/defn is-clause?
   "Whether `x` is a (possibly not-yet-normalized) MBQL clause with `tag`. Does not check that the clause is valid."
   [tag :- :keyword x]
@@ -149,10 +158,30 @@
 (defn- base-type? [x]
   (isa? x :type/*))
 
+;;; only support fixing really broken types like `:type/creationtime` to `:type/CreationTime` in prod... Malli checks
+;;; will throw in dev. See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info
+
+(mu/defn- normalize-base-type* :- [:maybe [:ref ::base-type]]
+  [x]
+  (normalize-keyword x))
+
+(defn- normalize-base-type [x]
+  (when-let [k (normalize-base-type* x)]
+    (or (cond
+          (isa? k :type/*)
+          k
+
+          (and (= (namespace k) "type")
+               (= (u/lower-case-en (name k)) (name k)))
+          (m/find-first (fn [base-type]
+                          (= (u/lower-case-en (name base-type)) (name k)))
+                        (descendants :type/*)))
+        k)))
+
 (mr/def ::base-type
   [:and
    [:keyword
-    {:decode/normalize normalize-keyword}]
+    {:decode/normalize #'normalize-base-type}]
    [:fn
     {:error/message "valid base type"
      :error/fn      (fn [{:keys [value]} _]
@@ -168,6 +197,41 @@
         (cond-> (not (:lib/uuid m)) (assoc :lib/uuid (str (random-uuid))))
         ;; remove deprecated `:ident` key
         (dissoc :ident))))
+
+(defn- unfussy-sorted-map-compare [x y]
+  (cond
+    (= (type x) (type y))
+    (compare x y)
+
+    (keyword? x)
+    -1
+
+    (keyword? y)
+    1
+
+    :else
+    (compare (str x) (str y))))
+
+(defn unfussy-sorted-map
+  "Like [[clojure.core/sorted-map]] but unfussy if you try to [[get]] a keyword in a string-keyed map or [[get]] a
+  string in a keyword-keyed map."
+  [& kvs]
+  (apply sorted-map-by unfussy-sorted-map-compare kvs))
+
+(defn encode-map-for-hashing
+  "Base encoding for hashing for all MBQL 5 maps.
+
+  - Convert to a sorted map
+  - Remove all namespaced keywords"
+  [m]
+  (when (map? m)
+    (reduce-kv
+     (fn [m k v]
+       (cond-> m
+         (or (= k :lib/type)
+             (not (qualified-keyword? k))) (assoc k v)))
+     (unfussy-sorted-map)
+     m)))
 
 (mu/defn disallowed-keys
   "Helper for generating a schema to disallow certain keys in a map.
@@ -209,7 +273,8 @@
   [:and
    {:default {}}
    [:map
-    {:decode/normalize normalize-options-map}
+    {:decode/normalize   #'normalize-options-map
+     :encode/for-hashing #'encode-map-for-hashing}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]
@@ -228,8 +293,8 @@
    [:operator [:multi {:dispatch string?}
                [true  :string]
                [false :keyword]]]
-   [:args     [:sequential :any]]
-   [:options {:optional true} ::options]])
+   [:args     [:schema {:decode/normalize vec} [:sequential :any]]]
+   [:options  {:optional true} ::options]])
 
 #?(:clj
    (defn- instance-of-class* [& classes]
@@ -245,3 +310,29 @@
    (def ^{:arglists '([& classes])} instance-of-class
      "Convenience for defining a Malli schema for an instance of a particular Class."
      (memoize instance-of-class*)))
+
+(defn- kebab-cased-key? [k]
+  (and (keyword? k)
+       (not (str/includes? (str k) "_"))))
+
+(defn- kebab-cased-map? [m]
+  (and (map? m)
+       (every? kebab-cased-key? (keys m))))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (if-not (map? value)
+                       "map with all kebab-cased keys"
+                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+   kebab-cased-map?])
+
+(def url-encoded-string-regex
+  "Schema for a URL-encoded string
+
+  This matches strings containing:
+
+  - Unreserved characters: letters, digits, hyphens, periods, underscores, tildes
+  - Percent-encoded characters: `%` followed by exactly 2 hex digits"
+  #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+")

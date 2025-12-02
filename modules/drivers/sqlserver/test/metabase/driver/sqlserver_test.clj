@@ -19,7 +19,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
@@ -45,11 +45,11 @@
                              :source-query {:source-table 1
                                             :order-by     [[:asc [:field 2 nil]]]
                                             :limit        10}}]}]
-      (is (query= expected
-                  (#'sqlserver/fix-order-bys original)))
+      (is (= expected
+             (#'sqlserver/fix-order-bys original)))
       (testing "Inside `:source-query`"
-        (is (query= {:source-query expected}
-                    (#'sqlserver/fix-order-bys {:source-query original})))))))
+        (is (= {:source-query expected}
+               (#'sqlserver/fix-order-bys {:source-query original})))))))
 
 (deftest ^:parallel fix-order-bys-test-2
   (testing "Add limit for :source-query order bys"
@@ -57,21 +57,21 @@
       (let [original {:source-table 1
                       :order-by     [[:asc 2]]}]
         (testing "Not in a source query -- don't do anything"
-          (is (query= original
-                      (#'sqlserver/fix-order-bys original))))
+          (is (= original
+                 (#'sqlserver/fix-order-bys original))))
         (testing "In source query -- add `:limit`"
-          (is (query= {:source-query (assoc original :limit limit/absolute-max-results)}
-                      (#'sqlserver/fix-order-bys {:source-query original}))))
+          (is (= {:source-query (assoc original :limit limit/absolute-max-results)}
+                 (#'sqlserver/fix-order-bys {:source-query original}))))
         (testing "In source query in source query-- add `:limit` at both levels"
-          (is (query= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
-                                      :order-by     [[:asc [:field 1]]]
-                                      :limit        limit/absolute-max-results}}
-                      (#'sqlserver/fix-order-bys {:source-query {:source-query original
-                                                                 :order-by     [[:asc [:field 1]]]}}))))
+          (is (= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
+                                 :order-by     [[:asc [:field 1]]]
+                                 :limit        limit/absolute-max-results}}
+                 (#'sqlserver/fix-order-bys {:source-query {:source-query original
+                                                            :order-by     [[:asc [:field 1]]]}}))))
         (testing "In source query inside source query for join -- add `:limit`"
-          (is (query= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
-                      (#'sqlserver/fix-order-bys
-                       {:joins [{:source-query {:source-query original}}]}))))))))
+          (is (= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
+                 (#'sqlserver/fix-order-bys
+                  {:joins [{:source-query {:source-query original}}]}))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -756,3 +756,29 @@
                 {:filter [:expression "NameEquals" {:base-type                      :type/Boolean
                                                     driver-api/qp.add.source-table  driver-api/qp.add.none
                                                     driver-api/qp.add.desired-alias nil}]})))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct SQL Server types"
+    (are [base-type expected] (= expected (driver/type->database-type :sqlserver base-type))
+      :type/Boolean            [:bit]
+      :type/Date               [:date]
+      :type/DateTime           [:datetime2]
+      :type/DateTimeWithTZ     [:datetimeoffset]
+      :type/Decimal            [:decimal]
+      :type/Float              [:float]
+      :type/Integer            [:int]
+      :type/Number             [:bigint]
+      :type/Text               [:text]
+      :type/Time               [:time]
+      :type/UUID               [:uniqueidentifier])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :sqlserver
+    (testing "compile-transform creates SELECT INTO"
+      (is (= ["SELECT * INTO \"PRODUCTS_COPY\" FROM products" nil]
+             (driver/compile-transform :sqlserver {:query {:query "SELECT * FROM products"}
+                                                   :output-table "PRODUCTS_COPY"}))))
+    (testing "compile-insert generates INSERT INTO"
+      (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
+             (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
+                                                :output-table "PRODUCTS_COPY"}))))))

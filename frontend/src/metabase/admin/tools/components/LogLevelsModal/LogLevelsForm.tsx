@@ -80,7 +80,7 @@ export const LogLevelsForm = ({ presets }: Props) => {
         <Tooltip
           label={t`Available log levels: ${["off", "fatal", "error", "warn", "info", "debug", "trace"].join(", ")}`}
         >
-          <Icon name="info_filled" />
+          <Icon name="info" />
         </Tooltip>
 
         <Flex gap="md" justify="flex-end">

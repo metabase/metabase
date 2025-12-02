@@ -71,6 +71,7 @@ export function setLocalization(translationsObject) {
 
   if (ARABIC_LOCALES.includes(language)) {
     preverseLatinNumbersInMomentLocale(language);
+    preverseLatinNumbersInDayjsLocale(language);
   }
 }
 
@@ -98,6 +99,19 @@ function preverseLatinNumbersInMomentLocale(locale) {
     // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
     postformat: (string) =>
       string.replace(/\d/g, (match) => match).replace(/,/g, "،"),
+  });
+}
+
+// a copy of moment function
+function preverseLatinNumbersInDayjsLocale(locale) {
+  dayjs.updateLocale(locale, {
+    postformat(string) {
+      return string.replace(/,/g, "،");
+    },
+    meridiem: (hour) => {
+      // https://github.com/iamkun/dayjs/pull/2717#issuecomment-2868626450
+      return hour < 12 ? "ص" : "م";
+    },
   });
 }
 

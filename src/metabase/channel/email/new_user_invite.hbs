@@ -1,50 +1,69 @@
 {{> metabase/channel/email/_header.hbs }}
-  <div style="padding-bottom: 2em; padding-top: 1em; text-align: center;">
-    <img width="32" height="40" src="{{context.application_logo_url}}"/>
-  </div>
-  <div>
-    <div style="padding: 0.25em 0em .25em 0em; text-align: center; margin-left: auto; margin-right: auto; max-width: 400px; position: relative">
-      <table width="296" height="141" cellpadding="0" cellspacing="0" style="display:block;margin:0 auto;">
-        <tr><td colspan="3"><img src="http://static.metabase.com/email_graph_top.png" width="296" height="73" style="display:block" /></td></tr>
-        <tr>
-          <td height="15" width="60"><img src="http://static.metabase.com/email_graph_left.png" width="60" height="15" style="display:block" /></td>
-          <td height="15" width="68" valign="middle" align="center" style="font-weight: bold; font-size: 0.6rem; line-height:15px;color: #fff; background-color:#333">{{format-date (now) "MMM dd, YYYY"}}</td>
-          <td height="15" width="168"><img src="http://static.metabase.com/email_graph_right.png" width="168" height="15" style="display:block" /></td></tr>
-        <tr><td colspan="3" height="46"><img src="http://static.metabase.com/email_graph_bottom.png" width="296" height="56" style="display:block" /></td></tr>
-      </table>
-      <p style="line-height: 1.3rem; font-size: 12px; color: #949AAB;">{{payload.event_info.object.first_name}}'s happiness and productivity over time</p>
+{{#with payload.event_info.details.invitor as |invitor|}}
+  <div style="padding-top: 40px; padding-left: 16px; padding-bottom: 96px; padding-right: 16px; box-sizing: border-box; width: 100%; max-width: 600px; background-color: #FFFFFF; border-radius: 24px; border: 1px solid #dcdfe0; margin-top: 32px; margin-left: auto; margin-right: auto;">
+    <div style="margin-bottom: 32px; text-align: center; width: 56px; height: 56px; padding-top: 5px; box-sizing: border-box; padding-bottom: 5px; margin-left: auto; margin-right: auto;">
+      <img height="46" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo" />
     </div>
-    {{#if payload.event_info.object.is_from_setup}}
-      <div style="max-width: 500px; margin-left: auto; margin-right: auto">
-        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{payload.event_info.details.invitor.first_name}} could use your help setting up {{context.application_name}}</h2>
+    <div>
+      {{#if payload.event_info.object.is_from_setup}}
+        <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
+          <h2 style="font-weight: 400; color: #2F3C45; line-height: 36px; margin-top: 0; font-size: 27px;">
+            {{#if invitor.first_name}}
+              {{invitor.first_name}} could use your help setting up {{context.application_name}}
+            {{else}}
+              You are invited to help setting up {{context.application_name}}
+            {{/if}}
+          </h2>
+        </div>
+        <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
+          <p style="margin-top: 24px; margin-bottom: 10px; line-height: 24px; color: #656F76; font-size: 15px;">
+            {{context.application_name}} is a simple and powerful analytics tool that lets you easily ask questions and get answers about your company’s data.
+          </p>
+          <p style="margin-bottom: 0; line-height: 24px; color: #656F76; font-size: 15px;">
+            {{#if invitor.first_name}}
+              Your {{context.application_name}} is up and running, but {{invitor.first_name}} needs you to connect your data. You'll probably need:
+            {{else}}
+              Your {{context.application_name}} is up and running, but your help is needed to connect data. You'll probably need:
+            {{/if}}
+          </p>
+          <ul style="text-align: left; margin-bottom: 32px; font-size: 15px; margin-top: 20px; padding-left: 30px;">
+            <li>Database type (Redshift, Snowflake, etc...)</li>
+            <li>Host and port</li>
+            <li>Username and password</li>
+          </ul>
+        </div>
+      {{else}}
+        <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
+          <h2 style="font-weight: 400; color: #2F3C45; line-height: 36px; margin-top: 0; font-size: 27px;">
+            {{#if invitor.first_name}}
+              {{invitor.first_name}} wants you to join them on {{context.application_name}}
+            {{else}}
+              You are invited to join {{context.application_name}}
+            {{/if}}
+          </h2>
+        </div>
+        <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
+          <p style="margin-top: 24px; margin-bottom: 24px; line-height: 24px; color: #656F76; font-size: 15px;">
+            {{context.application_name}} is a simple and powerful analytics tool that lets you easily ask questions and get answers about your company’s data.
+          </p>
+        </div>
+      {{/if}}
+      <div style="padding-right: 0; padding-left: 0; text-align: center; width: 100%;">
+        <a
+          style="font-size: 15px; padding-top: 16px; padding-bottom: 16px; cursor: pointer; text-decoration: none; font-weight: 700; border-radius: 12px; background-color: #358CD9; color: #fff; line-height: 16px; display: inline-block; margin-left: auto; margin-right: auto; min-width: 200px;"
+          href="{{payload.custom.user_invited_join_url}}"
+        >Join now</a>
       </div>
-      <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773;">
-        <p>{{context.application-name}} is a simple and powerful analytics tool that lets you easily <strong>ask questions</strong> and <strong>get answers</strong> about your company’s data.
-        <p>Your {{context.application-name}} is up and running, but {{payload.event_info.details.invitor.first_name}} needs you to connect your data. You'll probably need:
-        <ul>
-          <li>Database type (Redshift, Snowflake, etc...)</li>
-          <li>Host and port</li>
-          <li>Username and password</li>
-        </ul>
-      </div>
-    {{/if}}
-    {{#unless payload.event_info.object.is_from_setup}}
-      <div style="text-align: center">
-        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{payload.event_info.details.invitor.first_name}} wants you to join them on {{context.application_name}}</h2>
-      </div>
-      <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773; text-align: center">
-        <p>{{context.application_name}} is a simple and powerful analytics tool that lets you easily <strong>ask questions</strong> and <strong>get answers</strong> about your company’s data.
-      </div>
-    {{/unless}}
-    <div style="padding: 1.25em 0 1em 0; text-align: center">
-      <a style="display: inline-block; box-sizing: border-box; text-decoration: none; font-size: 1rem; padding: 0.8rem 2.25rem; background: #FBFCFD; color: #444; cursor: pointer; text-decoration: none; font-weight: bold; border-radius: 6px; background-color: #509EE3; color: #fff;" href="{{payload.custom.user_invited_join_url}}">Join now</a>
+      {{#if payload.event_info.object.is_from_setup}}
+        <div style="max-width: 504px; margin-left: auto; margin-right: auto; line-height: 24px; color: #656F76; text-align: center;">
+          <p style="margin-top: 48px; line-height: 24px; color: #656F76; font-size: 15px;">
+            P.S. If you run into any issues, check out our <a style="color: #656F76;" href="https://www.metabase.com/docs/latest/databases/connecting">connection</a> and <a style="color: #656F76;" href="https://www.metabase.com/docs/latest/troubleshooting-guide/db-connection">troubleshooting</a> guides.
+          </p>
+        </div>
+      {{/if}}
     </div>
-    {{#if payload.event_info.object.is_from_setup}}
-      <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773">
-        <p>P.S. If you run into any issues, check out our <a href="https://www.metabase.com/docs/latest/databases/connecting">connection</a> and <a href="https://www.metabase.com/docs/latest/troubleshooting-guide/db-connection">troubleshooting</a> guides</p>
-      </div>
-    {{/if}}
   </div>
+{{/with}}
 </div>
 </body>
 </html>

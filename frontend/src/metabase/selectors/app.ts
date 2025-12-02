@@ -28,9 +28,12 @@ export interface RouterProps {
 const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
+  /^\/data-studio/,
   /\/model\/.*\/query/,
+  /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,
   /\/model\/query/,
+  /\/model\/columns/,
   /\/model\/metadata/,
   /\/metric\/.*\/query/,
   /\/metric\/.*\/metadata/,
@@ -60,8 +63,8 @@ export const getIsAdminApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/admin/");
 });
 
-export const getIsEmbeddingSetup = createSelector([getRouterPath], (path) => {
-  return path.startsWith("/setup/embedding");
+export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/data-studio");
 });
 
 export const getIsCollectionPathVisible = createSelector(
@@ -76,6 +79,11 @@ export const getIsCollectionPathVisible = createSelector(
   (question, dashboard, document, path, isEmbedded, embedOptions) => {
     if (isEmbedded && !embedOptions.breadcrumbs) {
       return false;
+    }
+
+    const isModelDetail = /\/model\/.*\/detail\/.*/.test(path);
+    if (isModelDetail) {
+      return true;
     }
 
     return (
@@ -144,6 +152,7 @@ export const getIsAppBarVisible = createSelector(
     getRouterPath,
     getRouterHash,
     getIsAdminApp,
+    getIsDataStudioApp,
     getIsEditingDashboard,
     getIsEmbeddingIframe,
     getIsEmbeddedAppBarVisible,
@@ -153,6 +162,7 @@ export const getIsAppBarVisible = createSelector(
     path,
     hash,
     isAdminApp,
+    isDataStudioApp,
     isEditingDashboard,
     isEmbedded,
     isEmbeddedAppBarVisible,
@@ -163,6 +173,7 @@ export const getIsAppBarVisible = createSelector(
       !currentUser ||
       (isEmbedded && !isEmbeddedAppBarVisible) ||
       isAdminApp ||
+      isDataStudioApp ||
       isEditingDashboard ||
       isFullscreen
     ) {
@@ -202,6 +213,10 @@ export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
 
+export const getDetailViewState = (state: State) => {
+  return state.app.detailView;
+};
+
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;
@@ -213,13 +228,23 @@ export const getCollectionId = createSelector(
     getDashboard,
     getDashboardId,
     (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
+    getDetailViewState,
   ],
-  (question, dashboard, dashboardId, document) =>
-    document
-      ? document.collection_id
-      : dashboardId
-        ? dashboard?.collection_id
-        : question?.collectionId(),
+  (question, dashboard, dashboardId, document, detailView) => {
+    if (detailView) {
+      return detailView.collectionId;
+    }
+
+    if (document) {
+      return document.collection_id;
+    }
+
+    if (dashboardId) {
+      return dashboard?.collection_id;
+    }
+
+    return question?.collectionId();
+  },
 );
 
 export const getIsNavbarOpen: Selector<State, boolean> = createSelector(

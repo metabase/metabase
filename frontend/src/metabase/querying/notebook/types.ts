@@ -37,6 +37,7 @@ export interface NotebookStep {
   next: NotebookStep | null;
   previous: NotebookStep | null;
   previewQuery?: Lib.Query | null;
+  allowPopoverWhenReadOnly?: boolean;
 }
 
 export interface NotebookStepAction {

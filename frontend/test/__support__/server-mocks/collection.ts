@@ -104,9 +104,9 @@ export function setupCollectionItemsEndpoint({
     (call) => {
       const url = new URL(call.url);
       const models = modelsParam ?? url.searchParams.getAll("models");
-      const matchedItems = collectionItems.filter(({ model }) =>
-        models.includes(model),
-      );
+      const matchedItems = models?.length
+        ? collectionItems.filter(({ model }) => models.includes(model))
+        : collectionItems;
 
       const limit =
         Number(url.searchParams.get("limit")) || matchedItems.length;
@@ -192,11 +192,12 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+$/, (call) => {
+  fetchMock.get(/api\/collection\/(\d+|root)$/, (call) => {
     const urlString = call.url;
     const parts = urlString.split("/");
     const collectionIdParam = parts[parts.length - 1];
-    const collectionId = Number(collectionIdParam);
+    const collectionId =
+      collectionIdParam === "root" ? "root" : Number(collectionIdParam);
 
     const collection = collections.find(
       (collection) => collection.id === collectionId,

@@ -91,8 +91,8 @@
      :cljs ::string.date))
 
 (mr/def ::time
+  "time literal"
   #?(:clj [:or
-           {:doc/title "time literal"}
            ::string.time
            [:time/local-time
             {:error/message    "instance of java.time.LocalTime"

@@ -1,0 +1,12 @@
+built_in_type: monthly
+created_at: '2025-09-23T12:20:31.215628Z'
+description: Executes transforms tagged with 'monthly' once per month
+entity_id: CL1TVitmzJrDjdjvO2xmN
+job_tags: []
+name: Monthly job
+schedule: 0 0 0 1 * ? *
+ui_display_type: cron/builder
+serdes/meta:
+- id: CL1TVitmzJrDjdjvO2xmN
+  label: monthly_job
+  model: TransformJob

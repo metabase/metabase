@@ -1,16 +1,10 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { Box, Flex } from "metabase/ui";
 
 import ChartColorSample from "../ChartColorSample";
 
-import {
-  TableBody,
-  TableHeader,
-  TableRoot,
-  TableTitle,
-} from "./ChartColorPreview.styled";
 import { getAccentColorGroups } from "./utils";
 
 const PREVIEW_TIMEOUT = 400;
@@ -29,14 +23,16 @@ const ChartColorPreview = ({
   }, [changedColors]);
 
   return (
-    <TableRoot>
-      <TableHeader>
-        <TableTitle>{t`Palette preview`}</TableTitle>
-      </TableHeader>
-      <TableBody>
+    <Flex
+      direction="column"
+      bd="1px solid var(--mb-color-border)"
+      bdrs="0.5rem"
+      p="3rem 1.5rem"
+    >
+      <Box style={{ flex: "1 1 0" }} mih="24rem">
         <ChartColorSample colorGroups={colorGroups} />
-      </TableBody>
-    </TableRoot>
+      </Box>
+    </Flex>
   );
 };
 

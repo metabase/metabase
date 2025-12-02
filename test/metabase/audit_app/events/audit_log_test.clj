@@ -5,6 +5,7 @@
   the test code for the feature."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.audit-app.events.audit-log :as events.audit-log]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -508,3 +509,276 @@
                 :topic    :channel-update
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-update (:id channel))))))))
+
+(deftest transform-run-start-event-test
+  (mt/when-ee-evailable
+   (testing :event/transform-run-start
+     (mt/with-current-user (mt/user->id :rasta)
+       (mt/with-temp [:model/Transform transform {:name "Test Transform"}
+                      :model/TransformRun transform-run {:transform_id (:id transform)
+                                                         :status :started
+                                                         :run_method :manual
+                                                         :is_active true}]
+         (is (= {:object transform-run}
+                (events/publish-event! :event/transform-run-start {:object transform-run})))
+         (is (= {:model_id (:id transform-run)
+                 :user_id (mt/user->id :rasta)
+                 :details {:transform_id (:id transform)
+                           :status "started"
+                           :run_method "manual"}
+                 :topic :transform-run-start
+                 :model "TransformRun"}
+                (mt/latest-audit-log-entry :transform-run-start (:id transform-run)))))))))
+
+(deftest document-events-test
+  (mt/when-ee-evailable
+   (mt/with-current-user (mt/user->id :rasta)
+     (mt/with-temp [:model/Document document {:name "Test Document"
+                                              :collection_id nil}]
+       (testing :event/document-create
+         (is (= {:object document}
+                (events/publish-event! :event/document-create {:object document})))
+         (is (= {:model_id (:id document)
+                 :user_id (mt/user->id :rasta)
+                 :details {:name "Test Document"
+                           :collection_id nil}
+                 :topic :document-create
+                 :model "Document"}
+                (mt/latest-audit-log-entry :document-create (:id document)))))
+
+       (testing :event/document-update
+         (let [updated-doc (assoc document :name "Updated Document")]
+           (is (= {:object updated-doc
+                   :previous-object document}
+                  (events/publish-event! :event/document-update {:object updated-doc
+                                                                 :previous-object document})))
+           (is (= {:model_id (:id document)
+                   :user_id (mt/user->id :rasta)
+                   :details {:previous {:name "Test Document"}
+                             :new {:name "Updated Document"}}
+                   :topic :document-update
+                   :model "Document"}
+                  (mt/latest-audit-log-entry :document-update (:id document))))))
+
+       (testing :event/document-delete
+         (is (= {:object document}
+                (events/publish-event! :event/document-delete {:object document})))
+         (is (= {:model_id (:id document)
+                 :user_id (mt/user->id :rasta)
+                 :details {:name "Test Document"
+                           :collection_id nil}
+                 :topic :document-delete
+                 :model "Document"}
+                (mt/latest-audit-log-entry :document-delete (:id document)))))))))
+
+(deftest comment-events-test
+  (mt/when-ee-evailable
+   (mt/with-current-user (mt/user->id :rasta)
+     (mt/with-temp [:model/Document {doc-id :id}     {}
+                    :model/Comment  comment {:target_id doc-id
+                                             :content "{}"}]
+       (testing :event/comment-create
+         (is (= {:object comment}
+                (events/publish-event! :event/comment-create {:object comment})))
+         (is (= {:model_id (:id comment)
+                 :user_id (mt/user->id :rasta)
+                 :details {:target_id doc-id
+                           :target_type "document"
+                           :child_target_id nil
+                           :parent_comment_id nil}
+                 :topic :comment-create
+                 :model "Comment"}
+                (mt/latest-audit-log-entry :comment-create (:id comment)))))
+
+       (testing :event/comment-update
+         (let [updated-comment (assoc comment :content "Updated comment")]
+           (is (= {:object updated-comment
+                   :previous-object comment}
+                  (events/publish-event! :event/comment-update {:object updated-comment
+                                                                :previous-object comment})))
+           (is (=? {:model_id (:id comment)
+                    :user_id (mt/user->id :rasta)
+                    :details {}
+                    :topic :comment-update
+                    :model "Comment"}
+                   (mt/latest-audit-log-entry :comment-update (:id comment))))))
+
+       (testing :event/comment-delete
+         (is (= {:object comment}
+                (events/publish-event! :event/comment-delete {:object comment})))
+         (is (= {:model_id (:id comment)
+                 :user_id (mt/user->id :rasta)
+                 :details {:target_type "document"
+                           :target_id doc-id
+                           :child_target_id nil
+                           :parent_comment_id nil}
+                 :topic :comment-delete
+                 :model "Comment"}
+                (mt/latest-audit-log-entry :comment-delete (:id comment)))))))))
+
+(deftest transform-events-test
+  (mt/when-ee-evailable
+   (mt/with-current-user (mt/user->id :rasta)
+     (mt/with-temp [:model/Transform transform {:name "Test Transform"
+                                                :description "Test description"}]
+       (testing :event/transform-create
+         (is (= {:object transform}
+                (events/publish-event! :event/transform-create {:object transform})))
+         (is (partial=
+              {:model_id (:id transform)
+               :user_id (mt/user->id :rasta)
+               :details {:name "Test Transform"
+                         :description "Test description"}
+               :topic :transform-create
+               :model "Transform"}
+              (mt/latest-audit-log-entry :transform-create (:id transform)))))
+
+       (testing :event/update-transform
+         (let [updated-transform (assoc transform :name "Updated Transform")]
+           (is (= {:object updated-transform
+                   :previous-object transform}
+                  (events/publish-event! :event/update-transform {:object updated-transform
+                                                                  :previous-object transform})))
+           (is (= {:model_id (:id transform)
+                   :user_id (mt/user->id :rasta)
+                   :details {:previous {:name "Test Transform"}
+                             :new {:name "Updated Transform"}}
+                   :topic :update-transform
+                   :model "Transform"}
+                  (mt/latest-audit-log-entry :update-transform (:id transform))))))
+
+       (testing :event/transform-delete
+         (is (= {:object transform}
+                (events/publish-event! :event/transform-delete {:object transform})))
+         (is (partial=
+              {:model_id (:id transform)
+               :user_id (mt/user->id :rasta)
+               :details {:name "Test Transform"
+                         :description "Test description"}
+               :topic :transform-delete
+               :model "Transform"}
+              (mt/latest-audit-log-entry :transform-delete (:id transform)))))))))
+
+(deftest glossary-events-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-temp [:model/Glossary glossary {:term "Test Term" :definition "Definition"}]
+      (testing :event/glossary-create
+        (is (= {:object glossary}
+               (events/publish-event! :event/glossary-create {:object glossary})))
+        (is (= {:model_id (:id glossary)
+                :user_id (mt/user->id :rasta)
+                :details {:term "Test Term"}
+                :topic :glossary-create
+                :model "Glossary"}
+               (mt/latest-audit-log-entry :glossary-create (:id glossary)))))
+
+      (testing :event/glossary-update
+        (let [updated-glossary (assoc glossary :term "Updated Term")]
+          (is (= {:object updated-glossary
+                  :previous-object glossary}
+                 (events/publish-event! :event/glossary-update {:object updated-glossary
+                                                                :previous-object glossary})))
+          (is (= {:model_id (:id glossary)
+                  :user_id (mt/user->id :rasta)
+                  :details {:previous {:term "Test Term"}
+                            :new {:term "Updated Term"}}
+                  :topic :glossary-update
+                  :model "Glossary"}
+                 (mt/latest-audit-log-entry :glossary-update (:id glossary))))))
+
+      (testing :event/glossary-delete
+        (is (= {:object glossary}
+               (events/publish-event! :event/glossary-delete {:object glossary})))
+        (is (= {:model_id (:id glossary)
+                :user_id (mt/user->id :rasta)
+                :details {:term "Test Term"}
+                :topic :glossary-delete
+                :model "Glossary"}
+               (mt/latest-audit-log-entry :glossary-delete (:id glossary))))))))
+
+(deftest remote-sync-events-test
+  (mt/when-ee-evailable
+   (mt/with-current-user (mt/user->id :rasta)
+     (mt/with-temp [:model/RemoteSyncTask {task-id :id :as task}
+                    {:sync_task_type "import"
+                     :version "v1"
+                     :initiated_by (mt/user->id :rasta)
+                     :started_at (t/offset-date-time 2025 9 30 14 0 0)
+                     :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
+       (testing :event/remote-sync-import
+         (is (= {:object task}
+                (events/publish-event! :event/remote-sync-import {:object task})))
+         (is (= {:model_id task-id
+                 :user_id (mt/user->id :rasta)
+                 :details {:sync_task_type "import"
+                           :version "v1"}
+                 :topic :remote-sync-import
+                 :model "RemoteSyncTask"}
+                (mt/latest-audit-log-entry :remote-sync-import task-id))))
+
+       (testing :event/remote-sync-export
+         (is (= {:object task}
+                (events/publish-event! :event/remote-sync-export {:object task})))
+         (is (= {:model_id task-id
+                 :user_id (mt/user->id :rasta)
+                 :details {:sync_task_type "import"
+                           :version "v1"}
+                 :topic :remote-sync-export
+                 :model "RemoteSyncTask"}
+                (mt/latest-audit-log-entry :remote-sync-export task-id))))
+
+       (testing :event/remote-sync-settings-update
+         (is (= {:object task}
+                (events/publish-event! :event/remote-sync-settings-update {:object task})))
+         (is (= {:model_id task-id
+                 :user_id (mt/user->id :rasta)
+                 :details {:sync_task_type "import"
+                           :version "v1"}
+                 :topic :remote-sync-settings-update
+                 :model "RemoteSyncTask"}
+                (mt/latest-audit-log-entry :remote-sync-settings-update task-id))))
+
+       (testing :event/remote-sync-create-branch
+         (is (= {:object task}
+                (events/publish-event! :event/remote-sync-create-branch {:object task})))
+         (is (= {:model_id task-id
+                 :user_id (mt/user->id :rasta)
+                 :details {:sync_task_type "import"
+                           :version "v1"}
+                 :topic :remote-sync-create-branch
+                 :model "RemoteSyncTask"}
+                (mt/latest-audit-log-entry :remote-sync-create-branch task-id))))
+
+       (testing :event/remote-sync-stash
+         (is (= {:object task}
+                (events/publish-event! :event/remote-sync-stash {:object task})))
+         (is (= {:model_id task-id
+                 :user_id (mt/user->id :rasta)
+                 :details {:sync_task_type "import"
+                           :version "v1"}
+                 :topic :remote-sync-stash
+                 :model "RemoteSyncTask"}
+                (mt/latest-audit-log-entry :remote-sync-stash task-id))))))))
+
+(deftest action-v2-events-test
+  (mt/when-ee-evailable
+   (mt/with-current-user (mt/user->id :rasta)
+     (testing :event/action-v2-execute
+       (is (=
+            {:details
+             {:action "data-grid.row/create"
+              :scope {:table_id 123}
+              :input_count 1}}
+            (events/publish-event! :event/action-v2-execute
+                                   {:details
+                                    {:action "data-grid.row/create"
+                                     :scope {:table_id 123}
+                                     :input_count 1}})))
+       (is (= {:user_id (mt/user->id :rasta)
+               :details {:action "data-grid.row/create"
+                         :scope {:table_id 123}
+                         :input_count 1}
+               :topic :table-data-edit
+               :model "Table"
+               :model_id 123}
+              (mt/latest-audit-log-entry :table-data-edit)))))))

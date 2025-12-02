@@ -9,6 +9,8 @@ redirect-from:
 
 If you ever need to ask questions that can't be expressed using the query builder, you can use [SQL][sql-gloss] instead.
 
+You can also use [Metabot](../../ai/metabot.md) to generate SQL from natural language. Just ask Metabot to "Write a SQL query that..." and describe what you want to know about your data.
+
 ## What's SQL?
 
 SQL (pronounced "sequel", or sometimes as S.Q.L. — people argue about this) stands for Structured Query Language, and is a widely used standard for getting data from databases. We won't try to teach you all about SQL right now, but to learn more about it, check out [Working with SQL][learn-sql].
@@ -82,7 +84,7 @@ If you or someone else wrote a SQL query that includes [variables][variable-glos
 
 ![SQL filter](../images/SQL-filter-widget.png)
 
-Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
+Writing SQL queries that use variables or parameters can be powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
 
 ## Snippets
 

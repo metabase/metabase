@@ -79,19 +79,34 @@ enum IssueType {
   underTheHoodIssues = "underTheHoodIssues",
 }
 
-// Product area labels take the form of "Category/Subcategory", e.g., "Querying/MBQL"
-// We're only interested in the main product category, e.g., "Querying"
-enum ProductCategory {
-  administration = "Administration",
-  database = "Database",
-  embedding = "Embedding",
-  operation = "Operation",
-  organization = "Organization",
-  querying = "Querying",
-  reporting = "Reporting",
-  visualization = "Visualization",
-  other = "Other",
-}
+const otherProductCategory = "Other";
+
+type ProductCategory =
+  | "Administration"
+  | "Database"
+  | "Embedding"
+  | "Operation"
+  | "Organization"
+  | "Querying"
+  | "Reporting"
+  | "Visualization"
+  | "Other";
+
+// Map `Map<ProductCategory, LabelPart[]>`:
+// - `ProductCategory` is product categories in release notes
+// - `LabelPart` is PR/Issue labels parts that used to route issues to those categories
+// The item position in labels parts list determines the order in which these strings are tested against the actual label
+const productCategories: Record<ProductCategory, readonly string[]> = {
+  Administration: ["Administration"],
+  Database: ["Database"],
+  Embedding: ["Embedding", "SDK"],
+  Operation: ["Operation"],
+  Organization: ["Organization"],
+  Querying: ["Querying"],
+  Reporting: ["Reporting"],
+  Visualization: ["Visualization"],
+  [otherProductCategory]: ["Other"],
+};
 
 type CategoryIssueMap = Record<Partial<ProductCategory>, Issue[]>;
 
@@ -117,17 +132,25 @@ const getLabels = (issue: Issue): string[] => {
   return issue.labels.map(label => label.name || "");
 };
 
-const hasCategory = (issue: Issue, categoryName: ProductCategory): boolean => {
+const hasCategory = (issue: Issue, labelPart: string): boolean => {
   const labels = getLabels(issue);
-  return labels.some(label => label.includes(categoryName));
+  return labels.some((label) => label.includes(labelPart));
 };
 
 export const getProductCategory = (issue: Issue): ProductCategory => {
-  const category = Object.values(ProductCategory).find(categoryName =>
-    hasCategory(issue, categoryName)
-  );
+  for (const [productCategory, labelParts] of Object.entries(
+    productCategories,
+  )) {
+    const isMatching = labelParts.some((labelPart) =>
+      hasCategory(issue, labelPart),
+    );
 
-  return category ?? ProductCategory.other;
+    if (isMatching) {
+      return productCategory as ProductCategory;
+    }
+  }
+
+  return otherProductCategory;
 };
 
 // Format issues for a single product category
@@ -138,10 +161,10 @@ const formatIssueCategory = (categoryName: ProductCategory, issues: Issue[]): st
 // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
 const sortCategories = (categories: ProductCategory[]) => {
   const uncategorizedIssues = categories.filter(
-    category => category === ProductCategory.other,
+    (category) => category === otherProductCategory,
   );
   const sortedCategories = categories
-    .filter(cat => cat !== ProductCategory.other)
+    .filter((cat) => cat !== otherProductCategory)
     .sort((a, b) => a.localeCompare(b));
 
   return [

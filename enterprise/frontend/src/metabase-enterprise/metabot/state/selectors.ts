@@ -1,26 +1,51 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import * as Urls from "metabase/lib/urls";
 import { getIsEmbedding } from "metabase/selectors/embed";
+import { getLocation } from "metabase/selectors/routing";
+import type { TransformId } from "metabase-types/api";
 
 import {
   FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
+  METABOT_REQUEST_IDS,
 } from "../constants";
 
+import type { MetabotUserChatMessage } from "./reducer";
 import type { MetabotStoreState } from "./types";
 
-export const getMetabot = (state: MetabotStoreState) =>
-  state.plugins.metabotPlugin;
+export const getMetabot = (state: MetabotStoreState) => {
+  return state.plugins.metabotPlugin;
+};
 
 export const getMetabotVisible = createSelector(
-  getMetabot,
+  [getMetabot],
   (metabot) => metabot.visible,
 );
 
-export const getMessages = createSelector(
+export const getDebugMode = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.debugMode,
+);
+
+const getInternalMessages = createSelector(
   getMetabot,
   (metabot) => metabot.messages,
+);
+
+export const getMessages = createSelector(
+  [getInternalMessages, getDebugMode],
+  (messages, debugMode) => {
+    return debugMode
+      ? messages
+      : messages.filter((msg) => msg.type !== "tool_call");
+  },
+);
+
+export const getActiveToolCalls = createSelector(
+  getMetabot,
+  (metabot) => metabot.activeToolCalls,
 );
 
 export const getLastMessage = createSelector(getMessages, (messages) =>
@@ -37,7 +62,7 @@ export const getAgentErrorMessages = createSelector(
 // that exact message will be returned.
 export const getUserPromptForMessageId = createSelector(
   [getMessages, (_, messageId: string) => messageId],
-  (messages, messageId) => {
+  (messages, messageId): MetabotUserChatMessage | undefined => {
     const messageIndex = messages.findLastIndex((m) => m.id === messageId);
     const message = messages[messageIndex];
     if (!message) {
@@ -47,26 +72,11 @@ export const getUserPromptForMessageId = createSelector(
     if (message.role === "user") {
       return message;
     } else {
-      return messages.slice(0, messageIndex).findLast((m) => m.role === "user");
+      return messages
+        .slice(0, messageIndex)
+        .findLast<MetabotUserChatMessage>((m) => m.role === "user");
     }
   },
-);
-
-export const getLastAgentMessagesByType = createSelector(
-  [getMessages, getAgentErrorMessages],
-  (messages, errorMessages) => {
-    if (errorMessages.length > 0) {
-      return errorMessages.map(({ message }) => message);
-    }
-
-    const start = messages.findLastIndex((msg) => msg.role !== "agent") + 1;
-    return messages.slice(start).map(({ message }) => message);
-  },
-);
-
-export const getToolCalls = createSelector(
-  getMetabot,
-  (metabot) => metabot.toolCalls,
 );
 
 export const getIsProcessing = createSelector(
@@ -89,11 +99,16 @@ export const getMetabotState = createSelector(
   (metabot) => metabot.state,
 );
 
+export const getMetabotReactionsState = createSelector(
+  getMetabot,
+  (metabot) => metabot.reactions,
+);
+
 export const getIsLongMetabotConversation = createSelector(
   getMessages,
   (messages) => {
     const totalMessageLength = messages.reduce((sum, msg) => {
-      return sum + msg.message.length;
+      return sum + ("message" in msg ? msg.message.length : 0);
     }, 0);
     return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
   },
@@ -103,14 +118,80 @@ export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
   isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
 
+export const getMetabotReqIdOverride = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.metabotReqIdOverride,
+);
+
+export const getMetabotRequestId = createSelector(
+  getMetabotReqIdOverride,
+  getIsEmbedding,
+  (metabotReqIdOverride, isEmbedding) =>
+    metabotReqIdOverride ??
+    (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
+);
+
+export const getProfileOverride = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.profileOverride,
+);
+
+export const getProfile = createSelector(
+  getProfileOverride,
+  getLocation,
+  (profileOverride, location) => {
+    if (profileOverride) {
+      return profileOverride;
+    }
+
+    return location.pathname.startsWith(Urls.transformList())
+      ? "transforms_codegen"
+      : undefined;
+  },
+);
+
 export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotState,
-  (history, state) => ({
+  getProfile,
+  (history, state, profile) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
     ),
+    ...(profile ? { profile_id: profile } : {}),
   }),
+);
+
+export const getNavigateToPath = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.navigateToPath,
+);
+
+export const getMetabotSuggestedTransforms = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.suggestedTransforms,
+);
+
+export const getMetabotSuggestedTransform = createSelector(
+  [
+    getMetabotSuggestedTransforms,
+    (_, transformId?: TransformId) => transformId,
+  ],
+  (suggestedTransforms, transformId) => {
+    return suggestedTransforms.findLast(
+      (t) => t.id === transformId && t.active,
+    );
+  },
+);
+
+export const getIsSuggestedTransformActive = createSelector(
+  [getMetabotSuggestedTransforms, (_, suggestionId: string) => suggestionId],
+  (suggestedTransforms, suggestionId) => {
+    const suggestion = suggestedTransforms.find(
+      (t) => t.suggestionId === suggestionId,
+    );
+    return suggestion?.active ?? false;
+  },
 );

@@ -361,6 +361,16 @@ describe("parameters/utils/parameter-values", () => {
           ),
         ).toEqual("last used value");
       });
+
+      it("should not allow mixed query and last used parameter values (metabase#48524)", () => {
+        expect(
+          getParameterValueFromQueryParams(
+            parameter1,
+            { [parameter2.slug]: "value" },
+            { [parameter1.id]: "last used value" },
+          ),
+        ).toEqual(null);
+      });
     });
 
     describe("for number filter type", () => {

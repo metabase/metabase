@@ -4,7 +4,7 @@ import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/sa
 
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseAuthProviderSectionField from "./components/DatabaseAuthProviderSectionField";
-import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
+import { DatabaseCacheScheduleField } from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import { DatabaseConnectionSectionField } from "./components/DatabaseConnectionSectionField";
 import DatabaseHostnameSectionField from "./components/DatabaseHostnameSectionField";

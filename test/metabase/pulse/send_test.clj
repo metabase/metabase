@@ -573,10 +573,10 @@
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
-        (let [channel-messsages (pulse.test-util/with-captured-channel-send-messages!
-                                  (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))]
+        (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                 (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))]
           (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"})
-                 (mt/summarize-multipart-single-email (-> channel-messsages :channel/email first) test-card-regex))))))))
+                 (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) test-card-regex))))))))
 
 (deftest nonuser-email-test
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
@@ -678,3 +678,18 @@
     (is (empty? (-> (pulse.test-util/with-captured-channel-send-messages!
                       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))
                     :channel/email)))))
+
+(deftest send-skip-alert-test
+  (testing "alerts are skipped (#63189)"
+    (let [pulse-sent-called? (atom false)]
+      (with-redefs [pulse.send/send-pulse!* (fn [& _args])]
+        (mt/with-temp [:model/Pulse {pulse-id :id
+                                     :as pulse}   {:creator_id      (mt/user->id :rasta)
+                                                   :name            (mt/random-name)
+                                                   :alert_condition "rows"}
+                       :model/PulseChannel _      {:pulse_id       pulse-id
+                                                   :channel_type   :slack
+                                                   :enabled        true
+                                                   :details        {:channel "#random"}}]
+          (pulse.send/send-pulse! pulse)
+          (is (false? @pulse-sent-called?)))))))

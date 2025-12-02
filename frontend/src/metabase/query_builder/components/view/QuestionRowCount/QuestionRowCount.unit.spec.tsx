@@ -5,6 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
   renderWithProviders,
@@ -48,7 +49,7 @@ function patchQuestion(question: Question) {
   if (!isNative) {
     const [sampleColumn] = Lib.orderableColumns(query, 0);
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
-    return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
+    return question.setQuery(nextQuery);
   } else {
     const query = question.legacyNativeQuery() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
@@ -89,7 +90,13 @@ async function setup({
   });
 
   renderWithProviders(<QuestionRowCount />, {
-    storeInitialState: { qb: state },
+    storeInitialState: {
+      qb: state,
+      entities: createMockEntitiesState({
+        databases: isReadOnly ? [] : databases,
+        questions: "id" in card ? [card] : [],
+      }),
+    },
   });
 
   const rowCount = await screen.findByLabelText("Row count");

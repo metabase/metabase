@@ -1,4 +1,5 @@
 (ns metabase.lib.column-group
+  (:refer-clojure :exclude [select-keys])
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
@@ -12,7 +13,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (def ^:private GroupType
   [:enum

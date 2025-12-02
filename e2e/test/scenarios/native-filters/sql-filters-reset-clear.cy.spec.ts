@@ -189,7 +189,6 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         dimension: ["field", PRODUCTS.CATEGORY, null],
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
-        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
         default: ["Gizmo"],
       },
       default_required: {
@@ -201,7 +200,6 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
         required: true,
-        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
         default: ["Gizmo"],
       },
     });

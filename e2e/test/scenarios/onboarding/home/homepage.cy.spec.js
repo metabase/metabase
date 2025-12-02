@@ -20,27 +20,89 @@ describe("scenarios > home > homepage", () => {
   });
 
   describe("after setup", () => {
-    beforeEach(() => {
-      H.restore("setup");
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
-    it("should display x-rays for the sample database", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore("setup");
       cy.signInAsAdmin();
+      H.enableTracking();
+    });
 
+    it("should display x-rays for the Sample Database", () => {
       cy.visit("/");
       cy.wait("@getXrayCandidates");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Try out these sample x-rays to see what Metabase can do.");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").click();
+      cy.findByTestId("home-page").within(() => {
+        cy.findByText(
+          "Try out these sample x-rays to see what Metabase can do.",
+        );
+        cy.findAllByRole("link").contains("Orders").click();
+        cy.wait("@getXrayDashboard");
+      });
 
-      cy.wait("@getXrayDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays");
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "table",
+        triggered_from: "homepage",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByRole("heading", { name: "Zoom in" })
+          .parent()
+          .findByText("Source fields")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "zoom-in",
+        triggered_from: "suggestion_sidebar",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByRole("heading", { name: "Zoom out" })
+          .parent()
+          .findByText("People")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "zoom-out",
+        triggered_from: "suggestion_sidebar",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByRole("heading", { name: "Related" })
+          .parent()
+          .findByText("Orders")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "related",
+        triggered_from: "suggestion_sidebar",
+      });
+
+      cy.intercept("POST", "/api/dashboard/save").as("saveDashboard");
+      cy.findByTestId("automatic-dashboard-header").button("Save this").click();
+      cy.wait("@saveDashboard");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_saved",
+      });
     });
 
     it("should display x-rays for a user database", () => {
-      cy.signInAsAdmin();
       H.addSqliteDatabase();
 
       cy.get("@sqliteID").then((dbId) => {
@@ -68,7 +130,6 @@ describe("scenarios > home > homepage", () => {
     });
 
     it("homepage should not flicker when syncing databases and showing xrays", () => {
-      cy.signInAsAdmin();
       cy.addSQLiteDatabase();
 
       cy.intercept("/api/database", (req) => {
@@ -103,7 +164,6 @@ describe("scenarios > home > homepage", () => {
     });
 
     it("should allow switching between multiple schemas for x-rays", () => {
-      cy.signInAsAdmin();
       cy.addSQLiteDatabase({ name: "sqlite" });
       cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
 
@@ -315,7 +375,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
-        "Select a dashboard",
+        "Pick a dashboard",
       );
 
       cy.findByTestId("custom-homepage-dashboard-setting")
@@ -370,8 +430,8 @@ describe("scenarios > home > custom homepage", () => {
       cy.get("main").findByText("Customize").click();
 
       H.modal().within(() => {
-        cy.findByRole("button", { name: "Save" }).should("be.disabled");
-        cy.findByText(/Select a dashboard/i).click();
+        cy.findByRole("button", { name: "Done" }).should("be.disabled");
+        cy.findByText("Pick a dashboard").click();
       });
 
       H.entityPickerModal().within(() => {
@@ -390,7 +450,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("Orders in a dashboard").click();
       });
 
-      H.modal().findByRole("button", { name: "Save" }).click();
+      H.modal().findByRole("button", { name: "Done" }).click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -570,7 +630,7 @@ describe("scenarios > home > custom homepage", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -603,12 +663,10 @@ H.describeWithSnowplow("scenarios > setup", () => {
   it("should send snowplow events through homepage", () => {
     cy.visit("/");
     cy.get("main").findByText("Customize").click();
-    H.modal()
-      .findByText(/Select a dashboard/i)
-      .click();
+    H.modal().findByText("Pick a dashboard").click();
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
-    H.modal().findByText("Save").click();
+    H.modal().findByText("Done").click();
     H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",

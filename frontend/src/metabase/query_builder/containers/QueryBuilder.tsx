@@ -16,8 +16,8 @@ import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
-import title from "metabase/hoc/Title";
-import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
+import { isWithinIframe } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -31,13 +31,13 @@ import {
 import type {
   BookmarkId,
   Bookmark as BookmarkType,
-  Card,
   Series,
   Timeline,
 } from "metabase-types/api";
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import * as actions from "../actions";
+import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
@@ -84,6 +84,7 @@ import {
   getVisibleTimelineEventIds,
   getVisibleTimelineEvents,
   getVisualizationSettings,
+  getZoomedObjectRowIndex,
   isResultsMetadataDirty,
 } from "../selectors";
 import { getIsObjectDetail, getMode } from "../selectors/mode";
@@ -184,6 +185,8 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
 
+    zoomedRowIndex: getZoomedObjectRowIndex(state),
+
     reportTimezone: getSetting(state, "report-timezone-long"),
     didFirstNonTableChartGenerated: getSetting(
       state,
@@ -229,7 +232,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
-    runQuestionOrSelectedQuery,
+    runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -244,7 +247,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
+    documentTitle,
+    queryStartTime,
   } = props;
+
+  usePageTitleWithLoadingTime(documentTitle || card?.name || t`Question`, {
+    titleIndex: 1,
+    startTime: queryStartTime,
+    isRunning: uiControls.isRunning,
+  });
 
   const didTrackFirstNonTableChartGeneratedRef = useRef(
     didFirstNonTableChartGenerated,
@@ -298,13 +309,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   );
 
   const onClickBookmark = () => {
-    const {
-      card: { id },
-    } = props;
+    const { card } = props;
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark(id);
+    if (!isBookmarked) {
+      trackCardBookmarkAdded(card);
+    }
+
+    toggleBookmark(card.id);
   };
 
   /**
@@ -318,6 +331,10 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const handleSave = useSaveQuestion({ scheduleCallback });
 
   useMount(() => {
+    const isRouteInSync = window.location.pathname === location.pathname;
+    if (isWithinIframe() && !isRouteInSync) {
+      return null; // Don't initialize query builder until route syncs (metabase#65500)
+    }
     initializeQB(location, params);
   });
 
@@ -439,7 +456,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const handleCmdEnter = () => {
     if (queryBuilderMode !== "notebook") {
-      runQuestionOrSelectedQuery();
+      runOrCancelQuestionOrSelectedQuery();
     }
   };
 
@@ -476,9 +493,4 @@ export const QueryBuilder = _.compose(
   Bookmark.loadList(),
   Timelines.loadList(timelineProps),
   connector,
-  title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({
-    title: documentTitle || card?.name || t`Question`,
-    titleIndex: 1,
-  })),
-  titleWithLoadingTime("queryStartTime"),
 )(QueryBuilderInner);

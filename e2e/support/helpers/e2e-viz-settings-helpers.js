@@ -27,3 +27,7 @@ export function openVizTypeSidebar() {
 export function openVizSettingsSidebar() {
   cy.findByTestId("viz-settings-button").click();
 }
+
+export function vizSettingsSidebar() {
+  return cy.findByTestId("chartsettings-sidebar");
+}

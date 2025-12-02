@@ -107,7 +107,7 @@
 
 (deftest ^:parallel detect-pulse-chart-type-test-5
   (testing "Progress charts are correctly identified"
-    (is (= :progress
+    (is (= :javascript_visualization
            (channel.render/detect-pulse-chart-type {:display :progress}
                                                    {}
                                                    {:cols [{:base_type :type/Number}]
@@ -137,7 +137,6 @@
                                                                   :rows [["A" 2]
                                                                          ["B" 3]]}))
       :funnel
-      :progress
       :table)))
 
 (deftest ^:parallel detect-pulse-chart-type-test-8
@@ -297,7 +296,21 @@
           (is (some? (lib.util.match/match-one rendered-card-content
                        [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
 
-(deftest visualizer-href-includes-scroll
+(deftest href-includes-scroll
+  (testing "the title and body hrefs for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+    (mt/with-temp [:model/Card           card {:name          "A Card"
+                                               :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Dashboard      dashboard {}
+                   :model/DashboardCard  dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
+      (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
+        (let [rendered-card-content (:content (channel.render/render-pulse-card :inline
+                                                                                (channel.render/defaulted-timezone card)
+                                                                                card
+                                                                                dc1
+                                                                                (qp/process-query (:dataset_query card))
+                                                                                {:channel.render/include-title? true}))
+              expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
+          (is (every? true? (map #(= (:href %) expected-href) (lib.util.match/match rendered-card-content  {:href _}))))))))
   (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}

@@ -71,13 +71,13 @@ const ALERT_TRIGGER_OPTIONS_MAP: Record<
   goal_above: {
     value: "goal_above" as const,
     get label() {
-      return t`When results go above the goal line`;
+      return t`When results go above the goal`;
     },
   },
   goal_below: {
     value: "goal_below" as const,
     get label() {
-      return t`When results go below the goal line`;
+      return t`When results go below the goal`;
     },
   },
 };

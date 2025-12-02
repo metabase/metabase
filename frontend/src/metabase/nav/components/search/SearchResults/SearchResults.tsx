@@ -168,6 +168,7 @@ export const SearchResults = ({
                 onClick={onClick}
                 index={index}
                 context="search-bar"
+                searchTerm={searchText}
               />
             </li>
           );

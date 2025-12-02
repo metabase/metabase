@@ -1,0 +1,6 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  bottom: 0;
+  pointer-events: none;
+}
