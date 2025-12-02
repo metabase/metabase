@@ -238,7 +238,6 @@
    :uses #{api
            app-db
            collections
-           config
            queries
            util}}
 
