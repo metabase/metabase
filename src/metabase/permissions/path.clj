@@ -45,7 +45,4 @@
     "/application/monitoring/"
 
     :subscription
-    "/application/subscription/"
-
-    :data-studio
-    "/application/data-studio/"))
+    "/application/subscription/"))

@@ -13,7 +13,7 @@
 
 (def ^:private GroupPermissionsGraph
   [:map-of
-   [:enum :setting :monitoring :subscription :data-studio]
+   [:enum :setting :monitoring :subscription]
    [:enum :yes :no]])
 
 (def ^:private ApplicationPermissionsGraph
@@ -45,8 +45,7 @@
   [permission-set]
   {:setting      (permission-for-type permission-set :setting)
    :monitoring   (permission-for-type permission-set :monitoring)
-   :subscription (permission-for-type permission-set :subscription)
-   :data-studio  (permission-for-type permission-set :data-studio)})
+   :subscription (permission-for-type permission-set :subscription)})
 
 (mu/defn graph :- ApplicationPermissionsGraph
   "Fetch a graph representing the application permissions status for groups that has at least one application permission
