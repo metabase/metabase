@@ -322,6 +322,8 @@ const TableSectionBase = ({
         </Stack>
       </Box>
       <CreateLibraryModal
+        title={t`First, let's create your Library`}
+        explanatorySentence={t`This is where published tables will go.`}
         isOpened={modalType === "library"}
         onCreate={() => setModalType("publish")}
         onClose={handleCloseModal}
