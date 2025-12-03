@@ -52,7 +52,7 @@ check_required_tools() {
         echo ""
         echo "Run ./bin/dev-requirements to check your development environment."
         echo ""
-        echo "If you'd like an automated setup, run ./bin/dev-install which uses mise (coming soon)."
+        echo "If you'd like an automated setup, run ./bin/dev-install (uses mise)."
         exit 1
     fi
 }
