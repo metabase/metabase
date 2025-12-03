@@ -386,24 +386,6 @@
       (t2/delete! :model/Permissions where)
       (clear-current-user-cached-permissions!))))
 
-(declare grant-collection-readwrite-permissions!)
-
-(defn- grant-library-collection-permissions-for-data-studio!
-  "When granting data-studio application permission to a group, also grant them read-write access
-  to all existing library collections (Library, Data, Metrics).
-
-  This is idempotent - if permissions already exist, they are not duplicated."
-  [group-id]
-  (let [library-types [(var-get (requiring-resolve 'metabase.collections.models.collection/library-collection-type))
-                       (var-get (requiring-resolve 'metabase.collections.models.collection/library-models-collection-type))
-                       (var-get (requiring-resolve 'metabase.collections.models.collection/library-metrics-collection-type))]
-        library-collections (t2/select :model/Collection :type [:in library-types])]
-    (when (seq library-collections)
-      (log/debugf "Granting library collection permissions to group %s for %d collections"
-                  group-id (count library-collections))
-      (doseq [coll library-collections]
-        (grant-collection-readwrite-permissions! group-id coll)))))
-
 (defn grant-permissions!
   "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
   [group-or-id path]
@@ -412,9 +394,6 @@
                 (map (fn [path-object]
                        {:group_id (u/the-id group-or-id) :object path-object})
                      (distinct (conj (perms.u/->v2-path path) path))))
-    (when (= path (permissions.path/application-perms-path :data-studio))
-      (grant-library-collection-permissions-for-data-studio! (u/the-id group-or-id)))
-
     (clear-current-user-cached-permissions!)
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
