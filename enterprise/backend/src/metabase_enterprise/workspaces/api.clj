@@ -391,7 +391,7 @@
                                            :source {:type :python}})
     {:status 403 :body (deferred-tru "A table with that name already exists.")}
 
-    (some #(= (:name (:target %)) (-> target :name)) #p (t2/select :model/Transform :workspace_id id))
+    (some #(= (:name (:target %)) (-> target :name)) (t2/select :model/Transform :workspace_id id))
     {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table.")}
 
     :else
