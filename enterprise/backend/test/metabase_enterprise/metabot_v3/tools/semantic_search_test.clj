@@ -4,12 +4,19 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.search :as search]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.app-db.core :as mdb]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
 
-(use-fixtures :once #'semantic.tu/once-fixture)
+;; Note: these tests don't work on H2 since some rely on the appdb backend being available.
+;; If we need to run them on H2 we'll have to make this check more granular.
+(defn- once-fixture [f]
+  (when (not= (mdb/db-type) :h2)
+    (semantic.tu/once-fixture f)))
+
+(use-fixtures :once #'once-fixture)
 
 (defmacro with-semantic-search-if-available! [mock-embeddings & body]
   `(mt/with-premium-features #{:semantic-search}
