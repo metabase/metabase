@@ -48,9 +48,10 @@
      ~@body))
 
 (defmacro with-new-search-if-available-without-fallback
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body.
+   Only runs if the appdb search engine is supported."
   [& body]
-  `(when (search/supports-index?)
+  `(when (search.engine/supported-engine? :search.engine/appdb)
      (with-new-search-if-available* ~@body)))
 
 (defmacro with-legacy-search
