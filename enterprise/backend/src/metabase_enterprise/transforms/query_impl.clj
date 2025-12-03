@@ -43,7 +43,7 @@
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
-           feature (transforms.util/required-database-feature transform)
+           features (transforms.util/required-database-features transform)
            transform-details {:db-id db
                               :transform-id   id
                               :transform-type (keyword (:type target))
@@ -55,9 +55,9 @@
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                          {:driver driver, :database database})))
-       (when-not (driver.u/supports? driver feature database)
+       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
          (throw (ex-info "The database does not support the requested transform target type."
-                         {:driver driver, :database database, :feature feature})))
+                         {:driver driver, :database database, :features features})))
        ;; mark the execution as started and notify any observers
        (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method)]
          (when start-promise

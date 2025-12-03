@@ -101,7 +101,6 @@
         jdbc-spec   (sql-jdbc.conn/connection-details->spec driver (:details database))]
     (jdbc/execute! jdbc-spec [(format "CREATE SCHEMA %s" schema-name)])))
 
-
 ;;;; Transform table duplication
 
 (defmulti duplicate-output-table!
@@ -194,7 +193,6 @@
                                                   :database_details database_details})
     {:schema           schema
      :database_details database_details}))
-  (init-workspace-database-isolation! database workspace))
 
 (defn- drop-isolated-tables-dispatch
   [database _s+t-tuples]
@@ -215,3 +213,16 @@
                       [(format "DROP TABLE IF EXISTS \"%s\".\"%s\""
                                schema-name table-name)]))
      s+t-tuples)))
+
+
+(defn do-with-workspace-isolation
+  "Impl of* with-workspace-isolation*."
+  [workspace thunk]
+  (driver/with-swapped-connection-details (:database_id workspace)
+    (:database_details workspace)
+    (thunk)))
+
+(defmacro with-workspace-isolation
+  "Execute body with necessary isolation."
+  [workspace & body]
+  `(do-with-workspace-isolation ~workspace (fn [] ~@body)))

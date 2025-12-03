@@ -2267,7 +2267,8 @@
            sync
            task
            task-history
-           util}}
+           util
+           enterprise/workspaces}}
 
   enterprise/transforms-python
   {:team "Querying"
@@ -2298,6 +2299,7 @@
   enterprise/workspaces
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
