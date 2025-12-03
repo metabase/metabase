@@ -85,12 +85,19 @@ const isLibrary = (
 export const useGetLibraryCollection = ({
   skip = false,
 }: { skip?: boolean } = {}) => {
-  const { data: maybeLibrary, isLoading: isLoadingCollection } =
-    useGetLibraryCollectionQuery(undefined, { skip });
+  const { data, isLoading: isLoadingCollection } = useGetLibraryCollectionQuery(
+    undefined,
+    { skip },
+  );
+
+  const maybeLibrary = useMemo(
+    () => (isLibrary(data) ? data : undefined),
+    [data],
+  );
 
   return {
     isLoading: isLoadingCollection,
-    data: libraryCollection,
+    data: maybeLibrary,
   };
 };
 
