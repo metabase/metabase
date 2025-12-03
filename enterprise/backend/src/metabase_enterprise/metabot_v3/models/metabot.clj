@@ -42,7 +42,7 @@
   [(serdes/infer-self-path "Metabot" metabot)])
 
 (defmethod serdes/make-spec "Metabot" [_model-name opts]
-  {:copy      [:name :description :entity_id :use_verified_content]
+  {:copy      [:name :description :entity_id :use_verified_content :access_tables]
    :transform {:created_at    (serdes/date)
                :updated_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)

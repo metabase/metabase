@@ -27,7 +27,10 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
     updateMetabot: builder.mutation<
       MetabotInfo,
       { id: MetabotId } & Partial<
-        Pick<MetabotInfo, "use_verified_content" | "collection_id">
+        Pick<
+          MetabotInfo,
+          "use_verified_content" | "collection_id" | "access_tables"
+        >
       >
     >({
       query: ({ id, ...updates }) => ({

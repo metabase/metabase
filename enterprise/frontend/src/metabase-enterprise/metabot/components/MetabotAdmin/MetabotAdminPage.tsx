@@ -93,9 +93,9 @@ export function MetabotAdminPage() {
 
           <MetabotVerifiedContentConfigurationPane metabot={metabot} />
 
-          {isEmbedMetabot && (
-            <MetabotCollectionConfigurationPane metabot={metabot} />
-          )}
+          <MetabotCollectionConfigurationPane metabot={metabot} />
+
+          <MetabotAccessTablesConfigurationPane metabot={metabot} />
 
           <MetabotPromptSuggestionPane metabot={metabot} />
         </SettingsSection>
@@ -234,11 +234,12 @@ function MetabotCollectionConfigurationPane({
     <Box>
       <SettingHeader
         id="allow-metabot"
-        title={c("{0} is the name of an AI assistant")
-          .t`Collection ${metabotName} can use`}
+        title={t`Limit to collection`}
+        description={c("{0} is the name of an AI assistant")
+          .t`Limit ${metabotName} to search for and use content from a specific collection and its sub-collections.`}
       />
       <CollectionInfo collection={collection} />
-      <Flex gap="md" mt="md">
+      <Flex gap="md">
         <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>
           {match({ isMutating: isUpdating, collection })
             .with({ isMutating: true }, () => t`Updating collection...`)
@@ -265,6 +266,48 @@ function MetabotCollectionConfigurationPane({
           }}
         />
       )}
+    </Box>
+  );
+}
+
+function MetabotAccessTablesConfigurationPane({
+  metabot,
+}: {
+  metabot: MetabotInfo;
+}) {
+  const [updateMetabot, { isLoading: isUpdating }] = useUpdateMetabotMutation();
+  const [sendToast] = useToast();
+
+  const handleAccessTablesToggle = async (checked: boolean) => {
+    const result = await updateMetabot({
+      id: metabot.id,
+      access_tables: checked,
+    });
+
+    if (result.error) {
+      sendToast({
+        message: t`Error updating Metabot`,
+        icon: "warning",
+      });
+    }
+  };
+
+  return (
+    <Box>
+      <SettingHeader
+        id="access-tables"
+        title={t`Access all tables`}
+        description={c("{0} is the name of an AI assistant")
+          .t`Allow ${metabot.name} to access and query raw tables from across your instance, not just models and metrics. ${metabot.name} is still subject to the user's data permissions.`}
+      />
+      <Switch
+        label={t`Allow access to all tables`}
+        checked={!!metabot.access_tables}
+        onChange={(e) => handleAccessTablesToggle(e.target.checked)}
+        disabled={isUpdating}
+        w="auto"
+        size="sm"
+      />
     </Box>
   );
 }

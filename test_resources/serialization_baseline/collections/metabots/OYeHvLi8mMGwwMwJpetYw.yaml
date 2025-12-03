@@ -6,6 +6,7 @@ updated_at: '2025-06-09T20:12:07.978442Z'
 serdes/meta:
 - id: OYeHvLi8mMGwwMwJpetYw
   model: Metabot
+access_tables: false
 collection_id: null
 prompts:
 - card_id: 4ahdpFn43jybRFVQTRjX_

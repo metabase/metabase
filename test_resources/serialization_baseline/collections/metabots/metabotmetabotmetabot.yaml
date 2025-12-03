@@ -6,6 +6,7 @@ updated_at: '2025-05-28T17:49:20.649159Z'
 serdes/meta:
 - id: metabotmetabotmetabot
   model: Metabot
+access_tables: false
 collection_id: null
 prompts: []
 use_verified_content: false
