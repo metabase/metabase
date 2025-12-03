@@ -1,0 +1,72 @@
+# Metabase Development Environment
+# =================================
+#
+# This file defines the tools required for Metabase development.
+# We use mise (https://mise.jdx.dev) to manage tool versions consistently
+# across all development machines.
+#
+# Getting started:
+#   1. Install mise: https://mise.jdx.dev/getting-started.html
+#   2. Run: mise trust && mise install
+#   3. Run: ./bin/dev-bootstrap
+#
+# mise will automatically activate the correct versions when you cd into this directory.
+
+[env]
+# Disable corepack - we use yarn classic installed via mise
+COREPACK_ENABLE_AUTO_PIN = "0"
+
+# =============================================================================
+# Required Tools
+# =============================================================================
+
+[tools]
+# Node.js - for frontend development
+# We pin to a specific version to ensure consistency across the team.
+# This should match .nvmrc for compatibility with other version managers.
+node = "22.13.1"
+
+# Yarn Classic - for package management
+# IMPORTANT: Metabase requires Yarn 1.x (Classic), NOT Yarn 2+ (Berry)
+# Do not use corepack; mise manages yarn directly.
+yarn = "1.22.22"
+
+# Java - for Clojure backend
+# We require Eclipse Temurin (AdoptOpenJDK successor) for consistency.
+# The prefix ensures we get Temurin specifically, not just any OpenJDK.
+java = "temurin-21.0.9+10.0.LTS"
+
+# Clojure CLI - for backend development and REPL
+clojure = "1.12.3.1577"
+
+# Babashka - for mage task automation and scripting
+babashka = "1.12.212"
+
+# =============================================================================
+# Optional Tools (quality of life)
+# =============================================================================
+# Uncomment any tools you'd like mise to manage for you.
+
+# bat - A cat clone with syntax highlighting
+# https://github.com/sharkdp/bat
+# bat = "latest"
+
+# fzf - A fuzzy finder for the terminal
+# https://github.com/junegunn/fzf
+# fzf = "latest"
+
+# fd - A fast alternative to find
+# https://github.com/sharkdp/fd
+# fd = "latest"
+
+# ripgrep - A fast alternative to grep
+# https://github.com/BurntSushi/ripgrep
+# ripgrep = "latest"
+
+# GitHub CLI - for GitHub operations from the terminal
+# https://cli.github.com/
+# gh = "latest"
+
+# AWS CLI - for AWS operations
+# https://aws.amazon.com/cli/
+# awscli = "latest"
