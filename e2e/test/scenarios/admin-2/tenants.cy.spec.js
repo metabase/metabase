@@ -194,7 +194,7 @@ describe("Tenants - management", () => {
       cy.findByRole("link", { name: /Eagle/ }).should("not.exist");
     });
 
-    cy.findByRole("tab", { name: /Deactivated/ }).click();
+    cy.findByRole("tab", { name: "Deactivated" }).click();
 
     cy.findByTestId("admin-content-table").within(() => {
       cy.findByRole("link", { name: /Parrot/ }).should("not.exist");
@@ -251,7 +251,7 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: /Tenants/ }).click();
     cy.findByTestId("admin-content-table").should("contain.text", "1");
 
-    cy.findByRole("tab", { name: /Deactivated/ }).click();
+    cy.findByRole("tab", { name: "Deactivated" }).click();
     cy.findByTestId("admin-content-table")
       .findByRole("button", { name: /ellipsis/ })
       .click();
@@ -261,7 +261,7 @@ describe("Tenants - management", () => {
     cy.log(
       "after reactivating the last deactivated tenant, tabs should disappear and show all active tenants",
     );
-    cy.findByRole("tab", { name: /Deactivated/ }).should("not.exist");
+    cy.findByRole("tab", { name: "Deactivated" }).should("not.exist");
     cy.findByRole("tab", { name: /Active/ }).should("not.exist");
 
     cy.findByTestId("admin-content-table").within(() => {
@@ -625,7 +625,7 @@ describe("tenant users", () => {
     H.popover().findByText("Deactivate user").click();
     H.modal().button("Deactivate").click();
 
-    cy.findByRole("tab", { name: /deactivated/i }).click({ force: true });
+    cy.findByRole("tab", { name: "Deactivated" }).click({ force: true });
 
     cy.findByTestId("admin-layout-content").findByText("3 people found");
 
@@ -653,7 +653,7 @@ describe("tenant users", () => {
     H.tooltip().should("contain.text", "Reactivate this account");
 
     cy.findByRole("link", { name: /tenants/i }).click();
-    cy.findByRole("tab", { name: /Deactivated/ }).click();
+    cy.findByRole("tab", { name: "Deactivated" }).click();
 
     cy.findAllByRole("row")
       .contains("tr", "doohickey")
