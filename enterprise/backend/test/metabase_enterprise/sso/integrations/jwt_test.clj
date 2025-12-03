@@ -8,6 +8,7 @@
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
    [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
