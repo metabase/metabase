@@ -375,16 +375,16 @@
         (testing "returns published and unpublished tables in selection with all required fields"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [t1 t2]})]
-            (is (=? {:published_tables   [{:id           t2
-                                           :db_id        db-id
-                                           :name         "products"
-                                           :display_name "Products"
-                                           :schema       "PUBLIC"}]
-                     :unpublished_tables [{:id           t1
-                                           :db_id        db-id
-                                           :name         "orders"
-                                           :display_name "Orders"
-                                           :schema       "PUBLIC"}]}
+            (is (=? {:selected_tables   [{:id           t2
+                                          :db_id        db-id
+                                          :name         "products"
+                                          :display_name "Products"
+                                          :schema       "PUBLIC"}
+                                         {:id           t1
+                                          :db_id        db-id
+                                          :name         "orders"
+                                          :display_name "Orders"
+                                          :schema       "PUBLIC"}]}
                     response))
             (is (=? {:published_downstream_tables []
                      :unpublished_upstream_tables []}
@@ -414,7 +414,7 @@
         (testing "selecting orders returns products as upstream dependency"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [orders-id]})]
-            (is (=? {:unpublished_tables          [{:id           orders-id
+            (is (=? {:selected_tables             [{:id           orders-id
                                                     :db_id        db-id
                                                     :name         "orders"
                                                     :display_name "Orders"
@@ -430,11 +430,11 @@
           (t2/update! :model/Table products-id {:is_published true})
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [products-id]})]
-            (is (=? {:published_tables             [{:id           products-id
-                                                     :db_id        db-id
-                                                     :name         "products"
-                                                     :display_name "Products"
-                                                     :schema       "PUBLIC"}]
+            (is (=? {:selected_tables             [{:id           products-id
+                                                    :db_id        db-id
+                                                    :name         "products"
+                                                    :display_name "Products"
+                                                    :schema       "PUBLIC"}]
                      :unpublished_upstream_tables []}
                     response))
             ;; orders is unpublished and depends on products
@@ -447,7 +447,7 @@
           (t2/update! :model/Table products-id {:is_published true})
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [products-id]})]
-            (is (=? {:published_tables            [{:id           products-id
+            (is (=? {:selected_tables             [{:id           products-id
                                                     :db_id        db-id
                                                     :name         "products"
                                                     :display_name "Products"
@@ -499,7 +499,7 @@
         (testing "selecting order_items returns orders and customers as upstream (recursive)"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [items-id]})]
-            (is (=? {:unpublished_tables          [{:id           items-id
+            (is (=? {:selected_tables             [{:id           items-id
                                                     :db_id        db-id
                                                     :name         "order_items"
                                                     :display_name "Order Items"
@@ -552,7 +552,7 @@
         (testing "selecting customers returns orders and order_items as downstream (recursive)"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [customers-id]})]
-            (is (=? {:published_tables            [{:id           customers-id
+            (is (=? {:selected_tables             [{:id           customers-id
                                                     :db_id        db-id
                                                     :name         "customers"
                                                     :display_name "Customers"

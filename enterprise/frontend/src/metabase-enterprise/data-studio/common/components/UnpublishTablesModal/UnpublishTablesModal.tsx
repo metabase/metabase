@@ -86,10 +86,8 @@ function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
     return null;
   }
 
-  const { published_tables, unpublished_tables, published_downstream_tables } =
-    data;
-  const selectedTables = [...published_tables, ...unpublished_tables];
-  return <>{getTitle(selectedTables, published_downstream_tables)}</>;
+  const { selected_tables, published_downstream_tables } = data;
+  return <>{getTitle(selected_tables, published_downstream_tables)}</>;
 }
 
 type ModalBodyProps = {
@@ -119,9 +117,7 @@ function ModalBody({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { published_tables, unpublished_tables, published_downstream_tables } =
-    data;
-  const selectedTables = [...published_tables, ...unpublished_tables];
+  const { selected_tables, published_downstream_tables } = data;
 
   const handleSubmit = async () => {
     await unpublishTables({
@@ -138,11 +134,11 @@ function ModalBody({
       <Form>
         <Stack gap="sm">
           <Text>
-            {getInfoMessage(selectedTables, published_downstream_tables)}
+            {getInfoMessage(selected_tables, published_downstream_tables)}
           </Text>
           {published_downstream_tables.length > 0 && (
             <>
-              <Text>{getForeignKeyMessage(selectedTables)}</Text>
+              <Text>{getForeignKeyMessage(selected_tables)}</Text>
               <List spacing="sm">
                 {published_downstream_tables.map((table) => (
                   <List.Item key={table.id} fw="bold">
@@ -160,7 +156,7 @@ function ModalBody({
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
           <FormSubmitButton
             label={getSubmitButtonLabel(
-              selectedTables,
+              selected_tables,
               published_downstream_tables,
             )}
             variant="filled"

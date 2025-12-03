@@ -183,8 +183,7 @@
                             (t2/select fields :id [:in upstream-ids]))
         downstream-tables (when (seq downstream-ids)
                             (t2/select fields :id [:in downstream-ids]))]
-    {:published_tables            (filterv :is_published selected-tables)
-     :unpublished_tables          (filterv (complement :is_published) selected-tables)
+    {:selected_tables             selected-tables
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
 

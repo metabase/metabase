@@ -239,6 +239,7 @@ export interface BulkTableInfo {
   name: string;
   display_name: string;
   schema: string | null;
+  is_published: boolean;
 }
 
 export interface BulkTableSelection {
@@ -248,9 +249,8 @@ export interface BulkTableSelection {
 }
 
 export interface BulkTableSelectionInfo {
-  published_tables: BulkTableInfo[];
+  selected_tables: BulkTableInfo[];
   published_downstream_tables: BulkTableInfo[];
-  unpublished_tables: BulkTableInfo[];
   unpublished_upstream_tables: BulkTableInfo[];
 }
 
