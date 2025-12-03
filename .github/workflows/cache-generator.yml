@@ -92,6 +92,13 @@ jobs:
         with:
           apply-patches: "false"
 
+      - name: Get pnpm store directory
+        id: pnpm-cache-dir
+        run: |
+          PNPM_STORE_DIR=$(pnpm store path)
+          echo "pnpm store directory: $PNPM_STORE_DIR"
+          echo "dir=$PNPM_STORE_DIR" >> $GITHUB_OUTPUT
+
       - name: Ensure that Cypress executable is ready
         run: |
           pnpm cypress install
@@ -108,7 +115,9 @@ jobs:
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache
         with:
-          path: node_modules
+          path: |
+            ${{ steps.pnpm-cache-dir.outputs.dir }}
+            node_modules
           key: ${{ env.NODE_CACHE_KEY }}
 
       - name: Update Cypress cache
