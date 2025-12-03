@@ -33,21 +33,11 @@ runs:
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
-    - name: Get pnpm store directory
-      id: pnpm-cache
-      run: |
-        PNPM_STORE_DIR=$(pnpm store path)
-        echo "Pnpm store directory: $PNPM_STORE_DIR"
-        echo "dir=$PNPM_STORE_DIR" >> $GITHUB_OUTPUT
-      shell: bash
-
     - name: Restore node_modules cache
       uses: actions/cache/restore@v4
       id: node-modules-cache
       with:
-        path: |
-          ${{ steps.pnpm-cache.outputs.dir }}
-          node_modules
+        path: node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
