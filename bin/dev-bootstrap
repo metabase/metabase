@@ -4,7 +4,27 @@ set -euo pipefail
 
 # Load shared utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/utils/all.sh"
+
+# Lock directory to prevent concurrent runs
+LOCK_DIR="$PROJECT_ROOT/logs/dev-bootstrap.lock"
+
+acquire_lock() {
+    mkdir -p "$(dirname "$LOCK_DIR")"
+    # Use mkdir for atomic lock acquisition
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        print_error "Bootstrap is already running"
+        echo "      If this is a mistake, run: rm -rf $LOCK_DIR"
+        exit 1
+    fi
+}
+
+release_lock() {
+    rm -rf "$LOCK_DIR"
+}
+
+trap release_lock EXIT
 
 check_required_tools() {
     local missing=()
@@ -69,6 +89,8 @@ build_jar() {
 }
 
 main() {
+    acquire_lock
+
     print_header "Metabase Development Bootstrap"
 
     echo "This script will:"
