@@ -338,7 +338,8 @@
                                                                                              perm-type)))]
       (or (when-not (= table-perm (least-permissive-value perm-type))
             table-perm)
-          (user-published-table-permission perm-type user-id table-id)
+          (when (and (pos-int? user-id) (pos-int? table-id))
+            (user-published-table-permission perm-type user-id table-id))
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-table? :- :boolean
