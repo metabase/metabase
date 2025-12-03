@@ -35,6 +35,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
+  setNamespace?: (namespace: string) => void;
   /**
    * The type of item being saved. When set to a non-collection model,
    * namespace root collections (like tenant root) will be disabled.
@@ -45,21 +46,28 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
 function ItemName({
   id,
   type = "collections",
+  namespace = null,
 }: {
   id: CollectionId;
   type?: "collections" | "snippet-collections";
+  namespace?: string | null;
 }) {
-  return type === "snippet-collections" ? (
-    <SnippetCollectionName id={id} />
-  ) : (
-    <CollectionName id={id} />
-  );
+  if (type === "snippet-collections") {
+    return <SnippetCollectionName id={id} />;
+  }
+
+  if (id === null && namespace === "shared-tenant-collection") {
+    return <span>{t`Shared Tenant Collections`}</span>;
+  }
+
+  return <CollectionName id={id} />;
 }
 
 function FormCollectionPicker({
   className,
   style,
   name,
+  setNamespace,
   title,
   placeholder = t`Select a collection`,
   type = "collections",
@@ -71,6 +79,9 @@ function FormCollectionPicker({
   const id = useUniqueId();
 
   const [{ value }, { error, touched }, { setValue }] = useField(name);
+  const [collectionNamespace, setCollectionNamespace] = useState<string | null>(
+    null,
+  );
 
   const formFieldRef = useRef<HTMLDivElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
@@ -124,11 +135,15 @@ function FormCollectionPicker({
   );
 
   const handleChange = useCallback(
-    ({ id }: CollectionPickerItem) => {
+    ({ id, namespace }: CollectionPickerItem) => {
+      if (setNamespace) {
+        setNamespace(namespace);
+      }
+      setCollectionNamespace(namespace);
       setValue(canonicalCollectionId(id));
       setIsPickerOpen(false);
     },
-    [setValue],
+    [setValue, setNamespace, setCollectionNamespace],
   );
 
   return (
@@ -155,7 +170,7 @@ function FormCollectionPicker({
           }}
         >
           {isValidCollectionId(value) ? (
-            <ItemName id={value} type={type} />
+            <ItemName id={value} type={type} namespace={collectionNamespace} />
           ) : (
             placeholder
           )}
