@@ -76,7 +76,8 @@ describe("Table editing", () => {
 
       cy.log("publish the table and verify it's published");
       cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().button("Create my Library and publish").click();
+      H.modal().button("Create my Library").click();
+      H.modal().button("Publish this table").click();
       cy.wait("@publishTables");
       H.undoToast().within(() => {
         cy.findByText("Published").should("be.visible");
@@ -87,7 +88,7 @@ describe("Table editing", () => {
 
       cy.log("unpublish the table and verify it's unpublished");
       cy.findByRole("button", { name: /Unpublish/ }).click();
-      H.modal().button("Unpublish").click();
+      H.modal().button("Unpublish this table").click();
       cy.wait("@unpublishTables");
       H.DataStudio.nav().findByLabelText("Modeling").click();
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();

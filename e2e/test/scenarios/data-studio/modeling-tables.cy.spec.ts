@@ -44,7 +44,7 @@ describe("scenarios > data studio > modeling > tables", () => {
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.DataStudio.Tables.moreMenu().click();
       H.popover().findByText("Unpublish").click();
-      H.modal().findByText("Unpublish").click();
+      H.modal().findByText("Unpublish this table").click();
       H.DataStudio.Modeling.emptyPage().should("be.visible");
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
       H.DataStudio.Modeling.collectionPage()

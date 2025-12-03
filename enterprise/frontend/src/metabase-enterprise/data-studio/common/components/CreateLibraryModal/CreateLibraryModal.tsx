@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
-import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
@@ -113,9 +118,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             <FormErrorMessage />
           </Box>
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-          <Button variant="filled" type="submit">
-            {t`Create my Library`}
-          </Button>
+          <FormSubmitButton label={t`Create my Library`} variant="filled" />
         </Group>
       </Form>
     </FormProvider>
