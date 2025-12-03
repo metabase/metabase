@@ -296,5 +296,36 @@ describe("scenarios - embedding hub", () => {
       H.main().findByText("Set up tenants").click();
       cy.url().should("include", "/admin/tenants");
     });
+
+    it("should link to user strategy when tenants are disabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide");
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/people/user-strategy");
+    });
+
+    it("should link to tenants page when tenants are enabled", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide");
+      H.updateSetting("use-tenants", true);
+
+      H.main()
+        .findByText("Tenants")
+        .scrollIntoView()
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/tenants");
+    });
   });
 });
