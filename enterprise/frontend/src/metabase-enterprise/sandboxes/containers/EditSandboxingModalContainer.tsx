@@ -23,7 +23,7 @@ import {
   updatePolicy,
   updateTableSandboxingPermission,
 } from "../actions";
-import EditSandboxingModal from "../components/EditSandboxingModal";
+import { EditSandboxingModal } from "../components/EditSandboxingModal";
 import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
 
 interface EditSandboxingModalContainerProps {
@@ -32,6 +32,7 @@ interface EditSandboxingModalContainerProps {
   push: (path: string) => void;
   params: GroupTableAccessPolicyParams;
   route: any;
+  location: any;
   policyRequestState: any;
   fetchPolicy: (params: GroupTableAccessPolicyParams) => void;
   fetchUserAttributes: () => void;
@@ -41,11 +42,12 @@ interface EditSandboxingModalContainerProps {
   ) => void;
 }
 
-const EditSandboxingModalContainer = ({
+const EditSandboxingModalContainerInner = ({
   policy,
   push,
   params,
   route,
+  location,
   fetchPolicy,
   fetchUserAttributes,
   policyRequestState,
@@ -106,9 +108,7 @@ const mapDispatchToProps = {
   fetchUserAttributes,
   updateTableSandboxingPermission,
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
+export const EditSandboxingModalContainer = _.compose(
   withRouter,
   connect(mapStateToProps, mapDispatchToProps),
-)(EditSandboxingModalContainer);
+)(EditSandboxingModalContainerInner);
