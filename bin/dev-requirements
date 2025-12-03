@@ -27,6 +27,17 @@ print_optional_tool() {
     echo -e "      ${DIM}$url${NC}"
 }
 
+print_optional_tool() {
+    local cmd=$1
+    local name=$2
+    local url=$3
+    if command -v "$cmd" &> /dev/null; then
+        echo -e "    ${GREEN}✓${NC} $name ($url)"
+    else
+        echo -e "    ${RED}✗${NC} $name ($url)"
+    fi
+}
+
 # Detection functions
 detect_version_managers() {
     local managers=()
