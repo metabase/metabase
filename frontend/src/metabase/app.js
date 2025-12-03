@@ -38,6 +38,7 @@ import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
+import { getUserColorScheme } from "metabase/lib/color-scheme";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
@@ -78,7 +79,7 @@ function _init(reducers, getRoutes, callback) {
     <MetabaseReduxProvider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
-          <ThemeProvider>
+          <ThemeProvider initialColorScheme={getUserColorScheme()}>
             <GlobalStyles />
             <MetabotProvider>
               <Router history={history}>{routes}</Router>
