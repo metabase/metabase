@@ -2,7 +2,6 @@ import {
   canonicalCollectionId,
   canonicalCollectionIdOrEntityId,
   getCollectionPathAsString,
-  isDedicatedTenantCollectionRoot,
   isExamplesCollection,
   isItemCollection,
   isReadOnlyCollection,

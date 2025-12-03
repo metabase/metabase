@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import Card from "metabase/common/components/Card";
 import { Grid } from "metabase/common/components/Grid";
@@ -7,7 +9,6 @@ import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Loader } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
-import { t } from "ttag";
 
 import {
   CardContent,

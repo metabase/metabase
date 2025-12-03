@@ -3,7 +3,6 @@ import { useDeepCompareEffect } from "react-use";
 
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type { CollectionItemModel } from "metabase-types/api";
 
 import {
   DelayedLoadingSpinner,

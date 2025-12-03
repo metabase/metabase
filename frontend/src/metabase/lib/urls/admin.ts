@@ -1,9 +1,8 @@
 import type {
-  DatabaseId,
   BaseUser,
+  DatabaseId,
   SchemaName,
   TableId,
-  UserId,
 } from "metabase-types/api";
 
 export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
