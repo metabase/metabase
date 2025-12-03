@@ -20,10 +20,11 @@ print_optional_tool() {
     local name=$2
     local url=$3
     if command -v "$cmd" &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} $name ($url)"
+        echo -e "    ${GREEN}✓${NC} $name"
     else
-        echo -e "    ${RED}✗${NC} $name ($url)"
+        echo -e "    ${RED}✗${NC} $name"
     fi
+    echo -e "      ${DIM}$url${NC}"
 }
 
 # Detection functions
