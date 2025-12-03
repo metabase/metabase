@@ -129,20 +129,27 @@
                             (throw e))))]
       (if (:retry result)
         (recur (inc attempt))
-        (let [workspace (:workspace result)]
-          (ws.isolation/ensure-database-isolation! workspace database)
-          ;; temp hack to avoid running mirror and failing if there are no checkouts
-          (if (not-empty (:check-outs graph))
-            (let [graph (ws.mirroring/mirror-entities! workspace database graph)
-                  input-tables (when-let [table-ids (->> (:inputs graph)
-                                                         (filter #(= :table (:type %)))
-                                                         (map :id)
-                                                         seq)]
-                                 (t2/select :model/Table :id [:in table-ids]))]
-              (ws.isolation/grant-read-access-to-tables! database (-> workspace :database_details :user) input-tables)
-              (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
-              (assoc workspace :graph graph))
-            (assoc workspace :graph {})))))))
+        (let [{:keys [schema
+                      database_details]} (ws.isolation/ensure-database-isolation! (:workspace result) database)
+              workspace                  (assoc (:workspace result)
+                                                :schema schema
+                                                :database_details database_details)
+              ;; temp hack to avoid running mirror and failing if there are no checkouts
+              graph                      (if (not-empty (:check-outs graph))
+                                           (let [graph (ws.mirroring/mirror-entities! workspace database graph)
+                                                 input-tables (when-let [table-ids (->> (:inputs graph)
+                                                                                        (filter #(= :table (:type %)))
+                                                                                        (map :id)
+                                                                                        seq)]
+                                                                (t2/select :model/Table :id [:in table-ids]))]
+                                             (ws.isolation/grant-read-access-to-tables! database (:user database_details) input-tables)
+                                             graph)
+                                           {})]
+          (t2/update! :model/Workspace {:id (:id workspace)}
+                      {:graph graph
+                       :schema schema
+                       :database_details database_details})
+          (assoc workspace :graph graph))))))
 
 ;; TODO internal: test!
 (defn create-workspace!

@@ -18,4 +18,3 @@
 
       (testing "sanity check that it's not swapped outside of the macros"
         (is (not (db-swapped?)))))))
-

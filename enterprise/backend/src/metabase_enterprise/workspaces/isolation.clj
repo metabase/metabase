@@ -92,12 +92,7 @@
 (defn ensure-database-isolation!
   "Wrapper around the driver method, to make migrations easier in future."
   [workspace database]
-  ;; TODO: Make this check the ws existence aka fail closed ~atm
-  (let [{:keys [schema database_details]} (init-workspace-database-isolation! database workspace)]
-    (t2/update! :model/Workspace (:id workspace) {:schema           schema
-                                                  :database_details database_details})
-    {:schema           schema
-     :database_details database_details}))
+  (init-workspace-database-isolation! database workspace))
 
 (defn do-with-workspace-isolation
   "Impl of* with-workspace-isolation*."
