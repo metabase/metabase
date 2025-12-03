@@ -260,8 +260,8 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
     }
   };
 
-  // Determine the savingModel based on question type
-  const savingModel = question.type() === "model" ? "model" : "question";
+  // Determine the savingModel based on card type
+  const savingModel = card.type === "model" ? "model" : "question";
 
   return (
     <MoveModal

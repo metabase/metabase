@@ -6,7 +6,8 @@ import {
   setupCollectionItemsEndpoint,
   setupDashboardItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
-  setupTenantRootCollectionItemsEndpoint,
+  setupRootCollectionItemsEndpoint,
+  setupTenantCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -239,7 +240,7 @@ const collectionTree: NestedCollectionItem[] = [
 
 const tenantCollectionsTree: NestedCollectionItem[] = [
   {
-    name: "Shared Tenant Collection",
+    name: "tcoll",
     id: 6,
     location: "/",
     effective_location: "/",
@@ -254,7 +255,7 @@ const tenantCollectionsTree: NestedCollectionItem[] = [
         id: 7,
         location: "/6/",
         effective_location: "/6/",
-        name: "Tenant Sub Collection",
+        name: "tsubcoll",
         model: "collection",
         is_personal: false,
         is_shared_tenant_collection: true,
@@ -278,6 +279,14 @@ const flattenCollectionTree = (
   ]);
 };
 
+const mockCollectionToCollectionItem = (c: NestedCollectionItem) =>
+  createMockCollectionItem({
+    ...c,
+    ...(c.is_shared_tenant_collection && {
+      namespace: "shared-tenant-collection",
+    }),
+  });
+
 const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
   node.forEach((node) => {
     if (!node.descendants) {
@@ -287,13 +296,36 @@ const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
       .filter((item) => !item.dashboard_id) //We don't show dashboard items in collection item endpoints
       .map((c: NestedCollectionItem) => createMockCollectionItem(c));
 
-    setupCollectionItemsEndpoint({
-      collection: createMockCollection({ id: node.id }),
+    // Skip root since it's handled separately (tenant-aware)
+    if (node.id !== "root") {
+      setupCollectionItemsEndpoint({
+        collection: createMockCollection({ id: node.id }),
+        collectionItems,
+      });
+    }
+
+    if (collectionItems.length > 0) {
+      setupCollectionTreeMocks(node.descendants);
+    }
+  });
+};
+
+const setupTenantCollectionTreeMocks = (node: NestedCollectionItem[]): void => {
+  node.forEach((n) => {
+    if (!n.descendants) {
+      return;
+    }
+    const collectionItems = n.descendants
+      .filter((item) => !item.dashboard_id) //We don't show dashboard items in collection item endpoints
+      .map((c: NestedCollectionItem) => mockCollectionToCollectionItem(c));
+
+    setupTenantCollectionItemsEndpoint({
+      collection: createMockCollection({ id: n.id }),
       collectionItems,
     });
 
     if (collectionItems.length > 0) {
-      setupCollectionTreeMocks(node.descendants);
+      setupTenantCollectionTreeMocks(n.descendants);
     }
   });
 };
@@ -338,15 +370,22 @@ const commonSetup = ({ isEE = false }: { isEE?: boolean } = {}) => {
 
   setupCollectionTreeMocks(collectionTree);
 
+  setupRootCollectionItemsEndpoint({
+    rootCollectionItems:
+      collectionTree[0].descendants
+        ?.filter((item) => !item.dashboard_id)
+        .map(createMockCollectionItem) ?? [],
+    tenantRootItems: isEE
+      ? [mockCollectionToCollectionItem(tenantCollectionsTree[0])]
+      : [],
+  });
+
   if (isEE) {
     const allTenantItems = flattenCollectionTree(tenantCollectionsTree).map(
       createMockCollectionItem,
     );
 
-    setupCollectionTreeMocks(tenantCollectionsTree);
-    setupTenantRootCollectionItemsEndpoint({
-      collectionItems: [createMockCollectionItem(tenantCollectionsTree[0])],
-    });
+    setupTenantCollectionTreeMocks(tenantCollectionsTree);
 
     allTenantItems.forEach((item) => {
       if (item.model === "collection") {

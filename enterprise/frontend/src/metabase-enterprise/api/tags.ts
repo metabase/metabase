@@ -1,5 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { TagType } from "metabase/api/tags";
 import {
   TAG_TYPES,
   provideCollectionTags,
@@ -28,8 +29,6 @@ import type {
   TransformRun,
   TransformTag,
 } from "metabase-types/api";
-
-import type { TagType } from "metabase/api/tags";
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,

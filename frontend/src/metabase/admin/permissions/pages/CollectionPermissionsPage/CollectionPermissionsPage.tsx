@@ -160,7 +160,7 @@ export const CollectionPermissionsPage = _.compose(
     entityQuery: collectionsQuery,
   }),
   Collections.loadList({
-    entityQuery: { ...collectionsQuery, "include-tenant-collections": true },
+    entityQuery: { ...collectionsQuery, namespace: "shared-tenant-collection" },
   }),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

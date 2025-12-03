@@ -33,6 +33,7 @@ export const createMockUser = (opts?: Partial<User>): User => {
     permissions: createMockUserPermissions(),
     can_write_any_collection: true,
     tenant_id: null,
+    tenant_collection_id: null,
     ...opts,
   };
 };

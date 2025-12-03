@@ -225,7 +225,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
               ),
               warning: getTenantCollectionWarning(
                 group.id,
-                collection,
+                collection as ExpandedCollection,
                 permissions,
               ),
               confirmations,

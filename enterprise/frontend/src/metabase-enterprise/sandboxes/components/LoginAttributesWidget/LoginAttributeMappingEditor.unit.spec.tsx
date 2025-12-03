@@ -1,3 +1,4 @@
+import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -286,6 +287,7 @@ describe("LoginAttributeMappingEditor", () => {
         role: "admin",
         type: "insect",
         color: "green",
+        personal: "secret",
       });
     });
 
@@ -295,7 +297,7 @@ describe("LoginAttributeMappingEditor", () => {
       await changeInput("green", "blue");
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
-        session: "xyz789",
+        session: "abc123",
         role: "admin",
         type: "insect",
         color: "blue",
@@ -311,7 +313,7 @@ describe("LoginAttributeMappingEditor", () => {
         "@tenant.slug": "bug_gym",
         session: "abc123",
         role: "superuser",
-        type: "ick",
+        type: "insect",
         color: "green",
         personal: "secret",
       });
@@ -323,6 +325,8 @@ describe("LoginAttributeMappingEditor", () => {
       await changeInput("insect", "ick");
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
+        session: "abc123",
+        role: "admin",
         type: "ick",
         color: "green",
         personal: "secret",
@@ -333,41 +337,51 @@ describe("LoginAttributeMappingEditor", () => {
       const { onChange } = setup({ structuredAttributes });
 
       expect(await screen.findByDisplayValue("admin")).toBeInTheDocument();
-      const revertButtons = await screen.findAllByLabelText("refresh icon");
-      // Click the revert button for the JWT attribute (role)
-      await userEvent.click(revertButtons[0]);
 
-      expect(await screen.findByDisplayValue("user")).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("admin")).not.toBeInTheDocument();
+      const revertButtons = await screen.findAllByTestId("revert-mapping");
+      expect(revertButtons).toHaveLength(2);
+
+      await userEvent.click(revertButtons[1]);
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("user")).toBeInTheDocument();
+      });
 
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
-        type: "bug",
-        color: "green",
         session: "abc123",
         role: "user",
+        type: "insect",
+        color: "green",
         personal: "secret",
       });
+
+      expect(screen.queryByDisplayValue("admin")).not.toBeInTheDocument();
     });
 
     it("can revert a tenant attribute value", async () => {
       const { onChange } = setup({ structuredAttributes });
 
       expect(await screen.findByDisplayValue("insect")).toBeInTheDocument();
-      const revertButton = await screen.findByLabelText("refresh icon");
-      await userEvent.click(revertButton);
 
-      expect(await screen.findByDisplayValue("bug")).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("insect")).not.toBeInTheDocument();
+      const revertButtons = await screen.findAllByTestId("revert-mapping");
+
+      await userEvent.click(revertButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue("bug")).toBeInTheDocument();
+      });
 
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
+        session: "abc123",
+        role: "admin",
         type: "bug",
         color: "green",
-        session: "abc123",
-        role: "user",
         personal: "secret",
       });
+
+      expect(screen.queryByDisplayValue("insect")).not.toBeInTheDocument();
     });
   });
 

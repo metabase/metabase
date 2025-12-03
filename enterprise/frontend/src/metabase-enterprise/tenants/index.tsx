@@ -86,15 +86,15 @@ export function initializePlugin() {
                 modal={(props) => <EditUserModal {...props} external />}
                 noWrap
               />
-              {/* @ts-expect-error - params prop can't be infered */}
               <ModalRoute
                 path="deactivate"
+                // @ts-expect-error - params prop can't be infered
                 modal={UserActivationModal}
                 noWrap
               />
-              {/* @ts-expect-error - params prop can't be infered */}
               <ModalRoute
                 path="reactivate"
+                // @ts-expect-error - params prop can't be infered
                 modal={UserActivationModal}
                 noWrap
               />
@@ -108,17 +108,21 @@ export function initializePlugin() {
             </Route>
           </Route>
           <Route path=":tenantId" component={TenantsListingApp}>
-            {/* @ts-expect-error - params prop can't be infered */}
-            <ModalRoute path="edit" modal={EditTenantModal} noWrap />
-            {/* @ts-expect-error - params prop can't be infered */}
+            <ModalRoute
+              path="edit"
+              // @ts-expect-error - params prop can't be infered
+              modal={EditTenantModal}
+              noWrap
+            />
             <ModalRoute
               path="deactivate"
+              // @ts-expect-error - params prop can't be infered
               modal={TenantActivationModal}
               noWrap
             />
-            {/* @ts-expect-error - params prop can't be infered */}
             <ModalRoute
               path="reactivate"
+              // @ts-expect-error - params prop can't be infered
               modal={TenantActivationModal}
               noWrap
             />

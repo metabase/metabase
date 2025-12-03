@@ -269,7 +269,7 @@ const ValueInput = ({
   );
 };
 
-const infoText = (source?: "system" | "jwt" | "user"): string => {
+const infoText = (source?: "system" | "jwt" | "user" | "tenant"): string => {
   switch (source) {
     case "system":
       return t`This attribute is system defined`;

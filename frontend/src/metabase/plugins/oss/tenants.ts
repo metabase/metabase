@@ -1,8 +1,9 @@
 import type React from "react";
 
-import { PluginPlaceholder } from "../components/PluginPlaceholder";
-import type { CollectionItemListProps } from "../types";
+import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker/types";
 import type { Collection, Group, User } from "metabase-types/api";
+
+import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
 const getDefaultPluginTenants = () => ({
   userStrategyRoute: null as React.ReactElement | null,
@@ -35,10 +36,15 @@ export const PLUGIN_TENANTS: {
   isExternalUser: (user?: Pick<User, "tenant_id">) => boolean;
   isTenantCollection: (collection: Collection) => boolean;
   PeopleNav: React.ReactElement | null;
-  ReactivateExternalUserButton: (props: { user: User }) => React.ReactElement | null;
+  ReactivateExternalUserButton: (props: {
+    user: User;
+  }) => React.ReactElement | null;
   TenantGroupHintIcon: React.ComponentType;
   MainNavSharedCollections: React.ComponentType;
-  TenantCollectionItemList: (props: CollectionItemListProps) => React.ReactElement | null;
+  TenantCollectionItemList: (
+    props: CollectionItemListProps,
+  ) => React.ReactElement | null;
+  TenantCollectionList: React.ComponentType;
 } = getDefaultPluginTenants();
 
 /**

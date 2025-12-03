@@ -32,7 +32,7 @@ export const GroupsListingApp = ({
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const { data, isLoading, error } = useListPermissionsGroupsQuery();
+  const { data, isLoading, error } = useListPermissionsGroupsQuery({});
   const groups = useMemo(() => {
     const [externalGroups, internalGroups] = _.partition(
       data ?? [],

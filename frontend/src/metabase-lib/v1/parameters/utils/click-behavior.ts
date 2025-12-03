@@ -31,7 +31,7 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Parameter,
-  ParameterValuesMap,
+  ParameterValueOrArray,
   QuestionDashboardCard,
   UserAttributeMap,
 } from "metabase-types/api";

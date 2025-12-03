@@ -231,10 +231,10 @@ export const CollectionPickerModal = ({
             miw="9.5rem"
             onClick={openCreateDashboardDialog}
             leftSection={<Icon name="add_to_dash" />}
-            disabled={
+            disabled={Boolean(
               selectedItem?.can_write === false ||
-              (selectedItem && isNamespaceRoot(selectedItem))
-            }
+                (selectedItem && isNamespaceRoot(selectedItem)),
+            )}
           >
             {t`New dashboard`}
           </Button>
@@ -273,7 +273,7 @@ export const CollectionPickerModal = ({
           options={options}
           path={collectionsPath}
           ref={pickerRef}
-          shouldDisableItem={shouldDisableItemProp}
+          shouldDisableItem={shouldDisableItem}
           onInit={handleInit}
           onItemSelect={onItemSelect}
           onPathChange={setCollectionsPath}

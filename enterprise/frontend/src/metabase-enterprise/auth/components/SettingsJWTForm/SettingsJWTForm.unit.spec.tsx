@@ -48,6 +48,7 @@ describe("SettingsJWTForm", () => {
     "jwt-attribute-firstname": "John",
     "jwt-attribute-lastname": "Doe",
     "jwt-attribute-groups": "grouper",
+    "jwt-attribute-tenant": null,
     "jwt-enabled": true,
     "jwt-group-sync": true,
   };

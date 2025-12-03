@@ -19,15 +19,13 @@ describe("tenant collections", () => {
     );
 
     expect(
-      await screen.findByRole("link", { name: /Shared Tenant Collection/ }),
+      await screen.findByRole("link", { name: /tcoll/ }),
     ).toBeInTheDocument();
 
-    await userEvent.click(
-      screen.getByRole("link", { name: /Shared Tenant Collection/ }),
-    );
+    await userEvent.click(screen.getByRole("link", { name: /tcol/ }));
 
     expect(
-      await screen.findByRole("link", { name: /Tenant Sub Collection/ }),
+      await screen.findByRole("link", { name: /tsubcol/ }),
     ).toBeInTheDocument();
   });
 
@@ -43,12 +41,13 @@ describe("tenant collections", () => {
       await screen.findByRole("link", { name: /Tenant Collections/ }),
     ).toHaveAttribute("data-active", "true");
 
-    expect(
-      await screen.findByRole("link", { name: /Shared Tenant Collection/ }),
-    ).toHaveAttribute("data-active", "true");
+    expect(await screen.findByRole("link", { name: /tcol/ })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
 
     expect(
-      await screen.findByRole("link", { name: /Tenant Sub Collection/ }),
+      await screen.findByRole("link", { name: /tsubcol/ }),
     ).toHaveAttribute("data-active", "true");
   });
 });

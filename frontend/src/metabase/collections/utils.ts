@@ -227,7 +227,10 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
     !isReadOnlyCollection(item) &&
-    !(isItemCollection(item) && (isRootPersonalCollection(item) || isDedicatedTenantCollectionRoot(item))) &&
+    !(
+      isItemCollection(item) &&
+      (isRootPersonalCollection(item) || isDedicatedTenantCollectionRoot(item))
+    ) &&
     !isLibraryCollection(item as Pick<Collection, "type">) &&
     item.model !== "table" &&
     !item.archived

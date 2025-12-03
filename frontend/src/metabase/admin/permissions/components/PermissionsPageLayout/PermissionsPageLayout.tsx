@@ -40,7 +40,11 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab = "data" | "collections" | "application";
+type PermissionsPageTab =
+  | "data"
+  | "collections"
+  | "application"
+  | "tenant-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
@@ -136,6 +140,12 @@ export function PermissionsPageLayout({
           />
         )}
 
+        <LeaveRouteConfirmModal
+          isEnabled={Boolean(isDirty)}
+          route={route}
+          onConfirm={() => onLoad?.()}
+        />
+
         <ConfirmModal
           opened={saveError != null}
           onClose={clearSaveError}
@@ -156,8 +166,6 @@ export function PermissionsPageLayout({
           confirmButtonText={t`Discard`}
           closeButtonText={t`Cancel`}
         />
-
-        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
 
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />

@@ -106,7 +106,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
 const getDefaultAdminUserMenuItems = (): Array<
   (user: User) => React.ReactNode
 > => [];
-const getDefaultAdminUserMenuRoutes = () => [];
+const getDefaultAdminUserMenuRoutes = (): (() => React.ReactNode)[] => [];
 
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
@@ -135,14 +135,17 @@ const getDefaultFeatureLevelPermissions = () => ({
     _entityId: DatabaseEntityId,
     _groupId: number,
     _isAdmin: boolean,
+    _isExternal: boolean,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
+    _permissionView?: "group" | "database",
   ) => {
     return [] as any;
   },
-  getDataColumns: (_subject: PermissionSubject) => [] as any,
+  getDataColumns: (_subject: PermissionSubject, _isExternal?: boolean) =>
+    [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),

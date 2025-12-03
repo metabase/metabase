@@ -14,15 +14,24 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Select a collection to see its permissions"),
       ).toBeVisible();
       expect(await screen.findByText("Our analytics")).toBeVisible();
-      expect(await screen.findByText("Collection One")).toBeVisible();
-      expect(await screen.findByText("Collection Two")).toBeVisible();
+      const collectionItems = await screen.findAllByRole("menuitem", {
+        name: /Collection One/,
+      });
+      expect(collectionItems[0]).toBeVisible();
+
+      const collectionTwoItems = await screen.findAllByRole("menuitem", {
+        name: /Collection Two/,
+      });
+      expect(collectionTwoItems[0]).toBeVisible();
     });
 
     it("should allow expansion of nested collections", async () => {
       await setup();
 
-      const collection1 = await screen.findByText("Collection One");
-      expect(screen.queryByText("Nested One")).not.toBeInTheDocument();
+      const collection1 = (
+        await screen.findAllByRole("menuitem", { name: /Collection One/ })
+      )[0];
+      expect(screen.queryAllByText("Nested One")).toHaveLength(0);
       await userEvent.click(collection1);
       expect(await screen.findByText("Nested One")).toBeInTheDocument();
     });
@@ -30,8 +39,12 @@ describe("Admin > CollectionPermissionsPage", () => {
     it("should not show personal collection", async () => {
       await setup();
 
-      expect(await screen.findByText("Collection One")).toBeInTheDocument();
-      expect(screen.queryByText("Personal")).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("menuitem", { name: /Collection One/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Personal/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("should show a permissions table for the selected collection", async () => {
@@ -41,8 +54,12 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Select a collection to see its permissions"),
       ).toBeVisible();
 
-      await userEvent.click(await screen.findByText("Collection One"));
-      await userEvent.click(await screen.findByText("Nested One"));
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Nested One/ }))[0],
+      );
 
       expect(
         await screen.findByText("Permissions for Nested One"),
@@ -64,8 +81,12 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Select a collection to see its permissions"),
       ).toBeVisible();
 
-      await userEvent.click(await screen.findByText("Collection One"));
-      await userEvent.click(await screen.findByText("Nested One"));
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Nested One/ }))[0],
+      );
 
       // change Other users from no access to view
       await userEvent.click(await screen.findByText("No access"));
@@ -116,7 +137,9 @@ describe("Admin > CollectionPermissionsPage", () => {
         await screen.findByText("Select a collection to see its permissions"),
       ).toBeVisible();
 
-      await userEvent.click(await screen.findByText("Collection One"));
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
 
       // change other users from read to curate on collection one
       // should also change permissions on nested one from no access to curate
@@ -171,7 +194,9 @@ describe("Admin > CollectionPermissionsPage", () => {
     it("should show toggle to change sub-collection permissions if the collection has sub-collections", async () => {
       await setup();
 
-      await userEvent.click(await screen.findByText("Collection One"));
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
       await userEvent.click(await screen.findByText("View"));
 
       expect(
@@ -182,8 +207,12 @@ describe("Admin > CollectionPermissionsPage", () => {
     it("should not show toggle to change sub-collection permissions if the collection does not have sub-collections", async () => {
       await setup();
 
-      await userEvent.click(await screen.findByText("Collection One"));
-      await userEvent.click(await screen.findByText("Nested One"));
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Nested One/ }))[0],
+      );
       await userEvent.click(await screen.findByText("View"));
 
       expect(

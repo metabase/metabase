@@ -20,7 +20,10 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import type { CollectionPickerItem, CollectionPickerStatePath } from "../types";
+import type {
+  CollectionPickerItem,
+  CollectionPickerStatePath,
+} from "../../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 
