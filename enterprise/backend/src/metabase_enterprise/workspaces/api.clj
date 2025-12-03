@@ -2,6 +2,7 @@
   "`/api/ee/workspace/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.dag :as ws.dag]
@@ -377,6 +378,24 @@
       (ws.common/remove-entities! workspace to-remove))
 
     {:contents (:contents (t2/hydrate (t2/select-one :model/Workspace :id id) :contents))}))
+
+(api.macros/defendpoint :post "/:id/validate-target"
+  "Validate the name of a transform target."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [db_id target]} :- [:map
+                              [:db_id {:optional true} ms/PositiveInt]
+                              [:target ::transforms.schema/transform-target]]]
+  (cond
+    (transforms.util/target-table-exists? {:target (merge {:database db_id} target)
+                                           :source {:type :python}})
+    {:status 403 :body (deferred-tru "A table with that name already exists.")}
+
+    (some #(= (:name (:target %)) (-> target :name)) #p (t2/select :model/Transform :workspace_id id))
+    {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table.")}
+
+    :else
+    {:status 200 :body "OK"}))
 
 (api.macros/defendpoint :post "/:id/transform"
   "Create a new transform directly within a workspace.
