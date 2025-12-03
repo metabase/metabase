@@ -56,7 +56,7 @@ export const SdkIframeEmbedRoute = () => {
     return null;
   }
 
-  const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
+  const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled();
 
   const { isGuest, theme, locale } = embedSettings;
   const isProduction = !embedSettings._isLocalhost;
