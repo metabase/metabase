@@ -1618,7 +1618,7 @@
                    :row_count 2}
                   (mt/user-http-request :rasta :post 202 "dataset"
                                         (mt/mbql-query long_table {:limit 5}))))))
-      (testing "with filtering (verifies sandbox is actually applied)"
+      (testing "with row filtering (verifies sandbox is actually applied)"
         (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT * FROM LONG_TABLE WHERE LONG_TABLE.COLUMN_NAME_WITH_AN_INCREDIBLY_VERBOSE_AND_EXCEEDINGLY_DETAILED_DESCRIPTION_THAT_NEVER_SEEMS_TO_END LIKE 'First%'"})}}}
           (let [result (mt/user-http-request :rasta :post 202 "dataset"
                                              (mt/mbql-query long_table))]
@@ -1627,4 +1627,27 @@
                     result))
             (is (= "First row, first column"
                    ;; The first column (index 0) is the auto-generated ID, the text column is at index 1
-                   (-> result :data :rows first second)))))))))
+                   (-> result :data :rows first second))))))
+      (testing "with column restriction (only returns subset of columns)"
+        (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT COLUMN_NAME_WITH_AN_INCREDIBLY_VERBOSE_AND_EXCEEDINGLY_DETAILED_DESCRIPTION_THAT_NEVER_SEEMS_TO_END FROM LONG_TABLE"})}}}
+          (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                             (mt/mbql-query long_table))]
+            (is (=? {:status "completed"
+                     :row_count 2}
+                    result))
+            ;; Should only have 1 column (the long-named one), not 2 text columns + ID
+            (is (= 1 (count (-> result :data :cols))))
+            (is (= [["First row, first column"]
+                    ["Second row, first column"]]
+                   (-> result :data :rows))))))
+      (testing "with attribute-based sandbox (no query, just remappings)"
+        (met/with-gtaps! {:gtaps {:long_table {:remappings {:col1 ["variable" [:field (data/id :long_table :column_name_with_an_incredibly_verbose_and_exceedingly_detailed_description_that_never_seems_to_end) nil]]}}}
+                          :attributes {:col1 "First row, first column"}}
+          (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                             (mt/mbql-query long_table))]
+            (is (=? {:status "completed"
+                     :row_count 1}
+                    result))
+            ;; Verify we got the correct row matching the attribute filter
+            (is (= ["First row, first column" "First row, second column"]
+                   (->> result :data :rows first (drop 1))))))))))
