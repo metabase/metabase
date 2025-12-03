@@ -9,7 +9,7 @@ describe("scenarios > question > detail visualization + custom column preview", 
     cy.signInAsAdmin();
   });
 
-  it("should render a newly added custom column when previewing Detail visualization", () => {
+  it("should render a newly added custom column when previewing Detail visualization (metabase#63181)", () => {
     const CUSTOM_COLUMN_NAME = "Tax custom column";
 
     // Create a simple question and set visualization to "Detail" (Object Detail)
