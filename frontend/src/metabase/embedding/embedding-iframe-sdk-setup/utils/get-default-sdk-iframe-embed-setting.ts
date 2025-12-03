@@ -8,20 +8,27 @@ import type {
   MetabotEmbedOptions,
   QuestionEmbedOptions,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
 } from "../types";
 
+import { getCommonEmbedSettings } from "./get-common-embed-settings";
+
 export const getDefaultSdkIframeEmbedSettings = ({
+  initialState,
   experience,
   resourceId,
+  isGuestEmbedsEnabled,
 }: {
+  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;
+  isGuestEmbedsEnabled: boolean;
 }): SdkIframeEmbedSetupSettings => {
-  const templateDefaults = match(experience)
+  const defaults = match(experience)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
@@ -68,8 +75,13 @@ export const getDefaultSdkIframeEmbedSettings = ({
     .exhaustive();
 
   return {
-    ...templateDefaults,
     useExistingUserSession: true,
+    ...defaults,
+    ...getCommonEmbedSettings({
+      state: initialState,
+      experience,
+      isGuestEmbedsEnabled,
+    }),
   };
 };
 

@@ -1,4 +1,3 @@
-import { useListCollectionsTreeQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import {
   canUserCreateNativeQueries,
@@ -19,21 +18,11 @@ export function ModelingSidebar({
   selectedSnippetId,
   isGlossaryActive,
 }: ModelingSidebarProps) {
-  const { data: collections = [], isLoading } = useListCollectionsTreeQuery({
-    "exclude-other-user-collections": true,
-    "exclude-archived": true,
-    "include-library": true,
-  });
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
-  if (isLoading) {
-    return null;
-  }
-
   return (
     <ModelingSidebarView
-      collections={collections}
       selectedCollectionId={selectedCollectionId}
       selectedSnippetId={selectedSnippetId}
       isGlossaryActive={isGlossaryActive}

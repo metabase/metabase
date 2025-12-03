@@ -252,7 +252,12 @@ export const useCommandPaletteBasicActions = ({
         perform: () =>
           openNewModalWithProps<
             Pick<SdkIframeEmbedSetupModalProps, "initialState">
-          >("embed"),
+          >("embed", {
+            initialState: {
+              isGuest: true,
+              useExistingUserSession: true,
+            },
+          }),
       });
     }
 
