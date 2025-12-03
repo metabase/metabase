@@ -26,6 +26,7 @@ const setup = ({
     is_superuser: true,
   }),
   tenants = [],
+  useTenants = true,
 }: {
   external?: boolean;
   showInviteButton?: boolean;
@@ -33,11 +34,13 @@ const setup = ({
   users?: User[];
   currentUser?: User;
   tenants?: Tenant[];
+  useTenants?: boolean;
 } = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       tenants: true,
     }),
+    "use-tenants": useTenants,
   });
 
   setupEnterprisePlugins();
@@ -72,6 +75,32 @@ const setup = ({
     },
   );
 };
+
+describe("page title", () => {
+  it("should show 'People' when tenants is disabled", async () => {
+    setup({ useTenants: false });
+
+    expect(
+      await screen.findByRole("heading", { name: "People", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
+  it("should show 'Internal Users' when tenants is enabled and viewing internal users", async () => {
+    setup({ useTenants: true, external: false });
+
+    expect(
+      await screen.findByRole("heading", { name: "Internal Users", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
+  it("should show 'External Users' when tenants is enabled and viewing external users", async () => {
+    setup({ useTenants: true, external: true });
+
+    expect(
+      await screen.findByRole("heading", { name: "External Users", level: 1 }),
+    ).toBeInTheDocument();
+  });
+});
 
 describe("people table", () => {
   it("should show group association when viewing internal users", async () => {
