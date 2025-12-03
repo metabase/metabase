@@ -163,16 +163,39 @@ const getDefaultFeatureLevelPermissions = () => ({
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS =
   getDefaultFeatureLevelPermissions();
 
-const getDefaultApplicationPermissions = () => ({
+export interface ApplicationPermissionDefinition {
+  key: string;
+  columnName: string;
+  columnHint?: string;
+}
+
+interface ApplicationPermissionsPlugin {
+  getRoutes: () => ReactNode;
+  tabs: Array<{ name: string; value: string }>;
+  permissions: ApplicationPermissionDefinition[];
+  registerPermission: (definition: ApplicationPermissionDefinition) => void;
+  selectors: {
+    canAccessSettings: (state: any) => boolean;
+    canManageSubscriptions: (state: any) => boolean;
+    canAccessDataStudio: (state: any) => boolean;
+  };
+}
+
+const getDefaultApplicationPermissions = (): ApplicationPermissionsPlugin => ({
   getRoutes: (): ReactNode => null,
-  tabs: [] as any,
+  tabs: [],
+  permissions: [],
+  registerPermission(definition: ApplicationPermissionDefinition) {
+    this.permissions.push(definition);
+  },
   selectors: {
     canAccessSettings: (_state: any) => false,
     canManageSubscriptions: (_state: any) => true,
+    canAccessDataStudio: (_state: any) => false,
   },
 });
 
-export const PLUGIN_APPLICATION_PERMISSIONS =
+export const PLUGIN_APPLICATION_PERMISSIONS: ApplicationPermissionsPlugin =
   getDefaultApplicationPermissions();
 
 const getDefaultGroupManagers = (): PluginGroupManagersType => ({
@@ -259,9 +282,13 @@ export function reinitialize() {
     PLUGIN_FEATURE_LEVEL_PERMISSIONS,
     getDefaultFeatureLevelPermissions(),
   );
-  Object.assign(
-    PLUGIN_APPLICATION_PERMISSIONS,
-    getDefaultApplicationPermissions(),
-  );
+  PLUGIN_APPLICATION_PERMISSIONS.permissions = [];
+  PLUGIN_APPLICATION_PERMISSIONS.tabs = [];
+  PLUGIN_APPLICATION_PERMISSIONS.getRoutes = () => null;
+  PLUGIN_APPLICATION_PERMISSIONS.selectors = {
+    canAccessSettings: (_state: any) => false,
+    canManageSubscriptions: (_state: any) => true,
+    canAccessDataStudio: (_state: any) => false,
+  };
   Object.assign(PLUGIN_GROUP_MANAGERS, getDefaultGroupManagers());
 }

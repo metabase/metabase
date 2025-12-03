@@ -2,21 +2,21 @@ import { useCallback, useEffect } from "react";
 import type { Route } from "react-router";
 import _ from "underscore";
 
+import {
+  initializeApplicationPermissions,
+  saveApplicationPermissions,
+  updateApplicationPermission,
+} from "metabase/admin/permissions/application-permissions/reducer";
+import {
+  getApplicationPermissionEditor,
+  getIsDirty,
+} from "metabase/admin/permissions/application-permissions/selectors";
+import type { ApplicationPermissionsState } from "metabase/admin/permissions/application-permissions/types";
 import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import Groups from "metabase/entities/groups";
 import { connect } from "metabase/lib/redux";
-import {
-  initializeApplicationPermissions,
-  saveApplicationPermissions,
-  updateApplicationPermission,
-} from "metabase-enterprise/application_permissions/reducer";
-import {
-  getApplicationPermissionEditor,
-  getIsDirty,
-} from "metabase-enterprise/application_permissions/selectors";
-import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
 import type { GroupId } from "metabase-types/api";
 
 const mapDispatchToProps = {
@@ -69,6 +69,7 @@ const ApplicationPermissionsPage = ({
     },
     [updatePermission],
   );
+
   return (
     <PermissionsPageLayout
       tab="application"

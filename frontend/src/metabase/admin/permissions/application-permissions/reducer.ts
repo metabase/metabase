@@ -13,16 +13,16 @@ import { addUndo } from "metabase/redux/undo";
 import { ApplicationPermissionsApi } from "./api";
 
 const INITIALIZE_APPLICATION_PERMISSIONS =
-  "metabase-enterprise/general-permissions/INITIALIZE_APPLICATION_PERMISSIONS";
+  "metabase/application-permissions/INITIALIZE_APPLICATION_PERMISSIONS";
 export const initializeApplicationPermissions = createThunkAction(
   INITIALIZE_APPLICATION_PERMISSIONS,
-  () => async (dispatch) => {
+  () => async (dispatch: any) => {
     dispatch(loadApplicationPermissions());
   },
 );
 
 const LOAD_APPLICATION_PERMISSIONS =
-  "metabase-enterprise/general-permissions/LOAD_APPLICATION_PERMISSIONS";
+  "metabase/application-permissions/LOAD_APPLICATION_PERMISSIONS";
 export const loadApplicationPermissions = createThunkAction(
   LOAD_APPLICATION_PERMISSIONS,
   () => () => {
@@ -31,10 +31,18 @@ export const loadApplicationPermissions = createThunkAction(
 );
 
 const UPDATE_APPLICATION_PERMISSION =
-  "metabase-enterprise/general-permissions/UPDATE_APPLICATION_PERMISSION";
+  "metabase/application-permissions/UPDATE_APPLICATION_PERMISSION";
 export const updateApplicationPermission = createAction(
   UPDATE_APPLICATION_PERMISSION,
-  ({ groupId, permission, value }) => {
+  ({
+    groupId,
+    permission,
+    value,
+  }: {
+    groupId: number;
+    permission: any;
+    value: string;
+  }) => {
     return {
       groupId,
       permission: permission.permission,
@@ -44,17 +52,17 @@ export const updateApplicationPermission = createAction(
 );
 
 const SAVE_APPLICATION_PERMISSIONS =
-  "metabase-enterprise/general-permissions/data/SAVE_APPLICATION_PERMISSIONS";
+  "metabase/application-permissions/SAVE_APPLICATION_PERMISSIONS";
 export const saveApplicationPermissions = createThunkAction(
   SAVE_APPLICATION_PERMISSIONS,
-  () => async (dispatch, getState) => {
+  () => async (dispatch: any, getState: any) => {
     const { applicationPermissions, applicationPermissionsRevision } =
       getState().plugins.applicationPermissionsPlugin;
 
     const result = await ApplicationPermissionsApi.updateGraph({
       groups: applicationPermissions,
       revision: applicationPermissionsRevision,
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       dispatch(
         addUndo({
           icon: "warning",
@@ -70,13 +78,13 @@ export const saveApplicationPermissions = createThunkAction(
 const applicationPermissions = handleActions(
   {
     [LOAD_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (_state: any, { payload }: { payload: any }) => payload.groups,
     },
     [SAVE_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (_state: any, { payload }: { payload: any }) => payload.groups,
     },
     [UPDATE_APPLICATION_PERMISSION]: {
-      next: (state, { payload }) => {
+      next: (state: any, { payload }: { payload: any }) => {
         const { groupId, permission, value } = payload;
         return assocIn(state, [groupId, permission], value);
       },
@@ -88,10 +96,10 @@ const applicationPermissions = handleActions(
 const originalApplicationPermissions = handleActions(
   {
     [LOAD_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (_state: any, { payload }: { payload: any }) => payload.groups,
     },
     [SAVE_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (_state: any, { payload }: { payload: any }) => payload.groups,
     },
   },
   null,
@@ -100,15 +108,16 @@ const originalApplicationPermissions = handleActions(
 const applicationPermissionsRevision = handleActions(
   {
     [LOAD_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.revision,
+      next: (_state: any, { payload }: { payload: any }) => payload.revision,
     },
     [SAVE_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.revision,
+      next: (_state: any, { payload }: { payload: any }) => payload.revision,
     },
   },
   null,
 );
 
+// eslint-disable-next-line import/no-default-export
 export default combineReducers({
   applicationPermissions,
   originalApplicationPermissions,
