@@ -27,6 +27,7 @@
    :dashboard-tab     :model/DashboardTab
    :dataset           :model/Card
    :dimension         :model/Dimension
+   :document          :model/Document
    :metric            :model/Card
    :permissions-group :model/PermissionsGroup
    :pulse             :model/Pulse
