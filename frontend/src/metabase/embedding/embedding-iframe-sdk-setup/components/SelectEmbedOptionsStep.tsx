@@ -20,6 +20,7 @@ import {
   Radio,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -279,20 +280,15 @@ const BehaviorSection = () => {
                       }
                     />
                     {!hasEmailSetup && !disabledInGuestEmbedding && (
-                      <HoverCard position="bottom">
-                        <HoverCard.Target>
-                          <Icon
-                            name="info"
-                            size={14}
-                            c="var(--mb-color-text-secondary)"
-                          />
-                        </HoverCard.Target>
-                        <HoverCard.Dropdown>
-                          <Text lh="md" p="md">
-                            {t`Please set up email to allow subscriptions`}
-                          </Text>
-                        </HoverCard.Dropdown>
-                      </HoverCard>
+                      <Tooltip
+                        label={t`Please set up email to allow subscriptions`}
+                      >
+                        <Icon
+                          name="info"
+                          size={14}
+                          c="var(--mb-color-text-secondary)"
+                        />
+                      </Tooltip>
                     )}
                   </Flex>
                 );
@@ -424,11 +420,7 @@ const WithGuestEmbedsDisabledWarning = ({
 
   return (
     <TooltipWarning
-      warning={
-        <Text lh="md" p="md">
-          {t`Disabled in the admin settings`}
-        </Text>
-      }
+      tooltip={t`Disabled in the admin settings`}
       disabled={disabled}
     >
       {children}
@@ -477,11 +469,7 @@ const WithNotAvailableForGuestEmbedsWarning = ({
       {({ disabled: disabledForOss, hoverCard: disabledForOssHoverCard }) => (
         <TooltipWarning
           enableTooltip={!disabledForOss}
-          warning={
-            <Text lh="md" p="md">
-              {t`Not available if Guest Mode is selected`}
-            </Text>
-          }
+          tooltip={t`Not available if Guest Mode is selected`}
           disabled={!!settings.isGuest}
         >
           {({

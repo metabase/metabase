@@ -186,7 +186,7 @@ describe(suiteTitle, () => {
       .closest("[data-testid=tooltip-warning]")
       .icon("info")
       .realHover();
-    H.hovercard().should(
+    H.tooltip().should(
       "contain.text",
       "Not available if Guest Mode is selected",
     );
@@ -212,7 +212,7 @@ describe(suiteTitle, () => {
         .icon("info")
         .realHover();
     });
-    H.hovercard().should(
+    H.tooltip().should(
       "contain.text",
       "Please set up email to allow subscriptions",
     );
