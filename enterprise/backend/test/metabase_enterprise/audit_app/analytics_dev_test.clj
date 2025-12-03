@@ -11,7 +11,7 @@
     (when-not (= :postgres (mdb/db-type))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Analytics dev mode requires PostgreSQL application database"
+           #"Analytics dev mode requires PostgreSQL AppDB"
            (#'analytics-dev/analytics-dev-mode-setup))))))
 
 (deftest yaml->dev-test

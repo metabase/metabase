@@ -267,10 +267,10 @@
 
 (defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)
+    (when-not (= :postgres (mdb/db-type))
+      (throw (ex-info "Analytics dev mode requires PostgreSQL AppDB" {:db-type (mdb/db-type)})))
     (future
       (try
-        (when-not (= :postgres (mdb/db-type))
-          (throw (ex-info "Analytics dev mode requires PostgreSQL AppDB" {:db-type (mdb/db-type)})))
         (log/info "Analytics dev mode enabled, waiting for user setup...")
         ;; Wait for user setup on new installs
         (while (not (setup/has-user-setup))
