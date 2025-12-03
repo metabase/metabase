@@ -1,1 +1,0 @@
-export { MetricSettingsPage } from "./MetricSettingsPage";

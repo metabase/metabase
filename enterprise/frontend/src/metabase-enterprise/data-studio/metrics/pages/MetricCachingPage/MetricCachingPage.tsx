@@ -20,7 +20,7 @@ type MetricSettingsPageProps = {
   children?: ReactNode;
 };
 
-export function MetricSettingsPage({ params }: MetricSettingsPageProps) {
+export function MetricCachingPage({ params }: MetricSettingsPageProps) {
   const [page, setPage] = useState<"default" | "caching">("default");
   const cardId = Urls.extractEntityId(params.cardId);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);

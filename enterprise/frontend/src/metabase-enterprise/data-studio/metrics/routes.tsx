@@ -2,10 +2,10 @@ import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
+import { MetricCachingPage } from "./pages/MetricCachingPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
 import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
-import { MetricSettingsPage } from "./pages/MetricSettingsPage";
 import { NewMetricPage } from "./pages/NewMetricPage";
 
 export function getDataStudioMetricRoutes() {
@@ -20,7 +20,7 @@ export function getDataStudioMetricRoutes() {
         </Route>
       )}
       {/* TODO: Add "is allowed" condition */}
-      <Route path=":cardId/settings" component={MetricSettingsPage} />
+      <Route path=":cardId/caching" component={MetricCachingPage} />
     </Route>
   );
 }
