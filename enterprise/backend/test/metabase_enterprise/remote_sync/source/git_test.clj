@@ -360,12 +360,12 @@
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
         otherdir-path (str "collections/" "o" (subs (u/generate-nano-id "b") 1) "_otherdir/")]
     (mt/with-temp-dir [remote-dir nil]
-      (let [[master remote] (init-source! "master" remote-dir
-                                          :files {"master.txt" "File in master"
-                                                  (str subdir-path "file1.yaml") "File 1 in subdir"
-                                                  (str subdir-path "file2.yaml") "File 2 in subdir"
-                                                  (str otherdir-path "file1.yaml") "File 1 in otherdir"
-                                                  (str otherdir-path "file2.yaml") "File 2 in otherdir"})]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"
+                                                   (str subdir-path "file1.yaml") "File 1 in subdir"
+                                                   (str subdir-path "file2.yaml") "File 2 in subdir"
+                                                   (str otherdir-path "file1.yaml") "File 1 in otherdir"
+                                                   (str otherdir-path "file2.yaml") "File 2 in otherdir"})]
         (testing "Removal entry deletes all files under that path recursively"
           (source.p/write-files! (source.p/snapshot master) "Remove subdir"
                                  [{:path (subs subdir-path 0 (dec (count subdir-path))) :remove? true}])
