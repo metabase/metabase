@@ -231,6 +231,18 @@
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
+  -install-merge-drivers
+  {:doc      "Installs custom git merge drivers for YAML migration files."
+   :requires [[clojure.string :as str]
+              [mage.util :as u]]
+   :task     (task!
+              (let [git-config-file (str u/project-root-directory "/.git/config")
+                    the-include     (str "\n"
+                                         "[include]\n"
+                                         "    path=../.gitconfig\n")]
+                (when-not (str/includes? (slurp git-config-file) the-include)
+                  (spit git-config-file the-include :append true))))}
+
   -merge-yaml-migrations
   {:doc "Custom git merge driver for YAML migration files."
    :usage-fn (fn [_]
