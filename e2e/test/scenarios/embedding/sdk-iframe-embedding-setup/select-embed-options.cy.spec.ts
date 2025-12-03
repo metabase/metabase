@@ -16,6 +16,82 @@ const QUESTION_NAME = "Orders, Count";
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
 
+describe("OSS", { tags: "@OSS" }, () => {
+  describe(suiteTitle, () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+      H.updateSetting("enable-embedding-simple", true);
+
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      mockEmbedJsToDevServer();
+    });
+
+    it("should show upsell for Allow subscriptions option", () => {
+      navigateToEmbedOptionsStep({
+        experience: "dashboard",
+        resourceName: DASHBOARD_NAME,
+      });
+
+      assertUpsellForOption("Existing Metabase session");
+      assertUpsellForOption("Single sign-on (SSO)");
+      assertUpsellForOption("Allow people to drill through on data points");
+      assertUpsellForOption("Allow downloads");
+      assertUpsellForOption("Allow subscriptions");
+    });
+  });
+});
+
+describe("EE without license", () => {
+  describe(suiteTitle, () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("starter");
+      H.enableTracking();
+      H.updateSetting("enable-embedding-simple", true);
+
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      mockEmbedJsToDevServer();
+    });
+
+    it("should show upsell for Allow subscriptions option", () => {
+      navigateToEmbedOptionsStep({
+        experience: "dashboard",
+        resourceName: DASHBOARD_NAME,
+      });
+
+      assertUpsellForOption("Existing Metabase session");
+      assertUpsellForOption("Single sign-on (SSO)");
+      assertUpsellForOption("Allow people to drill through on data points");
+      assertUpsellForOption("Allow downloads");
+      assertUpsellForOption("Allow subscriptions");
+    });
+  });
+});
+
+function assertUpsellForOption(label: string) {
+  getEmbedSidebar()
+    .findByLabelText(label)
+    .closest("[data-testid=tooltip-warning]")
+    .icon("gem")
+    .realHover();
+
+  H.hovercard().should("contain.text", "Get more powerful embedding");
+  H.hovercard().should(
+    "contain.text",
+    "Upgrade to get access to embeds with single sign-on, drill through, the SDK for React, and more.",
+  );
+  H.hovercard().should("contain.text", "Upgrade to Metabase Pro");
+}
+
 describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
