@@ -118,8 +118,6 @@ jobs:
       - name: Prepare back-end environment
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
         run: yarn build-embedding-sdk-package

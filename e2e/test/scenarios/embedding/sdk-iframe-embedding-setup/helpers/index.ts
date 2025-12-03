@@ -1,6 +1,10 @@
 import { match } from "ts-pattern";
 
-import { entityPickerModal, modal } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  entityPickerModal,
+  modal,
+} from "e2e/support/helpers";
 import type { Dashboard, RecentItem } from "metabase-types/api";
 
 type RecentActivityIntercept = {
@@ -24,15 +28,24 @@ export const visitNewEmbedPage = () => {
 
   cy.visit("/admin/embedding");
 
-  cy.findAllByTestId("sdk-setting-card")
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
     .first()
     .within(() => {
       cy.findByText("New embed").click();
     });
 
-  cy.wait("@dashboard");
+  cy.get("body").then(($body) => {
+    const isEmbeddingDisabled =
+      $body.find('[data-testid="enable-embedding-card"]').length > 0;
 
-  cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
+    if (isEmbeddingDisabled) {
+      embedModalEnableEmbedding();
+    }
+
+    cy.wait("@dashboard");
+
+    cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
+  });
 };
 
 export const assertRecentItemName = (

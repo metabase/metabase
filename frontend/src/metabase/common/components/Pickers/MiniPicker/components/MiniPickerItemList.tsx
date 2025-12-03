@@ -55,7 +55,7 @@ function RootItemList() {
   const { setPath, isHidden, models, shouldShowLibrary } =
     useMiniPickerContext();
   const { data: libraryCollection, isLoading } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
 
   if (isLoading) {
@@ -84,9 +84,13 @@ function RootItemList() {
       </ItemList>
     );
   }
+
   if (
     libraryCollection &&
-    _.intersection(models, libraryCollection.below || []).length &&
+    _.intersection(models, [
+      ...(libraryCollection.below || []),
+      ...(libraryCollection.here || []),
+    ]).length &&
     shouldShowLibrary
   ) {
     return (

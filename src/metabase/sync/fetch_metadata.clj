@@ -59,16 +59,19 @@
   instead. Also includes nested field column metadata."
   [_driver database & {:keys [schema-names table-names]}]
   ;; Realize everything in a vector to close the connection. But only keep the ids because the maps can hog memory.
-  (let [table-ids (into [] (map :id)
-                        (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))]
+  (let [table-ids (mapv :id (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))]
     (eduction
      (mapcat (fn [table-id]
-               (let [table (t2/select-one :model/Table table-id)
-                     table-fields (table-fields-metadata database table)]
-                 ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
-                 ;; connection is closed before moving to the next table.
-                 (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
-                       table-fields))))
+               (try
+                 (let [table (t2/select-one :model/Table table-id)
+                       table-fields (table-fields-metadata database table)]
+                  ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
+                  ;; connection is closed before moving to the next table.
+                   (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
+                         table-fields))
+                 (catch Throwable e
+                   (log/warn e (str "Could not fetch fields from table " table-id))
+                   nil))))
      table-ids)))
 
 (mu/defn fields-metadata

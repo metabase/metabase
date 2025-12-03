@@ -9,7 +9,8 @@ import { getEmbedSnippet } from "../utils/embed-snippet";
 export function useSdkIframeEmbedSnippet() {
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
-  const { settings, experience } = useSdkIframeEmbedSetupContext();
+  const { settings, experience, guestEmbedSignedTokenForSnippet } =
+    useSdkIframeEmbedSetupContext();
 
   return useMemo(() => {
     // Apply derived colors to the settings for the code snippet
@@ -24,6 +25,13 @@ export function useSdkIframeEmbedSnippet() {
       settings: { ...settings, theme: derivedTheme },
       instanceUrl,
       experience,
+      guestEmbedSignedTokenForSnippet,
     });
-  }, [settings, applicationColors, instanceUrl, experience]);
+  }, [
+    settings,
+    applicationColors,
+    instanceUrl,
+    experience,
+    guestEmbedSignedTokenForSnippet,
+  ]);
 }

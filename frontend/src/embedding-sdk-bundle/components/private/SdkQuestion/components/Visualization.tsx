@@ -10,6 +10,8 @@ import {
   SdkLoader,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
@@ -50,7 +52,9 @@ export const QuestionVisualization = ({
     updateQuestion,
     originalId,
     onVisualizationChange,
+    token,
   } = useSdkQuestionContext();
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const display = useMemo(() => question?.display(), [question]);
 
@@ -62,7 +66,7 @@ export const QuestionVisualization = ({
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
-    question && shouldRunCardQuery(question) && !queryResults;
+    question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   if (isLocaleLoading || isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
@@ -97,6 +101,7 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
+        token={token}
         navigateToNewCardInsideQB={navigateToNewCard}
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>

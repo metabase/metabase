@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -1246,44 +1245,59 @@
         (is (true?
              (deref sync-called? timeout :sync-never-called)))))))
 
-;; DEMOWARE bulk-editing APIS
 (deftest ^:parallel list-table-filtering-test
-  (testing "term filtering"
+  (let [list-tables (fn [& params]
+                      (->> (apply mt/user-http-request :crowberto :get 200 "table" params)
+                           (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
+                           (map #(select-keys % [:display_name]))))]
+    (testing "term filtering"
+      (is (=? [{:display_name "Users"}] (list-tables :term "Use")))
+      (testing "wildcard"
+        (is (=? [{:display_name "Users"}] (list-tables :term "*S*rs"))))
+      (testing "escaping"
+        (mt/with-temp [:model/Table _ {:name         "what-a_cool%table\\name"
+                                       :display_name "coolest table ever"
+                                       :db_id        (mt/id)
+                                       :active       true}
+                       :model/Table _ {:name         "what_a_cool_table_name"
+                                       :display_name "not a cool table"
+                                       :db_id        (mt/id)
+                                       :active       true}]
+          (let [match [{:display_name "coolest table ever"}]
+                q     #(list-tables :term %)]
+            (is (= match (q "what-a_cool%table\\name")))
+            (is (= [] (q "what%a%cool%table%name"))))))
+      (testing "display name"
+        (mt/with-temp [:model/Table _ {:name         "order_item_discount"
+                                       :display_name "Order Item Discount"
+                                       :db_id        (mt/id)
+                                       :active       true}]
+          (let [match [{:display_name "Order Item Discount"}]
+                q     #(list-tables :term %)]
+            (is (= match (q "Order Item")))
+            (is (= match (q "Ite")))
+            (is (= match (q "Item Di")))
+            (is (= match (q "Ite* Discount")))
+            (is (= []    (q "order_item discount")))
+            (is (= []    (q "Discount Item")))))))
+    (testing "filter composition"
+      (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
+                                                      :display_name "Products2"
+                                                      :db_id        (mt/id)
+                                                      :active       true}]
+        (is (=? [{:display_name "People"}
+                 {:display_name "Products"}
+                 {:display_name "Products2"}]
+                (list-tables :term "P")))
 
-    (is (=? [{:display_name "Users"}]
-            (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "USE" "Use"))
-                 (filter #(= (:db_id %) (mt/id)))           ; prevent stray tables from affecting unit test results
-                 (map #(select-keys % [:display_name])))))
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
 
-    (testing "wildcard"
-      (is (=? [{:display_name "Users"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "*S*RS" "*S*rs"))
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results1
-                   (map #(select-keys % [:display_name])))))))
-  (testing "filter composition"
-    (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
-                                                    :display_name "Products2"
-                                                    :db_id        (mt/id)
-                                                    :active       true}]
-      (is (=? [{:display_name "People"}
-               {:display_name "Products"}
-               {:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P")
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
-                   (map #(select-keys % [:display_name])))))
+        (is (=? [{:display_name "Products2"}]
+                (list-tables :term "P" :data-layer "gold")))
 
-      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
-      (is (=? [{:display_name "Products2"}]
-              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "gold")
-                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
-                   (map #(select-keys % [:display_name])))))
-
-      (testing "empty filter"
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "bronze")
-                     (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
-                     (map #(select-keys % [:display_name])))))))))
+                (list-tables :term "P" :data-layer "bronze")))))))
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"

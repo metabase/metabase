@@ -6,7 +6,6 @@ import {
   areTablesSelected,
   getChildSchemas,
   getParentSchema,
-  getParentSchemaTables,
   getSchemaChildrenTableIds,
   getSchemaId,
   getSchemaTableIds,
@@ -413,41 +412,6 @@ describe("bulk-selection.utils", () => {
       );
 
       expect(parentSchema).toBeUndefined();
-    });
-  });
-
-  describe("getParentSchemaTables", () => {
-    it("should return all tables in the same schema as the given table", () => {
-      const table1 = createMockTableNode(1, "public", 101);
-      const table2 = createMockTableNode(1, "public", 102);
-      const table3 = createMockTableNode(1, "private", 103);
-      const schema = createMockSchemaNode(1, "public", [table1, table2]);
-      const flatItems = [
-        createMockFlatItem(table1),
-        createMockFlatItem(table2),
-        createMockFlatItem(table3),
-        createMockFlatItem(schema),
-      ];
-
-      const tables = getParentSchemaTables(
-        createMockFlatItem(table1),
-        flatItems,
-      );
-
-      expect(tables).toHaveLength(2);
-      expect(tables.map((t) => (t.value as any).tableId)).toEqual([101, 102]);
-    });
-
-    it("should return empty array when parent schema not found", () => {
-      const table = createMockTableNode(1, "public", 101);
-      const flatItems = [createMockFlatItem(table)];
-
-      const tables = getParentSchemaTables(
-        createMockFlatItem(table),
-        flatItems,
-      );
-
-      expect(tables).toEqual([]);
     });
   });
 
