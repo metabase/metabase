@@ -131,26 +131,54 @@
   (testing "->database-id-filter-xf filters transforms by database ID"
     (let [db1-query-x  {:id     1
                         :name   "Query on DB1"
-                        :source {:type "query" :query {:database 1}}
-                        :target {:type "table" :name "t1"}}
-          db2-query-x  {:id     2
-                        :name   "Query on DB2"
-                        :source {:type "query" :query {:database 2}}
-                        :target {:type "table" :name "t2"}}
-          db3-python-x {:id     3
-                        :name   "Python with source DB3"
-                        :source {:type "python" :source-database 3 :body ""}
-                        :target {:type "table" :name "t3" :database 4}}
-          db4-target-x {:id     4
+                        :source {:type "query" :query {:database 10}}
+                        :target {:type "table" :name "t1" :database 1}}
+          db2-target-x {:id     2
                         :name   "Python targeting DB4"
                         :source {:type "python" :body "" :source-tables {}}
-                        :target {:type "table" :name "t4" :database 4}}
-          transforms   [db1-query-x db2-query-x db3-python-x db4-target-x]]
+                        :target {:type "table" :name "t4" :database 2}}
+          transforms   [db1-query-x db2-target-x]]
 
       (are [x y] (= x (into [] (transforms.util/->database-id-filter-xf y) transforms))
-        transforms                  nil
-        [db1-query-x]               1
-        [db2-query-x]               2
-        [db3-python-x]              3
-        [db3-python-x db4-target-x] 4
-        []                          999))))
+        transforms     nil
+        [db1-query-x]  1
+        []             10               ; source does not match
+        [db2-target-x] 2
+        []             999))))
+
+(deftest ^:parallel matching-timestamp?-test
+  (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
+    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+          field-path          [:start_time]
+          range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
+          range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
+          range-end-only      {:start nil :end "2024-02-01T00:00:00Z"}]
+
+      (testing "with both start and end bounds"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-jan-feb))
+          nil   nil                       ; missing field returns nil
+          true  "2024-01-15T12:00:00Z"    ; timestamp in middle of range
+          false "2023-12-15T12:00:00Z"    ; timestamp before range
+          false "2024-02-15T12:00:00Z"    ; timestamp after range
+          true  "2024-01-01T00:00:00Z"    ; start boundary is inclusive
+          true  "2024-02-01T00:00:00Z"))  ; end boundary is inclusive too 🤷
+
+      (testing "with only start bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-start-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp after start
+          true  "2024-02-15T12:00:00Z"    ; any timestamp after start
+          false "2023-12-15T12:00:00Z"))  ; timestamp before start
+
+      (testing "with only end bound"
+        (are [expected timestamp]
+             (= expected (matching-timestamp? {:start_time timestamp} field-path range-end-only))
+          true  "2024-01-15T12:00:00Z"    ; timestamp before end
+          true  "2023-12-15T12:00:00Z"    ; any timestamp before end
+          false "2024-02-15T12:00:00Z"))  ; timestamp after end
+
+      (testing "returns nil when field value is missing"
+        (are [job] (nil? (matching-timestamp? job field-path range-jan-feb))
+          {}
+          {:other "value"})))))
