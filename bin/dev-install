@@ -138,9 +138,24 @@ install_mise_official() {
     fi
 }
 
+update_mise() {
+    print_step "Checking for mise updates"
+
+    # mise self-update is unavailable when installed via package manager
+    # It will exit with an error in that case, which we handle gracefully
+    if mise self-update -y 2>/dev/null; then
+        print_success "mise is up to date ($(mise --version))"
+    else
+        # Likely installed via Homebrew or other package manager
+        print_info "mise is managed by your package manager"
+        echo "      Run 'brew upgrade mise' to update (if using Homebrew)"
+    fi
+}
+
 install_mise() {
     if has_mise; then
         print_success "mise is already installed ($(mise --version))"
+        update_mise
         return 0
     fi
 
