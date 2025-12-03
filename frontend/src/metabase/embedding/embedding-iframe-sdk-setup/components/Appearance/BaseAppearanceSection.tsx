@@ -12,13 +12,8 @@ export const BaseAppearanceSection = ({
   icons,
 }: PropsWithChildren<Props>) => {
   return (
-    <>
-      <Group
-        justify="space-between"
-        align="center"
-        mb="lg"
-        data-testid="appearance-section"
-      >
+    <Flex direction="column" data-testid="appearance-section">
+      <Group justify="space-between" align="center" mb="lg">
         <Text size="lg" fw="bold">
           {t`Appearance`}
         </Text>
@@ -31,6 +26,6 @@ export const BaseAppearanceSection = ({
       <Group align="start" gap="xl">
         {children}
       </Group>
-    </>
+    </Flex>
   );
 };
