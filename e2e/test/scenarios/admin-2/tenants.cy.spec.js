@@ -113,9 +113,10 @@ describe("Tenants - management", () => {
 
     cy.findByRole("link", { name: /gear/ }).click();
 
-    H.modal().findByRole("textbox", { name: "User strategy" }).click();
-    H.popover().findByText("Multi tenant").click();
-    H.modal().button("Close").click();
+    H.modal().within(() => {
+      cy.findByRole("radio", { name: /Multi tenant/i }).click();
+      cy.button("Apply").click();
+    });
 
     cy.findByRole("link", { name: /External Users/ }).should("exist");
     cy.findByRole("link", { name: /Tenants/ }).click();
