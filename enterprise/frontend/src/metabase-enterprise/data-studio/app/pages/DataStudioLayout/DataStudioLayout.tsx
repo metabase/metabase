@@ -87,11 +87,15 @@ function DataStudioNav({
   );
   const isDataTab = pathname.startsWith(Urls.dataStudioData());
   const isGlossaryTab = pathname.startsWith(Urls.dataStudioGlossary());
-  const isTransformsTab = pathname.startsWith(Urls.transformList());
+
   const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
   const isDependenciesTab = pathname.startsWith(Urls.dependencyGraph());
   const isJobsTab = pathname.startsWith(Urls.transformJobList());
   const isRunsTab = pathname.startsWith(Urls.transformRunList());
+
+  // TODO: Why am i like this?
+  const isTransformsTab =
+    pathname.startsWith(Urls.transformList()) && !isJobsTab;
 
   return (
     <Stack

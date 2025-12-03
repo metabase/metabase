@@ -1,11 +1,14 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
   skipToken,
+  useGetCollectionQuery,
   useListCollectionItemsQuery,
+  useListCollectionsQuery,
   useListCollectionsTreeQuery,
+  useListSnippetsQuery,
 } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
@@ -13,16 +16,33 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Card,
+  FixedSizeIcon,
+  Flex,
+  Icon,
+  Menu,
+  Popover,
+  Stack,
+  TextInput,
+} from "metabase/ui";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { getWritableCollection } from "./ModelingSidebar/LibrarySection/LibraryCollectionTree/utils";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
+import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
+import { buildCollectionTree } from "metabase/entities/collections";
+import { buildSnippetTree } from "./ModelingSidebar/ModelingSidebarView/SnippetsSection/utils";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { CreateMenu } from "./CreateMenu";
 
-export function ModelingSectionLayout() {
+export function ModelingLandingPage() {
   usePageTitle(t`Modeling`);
   const dispatch = useDispatch();
+  const [searchQuery, setSearchQuery] = useState<string>();
 
   const { data: collections = [], isLoading: loadingCollections } =
     useListCollectionsTreeQuery({
@@ -50,43 +70,65 @@ export function ModelingSectionLayout() {
       metricCollection ? { id: metricCollection.id } : skipToken,
     );
 
-  const handleCollectionSelect = useCallback(
+  const handleItemSelect = useCallback(
     (item: ITreeNodeItem) => {
+      console.log({ item });
       if (item.model === "dataset") {
         dispatch(push(Urls.dataStudioModel(item.id)));
       } else if (item.model === "metric") {
         dispatch(push(Urls.dataStudioMetric(item.id)));
+      } else if (item.data?.model === "snippet") {
+        dispatch(push(Urls.dataStudioSnippet(item.id)));
       }
     },
     [dispatch],
   );
 
-  if (loadingModels || loadingMetrics || loadingCollections) {
-    return null;
-  }
+  // if (loadingModels || loadingMetrics || loadingCollections) {
+  //   return null;
+  // }
 
   const modelsTree = {
     ...modelCollection,
-    icon: { name: "model", c: "brand" },
+    icon: "model",
     children:
       libraryModels?.data.map((x) => ({
         ...x,
-        icon: { name: "model", c: "brand" },
-        updated_at: new Date(x["last-edit-info"]?.timestamp).toDateString(),
+        icon: "model",
+        updated_at:
+          x["last-edit-info"] &&
+          new Date(x["last-edit-info"]?.timestamp).toDateString(),
       })) || [],
   };
 
   const metricsTree = {
     ...metricCollection,
-    icon: { name: "metric", c: "brand" },
+    icon: "metric",
     children:
       libraryMetrics?.data.map((x) => ({
         ...x,
-        icon: { name: "metric", c: "brand" },
+        icon: "metric",
+        updated_at:
+          x["last-edit-info"] &&
+          new Date(x["last-edit-info"]?.timestamp).toDateString(),
       })) || [],
   };
 
-  // Missing Snippets
+  const { data: snippets = [] } = useListSnippetsQuery();
+  const { data: snippetCollections = [] } = useListCollectionsQuery({
+    namespace: "snippets",
+  });
+
+  const snippetTree = useMemo(
+    () => buildSnippetTree(snippetCollections, snippets),
+    [snippetCollections, snippets],
+  );
+
+  const filteredTree = useTreeFilter({
+    data: [modelsTree, metricsTree, ...snippetTree],
+    searchQuery,
+    searchProps: ["name"],
+  });
 
   return (
     <SectionLayout>
@@ -98,17 +140,22 @@ export function ModelingSectionLayout() {
             leftSection={<Icon name="search" />}
             bdrs="md"
             flex="1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
+          <CreateMenu
+            metricCollectionId={metricCollection?.id}
+            modelCollectionId={modelCollection?.id}
+          />
         </Flex>
 
         <Table
-          data={[modelsTree, metricsTree]}
+          data={filteredTree}
           columns={[
             { id: "name", grow: true, name: "Name" },
             { id: "updated_at", width: "150px", name: "Updated At" },
           ]}
-          onSelect={handleCollectionSelect}
+          onSelect={handleItemSelect}
         />
       </Stack>
     </SectionLayout>

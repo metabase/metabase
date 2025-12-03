@@ -1,5 +1,5 @@
 import { Box, Stack } from "metabase/ui";
-import { LibrarySection } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/LibrarySection";
+import { LibrarySection } from "metabase-enterprise/data-studio/app/pages/ModelingSection/ModelingSidebar/LibrarySection";
 import type {
   Collection,
   CollectionId,

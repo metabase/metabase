@@ -11,15 +11,16 @@ import {
 import { Badge, Box, Card, Flex, Icon, IconName } from "metabase/ui";
 
 import S from "./Table.module.css";
-import React, { CSSProperties } from "react";
+import { CSSProperties, type ReactNode } from "react";
 import { useTreeSorting } from "./useTreeSorting";
 import { SortDirection } from "metabase-types/api/sorting";
 
-type Column = {
+type Column<T> = {
   id: string;
   width?: CSSProperties["width"];
   grow?: boolean;
-  name: string;
+  name?: string;
+  render?: (val: T) => ReactNode;
 };
 
 export function Table<
@@ -30,7 +31,7 @@ export function Table<
   onSelect,
 }: {
   data: T[];
-  columns: Column[];
+  columns: Column<T>[];
   onSelect: TreeNodeProps["onSelect"];
 }) {
   const {
@@ -78,13 +79,13 @@ export function Table<
   );
 }
 
-const Headers = ({
+const Headers = <T,>({
   columns,
   onHeaderClick,
   sortColumn,
   sortDirection,
 }: {
-  columns: Column[];
+  columns: Column<T>[];
   onHeaderClick: (id: string) => void;
   sortColumn: string;
   sortDirection: SortDirection;
@@ -93,30 +94,32 @@ const Headers = ({
     <Flex className={cx(S.Header, S.Row)} pl="2rem" py="md">
       {columns.map((c) => (
         <Box key={`header-${c.id}`} {...getColumnProps(c)}>
-          <Badge
-            onClick={() => onHeaderClick(c.id)}
-            rightSection={
-              sortColumn === c.id ? (
-                <Icon
-                  name={
-                    sortDirection === SortDirection.Asc
-                      ? "chevronup"
-                      : "chevrondown"
-                  }
-                  size={10}
-                />
-              ) : null
-            }
-          >
-            {c.name}
-          </Badge>
+          {c.name && (
+            <Badge
+              onClick={() => onHeaderClick(c.id)}
+              rightSection={
+                sortColumn === c.id ? (
+                  <Icon
+                    name={
+                      sortDirection === SortDirection.Asc
+                        ? "chevronup"
+                        : "chevrondown"
+                    }
+                    size={10}
+                  />
+                ) : null
+              }
+            >
+              {c.name}
+            </Badge>
+          )}
         </Box>
       ))}
     </Flex>
   );
 };
 
-const TableNode = ({
+const TableNode = <T,>({
   item,
   depth,
   isExpanded,
@@ -124,10 +127,8 @@ const TableNode = ({
   onSelect,
   onToggleExpand,
   columns,
-}: TreeNodeProps & { columns: Column[] }) => {
+}: TreeNodeProps<T> & { columns: Column<T>[] }) => {
   const { name, icon } = item;
-
-  const iconProps = _.isObject(icon) ? icon : { name: icon };
 
   function onClick() {
     onSelect?.();
@@ -172,13 +173,13 @@ const TableNode = ({
 
       {icon && (
         <TreeNode.IconContainer transparent={false}>
-          <Icon {...iconProps} />
+          <Icon name={icon} c="brand" />
         </TreeNode.IconContainer>
       )}
       {columns.map((c) => {
         return (
           <Box key={`${c.id}-${item[c.id]}`} {...getColumnProps(c)}>
-            {item[c.id]}
+            {c.render?.(item) || item[c.id]}
           </Box>
         );
       })}
@@ -186,7 +187,7 @@ const TableNode = ({
   );
 };
 
-const getColumnProps = (c: Column) => {
+const getColumnProps = <T,>(c: Column<T>) => {
   return {
     __vars: { "--column-width": `${c.width}` },
     className: cx(S.Column, { [S.Grow]: c.grow }),

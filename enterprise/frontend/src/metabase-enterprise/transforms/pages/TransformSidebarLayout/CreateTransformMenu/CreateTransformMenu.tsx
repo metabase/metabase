@@ -11,7 +11,6 @@ import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
 import { trackTransformCreate } from "../../../analytics";
 
-import S from "./CreateTransformMenu.module.css";
 import { shouldDisableItem } from "./utils";
 
 export const CreateTransformMenu = () => {
@@ -30,13 +29,8 @@ export const CreateTransformMenu = () => {
           <Tooltip label={t`Create a transform`}>
             <Button
               aria-label={t`Create a transform`}
-              variant="filled"
-              p="sm"
-              w={32}
-              h={32}
               leftSection={<Icon name="add" size={16} />}
-              classNames={{ root: S.button }}
-            />
+            >{t`New`}</Button>
           </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>

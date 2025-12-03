@@ -25,6 +25,7 @@ import {
   lastModifiedSorter,
   nameSorter,
 } from "../TransformSidebarLayout/utils";
+import { ForwardRefLink } from "metabase/common/components/Link";
 
 const DEFAULT_SORT_TYPE = "alphabetical";
 
@@ -89,8 +90,14 @@ export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
             leftSection={<Icon name="search" />}
             bdrs="md"
             flex="1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
+          <Button
+            leftSection={<Icon name="add" />}
+            component={ForwardRefLink}
+            to={Urls.newTransformJob()}
+          >{t`New`}</Button>
         </Flex>
 
         <Flex direction="column" flex={1} mih={0}>

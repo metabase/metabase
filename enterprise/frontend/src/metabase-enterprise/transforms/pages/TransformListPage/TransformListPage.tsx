@@ -44,17 +44,10 @@ export const TransformListPageSidebar = ({
   selectedTransformId,
 }: TransformsSidebarProps) => {
   const dispatch = useDispatch();
-  const isAdmin = useSelector(getUserIsAdmin);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
-  const { value: sortType, setValue: setSortType } = useUserKeyValue({
-    namespace: "transforms",
-    key: "transforms-sort-type",
-    defaultValue: DEFAULT_SORT_TYPE,
-  });
 
   const { data: transforms, error, isLoading } = useListTransformsQuery({});
-  const { data: databaseData } = useListDatabasesQuery();
 
   const filteredTransforms = useMemo(() => {
     if (!transforms) {
@@ -72,21 +65,6 @@ export const TransformListPageSidebar = ({
         transform.target.name.toLowerCase().includes(query),
     );
   }, [transforms, debouncedSearchQuery]);
-
-  const sortFn = sortType === "last-modified" ? lastModifiedSorter : nameSorter;
-
-  const transformsSorted = useMemo(
-    () => [...filteredTransforms].sort(sortFn),
-    [filteredTransforms, sortFn],
-  );
-
-  const treeData = useMemo(
-    () =>
-      databaseData && sortType === "tree"
-        ? buildTreeData(transformsSorted, databaseData.data)
-        : [],
-    [databaseData, transformsSorted, sortType],
-  );
 
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
@@ -112,8 +90,10 @@ export const TransformListPageSidebar = ({
             leftSection={<Icon name="search" />}
             bdrs="md"
             flex="1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
+          <CreateTransformMenu />
         </Flex>
 
         <Table

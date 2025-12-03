@@ -7,8 +7,8 @@ import { getAllExpandableIds } from "metabase/common/components/tree/utils";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { ModelingSidebarTreeNode } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarTreeNode";
-import { CreateCardMenu } from "metabase-enterprise/data-studio/app/pages/ModelingSectionLayout/ModelingSidebar/ModelingSidebarView/CreateCardMenu";
+import { ModelingSidebarTreeNode } from "metabase-enterprise/data-studio/app/pages/ModelingSection/ModelingSidebar/ModelingSidebarTreeNode";
+import { CreateCardMenu } from "metabase-enterprise/data-studio/app/pages/ModelingSection/ModelingSidebar/ModelingSidebarView/CreateCardMenu";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { getWritableCollection } from "./utils";

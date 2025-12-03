@@ -13,7 +13,10 @@ import type { State } from "metabase-types/store";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
-import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
+import {
+  ModelingLandingPage,
+  ModelingSectionLayout,
+} from "./app/pages/ModelingSection";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
@@ -50,7 +53,7 @@ export function getDataStudioRoutes(
         )}
         {getDataStudioGlossaryRoutes()}
         <Route path="modeling">
-          <IndexRoute component={ModelingSectionLayout} />
+          <IndexRoute component={ModelingLandingPage} />
           {getDataStudioModelingRoutes()}
           {getDataStudioModelRoutes()}
           {getDataStudioMetricRoutes()}
