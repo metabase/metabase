@@ -1,15 +1,15 @@
-import { SANDBOXED_GROUP_NAMES } from "../constants/config";
-import { getNoTenantMessage } from "../constants/messages";
-import type { CliStepMethod } from "../types/cli";
-import { createCollection } from "../utils/create-collection";
-import { getPermissionsForGroups } from "../utils/get-permission-groups";
-import { getSandboxedCollectionPermissions } from "../utils/get-sandboxed-collection-permissions";
-import { getTenancyIsolationSandboxes } from "../utils/get-tenancy-isolation-sandboxes";
+import { SANDBOXED_GROUP_NAMES } from "../../constants/config";
+import { getNoTenantMessage } from "../../constants/messages";
+import type { CliStepMethod } from "../../types/cli";
+import { createCollection } from "../../utils/create-collection";
+import { getPermissionsForGroups } from "../../utils/get-permission-groups";
+import { getSandboxedCollectionPermissions } from "../../utils/get-sandboxed-collection-permissions";
+import { getTenancyIsolationSandboxes } from "../../utils/get-tenancy-isolation-sandboxes";
 import {
   cliError,
   propagateErrorResponse,
-} from "../utils/propagate-error-response";
-import { sampleTenantIdsFromTables } from "../utils/sample-tenancy-column-values";
+} from "../../utils/propagate-error-response";
+import { sampleTenantIdsFromTables } from "../../utils/sample-tenancy-column-values";
 
 export const setupPermissions: CliStepMethod = async (state) => {
   const {
@@ -21,6 +21,8 @@ export const setupPermissions: CliStepMethod = async (state) => {
 
   let res;
   const collectionIds: number[] = [];
+
+  console.log(" 0. Setting up permissions and collections...");
 
   // Create new customer collections sequentially
   try {
@@ -38,6 +40,8 @@ export const setupPermissions: CliStepMethod = async (state) => {
 
     return [cliError(message, error), state];
   }
+
+  console.log(" 1. Setting up permission groups and mappings...");
 
   // Example: { "Customer A": [3], "Customer B": [4], "Customer C": [5] }
   const jwtGroupMappings: Record<string, number[]> = {};
@@ -72,6 +76,8 @@ export const setupPermissions: CliStepMethod = async (state) => {
     return [cliError(message, error), state];
   }
 
+  console.log(" 2. Setting up sandboxed permissions...");
+
   const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
   try {
@@ -103,34 +109,23 @@ export const setupPermissions: CliStepMethod = async (state) => {
     return [cliError(message, error), state];
   }
 
+  console.log(" 3. Granting access to model collection...");
+
   try {
-    const groups = getSandboxedCollectionPermissions({
+    await grantAccessToModelCollection({
       groupIds,
       collectionIds,
+      modelCollectionId,
+      instanceUrl,
+      cookie,
     });
-
-    // Grant access to the "Our models" collection for all customer groups.
-    // This is so they can search and select their models in the entity picker.
-    for (const groupId of groupIds) {
-      groups[groupId][modelCollectionId] = "write";
-    }
-
-    // Update the permissions for sandboxed collections
-    res = await fetch(`${instanceUrl}/api/collection/graph?skip-graph=true`, {
-      method: "PUT",
-      headers: { "content-type": "application/json", cookie },
-      body: JSON.stringify({
-        groups,
-        revision: 0,
-      }),
-    });
-
-    await propagateErrorResponse(res);
   } catch (error) {
     const message = `Failed to update collection permissions`;
 
     return [cliError(message, error), state];
   }
+
+  console.log(" 4. Sampling tenancy column values...");
 
   try {
     const { tenantIdsMap, unsampledTableNames } =
@@ -155,3 +150,51 @@ export const setupPermissions: CliStepMethod = async (state) => {
     return [cliError(message, error), state];
   }
 };
+
+export interface GrantAccessToModelCollectionOptions {
+  groupIds: number[];
+  collectionIds: number[];
+  modelCollectionId: number;
+  instanceUrl: string;
+  cookie: string;
+}
+
+export async function grantAccessToModelCollection(
+  options: GrantAccessToModelCollectionOptions,
+): Promise<void> {
+  const { groupIds, collectionIds, modelCollectionId, instanceUrl, cookie } =
+    options;
+
+  // Fetch current collection graph to get the correct revision
+  let res = await fetch(`${instanceUrl}/api/collection/graph`, {
+    headers: { cookie },
+  });
+
+  await propagateErrorResponse(res);
+
+  const currentGraph = await res.json();
+  const currentRevision = currentGraph.revision ?? 0;
+
+  const groups = getSandboxedCollectionPermissions({
+    groupIds,
+    collectionIds,
+  });
+
+  // Grant access to the "Our models" collection for all customer groups.
+  // This is so they can search and select their models in the entity picker.
+  for (const groupId of groupIds) {
+    groups[groupId][modelCollectionId] = "write";
+  }
+
+  // Update the permissions for sandboxed collections
+  res = await fetch(`${instanceUrl}/api/collection/graph?skip-graph=true`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", cookie },
+    body: JSON.stringify({
+      groups,
+      revision: currentRevision,
+    }),
+  });
+
+  await propagateErrorResponse(res);
+}
