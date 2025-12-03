@@ -30,11 +30,6 @@ export const ApplicationPermissionsHelp = () => {
             <strong key="label">{t`Subscriptions and alerts:`}</strong>
           )} the group can create dashboard subscriptions and alerts.`}
         </Text>
-        <Text>
-          {jt`${(
-            <strong key="label">{t`Data Studio:`}</strong>
-          )} the group can access the Data Studio to manage curated assets.`}
-        </Text>
       </Stack>
 
       <Text component="footer" ta="center" py="1rem" fw={600}>

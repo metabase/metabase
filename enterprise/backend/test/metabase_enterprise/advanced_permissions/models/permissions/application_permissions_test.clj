@@ -20,13 +20,11 @@
         (is (partial= {(:id (perms-group/admin))
                        {:monitoring   :yes
                         :setting      :yes
-                        :subscription :yes
-                        :data-studio  :yes}
+                        :subscription :yes}
                        (:id (perms-group/all-users))
                        {:monitoring   :no
                         :setting      :no
-                        :subscription :yes
-                        :data-studio  :no}}
+                        :subscription :yes}}
                       (:groups graph)))))
 
     (testing "group has no permissions will not be included in the graph"
@@ -48,8 +46,7 @@
       (with-new-group-and-current-graph group-id current-graph
         (let [new-graph (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                     :monitoring   :no
-                                                                    :subscription :no
-                                                                    :data-studio  :no})
+                                                                    :subscription :no})
               _ (g-perms/update-graph! new-graph)
               updated-graph (g-perms/graph)]
           (is (partial= (:groups new-graph) (:groups updated-graph)))
@@ -97,8 +94,7 @@
       (let [current-graph         (g-perms/graph)
             new-graph             (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                               :subscription :yes
-                                                                              :monitoring   :no
-                                                                              :data-studio  :no})
+                                                                              :monitoring   :no})
             _                     (g-perms/update-graph! new-graph)
             updated-graph         (g-perms/graph)]
         (is (= (:groups new-graph) (:groups updated-graph)))
