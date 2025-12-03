@@ -1,17 +1,23 @@
 import { useMemo } from "react";
-import { msgid, ngettext } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
+import { getCollectionName } from "metabase/collections/utils";
+import { Tree } from "metabase/common/components/tree/Tree";
+import type {
+  ITreeNodeItem,
+  TreeNodeProps,
+} from "metabase/common/components/tree/types";
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Card } from "metabase-types/api";
+import type { Card, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { CollectionTreeNode } from "./CollectionTreeNode";
 import {
   NodeListContainer,
   NodeListIcon,
   NodeListItemIcon,
-  NodeListItemId,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
@@ -33,8 +39,35 @@ const DatabaseSchemasPane = ({
   database,
   models,
 }: DatabaseSchemasPaneProps) => {
-  const sortedModels = useMemo(
-    () => models.sort((a, b) => a.name.localeCompare(b.name)),
+  const modelsByCollection = useMemo(
+    () =>
+      Object.values(
+        models.reduce(
+          (acc, curr) => {
+            const id = curr.collection_id as CollectionId;
+            const name = getCollectionName({ id, name: curr.name });
+
+            if (!(id in acc)) {
+              acc[id] = {
+                id,
+                name,
+                icon: "folder",
+                children: [],
+              };
+            }
+
+            acc[id].children!.push({
+              id: curr.id,
+              name: curr.name,
+              icon: "model",
+              data: curr,
+            });
+
+            return acc;
+          },
+          {} as Record<CollectionId, ITreeNodeItem>,
+        ),
+      ).sort((a, b) => a.name.localeCompare(b.name)),
     [models],
   );
   const schemas = database.getSchemas();
@@ -47,34 +80,6 @@ const DatabaseSchemasPane = ({
     >
       <SidebarContent.Pane>
         <NodeListContainer>
-          {sortedModels.length ? (
-            <>
-              <NodeListTitle>
-                <NodeListIcon name="model" />
-                <NodeListTitleText>
-                  {ngettext(
-                    msgid`${sortedModels.length} model`,
-                    `${sortedModels.length} models`,
-                    sortedModels.length,
-                  )}
-                </NodeListTitleText>
-              </NodeListTitle>
-              <ul>
-                {sortedModels.map((model) => (
-                  <li key={model.id}>
-                    <NodeListItemLink
-                      onClick={() => onItemClick("question", model)}
-                    >
-                      <NodeListItemIcon name="model" />
-                      <NodeListItemName>{model.name}</NodeListItemName>
-                      <NodeListItemId>{`#${model.id}`}</NodeListItemId>
-                    </NodeListItemLink>
-                  </li>
-                ))}
-              </ul>
-              <br></br>
-            </>
-          ) : null}
           <NodeListTitle>
             <NodeListIcon name="folder" />
             <NodeListTitleText>
@@ -95,6 +100,34 @@ const DatabaseSchemasPane = ({
               </li>
             ))}
           </ul>
+          {modelsByCollection.length ? (
+            <>
+              <br></br>
+              <NodeListTitle>
+                <NodeListIcon name="model" />
+                <NodeListTitleText>
+                  {t`${models.length} ${ngettext(
+                    msgid`model`,
+                    `models`,
+                    models.length,
+                  )} in ${modelsByCollection.length} ${ngettext(
+                    msgid`collection`,
+                    `collections`,
+                    modelsByCollection.length,
+                  )}`}
+                </NodeListTitleText>
+              </NodeListTitle>
+              <Tree
+                data={modelsByCollection}
+                TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
+                  <CollectionTreeNode
+                    {...props}
+                    onItemClick={() => onItemClick("question", props.item.data)}
+                  />
+                )}
+              />
+            </>
+          ) : null}
         </NodeListContainer>
       </SidebarContent.Pane>
     </SidebarContent>
