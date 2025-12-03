@@ -37,5 +37,6 @@ export function getEditorOptions(databases: Database[]): QueryEditorUiOptions {
 
       return false;
     },
+    shouldShowLibrary: false,
   };
 }

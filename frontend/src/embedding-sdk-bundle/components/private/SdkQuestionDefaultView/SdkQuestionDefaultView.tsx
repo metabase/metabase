@@ -10,8 +10,11 @@ import {
   SdkLoader,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
@@ -88,6 +91,7 @@ export const SdkQuestionDefaultView = ({
   } = useSdkQuestionContext();
 
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
@@ -123,7 +127,7 @@ export const SdkQuestionDefaultView = ({
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
-    question && shouldRunCardQuery(question) && !queryResults;
+    question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
     if (
@@ -238,6 +242,12 @@ export const SdkQuestionDefaultView = ({
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
           </ResultToolbar>
+        )}
+
+        {isGuestEmbed && (
+          <Box w="100%">
+            <SdkQuestion.SqlParametersList />
+          </Box>
         )}
       </Stack>
 

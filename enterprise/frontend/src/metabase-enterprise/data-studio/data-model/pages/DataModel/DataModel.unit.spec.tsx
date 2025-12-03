@@ -988,7 +988,7 @@ function getTableSection() {
 }
 
 function getTableSectionField(name: string) {
-  return within(getTableSection()).getByLabelText(name);
+  return within(getTableSection()).getByRole("listitem", { name });
 }
 
 function getTableSectionFieldNameInput(name: string) {

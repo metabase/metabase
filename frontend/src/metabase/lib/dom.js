@@ -35,16 +35,6 @@ export const isWithinIframe = function () {
 // add a global so we can check if the parent iframe is Metabase
 window.METABASE = true;
 
-// check that we're both iframed, and the parent is a Metabase instance
-// used for detecting if we're previewing an embed
-export const IFRAMED_IN_SELF = (function () {
-  try {
-    return window.self !== window.parent && window.parent.METABASE;
-  } catch (e) {
-    return false;
-  }
-})();
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms

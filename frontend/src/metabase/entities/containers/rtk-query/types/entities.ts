@@ -1,7 +1,6 @@
 import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 
 import type { TagType } from "metabase/api/tags";
-import type { IconName } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
@@ -95,7 +94,6 @@ export interface EntityDefinition<Entity, EntityWrapper> {
   normalizeList: (list: unknown) => { list: unknown };
   objectSelectors: {
     getName: (entity: Entity | EntityWrapper) => string;
-    getIcon: (entity: Entity | EntityWrapper) => { name: IconName };
     getColor: (entity: Entity | EntityWrapper) => string | undefined;
     getCollection: (entity: Entity | EntityWrapper) => Collection | undefined;
   };

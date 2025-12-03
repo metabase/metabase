@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -10,10 +11,18 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
 import { Button, Flex, Modal } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import type { CollectionPickerItem } from "../types";
+
+const NEW_COLLECTION_SCHEMA = Yup.object({
+  name: Yup.string()
+    .required(Errors.required)
+    .max(100, Errors.maxLength)
+    .default(""),
+});
 
 interface NewCollectionDialogProps {
   isOpen: boolean;
@@ -57,6 +66,7 @@ export const NewCollectionDialog = ({
     >
       <FormProvider
         initialValues={{ name: "" }}
+        validationSchema={NEW_COLLECTION_SCHEMA}
         onSubmit={onCreateNewCollection}
       >
         {({ dirty }: { dirty: boolean }) => (

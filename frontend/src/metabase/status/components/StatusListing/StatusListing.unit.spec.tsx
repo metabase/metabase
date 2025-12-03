@@ -2,7 +2,7 @@ import { callMockEvent } from "__support__/events";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
-import type { Download, DownloadsState } from "metabase-types/store";
+import type { DownloadsState } from "metabase-types/store";
 import {
   createMockDownload,
   createMockState,
@@ -25,7 +25,7 @@ interface setupProps {
 const setup = ({
   isAdmin = false,
   upload = {},
-  downloads = [],
+  downloads = { datasetRequests: [], isDownloadingToImage: false },
 }: setupProps = {}) => {
   setupCollectionsEndpoints({ collections: [createMockCollection({})] });
 
@@ -87,7 +87,12 @@ describe("StatusListing", () => {
     it("should alert when user navigates away from the page during an export", () => {
       const mockEventListener = jest.spyOn(window, "addEventListener");
 
-      setup({ downloads: [createMockDownload()] });
+      setup({
+        downloads: {
+          datasetRequests: [createMockDownload()],
+          isDownloadingToImage: false,
+        },
+      });
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.returnValue).toEqual(
@@ -97,12 +102,22 @@ describe("StatusListing", () => {
     });
 
     it.each([
-      [[]],
-      [[createMockDownload({ status: "complete" })]],
-      [[createMockDownload({ status: "error" })]],
+      [{ datasetRequests: [], isDownloadingToImage: false }],
+      [
+        {
+          datasetRequests: [createMockDownload({ status: "complete" })],
+          isDownloadingToImage: false,
+        },
+      ],
+      [
+        {
+          datasetRequests: [createMockDownload({ status: "error" })],
+          isDownloadingToImage: false,
+        },
+      ],
     ])(
       "should not alert when user navigates away when there is no export in progress",
-      (downloadsState: Download[]) => {
+      (downloadsState: DownloadsState) => {
         const mockEventListener = jest.spyOn(window, "addEventListener");
 
         setup({
