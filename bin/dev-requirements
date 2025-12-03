@@ -38,6 +38,17 @@ print_info() {
     echo -e "  ${BLUE}ℹ${NC} $1"
 }
 
+print_optional_tool() {
+    local cmd=$1
+    local name=$2
+    local url=$3
+    if command -v "$cmd" &> /dev/null; then
+        echo -e "    ${GREEN}✓${NC} $name ($url)"
+    else
+        echo -e "    ${RED}✗${NC} $name ($url)"
+    fi
+}
+
 # Detection functions
 detect_version_managers() {
     local managers=()
@@ -345,26 +356,14 @@ main() {
     echo "    • Babashka (for mage task automation)"
     echo ""
     echo -e "  ${BOLD}Optional Tools (quality of life):${NC}"
-    if command -v bat &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
-    else
-        echo -e "    ${RED}✗${NC} bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
-    fi
-    if command -v fzf &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
-    else
-        echo -e "    ${RED}✗${NC} fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
-    fi
-    if command -v fd &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} fd - A fast alternative to find (https://github.com/sharkdp/fd)"
-    else
-        echo -e "    ${RED}✗${NC} fd - A fast alternative to find (https://github.com/sharkdp/fd)"
-    fi
-    if command -v rg &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
-    else
-        echo -e "    ${RED}✗${NC} ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
-    fi
+    print_optional_tool bat "bat - A cat clone with syntax highlighting" "https://github.com/sharkdp/bat"
+    print_optional_tool fzf "fzf - A fuzzy finder for the terminal" "https://github.com/junegunn/fzf"
+    print_optional_tool fd "fd - A fast alternative to find" "https://github.com/sharkdp/fd"
+    print_optional_tool rg "ripgrep - A fast alternative to grep" "https://github.com/BurntSushi/ripgrep"
+    print_optional_tool gh "gh - GitHub CLI" "https://cli.github.com/"
+    print_optional_tool op "op - 1Password CLI" "https://1password.com/downloads/command-line/"
+    print_optional_tool aws "aws - AWS CLI" "https://aws.amazon.com/cli/"
+    print_optional_tool orb "OrbStack - Fast Docker & Linux on macOS" "https://orbstack.dev/"
 
     print_section "Recommended Setup"
 
