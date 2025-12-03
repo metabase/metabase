@@ -13,7 +13,7 @@
     "@codemirror/autocomplete": "^6.18.3",
     "@codemirror/lang-html": "^6.4.9",
     "@codemirror/lang-javascript": "^6.2.2",
-    "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-json": "^6.0.2",
     "@codemirror/lang-python": "^6.1.7",
     "@codemirror/lang-sql": "^6.8.0",
     "@codemirror/legacy-modes": "^6.4.2",
