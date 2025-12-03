@@ -136,7 +136,7 @@ export const globalShortcuts = {
 
   "navigate-embed-js": {
     get name() {
-      return t`Create a new embed`;
+      return t`New embed`;
     },
 
     shortcut: ["c e"],
