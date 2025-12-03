@@ -30,6 +30,8 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -1596,3 +1598,24 @@
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
         (mt/with-premium-features #{}
           (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (run-venues-count-query))))))))
+
+(def ^:private long-names-dataset
+  (tx/dataset-definition "long-column-names"
+                         [["long_table"
+                           [{:field-name "column_name_with_an_incredibly_verbose_and_exceedingly_detailed_description_that_never_seems_to_end"
+                             :base-type :type/Text}
+                            {:field-name "second_column_name_that_is_even_more_over_the_top_with_its_unnecessarily_expansive_wording"
+                             :base-type :type/Text}]
+                           [["First row, first column" "First row, second column"]
+                            ["Second row, first column" "Second row, second column"]]]]))
+
+(deftest long-column-names-sandbox-native-query-test
+  (testing "Issue #66405: Sandboxing with native SQL query should work with long column names"
+    (data/dataset long-names-dataset
+      (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT * FROM LONG_TABLE"})}}}
+        (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                           (mt/mbql-query long_table {:limit 5}))]
+          (is (= "completed" (:status result))
+              "Query should complete successfully")
+          (is (seq (get-in result [:data :rows]))
+              "Query should return rows"))))))
