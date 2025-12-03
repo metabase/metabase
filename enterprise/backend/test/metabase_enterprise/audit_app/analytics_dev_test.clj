@@ -12,7 +12,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Analytics dev mode requires PostgreSQL application database"
-           (#'analytics-dev/analytics-dev-mode-setup nil))))))
+           (#'analytics-dev/analytics-dev-mode-setup))))))
 
 (deftest yaml->dev-test
   (testing "yaml->dev replaces canonical creator with user email"
@@ -72,7 +72,7 @@
           (is (some? db))
           (is (false? (:is_audit db)) "Database should NOT be marked as audit")
           (is (= ee-audit/default-db-name (:name db)))
-          (is (= "postgres" (:engine db)))
+          (is (= :postgres (:engine db)))
           (is (= user-id (:creator_id db)))))
 
       (testing "create-analytics-dev-database! returns existing database if already created"
@@ -90,10 +90,10 @@
               found (analytics-dev/find-analytics-dev-database)]
           (is (some? found))
           (is (false? (:is_audit found)))
-          (is (= ee-audit/default-db-name (:name found)))))
+          (is (= ee-audit/default-db-name (:name found))))))
 
-      (testing "find-analytics-dev-database does not find audit databases"
-        (mt/with-temp [:model/Database _ {:name ee-audit/default-db-name
-                                          :engine "postgres"
-                                          :is_audit true}]
-          (is (nil? (analytics-dev/find-analytics-dev-database))))))))
+    (testing "find-analytics-dev-database does not find audit databases"
+      (mt/with-temp [:model/Database _ {:name ee-audit/default-db-name
+                                        :engine "postgres"
+                                        :is_audit true}]
+        (is (nil? (analytics-dev/find-analytics-dev-database)))))))

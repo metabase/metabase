@@ -276,7 +276,6 @@
         (while (not (setup/has-user-setup))
           (Thread/sleep 1000))
         (log/info "User setup complete, checking analytics dev environment...")
-        ;; TODO: migrate from non-dev
         (if (analytics-content-loaded?)
           (log/info "Analytics dev environment already set up, skipping initialization")
           (when-let [admin-user (first-admin-user)]
