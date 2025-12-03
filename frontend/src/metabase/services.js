@@ -12,7 +12,7 @@ import { getIsEmbedPreview } from "./get-is-embed-preview";
 export const internalBase = "/api";
 export const publicBase = "/api/public";
 // use different endpoints for embed previews
-function getEmbedBase() {
+export function getEmbedBase() {
   return getIsEmbedPreview() ? "/api/preview_embed" : "/api/embed";
 }
 
