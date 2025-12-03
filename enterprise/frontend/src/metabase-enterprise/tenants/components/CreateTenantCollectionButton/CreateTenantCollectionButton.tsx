@@ -20,7 +20,7 @@ export const CreateTenantCollectionButton = () => {
       const result = await createCollection({
         ...values,
         parent_id: null,
-        type: "shared-tenant-collection",
+        namespace: "shared-tenant-collection",
       });
 
       dispatch(push(Urls.collection(result.data)));
