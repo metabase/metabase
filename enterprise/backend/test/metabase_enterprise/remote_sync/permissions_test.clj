@@ -241,97 +241,71 @@
 
 ;;; ------------------------------------------------ Tenant Collection Remote Sync Tests ------------------------------------------------
 
-(deftest tenant-collection-remote-sync-setting-off-test
-  (testing "When tenant-collections-remote-sync-enabled is OFF (default), tenant collections behave normally"
+(deftest tenant-collection-remote-sync-off-by-default-test
+  (testing "By default, tenant collections are not remote-synced"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true
-                                         settings/tenant-collections-remote-sync-enabled false
                                          settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {tenant-coll-id :id} {:name "Tenant Collection"
                                                                :namespace collections/shared-tenant-ns}]
           (let [tenant-coll (t2/select-one :model/Collection :id tenant-coll-id)]
-            (testing "remote-synced-collection? returns false for tenant collections when setting is OFF"
+            (testing "remote-synced-collection? returns false for tenant collections by default"
               (is (false? (collections/remote-synced-collection? tenant-coll))
-                  "Tenant collection should NOT be remote-synced when setting is OFF"))
+                  "Tenant collection should NOT be remote-synced by default"))
 
-            (testing "Tenant collections are editable by superuser when setting is OFF"
+            (testing "Tenant collections are editable by superuser by default"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (true? (mi/can-write? tenant-coll))
-                    "Tenant collection should be writable by superuser when setting is OFF")))))))))
+                    "Tenant collection should be writable by superuser by default")))))))))
 
-(deftest tenant-collection-remote-sync-setting-on-read-only-test
-  (testing "When tenant-collections-remote-sync-enabled is ON and remote-sync-type is read-only"
+(deftest tenant-collection-with-is-remote-synced-flag-test
+  (testing "Tenant collections with is_remote_synced=true respect remote-sync-type setting"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true
-                                         settings/tenant-collections-remote-sync-enabled true
                                          settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {tenant-coll-id :id} {:name "Tenant Collection"
-                                                               :namespace collections/shared-tenant-ns}]
+                                                               :namespace collections/shared-tenant-ns
+                                                               :is_remote_synced true}]
           (let [tenant-coll (t2/select-one :model/Collection :id tenant-coll-id)]
-            (testing "remote-synced-collection? returns true for tenant collections when setting is ON"
+            (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
-                  "Tenant collection should be remote-synced when setting is ON"))
+                  "Tenant collection should be remote-synced when flag is set"))
 
             (testing "Tenant collections are NOT editable by superuser when remote-sync-type is read-only"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (false? (mi/can-write? tenant-coll))
                     "Tenant collection should not be writable when remote-sync-type is read-only")))))))))
 
-(deftest tenant-collection-remote-sync-setting-on-read-write-test
-  (testing "When tenant-collections-remote-sync-enabled is ON and remote-sync-type is read-write"
+(deftest tenant-collection-with-is-remote-synced-flag-read-write-test
+  (testing "Tenant collections with is_remote_synced=true are editable when remote-sync-type is read-write"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true
-                                         settings/tenant-collections-remote-sync-enabled true
                                          settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {tenant-coll-id :id} {:name "Tenant Collection"
-                                                               :namespace collections/shared-tenant-ns}]
+                                                               :namespace collections/shared-tenant-ns
+                                                               :is_remote_synced true}]
           (let [tenant-coll (t2/select-one :model/Collection :id tenant-coll-id)]
-            (testing "remote-synced-collection? returns true for tenant collections when setting is ON"
+            (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
-                  "Tenant collection should be remote-synced when setting is ON"))
+                  "Tenant collection should be remote-synced when flag is set"))
 
             (testing "Tenant collections ARE editable by superuser when remote-sync-type is read-write"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (true? (mi/can-write? tenant-coll))
                     "Tenant collection should be writable when remote-sync-type is read-write")))))))))
 
-(deftest tenant-collection-remote-sync-regular-collections-unaffected-test
-  (testing "Regular collections are unaffected by tenant-collections-remote-sync-enabled setting"
+(deftest tenant-collection-nested-inherits-remote-synced-test
+  (testing "Nested tenant collections inherit is_remote_synced from parent"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true
-                                         settings/tenant-collections-remote-sync-enabled true
-                                         settings/remote-sync-type :read-only]
-        (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"
-                                                                :namespace nil}]
-          (let [regular-coll (t2/select-one :model/Collection :id regular-coll-id)]
-            (testing "remote-synced-collection? returns false for regular collections"
-              (is (false? (collections/remote-synced-collection? regular-coll))
-                  "Regular collection should NOT be remote-synced"))
-
-            (testing "Regular collections remain editable by superuser when tenant setting is ON"
-              (mt/with-current-user (mt/user->id :crowberto)
-                (is (true? (mi/can-write? regular-coll))
-                    "Regular collection should still be writable")))
-
-            (testing "Cards in regular collections remain editable"
-              (mt/with-temp [:model/Card {card-id :id} {:name "Regular Card"
-                                                        :collection_id regular-coll-id
-                                                        :dataset_query (mt/native-query {:query "SELECT 1"})}]
-                (mt/with-current-user (mt/user->id :crowberto)
-                  (is (true? (mi/can-write? (t2/select-one :model/Card :id card-id)))
-                      "Card in regular collection should still be writable"))))))))))
-
-(deftest tenant-collection-remote-sync-nested-collections-test
-  (testing "Nested tenant collections also respect the tenant-collections-remote-sync-enabled setting"
-    (mt/with-premium-features #{:tenants}
-      (mt/with-temporary-setting-values [use-tenants true
-                                         settings/tenant-collections-remote-sync-enabled true
                                          settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {parent-tenant-id :id} {:name "Parent Tenant Collection"
-                                                                 :namespace collections/shared-tenant-ns}
+                                                                 :namespace collections/shared-tenant-ns
+                                                                 :is_remote_synced true}
                        :model/Collection {child-tenant-id :id} {:name "Child Tenant Collection"
                                                                 :namespace collections/shared-tenant-ns
-                                                                :location (format "/%d/" parent-tenant-id)}]
+                                                                :location (format "/%d/" parent-tenant-id)
+                                                                :is_remote_synced true}]
           (let [parent-coll (t2/select-one :model/Collection :id parent-tenant-id)
                 child-coll (t2/select-one :model/Collection :id child-tenant-id)]
             (testing "Parent tenant collection is remote-synced"
@@ -352,40 +326,41 @@
                 (is (false? (mi/can-write? child-coll))
                     "Child tenant collection should not be writable")))))))))
 
-(deftest tenant-collection-remote-sync-mixed-collections-test
-  (testing "Mixed scenario: tenant collections read-only while is_remote_synced collections also respected"
+(deftest tenant-collection-mixed-remote-synced-status-test
+  (testing "Mixed scenario: some tenant collections remote-synced, others not"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true
-                                         settings/tenant-collections-remote-sync-enabled true
                                          settings/remote-sync-type :read-only]
-        (mt/with-temp [:model/Collection {tenant-coll-id :id} {:name "Tenant Collection"
-                                                               :namespace collections/shared-tenant-ns}
-                       :model/Collection {is-remote-synced-coll-id :id} {:name "Is Remote Synced Collection"
-                                                                         :is_remote_synced true}
+        (mt/with-temp [:model/Collection {remote-synced-tenant-id :id} {:name "Remote-Synced Tenant Collection"
+                                                                        :namespace collections/shared-tenant-ns
+                                                                        :is_remote_synced true}
+                       :model/Collection {regular-tenant-id :id} {:name "Regular Tenant Collection"
+                                                                  :namespace collections/shared-tenant-ns
+                                                                  :is_remote_synced false}
                        :model/Collection {regular-coll-id :id} {:name "Regular Collection"}]
-          (let [tenant-coll (t2/select-one :model/Collection :id tenant-coll-id)
-                is-remote-synced-coll (t2/select-one :model/Collection :id is-remote-synced-coll-id)
+          (let [remote-synced-tenant (t2/select-one :model/Collection :id remote-synced-tenant-id)
+                regular-tenant (t2/select-one :model/Collection :id regular-tenant-id)
                 regular-coll (t2/select-one :model/Collection :id regular-coll-id)]
-            (testing "Tenant collection is remote-synced (via setting)"
-              (is (true? (collections/remote-synced-collection? tenant-coll))
-                  "Tenant collection should be remote-synced"))
+            (testing "Remote-synced tenant collection is remote-synced"
+              (is (true? (collections/remote-synced-collection? remote-synced-tenant))
+                  "Remote-synced tenant collection should be remote-synced"))
 
-            (testing "is_remote_synced collection is also remote-synced (via database flag)"
-              (is (true? (collections/remote-synced-collection? is-remote-synced-coll))
-                  "is_remote_synced collection should be remote-synced"))
+            (testing "Regular tenant collection is NOT remote-synced"
+              (is (false? (collections/remote-synced-collection? regular-tenant))
+                  "Regular tenant collection should NOT be remote-synced"))
 
             (testing "Regular collection is NOT remote-synced"
               (is (false? (collections/remote-synced-collection? regular-coll))
                   "Regular collection should NOT be remote-synced"))
 
             (mt/with-current-user (mt/user->id :crowberto)
-              (testing "Tenant collection is not editable by superuser (via setting)"
-                (is (false? (mi/can-write? tenant-coll))
-                    "Tenant collection should not be writable"))
+              (testing "Remote-synced tenant collection is not editable by superuser"
+                (is (false? (mi/can-write? remote-synced-tenant))
+                    "Remote-synced tenant collection should not be writable"))
 
-              (testing "is_remote_synced collection is also not editable by superuser (via database flag)"
-                (is (false? (mi/can-write? is-remote-synced-coll))
-                    "is_remote_synced collection should not be writable"))
+              (testing "Regular tenant collection is editable by superuser"
+                (is (true? (mi/can-write? regular-tenant))
+                    "Regular tenant collection should be writable"))
 
               (testing "Regular collection remains editable by superuser"
                 (is (true? (mi/can-write? regular-coll))
