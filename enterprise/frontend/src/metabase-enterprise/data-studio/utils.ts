@@ -128,7 +128,7 @@ export const useGetResolvedLibraryCollection = ({
   skip = false,
 }: { skip?: boolean } = {}) => {
   const { data: libraryCollection, isLoading: isLoadingCollection } =
-    useGetLibraryCollectionQuery(undefined, { skip });
+    useGetLibraryCollection({ skip });
 
   const hasStuff = Boolean(
     libraryCollection &&
