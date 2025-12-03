@@ -1143,6 +1143,7 @@
            session
            settings
            system
+           users
            util
            enterprise/sso}}
 
@@ -1360,7 +1361,8 @@
            metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
-           metabase.users.schema}
+           metabase.users.schema
+           metabase.users.settings}
    :uses #{analytics
            api
            appearance
