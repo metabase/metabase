@@ -1,3 +1,5 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
 # Metabase Development Environment
 # =================================
 #
@@ -17,6 +19,9 @@
 auto_install = true
 
 [env]
+# Add bin/ to PATH so mage and other project scripts are available
+_.path = ["{{ config_root }}/bin"]
+
 # Disable corepack - we use yarn classic installed via mise
 COREPACK_ENABLE_AUTO_PIN = "0"
 
