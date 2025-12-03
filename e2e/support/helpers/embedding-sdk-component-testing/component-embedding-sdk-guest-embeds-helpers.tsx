@@ -1,5 +1,11 @@
-import { StaticDashboard, StaticQuestion } from "@metabase/embedding-sdk-react";
+import {
+  type MetabaseProviderProps,
+  StaticDashboard,
+  StaticQuestion,
+} from "@metabase/embedding-sdk-react";
 import type { ComponentProps } from "react";
+
+import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 
 import { mountSdkContent } from "./component-embedding-sdk-helpers";
 
@@ -7,8 +13,11 @@ export function mountGuestEmbedQuestion(
   extraProps: Partial<ComponentProps<typeof StaticQuestion>> = {},
   {
     shouldAssertCardQuery,
-    locale,
-  }: { shouldAssertCardQuery?: boolean; locale?: string } = {
+    sdkProviderProps,
+  }: {
+    shouldAssertCardQuery?: boolean;
+    sdkProviderProps?: DeepPartial<MetabaseProviderProps>;
+  } = {
     shouldAssertCardQuery: true,
   },
 ) {
@@ -17,7 +26,7 @@ export function mountGuestEmbedQuestion(
   cy.intercept("GET", "/api/embed/pivot/card/*/query*").as("getCardPivotQuery");
 
   mountSdkContent(<StaticQuestion {...extraProps} />, {
-    sdkProviderProps: { authConfig: { isGuest: true }, locale },
+    sdkProviderProps: { authConfig: { isGuest: true }, ...sdkProviderProps },
   });
 
   if (shouldAssertCardQuery) {

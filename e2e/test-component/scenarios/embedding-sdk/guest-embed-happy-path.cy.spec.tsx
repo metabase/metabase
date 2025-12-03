@@ -15,7 +15,7 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
 import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
-import type { Card } from "metabase-types/api";
+import type { Card, TemplateTags } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -49,7 +49,7 @@ const PARAMETERS = [
     },
   }),
 ];
-const TEMPLATE_TAGS = {
+const TEMPLATE_TAGS: TemplateTags = {
   quantity: {
     id: "quantity",
     name: "quantity",

@@ -14,6 +14,8 @@ import { Box } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+const QUESTION_NAME = "47563";
+
 const darken = (color: string | undefined, amount: number) =>
   Color(color).darken(amount).rgb().toString();
 
@@ -29,7 +31,7 @@ describe(
       signInAsAdminAndEnableEmbeddingSdk();
 
       createQuestion({
-        name: "47563",
+        name: QUESTION_NAME,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
@@ -85,6 +87,29 @@ describe(
 
         cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
           assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.5)),
+        );
+      });
+    });
+
+    it("applies a theme preset and overrides it with a theme", () => {
+      setupInteractiveQuestionWithTheme({
+        preset: "dark",
+        colors: {
+          "text-primary": "red",
+        },
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("table-root").should(
+          "have.css",
+          "background-color",
+          "rgb(7, 23, 34)",
+        );
+
+        cy.findByText(QUESTION_NAME).should(
+          "have.css",
+          "color",
+          "rgb(255, 0, 0)",
         );
       });
     });

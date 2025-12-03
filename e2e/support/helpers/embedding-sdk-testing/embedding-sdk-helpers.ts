@@ -81,7 +81,7 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
 export function signInAsAdminAndSetupGuestEmbedding({
   token,
 }: {
-  token: "starter" | "pro-cloud";
+  token: "starter" | "pro-cloud" | "bleeding-edge";
 }) {
   Cypress.config("baseUrl", METABASE_INSTANCE_URL);
 
