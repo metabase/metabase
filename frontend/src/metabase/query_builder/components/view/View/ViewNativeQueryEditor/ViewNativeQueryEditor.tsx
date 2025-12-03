@@ -1,6 +1,8 @@
 import type { ResizableBoxProps } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
+import { useInlinePrompt } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/inline-prompt";
+import { useInlineSqlEdit } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/use-inline-sql-edit";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import type {
   SelectionRange,
@@ -86,6 +88,16 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
     getHighlightedNativeQueryLineNumbers,
   );
 
+  // Inline SQL generation with AI
+  const {
+    inlinePromptOptions,
+    proposedQuestion,
+    handleAcceptProposed,
+    handleRejectProposed,
+  } = useInlineSqlEdit({ question });
+
+  const inlinePromptExtension = useInlinePrompt(inlinePromptOptions);
+
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
   // (using the `/dataset` endpoint instead of the `/card/:id/query`)
@@ -108,6 +120,10 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}
         onSetDatabaseId={onSetDatabaseId}
+        extensions={inlinePromptExtension}
+        proposedQuestion={proposedQuestion}
+        onAcceptProposed={handleAcceptProposed}
+        onRejectProposed={handleRejectProposed}
       />
     </Box>
   );

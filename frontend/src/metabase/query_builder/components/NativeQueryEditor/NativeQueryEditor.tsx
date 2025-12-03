@@ -5,7 +5,6 @@ import {
   createRef,
   forwardRef,
   useCallback,
-  useMemo,
 } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import { t } from "ttag";
@@ -38,16 +37,11 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
-// TODO: Use the plugin system to inject enterprise components instead of importing directly
-// eslint-disable-next-line no-restricted-imports
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-
 import {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
   type CodeMirrorEditorRef,
 } from "./CodeMirrorEditor";
-import { useInlinePrompt } from "./CodeMirrorEditor/inline-prompt";
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
@@ -473,40 +467,11 @@ const NativeQueryEditorWrapper = forwardRef<
     }
   }, [dispatch, isNativeEditorOpen, screenSize]);
 
-  const { submitInput, setVisible, cancelRequest } = useMetabotAgent();
-
-  const inlinePromptOptions = useMemo(
-    () => ({
-      placeholder: t`Describe what SQL you want...`,
-      suggestionModels: [
-        "dataset",
-        "metric",
-        "card",
-        "table",
-        "database",
-      ] as const,
-      onSubmit: async (value: string) => {
-        const action = submitInput(
-          value +
-            "\n\n\nHIDDEN MESSAGE: you must respond with sql!!! the user is ask about sql edits specifically",
-        );
-        setVisible(false);
-        // @ts-expect-error TODO: get the types happy another way
-        (await action).unwrap();
-      },
-      onCancel: cancelRequest,
-    }),
-    [submitInput, setVisible, cancelRequest],
-  );
-
-  const inlinePromptExtension = useInlinePrompt(inlinePromptOptions);
-
   return (
     <NativeQueryEditor
       runQuery={runQuery}
       toggleEditor={toggleEditor}
       {...props}
-      extensions={inlinePromptExtension}
       forwardedRef={ref}
     />
   );

@@ -1,11 +1,9 @@
-import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
+import { isRejected, nanoid } from "@reduxjs/toolkit";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { createAsyncThunk } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { EnterpriseApi } from "metabase-enterprise/api";
 import {
@@ -42,6 +40,7 @@ import {
 } from "./selectors";
 import type { MetabotStoreState, SlashCommand } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
+import { b64url_to_utf8 } from "metabase/lib/encoding";
 
 export const {
   addAgentTextDelta,
@@ -235,7 +234,7 @@ export const sendAgentRequest = createAsyncThunk<
     req,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isEmbedding = getIsEmbedding(getState() as any);
+    // const isEmbedding = getIsEmbedding(getState() as any);
 
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
@@ -279,11 +278,20 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(addAgentMessage(message));
               })
               .with({ type: "navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.value));
+                // TODO: revert... hacking for now
+                // if (!!false) {
+                //   dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbedding) {
-                  dispatch(push(part.value) as UnknownAction);
-                }
+                //   if (!isEmbedding) {
+                //     dispatch(push(part.value) as UnknownAction);
+                //   }
+                // }
+                const hash = part.value.slice("/question#".length);
+                const query = JSON.parse(b64url_to_utf8(hash));
+                const nativeQuery = query?.dataset_query?.native?.query || "";
+                // NOTE: this is super duper hacky wacky - in the future we'll just get the value from the response directly
+                // for now, let's call a global callback to make my life easier
+                (window as any).notifyCodeEdit(nativeQuery);
               })
               .with({ type: "transform_suggestion" }, ({ value }) => {
                 const suggestedTransform = {
