@@ -102,11 +102,9 @@ describe("EditUserStrategyModal", () => {
   });
 
   it("reverts the selected user strategy if the setting update fails", async () => {
-    fetchMock.put(
-      "path:/api/setting/use-tenants",
-      { throws: new Error("Internal server error") },
-      { overwriteRoutes: true },
-    );
+    fetchMock.put("path:/api/setting/use-tenants", {
+      throws: new Error("Internal server error"),
+    });
 
     await setup();
 
