@@ -194,6 +194,10 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         cy.findByText("Foo Bar Baz").should("be.visible");
       });
 
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("embedding-footer")
+        .should("not.exist");
+
       getEmbedSidebar().within(() => {
         cy.findByText("Get code").click();
       });
@@ -244,6 +248,8 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         frame.within(() => {
           cy.findByText("Foo Bar Baz").should("be.visible");
+
+          cy.findByTestId("embedding-footer").should("not.exist");
         });
       });
     });
