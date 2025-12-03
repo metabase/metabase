@@ -24,8 +24,8 @@ import S from "./CodeMirrorEditor.module.css";
 
 export type InlinePromptOptions = {
   placeholder?: string;
-  suggestionModels: SuggestionModel[];
-  onSubmit: (value: string) => void;
+  suggestionModels: readonly SuggestionModel[];
+  onSubmit: (value: string) => Promise<void>;
   onCancel: () => void;
 };
 
@@ -42,8 +42,8 @@ class InlinePromptWidget extends WidgetType {
   constructor(
     private readonly store: Store,
     private readonly placeholder: string | undefined,
-    private readonly suggestionModels: SuggestionModel[],
-    private readonly onSubmit: (value: string) => void,
+    private readonly suggestionModels: readonly SuggestionModel[],
+    private readonly onSubmit: (value: string) => Promise<void>,
     private readonly onCancel: () => void,
   ) {
     super();
@@ -53,8 +53,8 @@ class InlinePromptWidget extends WidgetType {
     const wrapper = document.createElement("div");
     wrapper.className = S.inlinePromptWrapper;
 
-    const handleSubmit = (value: string) => {
-      this.onSubmit(value);
+    const handleSubmit = async (value: string) => {
+      await this.onSubmit(value);
       view.dispatch({ effects: hidePromptEffect.of() });
       view.focus();
     };
@@ -170,7 +170,7 @@ export function useInlinePrompt(options: InlinePromptOptions | undefined) {
       inlinePromptField(),
       keymap.of([
         {
-          key: "Mod-k",
+          key: "Mod-e",
           run: (view) => {
             view.dispatch({ effects: togglePromptEffect.of(optionsWithStore) });
             return true;

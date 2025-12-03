@@ -28,7 +28,7 @@ export interface UsePromptEditorOptions {
   value: string;
   placeholder?: string;
   autoFocus?: boolean;
-  suggestionModels: SuggestionModel[];
+  suggestionModels: readonly SuggestionModel[];
   smartLinkClassName?: string;
   onChange: (value: string) => void;
   onSubmit?: () => void;
@@ -62,7 +62,7 @@ export function usePromptEditor({
       suggestion: {
         render: createSuggestionRenderer(
           createMentionSuggestion({
-            searchModels: suggestionModels,
+            searchModels: [...suggestionModels],
             canFilterSearchModels: true,
             canBrowseAll: false,
           }),
