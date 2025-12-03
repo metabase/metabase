@@ -23,7 +23,7 @@ interface Props {
   placeholder?: string;
   autoFocus?: boolean;
   disabled?: boolean;
-  suggestionModels: SuggestionModel[];
+  suggestionModels: readonly SuggestionModel[];
   onChange: (value: string) => void;
   onCancel: () => void;
 }
@@ -72,6 +72,11 @@ export const MetabotPromptInput = forwardRef<MetabotPromptInputRef, Props>(
         editor?.commands.setContent(parseMetabotMessageToTiptapDoc(value));
       }
     }, [editor, value, serializedRef]);
+
+    // Sync disabled state to editor
+    useEffect(() => {
+      editor?.setEditable(!disabled);
+    }, [editor, disabled]);
 
     if (!editor) {
       return null;

@@ -22,3 +22,15 @@
 .buttonRow {
   padding-top: 0.25rem;
 }
+
+.errorMessage {
+  font-size: 0.75rem;
+  color: var(--mb-color-error);
+}
+
+.shortcutText {
+  color: var(--mb-text-primary);
+  user-select: none;
+  font-size: 0.75em;
+  padding-inline: 4px;
+}

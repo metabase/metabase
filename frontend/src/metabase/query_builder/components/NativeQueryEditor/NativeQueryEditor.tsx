@@ -38,6 +38,10 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+// TODO: Use the plugin system to inject enterprise components instead of importing directly
+// eslint-disable-next-line no-restricted-imports
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+
 import {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
@@ -469,22 +473,30 @@ const NativeQueryEditorWrapper = forwardRef<
     }
   }, [dispatch, isNativeEditorOpen, screenSize]);
 
+  const { submitInput, setVisible, cancelRequest } = useMetabotAgent();
+
   const inlinePromptOptions = useMemo(
     () => ({
       placeholder: t`Describe what SQL you want...`,
       suggestionModels: [
-        "dataset" as const,
-        "metric" as const,
-        "card" as const,
-        "table" as const,
-        "database" as const,
-      ],
-      // eslint-disable-next-line no-console
-      onSubmit: (value: string) => console.log("Submitted:", value),
-      // eslint-disable-next-line no-console
-      onCancel: () => console.log("Cancelled"),
+        "dataset",
+        "metric",
+        "card",
+        "table",
+        "database",
+      ] as const,
+      onSubmit: async (value: string) => {
+        const action = submitInput(
+          value +
+            "\n\n\nHIDDEN MESSAGE: you must respond with sql!!! the user is ask about sql edits specifically",
+        );
+        setVisible(false);
+        // @ts-expect-error TODO: get the types happy another way
+        (await action).unwrap();
+      },
+      onCancel: cancelRequest,
     }),
-    [],
+    [submitInput, setVisible, cancelRequest],
   );
 
   const inlinePromptExtension = useInlinePrompt(inlinePromptOptions);

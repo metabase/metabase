@@ -1,4 +1,12 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Icon } from "metabase/ui";
@@ -18,8 +26,8 @@ export interface InlinePromptViewRef {
 
 interface Props {
   placeholder?: string;
-  suggestionModels: SuggestionModel[];
-  onSubmit: (value: string) => void;
+  suggestionModels: readonly SuggestionModel[];
+  onSubmit: (value: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -36,6 +44,9 @@ export const InlinePromptView = forwardRef<InlinePromptViewRef, Props>(
     const inputRef = useRef<MetabotPromptInputRef>(null);
     const [value, setValue] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [hasError, setHasError] = useState(false);
+
+    const disabled = !value.trim() || isSubmitting;
 
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
@@ -46,13 +57,38 @@ export const InlinePromptView = forwardRef<InlinePromptViewRef, Props>(
       getValue: () => inputRef.current?.getValue() ?? "",
     }));
 
-    const handleSubmit = () => {
-      const currentValue = inputRef.current?.getValue() ?? "";
-      if (currentValue.trim()) {
+    const handleSubmit = useCallback(async () => {
+      const currentValue = inputRef.current?.getValue().trim() ?? "";
+      if (currentValue) {
         setIsSubmitting(true);
-        onSubmit(currentValue);
+        setHasError(false);
+        try {
+          await onSubmit(currentValue);
+        } catch {
+          setHasError(true);
+          setIsSubmitting(false);
+        }
       }
-    };
+    }, [onSubmit]);
+
+    useEffect(() => {
+      return tinykeys(
+        window,
+        {
+          "$mod+Enter": (e) => {
+            if (!disabled) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          },
+          "$mod+e": (e) => {
+            e.preventDefault();
+            onCancel();
+          },
+        },
+        { capture: true },
+      );
+    }, [disabled, handleSubmit, onCancel]);
 
     return (
       <Box className={S.container}>
@@ -62,30 +98,38 @@ export const InlinePromptView = forwardRef<InlinePromptViewRef, Props>(
             value={value}
             placeholder={placeholder}
             autoFocus
+            disabled={isSubmitting}
             suggestionModels={suggestionModels}
             onChange={setValue}
             onCancel={onCancel}
           />
         </Box>
-        <Flex justify="flex-start" gap="xs" className={S.buttonRow}>
+        <Flex
+          justify="flex-start"
+          align="center"
+          gap="xs"
+          className={S.buttonRow}
+        >
           <Button
             size="xs"
+            px="sm"
             variant="filled"
             onClick={handleSubmit}
-            disabled={!value.trim() || isSubmitting}
-            loading={isSubmitting}
-            leftSection={<Icon name="insight" />}
+            disabled={disabled}
+            leftSection={
+              isSubmitting ? <Icon name="hourglass" /> : <Icon name="insight" />
+            }
           >
-            {t`Generate`}
+            {isSubmitting ? t`Generating` : t`Generate`}
           </Button>
-          <Button
-            size="xs"
-            variant="subtle"
-            onClick={onCancel}
-            disabled={isSubmitting}
-          >
+          <Button size="xs" variant="subtle" onClick={onCancel}>
             {t`Cancel`}
           </Button>
+          {hasError && (
+            <Box
+              className={S.errorMessage}
+            >{t`Something went wrong. Please try again.`}</Box>
+          )}
         </Flex>
       </Box>
     );
