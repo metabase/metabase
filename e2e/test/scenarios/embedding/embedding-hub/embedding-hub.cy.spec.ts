@@ -274,13 +274,16 @@ describe("scenarios - embedding hub", () => {
       H.main().findByText("Set up tenants").should("be.visible").click();
 
       H.modal().within(() => {
-        cy.findByText("People settings").should("be.visible");
-
-        cy.log("enable multi-tenancy");
-        cy.findByLabelText("User strategy").should("be.visible").click();
+        cy.findByText("User strategy").should("be.visible");
+        cy.findByText("Multi tenant").click();
+        cy.button("Apply").click();
       });
 
-      H.popover().findByText("Multi tenant").click();
+      cy.log("the internal prefix should show up on the page");
+      H.main()
+        .findAllByText("Internal Users")
+        .should("have.length", 2)
+        .should("be.visible");
 
       cy.visit("/");
 

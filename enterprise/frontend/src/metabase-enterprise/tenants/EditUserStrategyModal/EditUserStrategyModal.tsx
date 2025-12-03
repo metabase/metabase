@@ -53,7 +53,13 @@ export const EditUserStrategyModal = ({
           : t`Changes saved`,
     });
 
-    dispatch(permissionApi.util.invalidateTags(["permissions-group"]));
+    dispatch(
+      permissionApi.util.invalidateTags([
+        "permissions-group",
+        "embedding-hub-checklist",
+      ]),
+    );
+
     onClose();
   };
 
