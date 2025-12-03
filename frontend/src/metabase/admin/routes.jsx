@@ -50,7 +50,6 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
   PLUGIN_SUPPORT,
-  PLUGIN_TRANSFORMS,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 
