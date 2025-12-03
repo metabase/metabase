@@ -1330,6 +1330,7 @@
                            :id "root"
                            :authority_level nil
                            :can_write true
+                           :is_remote_synced false
                            :is_personal false}]
     :effective_location "/"
     :parent_id nil
