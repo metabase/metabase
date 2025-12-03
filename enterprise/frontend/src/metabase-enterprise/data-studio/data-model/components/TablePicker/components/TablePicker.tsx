@@ -53,11 +53,10 @@ export function TablePicker({
   const filtersCount = getFiltersCount(filters);
 
   useEffect(() => {
-    if (previousDeferredQuery === "" && deferredQuery !== "") {
-      resetSelection();
-    }
-
-    if (previousDeferredQuery !== "" && deferredQuery === "") {
+    const togglingBetweenSearchAndTree =
+      (previousDeferredQuery === "" && deferredQuery !== "") ||
+      (previousDeferredQuery !== "" && deferredQuery === "");
+    if (togglingBetweenSearchAndTree) {
       resetSelection();
     }
   }, [deferredQuery, previousDeferredQuery, resetSelection]);

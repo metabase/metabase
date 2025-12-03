@@ -4,7 +4,7 @@ import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
 const modelingSidebar = () => cy.findByTestId("modeling-sidebar");
-const collectionsSection = () => cy.findByTestId("collections-section");
+const librarySection = () => cy.findByTestId("library-section");
 const snippetsSection = () => cy.findByTestId("snippets-section");
 const glossarySection = () => cy.findByTestId("glossary-section");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
@@ -44,8 +44,8 @@ export const DataStudio = {
   },
   ModelingSidebar: {
     root: modelingSidebar,
-    collectionsSection,
-    collectionsTree: () => collectionsSection().findByRole("tree"),
+    librarySection,
+    collectionsTree: () => librarySection().findByRole("tree"),
     snippetsSection,
     snippetsTree: () => snippetsSection().findByRole("tree"),
     snippetsTreeItem: (name: string) =>
@@ -56,7 +56,7 @@ export const DataStudio = {
     glossarySection,
     glossaryLink: () => glossarySection().findByText("Glossary"),
     createCardMenuButton: () =>
-      collectionsSection().findByLabelText("Create model or metric"),
+      librarySection().findByLabelText("Create model or metric"),
     createSnippetButton: () =>
       snippetsSection().findByLabelText("Create snippet"),
     snippetCollectionOptionsButton: () =>

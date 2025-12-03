@@ -1,10 +1,11 @@
 import { match } from "ts-pattern";
 
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 import type { CreateApiKeyResponse } from "metabase-types/api";
 
-import { createApiKey } from "./api";
+import { createApiKey, updateSetting } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
@@ -14,6 +15,8 @@ import {
   mockAuthProviderAndJwtSignIn,
 } from "./embedding-sdk-testing";
 
+const { IS_ENTERPRISE } = Cypress.env();
+
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
 /**
@@ -22,6 +25,7 @@ const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 export interface BaseEmbedTestPageOptions {
   // Passed to defineMetabaseConfig
   metabaseConfig?: {
+    isGuest?: boolean;
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
@@ -217,6 +221,47 @@ export function prepareSdkIframeEmbedTest({
   }
 }
 
+/**
+ * Prepares the testing environment for sdk iframe embedding tests in guest embed mode.
+ */
+export function prepareGuestEmbedSdkIframeEmbedTest({
+  withTokenFeatures = true,
+  onPrepare,
+}: {
+  withTokenFeatures?: boolean;
+  onPrepare?: () => void;
+} = {}) {
+  restore();
+  cy.signInAsAdmin();
+
+  if (IS_ENTERPRISE) {
+    if (withTokenFeatures) {
+      activateToken("bleeding-edge");
+    } else {
+      activateToken("starter");
+    }
+  }
+
+  onPrepare?.();
+
+  cy.request("PUT", "/api/setting/enable-embedding-simple", {
+    value: true,
+  });
+  cy.request("PUT", "/api/setting/enable-embedding-static", {
+    value: true,
+  });
+
+  cy.intercept("GET", "/api/embed/card/*").as("getCard");
+  cy.intercept("GET", "/api/embed/card/*/query*").as("getCardQuery");
+  cy.intercept("GET", "/api/embed/pivot/card/*/query*").as("getCardPivotQuery");
+
+  updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
+
+  mockEmbedJsToDevServer();
+
+  cy.signOut();
+}
+
 type EnabledAuthMethods = "jwt" | "saml" | "api-key";
 
 function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
@@ -265,6 +310,7 @@ export const getNewEmbedScriptTag = ({
 
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
+  isGuest,
   theme,
   apiKey,
   useExistingUserSession,
@@ -273,6 +319,7 @@ export const getNewEmbedConfigurationScript = ({
 }: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
+    isGuest,
     apiKey,
     useExistingUserSession,
     theme,
@@ -343,6 +390,4 @@ export const mockEmbedJsToDevServer = () => {
 
 export function openEmbedJsModal() {
   openSharingMenu("Embed");
-
-  cy.findByText("Embedded Analytics JS").click();
 }

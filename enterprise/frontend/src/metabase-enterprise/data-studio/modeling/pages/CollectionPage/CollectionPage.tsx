@@ -37,6 +37,7 @@ export function CollectionPage({ params }: CollectionPageProps) {
   } = useListCollectionItemsQuery({
     id: params.collectionId,
     models: ["dataset", "metric", "table"],
+    include_editable_data_model: true,
   });
   const items = data?.data ?? [];
   const isLoading = isLoadingCollection || isLoadingItems;

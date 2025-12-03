@@ -9,7 +9,6 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { WrappedResult } from "metabase/search/types";
-import type { IconName } from "metabase/ui";
 import type { SearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -81,18 +80,11 @@ async function setup({
   const result = createSearchResult({ model, ...resultProps });
 
   const getUrl = jest.fn(() => "a/b/c");
-  const getIcon = jest.fn(() => ({
-    name: "eye" as IconName,
-    size: 14,
-    width: 14,
-    height: 14,
-  }));
   const getCollection = jest.fn(() => result.collection);
 
   const wrappedResult: WrappedResult = {
     ...result,
     getUrl,
-    getIcon,
     getCollection,
   };
 
@@ -111,7 +103,6 @@ async function setup({
 
   return {
     getUrl,
-    getIcon,
     getCollection,
   };
 }
