@@ -2,16 +2,13 @@
   (:require
    [babashka.tasks :as bt]
    [clojure.string :as str]
-   [clojure.test :as t :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing]]
+   [mage.alias-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  mage.token-scan-test/keep-me
-  mage.util-test/keep-me)
 
 (deftest bin-mage-has-help-test
   (doseq [help-cmds [[] [" "] ["  "] ["-h"] ["--help"] [" -h"] [" --help"] ["  -h"] ["  --help"]]
