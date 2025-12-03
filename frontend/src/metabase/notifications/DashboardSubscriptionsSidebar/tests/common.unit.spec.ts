@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 
 import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
 
@@ -86,6 +86,59 @@ describe("DashboardSubscriptionsSidebar", () => {
           "Recipients will see this data just as you see it, regardless of their permissions.",
         ),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("archiving a pulse", () => {
+    beforeEach(() => {
+      fetchMock.put({ url: "path:/api/pulse/11", response: { cards: [] } });
+    });
+
+    it("should close the sidebar when a pulse is archived and isEmbeddingSdk is true", async () => {
+      const setSharing = jest.fn();
+
+      setup({
+        isEmbeddingSdk: true,
+        email: true,
+        slack: false,
+        setSharing,
+        pulses: [
+          {
+            channels: [
+              {
+                schedule_type: "hourly",
+                channel_type: "email",
+                enabled: true,
+              },
+            ],
+            name: "E-commerce Insights",
+            id: 11,
+            cards: [],
+          },
+        ],
+      });
+
+      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      await userEvent.click(await screen.findByText("Emailed hourly"));
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        await screen.findByText("Delete this subscription"),
+      );
+
+      const modal = await screen.findByTestId(
+        "delete-confirmation-modal-pulse",
+      );
+
+      await userEvent.click(await within(modal).findByTestId("confirm-item-0"));
+
+      await userEvent.click(
+        (await within(modal).findAllByRole("button", { name: "Delete" }))[0],
+      );
+
+      expect(setSharing).toHaveBeenCalledWith(false);
     });
   });
 
