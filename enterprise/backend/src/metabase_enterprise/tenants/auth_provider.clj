@@ -47,17 +47,26 @@
                        :tenant-slug/is-active (:is_active existing-tenant)
                        :status-code 403})))))
 
+(defn- validate-with-tenants-disabled! [{:keys [user tenant-slug]} existing-tenant]
+  (when (or (:tenant_id user) (not-empty tenant-slug))
+    (throw (ex-info "Tenants and tenant users are disabled." {:status-code 403}))))
+
+(defn- create-tenant-if-not-exists!
+  [{:as request :keys [user tenant-slug]} existing-tenant]
+  (if-not (setting/get :use-tenants)
+    (do (validate-with-tenants-disabled! request existing-tenant)
+        request)
+    (do (validate-user-and-tenant-slug! user existing-tenant (boolean tenant-slug))
+        (assoc-in request [:user-data :tenant_id]
+                  (u/the-id (or existing-tenant
+                                (request/as-admin
+                                 (api.tenants/create-tenant! {:slug tenant-slug :name tenant-slug}))))))))
+
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
   [provider {:keys [user tenant-slug]
              :as request}]
-  (if-not (setting/get :use-tenants)
-    (next-method provider request)
-    (let [existing-tenant (t2/select-one :model/Tenant :slug tenant-slug)
-          _ (validate-user-and-tenant-slug! user existing-tenant (boolean tenant-slug))
-          tenant-id (u/the-id (or existing-tenant
-                                  (request/as-admin
-                                   (api.tenants/create-tenant! {:slug tenant-slug :name tenant-slug}))))]
-      (next-method provider (assoc-in request [:user-data :tenant_id] tenant-id)))))
+  (let [existing-tenant (t2/select-one :model/Tenant :slug tenant-slug)]
+    (next-method provider (create-tenant-if-not-exists! request existing-tenant))))
 
 (methodical/prefer-method! #'auth-identity/login! :metabase.auth-identity.provider/provider ::create-tenant-if-not-exists)
 (methodical/prefer-method! #'auth-identity/login! ::create-tenant-if-not-exists :metabase.auth-identity.provider/create-user-if-not-exists)
