@@ -7,10 +7,13 @@
    [metabase.collections.test-helpers :refer [without-library]]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest publish-table-test
   (mt/with-premium-features #{:data-studio}
@@ -19,7 +22,7 @@
        (testing "publishes tables into the library-models collection"
          (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-models-collection-type}]
            (testing "normal users are not allowed to publish"
-             (mt/user-http-request :rasta :post 403 "ee/data-studio/table/publish-table"
+             (mt/user-http-request :rasta :post 403 "ee/data-studio/table/publish-tables"
                                    {:table_ids [(mt/id :users) (mt/id :venues)]}))
            (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
                                                 {:table_ids [(mt/id :users) (mt/id :venues)]})]
@@ -34,7 +37,7 @@
                        (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
              (testing "unpublishing"
                (testing "normal users are not allowed"
-                 (mt/user-http-request :rasta :post 403 "ee/data-studio/table/unpublish-table"
+                 (mt/user-http-request :rasta :post 403 "ee/data-studio/table/unpublish-tables"
                                        {:table_ids [(mt/id :venues)]}))
                (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
                                      {:table_ids [(mt/id :venues)]})
