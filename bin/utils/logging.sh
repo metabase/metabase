@@ -28,7 +28,7 @@ print_header() {
 # Print a section header (for grouping related output)
 print_section() {
     echo -e "\n${BOLD}$1${NC}"
-    echo -e "${BOLD}$(printf -- '-%.0s' {1..63})${NC}"
+    echo -e "${BOLD}$(printf -- '-%.0s' {1..67})${NC}"
 }
 
 # Print a step indicator (for progress through tasks)
