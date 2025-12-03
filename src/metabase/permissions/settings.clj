@@ -53,11 +53,18 @@
   :type       :boolean
   :audit      :never)
 
+(defn update-use-tenants! [new-val]
+  (when-not new-val
+    (t2/update! :model/User :tenant_id [:not= nil] {:is_active false}))
+  (setting/set-value-of-type! :boolean :use-tenants new-val))
+
 (defsetting use-tenants
   (deferred-tru
    "Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.")
-  :type :boolean
-  :visibility :authenticated
-  :export? false
-  :default false
-  :feature :tenants)
+  :type               :boolean
+  :visibility         :authenticated
+  :export?            false
+  :setter             update-use-tenants!
+  :default            false
+  :feature            :tenants
+  :can-read-from-env? false)
