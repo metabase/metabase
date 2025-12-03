@@ -50,6 +50,27 @@ describe("library", () => {
   it("should hide an empty library collection", async () => {
     fetchMock.get("/api/ee/library", {
       ...LIBRARY_COLLECTION,
+      below: [],
+    });
+    setupCollectionItemsEndpoint({
+      collection: LIBRARY_COLLECTION,
+      collectionItems: [
+        { ...LIBRARY_MODELS_COLELCTION, here: undefined },
+        { ...LIBRARY_METRICS_COLELCTION, here: undefined },
+      ],
+    });
+
+    setup(
+      { models: ["dataset", "metric"] },
+      createMockTokenFeatures({ data_studio: true }),
+    );
+
+    expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+  });
+
+  it("should drill into child folders when you only have metrics or models", async () => {
+    fetchMock.get("/api/ee/library", {
+      ...LIBRARY_COLLECTION,
       below: ["dataset"],
     });
     setupCollectionItemsEndpoint({
@@ -60,9 +81,18 @@ describe("library", () => {
       ],
     });
 
-    setup({}, createMockTokenFeatures({ data_studio: true }));
+    setupCollectionItemsEndpoint({
+      collection: LIBRARY_MODELS_COLELCTION,
+      collectionItems: [
+        createMockCollectionItem({ model: "dataset", name: "Surprise" }),
+      ],
+    });
 
-    expect(await screen.findByText("data")).toBeInTheDocument();
+    setup(
+      { models: ["dataset", "metric"] },
+      createMockTokenFeatures({ data_studio: true }),
+    );
+    expect(await screen.findByText("Surprise")).toBeInTheDocument();
     expect(screen.queryByText("metrics")).not.toBeInTheDocument();
   });
 
