@@ -147,9 +147,6 @@ export const CollectionPermissionsPage = _.compose(
   Collections.loadList({
     entityQuery: collectionsQuery,
   }),
-  Collections.loadList({
-    entityQuery: { ...collectionsQuery, namespace: "shared-tenant-collection" },
-  }),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(CollectionsPermissionsPageView);

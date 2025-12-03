@@ -88,11 +88,6 @@ const getCollections = (state: State) =>
     }) ?? []
   ).filter(nonPersonalOrArchivedCollection);
 
-const getTenantCollections = (state: State) =>
-  Collections.selectors.getList(state, {
-    entityQuery: { ...collectionsQuery, namespace: "shared-tenant-collection" },
-  }) ?? [];
-
 const getCollectionsTree = createSelector([getCollections], (collections) => {
   const libraryCollections = collections.filter(isLibraryCollection);
   const nonLibraryCollections = collections.filter(
@@ -105,11 +100,6 @@ const getCollectionsTree = createSelector([getCollections], (collections) => {
     ...buildCollectionTree(nonLibraryCollections),
   ];
 });
-
-const getTenantCollectionsTree = createSelector(
-  [getTenantCollections],
-  (collections) => buildCollectionTree(collections),
-);
 
 export function buildCollectionTree(
   collections: Collection[] | null,
@@ -138,17 +128,12 @@ export type CollectionSidebarType = {
 
 export const getCollectionsSidebar = createSelector(
   getCollectionsTree,
-  getTenantCollectionsTree,
   getCurrentCollectionId,
-  (
-    collectionsTree,
-    tenantCollectionsTree,
-    collectionId,
-  ): CollectionSidebarType => {
+  (collectionsTree, collectionId): CollectionSidebarType => {
     return {
       selectedId: collectionId,
       title: t`Collections`,
-      entityGroups: [collectionsTree || [], tenantCollectionsTree || []],
+      entityGroups: [collectionsTree || []],
       filterPlaceholder: t`Search for a collection`,
     };
   },
@@ -180,8 +165,8 @@ const findCollection = (
 };
 
 const getCollection = createSelector(
-  [getCurrentCollectionId, getCollections, getTenantCollections],
-  (collectionId, collections, tenantCollections) => {
+  [getCurrentCollectionId, getCollections],
+  (collectionId, collections) => {
     if (collectionId == null) {
       return null;
     }
@@ -193,7 +178,7 @@ const getCollection = createSelector(
       };
     }
 
-    return findCollection([...collections, ...tenantCollections], collectionId);
+    return findCollection(collections, collectionId);
   },
 );
 

@@ -6,7 +6,6 @@ import type { CollectionPermissionsGraph } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
-  defaultCollectionWithTenants,
   defaultCollections,
   defaultPermissionGroupsWithTenants,
   defaultPermissionsGraph,
@@ -46,30 +45,6 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       await assertCollectionAccessForGroup("Other Users", "View");
       await assertCollectionAccessForGroup("All External Users", "No access");
       await assertCollectionAccessIsDisabled("All External Users");
-    });
-
-    it("should be able to have view access to shared tenant collections", async () => {
-      await setup({
-        tokenFeatures,
-        initialRoute: "/admin/permissions/collections/7",
-        permissionGroups: defaultPermissionGroupsWithTenants,
-        permissionsGraph: defaultPermissionsGraphWithTenants,
-        collections: defaultCollectionWithTenants,
-      });
-
-      await assertCollectionAccessForGroup("Administrators", "Curate");
-      await assertCollectionAccessForGroup("All Internal Users", "Curate");
-      await assertCollectionAccessForGroup("Other Users", "No access");
-      await assertCollectionAccessForGroup("All External Users", "View");
-      await assertCollectionAccessIsDisabled("All External Users", false);
-
-      await userEvent.click(
-        await getCollectionPermissionCell("All External Users"),
-      );
-
-      expect(await screen.findByRole("dialog")).toHaveTextContent("View");
-      expect(await screen.findByRole("dialog")).toHaveTextContent("No access");
-      expect(await screen.findByRole("dialog")).not.toHaveTextContent("Curate");
     });
   });
 
