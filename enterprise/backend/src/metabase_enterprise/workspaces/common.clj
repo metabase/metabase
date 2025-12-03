@@ -23,13 +23,11 @@
 (defn check-transforms-not-in-workspace!
   "Check that none of the transforms already belong to a workspace. Throws 400 if any do."
   [transform-ids]
-  (when-let [ws-txs (seq (t2/select [:model/Transform :id :workspace_id]
-                                    :id [:in transform-ids]
-                                    :workspace_id [:not= nil]))]
+  (when (seq (t2/select [:model/Transform :id :workspace_id]
+                        :id [:in transform-ids]
+                        :workspace_id [:not= nil]))
     (throw (ex-info (tru "Cannot add transforms that belong to another workspace")
-                    {:status-code   400
-                     :transform-ids (mapv :id ws-txs)
-                     :workspace-ids (->> ws-txs (map :workspace_id) distinct sort vec)}))))
+                    {:status-code 400}))))
 
 (defn- extract-suffix-number
   "Extract the numeric suffix from a workspace name like 'Foo (3)', or nil if no valid suffix."
@@ -264,9 +262,13 @@
         tables-where-clause (mirror-table-to-delete-where (:database_id workspace) targets)
         tables-data (t2/select :model/Table {:where tables-where-clause})
         tables-ids (into #{} (map :id) tables-data)]
-    (ws.isolation/drop-isolated-tables! database targets)
-    (t2/delete! :model/Table :id [:in tables-ids])
-    (t2/delete! :model/Transform :id [:in mirror-transforms-ids])))
+    (assert (every? pos-int? tables-ids))
+    (when (seq targets)
+      (ws.isolation/drop-isolated-tables! database targets))
+    (when (seq tables-ids)
+      (t2/delete! :model/Table :id [:in tables-ids]))
+    (when (seq mirror-transforms-ids)
+      (t2/delete! :model/Transform :id [:in mirror-transforms-ids]))))
 
 #_:clj-kondo/ignore
 (comment

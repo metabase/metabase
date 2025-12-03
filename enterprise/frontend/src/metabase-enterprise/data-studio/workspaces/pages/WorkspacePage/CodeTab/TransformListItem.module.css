@@ -7,6 +7,10 @@
   cursor: pointer;
   flex-wrap: nowrap;
 
+  &:hover .menu {
+    visibility: visible;
+  }
+
   &:hover {
     background-color: var(--mb-color-bg-light);
   }
@@ -23,4 +27,8 @@
   border-radius: 50%;
   background-color: var(--mb-color-warning);
   flex-shrink: 0;
+}
+
+.menu {
+  visibility: hidden;
 }

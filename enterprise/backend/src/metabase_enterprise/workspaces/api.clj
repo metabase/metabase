@@ -185,32 +185,37 @@
 
 (defn- input-tables
   [graph]
-  (t2/select [:model/Table :id :schema :name [:name :table]]
-             :id [:in (map :id (:inputs graph))]))
+  (let [table-ids (not-empty (set (map :id (:inputs graph))))]
+    (if (empty? table-ids)
+      []
+      (t2/select-fn-vec identity [:model/Table :id :schema [:name :table]]
+                        :id [:in table-ids]))))
 
 (defn- output-tables
   [workspace-id]
-  (let [src-table-id->dst-table-id (t2/select-fn->fn :src-id :dst-id
-                                                     [:model/WorkspaceMappingTable [:upstream_id :src-id] [:downstream_id :dst-id]]
-                                                     :workspace_id workspace-id)
-        id->table-data (t2/select-fn->fn :id identity :model/Table
-                                         :id [:in (filter pos-int? (concat (keys src-table-id->dst-table-id)
-                                                                           (vals src-table-id->dst-table-id)))])
-
-        workspace-transforms-data (t2/select :model/Transform :workspace_id workspace-id)
-        s+t->workspace-transform (u/for-map
-                                  [{:keys [target] :as transform} workspace-transforms-data]
-                                   [[(:schema target) (:name target)] transform])]
-    (mapv (fn [[src-table-id dst-table-id]]
-            (let [src-schema (get-in id->table-data [src-table-id :schema])
-                  src-table (get-in id->table-data [src-table-id :name])
-                  dst-schema (get-in id->table-data [dst-table-id :schema])
-                  dst-table (get-in id->table-data [dst-table-id :name])]
-              {:global {:schema src-schema
-                        :table src-table}
-               :workspace {:transform-id (get-in s+t->workspace-transform [[dst-schema dst-table] :id])
-                           :table-id dst-table-id}}))
-          src-table-id->dst-table-id)))
+  (let [src-table-id->dst-table-id
+        (t2/select-fn->fn :src-id :dst-id
+                          [:model/WorkspaceMappingTable [:upstream_id :src-id] [:downstream_id :dst-id]]
+                          :workspace_id workspace-id)]
+    (if (empty? src-table-id->dst-table-id)
+      []
+      (let [id->table-data (t2/select-fn->fn :id identity :model/Table
+                                             :id [:in (filter pos-int? (concat (keys src-table-id->dst-table-id)
+                                                                               (vals src-table-id->dst-table-id)))])
+            workspace-transforms-data (t2/select :model/Transform :workspace_id workspace-id)
+            s+t->workspace-transform (u/for-map
+                                      [{:keys [target] :as transform} workspace-transforms-data]
+                                       [[(:schema target) (:name target)] transform])]
+        (mapv (fn [[src-table-id dst-table-id]]
+                (let [src-schema (get-in id->table-data [src-table-id :schema])
+                      src-table (get-in id->table-data [src-table-id :name])
+                      dst-schema (get-in id->table-data [dst-table-id :schema])
+                      dst-table (get-in id->table-data [dst-table-id :name])]
+                  {:global {:schema src-schema
+                            :table src-table}
+                   :workspace {:transform-id (get-in s+t->workspace-transform [[dst-schema dst-table] :id])
+                               :table-id dst-table-id}}))
+              src-table-id->dst-table-id)))))
 
 (api.macros/defendpoint :get "/:id/tables" :- [:map
                                                [:inputs [:sequential
@@ -225,7 +230,7 @@
                                                            [:workspace [:map
                                                                         [:transform-id :int]
                                                                         [:table-id :int]]]]]]]
-  "Get a single workspace by ID"
+  "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [workspace (-> (api/check-404 (t2/select-one :model/Workspace :id id))
@@ -428,14 +433,14 @@
                    (assoc transform :workspace (get workspaces-by-id (tid->wid (:id transform)))))}))
 
 (api.macros/defendpoint :post "/:id/merge"
-  #_#_:- [:or
-          [:map
-           [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
-           [:errors {:optional true} [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]
-           [:workspace [:map [:id ms/PositiveInt] [:name :string]]]
-           [:archived_at [:maybe :any]]]
+  :- [:or
+      [:map
+       [:promoted [:sequential [:map [:id ms/PositiveInt] [:name :string]]]]
+       [:errors [:maybe [:sequential [:map [:id ms/PositiveInt] [:name :string] [:error :string]]]]]
+       [:workspace [:map [:id ms/PositiveInt] [:name :string]]]
+       [:archived_at [:maybe :any]]]
       ;; error message from check-404 or check-400
-          :string]
+      :string]
   "Promote workspace transforms back to main Metabase and archive the workspace.
 
   This will:

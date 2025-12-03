@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { Button } from "metabase/ui";
 import {
   useLazyGetTransformQuery,
-  useRunTransformJobMutation,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
 import type { Transform, TransformId, WorkspaceId } from "metabase-types/api";
@@ -23,7 +22,6 @@ export const CheckOutTransformButton = ({
 }: Props) => {
   const [getTransform] = useLazyGetTransformQuery();
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
-  useRunTransformJobMutation();
 
   const {
     addOpenedTransform,

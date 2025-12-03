@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import EditableText from "metabase/common/components/EditableText";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -18,12 +19,12 @@ import {
   Stack,
   Tabs,
   Text,
-  Title,
 } from "metabase/ui";
 import {
   useGetWorkspaceQuery,
   useListTransformsQuery,
   useMergeWorkspaceMutation,
+  useUpdateWorkspaceNameMutation,
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
@@ -60,6 +61,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
 
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
+
+  const [updateWorkspaceName] = useUpdateWorkspaceNameMutation();
 
   const sourceDb = databases?.data.find(
     (db) => db.id === workspace?.database_id,
@@ -182,6 +185,21 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     }
   }, [id, mergeWorkspace, sendErrorToast, dispatch]);
 
+  const handleWorkspaceNameChange = useCallback(
+    async (newName: string) => {
+      if (!workspace || newName.trim() === workspace.name.trim()) {
+        return;
+      }
+
+      try {
+        await updateWorkspaceName({ id, name: newName.trim() }).unwrap();
+      } catch (error) {
+        sendErrorToast(t`Failed to update workspace name`);
+      }
+    },
+    [workspace, id, updateWorkspaceName, sendErrorToast],
+  );
+
   if (isLoadingWorkspace) {
     return (
       <Box p="lg">
@@ -201,12 +219,24 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   return (
     <Stack h="100%" gap={0}>
       <Group
-        px="lg"
-        py="md"
+        px="md"
+        py="sm"
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
         justify="space-between"
       >
-        <Title order={2}>{workspace.name}</Title>
+        <Flex gap="xs" align="center">
+          <Icon name="git_branch" size="1rem" aria-hidden />
+          <EditableText
+            initialValue={workspace.name}
+            onChange={handleWorkspaceNameChange}
+            placeholder={t`Workspace name`}
+            style={{
+              fontSize: "var(--mantine-h3-font-size)",
+              fontWeight: "var(--mantine-h3-font-weight)",
+              lineHeight: "var(--mantine-h3-line-height)",
+            }}
+          />
+        </Flex>
         <Button
           variant="filled"
           onClick={handleMergeWorkspace}
@@ -343,9 +373,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             </Flex>
             <Tabs.Panel value="code" p="md">
               <CodeTab
-                workspaceTransforms={workspaceTransforms}
-                transforms={dbTransforms}
                 activeTransformId={activeTransform?.id}
+                transforms={dbTransforms}
+                workspaceId={workspace.id}
+                workspaceTransforms={workspaceTransforms}
                 onTransformClick={(transform) => {
                   setTab(String(transform.id));
                   addOpenedTransform(transform);

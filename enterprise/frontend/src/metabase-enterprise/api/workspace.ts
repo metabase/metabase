@@ -143,6 +143,18 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
+    updateWorkspaceName: builder.mutation<
+      Workspace,
+      { id: WorkspaceId; name: string }
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/name`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id)]),
+    }),
   }),
 });
 
@@ -159,4 +171,5 @@ export const {
   useMergeWorkspaceMutation,
   useArchiveWorkspaceMutation,
   useValidateTableNameMutation,
+  useUpdateWorkspaceNameMutation,
 } = workspaceApi;

@@ -26,10 +26,14 @@
         dup-tables-ids (into #{}
                              (map #(-> % :mapping :id))
                              (-> ws-graph :outputs))]
-    (t2/delete! :model/Table :id [:in dup-tables-ids])
-    (t2/delete! :model/Table :id [:in output-ids])
-    (t2/delete! :model/Workspace :id ws-id)
-    (jdbc/execute! spec (format "DROP SCHEMA IF EXISTS %s CASCADE" ws-schema))))
+    (when (seq dup-tables-ids)
+      (t2/delete! :model/Table :id [:in dup-tables-ids]))
+    (when (seq output-ids)
+      (t2/delete! :model/Table :id [:in output-ids]))
+    (when (some? ws-id)
+      (t2/delete! :model/Workspace :id ws-id))
+    (when (string? (not-empty ws-schema))
+      (jdbc/execute! spec (format "DROP SCHEMA IF EXISTS %s CASCADE" ws-schema)))))
 
 (deftest create-workspace-independent-native-transforms-test
   (mt/test-driver
@@ -356,6 +360,61 @@
                 (testing "Mirrored entites are not present in the mapping tables"
                   (is (empty? (t2/select :model/WorkspaceMappingTable :workspace_id (:id ws))))
                   (is (empty? (t2/select :model/WorkspaceMappingTransform :workspace_id (:id ws)))))))))
+        (catch Throwable t
+          (def ttt t)
+          (throw t))
+        (finally
+          (teardown! @ws-id))))))
+
+(deftest add-one-by-one-and-remove-test
+  (mt/test-driver
+    :postgres
+    (let [mp (mt/metadata-provider)
+          q1 (lib/native-query mp "select * from orders limit 10;")
+          test-schema "my_test_schema"
+          ws-id (atom nil)]
+      (try
+        (setup! test-schema)
+        (transforms.tu/with-transform-cleanup! [t1 "t1"]
+          (mt/with-temp
+            [:model/Transform x1 {:source_type :native
+                                  :source {:type :query
+                                           :query q1}
+                                  :target {:type :table
+                                           :database (mt/id)
+                                           :schema test-schema
+                                           :name t1}}]
+           ;; Create the target tables
+            (transforms.i/execute! x1 {:run-method :manual})
+           ;; Add into a workspace
+            (let [creator-id (mt/user->id :crowberto)
+                 ;; create empty workspace
+                  ws (mt/user-http-request :crowberto :post 200
+                                           "/ee/workspace"
+                                           {:name "my test ws xxx"
+                                            :creator_id creator-id
+                                            :database_id (mt/id)})
+                  _ (reset! ws-id (:id ws))]
+              (let [add-res (mt/user-http-request :crowberto :post 200
+                                                  (str "ee/workspace/" (:id ws) "/contents")
+                                                  {:add {:transforms [(:id x1)]}})]
+                (testing "Successfully added"
+                  (is (some? (-> add-res :contents :transforms (nth 0)))))
+                (let [rem-res (mt/user-http-request :crowberto :post 200
+                                                    (str "ee/workspace/" (:id ws) "/contents")
+                                                    {:remove {:transforms [(-> add-res :contents :transforms (nth 0) :id)]}})]
+                  (testing "successfully removed"
+                    (is (empty? (-> rem-res :contents :transforms))))))
+              (let [add-res (mt/user-http-request :crowberto :post 200
+                                                  (str "ee/workspace/" (:id ws) "/contents")
+                                                  {:add {:transforms [(:id x1)]}})]
+                (testing "Successfully added"
+                  (is (some? (-> add-res :contents :transforms (nth 0)))))
+                (let [rem-res (mt/user-http-request :crowberto :post 200
+                                                    (str "ee/workspace/" (:id ws) "/contents")
+                                                    {:remove {:transforms [(-> add-res :contents :transforms (nth 0) :id)]}})]
+                  (testing "successfully removed"
+                    (is (empty? (-> rem-res :contents :transforms)))))))))
         (catch Throwable t
           (def ttt t)
           (throw t))

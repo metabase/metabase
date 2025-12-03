@@ -13,12 +13,9 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import {
-  getInitialUiState,
-  type QueryEditorUiOptions,
-} from "metabase/querying/editor/components/QueryEditor";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Stack } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -29,7 +26,6 @@ import type {
   Database,
   DraftTransformSource,
   Transform,
-  TransformSource,
 } from "metabase-types/api";
 
 import {
@@ -37,6 +33,7 @@ import {
   type TransformEditorProps,
 } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
+import { EditTransformMenu } from "../../components/TransformHeader/EditTransformMenu";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { getValidationResult, isNotDraftSource } from "../../utils";
@@ -62,6 +59,8 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery({ include_analytics: true });
+  const showEditWorkspaceMenu =
+    transform?.source_type === "python" || transform?.source_type === "native";
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
@@ -78,6 +77,7 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
       transform={transform}
       databases={databases.data}
       route={route}
+      showEditWorkspaceMenu={showEditWorkspaceMenu}
     />
   );
 }
@@ -86,12 +86,14 @@ type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
   route: Route;
+  showEditWorkspaceMenu: boolean;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
   route,
+  showEditWorkspaceMenu,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -171,14 +173,19 @@ function TransformQueryPageBody({
         <TransformHeader
           transform={transform}
           actions={
-            <PaneHeaderActions
-              errorMessage={validationResult.errorMessage}
-              isValid={validationResult.isValid}
-              isDirty={isDirty}
-              isSaving={isSaving || isCheckingDependencies}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
+            <Group gap="sm">
+              {showEditWorkspaceMenu && (
+                <EditTransformMenu transform={transform} />
+              )}
+              <PaneHeaderActions
+                errorMessage={validationResult.errorMessage}
+                isValid={validationResult.isValid}
+                isDirty={isDirty}
+                isSaving={isSaving || isCheckingDependencies}
+                onSave={handleSave}
+                onCancel={handleCancel}
+              />
+            </Group>
           }
           hasMenu={!isDirty}
         />

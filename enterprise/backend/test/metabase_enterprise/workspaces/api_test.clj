@@ -90,6 +90,38 @@
       (is (= "Cannot promote an already archived workspace"
              (mt/user-http-request :crowberto :post 400 (str "ee/workspace/" (:id workspace) "/merge")))))))
 
+(deftest merge-workspace-with-transform-test
+  (search.tu/with-index-disabled
+    (testing "POST /api/ee/workspace/:id/merge promotes transforms and archives workspace"
+      (mt/with-premium-features #{:workspaces :dependencies}
+        (mt/with-temp [:model/Table                     _table {:schema "public" :name "merge_test_table"}
+                       :model/Transform                 x1    {:name        "Upstream Transform"
+                                                               :description "Original description"
+                                                               :target      {:type     "table"
+                                                                             :database 1
+                                                                             :schema   "public"
+                                                                             :name     "merge_test_table"}}]
+          (mt/with-model-cleanup [:model/Workspace :model/Transform :model/WorkspaceMappingTransform]
+            (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                    {:name        "Merge test"
+                                                     :database_id (mt/id)
+                                                     :upstream    {:transforms [(:id x1)]}})]
+              (testing "We've got our workspace with transform to merge"
+                (is (int? ws-id))
+                ;; (sanya) TODO: maybe switch to using transform APIs once we get our own
+                (let [x2-id (t2/select-one-fn :downstream_id :model/WorkspaceMappingTransform :upstream_id (:id x1))]
+                  (t2/update! :model/Transform :id x2-id {:description "Modified in workspace"})))
+              (testing "returns promoted transforms"
+                (is (=? {:promoted  [{:id (:id x1)}]
+                         :workspace {:id ws-id :name "Merge test"}}
+                        (mt/user-http-request :crowberto :post 200
+                                              (str "ee/workspace/" ws-id "/merge")))))
+              (testing "original transform was updated with workspace version"
+                (is (= "Modified in workspace"
+                       (t2/select-one-fn :description :model/Transform :id (:id x1)))))
+              (testing "workspace was deleted after successful merge"
+                (is (nil? (t2/select-one :model/Workspace :id ws-id)))))))))))
+
 (deftest create-workspace-transform-permissions-test
   (testing "POST /api/ee/workspace/:id/transform requires superuser"
     (mt/with-temp [:model/Workspace workspace {:name "Transform Test"}]
@@ -130,11 +162,11 @@
                                                                      :schema   "public"
                                                                      :name     orig-name}}]
             (mt/with-model-cleanup [:model/Collection :model/Workspace :model/Transform :model/WorkspaceMappingTransform]
-              ;; Subsequent routes are invalid without an id
-              (when-let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                 {:name        "Add Entities Test"
-                                                                  :database_id (mt/id)
-                                                                  :upstream    {:transforms [x1-id]}}))]
+              (let [workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                            {:name        "Add Entities Test"
+                                                             :database_id (mt/id)
+                                                             :upstream    {:transforms [x1-id]}}))]
+                (is (int? workspace-id))
                 (testing "Can add new entities to workspace"
                   (is (=? {:contents {:transforms #(>= (count %) 2)}}
                           (mt/user-http-request :crowberto :post 200
@@ -193,6 +225,51 @@
                                                       :query (mt/mbql-query transforms_products)}
                                              :target {:type   "table"
                                                       :name   table-name}}))))))))))
+(deftest tables-endpoint-empty-ws-test
+  (mt/test-driver
+    :postgres
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [user-id (mt/user->id :crowberto)
+            ws (mt/user-http-request :crowberto :post 200 "ee/workspace/"
+                                     {:name "My test ws"
+                                      :creator_id user-id
+                                      :database_id (mt/id)})]
+        (is (= {:inputs []
+                :outputs []}
+               (mt/user-http-request :crowberto :get 200
+                                     (str "ee/workspace/" (:id ws) "/tables"))))))))
+
+(deftest tables-endpoint-transform-not-run-test
+  (mt/test-driver
+    :postgres
+    (mt/with-model-cleanup [:model/Workspace :model/Transform :model/Collection]
+      (let [mp (mt/metadata-provider)
+            query (lib/native-query mp "select * from orders limit 10;")
+            orig-schema "public"]
+        (with-transform-cleanup! [orig-name "ws_tables_test"]
+          (mt/with-temp [:model/Transform x1 {:source_type "native"
+                                              :name "My X1"
+                                              :source {:type "query"
+                                                       :query query}
+                                              :target {:type "table"
+                                                       :database (mt/id)
+                                                       :schema "public"
+                                                       :name orig-name}}]
+            (let [;; create the workspace
+                  workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                  {:name        "Test Workspace"
+                                                   :database_id (mt/id)})
+                 ;; add the transform
+                  _ (mt/user-http-request :crowberto :post 200
+                                          (str "ee/workspace/" (:id workspace) "/contents")
+                                          {:add {:transforms [(:id x1)]}})
+                 ;; get the tables
+                  tables-result (mt/user-http-request :crowberto :get 200
+                                                      (str "ee/workspace/" (:id workspace) "/tables"))]
+              (testing "/tables returns expected results"
+                (is (= {:inputs [{:id (mt/id :orders) :schema orig-schema :table "orders"}]
+                        :outputs []}
+                       tables-result))))))))))
 
 (deftest tables-endpoint-test
   (mt/test-driver
@@ -212,11 +289,15 @@
                                                        :name orig-name}}]
             ;; create the target table
             (transforms.i/execute! x1 {:run-method :manual})
-            ;; create the workspace
-            (let [workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
+            (let [;; create the workspace
+                  workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                   {:name        "Test Workspace"
-                                                   :database_id (mt/id)
-                                                   :upstream {:transforms [(:id x1)]}})
+                                                   :database_id (mt/id)})
+                  ;; add the transform
+                  _ (mt/user-http-request :crowberto :post 200
+                                          (str "ee/workspace/" (:id workspace) "/contents")
+                                          {:add {:transforms [(:id x1)]}})
+                 ;; get the tables
                   tables-result (mt/user-http-request :crowberto :get 200
                                                       (str "ee/workspace/" (:id workspace) "/tables"))
                   mirror-transform (t2/select-one :model/Transform :workspace_id (:id workspace))
