@@ -12,6 +12,10 @@
 #
 # mise will automatically activate the correct versions when you cd into this directory.
 
+[settings]
+# Automatically install tools when entering the project directory
+auto_install = true
+
 [env]
 # Disable corepack - we use yarn classic installed via mise
 COREPACK_ENABLE_AUTO_PIN = "0"
