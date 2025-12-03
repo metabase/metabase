@@ -52,7 +52,6 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   can_restore: boolean;
   can_delete: boolean;
   can_manage_db: boolean;
-  can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   initially_published_at: string | null;
 
   database_id?: DatabaseId;

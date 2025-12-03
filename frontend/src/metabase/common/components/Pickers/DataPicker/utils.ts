@@ -138,7 +138,7 @@ export const createShouldShowItem = (
 
     if (item.model === "card") {
       return (
-        canCollectionCardBeUsed(item) &&
+        canCollectionCardBeUsed(item as CollectionItem) &&
         (isNullOrUndefined(databaseId) ||
           !hasDatabaseId(item) ||
           isNullOrUndefined(item.database_id))

@@ -142,7 +142,7 @@ const resolveEntityId = (
 
 export const canCollectionCardBeUsed = (item: CollectionItem): boolean => {
   if (item.model === "card") {
-    return "can_run_adhoc_query" in item ? item.can_run_adhoc_query : true;
+    return "can_run_adhoc_query" in item ? !!item.can_run_adhoc_query : true;
   }
 
   return true;
