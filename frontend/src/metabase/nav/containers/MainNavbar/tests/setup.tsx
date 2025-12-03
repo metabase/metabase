@@ -138,6 +138,7 @@ export async function setup({
   setupCollectionsEndpoints({
     collections,
     rootCollection: OUR_ANALYTICS,
+    currentUserId: user?.id,
   });
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],

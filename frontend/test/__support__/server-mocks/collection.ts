@@ -27,12 +27,14 @@ export interface CollectionEndpoints {
   collections: Collection[];
   rootCollection?: Collection;
   trashCollection?: Collection;
+  currentUserId?: number;
 }
 
 export function setupCollectionsEndpoints({
   collections,
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
+  currentUserId,
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -52,10 +54,12 @@ export function setupCollectionsEndpoints({
         url.searchParams.get("exclude-other-user-collections") === "true";
 
       return collections.filter((collection) => {
-        // Filter out personal collections if requested
+        // Filter out other users' personal collections if requested
+        // But keep the current user's personal collection
         if (
           excludeOtherUserCollections &&
-          typeof collection.personal_owner_id === "number"
+          typeof collection.personal_owner_id === "number" &&
+          collection.personal_owner_id !== currentUserId
         ) {
           return false;
         }
@@ -78,10 +82,12 @@ export function setupCollectionsEndpoints({
     const namespace = url.searchParams.get("namespace");
 
     return collections.filter((collection) => {
-      // Filter out personal collections if requested
+      // Filter out other users' personal collections if requested
+      // But keep the current user's personal collection
       if (
         excludeOtherUserCollections &&
-        typeof collection.personal_owner_id === "number"
+        typeof collection.personal_owner_id === "number" &&
+        collection.personal_owner_id !== currentUserId
       ) {
         return false;
       }
