@@ -1,3 +1,10 @@
 packages:
   - 'util'
   - 'e2e/embedding-sdk-host-apps/*'
+
+# Security: Block packages published less than 3 days ago (4320 = 3 * 24 * 60 minutes)
+# This mitigates supply chain attacks from newly-published malicious packages.
+# To bypass for urgent security patches, add the package to minimumReleaseAgeExclude:
+#   minimumReleaseAgeExclude:
+#     - "package-name@version"
+minimumReleaseAge: 4320
