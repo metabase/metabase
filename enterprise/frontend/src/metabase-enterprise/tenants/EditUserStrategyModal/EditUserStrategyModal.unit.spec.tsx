@@ -88,9 +88,7 @@ describe("EditUserStrategyModal", () => {
   it("should handle failing to update", async () => {
     await setup({
       setupEndpoints: () => {
-        fetchMock.put("path:/api/setting/use-tenants", 500, {
-          overwriteRoutes: true,
-        });
+        fetchMock.put("path:/api/setting/use-tenants", 500);
       },
     });
 

@@ -35,7 +35,7 @@ const LIBRARY_METRICS_COLELCTION = createMockCollectionItem({
 
 describe("library", () => {
   it("should default to the library if it's available", async () => {
-    fetchMock.get("/api/ee/library", LIBRARY_COLLECTION);
+    fetchMock.get("path:/api/ee/library", LIBRARY_COLLECTION);
     setupCollectionItemsEndpoint({
       collection: LIBRARY_COLLECTION,
       collectionItems: [LIBRARY_MODELS_COLELCTION, LIBRARY_METRICS_COLELCTION],
@@ -48,7 +48,7 @@ describe("library", () => {
   });
 
   it("should hide an empty library collection", async () => {
-    fetchMock.get("/api/ee/library", {
+    fetchMock.get("path:/api/ee/library", {
       ...LIBRARY_COLLECTION,
       below: ["dataset"],
     });
@@ -67,7 +67,7 @@ describe("library", () => {
   });
 
   it("should hide respect the shouldShowLibrary prop", async () => {
-    fetchMock.get("/api/ee/library", LIBRARY_COLLECTION);
+    fetchMock.get("path:/api/ee/library", LIBRARY_COLLECTION);
     setupCollectionItemsEndpoint({
       collection: LIBRARY_COLLECTION,
       collectionItems: [LIBRARY_MODELS_COLELCTION, LIBRARY_METRICS_COLELCTION],

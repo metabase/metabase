@@ -4,7 +4,8 @@ import { useState } from "react";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
-  setupTenantRootCollectionItemsEndpoint,
+  setupRootCollectionItemsEndpoint,
+  setupTenantCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { mockGetBoundingClientRect, renderWithProviders } from "__support__/ui";
@@ -100,7 +101,7 @@ const collectionTree: MockCollection[] = [
 
 const tenantCollectionsTree: MockCollection[] = [
   {
-    name: "Shared Tenant Collection",
+    name: "tcoll",
     id: 6,
     location: "/",
     effective_location: "/",
@@ -112,7 +113,7 @@ const tenantCollectionsTree: MockCollection[] = [
         id: 7,
         location: "/6/",
         effective_location: "/6/",
-        name: "Tenant Sub Collection",
+        name: "tsubcoll",
         is_personal: false,
         is_shared_tenant_collection: true,
         collections: [],
@@ -130,6 +131,9 @@ const flattenCollectionTree = (
       name: n.name,
       id: n.id,
       is_personal: !!n.is_personal,
+      ...(n.is_shared_tenant_collection !== undefined && {
+        is_shared_tenant_collection: n.is_shared_tenant_collection,
+      }),
       location: n.location,
       effective_location: n.effective_location,
       here: n.here,
@@ -145,20 +149,42 @@ const mockCollectionToCollectionItem = (c: MockCollection) =>
     location: c.location || "/",
     effective_location: c.effective_location || "/",
     here: c.here,
+    ...(c.is_shared_tenant_collection && {
+      namespace: "shared-tenant-collection",
+    }),
   });
 
 const setupCollectionTreeMocks = (node: MockCollection[]) => {
   node.forEach((n) => {
     const collectionItems = n.collections.map(mockCollectionToCollectionItem);
 
-    setupCollectionItemsEndpoint({
+    // Skip root since it's handled separately (tenant-aware in EE mode)
+    if (n.id !== "root") {
+      setupCollectionItemsEndpoint({
+        collection: createMockCollection({ id: n.id }),
+        collectionItems,
+        models: ["collection"],
+      });
+    }
+
+    if (collectionItems.length > 0) {
+      setupCollectionTreeMocks(n.collections);
+    }
+  });
+};
+
+const setupTenantCollectionTreeMocks = (node: MockCollection[]) => {
+  node.forEach((n) => {
+    const collectionItems = n.collections.map(mockCollectionToCollectionItem);
+
+    setupTenantCollectionItemsEndpoint({
       collection: createMockCollection({ id: n.id }),
       collectionItems,
       models: ["collection"],
     });
 
     if (collectionItems.length > 0) {
-      setupCollectionTreeMocks(n.collections);
+      setupTenantCollectionTreeMocks(n.collections);
     }
   });
 };
@@ -190,6 +216,15 @@ export const setup = ({
 
   setupCollectionTreeMocks(collectionTree);
 
+  setupRootCollectionItemsEndpoint({
+    rootCollectionItems: collectionTree[0].collections.map(
+      mockCollectionToCollectionItem,
+    ),
+    tenantRootItems: ee
+      ? [mockCollectionToCollectionItem(tenantCollectionsTree[0])]
+      : [],
+  });
+
   const settings = mockSettings(
     createMockSettings({
       "token-features": createMockTokenFeatures({
@@ -199,14 +234,10 @@ export const setup = ({
     }),
   );
 
+  // Update root mock to handle tenant namespace in EE mode
   if (ee) {
     setupEnterprisePlugins();
-    setupCollectionTreeMocks(tenantCollectionsTree);
-    setupTenantRootCollectionItemsEndpoint({
-      collectionItems: [
-        mockCollectionToCollectionItem(tenantCollectionsTree[0]),
-      ],
-    });
+    setupTenantCollectionTreeMocks(tenantCollectionsTree);
 
     const allTenantCollections = flattenCollectionTree(tenantCollectionsTree);
 
@@ -222,13 +253,17 @@ export const setup = ({
   function TestComponent() {
     const [path, setPath] = useState<CollectionPickerStatePath>();
 
+    const handlePathChange = (newPath: CollectionPickerStatePath) => {
+      setPath(newPath);
+    };
+
     return (
       <CollectionPicker
         initialValue={initialValue}
         path={path}
         onInit={jest.fn()}
         onItemSelect={onItemSelect}
-        onPathChange={setPath}
+        onPathChange={handlePathChange}
       />
     );
   }

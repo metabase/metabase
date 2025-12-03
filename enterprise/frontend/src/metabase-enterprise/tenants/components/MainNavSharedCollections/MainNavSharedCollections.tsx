@@ -12,7 +12,6 @@ import type { CreateCollectionProperties } from "metabase/collections/components
 import { Tree } from "metabase/common/components/tree";
 import { buildCollectionTree } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { tenantSpecificCollections } from "metabase/lib/urls";
 import {
   PaddedSidebarLink,
@@ -124,7 +123,7 @@ export const MainNavSharedCollections = () => {
           <SidebarHeading>{t`My tenant collection`}</SidebarHeading>
           <PaddedSidebarLink
             icon="folder"
-            url={Urls.collection({id: userTenantCollectionId})}
+            url={`/collection/${userTenantCollectionId}`}
           >
             {t`My Tenant Collection`}
           </PaddedSidebarLink>
@@ -150,10 +149,7 @@ export const MainNavSharedCollections = () => {
           }
         />
         {isAdmin && (
-          <PaddedSidebarLink
-            icon="folder"
-            url={tenantSpecificCollections()}
-          >
+          <PaddedSidebarLink icon="folder" url={tenantSpecificCollections()}>
             {t`Tenant-Specific Collections`}
           </PaddedSidebarLink>
         )}

@@ -90,7 +90,7 @@ const getCollections = (state: State) =>
 
 const getTenantCollections = (state: State) =>
   Collections.selectors.getList(state, {
-    entityQuery: { ...collectionsQuery, "namespace": "shared-tenant-collection" },
+    entityQuery: { ...collectionsQuery, namespace: "shared-tenant-collection" },
   }) ?? [];
 
 const getCollectionsTree = createSelector([getCollections], (collections) => {
@@ -261,7 +261,6 @@ export const getCollectionsPermissionEditor = createSelector(
 
     const hasChildren = collection.children?.length > 0;
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
-    const defaultGroup = _.find(groups, isDefaultGroup);
     const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
     const entities = groups
@@ -296,23 +295,24 @@ export const getCollectionsPermissionEditor = createSelector(
 
         const isIACollection = isInstanceAnalyticsCollection(collection);
 
-        const options = isIACollection || (isTenantCollection && isTenantGroup)
-          ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
-          : [
-              COLLECTION_OPTIONS.write,
-              COLLECTION_OPTIONS.read,
-              COLLECTION_OPTIONS.none,
-            ];
+        const options =
+          isIACollection ||
+          (isTenantCollection && (isTenantGroup || isExternal))
+            ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
+            : [
+                COLLECTION_OPTIONS.write,
+                COLLECTION_OPTIONS.read,
+                COLLECTION_OPTIONS.none,
+              ];
 
         const disabledTooltip = isIACollection
           ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
-          : isTenantGroup
+          : isTenantGroup || isExternal
             ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
             : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
         const disabled =
-          (!isTenantCollection && isTenantGroup) ||
-          isAdmin;
+          (!isTenantCollection && (isTenantGroup || isExternal)) || isAdmin;
 
         return {
           id: group.id,

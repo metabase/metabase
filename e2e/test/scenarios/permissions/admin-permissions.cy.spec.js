@@ -91,9 +91,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Data").click();
 
       H.modal().within(() => {
-        cy.findByText("Discard your changes?");
+        cy.findByText("Discard unsaved changes?");
         cy.findByText(
-          "Your changes haven't been saved, so you'll lose them if you navigate away.",
+          "You have unsaved permission changes. Switching tabs will discard these changes.",
         );
 
         cy.button("Cancel").click();
@@ -104,7 +104,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       // Switching to data permissions page again
       cy.get("label").contains("Data").click();
 
-      H.modal().button("Discard changes").click();
+      H.modal().button("Discard").click();
 
       cy.url().should("include", "/admin/permissions/data/group");
     });

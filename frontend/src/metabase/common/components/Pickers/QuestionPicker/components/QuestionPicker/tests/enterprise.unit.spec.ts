@@ -44,12 +44,10 @@ describe("tenant collection", () => {
       await screen.findByRole("link", { name: /Tenant Collections/ }),
     );
 
-    await userEvent.click(
-      await screen.findByRole("link", { name: /Shared Tenant Collection/ }),
-    );
+    await userEvent.click(await screen.findByRole("link", { name: /tcoll/ }));
 
     await userEvent.click(
-      await screen.findByRole("link", { name: /Tenant Sub Collection/ }),
+      await screen.findByRole("link", { name: /tsubcoll/ }),
     );
 
     expect(
@@ -70,12 +68,13 @@ describe("tenant collection", () => {
       await screen.findByRole("link", { name: /Tenant Collections/ }),
     ).toHaveAttribute("data-active", "true");
 
-    expect(
-      await screen.findByRole("link", { name: /Shared Tenant Collection/ }),
-    ).toHaveAttribute("data-active", "true");
+    expect(await screen.findByRole("link", { name: /tcoll/ })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
 
     expect(
-      await screen.findByRole("link", { name: /Tenant Sub Collection/ }),
+      await screen.findByRole("link", { name: /tsubcoll/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(
@@ -96,12 +95,13 @@ describe("tenant collection", () => {
       await screen.findByRole("link", { name: /Tenant Collections/ }),
     ).toHaveAttribute("data-active", "true");
 
-    expect(
-      await screen.findByRole("link", { name: /Shared Tenant Collection/ }),
-    ).toHaveAttribute("data-active", "true");
+    expect(await screen.findByRole("link", { name: /tcoll/ })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
 
     expect(
-      await screen.findByRole("link", { name: /Tenant Sub Collection/ }),
+      await screen.findByRole("link", { name: /tsubcoll/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(

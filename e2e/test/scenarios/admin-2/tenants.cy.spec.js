@@ -635,10 +635,6 @@ describe("tenant users", () => {
   });
 
   it("should accept a tenant when provisioning a user via JWT", () => {
-    cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-      "notebookData",
-    );
-
     cy.task("signJwt", {
       payload: GIZMO_USER,
       secret: JWT_SECRET,
@@ -646,9 +642,11 @@ describe("tenant users", () => {
       cy.visit(`/auth/sso?return_to=/question/notebook&jwt=${key}`),
     );
 
-    cy.wait("@notebookData");
-
-    H.entityPickerModalItem(2, "Products").click();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Products").click();
+    });
     cy.button("Visualize").click();
 
     cy.get("[data-column-id=CATEGORY]")
@@ -664,9 +662,11 @@ describe("tenant users", () => {
       cy.visit(`/auth/sso?return_to=/question/notebook&jwt=${key}`),
     );
 
-    cy.wait("@notebookData");
-
-    H.entityPickerModalItem(2, "Products").click();
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, "Products").click();
+    });
     cy.button("Visualize").click();
 
     cy.get("[data-column-id=CATEGORY]")
