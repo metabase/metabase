@@ -22,8 +22,6 @@ export const setupPermissions: CliStepMethod = async (state) => {
   let res;
   const collectionIds: number[] = [];
 
-  console.log(" 0. Setting up permissions and collections...");
-
   // Create new customer collections sequentially
   try {
     for (const groupName of SANDBOXED_GROUP_NAMES) {
@@ -40,8 +38,6 @@ export const setupPermissions: CliStepMethod = async (state) => {
 
     return [cliError(message, error), state];
   }
-
-  console.log(" 1. Setting up permission groups and mappings...");
 
   // Example: { "Customer A": [3], "Customer B": [4], "Customer C": [5] }
   const jwtGroupMappings: Record<string, number[]> = {};
@@ -76,8 +72,6 @@ export const setupPermissions: CliStepMethod = async (state) => {
     return [cliError(message, error), state];
   }
 
-  console.log(" 2. Setting up sandboxed permissions...");
-
   const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
   try {
@@ -109,8 +103,6 @@ export const setupPermissions: CliStepMethod = async (state) => {
     return [cliError(message, error), state];
   }
 
-  console.log(" 3. Granting access to model collection...");
-
   try {
     await grantAccessToModelCollection({
       groupIds,
@@ -124,8 +116,6 @@ export const setupPermissions: CliStepMethod = async (state) => {
 
     return [cliError(message, error), state];
   }
-
-  console.log(" 4. Sampling tenancy column values...");
 
   try {
     const { tenantIdsMap, unsampledTableNames } =
