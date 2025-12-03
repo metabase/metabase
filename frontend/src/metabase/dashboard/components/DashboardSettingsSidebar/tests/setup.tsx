@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDashboardEndpoints,
@@ -8,6 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -58,9 +61,16 @@ export async function setup({
     setupEnterprisePlugins();
   }
 
+  const TestDashboardSettingsSidebar = () => (
+    <MockDashboardContext dashboard={dashboard} closeSidebar={onClose}>
+      <DashboardSettingsSidebar />
+    </MockDashboardContext>
+  );
+
   renderWithProviders(
-    <DashboardSettingsSidebar dashboard={dashboard} onClose={onClose} />,
-    { storeInitialState: state },
+    <Route path="*" component={TestDashboardSettingsSidebar} />,
+
+    { storeInitialState: state, withRouter: true },
   );
   await waitForLoaderToBeRemoved();
 

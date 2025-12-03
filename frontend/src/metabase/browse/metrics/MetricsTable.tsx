@@ -32,9 +32,9 @@ import {
   Icon,
   type IconName,
   Menu,
+  Repeat,
   Skeleton,
 } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
@@ -45,6 +45,7 @@ import {
   TableRow,
 } from "../components/BrowseTable.styled";
 
+import { trackMetricBookmarked } from "./analytics";
 import type { MetricResult, SortColumn } from "./types";
 import { getMetricDescription, sortMetrics } from "./utils";
 
@@ -188,7 +189,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       }
 
       const { id, name } = metric;
-      const url = Urls.metric({ id, name });
+      const url = Urls.metric({ id, name, type: "metric" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       // TODO: metabase/metabse#47713
@@ -240,7 +241,9 @@ function NameCell({ metric }: { metric?: MetricResult }) {
     >
       <MaybeItemLink
         to={
-          metric ? Urls.metric({ id: metric.id, name: metric.name }) : undefined
+          metric
+            ? Urls.metric({ id: metric.id, name: metric.name, type: "metric" })
+            : undefined
         }
         style={{
           // To align the icons with "Name" in the <th>
@@ -360,6 +363,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
+
+          trackMetricBookmarked();
           dispatch(Bookmarks.actions.invalidateLists());
         },
       });

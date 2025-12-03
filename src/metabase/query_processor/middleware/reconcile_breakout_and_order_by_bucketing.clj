@@ -33,91 +33,70 @@
   The frontend, on the rare occasion it generates a query that explicitly specifies an `order-by` clause, usually will
   generate one that directly corresponds to the bad example above. This middleware finds these cases and rewrites the
   query to look like the good example."
+  (:refer-clojure :exclude [not-empty])
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.util.malli :as mu]))
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
-(mu/defn- reconcile-bucketing :- mbql.s/Query
-  [{{breakouts :breakout} :query, :as query} :- :map]
-  ;; Look for bucketed fields in the `breakout` clause and build a map of unbucketed reference -> bucketed reference,
-  ;; like:
-  ;;
-  ;;    {[:field 1 nil] [:field 1 {:temporal-unit :day}]}
-  ;;
-  ;; In cases where a Field is broken out more than once, prefer the bucketing used by the first breakout; accomplish
-  ;; this by reversing the sequence of matches below, meaning the first match will get merged into the map last,
-  ;; overwriting later matches
-  (let [unbucketed-ref->bucketed-ref (into {} (reverse (lib.util.match/match breakouts
-                                                         [:field id-or-name opts]
-                                                         [[:field id-or-name (not-empty (dissoc opts :temporal-unit :binning :original-temporal-unit))]
-                                                          &match]
+(defn- bucketed-breakouts [query stage-path {breakouts :breakout, :as _stage}]
+  (->> breakouts
+       (filter (some-fn lib/raw-temporal-bucket lib/binning))
+       (map (fn [breakout]
+              (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query stage-path breakout)]
+                {:unbucketed-col         (-> col
+                                             (lib/with-temporal-bucket nil)
+                                             (lib/with-binning nil))
+                 :bucket                 (lib/raw-temporal-bucket col)
+                 :binning                (lib/binning col)
+                 :original-temporal-unit (:original-temporal-unit (lib/options breakout))})))))
 
-                                                         [:expression id-or-name opts]
-                                                         [[:expression id-or-name (not-empty (dissoc opts :temporal-unit :binning :original-temporal-unit))]
-                                                          &match])))]
-    ;; rewrite order-by clauses as needed...
-    (-> (lib.util.match/replace-in query [:query :order-by]
-          ;; if order by is already bucketed, nothing to do
-          [:field id-or-name (_ :guard (some-fn :temporal-unit :binning))]
-          &match
+(defn- update-order-bys [order-bys query stage-path bucketed-breakouts]
+  (-> order-bys
+      (lib.walk/walk-clauses*
+       (fn [clause]
+         (when (and (lib.util/clause-of-type? clause #{:field :expression})
+                    (not (lib/raw-temporal-bucket clause))
+                    (not (lib/binning clause)))
+           (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query stage-path clause)]
+             (when-let [matching-breakout (m/find-first (fn [breakout-info]
+                                                          (lib.equality/= (:unbucketed-col breakout-info) col))
+                                                        bucketed-breakouts)]
+               (-> clause
+                   (lib/with-temporal-bucket (:bucket matching-breakout))
+                   (lib/with-binning (:binning matching-breakout))
+                   (lib.options/update-options u/assoc-dissoc :original-temporal-unit (:original-temporal-unit matching-breakout))))))))
+      (->> (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
+      vec))
 
-          ;; if we run into a field that wasn't matched by the last pattern, see if there's an unbucketed reference
-          ;; -> bucketed reference from earlier
-          :field
-          (if-let [bucketed-reference (unbucketed-ref->bucketed-ref &match)]
-            ;; if there is, replace it with the bucketed reference
-            bucketed-reference
-            ;; if there's not, again nothing to do.
-            &match)
+(mu/defn- reconcile-bucketing-in-stage :- [:maybe ::lib.schema/stage]
+  [query stage-path {breakouts :breakout, order-bys :order-by, :as stage}]
+  (when (and (seq breakouts)
+             (seq order-bys))
+    (when-let [bucketed-breakouts (not-empty (bucketed-breakouts query stage-path stage))]
+      (update stage :order-by update-order-bys query stage-path bucketed-breakouts))))
 
-          ;; if order by is already bucketed, nothing to do
-          [:expression id-or-name (_ :guard (some-fn :temporal-unit :binning))]
-          &match
+(mu/defn reconcile-breakout-and-order-by-bucketing :- ::lib.schema/query
+  "Replace any unbucketed `:field` or `:expression` clauses (anything without `:temporal-unit` or `:bucketing`
+  options) in the `order-by` clause with corresponding bucketed clauses used for the same Field/Expression in the
+  `breakout` clause.
 
-          ;; if we run into an expression that wasn't matched by the last pattern, see if there's an unbucketed reference
-          ;; -> bucketed reference from earlier
-          :expression
-          (if-let [bucketed-reference (unbucketed-ref->bucketed-ref &match)]
-            ;; if there is, replace it with the bucketed reference
-            bucketed-reference
-            ;; if there's not, again nothing to do.
-            &match))
-        ;; now remove any duplicate order-by clauses we may have introduced, as those are illegal in MBQL 2000
-        (update-in [:query :order-by] (comp vec distinct)))))
-
-(defn reconcile-breakout-and-order-by-bucketing
-  "Replace any unbucketed `:field` or `:expression` clauses (anything without `:temporal-unit` or `:bucketing` options) in the `order-by`
-  clause with corresponding bucketed clauses used for the same Field/Expression in the `breakout` clause.
-
-   {:query {:breakout [[:field 1 {:temporal-unit :day}]]
-            :order-by [[:asc [:field 1 nil]]]}}
-   ->
-   {:query {:breakout [[:field 1 {:temporal-unit :day}]]
-            :order-by [[:asc [:field 1 {:temporal-unit :day}]]]}}"
-  [{{breakouts :breakout, order-bys :order-by} :query, :as query}]
-  (if (or
-       ;; if there's no breakouts bucketed by a datetime-field or binning-strategy...
-       (empty? (lib.util.match/match breakouts
-                 [:field _ (_ :guard (some-fn :temporal-unit :binning))]
-                 &match
-
-                 [:expression _ (_ :guard (some-fn :temporal-unit :binning))]
-                 &match))
-       ;; or if there's no order-bys that are *not* bucketed...
-       (empty? (lib.util.match/match order-bys
-                 [:field _ (_ :guard (some-fn :temporal-unit :binning))]
-                 nil
-
-                 [:expression _ (_ :guard (some-fn :temporal-unit :binning))]
-                 nil
-
-                 :field
-                 &match
-
-                 :expression
-                 &match)))
-    ;; return query as is
-    query
-    ;; otherwise, time to bucket
-    (reconcile-bucketing query)))
+    {:stages [{:breakout [[:field {:temporal-unit :day} 1]]
+               :order-by [[:asc {} [:field {} 1]]]}]}
+    ->
+    {:stages [{:breakout [[:field {:temporal-unit :day} 1]]
+               :order-by [[:asc {} [:field {:temporal-unit :day} 1]]]}]}"
+  [query :- ::lib.schema/query]
+  (lib.walk/walk-stages
+   query
+   (fn [query stage-path stage]
+     (when (= (:lib/type stage) :mbql.stage/mbql)
+       (reconcile-bucketing-in-stage query stage-path stage)))))

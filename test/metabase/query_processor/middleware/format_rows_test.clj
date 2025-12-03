@@ -203,7 +203,7 @@
         rf  (rff metadata)]
     (transduce identity rf rows)))
 
-(deftest results-timezone-test
+(deftest ^:parallel results-timezone-test
   (driver/with-driver ::timezone-driver
     (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
       (doseq [[timezone-id expected-rows] {"UTC"        [["2011-04-18T10:12:47.232Z"
@@ -218,8 +218,10 @@
                          (t/local-date 2011 4 18)
                          (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
               (is (= expected-rows
-                     (format-rows rows {:cols [{} {} {}]}))))))))
+                     (format-rows rows {:cols [{} {} {}]}))))))))))
 
+(deftest ^:parallel results-timezone-test-2
+  (driver/with-driver ::timezone-driver
     (testing "Make sure ISO-8601 timestamps respects the converted_timezone metadata"
       (doseq [timezone-id ["UTC" "Asia/Tokyo"]]
         (mt/with-results-timezone-id timezone-id

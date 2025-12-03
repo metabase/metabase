@@ -2,6 +2,11 @@
   line-height: 1.5;
 }
 
+.aiMarkdown pre {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .aiMarkdown p {
   margin-bottom: 1rem;
 }
@@ -41,4 +46,26 @@
 .aiMarkdown li > ul,
 .aiMarkdown li > ol {
   margin-top: 0.5rem;
+}
+
+.smartLink {
+  color: var(--mb-color-brand);
+  font-weight: 700;
+  padding: 0.125rem;
+  border-radius: var(--mantine-radius-sm);
+  transition: 200ms background-color;
+  outline: none;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.smartLinkInner {
+  border-bottom: 1px solid var(--mb-color-brand-light);
+}
+
+.icon {
+  margin-bottom: -0.125rem;
+  margin-right: 0.25rem;
 }

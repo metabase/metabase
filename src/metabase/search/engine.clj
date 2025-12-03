@@ -1,5 +1,13 @@
 ;; The interface encapsulating the various search engine backends.
-(ns metabase.search.engine)
+(ns metabase.search.engine
+  (:require
+   [metabase.search.settings :as settings]))
+
+(def ^:private default-engine-precedence
+  "In the absence of explicit configuration, these are the engines to try using, in decreasing order of preference."
+  [:search.engine/semantic
+   :search.engine/appdb
+   :search.engine/in-place])
 
 (defmulti supported-engine?
   "Does this instance support the given engine?"
@@ -44,7 +52,8 @@
     search-engine))
 
 (defmulti init!
-  "Ensure that the search index exists, an is ready to take search queries."
+  "Ensure that the search index exists, and is ready to take search queries.
+   Returns a map of the number of documents indexed in each model"
   {:arglists '([engine opts])}
   (fn [engine _opts]
     engine))
@@ -65,10 +74,19 @@
   ;; If we end up with more "abstract" nodes, we may want a better way to filter them out.
   (keys (dissoc (methods supported-engine?) :default)))
 
-(defn active-engines
-  "List the search engines that are supported. Does not mention the legacy in-place engine."
+(defn supported-engines
+  "List the search engines that are supported, in order of usage preference.
+   The configured engine comes first, if it is supported."
   []
-  (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k))
+  (let [configured-engine (some->> (settings/search-engine) name (keyword "search.engine"))
+        potential-engines (cond->> default-engine-precedence configured-engine (cons configured-engine))]
+    (distinct (filter supported-engine? potential-engines))))
+
+(defn active-engines
+  "A list of supported search engines for which we will maintain an index, in order of usage preference.
+   Excludes :search.engine/in-place, which does not use an index."
+  []
+  (remove #{:search.engine/in-place} (supported-engines)))
 
 (defn known-engine?
   "Is the given engine recognized?"

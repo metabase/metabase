@@ -59,6 +59,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
               >
                 <div className={cx(CS.flex, CS.alignCenter)}>
                   <ColorSelector
+                    withinPortal={false}
                     value={settings.color}
                     colors={getAccentColors()}
                     onChange={(value) =>

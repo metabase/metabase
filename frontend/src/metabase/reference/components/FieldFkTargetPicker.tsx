@@ -1,8 +1,7 @@
-import { useEffect } from "react";
-
-import Databases from "metabase/entities/databases";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useListDatabaseIdFieldsQuery } from "metabase/api";
 import { FkTargetPicker } from "metabase/metadata/components";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import type { SelectProps } from "metabase/ui";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 
 interface Props {
@@ -10,6 +9,7 @@ interface Props {
   field: Field;
   value: FieldId | null;
   onChange: (value: FieldId | null) => void;
+  comboboxProps?: SelectProps["comboboxProps"];
 }
 
 export const FieldFkTargetPicker = ({
@@ -17,19 +17,21 @@ export const FieldFkTargetPicker = ({
   field,
   value,
   onChange,
+  comboboxProps,
 }: Props) => {
-  const dispatch = useDispatch();
-  const idFields = useSelector((state) => {
-    return Databases.selectors.getIdFields(state, { databaseId });
+  const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
+    id: databaseId,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
-
-  useEffect(() => {
-    dispatch(Databases.objectActions.fetchIdFields({ id: databaseId }));
-  }, [databaseId, dispatch]);
 
   return (
     <FkTargetPicker
+      comboboxProps={{
+        width: 300,
+        ...comboboxProps,
+      }}
       field={field}
+      fw="bold"
       idFields={idFields}
       value={value}
       onChange={onChange}

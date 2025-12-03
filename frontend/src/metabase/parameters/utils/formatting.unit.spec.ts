@@ -129,7 +129,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "number/>=",
         value: 1.111111111111,
-        expected: 1.111111111111,
+        expected: "1.111111111111",
         fields: [],
         hasVariableTemplateTagTarget: true,
       },

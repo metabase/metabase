@@ -30,7 +30,11 @@ export const DatasetFieldMetadataSemanticTypePicker = ({
   return (
     <SemanticTypePicker
       className={className}
+      comboboxProps={{
+        width: 300,
+      }}
       field={field}
+      fw="bold"
       label={t`Column type`}
       tabIndex={tabIndex}
       value={formField.value}

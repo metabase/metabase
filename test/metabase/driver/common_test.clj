@@ -7,7 +7,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel base-type-inference-test
   (is (= :type/Text
@@ -79,12 +83,151 @@
   (testing "json fields with decimals maintain their decimal places"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset (mt/dataset-definition "json-decimals-db"
-                                         ["json-decimals-table"
-                                          [{:field-name "json-field" :base-type :type/JSON}]
-                                          [["{\"A\": 123, \"B\": 0.456, \"C\": 0.789}"]
-                                           ["{\"A\": 456, \"B\": 0.789, \"C\": 789}"]]])
+                                         [["json-decimals-table"
+                                           [{:field-name "json-field" :base-type :type/JSON}]
+                                           [["{\"A\": 123, \"B\": 0.456, \"C\": 0.789}"]
+                                            ["{\"A\": 456, \"B\": 0.789, \"C\": 789}"]]]])
         (when-not (mysql/mariadb? (mt/db))
           (is (= [[1 123.0 0.456 0.789]
                   [2 456.0 0.789 789.0]]
                  (mt/formatted-rows [int double double double]
                                     (mt/run-mbql-query json-decimals-table)))))))))
+
+(defn- base-type-test-data
+  "Base types that all drivers should support with test data."
+  [driver]
+  {:columns [{:name "id" :type :type/Integer :nullable? false}
+             {:name "name" :type :type/Text :nullable? true}
+             {:name "price" :type :type/Float :nullable? true}
+             {:name "active" :type :type/Boolean :nullable? true}
+             {:name "created_date" :type :type/Date :nullable? true}
+             {:name "created_at" :type :type/DateTime :nullable? true}]
+   :data [[1 "Product A" 19.99 (if (= :sqlserver driver) 1 true) "2024-01-01" "2024-01-01T12:00:00"]
+          [2 "Product B" 15.50 (if (= :sqlserver driver) 1 false) "2024-02-01" "2024-02-01T09:15:30"]
+          [3 nil nil nil nil nil]]})
+
+(deftest insert-from-source!-test
+  (mt/test-drivers  #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse}
+    (mt/with-empty-db
+      (let [driver       driver/*driver*
+            db-id        (mt/id)
+            table-name   (mt/random-name)
+            schema-name  (when (get-method sql.tx/session-schema driver) (sql.tx/session-schema driver))
+            qualified-table-name (if schema-name
+                                   (keyword schema-name table-name)
+                                   (keyword table-name))
+            {:keys [columns data]} (base-type-test-data driver)
+            column-definitions (into {} (map (fn [{:keys [name type]}]
+                                               [name (driver/type->database-type driver type)]))
+                                     columns)]
+        (mt/as-admin
+          (try
+            (driver/create-table! driver db-id qualified-table-name column-definitions {})
+
+            (testing "insert-from-source! should insert rows with all basic types correctly"
+              (let [data-source {:type :rows :data data}
+                    _ (driver/insert-from-source! driver db-id
+                                                  {:name qualified-table-name
+                                                   :columns columns}
+                                                  data-source)]
+                (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake :mongo} driver)) ;table-rows-seq not implemented
+                                              (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
+                                                                                              :schema schema-name}))]
+                  (is (= (count data) (count inserted-rows)) "Should insert all test rows including nulls"))))
+            (finally
+              (driver/drop-table! driver db-id qualified-table-name))))))))
+
+(deftest insert-from-jsonl-file-test
+  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse}
+    (mt/with-empty-db
+      (let [driver       driver/*driver*
+            db-id        (mt/id)
+            table-name   (mt/random-name)
+            schema-name  (when (get-method sql.tx/session-schema driver) (sql.tx/session-schema driver))
+            qualified-table-name (if schema-name
+                                   (keyword schema-name table-name)
+                                   (keyword table-name))
+            {:keys [columns data]} (base-type-test-data driver)
+            column-definitions (into {} (map (fn [{:keys [name type]}]
+                                               [name (driver/type->database-type driver type)]))
+                                     columns)]
+        (mt/as-admin
+          (try
+            (driver/create-table! driver db-id qualified-table-name column-definitions {})
+
+            (testing "insert-from-source! should insert rows from JSONL file correctly"
+              (let [temp-file (java.io.File/createTempFile "test-data" ".jsonl")
+                    col-names (map :name columns)
+
+                    json-rows (map (fn [row]
+                                     (into {} (map vector col-names row)))
+                                   data)]
+                (try
+
+                  (with-open [writer (java.io.FileWriter. temp-file)]
+                    (doseq [row json-rows]
+                      (.write writer (str (json/encode row) "\n"))))
+
+                  (let [data-source {:type :jsonl-file :file temp-file}
+                        _ (driver/insert-from-source! driver db-id
+                                                      {:name qualified-table-name
+                                                       :columns columns}
+                                                      data-source)]
+                    (when-let [inserted-rows (and (not (#{:bigquery-cloud-sdk :snowflake :mongo} driver)) ;table-rows-seq not implemented
+                                                  (driver/table-rows-seq driver/*driver* (mt/db) {:name table-name
+                                                                                                  :schema schema-name}))]
+                      (is (= (count data) (count inserted-rows))
+                          "Should insert all test rows from JSONL file including nulls")))
+                  (finally
+                    (.delete temp-file)))))
+            (finally
+              (driver/drop-table! driver db-id qualified-table-name))))))))
+
+(deftest ^:parallel type->database-type-h2-test
+  (mt/test-driver :h2
+    (testing "type->database-type multimethod returns correct H2 types"
+      (are [base-type expected] (= expected (driver/type->database-type :h2 base-type))
+        :type/Boolean            [:boolean]
+        :type/Date               [:date]
+        :type/DateTime           [:timestamp]
+        :type/DateTimeWithTZ     [:timestamp-with-time-zone]
+        :type/Float              [(keyword "DOUBLE PRECISION")]
+        :type/Integer            [:int]
+        :type/Number             [:bigint]
+        :type/Text               [:varchar]
+        :type/Time               [:time]
+        :type/UUID               [:uuid]))))
+
+(deftest ^:parallel type->database-type-mysql-test
+  (mt/test-driver :mysql
+    (testing "type->database-type multimethod returns correct MySQL types"
+      (are [base-type expected] (= expected (driver/type->database-type :mysql base-type))
+        :type/Boolean            [:boolean]
+        :type/Date               [:date]
+        :type/DateTime           [:datetime]
+        :type/DateTimeWithTZ     [:timestamp]
+        :type/Float              [:double]
+        :type/Decimal            [:decimal]
+        :type/Integer            [:int]
+        :type/Number             [:bigint]
+        :type/Text               [:text]
+        :type/Time               [:time]))))
+
+(deftest ^:parallel type->database-type-postgres-test
+  (mt/test-driver :postgres
+    (testing "type->database-type multimethod returns correct PostgreSQL types"
+      (are [base-type expected] (= expected (driver/type->database-type :postgres base-type))
+        :type/Boolean            [:boolean]
+        :type/Date               [:date]
+        :type/DateTime           [:timestamp]
+        :type/DateTimeWithTZ     [:timestamp-with-time-zone]
+        :type/Decimal            [:decimal]
+        :type/Float              [:float]
+        :type/Integer            [:int]
+        :type/JSON               [:jsonb]
+        :type/Number             [:bigint]
+        :type/SerializedJSON     [:jsonb]
+        :type/Text               [:text]
+        :type/Time               [:time]
+        :type/TimeWithTZ         [:time-with-time-zone]
+        :type/UUID               [:uuid]))))

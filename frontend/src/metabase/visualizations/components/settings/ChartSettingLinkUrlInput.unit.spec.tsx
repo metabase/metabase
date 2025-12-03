@@ -150,4 +150,19 @@ describe("ChartSettingLinkUrlInput", () => {
     expect(input).toHaveValue("");
     expect(onChange).toHaveBeenCalledTimes(1);
   });
+
+  it("should not call onChange when focusing and blurring without making changes", async () => {
+    const { input, onChange } = setup({
+      value: "existing value",
+    });
+
+    // Trigger focus and onBlur without making changes
+    await userEvent.click(input);
+    expect(input).toHaveFocus();
+    act(() => {
+      input.blur();
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

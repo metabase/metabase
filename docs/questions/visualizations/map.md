@@ -2,7 +2,7 @@
 title: Maps
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/maps
-description: "Maps in Metabase allow you to visualize geographical data either using coordinates or by region. Metabase gives you three types of maps : pin map for unaggregated data, grid map for histograms, and region map for distributions by regions like countries or states. You can also create custom maps."
+description: "Maps in Metabase allow you to visualize geographic data either using coordinates or by region. Metabase gives you three types of maps : pin map for unaggregated data, grid map for histograms, and region map for distributions by regions like countries or states. You can also create custom maps."
 ---
 
 # Maps
@@ -13,7 +13,7 @@ Metabase has three types of map visualization:
 - [**Grid map**](#grid-map) for distributing a large number of points over a specified area.
 - [**Region map**](#region-maps) for data broken out by regions, like countries or states. Metabase comes with two built-in maps, but you can upload your own custom regions.
 
-When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set, as long as the columns with the geographical data have the [right metadata](../../data-modeling/metadata-editing.md).
+When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set, as long as the columns with the geographic data have the [right metadata](../../data-modeling/metadata-editing.md).
 
 ![Map types](../images/map-types.png)
 
@@ -21,7 +21,7 @@ When you select the **Map** visualization setting, Metabase will automatically t
 
 ## Pin map
 
-Pin maps display pins for individual data points on the map. They work best for displaying unaggregated geographical data.
+Pin maps display markers or tiles for individual data points on the map. They work best for displaying small amounts of unaggregated geographic data.
 
 ### Pin map data shape
 
@@ -30,7 +30,7 @@ To build a pin map, you need a query that returns a result that has latitude and
 ![Pin map data shape](../images/pin-data-shape.png)
 ![Pin map with a tooltip](../images/pin-map-with-tooltip.png)
 
-Note that the tooltips will only be displayed when the map is sufficiently zoomed in using [**Draw box to filter**](#draw-box-to-filter).
+Note that the tooltips will only be displayed when using the [marker pin type](#choose-pin-type).
 
 ### Create a pin map
 
@@ -38,19 +38,32 @@ To create a pin map:
 
 1. Build a query with latitude and longitude columns for each data point (either in the query builder or using SQL);
 2. Select **Visualization**, and pick **Map**;
-3. If your query results have columns whose field type is set to latitude/longitude in [table metadata](../../data-modeling/metadata-editing.md#field-type), Metabase should build a pin map automatically.
+3. If your query results have columns whose field type is set to latitude/longitude in [table metadata](../../data-modeling/metadata-editing.md#semantic-type), Metabase should build a pin map automatically.
 
    Otherwise, click on the **Gear** icon to go to visualization settings, choose **Map type: Pin map**, and pick columns that contain latitude and longitude coordinates.
 
-### Pin maps display 2000 pins by default
+### Choose pin type
 
-By default, pin maps will display 2000 pins even if there are more rows in your query results (this limit is the same for every chart displaying unaggregated data in Metabase). You can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit) to increase the number of data points rendered on charts based on unaggregated queries, but keep in mind that this setting will affect all charts—not just the pin maps—and it might significantly slow down your Metabase and your browser.
+Metabase can display individual data points on a map as markers or tiles (small squares).
 
-If you need to display a large number of geographical data points, consider using a grid map to display the distribution instead.
+![Pin types](../images/pin-type.png)
+
+Maps default to markers for results fewer then 1,000 rows, and to tiles for results with 1,000 rows or more.
+
+To change the pin type:
+
+1. While viewing the map, click the **gear** icon in the bottom left.
+2. In the visualization settings, choose the pin type in the **Pin type** dropdown.
+   - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer then 1,000 rows.
+   - **Tiles**. Maps display up to 2,000 tiles. Maps default to tiles for results greater than 1,000 rows. Tooltips will not be displayed for tiles.
+
+By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browser.
+
+If you need to display a large number of geographic data points, consider using a grid map to display the distribution instead.
 
 ## Grid map
 
-Grid map is an aggregated version of the pin map — like a heatmap for the distribution of pins. Grid map breaks the the map into a grid based on latitude/longitude, and then colors each grid cell based on how many data points fall in it.
+Grid map is an aggregated version of the pin map — like a heatmap for the distribution of pins. Grid map breaks the map into a grid based on latitude/longitude, and then colors each grid cell based on how many data points fall in it.
 
 ![Grid map](../images/grid-map.png)
 
@@ -70,7 +83,7 @@ To create a grid map:
 
 1. Build a query with summary by binned latitude and longitude columns (either in the query builder or using SQL);
 2. Select **Visualization**, and pick **Map**;
-3. If your query results have columns whose field type is set to latitude/longitude in [table metadata](../../data-modeling/metadata-editing.md#field-type), Metabase should build a grid map automatically.
+3. If your query results have columns whose field type is set to latitude/longitude in [table metadata](../../data-modeling/metadata-editing.md#semantic-type), Metabase should build a grid map automatically.
 
    Otherwise, click on the **Gear** icon to go to visualization settings, choose **Map type: grid map**, and pick columns that contain latitude and longitude coordinates.
 
@@ -111,7 +124,7 @@ You can change the base color used for the region map, but you can't currently u
 
 ### World Map
 
-To visualize your results in the format of a map of the world broken out by country, your result must contain a column with [two-letter ISO country codes](https://www.metabase.com/glossary/country-code), like "US" or "BR", for example:
+To visualize your results in the format of a map of the world broken out by country, your result must contain a column with [two-letter ISO country codes](./country-codes.md), like "US" or "BR", or country names like "United States of America" or "Brazil". For example:
 
 | Country code | Metric |
 | ------------ | ------ |
@@ -122,7 +135,7 @@ To visualize your results in the format of a map of the world broken out by coun
 
 The country codes in the query results must match the two-letter codes exactly: if the country codes are lowercase or contain extra spaces, Metabase won't recognize them.
 
-If your query result has columns with [semantic type](../../data-modeling/metadata-editing.md#field-type) "Country", Metabase should build a world map automatically. Otherwise, you can choose which columns to use as the country name in the **Region field** visualization setting.
+If your query result has columns with [semantic type](../../data-modeling/metadata-editing.md#semantic-type) "Country", Metabase should build a world map automatically. Otherwise, you can choose which columns to use as the country name in the **Region field** visualization setting.
 
 You can connect the country column in the world region map to a "Location" type dashboard filter.
 
@@ -137,7 +150,7 @@ Creating a map of the United States from your data requires your results to cont
 | Texas      | 34     |
 | Illinois   | 67     |
 
-If your query result has columns with [semantic type](../../data-modeling/metadata-editing.md#field-type) "State", Metabase should build a US map automatically. Otherwise, you can choose which columns to use as the country name in the visualization settings.
+If your query result has columns with [semantic type](../../data-modeling/metadata-editing.md#semantic-type) "State", Metabase should build a US map automatically. Otherwise, you can choose which columns to use as the country name in the visualization settings.
 
 You can connect the state column in the US region map to a "Location" type dashboard filter.
 
@@ -190,7 +203,6 @@ Currently, Metabase uses a single tile server per instance. You can't specify di
 - You can't combine different types of maps. For example, you can't put pins on a region map.
 - You need to use category (not location) dashboard filter types when connecting custom region maps to dashboard filters.
 - You can't specify different background tiles for different maps.
-
 
 ## When NOT to use a map to visualize geographic data
 

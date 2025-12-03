@@ -1,9 +1,9 @@
 import { useContext } from "react";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { useSelector } from "metabase/lib/redux";
 import { FrontendLocaleContext } from "metabase/public/LocaleProvider";
-import { getSetting } from "metabase/selectors/settings";
 
 /** Get the user's locale or, if that has not been set, the instance locale
  *
@@ -14,9 +14,7 @@ import { getSetting } from "metabase/selectors/settings";
  * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare#locales
  * */
 export const useLocale = () => {
-  const instanceLocale = useSelector((state) =>
-    getSetting(state, "site-locale"),
-  );
+  const instanceLocale = useInstanceLocale();
   const userLocale: string | undefined =
     useSelector(getCurrentUser)?.locale || undefined;
 

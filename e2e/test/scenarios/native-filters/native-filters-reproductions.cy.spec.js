@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -23,24 +27,28 @@ describe("issue 9357", () => {
     cy.signInAsAdmin();
   });
 
-  it("should reorder template tags by drag and drop (metabase#9357)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery(
-      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
-    );
+  it(
+    "should reorder template tags by drag and drop (metabase#9357)",
+    { viewportWidth: 800, viewportHeight: 600 },
+    () => {
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      );
 
-    // Drag the firstparameter to last position
-    H.moveDnDKitElement(cy.get("fieldset").findAllByRole("listitem").first(), {
-      horizontal: 430,
-    });
+      // Drag the firstparameter to last position
+      H.moveDnDKitElement(H.filterWidget().findAllByRole("listitem").first(), {
+        vertical: 50,
+      });
 
-    // Ensure they're in the right order
-    cy.findAllByText("Variable name").parent().as("variableField");
+      // Ensure they're in the right order
+      cy.findAllByText("Variable name").parent().as("variableField");
 
-    cy.get("@variableField").first().findByText("nextparameter");
+      cy.get("@variableField").first().findByText("nextparameter");
 
-    cy.get("@variableField").eq(1).findByText("firstparameter");
-  });
+      cy.get("@variableField").eq(1).findByText("firstparameter");
+    },
+  );
 });
 
 describe("issue 11480", () => {
@@ -230,7 +238,7 @@ describe("issue 12581", () => {
   });
 });
 
-describe.skip("issue 13961", () => {
+describe("issue 13961", { tags: "@skip" }, () => {
   const categoryFilter = {
     id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
     name: "category",
@@ -274,7 +282,7 @@ describe.skip("issue 13961", () => {
     cy.location("search").should("eq", "?category=Doohickey");
 
     // Remove default filter (category)
-    cy.get("fieldset .Icon-close").click();
+    H.filterWidget().findByRole("button").click();
 
     cy.icon("play").first().should("be.visible").as("rerunQuestion").click();
     cy.wait("@cardQuery");
@@ -767,24 +775,6 @@ describe("issue 17490", () => {
     H.restore();
     cy.signInAsAdmin();
   });
-
-  it.skip("nav bar shouldn't cut off the popover with the tables for field filter selection (metabase#17490)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery("{{f}}");
-
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
-
-    /**
-     * Although `.click()` isn't neccessary for Cypress to fill out this input field,
-     * it's something that we can use to assert that the input field is covered by another element.
-     * Cypress fails to click any element that is not "actionable" (for example - when it's covered).
-     * In other words, the `.click()` part is essential for this repro to work. Don't remove it.
-     */
-    cy.findByPlaceholderText("Find...").click().type("Orders").blur();
-
-    cy.findByDisplayValue("Orders");
-  });
 });
 
 describe("issue 21160", () => {
@@ -967,8 +957,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       query: SQL_QUERY,
     });
 
-    // type a space to trigger fields
-    H.NativeEditor.type(" ");
+    cy.findByTestId("native-query-top-bar").icon("variable").click();
 
     cy.findByTestId("tag-editor-variable-f1")
       .findByTestId("variable-type-select")
@@ -1248,5 +1237,69 @@ describe("issue 49577", () => {
       cy.findByText("bar").should("be.visible");
       cy.findByText("baz").should("be.visible");
     });
+  });
+});
+
+describe("issue 58061", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  it("should allow to pass a field filter value for a date column in the URL when the column has a broken semantic type (metabase#58061)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.CREATED_AT}`, {
+      semantic_type: "type/Category",
+    });
+
+    H.createNativeQuestion({
+      native: {
+        query: "SELECT * FROM PRODUCTS WHERE {{filter}}",
+        "template-tags": {
+          filter: {
+            id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+            name: "filter",
+            type: "dimension",
+            "display-name": "date",
+            dimension: ["field", PRODUCTS.CREATED_AT, null],
+            "widget-type": "date/all-options",
+          },
+        },
+      },
+    }).then(({ body: card }) => {
+      cy.visit({
+        url: `/question/${card.id}`,
+        qs: { filter: "2024-09-08" },
+      });
+      cy.wait("@cardQuery");
+      H.assertQueryBuilderRowCount(1);
+    });
+  });
+});
+
+describe("issue 63537", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+  });
+
+  it("should allow to use postgres enums in field filters (metabase#63537)", () => {
+    H.startNewNativeQuestion({ database: WRITABLE_DB_ID });
+    H.NativeEditor.type("SELECT * FROM many_data_types WHERE {{f}}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({
+      table: "Many Data Types",
+      field: "Enum",
+    });
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(2);
   });
 });

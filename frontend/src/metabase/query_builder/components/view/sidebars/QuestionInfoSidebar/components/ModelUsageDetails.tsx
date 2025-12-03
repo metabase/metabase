@@ -3,11 +3,10 @@ import { t } from "ttag";
 import { useListCardsQuery } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getIcon } from "metabase/entities/questions";
+import { getIcon } from "metabase/lib/icon";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
-import { Group, Icon, Skeleton, Stack, Text } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { Group, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { ToggleFullList } from "./ToggleFullList";
@@ -61,7 +60,10 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
             key={card.id}
           >
             <Group gap="sm">
-              <Icon c="text-dark" name={getIcon(card).name as IconName} />
+              <Icon
+                c="text-dark"
+                name={getIcon({ model: "card", ...card }).name as IconName}
+              />
               <Text lh="1.25rem" color="inherit">
                 {card.name}
               </Text>

@@ -77,6 +77,22 @@
   :type       :boolean
   :default    true)
 
+(defsetting expand-collections-in-nav
+  (deferred-tru "User preference for whether the ''Collections'' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting expand-library-in-nav
+  (deferred-tru "User preference for whether the ''Library'' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
 (defsetting browse-filter-only-verified-models
   (deferred-tru "User preference for whether the ''Browse models'' page should be filtered to show only verified models.")
   :user-local :only
@@ -93,6 +109,15 @@
   :type       :boolean
   :default    true)
 
+(defsetting color-scheme
+  (deferred-tru "User preference for color scheme. Can be ''light'', ''dark'', or ''auto''.")
+  :user-local :only
+  :encryption :no
+  :export?    false
+  :visibility :authenticated
+  :type       :string
+  :default    "auto")
+
 (defsetting trial-banner-dismissal-timestamp
   (deferred-tru "The ISO8601 date when a user last dismissed the trial banner.")
   :user-local :only
@@ -100,6 +125,14 @@
   :export?    false
   :visibility :authenticated
   :type       :string)
+
+(defsetting sdk-iframe-embed-setup-settings
+  (deferred-tru "The embed settings last chosen in the setup flow for sdk-based iframe embedding.")
+  :user-local :only
+  :encryption :no
+  :export?    false
+  :visibility :authenticated
+  :type       :json)
 
 (defsetting license-token-missing-banner-dismissal-timestamp
   (deferred-tru "The array of last two ISO8601 dates when an admin dismissed the license token missing banner.")

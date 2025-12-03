@@ -72,6 +72,7 @@
       (mt/with-temp [:model/User           u {}
                      :model/QueryExecution _ yesterday-defaults
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-sdk-react")
+                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-simple")
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc yesterday-defaults
@@ -81,11 +82,13 @@
                      :model/QueryExecution _ (assoc yesterday-defaults :context :public-csv-download)
                      :model/QueryExecution _ query-execution-defaults
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
+                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-simple")
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
                      :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
         (is (= {:query_executions_sdk_embed 1,
+                :query_executions_simple_embed 1,
                 :query_executions_interactive_embed 1,
                 :query_executions_static_embed 2,
                 :query_executions_public_link 2,

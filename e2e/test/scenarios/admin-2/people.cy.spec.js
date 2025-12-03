@@ -183,6 +183,38 @@ describe("scenarios > admin > people", () => {
       cy.contains("Email address already in use.");
     });
 
+    it("should immediately reflect admin privileges when creating user with admin group (metabase#60241)", () => {
+      const { first_name, last_name, email } = TEST_USER;
+      const FULL_NAME = `${first_name} ${last_name}`;
+
+      cy.visit("/admin/people");
+      clickButton("Invite someone");
+
+      // Fill in user details
+      cy.findByLabelText("First name").type(first_name);
+      cy.findByLabelText("Last name").type(last_name);
+      cy.findByLabelText(/Email/).type(email);
+
+      // Add user to Administrators group
+      H.modal().findByText("Default").click();
+      H.popover().findByText("Administrators").click();
+
+      clickButton("Create");
+
+      // Close the success modal
+      H.modal().findByText(`${FULL_NAME} has been added`);
+      H.modal().findByText("Done").click();
+
+      // Verify the user appears in the list with Admin role
+      cy.findByTestId("admin-people-list-table").within(() => {
+        cy.findByText(FULL_NAME)
+          .closest("tr")
+          .within(() => {
+            cy.findByText("Admin").should("exist");
+          });
+      });
+    });
+
     it("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
       cy.viewport(1000, 600);
 
@@ -304,12 +336,23 @@ describe("scenarios > admin > people", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
         clickButton("Reset password");
+
+        H.undoToast().within(() => {
+          cy.findByText(
+            `Password reset email sent to ${normalUserName}`,
+          ).should("be.visible");
+        });
+
+        cy.log("Should not show temporary password modal");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${normalUserName}'s password has been reset`).should(
           "not.exist",
         );
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/^temporary password$/i).should("not.exist");
+
+        cy.log("Should close the modal");
+        H.modal().should("not.exist");
       },
     );
 
@@ -776,19 +819,16 @@ describe("scenarios > admin > people > group managers", () => {
         });
 
       // Demote myself from being manager
-      H.popover().within(() => {
-        cy.icon("arrow_down").eq(0).click();
-      });
+      H.popover().findByLabelText("collection").click();
       confirmLosingAbilityToManageGroup();
+      H.popover().findByLabelText("collection").should("not.exist");
 
       // Remove myself from another group
-      H.popover().within(() => {
-        cy.findByText("data").click();
-      });
+      H.popover().findByLabelText("data").click();
       confirmLosingAbilityToManageGroup();
 
       // Redirected to the home page
-      cy.url().should("match", /\/$/);
+      cy.location("pathname").should("eq", "/");
     });
   });
 

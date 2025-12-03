@@ -1,0 +1,34 @@
+name: Check doc links
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  link-checker:
+    name: Check documentation links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            docs
+            .lychee
+
+      - name: Cache lychee
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/lychee
+          key: lychee-${{ runner.os }}-${{ hashFiles('.lychee/config.toml') }}
+
+      - name: Run link checker
+        id: link-check
+        uses: lycheeverse/lychee-action@v2.3.0
+        with:
+          fail: true
+          args: docs --config ./.lychee/config.toml --offline
+          format: markdown

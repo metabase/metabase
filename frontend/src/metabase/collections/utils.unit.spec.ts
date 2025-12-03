@@ -1,10 +1,13 @@
 import {
   canonicalCollectionId,
+  canonicalCollectionIdOrEntityId,
   getCollectionPathAsString,
+  isExamplesCollection,
   isItemCollection,
   isReadOnlyCollection,
   isRootCollection,
   isRootPersonalCollection,
+  isRootTrashCollection,
 } from "metabase/collections/utils";
 import {
   createMockCollection,
@@ -26,6 +29,64 @@ describe("Collections > utils", () => {
     });
   });
 
+  describe("isRootTrashCollection", () => {
+    it("returns true if the collection type is 'trash'", () => {
+      const collection = createMockCollection({ type: "trash" });
+      expect(isRootTrashCollection(collection)).toBe(true);
+    });
+
+    it("returns false if the collection type is not 'trash'", () => {
+      const collection = createMockCollection({ type: "instance-analytics" });
+      expect(isRootTrashCollection(collection)).toBe(false);
+    });
+
+    it("returns false if the collection has no type", () => {
+      expect(isRootTrashCollection(undefined)).toBe(false);
+      expect(isRootTrashCollection({})).toBe(false);
+      expect(isRootTrashCollection({ type: null })).toBe(false);
+    });
+  });
+
+  describe("isExamplesCollection", () => {
+    it("returns true if the collection is a sample collection named 'Examples'", () => {
+      const collection = createMockCollection({
+        is_sample: true,
+        name: "Examples",
+      });
+      expect(isExamplesCollection(collection)).toBe(true);
+    });
+
+    it("returns false if the collection is a sample but not named 'Examples'", () => {
+      const collection = createMockCollection({
+        is_sample: true,
+        name: "Sample Data",
+      });
+      expect(isExamplesCollection(collection)).toBe(false);
+    });
+
+    it("returns false if the collection is named 'Examples' but not a sample", () => {
+      const collection = createMockCollection({
+        is_sample: false,
+        name: "Examples",
+      });
+      expect(isExamplesCollection(collection)).toBe(false);
+    });
+
+    it("returns false if the collection is neither a sample nor named 'Examples'", () => {
+      const collection = createMockCollection({
+        is_sample: false,
+        name: "Regular Collection",
+      });
+      expect(isExamplesCollection(collection)).toBe(false);
+    });
+
+    it("returns false if the collection has no is_sample property", () => {
+      expect(
+        isExamplesCollection(createMockCollection({ name: "Examples" })),
+      ).toBe(false);
+    });
+  });
+
   describe("canonicalCollectionId", () => {
     it("returns the id of the collection if it is not a root collection", () => {
       expect(canonicalCollectionId(1337)).toBe(1337);
@@ -41,10 +102,42 @@ describe("Collections > utils", () => {
       expect(canonicalCollectionId("root")).toBe(null);
     });
 
+    it("returns NaN if the collection id is entity id", () => {
+      expect(canonicalCollectionId("HPAvJNTD9XTRkwJZUX9Fz")).toBe(NaN);
+    });
+
     it("returns null if the collection id is null or undefined", () => {
       expect(canonicalCollectionId(null)).toBe(null);
       /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(canonicalCollectionId()).toBe(null);
+    });
+  });
+
+  describe("canonicalCollectionIdOrEntityId", () => {
+    it("returns the id of the collection if it is not a root collection", () => {
+      expect(canonicalCollectionIdOrEntityId(1337)).toBe(1337);
+      expect(canonicalCollectionIdOrEntityId(1)).toBe(1);
+    });
+
+    it("handles string id inputs", () => {
+      expect(canonicalCollectionIdOrEntityId("1337")).toBe(1337);
+      expect(canonicalCollectionIdOrEntityId("1")).toBe(1);
+    });
+
+    it('returns null if the collection id is "root"', () => {
+      expect(canonicalCollectionIdOrEntityId("root")).toBe(null);
+    });
+
+    it("returns the id of the collection if the collection id is entity id", () => {
+      expect(canonicalCollectionIdOrEntityId("HPAvJNTD9XTRkwJZUX9Fz")).toBe(
+        "HPAvJNTD9XTRkwJZUX9Fz",
+      );
+    });
+
+    it("returns null if the collection id is null or undefined", () => {
+      expect(canonicalCollectionIdOrEntityId(null)).toBe(null);
+      /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
+      expect(canonicalCollectionIdOrEntityId()).toBe(null);
     });
   });
 
@@ -69,9 +162,7 @@ describe("Collections > utils", () => {
 
     it("returns false if the collection is not the root collection", () => {
       expect(isRootCollection(createMockCollection({ id: 1 }))).toBe(false);
-      /* @ts-expect-error unclear why ids are sometimes strings, but they are */
       expect(isRootCollection(createMockCollection({ id: "1" }))).toBe(false);
-      /* @ts-expect-error unclear why ids are sometimes strings, but they are */
       expect(isRootCollection(createMockCollection({ id: "foobar" }))).toBe(
         false,
       );

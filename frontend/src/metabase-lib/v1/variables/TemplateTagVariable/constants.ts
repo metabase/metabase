@@ -7,6 +7,7 @@ export const VARIABLE_ICONS: Record<TemplateTagType, IconName | null> = {
   text: "string",
   number: "int",
   date: "calendar",
+  boolean: "io",
   dimension: null,
   "temporal-unit": "clock",
   card: null,

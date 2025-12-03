@@ -2,7 +2,6 @@ import cx from "classnames";
 import { type CSSProperties, Component } from "react";
 import { t } from "ttag";
 
-import { SegmentedControl } from "metabase/common/components/SegmentedControl";
 import type { SelectChangeEvent } from "metabase/common/components/Select";
 import Select from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
@@ -16,7 +15,7 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, type BoxProps } from "metabase/ui";
+import { Box, type BoxProps, SegmentedControl } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -240,12 +239,19 @@ class SchedulePicker extends Component<SchedulePickerProps> {
               )
             }
           />
+
           <SegmentedControl
-            value={amPm}
+            value={amPm.toString()}
             onChange={(value) =>
-              this.handleChangeProperty("schedule_hour", hour + value * 12)
+              this.handleChangeProperty(
+                "schedule_hour",
+                hour + parseInt(value) * 12,
+              )
             }
-            options={AM_PM_OPTIONS}
+            data={AM_PM_OPTIONS.map(({ value, name }) => ({
+              value: value.toString(),
+              label: name,
+            }))}
             fullWidth
           />
         </PickerSpacedRow>
@@ -266,7 +272,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
       textBeforeInterval,
       className,
       style,
-      mt = "lg",
+      mt = "md",
     } = this.props;
 
     const scheduleType = schedule.schedule_type;

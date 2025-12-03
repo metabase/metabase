@@ -624,7 +624,7 @@ describe("scenarios > visualizations > table column settings", () => {
       };
 
       const productIdColumn = {
-        column: "ID",
+        column: "Product → ID",
         columnName: "Product → ID",
         table: "summaries",
         sanityCheck: "Count",
@@ -809,7 +809,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const taxColumn = {
-          column: "Tax",
+          column: `Question ${card.id} → Tax`,
           columnName: `Question ${card.id} → Tax`,
           table: "test question 2",
           scrollTimes: 3,
@@ -831,7 +831,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const mathColumn = {
-          column: "Math",
+          column: `Question ${card.id} → Math`,
           columnName: `Question ${card.id} → Math`,
           table: "test question",
           needsScroll: false,
@@ -884,6 +884,57 @@ describe("scenarios > visualizations > table column settings", () => {
       _removeColumn(taxColumn);
       _addColumn(taxColumn);
     });
+  });
+
+  it("should handle duplicated values in table.columns viz settings (metabase#62053)", () => {
+    const nativeQuestionWithDuplicatedColumns = {
+      display: "table",
+      native: {
+        query: "SELECT ID, TAX FROM ORDERS LIMIT 5",
+      },
+      visualization_settings: {
+        "table.columns": [
+          {
+            name: "ID",
+            enabled: true,
+          },
+          // Duplicate ID column entry
+          {
+            name: "ID",
+            enabled: true,
+          },
+          {
+            name: "TAX",
+            enabled: true,
+          },
+        ],
+      },
+    };
+
+    H.createNativeQuestion(nativeQuestionWithDuplicatedColumns, {
+      visitQuestion: true,
+    });
+
+    // Verify the table renders correctly despite duplicated viz settings
+    visualization().should("be.visible");
+
+    // Verify expected columns are visible
+    visualization().findAllByText("ID").should("have.length", 1);
+    visualization().findByText("TAX").should("exist");
+
+    // Open settings to verify column settings work
+    openSettings();
+
+    // Verify that column controls are displayed correctly
+    visibleColumns()
+      .should("exist")
+      .within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByTestId("ID-hide-button").should("exist");
+
+        cy.findByText("TAX").should("exist");
+        cy.findByTestId("TAX-hide-button").should("exist");
+      });
   });
 });
 

@@ -48,12 +48,11 @@ export interface Parameter extends ParameterValuesConfig {
   type: string;
   slug: string;
   sectionId?: string;
-  default?: any;
+  default?: ParameterValueOrArray | null;
   required?: boolean;
   options?: ParameterOptions;
   filteringParameters?: ParameterId[];
-  isMultiSelect?: boolean;
-  value?: any;
+  value?: ParameterValueOrArray | null;
   target?: ParameterTarget;
   temporal_units?: TemporalUnit[];
 }
@@ -63,6 +62,7 @@ export interface ParameterValuesConfig {
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;
   temporal_units?: TemporalUnit[];
+  isMultiSelect?: boolean;
 }
 
 export type ValuesQueryType = "list" | "search" | "none";
@@ -104,7 +104,7 @@ export type ParameterValueOrArray =
   | string
   | number
   | boolean
-  | Array<string | number | boolean>;
+  | Array<string | number | boolean | null>;
 
 export type HumanReadableParameterValue = string;
 export type NotRemappedParameterValue = [RowValue];
@@ -113,7 +113,7 @@ export type ParameterValue = NotRemappedParameterValue | RemappedParameterValue;
 
 export type ParameterValuesMap = Record<
   ParameterId,
-  ParameterValueOrArray | null
+  ParameterValueOrArray | null | undefined
 >;
 
 export interface ParameterValues {

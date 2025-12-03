@@ -123,6 +123,7 @@ function setup({
       filter={filter}
       isNew={isNew}
       withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,

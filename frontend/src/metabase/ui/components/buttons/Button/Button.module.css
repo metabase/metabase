@@ -48,6 +48,7 @@
     border-color: var(--mb-color-border);
     background-color: var(--mb-color-background);
 
+    &[aria-pressed="true"],
     &:hover {
       color: var(--mb-color-text-hover);
       background-color: var(--mb-color-background-hover);
@@ -55,6 +56,8 @@
   }
 
   &[data-variant="filled"] {
+    color: var(--mb-color-text-white);
+
     &:hover {
       border-color: alpha(var(--button-bg), 0.88);
       background-color: alpha(var(--button-bg), 0.88);

@@ -29,14 +29,16 @@
     (t2/delete! :model/ApiKey :scope :scim)
     (let [unhashed-key (api-key/generate-key)]
       (->
-       (t2/insert-returning-instance! :model/ApiKey {:user_id       nil
-                                                     :scope         :scim
-                                                     :name          (scim-api-key-name)
-                                                     :unhashed_key  unhashed-key
-                                                     :creator_id    user-id
-                                                     :updated_by_id user-id})
+       (t2/insert-returning-instance! :model/ApiKey {:user_id               nil
+                                                     :scope                 :scim
+                                                     :name                  (scim-api-key-name)
+                                                     ::api-key/unhashed-key unhashed-key
+                                                     :creator_id            user-id
+                                                     :updated_by_id         user-id})
        (assoc :unmasked_key (u.secret/expose unhashed-key))))))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/api_key"
   "Fetch the SCIM API key if one exists. Does *not* return an unmasked key, since we don't have access
   to that after it is created."
@@ -44,6 +46,8 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/ApiKey :scope :scim)))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/api_key"
   "Create a new SCIM API key, or refresh one that already exists. When called for the first time,
   this is equivalent to enabling SCIM."

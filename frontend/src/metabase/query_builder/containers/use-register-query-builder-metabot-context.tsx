@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS, PLUGIN_METABOT } from "metabase/plugins";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -17,14 +17,14 @@ import type {
   MetabotColumnType,
   MetabotSeriesConfig,
   RawSeries,
-  Timeline,
+  TimelineEvent,
 } from "metabase-types/api";
 
 import {
   getFirstQueryResult,
   getQuestion,
   getTransformedSeries,
-  getTransformedTimelines,
+  getVisibleTimelineEvents,
   getVisualizationSettings,
 } from "../selectors";
 
@@ -144,9 +144,8 @@ export function processSeriesData(
     );
 }
 
-function processTimelineEvents(timelines: Timeline[]) {
-  return timelines
-    .flatMap((timeline) => timeline.events ?? [])
+function processTimelineEvents(timelineEvents: TimelineEvent[]) {
+  return timelineEvents
     .map((event) => ({
       name: event.name,
       description: event.description ?? "",
@@ -177,25 +176,23 @@ const getChartConfigs = async ({
   question,
   series,
   visualizationSettings,
-  timelines,
+  timelineEvents,
 }: {
   question: Question;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
-  timelines: Timeline[];
+  timelineEvents: TimelineEvent[];
 }): Promise<MetabotChartConfig[]> => {
   try {
-    if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
-      return [];
-    }
-
     return [
       {
         image_base_64: await getVisualizationDataUri(question),
         title: question.displayName(),
         description: question.description(),
         series: processSeriesData(series, visualizationSettings),
-        timeline_events: processTimelineEvents(timelines),
+        timeline_events: processTimelineEvents(timelineEvents),
+        query: question.datasetQuery(),
+        display_type: question.display(),
       },
     ];
   } catch (err) {
@@ -208,15 +205,18 @@ export const registerQueryBuilderMetabotContextFn = async ({
   question,
   series,
   visualizationSettings,
-  timelines,
+  timelineEvents,
   queryResult,
 }: {
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
-  timelines: Timeline[];
+  timelineEvents: TimelineEvent[];
   queryResult: any;
 }) => {
+  if (!PLUGIN_METABOT.isEnabled()) {
+    return {};
+  }
   if (!question) {
     return {};
   }
@@ -237,7 +237,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
     question,
     series,
     visualizationSettings,
-    timelines,
+    timelineEvents,
   });
 
   return {
@@ -245,8 +245,6 @@ export const registerQueryBuilderMetabotContextFn = async ({
       {
         ...questionCtx,
         ...queryCtx,
-        query: question.datasetQuery(),
-        display_type: question.display(),
         chart_configs,
       },
     ],
@@ -254,18 +252,18 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  useRegisterMetabotContextProvider((state) => {
+  useRegisterMetabotContextProvider(async (state) => {
     const question = getQuestion(state);
     const series = getTransformedSeries(state);
     const visualizationSettings = getVisualizationSettings(state);
-    const timelines = getTransformedTimelines(state);
+    const timelineEvents = getVisibleTimelineEvents(state);
     const queryResult = getFirstQueryResult(state);
 
     return registerQueryBuilderMetabotContextFn({
       question,
       series,
       visualizationSettings,
-      timelines,
+      timelineEvents,
       queryResult,
     });
   }, []);

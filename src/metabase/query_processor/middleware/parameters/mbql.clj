@@ -1,19 +1,26 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
+  (:refer-clojure :exclude [every?])
   (:require
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.temporal-bucket :as qp.u.temporal-bucket]
+   [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,44 +28,40 @@
   "Returns long, biginteger, or double. Possible to use the edn reader but we would then have to worry about arbitrary
   maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more sensical number
   format exception."
-  [s]
+  [s :- string?]
   (if (re-find #"\." s)
-    (Double/parseDouble s)
+    (parse-double s)
     (or (parse-long s) (biginteger s))))
 
-(defn- field-type
-  [field-clause]
-  (lib.util.match/match-one field-clause
-    [:field (id :guard integer?) _]  ((some-fn :effective-type :base-type)
-                                      (lib.metadata.protocols/field (qp.store/metadata-provider) id))
-    [:field (_ :guard string?) opts] (:base-type opts)))
+(mu/defn- field-type :- ::lib.schema.common/base-type
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   a-ref      :- [:or :mbql.clause/field :mbql.clause/expression]]
+  (lib.walk/apply-f-for-stage-at-path lib/type-of query stage-path a-ref))
 
-(defn- expression-type
-  [query expression-clause]
-  (lib.util.match/match-one expression-clause
-    [:expression (expression-name :guard string?)]
-    (let [query (lib/query (qp.store/metadata-provider) query)]
-      (if-let [expr-clause (try
-                             (lib/resolve-expression query expression-name)
-                             (catch clojure.lang.ExceptionInfo e
-                               (when-not (:expression-name e)
-                                 (throw e))))]
-        (lib/type-of query expr-clause)
-        :type/*))))
+(mu/defn- expression-type :- ::lib.schema.common/base-type
+  [query          :- ::lib.schema/query
+   expression-ref :- :mbql.clause/expression]
+  (or (lib/type-of query expression-ref)
+      :type/*))
 
 (mu/defn- parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
-  [query param-type param-value field-clause :- mbql.s/Field]
+  [query       :- ::lib.schema/query
+   stage-path  :- ::lib.walk/path
+   param-type  :- ::lib.schema.parameter/type
+   param-value
+   a-ref       :- [:or :mbql.clause/field :mbql.clause/expression]]
   (cond
     ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
     (and (#{:id :category} param-type)
-         (let [base-type (or (field-type field-clause)
-                             (expression-type query field-clause))]
+         (let [base-type (or (field-type query stage-path a-ref)
+                             (expression-type query a-ref))]
            (isa? base-type :type/Number)))
-    (recur query :number param-value field-clause)
+    (recur query stage-path :number param-value a-ref)
 
     ;; no conversion needed if PARAM-TYPE isn't :number or PARAM-VALUE isn't a string
     (or (not= param-type :number)
@@ -68,82 +71,112 @@
     :else
     (to-numeric param-value)))
 
-(mu/defn- build-filter-clause :- [:maybe mbql.s/Filter]
-  [query {param-type :type, param-value :value, [_ field :as target] :target, :as param}]
-  (cond
-    (params.ops/operator? param-type)
-    (params.ops/to-clause param)
-    ;; multipe values. Recursively handle them all and glue them all together with an OR clause
-    (sequential? param-value)
-    (mbql.u/simplify-compound-filter
-     (vec (cons :or (for [value param-value]
-                      (build-filter-clause query {:type param-type, :value value, :target target})))))
+(mu/defn- build-filter-clause :- [:maybe ::lib.schema.expression/boolean]
+  [query                                                             :- ::lib.schema/query
+   stage-path                                                        :- ::lib.walk/path
+   {param-type :type, param-value :value, target :target, :as param} :- ::lib.schema.parameter/parameter]
+  (let [a-ref (lib.util.match/match-one target
+                #{:field :expression}
+                (lib/->pMBQL &match))]
+    (cond
+      (params.ops/operator? param-type)
+      (params.ops/to-clause param)
 
-    ;; single value, date range. Generate appropriate MBQL clause based on date string
-    (params.dates/date-type? param-type)
-    (params.dates/date-string->filter
-     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))
-     field)
+      ;; multiple values. Recursively handle them all and glue them all together with an OR clause
+      (sequential? param-value)
+      (let [clauses (for [value param-value]
+                      (build-filter-clause query stage-path {:type param-type, :value value, :target target}))]
+        (if (= (count clauses) 1)
+          (first clauses)
+          (apply lib/or clauses)))
 
-    ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
-    ;; query template tag parameter without this. There's should be a better, less fragile way to do this. (Not 100%
-    ;; sure why, but this is needed for GTAPs to work.)
-    (mbql.u/is-clause? :template-tag field)
-    nil
+      ;; single value, date range. Generate appropriate MBQL clause based on date string
+      (and (params.dates/date-type? param-type)
+           a-ref)
+      (params.dates/date-string->filter
+       (parse-param-value-for-type query stage-path param-type param-value a-ref)
+       a-ref)
 
-    ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause
-    :else
-    [:=
-     (mbql.u/wrap-field-id-if-needed field)
-     (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))]))
+      ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
+      ;; query template tag parameter without this. There's should be a better, less fragile way to do this. (Not 100%
+      ;; sure why, but this is needed for GTAPs to work.)
+      (= (first target) :template-tag)
+      nil
 
-(defn- update-breakout-unit-in [query path target-field-id temporal-unit new-unit]
-  (lib.util.match/replace-in
-    query path
+      ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause
+      a-ref
+      (lib/=
+       a-ref
+       (parse-param-value-for-type query stage-path param-type param-value a-ref)))))
+
+(mu/defn- update-breakout-unit* :- ::lib.schema/stage
+  [stage         :- ::lib.schema/stage
+   target-column :- [:or ::lib.schema.id/field :string]
+   temporal-unit :- ::lib.schema.temporal-bucketing/unit
+   new-unit      :- ::lib.schema.temporal-bucketing/unit]
+  (lib.util.match/replace stage
     [(tag :guard #{:field :expression})
-     (_ :guard #(= target-field-id %))
-     (opts :guard #(= temporal-unit (:temporal-unit %)))]
-    [tag target-field-id (assoc opts :temporal-unit new-unit)]))
+     (opts :guard #(= temporal-unit (:temporal-unit %)))
+     (_id-or-name :guard #(= target-column %))]
+    (lib/with-temporal-bucket &match new-unit)))
 
-(defn- update-breakout-unit
-  [query
-   {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}] dim-opts] :target
-    :keys [value] :as _param}]
+(mu/defn- update-breakout-unit :- ::lib.schema/stage
+  [metadata-providerable  :- ::lib.schema.metadata/metadata-providerable
+   stage                  :- ::lib.schema/stage
+   {[_dimension [_ref target-column {:keys [base-type temporal-unit]}] _dim-opts] :target
+    :keys [value] :as _param} :- ::lib.schema.parameter/parameter]
   (let [new-unit (keyword value)
         base-type (or base-type
-                      (when (integer? target-field-id)
-                        (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))
-        stage-path (into [:query] (mbql.u/stage-path (:query query) (:stage-number dim-opts)))]
+                      (when (integer? target-column)
+                        (:base-type (lib.metadata/field metadata-providerable target-column))))]
     (assert (some? base-type) "`base-type` is not set.")
-    (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
+    (when-not (lib.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
                       {:type       qp.error-type/invalid-query
                        :is-curated true
                        :base-type  base-type
                        :unit       new-unit})))
-    (-> query
-        (update-breakout-unit-in (conj stage-path :breakout) target-field-id temporal-unit new-unit)
-        (update-breakout-unit-in (conj stage-path :order-by) target-field-id temporal-unit new-unit))))
+    (update-breakout-unit* stage target-column temporal-unit new-unit)))
 
-(defn expand
-  "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
+(mu/defn expand :- ::lib.schema/stage.mbql
+  "Expand parameters for MBQL queries in a query stage (replacing Dashboard or Card-supplied params with the appropriate
   values in the queries themselves)."
-  [query [{:keys [target value default], :as param} & rest]]
-  (let [param-value (or value default)]
-    (cond
-      (not param)
-      query
+  [query      :- ::lib.schema/query
+   stage-path :- ::lib.walk/path
+   stage      :- ::lib.schema/stage.mbql]
+  (loop [stage stage, [{:keys [target value default], :as param} & more-params] (:parameters stage)]
+    (let [param-value (or value default)]
+      (cond
+        (not param)
+        stage
 
-      (or (not target)
-          (not param-value))
-      (recur query rest)
+        ;; ignore `:template-tag` parameters... these may be lying around if we had a source card that was native and
+        ;; then replaced it with an MBQL source card.
+        (lib.util.match/match-one target :template-tag &match)
+        (do
+          (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
+                     (pr-str target)
+                     (pr-str stage-path))
+          (recur stage more-params))
 
-      (= (:type param) :temporal-unit)
-      (let [query (update-breakout-unit query (assoc param :value param-value))]
-        (recur query rest))
+        (not target)
+        (do
+          (log/infof "Ignoring parameter %s because it has no target" (pr-str param))
+          (recur stage more-params))
 
-      :else
-      (let [filter-clause (build-filter-clause query (assoc param :value param-value))
-            [_ _ opts]    target
-            query         (mbql.u/add-filter-clause query (:stage-number opts) filter-clause)]
-        (recur query rest)))))
+        (or (nil? param-value)
+            (and (sequential? param-value)
+                 (every? nil? param-value)))
+        (do
+          (log/infof "Ignoring parameter %s because it has no value" (pr-str param-value))
+          (recur stage more-params))
+
+        (= (:type param) :temporal-unit)
+        (let [stage' (update-breakout-unit query stage (assoc param :value param-value))]
+          (recur stage' more-params))
+
+        :else
+        (let [filter-clause (or (build-filter-clause query stage-path (assoc param :value param-value))
+                                (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str param)))
+              stage'        (lib/add-filter-to-stage stage filter-clause)]
+          (recur stage' more-params))))))

@@ -5,8 +5,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { getStoreUrl } from "metabase/selectors/settings";
+import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
 import { Box, Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
@@ -23,7 +22,7 @@ export function CloudSettingsPage() {
 }
 
 export const SettingsCloudStoreLink = () => {
-  const url = getStoreUrl();
+  const url = useStoreUrl();
 
   return (
     <SettingsSection>

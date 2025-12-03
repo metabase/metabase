@@ -10,39 +10,15 @@ title: Embedded analytics SDK - Using the SDK with Next.js
 
 Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/). The SDK is tested to work with Next.js 14, although it may work with other versions.
 
+See a [sample Next.js app that uses the SDK](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
+
 ## SDK components with Server Side Rendering (SSR) or React Server Components
 
-For now, the SDK components are only supported for client-side rendering. To use the SDK components with server-side rendering, or with React Server components, you can either use a compatibility layer or manually wrap the components.
+As of Embedded Analytics SDK v57, SDK components automatically skip server-side rendering (SSR) and render only on the client.
 
-### Compatibility layer for server-side rendering (SSR) (EXPERIMENTAL)
+### Compatibility layer for Server Side Rendering (SSR) (DEPRECATED)
 
-To use SDK components with Next.js, the SDK provides an experimental compatibility layer that [wraps all the components with dynamic imports and disables SSR](https://nextjs.org/docs/pages/building-your-application/optimizing/lazy-loading#with-no-ssr). To work with the app router, this compatibility layer uses `use client`.
-
-To use the compatibility layer, change your imports from `@metabase/embedding-sdk-react` to `@metabase/embedding-sdk-react/nextjs`.
-
-See a [sample Next.js app that uses this compatibility layer](https://github.com/metabase/metabase-nextjs-sdk-embedding-sample).
-
-## Manual wrapping of the components
-
-If you want to customize the loading of the components, you can create your own wrapper.
-
-In your app, create a `metabase` directory, and add a `EmbeddingSdkProvider.tsx` file to that directory. This file will contain the provider with the appropriate configuration.
-
-```tsx
-{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-embedded-sdk-provider.tsx" snippet="example" %}
-```
-
-Next, add an `index.tsx` file to that `metabase` directory. This file will include the `use client` directive, and it'll export a lazy-loaded version of the `EmbeddingSdkProvider` with SSR disabled.
-
-```tsx
-{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-entrypoint.tsx" snippet="example" %}
-```
-
-You can now import components like so:
-
-```tsx
-{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-usage.tsx" %}
-```
+As of Embedded Analytics SDK 57, the compatibility layer for server-side rendering (SSR) is deprecated and no longer required. If you use the compatibility layer, change your imports from `@metabase/embedding-sdk-react/next` to `@metabase/embedding-sdk-react`.
 
 ## Handling authentication
 

@@ -9,7 +9,6 @@ interface DashboardEmptyStateProps {
   addQuestion?: () => void;
   isDashboardEmpty: boolean;
   isEditing?: boolean;
-  isNightMode: boolean;
   canCreateQuestions?: boolean;
 }
 
@@ -20,17 +19,11 @@ function InlineIcon({ name }: { name: IconName }) {
   return <Icon name={name} style={{ verticalAlign: "middle" }} />;
 }
 
-function EmptyStateWrapper({
-  isNightMode,
-  children,
-}: {
-  isNightMode: boolean;
-  children: ReactNode;
-}) {
+function EmptyStateWrapper({ children }: { children: ReactNode }) {
   return (
     <Stack
       align="center"
-      color={isNightMode ? "text-white" : "inherit"}
+      color="inherit"
       data-testid="dashboard-empty-state"
       h="100%"
       justify="center"
@@ -47,7 +40,6 @@ export function DashboardEmptyState({
   addQuestion,
   isDashboardEmpty,
   isEditing,
-  isNightMode,
   canCreateQuestions,
 }: DashboardEmptyStateProps) {
   let title = getDefaultTitle(isDashboardEmpty);
@@ -58,7 +50,7 @@ export function DashboardEmptyState({
   }
 
   return (
-    <EmptyStateWrapper isNightMode={isNightMode}>
+    <EmptyStateWrapper>
       <>
         <Stack align="center" maw="25rem" gap="xs">
           <Title ta="center" order={3}>
@@ -88,11 +80,10 @@ export function DashboardEmptyState({
 
 export function DashboardEmptyStateWithoutAddPrompt({
   isDashboardEmpty,
-  isNightMode,
 }: DashboardEmptyStateProps) {
   const title = getDefaultTitle(isDashboardEmpty);
   return (
-    <EmptyStateWrapper isNightMode={isNightMode}>
+    <EmptyStateWrapper>
       <Title ta="center" order={3}>
         {title}
       </Title>

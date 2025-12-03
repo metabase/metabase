@@ -1,11 +1,16 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { IconName } from "metabase/ui";
 import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
@@ -28,17 +33,17 @@ describe("issue 11727", { tags: "@external" }, () => {
   });
 
   it("should cancel the native query via the keyboard shortcut (metabase#11727)", () => {
-    H.withDatabase(PG_DB_ID, () => {
-      cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
-      cy.wait("@getDatabases");
+    cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
+    cy.wait("@getDatabases");
 
-      H.runNativeQuery({ wait: false });
-      cy.findByText("Doing science...").should("be.visible");
-      cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
-    });
+    H.runNativeQuery({ wait: false });
+    cy.findByTestId("query-builder-main")
+      .findByText("Doing science...")
+      .should("be.visible");
+    cy.get("body").type("{cmd}{enter}");
+    cy.findByTestId("query-builder-main")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
   });
 });
 
@@ -99,12 +104,12 @@ describe("issue 38083", () => {
       visitQuestion: true,
     });
 
-    cy.get("legend")
-      .contains(QUESTION.native["template-tags"].state["display-name"])
-      .parent("fieldset")
-      .within(() => {
-        cy.icon("revert").should("not.exist");
-      });
+    H.filterWidget()
+      .filter(
+        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
+      )
+      .icon("revert")
+      .should("not.exist");
   });
 });
 
@@ -386,46 +391,21 @@ describe("issues 52811, 52812", () => {
 });
 
 describe("issue 52806", () => {
-  const questionDetails = {
-    name: "SQL",
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "native",
-      native: {
-        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
-        "template-tags": {
-          id: {
-            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-            name: "id",
-            "display-name": "ID",
-            type: "number",
-            default: "1",
-          },
-        },
-      },
-    },
-    visualization_settings: {},
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it(
-    "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
-    { tags: "@flaky" },
-    () => {
-      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
-        "candidates",
-      );
-      H.visitQuestionAdhoc(questionDetails);
-      cy.findByTestId("main-logo-link").click();
-      H.modal().button("Discard changes").click();
-      cy.wait("@candidates");
-      cy.location().should((location) => expect(location.search).to.eq(""));
-    },
-  );
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    cy.visit("/");
+    H.newButton("SQL query").click();
+    H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.findByTestId("home-page");
+    cy.location().should((location) => expect(location.search).to.eq(""));
+  });
 });
 
 describe("issue 55951", () => {
@@ -734,5 +714,142 @@ describe("issue 59110", () => {
       const { height } = editor[0].getBoundingClientRect();
       expect(height).to.be.greaterThan(100);
     });
+  });
+});
+
+describe("issue 60719", () => {
+  const question1Details: NativeQuestionDetails = {
+    name: "Q1",
+    native: {
+      query: "select 1 as num",
+      "template-tags": {},
+    },
+  };
+
+  function getQuestion2Details(card1Id: number): StructuredQuestionDetails {
+    return {
+      name: "Q2",
+      query: {
+        "source-table": `card__${card1Id}`,
+      },
+    };
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should prevent saving a native query with a circular reference (metabase#60719)", () => {
+    H.createNativeQuestion(question1Details).then(({ body: card1 }) => {
+      H.createQuestion(getQuestion2Details(card1.id)).then(
+        ({ body: card2 }) => {
+          H.visitQuestion(card1.id);
+          cy.findByTestId("visibility-toggler").click();
+          H.NativeEditor.clear().type(`select * from {{#${card2.id}-q2}}`);
+        },
+      );
+    });
+    H.queryBuilderHeader().button("Save").click();
+    H.modal().within(() => {
+      cy.button("Save").click();
+      cy.wait("@updateCard");
+      cy.findByText("Cannot save card with cycles.").should("be.visible");
+    });
+  });
+});
+
+describe("issue 59356", () => {
+  function typeRunShortcut() {
+    cy.get("body").type("{ctrl+enter}{cmd+enter}");
+  }
+
+  function getLoader() {
+    return H.queryBuilderMain().findByTestId("loading-indicator");
+  }
+
+  function getEmptyStateMessage() {
+    return H.queryBuilderMain().findByText(
+      "Here's where your results will appear",
+    );
+  }
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should properly cancel the query via the keyboard shortcut (metabase#59356)", () => {
+    cy.log("open the native query");
+    H.startNewNativeQuestion({
+      database: WRITABLE_DB_ID,
+      query: "select pg_sleep(5000)",
+    });
+
+    cy.log("verify that the query is not running");
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 0);
+
+    cy.log("run the query and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("run the query again and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 2);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 2);
+  });
+});
+
+describe("issue 63711", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Completions should be visible when there are a lot of options (metabase#63711)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("s");
+
+    cy.log("completions should be scrollable");
+    H.NativeEditor.completions()
+      .findByLabelText("Completions")
+      .then(($el) => {
+        const element = $el[0];
+        cy.wrap(element.scrollHeight).should("be.gt", element.clientHeight);
+      });
+
+    cy.log("completions should not cut off the height of the inner element");
+    H.NativeEditor.completion("SAVEPOINT")
+      .should("be.visible")
+      .then(($outerElement) => {
+        cy.wrap($outerElement)
+          .findByText("AVEPOINT")
+          .should("be.visible")
+          .then(($innerElement) => {
+            cy.wrap($innerElement[0].offsetHeight).should(
+              "be.eq",
+              $outerElement[0].clientHeight,
+            );
+          });
+      });
   });
 });

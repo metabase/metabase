@@ -1,10 +1,10 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
+  (:refer-clojure :exclude [some mapv select-keys empty?])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -21,13 +21,14 @@
                                             $regexMatch $second
                                             $setWindowFields $size $skip $sort
                                             $strcasecmp $subtract $sum
-                                            $toLower $unwind $year]]
+                                            $toBool $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [some mapv select-keys empty?]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -155,24 +156,21 @@
   {:arglists '([field])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(defn- field-name-components [{:keys [parent-id], field-name :name, :as _field}]
+(defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
   (concat
+   ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
    (when parent-id
-     (field-name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
+     (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
    [field-name]))
 
 (mu/defn field->name
-  "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  ([field]
-   (field->name field \.))
+  "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
+  ([col]
+   (field->name col \.))
 
-  ([field     :- driver-api/schema.metadata.column
+  ([col       :- driver-api/schema.metadata.column
     separator :- [:or :string char?]]
-   (str/join separator (field-name-components field))))
-
-(mu/defmethod driver-api/field-reference-mlv2 :mongo
-  [_driver field-inst :- driver-api/schema.metadata.column]
-  (field->name field-inst))
+   (str/join separator (col->name-components col))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -203,12 +201,54 @@
 
 (defmethod ->rvalue :expression
   [[_ expression-name]]
-  (->rvalue (driver-api/expression-with-name (:query *query*) expression-name)))
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (cond->> (->rvalue expression-value)
+      (driver-api/is-clause? :value expression-value) (array-map $literal))))
+
+(def ^:private base64-decoder "
+function(bin) {
+          if (!bin) return null;
+
+          try {
+            var base64 = bin.base64();
+
+            // Manual base64 decode implementation
+            var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            var result = '';
+            var i = 0;
+
+            // Remove any padding
+            base64 = base64.replace(/=+$/, '');
+
+            while (i < base64.length) {
+              var a = chars.indexOf(base64.charAt(i++));
+              var b = chars.indexOf(base64.charAt(i++));
+              var c = chars.indexOf(base64.charAt(i++));
+              var d = chars.indexOf(base64.charAt(i++));
+
+              var bitmap = (a << 18) | (b << 12) | (c << 6) | d;
+
+              result += String.fromCharCode((bitmap >> 16) & 255);
+              if (c !== -1) result += String.fromCharCode((bitmap >> 8) & 255);
+              if (d !== -1) result += String.fromCharCode(bitmap & 255);
+            }
+
+            return result;
+          } catch(e) {
+            return null;
+          }
+        }
+")
 
 (defmethod ->rvalue :metadata/column
-  [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
+  [{coercion :coercion-strategy, ::keys [source-alias join-field inherited?] :as field}]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))
+        coercion   (when-not inherited?
+                     coercion)]
     (cond
+      (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
+      {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
+
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
@@ -221,6 +261,21 @@
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
                           :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
+
+      (isa? coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal)
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
+
+      (isa? coercion :Coercion/ISO8601Bytes->Temporal)
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
                           :onError    field-name}}
 
       ;; mongo only supports datetime
@@ -261,13 +316,13 @@
   (driver-api/aggregation-name (:query *query*) (driver-api/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [join-alias]  :as opts} :as field]]
+  [[_ id-or-name {:keys [join-alias] :as opts} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
         (->lvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
-                         ::source-alias (get opts driver-api/qp.add.source-alias)
+                         ::source-alias (driver-api/qp.add.source-alias opts)
                          ::join-field (get-join-alias join-alias))))
-    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (get opts driver-api/qp.add.source-alias))))
+    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (driver-api/qp.add.source-alias opts))))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -385,14 +440,15 @@
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
-  (let [join-field (get-join-alias join-alias)
-        source-alias (get opts driver-api/qp.add.source-alias)]
+  (let [join-field   (get-join-alias join-alias)
+        source-alias (driver-api/qp.add.source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
-                                 ::join-field join-field)))
+                                 ::join-field   join-field
+                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
@@ -672,10 +728,51 @@
                 rvalue]}
       :day)))
 
-(defmethod ->rvalue :datetime [[_ expr]]
+(defmethod ->rvalue :today [[_]]
+  (->rvalue [:date [:now]]))
+
+(defmethod ->rvalue :datetime [[_ expr {:keys [mode]}]]
   (let [rvalue (->rvalue expr)]
-    {"$dateFromString" {:dateString rvalue
-                        :onError    rvalue}}))
+    (case (or mode :iso)
+      :iso
+      {"$dateFromString" {:dateString rvalue
+                          :onError    rvalue}}
+
+      :simple
+      {"$dateFromString" {:dateString rvalue
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :simple-bytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :iso-bytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :onError    rvalue}}
+
+      :unix-nanoseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-microseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-milliseconds
+      {:$dateFromParts {:millisecond rvalue, :year 1970, :timezone "UTC"}}
+
+      :unix-seconds
+      {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
+
+      ;; else
+      (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)
+                      {:type driver-api/qp.error-type.unsupported-feature})))))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
@@ -780,9 +877,14 @@
 (defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts "^" v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v "$")})
 
+(defn- rvalue-is-variable? [rvalue]
+  (and (string? rvalue)
+       (str/starts-with? rvalue "$$")))
+
 (defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)
-       (str/starts-with? rvalue "$")))
+       (str/starts-with? rvalue "$")
+       (not (rvalue-is-variable? rvalue))))
 
 (defn- rvalue-can-be-compared-directly?
   "Whether `rvalue` is something simple that can be compared directly e.g.
@@ -795,6 +897,7 @@
   [rvalue]
   (or (rvalue-is-field? rvalue)
       (and (not (map? rvalue))
+           (not (rvalue-is-variable? rvalue))
            (not (instance? java.util.regex.Pattern rvalue)))))
 
 (defn- filter-expr [operator field value]
@@ -850,6 +953,16 @@
 
 (defmethod compile-filter :not [[_ subclause]]
   (compile-filter (negate subclause)))
+
+(defmethod compile-filter :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-filter expression-value)))
+
+(defmethod compile-filter :field [field-clause]
+  {$expr {$toBool (->rvalue field-clause)}})
+
+(defmethod compile-filter :value [value-clause]
+  {$expr (->rvalue value-clause)})
 
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
@@ -907,6 +1020,16 @@
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
 
+(defmethod compile-cond :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-cond expression-value)))
+
+(defmethod compile-cond :field [field-clause]
+  (->rvalue field-clause))
+
+(defmethod compile-cond :value [value-clause]
+  (->rvalue value-clause))
+
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
 (defn- find-source-collection
@@ -922,8 +1045,8 @@
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
   (driver-api/replace expr
-                      [:field _ {:join-alias alias}]
-                      (update &match 2 set/rename-keys {:join-alias ::join-local})))
+    [:field _ {:join-alias alias}]
+    (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
 (defn- get-field-mappings [source-query projections]
   (when source-query
@@ -999,46 +1122,46 @@
 
 (defn- aggregation->rvalue [ag]
   (driver-api/match-one ag
-                        [:aggregation-options ag' _]
-                        (recur ag')
+    [:aggregation-options ag' _]
+    (recur ag')
 
-                        [:count]
-                        {$sum 1}
+    [:count]
+    {$sum 1}
 
-                        [:count arg]
-                        {$sum {$cond {:if   (->rvalue arg)
-                                      :then 1
-                                      :else 0}}}
+    [:count arg]
+    {$sum {$cond {:if   (->rvalue arg)
+                  :then 1
+                  :else 0}}}
 
     ;; these aggregation types can all be used in expressions as well so their implementations live above in the
     ;; general [[->rvalue]] implementations
-                        #{:avg :stddev :sum :min :max}
-                        (->rvalue &match)
+    #{:avg :stddev :sum :min :max}
+    (->rvalue &match)
 
-                        [:distinct arg]
-                        {$addToSet (->rvalue arg)}
+    [:distinct arg]
+    {$addToSet (->rvalue arg)}
 
-                        [:sum-where arg pred]
-                        {$sum {$cond {:if   (compile-cond pred)
-                                      :then (->rvalue arg)
-                                      :else 0}}}
+    [:sum-where arg pred]
+    {$sum {$cond {:if   (compile-cond pred)
+                  :then (->rvalue arg)
+                  :else 0}}}
 
-                        [:count-where pred]
-                        (recur [:sum-where [:value 1] pred])
+    [:count-where pred]
+    (recur [:sum-where [:value 1] pred])
 
-                        :else
-                        (throw
-                         (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
-                                  {:type :invalid-query, :clause ag}))))
+    :else
+    (throw
+     (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
+              {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :aggregation-options)
     (recur arg)
     ag))
 
-(defn- field-alias [field]
-  (or (get-in field [2 driver-api/qp.add.desired-alias])
-      (->lvalue field)))
+(defn- field-alias [[_tag _id-or-name opts, :as field-ref]]
+  (or (driver-api/qp.add.desired-alias opts)
+      (->lvalue field-ref)))
 
 (mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple driver-api/schema.common.non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
@@ -1188,7 +1311,7 @@
                                   ;; are used match against `aggr-expr` where identifiers have the prefix.
                                   (map #(str \$ %)))
                             distinct-keys)]
-    [(walk/postwalk (fn [x]
+    [(perf/postwalk (fn [x]
                       (if (and (string? x)
                                (distinct-vals x))
                         {$size x}
@@ -1339,14 +1462,14 @@
      (assoc-in
       m
       (driver-api/match-one field-clause
-                            [:field (field-id :guard integer?) _]
-                            (str/split (field-alias field-clause) #"\.")
+        [:field (field-id :guard integer?) _]
+        (str/split (field-alias field-clause) #"\.")
 
-                            [:field (field-name :guard string?) _]
-                            [field-name]
+        [:field (field-name :guard string?) _]
+        [field-name]
 
-                            [:expression expr-name _]
-                            [expr-name])
+        [:expression expr-name _]
+        [expr-name])
       (->rvalue field-clause)))
    (ordered-map/ordered-map)
    fields))
@@ -1521,13 +1644,13 @@
    (reduce (fn [pipeline-ctx f]
              (f inner-query pipeline-ctx))
            pipeline-ctx
-           [handle-joins
-            handle-filter
-            handle-breakout+aggregation
-            handle-order-by
-            handle-fields
-            handle-limit
-            handle-page])))
+           [#'handle-joins
+            #'handle-filter
+            #'handle-breakout+aggregation
+            #'handle-order-by
+            #'handle-fields
+            #'handle-limit
+            #'handle-page])))
 
 (mu/defn- generate-aggregation-pipeline :- [:map
                                             [:projections Projections]
@@ -1540,17 +1663,17 @@
   "Return `:collection` from a source query, if it exists."
   [query]
   (driver-api/match-one query
-                        (_ :guard (every-pred map? :collection))
+    (_ :guard (every-pred map? :collection))
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
-                        (when (let [parents (set &parents)]
-                                (and (contains? parents :source-query)
-                                     (not (contains? parents :joins))))
-                          (:collection &match))))
+    (when (let [parents (set &parents)]
+            (and (contains? parents :source-query)
+                 (not (contains? parents :joins))))
+      (:collection &match))))
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
-                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
+                (u/pprint-to-str 'green (perf/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
 (defn simple-mbql->native
   "Compile a simple (non-nested) MBQL query."
@@ -1592,14 +1715,73 @@
         (merge compiled (add-aggregation-pipeline inner-query compiled))))
     (simple-mbql->native inner-query)))
 
+;;; TODO (Cam 6/20/25) -- MongoDB QP code is completely broken and does not consistently look at the keys added
+;;; by [[driver-api/add-alias-info]]. Fixing all the busted code above is more work than I want to take on right now, so
+;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
+;;; values added by add-alias-info.
+(defn- HACK-update-aliases [form]
+  (letfn [(prepend-nfc-path [{nfc-path      driver-api/qp.add.nfc-path,
+                              source-alias  driver-api/qp.add.source-alias,
+                              desired-alias driver-api/qp.add.desired-alias,
+                              :as           opts}]
+            (when (seq nfc-path)
+              (let [nfc-path-str (str/join \. nfc-path)]
+                (-> opts
+                    (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
+                           driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))
+                    (dissoc driver-api/qp.add.nfc-path)))))
+          (update-name [{field-name :name, source-alias driver-api/qp.add.source-alias, :as opts}]
+            (when (and source-alias
+                       (not= field-name source-alias))
+              (assoc opts :name source-alias)))
+          (remove-bad-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
+            (when (and join-alias
+                       (= source-table driver-api/qp.add.source))
+              (dissoc opts :join-alias)))
+          (update-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
+            (when (and join-alias
+                       source-table
+                       (not= join-alias source-table))
+              (assoc opts :join-alias source-table)))
+          (update-opts [opts]
+            (reduce
+             (fn
+               [opts f]
+               (or (f opts)
+                   opts))
+             opts
+             [prepend-nfc-path
+              update-join-alias
+              update-name
+              remove-bad-join-alias
+              update-join-alias]))
+          (update-field-ref [[_tag id-or-name {source-alias driver-api/qp.add.source-alias, :as opts}]]
+            (let [opts (update-opts opts)]
+              (if (and (string? id-or-name)
+                       source-alias)
+                [:field source-alias opts]
+                [:field id-or-name opts])))]
+    (driver-api/replace form
+      :field
+      (update-field-ref &match)
+
+      (join :guard (every-pred map?
+                               driver-api/qp.add.alias
+                               #(not= (driver-api/qp.add.alias %) (:alias %))))
+      (recur (assoc join :alias (driver-api/qp.add.alias join))))))
+
 (defn- preprocess
   [inner-query]
-  (driver-api/add-alias-info inner-query))
+  (-> inner-query
+      (driver-api/add-alias-info {:globally-unique-join-aliases? true})
+      HACK-update-aliases))
 
 (defn mbql->native
   "Compile an MBQL query."
   [query]
-  (let [query (update query :query preprocess)]
+  (let [query (-> query
+                  driver-api/->legacy-MBQL
+                  (update :query preprocess))]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]

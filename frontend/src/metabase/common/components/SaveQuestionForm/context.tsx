@@ -11,9 +11,12 @@ import {
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import {
+  canPlaceEntityInCollection,
+  getEntityTypeFromCardType,
+  isInstanceAnalyticsCollection,
+} from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
@@ -72,16 +75,11 @@ export const SaveQuestionProvider = ({
   );
 
   const currentUser = useSelector(getCurrentUser);
-  const { id: collectionId } = useValidatedEntityId({
-    type: "collection",
-    id: userTargetCollection,
-  });
 
   const targetCollection =
-    collectionId ||
-    (currentUser && userTargetCollection === "personal"
+    userTargetCollection === "personal" && currentUser
       ? currentUser.personal_collection_id
-      : userTargetCollection);
+      : userTargetCollection;
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
@@ -117,9 +115,20 @@ export const SaveQuestionProvider = ({
   // analytics questions should not default to saving in dashboard
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
 
+  const entityType = getEntityTypeFromCardType(question.type());
+
+  const isValidLastSelectedCollection =
+    lastSelectedCollection &&
+    canPlaceEntityInCollection(
+      entityType,
+      lastSelectedCollection.collection_type,
+    );
+
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
+    // `userTargetCollection` comes from the `targetCollection` sdk prop and should take precedence over the recent dashboards
+    userTargetCollection === undefined &&
     lastSelectedDashboard?.can_write
       ? lastSelectedDashboard?.id
       : undefined;
@@ -128,7 +137,7 @@ export const SaveQuestionProvider = ({
     (!isAnalytics
       ? lastSelectedDashboard?.parent_collection.id
       : defaultCollectionId) ??
-    lastSelectedCollection?.id ??
+    (isValidLastSelectedCollection ? lastSelectedCollection?.id : undefined) ??
     defaultCollectionId;
 
   const initialValues: FormValues = useMemo(
@@ -168,9 +177,10 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
-  const saveToDashboard = originalQuestion
-    ? undefined
-    : (question.dashboardId() ?? undefined);
+  const saveToDashboard =
+    originalQuestion || !question.creationType()
+      ? undefined
+      : (question.dashboardId() ?? undefined);
 
   return (
     <FormProvider

@@ -1,4 +1,4 @@
-import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { EnterpriseState } from "metabase-enterprise/settings/types";
 import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
@@ -10,6 +10,7 @@ import { createMockDashboardState } from "./dashboard";
 import { createMockEmbedState } from "./embed";
 import { createMockEmbeddingDataPickerState } from "./embedding-data-picker";
 import { createMockNormalizedEntitiesState } from "./entities";
+import { createMockModalState } from "./modal";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
 import { createMockRequestsState } from "./requests";
@@ -47,7 +48,7 @@ export function createMockState(opts: any) {
       present: createMockVisualizerState(),
       future: [],
     },
-    modal: null,
+    modal: createMockModalState(),
     ...opts,
   };
 }

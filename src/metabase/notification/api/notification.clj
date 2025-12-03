@@ -85,6 +85,9 @@
                  (filter mi/can-read?)))
        models.notification/hydrate-notification))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "List notifications.
   - `creator_id`: if provided returns only notifications created by this user
@@ -99,7 +102,7 @@
     [:creator_or_recipient_id {:optional true} ms/PositiveInt]
     [:card_id                 {:optional true} ms/PositiveInt]
     [:include_inactive        {:optional true} ms/BooleanValue]
-    [:pyaload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
+    [:payload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
   (list-notifications {:creator_id              creator_id
                        :recipient_id            recipient_id
                        :creator_or_recipient_id creator_or_recipient_id
@@ -141,6 +144,7 @@
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
                        (-> body
+                           (update :payload_type keyword)
                            (assoc :creator_id api/*current-user-id*)
                            (dissoc :handlers :subscriptions))
                        (:subscriptions body)

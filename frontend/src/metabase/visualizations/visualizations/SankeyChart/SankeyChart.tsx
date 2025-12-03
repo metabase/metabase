@@ -13,6 +13,7 @@ import {
 } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
 import { SANKEY_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./events";
@@ -25,6 +26,7 @@ export const SankeyChart = ({
   width,
   height,
   onVisualizationClick,
+  onHoverChange,
 }: VisualizationProps) => {
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -65,6 +67,7 @@ export const SankeyChart = ({
   );
 
   useCloseTooltipOnScroll(chartRef);
+  useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const sankeyColorsCss = useSankeyChartColorsClasses(chartModel);
 

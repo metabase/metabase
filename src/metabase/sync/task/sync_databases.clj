@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -86,13 +87,16 @@
                   (catch Throwable e
                     e))]
       (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
-      (do
-        (sync-metadata/sync-db-metadata! database)
-        ;; only run analysis if this is a "full sync" database
-        (when (:is_full_sync database)
-          (let [results (analyze/analyze-db! database)]
-            (when (and (:refingerprint database) (should-refingerprint-fields? results))
-              (analyze/refingerprint-db! database))))))))
+      (database-routing/with-database-routing-off
+        (let [metadata-results (sync-metadata/sync-db-metadata! database)
+              analyze-results (when (:is_full_sync database)
+                                (analyze/analyze-db! database))
+              refingerprint-results (when (and (:refingerprint database)
+                                               (should-refingerprint-fields? analyze-results))
+                                      (analyze/refingerprint-db! database))]
+          (cond-> {:metadata-results metadata-results}
+            analyze-results (assoc :analyze-results analyze-results)
+            refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
@@ -339,7 +343,11 @@
                 (try
                   (t2/update! :model/Database (u/the-id db)
                               (sync.schedules/schedule-map->cron-strings
-                               (sync.schedules/default-randomized-schedule)))
+                               ;; TODO (edpaget): this can go away after this patch is deployed to cloud
+                               (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
+                                      (:metadata_sync_schedule db))
+                                 (sync.schedules/default-randomized-schedule {:excluded-minute 43})
+                                 (sync.schedules/default-randomized-schedule))))
                   (inc counter)
                   (catch Exception e
                     (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
@@ -348,6 +356,8 @@
               {:select [:*]
                :from   [:metabase_database]
                :where  [:or
+                        [:and [:= :is_sample true]
+                         [:= :metadata_sync_schedule sync.schedules/old-sample-metadata-sync-schedule-cron-string]]
                         [:in
                          :metadata_sync_schedule
                          sync.schedules/default-metadata-sync-schedule-cron-strings]

@@ -1,22 +1,30 @@
 (ns ^:mb/driver-tests metabase.actions.actions-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.actions.actions :as actions]
+   [metabase.actions.error :as actions.error]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.models :as action]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.test-util :as driver.tu]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (org.apache.sshd.server SshServer)
-   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk] (mt/with-test-user :rasta (thunk))))
+
+(def ^:private test-scope {:unknown :model-action})
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled!
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
@@ -29,7 +37,7 @@
 (mu/defn- format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
   [field-name]
-  (mt/format-name (name field-name)))
+  (name (mt/format-name (name field-name))))
 
 (defn- categories-row-count []
   (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]], :limit 1}))))
@@ -38,7 +46,7 @@
   (testing "row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (let [response (actions/perform-action! :row/create
+        (let [response (actions/perform-action! :model.row/create
                                                 (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
           (is (=? {:created-row {(format-field-name :id)   76
                                  (format-field-name :name) "created_row"}}
@@ -62,7 +70,7 @@
                                           ;; MySQL 5.7 checks the type of the parameter first.
                                           :mysql    #"Field 'name' doesn't have a default value|Incorrect integer value: 'created_row' for column 'id'")
                               ;; bad data -- ID is a string instead of an Integer.
-                              (actions/perform-action! :row/create
+                              (actions/perform-action! :model.row/create
                                                        (assoc (mt/mbql-query categories) :create-row {(format-field-name :id) "created_row"}))))
         (testing "no row should have been inserted"
           (is (= 75
@@ -72,8 +80,8 @@
   (testing "row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-updated [1]}
-               (actions/perform-action! :row/update
+        (is (= {:rows-updated 1}
+               (actions/perform-action! :model.row/update
                                         (assoc (mt/mbql-query categories {:filter [:= $id 50]})
                                                :update_row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
@@ -85,8 +93,8 @@
   (testing "row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-deleted [1]}
-               (actions/perform-action! :row/delete
+        (is (= {:rows-deleted 1}
+               (actions/perform-action! :model.row/delete
                                         (mt/mbql-query categories {:filter [:= $id 50]})))
             "Delete should return the right shape")
         (is (= 74
@@ -98,7 +106,7 @@
   "Mock requests for testing validation for various actions. Don't use these for happy path tests! It's way too hard to
   wrap your head around them. Use them for validating preconditions and stuff like that."
   []
-  [{:action       :row/create
+  [{:action       :model.row/create
     :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
     :expect-fn    (fn [result]
                     ;; check that we return the entire row
@@ -107,17 +115,17 @@
                                                 [(format-field-name :id)   ms/PositiveInt]
                                                 [(format-field-name :name) ms/NonBlankString]]]]
                                 result)))}
-   {:action       :row/update
+   {:action       :model.row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {(format-field-name :name) "updated_row"})
-    :expected     {:rows-updated [1]}}
-   {:action       :row/delete
+    :expected     {:rows-updated 1}}
+   {:action       :model.row/delete
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
-    :expected     {:rows-deleted [1]}}
-   {:action       :row/update
+    :expected     {:rows-deleted 1}}
+   {:action       :model.row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
                          :update_row {(format-field-name :name) "new-category-name"})
-    :expected     {:rows-updated [1]}}])
+    :expected     {:rows-updated 1}}])
 
 (deftest feature-flags-test
   (doseq [{:keys [action request-body]} (mock-requests)]
@@ -153,10 +161,11 @@
                                                db-id))
                             ;; TODO -- not sure what the actual shape of this API is supposed to look like. We'll have to
                             ;; update this test when the PR to support row insertion is in.
-                            (actions/perform-action! :table/insert
-                                                     {:database db-id
-                                                      :table-id table-id
-                                                      :values   {:name "Toucannery"}}))))))
+                            (actions/perform-action-v2! :table/insert
+                                                        test-scope
+                                                        [{:database db-id
+                                                          :table-id table-id
+                                                          :values   {:name "Toucannery"}}]))))))
 
 (defn- row-action? [action]
   (= (namespace action) "row"))
@@ -184,9 +193,9 @@
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
-                                (actions/perform-action! :row/update query-that-returns-more-than-one)))
+                                (actions/perform-action! :model.row/update query-that-returns-more-than-one)))
           (is (thrown-with-msg? Exception #"Sorry, the row you're trying to update doesn't exist"
-                                (actions/perform-action! :row/update query-that-returns-zero-row)))
+                                (actions/perform-action! :model.row/update query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
@@ -201,9 +210,9 @@
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
-                                (actions/perform-action! :row/delete query-that-returns-more-than-one)))
+                                (actions/perform-action! :model.row/delete query-that-returns-more-than-one)))
           (is (thrown-with-msg? Exception #"Sorry, the row you're trying to delete doesn't exist"
-                                (actions/perform-action! :row/delete query-that-returns-zero-row)))
+                                (actions/perform-action! :model.row/delete query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
@@ -216,7 +225,7 @@
                                 ;; TODO -- this really should be returning a 400 but we need to rework the code in
                                 ;; [[metabase.driver.sql-jdbc.actions]] a little to have that happen without changing other stuff
                                 ;; that SHOULD be returning a 404
-                                (actions/perform-action! :row/delete
+                                (actions/perform-action! :model.row/delete
                                                          (mt/mbql-query categories {:filter [:= $id "one"]})))
               "Delete should return the right shape")
           (testing "no rows should have been deleted"
@@ -238,7 +247,7 @@
                                               :h2       #"Referential integrity constraint violation.*PUBLIC\.VENUES FOREIGN KEY\(CATEGORY_ID\) REFERENCES PUBLIC\.CATEGORIES\(ID\).*"
                                               :postgres #"violates foreign key constraint .*"
                                               :mysql    #"Cannot delete or update a parent row: a foreign key constraint fails .*")
-                                  (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))
+                                  (actions/perform-action! :model.row/delete (mt/mbql-query categories {:filter [:= $id 58]})))
                 "Delete should return the right shape")
             (testing "no rows should have been deleted"
               (is (= 75
@@ -253,28 +262,67 @@
             ~expected-schema
             (assoc (ex-data e#) ::message (ex-message e#)))))))
 
-(deftest bulk-create-happy-path-test
-  (testing "bulk/create"
+(deftest table-row-create-happy-path-test
+  (testing "table.row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= 75
-               (categories-row-count)))
-        (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
-                               {(format-field-name :id) 77, (format-field-name :name) "NEW_B"}]}
-               (actions/perform-action! :bulk/create
-                                        {:database (mt/id)
-                                         :table-id (mt/id :categories)
-                                         :arg      [{(format-field-name :name) "NEW_A"}
-                                                    {(format-field-name :name) "NEW_B"}]})))
-        (is (= [[76 "NEW_A"]
-                [77 "NEW_B"]]
-               (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
-                                                       :order-by [[:asc $id]]}))))
-        (is (= 77
-               (categories-row-count)))))))
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)
+              id-col   (format-field-name :id)
+              name-col (format-field-name :name)]
+          (is (= 75
+                 (categories-row-count)))
+          (is (= [{:table-id table-id, :op :created, :row {id-col 76, name-col "NEW_A"}}
+                  {:table-id table-id, :op :created, :row {id-col 77, name-col "NEW_B"}}]
+                 (:outputs
+                  (actions/perform-action-v2! :table.row/create
+                                              test-scope
+                                              [{:database db-id, :table-id table-id, :row {name-col "NEW_A"}}
+                                               {:database db-id, :table-id table-id, :row {name-col "NEW_B"}}]))))
+          (is (= [[76 "NEW_A"]
+                  [77 "NEW_B"]]
+                 (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
+                                                         :order-by [[:asc $id]]}))))
+          (is (= 77
+                 (categories-row-count))))))))
 
-(deftest bulk-create-failure-test
-  (testing "bulk/create"
+(defn- unset-entity-key! [table-id]
+  (t2/update! :model/Field
+              {:table_id      table-id
+               :semantic_type :type/PK}
+              {:semantic_type nil}))
+
+(deftest table-row-create-no-pk
+  (testing "table.row/create"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)
+              name-col (format-field-name :name)]
+          (unset-entity-key! table-id)
+          (is (= 75
+                 (categories-row-count)))
+          (is (= {:status-code               400
+                  :errors                    [{:index 0, :error "Cannot edit a table without it having at least one entity key configured.", :type :data-editing/no-pk, :status-code 400, :table-id table-id}
+                                              {:index 1, :error "Cannot edit a table without it having at least one entity key configured.", :type :data-editing/no-pk, :status-code 400, :table-id table-id}]
+                  :results                   []
+                  :metabase.util.log/context {:action :table.row/create, :db-id db-id}}
+                 (try
+                   (actions/perform-action-v2! :table.row/create
+                                               test-scope
+                                               [{:database db-id, :table-id table-id, :row {name-col "NEW_A"}}
+                                                {:database db-id, :table-id table-id, :row {name-col "NEW_B"}}])
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+          (is (= []
+                 (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
+                                                         :order-by [[:asc $id]]}))))
+          (is (= 75
+                 (categories-row-count))))))))
+
+(deftest table-row-create-failure-test
+  (testing "table.row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
         (testing "error in some of the rows in request body"
@@ -296,36 +344,74 @@
                                  ;; MySQL 5.7 checks the type of the parameter first.
                                  :mysql    #"(?s)(?:.*Field 'name' doesn't have a default value.*)|(?:.*Incorrect integer value: 'STRING' for column 'id'.*)")}]
               :status-code 400}
-             (actions/perform-action! :bulk/create
-                                      {:database (mt/id)
-                                       :table-id (mt/id :categories)
-                                       :arg [{(format-field-name :name) "NEW_A"}
-                                             ;; invalid because name has to be non-nil
-                                             {(format-field-name :name) nil}
-                                             {(format-field-name :name) "NEW_B"}
-                                             ;; invalid because ID is supposed to be an integer
-                                             {(format-field-name :id) "STRING"}]})))
+             (actions/perform-action-v2!
+              :table.row/create
+              test-scope
+              (for [row [{(format-field-name :name) "NEW_A"}
+                         ;; invalid because name has to be non-nil
+                         {(format-field-name :name) nil}
+                         {(format-field-name :name) "NEW_B"}
+                         ;; invalid because ID is supposed to be an integer
+                         {(format-field-name :id) "STRING"}]]
+                {:database (mt/id)
+                 :table-id (mt/id :categories)
+                 :row      row}))))
           (testing "Should not have committed any of the valid rows"
             (is (= 75
                    (categories-row-count)))))))))
 
-(deftest bulk-delete-happy-path-test
-  (testing "bulk/delete"
+(deftest table-row-delete-happy-path-test
+  (testing "table.row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= 75
-               (categories-row-count)))
-        (is (= {:success true}
-               (actions/perform-action! :bulk/delete
-                                        {:database (mt/id)
-                                         :table-id (mt/id :categories)
-                                         :arg [{(format-field-name :id) 74}
-                                               {(format-field-name :id) 75}]})))
-        (is (= 73
-               (categories-row-count)))))))
+        (let [table-id (mt/id :categories)]
+          (is (= 75 (categories-row-count)))
+          (is (= [{:table-id table-id, :op :deleted, :row {:id 75}}
+                  {:table-id table-id, :op :deleted, :row {:id 74}}]
+                 (walk/postwalk
+                  (fn [x]
+                    (if (map? x)
+                      (u/lower-case-map-keys x)
+                      x))
+                  (:outputs
+                   (actions/perform-action-v2! :table.row/delete
+                                               test-scope
+                                               [{:database (mt/id)
+                                                 :table-id table-id
+                                                 :row      {(format-field-name :id) 75}}
+                                                {:database (mt/id)
+                                                 :table-id table-id
+                                                 :row      {(format-field-name :id) 74}}])))))
+          (is (= 73 (categories-row-count))))))))
 
-(deftest bulk-delete-failure-test
-  (testing "bulk/delete"
+(deftest table-row-delete-no-pk
+  (testing "table.row/delete"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)]
+          (unset-entity-key! table-id)
+
+          (is (= 75 (categories-row-count)))
+          (is (= {:type                      :data-editing/no-pk
+                  :status-code               400
+                  :table-id                  table-id
+                  :metabase.util.log/context {:action :table.row/delete
+                                              :db-id  db-id}}
+                 (try
+                   (actions/perform-action-v2! :table.row/delete
+                                               test-scope
+                                               [{:database db-id
+                                                 :table-id table-id
+                                                 :row      {}}])
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+          (testing "nothing was deleted"
+            (is (= 75 (categories-row-count)))))))))
+
+(deftest table-row-delete-failure-test
+  (testing "table.row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
         (testing "error in some of the rows"
@@ -339,89 +425,135 @@
                {:index 3
                 :error #"Sorry, the row you're trying to delete doesn't exist"}]
               :status-code 400}
-             (actions/perform-action! :bulk/delete
-                                      {:database (mt/id)
-                                       :table-id (mt/id :categories)
-                                       :arg
-                                       [{(format-field-name :id) 74}
-                                        {(format-field-name :id) "foo"}
-                                        {(format-field-name :id) 75}
-                                        {(format-field-name :id) 107}]})))
+             (actions/perform-action-v2! :table.row/delete
+                                         test-scope
+                                         (for [row [{(format-field-name :id) 74}
+                                                    {(format-field-name :id) "foo"}
+                                                    {(format-field-name :id) 75}
+                                                    {(format-field-name :id) 107}]]
+                                           {:database (mt/id)
+                                            :table-id (mt/id :categories)
+                                            :row      row}))))
           (testing "Should report non-pk keys"
             (is (thrown-with-msg? Exception (re-pattern (format "Rows have the wrong columns: expected #\\{%s\\}, but got #\\{%s\\}"
                                                                 (pr-str (name (format-field-name :id)))
                                                                 (pr-str (name (format-field-name :nonid)))))
-                                  (actions/perform-action! :bulk/delete
-                                                           {:database (mt/id)
-                                                            :table-id (mt/id :categories)
-                                                            :arg
-                                                            [{(format-field-name :nonid) 75}]})))
+                                  (actions/perform-action-v2! :table.row/delete
+                                                              test-scope
+                                                              [{:database (mt/id)
+                                                                :table-id (mt/id :categories)
+                                                                :row      {(format-field-name :nonid) 75}}])))
             (testing "Even if all PK columns are specified"
               (is (thrown-with-msg? Exception (re-pattern (format "Rows have the wrong columns: expected #\\{%s\\}, but got #\\{%s %s\\}"
                                                                   (pr-str (name (format-field-name :id)))
                                                                   (pr-str (name (format-field-name :id)))
                                                                   (pr-str (name (format-field-name :nonid)))))
-                                    (actions/perform-action! :bulk/delete
-                                                             {:database (mt/id)
-                                                              :table-id (mt/id :categories)
-                                                              :arg
-                                                              [{(format-field-name :id)    75
-                                                                (format-field-name :nonid) 75}]})))))
+                                    (actions/perform-action-v2! :table.row/delete
+                                                                test-scope
+                                                                (for [row [{(format-field-name :id)    75
+                                                                            (format-field-name :nonid) 75}]]
+                                                                  {:database (mt/id)
+                                                                   :table-id (mt/id :categories)
+                                                                   :row      row}))))))
           (testing "Should report repeat rows"
             (is (thrown-with-msg? Exception (re-pattern (format "Rows need to be unique: repeated rows \\{%s 74\\} × 3, \\{%s 75\\} × 2"
                                                                 (pr-str (name (format-field-name :id)))
                                                                 (pr-str (name (format-field-name :id)))))
-                                  (actions/perform-action! :bulk/delete
-                                                           {:database (mt/id)
-                                                            :table-id (mt/id :categories)
-                                                            :arg
-                                                            [{(format-field-name :id) 73}
-                                                             {(format-field-name :id) 74}
-                                                             {(format-field-name :id) 74}
-                                                             {(format-field-name :id) 74}
-                                                             {(format-field-name :id) 75}
-                                                             {(format-field-name :id) 75}]}))))
+                                  (actions/perform-action-v2! :table.row/delete
+                                                              test-scope
+                                                              (for [row [{(format-field-name :id) 73}
+                                                                         {(format-field-name :id) 74}
+                                                                         {(format-field-name :id) 74}
+                                                                         {(format-field-name :id) 74}
+                                                                         {(format-field-name :id) 75}
+                                                                         {(format-field-name :id) 75}]]
+                                                                {:database (mt/id)
+                                                                 :table-id (mt/id :categories)
+                                                                 :row      row})))))
           (is (= 75
                  (categories-row-count))))))))
 
 (defn- first-three-categories []
   (mt/rows (mt/run-mbql-query categories {:filter [:< $id 4], :order-by [[:asc $id]]})))
 
-(deftest bulk-update-happy-path-test
-  (testing "bulk/update"
+(deftest table-row-update-happy-path-test
+  (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= [[1 "African"]
-                [2 "American"]
-                [3 "Artisan"]]
-               (first-three-categories)))
-        (is (= {:rows-updated 2}
-               (actions/perform-action! :bulk/update
-                                        {:database (mt/id)
-                                         :table-id (mt/id :categories)
-                                         :arg
-                                         (let [id   (format-field-name :id)
-                                               name (format-field-name :name)]
-                                           [{id 1, name "Seed Bowl"}
-                                            {id 2, name "Millet Treat"}])})))
-
-        (testing "rows should be updated in the DB"
-          (is (= [[1 "Seed Bowl"]
-                  [2 "Millet Treat"]
+        (let [table-id (mt/id :categories)]
+          (is (= [[1 "African"]
+                  [2 "American"]
                   [3 "Artisan"]]
-                 (first-three-categories))))))))
+                 (first-three-categories)))
+          (is (= [{:table-id table-id, :op :updated, :row {(format-field-name :id) 1 (format-field-name :name) "Seed Bowl"}}
+                  {:table-id table-id, :op :updated, :row {(format-field-name :id) 2 (format-field-name :name) "Millet Treat"}}]
+                 (let [id   (format-field-name :id)
+                       name (format-field-name :name)]
+                   (:outputs
+                    (actions/perform-action-v2! :table.row/update
+                                                test-scope
+                                                (for [row [{id 1, name "Seed Bowl"}
+                                                           {id 2, name "Millet Treat"}]]
+                                                  {:database (mt/id)
+                                                   :table-id table-id
+                                                   :row      row}))))))
 
-(deftest bulk-update-failure-test
-  (testing "bulk/update"
+          (testing "rows should be updated in the DB"
+            (is (= [[1 "Seed Bowl"]
+                    [2 "Millet Treat"]
+                    [3 "Artisan"]]
+                   (first-three-categories)))))))))
+
+(deftest table-row-update-no-pk
+  (testing "table.row/update"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)]
+          (unset-entity-key! table-id)
+          (is (= [[1 "African"]
+                  [2 "American"]
+                  [3 "Artisan"]]
+                 (first-three-categories)))
+
+          (is (= {:type                      :data-editing/no-pk
+                  :status-code               400
+                  :table-id                  table-id
+                  :metabase.util.log/context {:action :table.row/update
+                                              :db-id  db-id}}
+                 (try
+                   (let [id   (format-field-name :id)
+                         name (format-field-name :name)]
+                     (actions/perform-action-v2! :table.row/update
+                                                 test-scope
+                                                 (for [row [{id 1, name "Seed Bowl"}
+                                                            {id 2, name "Millet Treat"}]]
+                                                   {:database db-id
+                                                    :table-id table-id
+                                                    :row      row})))
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+
+          (testing "rows should NOT be updated in the DB"
+            (is (= [[1 "African"]
+                    [2 "American"]
+                    [3 "Artisan"]]
+                   (first-three-categories)))))))))
+
+(deftest table-row-update-failure-test
+  (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
         (let [id                 (format-field-name :id)
               name               (format-field-name :name)
               update-categories! (fn [rows]
-                                   (actions/perform-action! :bulk/update
-                                                            {:database (mt/id)
-                                                             :table-id (mt/id :categories)
-                                                             :arg rows}))]
+                                   (actions/perform-action-v2! :table.row/update
+                                                               test-scope
+                                                               (for [row rows]
+                                                                 {:database (mt/id)
+                                                                  :table-id (mt/id :categories)
+                                                                  :row      row})))]
           (testing "Initial values"
             (is (= [[1 "African"]
                     [2 "American"]
@@ -446,7 +578,7 @@
           ;; that happen in the DW since they often can't be enforced in the frontend client OR in the backend without
           ;; actually hitting the DW
           (testing "Should validate that every row has required PK columns"
-            (is (thrown-with-msg? Exception (re-pattern (format "Row is missing required primary key column. Required #\\{%s\\}; got #\\{%s\\}"
+            (is (thrown-with-msg? Exception (re-pattern (format "Row is missing required primary key column. Required \\(%s\\); got \\(%s\\)"
                                                                 (pr-str (clojure.core/name (format-field-name :id)))
                                                                 (pr-str (clojure.core/name (format-field-name :name)))))
                                   (update-categories! [{id 1, name "Seed Bowl"}
@@ -468,26 +600,6 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
-(defn basic-auth-ssh-server ^java.io.Closeable [username password]
-  (try
-    (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
-                             (authenticate [_ auth-username auth-password _session]
-                               (and
-                                (= auth-username username)
-                                (= auth-password password))))
-          keypair-provider (org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider.)
-          sshd             (doto (SshServer/setUpDefaultServer)
-                             (.setPort 0)
-                             (.setKeyPairProvider keypair-provider)
-                             (.setPasswordAuthenticator password-auth)
-                             (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
-                             .start)]
-      sshd)
-    (catch Throwable e
-      (throw (ex-info (format "Error starting SSH mock server with password")
-                      {:username username :password password}
-                      e)))))
-
 (deftest actions-on-ssh-tunneled-db
   ;; testing actions against dbs with ssh tunnels. Use an in-memory ssh server that just forwards to the correct port
   ;; through localhost. Since it is local, it's possible for the application to ignore the ssh tunnel and just talk to
@@ -496,10 +608,11 @@
   ;; through the ssh tunnel
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
     (let [username "username", password "password"]
-      (with-open [ssh-server (basic-auth-ssh-server username password)]
+      (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled!
-            (let [ssh-port (.getPort ^SshServer ssh-server)]
+            (let [ssh-port (.getPort ssh-server)
+                  table-id (mt/id :categories)]
               (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
                 (t2/update! 'Database (mt/id)
                             ;; enable ssh tunnel
@@ -511,17 +624,22 @@
                                              :tunnel-user username
                                              :tunnel-pass ssh-password)}))
               (testing "Can perform implicit actions on ssh-enabled database"
-                (let [response (try (actions/perform-action! :bulk/update
-                                                             {:database (mt/id)
-                                                              :table-id (mt/id :categories)
-                                                              :arg
-                                                              (let [id   (format-field-name :id)
-                                                                    name (format-field-name :name)]
-                                                                [{id 1, name "Seed Bowl"}
-                                                                 {id 2, name "Millet Treat"}])})
+                (let [response (try (:outputs
+                                     (actions/perform-action-v2!
+                                      :table.row/update
+                                      test-scope
+                                      (let [id   (format-field-name :id)
+                                            name (format-field-name :name)]
+                                        (for [row [{id 1, name "Seed Bowl"}
+                                                   {id 2, name "Millet Treat"}]]
+                                          {:database (mt/id)
+                                           :table-id table-id
+                                           :row      row}))))
                                     (catch Exception e e))]
                   (if correct-password?
-                    (is (= {:rows-updated 2} response))
+                    (is (= [{:table-id table-id, :op :updated, :row {(format-field-name :id) 1, (format-field-name :name) "Seed Bowl"}}
+                            {:table-id table-id, :op :updated, :row {(format-field-name :id) 2, (format-field-name :name) "Millet Treat"}}]
+                           response))
                     (do
                       (is (instance? Exception response) "Did not get an error with wrong password")
                       (is (some (partial instance? org.apache.sshd.common.SshException)
@@ -529,11 +647,11 @@
                           "None of the errors are from ssh")))))
               (testing "Can perform custom actions on ssh-enabled database"
                 (let [query (update (mt/native-query
-                                      {:query "update categories set name = 'foo' where id = {{id}}"
-                                       :template-tags {:id {:id "id"
-                                                            :name "id"
-                                                            :type "number"
-                                                            :display-name "Id"}}})
+                                     {:query "update categories set name = 'foo' where id = {{id}}"
+                                      :template-tags {:id {:id "id"
+                                                           :name "id"
+                                                           :type "number"
+                                                           :display-name "Id"}}})
                                     :type name)]
                   (mt/with-actions [{card-id :id} {:type :model
                                                    :dataset_query (mt/mbql-query categories)}
@@ -582,9 +700,9 @@
   (testing "row/update with uuids"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-updated [1]}
+        (is (= {:rows-updated 1}
                (actions/perform-action!
-                :row/update
+                :model.row/update
                 (assoc (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})
                        :update_row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
@@ -600,11 +718,11 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
         (let [response (actions/perform-action!
-                        :row/create
+                        :model.row/create
                         (assoc (mt/mbql-query ants)
                                :create-row {(format-field-name :id) "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
                                             (format-field-name :name) "created_row"}))]
-          (is (=? {:created-row {(format-field-name :id) #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
+          (is (=? {:created-row {(format-field-name :id)   #uuid "5cba6f11-2325-400f-8f2e-82fbdc6f181c"
                                  (format-field-name :name) "created_row"}}
                   response)
               "Create should return the entire row")
@@ -619,11 +737,102 @@
   (testing "row/delete with uuids"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions :uuid-type)
       (with-uuids-test-data-and-actions-permissively-enabled!
-        (is (= {:rows-deleted [1]}
+        (is (= {:rows-deleted 1}
                (actions/perform-action!
-                :row/delete
+                :model.row/delete
                 (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
             "Delete should return the right shape")
         (is (= 2 (first (mt/first-row (mt/run-mbql-query ants {:aggregation [[:count]], :limit 1})))))
         (is (= [] (mt/rows (mt/run-mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})))
             "Selecting for deleted rows should return an empty result")))))
+
+(deftest test-permission-denied-errors
+  (testing "Permission denied errors should return nice error messages"
+    ;; can't create users with restricted permissions in h2
+    (mt/with-actions-enabled
+      (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
+        (let [test-db-name   "permission_test"
+              test-user-name "test_user"]
+          ;; Create a test database with test data
+          (tx/drop-if-exists-and-create-db! driver/*driver* test-db-name)
+          (let [details    (mt/dbdef->connection-details driver/*driver* :db {:database-name test-db-name})
+                admin-spec (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+            ;; Set up test data and user with limited permissions
+            (doseq [stmt (concat
+                          ;; Create the categories table with test data
+                          ["CREATE TABLE categories (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL);"
+                           "INSERT INTO categories (id, name) VALUES (1, 'Test Category');"
+                           "INSERT INTO categories (id, name) VALUES (2, 'Another Category');"]
+                          ;; Create test user with no password and only SELECT permissions
+                          [(format "DROP USER IF EXISTS %s" test-user-name)
+                           (case driver/*driver*
+                             :postgres (format "CREATE USER %s WITH PASSWORD '123456';" test-user-name)
+                             :mysql    (format "CREATE USER '%s'" test-user-name))
+                           (case driver/*driver*
+                             :postgres (format "GRANT SELECT ON TABLE categories TO %s" test-user-name)
+                             :mysql    (format "GRANT SELECT ON %s.categories TO '%s'" test-db-name test-user-name))])]
+              (when stmt
+                (jdbc/execute! admin-spec [stmt])))
+
+            ;; Create connection details for test user (no password)
+            (let [test-user-details (cond-> details
+                                      (= driver/*driver* :mysql)
+                                      (assoc :user test-user-name
+                                             :additional-options "useSSL=false&allowPublicKeyRetrieval=true")
+
+                                      (= driver/*driver* :postgres)
+                                      (assoc :user test-user-name
+                                             :password "123456"))]
+              ;; Create temporary database with test user credentials
+              (mt/with-temp [:model/Database test-database {:engine driver/*driver*, :details test-user-details :settings {:database-enable-actions true
+                                                                                                                           :database-enable-table-editing true}}]
+                ;; Sync the database to get table metadata
+                (sync/sync-database! test-database)
+                (let [table-id (t2/select-one-pk :model/Table :db_id (:id test-database) :name "categories")]
+                  (testing (str "INSERT permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/create
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"name" "New Test Category"}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to add data to this table." (:message first-error)))))
+
+                  (testing (str "UPDATE permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/update
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"id" 1 "name" "Updated Category"}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to update data in this table." (:message first-error)))))
+
+                  (testing (str "DELETE permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/delete
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"id" 1}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to delete data from this table." (:message first-error))))))))))))))

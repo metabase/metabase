@@ -6,6 +6,7 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]))
 
 ;; Case analysis:
@@ -105,8 +106,12 @@
 (defn- orders-count-with-breakouts-and-join [breakout-values]
   (orders-count-with-breakouts*
    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-       (lib/join (meta/table-metadata :products)))
-   breakout-values))
+       (lib/join (-> (lib/join-clause (meta/table-metadata :products))
+                     (lib/with-join-alias "P"))))
+   (for [[col v] breakout-values]
+     [(cond-> col
+        (= (:table-id col) (meta/id :products)) (lib/with-join-alias "P"))
+      v])))
 
 (def ^:private bv-date
   [(meta/field-metadata :orders :created-at)
@@ -119,6 +124,7 @@
 (def ^:private bv-category1
   [(meta/field-metadata :products :category)
    "Gadget"])
+
 (def ^:private bv-category2
   [(meta/field-metadata :people :source)
    "Twitter"])
@@ -287,3 +293,24 @@
                           :expected-query
                           (assoc-in [:stages 0 :filters 0 2 2] "CREATED_AT")
                           (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))
+
+(deftest ^:parallel returns-pivot-drill-boolean-column-test
+  (let [metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(merge (meta/field-metadata :gh/issues :is-open)
+                                            {:base-type         :type/Boolean
+                                             :effective-type    :type/Boolean})]})
+        query             (-> (lib/query metadata-provider (meta/table-metadata :gh/issues))
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (meta/field-metadata :gh/issues :is-open)))]
+    (lib.drill-thru.tu/test-drill-variants-with-merged-args
+     lib.drill-thru.tu/test-returns-drill
+     "boolean column"
+     (merge {:drill-type   :drill-thru/pivot
+             :click-type   :cell
+             :query-type   :aggregated
+             :column-name  "count"
+             :custom-query query
+             :custom-row   {"IS_OPEN" true
+                            "count"   10}}
+            (expecting ["IS_OPEN"] [:category :time])))))

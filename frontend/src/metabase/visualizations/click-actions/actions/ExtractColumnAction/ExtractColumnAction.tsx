@@ -7,7 +7,7 @@ import { trackColumnExtractViaPlusModal } from "metabase/query_builder/analytics
 import {
   ExtractColumn,
   hasExtractions,
-} from "metabase/query_builder/components/expressions/ExtractColumn";
+} from "metabase/query_builder/components/expressions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, rem } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
@@ -15,21 +15,19 @@ import type { ClickActionPopoverProps } from "metabase/visualizations/types/clic
 import * as Lib from "metabase-lib";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
+  if (!clicked || clicked.value !== undefined || !clicked.columnShortcuts) {
+    return [];
+  }
+
   const { query, stageIndex } = Lib.asReturned(
     question.query(),
     -1,
     question.id(),
   );
-
   const { isEditable } = Lib.queryDisplayInfo(query);
+  const availableColumns = Lib.expressionableColumns(query, stageIndex);
 
-  if (
-    !clicked ||
-    clicked.value !== undefined ||
-    !clicked.columnShortcuts ||
-    !isEditable ||
-    !hasExtractions(query, stageIndex)
-  ) {
+  if (!isEditable || !hasExtractions(query, availableColumns)) {
     return [];
   }
 
@@ -66,6 +64,7 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
           onSubmit={handleSubmit}
           onCancel={onClose}
         />

@@ -582,6 +582,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
+    ...(table.metrics ? provideCardListTags(table.metrics) : []),
   ];
 }
 
@@ -632,12 +633,14 @@ export function provideTimelineTags(
 }
 
 export function provideUserListTags(
-  users: UserInfo[],
+  users: Pick<UserInfo, "id">[],
 ): TagDescription<TagType>[] {
   return [listTag("user"), ...users.flatMap((user) => provideUserTags(user))];
 }
 
-export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {
+export function provideUserTags(
+  user: Pick<UserInfo, "id">,
+): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
 }
 

@@ -4,9 +4,10 @@ import _ from "underscore";
 
 import NumericInput from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
-import { type NumberValue, parseNumber } from "metabase/lib/number";
+import { parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import type { NumberFilterValue } from "metabase/querying/parameters/types";
 import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
@@ -31,7 +32,7 @@ export type NumberInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   label?: string;
-  parameter?: Parameter;
+  parameter: Parameter;
 };
 
 export function NumberInputWidget({
@@ -45,15 +46,11 @@ export function NumberInputWidget({
   label,
   parameter,
 }: NumberInputWidgetProps) {
-  const arrayValue = deserializeNumberParameterValue(value);
+  const arrayValue = deserializeNumberParameterValue(parameter.type, value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(NumberValue | undefined)[]>(arrayValue);
+    useState<NumberFilterValue[]>(arrayValue);
 
-  const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
-  const allValuesSet = unsavedArrayValue.every(isNotNull);
-  const isValid =
-    (arity === "n" || unsavedArrayValue.length <= arity) &&
-    (allValuesUnset || allValuesSet);
+  const allValuesUnset = unsavedArrayValue.every((value) => value == null);
   const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
   const isRequired = parameter?.required;
 
@@ -81,10 +78,6 @@ export function NumberInputWidget({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!isValid) {
-      return;
-    }
-
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {
         setValue(parameter.default);
@@ -107,7 +100,7 @@ export function NumberInputWidget({
       onSubmit={handleSubmit}
     >
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      {arity === "n" ? (
+      {arity === "n" || options.length > 0 ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
             value={filteredUnsavedArrayValue.map((value) => value?.toString())}
@@ -131,7 +124,7 @@ export function NumberInputWidget({
               onChange={(_newValue, newValueText) => {
                 setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = parseNumber(newValueText) ?? undefined;
+                  newUnsavedValue[i] = parseNumber(newValueText);
                   return newUnsavedValue;
                 });
               }}
@@ -149,7 +142,7 @@ export function NumberInputWidget({
           unsavedValue={unsavedArrayValue}
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
-          isValid={isValid}
+          isValid
         />
       </Footer>
     </Box>

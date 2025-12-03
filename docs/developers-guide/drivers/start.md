@@ -36,4 +36,4 @@ Try to avoid skipping right to whichever page you think will give you the code y
 
 ## Driver development announcements
 
-Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9).
+Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](https://eepurl.com/gQcIO9).

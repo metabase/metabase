@@ -1,7 +1,8 @@
-import type { Card, CardId } from "metabase-types/api/card";
-import type { Channel } from "metabase-types/api/notification-channels";
-import type { PaginationRequest } from "metabase-types/api/pagination";
-import type { UserId, UserInfo } from "metabase-types/api/user";
+import type { Card, CardId } from "./card";
+import type { Channel } from "./notification-channels";
+import type { PaginationRequest } from "./pagination";
+import type { ScheduleDisplayType } from "./settings";
+import type { UserId, UserInfo } from "./user";
 
 export type NotificationId = number;
 
@@ -102,7 +103,6 @@ export type NotificationHandler =
 //#endregion
 
 //#region Subscription type
-export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
 export type NotificationCronSubscription = {
   type: "notification-subscription/cron";
   event_name: null;

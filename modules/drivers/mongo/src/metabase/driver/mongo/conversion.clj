@@ -16,11 +16,13 @@
    TODO: Names of protocol functions and protocols are bit misleading as were in monger.
 
    TODOs should be addressed during follow-up of monger removal."
+  (:refer-clojure :exclude [mapv])
   (:require
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.mongo.query-processor :as mongo.qp])
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.nio ByteBuffer)
    (java.util UUID)

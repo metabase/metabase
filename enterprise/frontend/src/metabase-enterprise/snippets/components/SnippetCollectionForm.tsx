@@ -5,16 +5,14 @@ import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import Button from "metabase/common/components/Button";
-import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import FormInput from "metabase/common/components/FormInput";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import FormTextArea from "metabase/common/components/FormTextArea";
-import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections/constants";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
 import { connect } from "metabase/lib/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -26,9 +24,6 @@ const SNIPPET_COLLECTION_SCHEMA = Yup.object({
     .max(100, Errors.maxLength)
     .default(""),
   description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
-  color: Yup.string()
-    .nullable()
-    .default(() => color(DEFAULT_COLLECTION_COLOR_ALIAS)),
   parent_id: Yup.number().nullable().default(null),
 });
 
@@ -142,7 +137,6 @@ function SnippetCollectionForm({
             name="name"
             title={t`Give your folder a name`}
             placeholder={t`Something short but sweet`}
-            autoFocus
           />
           <FormTextArea
             name="description"

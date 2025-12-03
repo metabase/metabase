@@ -124,7 +124,7 @@
                              [:name ms/NonBlankString]]]
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
-  (search/reindex!)
+  (search/reindex! {:async? false})
   nil)
 
 (api.macros/defendpoint :post "/echo"

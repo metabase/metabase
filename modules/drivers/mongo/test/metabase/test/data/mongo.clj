@@ -95,7 +95,7 @@
 
 (defmethod ddl.i/format-name :mongo
   [_ table-or-field-name]
-  (if (re-matches #"id(?:_\d+)?" table-or-field-name)
+  (if (re-matches #"id(?:_\d+)*" table-or-field-name)
     (str "_" table-or-field-name)
     table-or-field-name))
 
@@ -123,6 +123,10 @@
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
    :collection  (name table-name)})
+
+(defmethod tx/make-alias :mongo
+  ([_driver alias]
+   alias))
 
 (defmethod tx/aggregate-column-info :mongo
   ([driver ag-type]

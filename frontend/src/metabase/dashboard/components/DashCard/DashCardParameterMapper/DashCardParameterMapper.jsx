@@ -3,13 +3,17 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { Flex } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
 import S from "./DashCardParameterMapper.module.css";
 
-export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
+export const DashCardParameterMapper = ({
+  dashcard,
+  isMobile,
+  compact = false,
+}) => (
   <div
     className={cx(
       CS.relative,
@@ -33,7 +37,8 @@ export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
     <Flex
       justify="space-around"
       maw="100%"
-      m="0 2rem"
+      m={compact ? undefined : "0 2rem"}
+      gap="sm"
       className={S.MapperSettingsContainer}
       data-testid="parameter-mapper-container"
     >
@@ -43,6 +48,7 @@ export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
           dashcard={dashcard}
           card={card}
           isMobile={isMobile}
+          compact={compact}
         />
       ))}
     </Flex>

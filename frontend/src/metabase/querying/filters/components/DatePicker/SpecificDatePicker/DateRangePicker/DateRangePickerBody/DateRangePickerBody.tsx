@@ -1,7 +1,8 @@
+import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { DateValue, DatesRangeValue } from "metabase/ui";
+import type { DatesRangeValue } from "metabase/ui";
 import {
   DateInput,
   DatePicker,
@@ -29,13 +30,14 @@ export function DateRangePickerBody({
   const [startDate, endDate] = value;
   const [inProgressDateRange, setInProgressDateRange] =
     useState<DatesRangeValue | null>(value);
+  const [displayedDate, setDisplayedDate] = useState(startDate);
 
   const handleRangeChange = (newDateRange: DatesRangeValue) => {
     const [newStartDate, newEndDate] = newDateRange;
     if (newStartDate && newEndDate) {
       onChange([
-        setDatePart(startDate, newStartDate),
-        setDatePart(endDate, newEndDate),
+        setDatePart(startDate, dayjs(newStartDate).toDate()),
+        setDatePart(endDate, dayjs(newEndDate).toDate()),
       ]);
       setInProgressDateRange(null);
     } else {
@@ -43,20 +45,38 @@ export function DateRangePickerBody({
     }
   };
 
-  const handleStartDateChange = (newDate: DateValue) => {
-    newDate && onChange([setDatePart(startDate, newDate), endDate]);
+  const handleStartDateChange = (newDate: Date) => {
+    const newStartDate = setDatePart(startDate, newDate);
+    onChange([newStartDate, endDate]);
+    setInProgressDateRange(null);
+    setDisplayedDate(newStartDate);
   };
 
-  const handleEndDateChange = (newDate: DateValue) => {
-    newDate && onChange([startDate, setDatePart(endDate, newDate)]);
+  const handleEndDateChange = (newDate: Date) => {
+    const newEndDate = setDatePart(endDate, newDate);
+    onChange([startDate, newEndDate]);
+    setInProgressDateRange(null);
+    // substract 1 month because we want the end date to be shown in the 2nd column
+    setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
   };
 
   const handleStartTimeChange = (newTime: Date | null) => {
-    newTime && onChange([setTimePart(startDate, newTime), endDate]);
+    if (newTime) {
+      const newStartDate = setTimePart(startDate, newTime);
+      onChange([newStartDate, endDate]);
+      setInProgressDateRange(null);
+      setDisplayedDate(newStartDate);
+    }
   };
 
   const handleEndTimeChange = (newTime: Date | null) => {
-    newTime && onChange([startDate, setTimePart(endDate, newTime)]);
+    if (newTime) {
+      const newEndDate = setTimePart(endDate, newTime);
+      onChange([startDate, newEndDate]);
+      setInProgressDateRange(null);
+      // substract 1 month because we want the end date to be shown in the 2nd column
+      setDisplayedDate(dayjs(newEndDate).subtract(1, "month").toDate());
+    }
   };
 
   return (
@@ -67,7 +87,7 @@ export function DateRangePickerBody({
           value={startDate}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
-          onChange={handleStartDateChange}
+          onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
         />
         <Text c="text-light">{t`and`}</Text>
         <DateInput
@@ -75,7 +95,7 @@ export function DateRangePickerBody({
           value={endDate}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
-          onChange={handleEndDateChange}
+          onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
         />
       </Group>
       {hasTime && (
@@ -98,10 +118,11 @@ export function DateRangePickerBody({
       <DatePicker
         type="range"
         value={inProgressDateRange ?? value}
-        defaultDate={startDate}
+        date={displayedDate}
         numberOfColumns={2}
         allowSingleDateInRange
         onChange={handleRangeChange}
+        onDateChange={(value) => setDisplayedDate(dayjs(value).toDate())}
       />
     </Stack>
   );

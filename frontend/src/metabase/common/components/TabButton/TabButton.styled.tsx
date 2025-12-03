@@ -70,7 +70,6 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
       `}
   }
 
-  :before,
   :after {
     content: " ";
     position: absolute;
@@ -78,11 +77,6 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     left: 0;
     width: 100%;
     border-bottom: 0.125rem solid transparent;
-  }
-
-  :before {
-    transition: var(--transition-theme-change);
-    border-color: var(--mb-color-border);
   }
 
   ${(props) =>

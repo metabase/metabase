@@ -16,6 +16,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.underlying :as lib.underlying]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -114,24 +115,33 @@
                                  :value      "2022-12-01T00:00:00+02:00"}]}}))
 
 (def ^:private last-month
-  #?(:cljs (let [now    (js/Date.)
-                 year   (.getFullYear now)
-                 month  (.getMonth now)]
-             (-> (js/Date.UTC year (dec month))
-                 (js/Date.)
-                 (.toISOString)))
+  ;; The JS date libraries suck. Rather than working hard to get this right in both environments for a unit test,
+  ;; here's a hard-coded value. This can be any month, provided it is in the range of the Sample Database, which is
+  ;; roughly +/- 2 years. I've picked June 2026 in October 2025, so this value should be good for a few years.
+  #?(:cljs "2026-06-01"
      :clj  (let [last-month (-> (t/zoned-date-time (t/year) (t/month))
                                 (t/minus (t/months 1)))]
              (t/format :iso-offset-date-time last-month))))
 
+;; See the note above under [[last-month]] about the hard-coded values in CLJS.
+(let [[start end] #?(:cljs ["2026-06-01" "2026-06-30"]
+                     :clj  (let [this-month (t/local-date (t/year) (t/month))]
+                             [(t/minus this-month (t/months 1))
+                              (t/minus this-month (t/days 1))]))
+      ->str       #?(:cljs identity ; They're already just strings.
+                     :clj  #(t/format :iso-date %))]
+  (def ^:private last-month-start (->str start))
+  (def ^:private last-month-end   (->str end)))
+
 (defn- underlying-state [query agg-index agg-value breakout-values exp-filters-fn]
-  (let [columns                         (lib/returned-columns query)
-        {aggs      :source/aggregations
-         breakouts :source/breakouts}   (group-by :lib/source columns)
-        agg-column                      (nth aggs agg-index)
-        agg-dim                         {:column     agg-column
-                                         :column-ref (lib/ref agg-column)
-                                         :value      agg-value}]
+  (let [columns    (lib/returned-columns query)
+        aggs       (filter #(= (:lib/source %) :source/aggregations)
+                           columns)
+        breakouts  (filter :lib/breakout? columns)
+        agg-column (nth aggs agg-index)
+        agg-dim    {:column     agg-column
+                    :column-ref (lib/ref agg-column)
+                    :value      agg-value}]
     (is (= (count breakouts)
            (count breakout-values)))
     (let [breakout-dims (for [[breakout value] (map vector breakouts breakout-values)]
@@ -146,10 +156,10 @@
                                                                        v))))
                                 :dimensions breakout-dims})]
       (is (=? {:lib/type :mbql/query
-               :stages [{:filters     (exp-filters-fn agg-dim breakout-dims)
-                         :aggregation (symbol "nil #_\"key is not present.\"")
-                         :breakout    (symbol "nil #_\"key is not present.\"")
-                         :fields      (symbol "nil #_\"key is not present.\"")}]}
+               :stages   [{:filters     (exp-filters-fn agg-dim breakout-dims)
+                           :aggregation (symbol "nil #_\"key is not present.\"")
+                           :breakout    (symbol "nil #_\"key is not present.\"")
+                           :fields      (symbol "nil #_\"key is not present.\"")}]}
               (->> (lib.drill-thru/available-drill-thrus query context)
                    (m/find-first #(= (:type %) :drill-thru/underlying-records))
                    (lib.drill-thru/drill-thru query -1 nil)))))))
@@ -165,10 +175,11 @@
                       42295.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]]))))
+                          last-month-start
+                          last-month-end]]))))
 
 (deftest ^:parallel underlying-records-apply-test-2
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
@@ -184,10 +195,11 @@
                       6572.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]
+                          last-month-start
+                          last-month-end]
                          [:= {} (-> (meta/field-metadata :products :category)
                                     lib/ref
                                     (lib.options/with-options {}))
@@ -218,7 +230,7 @@
                         (fn [_agg-dim [breakout-dim]]
                           (let [monthly-breakout (-> (:column-ref breakout-dim)
                                                      (lib.options/with-options {:temporal-unit :month}))]
-                            [[:=  {} monthly-breakout last-month]]))))))
+                            [[:between {} monthly-breakout last-month-start last-month-end]]))))))
 
 (deftest ^:parallel multiple-aggregations-multiple-breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -237,10 +249,11 @@
                             (-> (:column-ref product-id-dim)
                                 (lib.options/update-options dissoc :lib/uuid))
                             120]
-                           [:= {}
+                           [:between {}
                             (-> (:column-ref created-at-dim)
                                 (lib.options/with-options {:temporal-unit :month}))
-                            last-month]])))))
+                            last-month-start
+                            last-month-end]])))))
 
 (deftest ^:parallel temporal-unit-breakouts-test
   (let [column (-> (meta/field-metadata :orders :created-at)
@@ -366,9 +379,10 @@
       (is (=? {:stages [{:filters [[:> {}
                                     [:field {} (meta/id :orders :total)]
                                     50]
-                                   [:= {}
+                                   [:between {}
                                     [:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                    "2023-03-01T00:00:00Z"]]}]}
+                                    "2023-03-01"
+                                    "2023-03-31"]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel negative-aggregation-values-display-info-test
@@ -510,11 +524,12 @@
                :column-ref [:aggregation {:lib/source-name "sum_where_SUBTOTAL"} string?]}
               drill))
       (is (=? {:lib/type :mbql/query
-               :stages   [{:filters     [[:= {}
+               :stages   [{:filters     [[:between {}
                                           (-> (meta/field-metadata :orders :created-at)
                                               lib/ref
                                               (lib.options/with-options {}))
-                                          "2023-12-01"]
+                                          "2023-12-01"
+                                          "2023-12-31"]
                                          [:= {} (-> (meta/field-metadata :products :category)
                                                     lib/ref
                                                     (lib.options/with-options {}))
@@ -568,7 +583,7 @@
           bucket-expr        (m/find-first #(= (:name %) "cost bucket") cols)
           query              (lib/breakout base bucket-expr)
           [bucket count-col] (lib/returned-columns query)
-          bucket-dim         {:column     (dissoc bucket :lib/expression-name)
+          bucket-dim         {:column     (dissoc bucket :lib/expression-name :lib/source)
                               :column-ref (lib/ref bucket)
                               :value      "12"}
           count-dim          {:column     count-col
@@ -587,3 +602,148 @@
                         (lib.underlying/top-level-column query (:column bucket-dim)))))
       (is (=? [[:= {} [:expression {} "cost bucket"] "12"]]
               (lib/filters (lib/drill-thru query drill)))))))
+
+(deftest ^:parallel native-query-with-multiple-breakouts-on-same-column-test
+  (let [mp               (lib.tu/mock-metadata-provider
+                          meta/metadata-provider
+                          {:cards [{:id              1
+                                    :dataset-query   {:type     :native
+                                                      :database (meta/id)
+                                                      :native   {:query "select ID, CREATED_AT from ORDERS"}}
+                                    :result-metadata (for [col-name [:id :created-at]]
+                                                       (-> (meta/field-metadata :orders col-name)
+                                                           (assoc :lib/source :source/native)
+                                                           (dissoc :id :table-id)))}]})
+        query            (lib/query
+                          mp
+                          {:database (meta/id)
+                           :type     :query
+                           :query    {:source-table "card__1"
+                                      :aggregation  [[:count]]
+                                      :breakout     [[:field "CREATED_AT" {:temporal-unit :month, :base-type :type/DateTime}]
+                                                     [:field "CREATED_AT" {:temporal-unit :year, :base-type :type/DateTime}]]}})
+        count-col        {:base-type                :type/BigInteger
+                          :display-name             "Count"
+                          :effective-type           :type/BigInteger
+                          :name                     "count"
+                          :semantic-type            :type/Quantity
+                          :lib/deduplicated-name    "count"
+                          :lib/desired-column-alias "count"
+                          :lib/original-name        "count"
+                          :lib/source               :source/aggregations
+                          :lib/source-column-alias  "count"
+                          :lib/source-uuid          "5ae2854a-11ce-48fe-ab85-3f2bc059e452"
+                          :lib/type                 :metadata/column}
+        created-at-col   {:base-type                        :type/DateTime
+                          :database-type                    "TIMESTAMP"
+                          :display-name                     "CREATED_AT: Month"
+                          :effective-type                   :type/DateTime
+                          :inherited-temporal-unit          :month
+                          :name                             "CREATED_AT"
+                          :remapped-from-index              nil
+                          :remapping                        nil
+                          :semantic-type                    :type/CreationTimestamp
+                          :lib/breakout?                    true
+                          :lib/card-id                      1
+                          :lib/deduplicated-name            "CREATED_AT"
+                          :lib/desired-column-alias         "CREATED_AT"
+                          :lib/original-name                "CREATED_AT"
+                          :lib/source-column-alias          "CREATED_AT"
+                          :lib/type                         :metadata/column
+                          :metabase.lib.field/temporal-unit :month}
+        created-at-2-col {:base-type                        :type/DateTime
+                          :database-type                    "TIMESTAMP"
+                          :display-name                     "CREATED_AT: Year"
+                          :effective-type                   :type/DateTime
+                          :inherited-temporal-unit          :year
+                          :name                             "CREATED_AT_2"
+                          :remapped-from-index              nil
+                          :remapping                        nil
+                          :semantic-type                    :type/CreationTimestamp
+                          :lib/breakout?                    true
+                          :lib/card-id                      1
+                          :lib/deduplicated-name            "CREATED_AT_2"
+                          :lib/desired-column-alias         "CREATED_AT_2"
+                          :lib/original-name                "CREATED_AT"
+                          :lib/source-column-alias          "CREATED_AT"
+                          :lib/type                         :metadata/column
+                          :metabase.lib.field/temporal-unit :year}
+        context          {:column     count-col
+                          :column-ref [:aggregation {:lib/uuid "1e569eeb-049b-42a4-8bc6-678743cbfdcb"} "5ae2854a-11ce-48fe-ab85-3f2bc059e452"]
+                          :value      325
+                          :card-id    1
+                          :row        [{:column     created-at-col
+                                        :column-ref [:field
+                                                     {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "6574ad49-7895-4f95-bbc7-6a0c9cc0338f"}
+                                                     "CREATED_AT"]
+                                        :value      "2023-07-01T00:00:00Z"}
+                                       {:column     created-at-2-col
+                                        :column-ref [:field
+                                                     {:base-type :type/DateTime, :temporal-unit :year, :lib/uuid "289cceca-229d-42c0-9658-eb548d694269"}
+                                                     "CREATED_AT_2"]
+                                        :value      "2023"}
+                                       {:column count-col
+                                        :column-ref
+                                        [:aggregation {:lib/uuid "0daafd21-4a03-4a09-a2aa-678dde6563b1"} "5ae2854a-11ce-48fe-ab85-3f2bc059e452"]
+                                        :value  325}]
+                          :dimensions [{:column created-at-col
+                                        :column-ref
+                                        [:field
+                                         {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "803bf31d-0a27-4c02-992f-3b550fd58db6"}
+                                         "CREATED_AT"]
+                                        :value  "2023-07-01T00:00:00Z"}
+                                       {:column     created-at-2-col
+                                        :column-ref [:field
+                                                     {:base-type :type/DateTime, :temporal-unit :year, :lib/uuid "5330b999-53d5-4545-9f73-61e26a6dde51"}
+                                                     "CREATED_AT_2"]
+                                        :value      "2023-01-01T00:00:00Z"}]}
+        drill            (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                       (lib/available-drill-thrus query context))]
+    (is (some? drill))
+    (is (=? [{:source-card 1
+              :filters     [[:between
+                             {}
+                             [:field {:temporal-unit :month} "CREATED_AT"]
+                             "2023-07-01"
+                             "2023-07-31"]
+                            [:between
+                             {}
+                             [:field {:temporal-unit :year} "CREATED_AT"]
+                             "2023-01-01"
+                             "2023-12-31"]]}]
+            (:stages (lib/drill-thru query drill))))))
+
+(deftest ^:parallel remove-original-binning-test
+  (testing "We should remove :lib/original-binning from display info as well"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (-> (meta/field-metadata :orders :total)
+                                          (lib/with-binning {:strategy :num-bins, :num-bins 100})))
+                        (as-> $query (lib/filter $query (lib/>= (meta/field-metadata :orders :total) 90))))
+          cols      (lib/returned-columns query)
+          count-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Count"})
+          total-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Total: 100 bins"})
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      37
+                     :row        [{:column total-col, :column-ref (lib/ref total-col), :value 90}
+                                  {:column count-col, :column-ref (lib/ref count-col), :value 37}]
+                     :dimensions [{:column total-col, :column-ref (lib/ref total-col), :value 90}]}
+          drill     (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                  (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (let [query' (lib/drill-thru query drill)]
+        (is (=? [{:source-table (meta/id :orders)
+                  :filters      [[:>= {}
+                                  [:field {} (meta/id :orders :total)]
+                                  90]
+                                 [:<
+                                  {}
+                                  [:field {} (meta/id :orders :total)]
+                                  92.0]]}]
+                (:stages query')))
+        (is (= ["Total is greater than or equal to 90"
+                #?(:clj  "Total is less than 92.0"
+                   :cljs "Total is less than 92")]
+               (map #(:long-display-name (lib/display-info query' %))
+                    (lib/filters query'))))))))

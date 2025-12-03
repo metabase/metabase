@@ -1,10 +1,15 @@
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupBugReportingDetailsEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import {
+  createMockSettings,
   createMockTokenFeatures,
   createMockTokenStatus,
   createMockUser,
@@ -41,7 +46,8 @@ export const setup = ({
   tokenFeatures = {},
 }: SetupProps = {}) => {
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
-
+  setupPropertiesEndpoints(createMockSettings());
+  setupBugReportingDetailsEndpoint();
   const state = createMockState({
     app: createMockAppState({
       tempStorage: {

@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
+import {
+  setupCardQueryDownloadEndpoint,
+  setupLastDownloadFormatEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen } from "__support__/ui";
@@ -55,6 +58,7 @@ const setup = ({
   const question = checkNotNull(metadata.question(card.id));
 
   setupCardQueryDownloadEndpoint(card, "json");
+  setupLastDownloadFormatEndpoints();
 
   renderWithProviders(
     <QuestionDownloadWidget
@@ -202,6 +206,35 @@ describe("QuestionDownloadWidget", () => {
     await userEvent.click(screen.getByLabelText(".csv"));
     expect(
       screen.queryByLabelText("Keep the data pivoted"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show maximum download size text only for xlsx format when results are truncated", async () => {
+    const truncatedResult = createMockDataset({
+      data: {
+        rows: [],
+        cols: [],
+        rows_truncated: 1000000,
+      },
+    });
+
+    setup({ result: truncatedResult });
+
+    // Initially on csv format - should not show the text
+    expect(
+      screen.queryByText(/maximum download size is 1 million rows/),
+    ).not.toBeInTheDocument();
+
+    // Switch to xlsx format - should show the text
+    await userEvent.click(screen.getByLabelText(".xlsx"));
+    expect(
+      screen.getByText(/maximum download size is 1 million rows/),
+    ).toBeInTheDocument();
+
+    // Switch back to csv format - should hide the text
+    await userEvent.click(screen.getByLabelText(".csv"));
+    expect(
+      screen.queryByText(/maximum download size is 1 million rows/),
     ).not.toBeInTheDocument();
   });
 });

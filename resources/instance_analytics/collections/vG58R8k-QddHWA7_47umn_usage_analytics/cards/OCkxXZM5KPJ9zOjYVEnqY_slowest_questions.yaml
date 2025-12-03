@@ -31,8 +31,6 @@ dataset_query:
           - v_query_log
           - running_time_seconds
         - base-type: type/Float
-    aggregation-idents:
-      0: aggregation_OCkxXZM5KPJ9zOjYVEnqY@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -55,10 +53,6 @@ dataset_query:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Dashboard Qualified
-    breakout-idents:
-      0: breakout_OCkxXZM5KPJ9zOjYVEnqY@0__0
-      1: breakout_OCkxXZM5KPJ9zOjYVEnqY@0__1
-      2: breakout_OCkxXZM5KPJ9zOjYVEnqY@0__2
     filter:
     - and
     - - time-interval
@@ -96,7 +90,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Dashboard Qualified
       fields: all
-      ident: join_OCkxXZM5KPJ9zOjYVEnqY@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Group Members - Entity
@@ -116,7 +109,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: Group Members - Entity
       fields: all
-      ident: join_OCkxXZM5KPJ9zOjYVEnqY@0__Group Members - Entity
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     limit: 200

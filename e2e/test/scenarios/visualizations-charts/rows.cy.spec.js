@@ -1,4 +1,10 @@
+import _ from "underscore";
+
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
 const { H } = cy;
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
@@ -93,5 +99,59 @@ describe("scenarios > visualizations > rows", () => {
             expect(prevWidth).eq(newWidth);
           });
       });
+  });
+
+  it("should handle very long product titles in row chart", () => {
+    H.createQuestion(
+      {
+        name: "Orders created before June 1st 2022",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            LongName: [
+              "concat",
+              ..._.times(10, () => {
+                return [
+                  "field",
+                  PRODUCTS.TITLE,
+                  {
+                    "base-type": "type/Text",
+                  },
+                ];
+              }),
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "expression",
+              "LongName",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+          ],
+        },
+        display: "row",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      // Check that the visualization renders without errors
+      cy.findAllByRole("graphics-symbol").should("have.length.greaterThan", 0);
+
+      // Check chart bars section - it should take 50% of width
+      cy.get(".visx-columns")
+        .should("exist")
+        .invoke("width")
+        .should("be.gt", 500);
+
+      // Check that axis labels are present
+      cy.get(".visx-axis-left")
+        .should("exist")
+        .invoke("width")
+        .should("be.gt", 500);
+    });
   });
 });

@@ -67,6 +67,12 @@ export function echartsIcon(name, isSelected = false) {
   return echartsContainer().find(`image[href="${dataUri}"]`);
 }
 
+export function chartGridLines() {
+  return echartsContainer().find(
+    "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='none']",
+  );
+}
+
 export function chartPathWithFillColor(color) {
   return echartsContainer().find(`path[fill="${color}"]`);
 }

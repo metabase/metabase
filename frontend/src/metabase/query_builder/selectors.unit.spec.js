@@ -1,4 +1,4 @@
-import { assoc, assocIn } from "icepick";
+import { assoc } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -10,14 +10,17 @@ import {
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
 import registerVisualizations from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockNativeQuery,
   createMockTable,
   createMockTableColumnOrderSetting,
+  createMockTemplateTag,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import {
@@ -101,9 +104,7 @@ describe("getQuestion", () => {
 
     const question = getQuestion(getBaseState({ card }));
 
-    expect(question.card()).toEqual(
-      assocIn(card, ["dataset_query", "query", "source-table"], "card__1"),
-    );
+    expect(Lib.sourceTableOrCardId(question.query())).toBe("card__1");
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
@@ -169,7 +170,6 @@ describe("getIsResultDirty", () => {
       const filter = [">", ["field", ORDERS.TOTAL, null], 20];
       const join = {
         alias: "Products",
-        ident: "LUso-laB06h37QT_phn2R",
         fields: "all",
         "source-table": PRODUCTS_ID,
         condition: [
@@ -258,7 +258,9 @@ describe("getIsResultDirty", () => {
 
   describe("native query", () => {
     function getCard(native) {
-      return getBaseCard({ dataset_query: { type: "native", native } });
+      return getBaseCard({
+        dataset_query: { type: "native", native },
+      });
     }
 
     function getState(lastRunCardQuery, cardQuery) {
@@ -275,8 +277,14 @@ describe("getIsResultDirty", () => {
 
     it("should be dirty if template-tags differ", () => {
       const state = getState(
-        { "template-tags": { foo: {} } },
-        { "template-tags": { bar: {} } },
+        createMockNativeQuery({
+          query: "SELECT {{foo}}",
+          "template-tags": { foo: createMockTemplateTag({ name: "foo" }) },
+        }),
+        createMockNativeQuery({
+          query: "SELECT {{bar}}",
+          "template-tags": { bar: createMockTemplateTag({ name: "bar" }) },
+        }),
       );
       expect(getIsResultDirty(state)).toBe(true);
     });

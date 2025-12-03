@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
@@ -79,15 +80,27 @@ export const TitleAndDescriptionContainer = styled(FullWidthContainer, {
     `}
 `;
 
-export const DashboardTabsContainer = styled(FullWidthContainer)`
+export const DashboardTabsContainer = styled(FullWidthContainer, {
+  shouldForwardProp: isPropValid,
+})<{
+  narrow?: boolean;
+}>`
   ${breakpointMaxSmall} {
     padding-left: 0;
     padding-right: 0;
   }
+
+  ${({ narrow }) =>
+    narrow &&
+    `
+    [role="tablist"].scrollable {
+      width: calc(100% - 60px);
+    }
+  `}
 `;
 
 export const Separator = styled.div`
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border);
 `;
 
 export const Body = styled.main`

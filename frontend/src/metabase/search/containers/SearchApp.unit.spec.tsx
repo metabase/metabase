@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -13,7 +14,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/hoc/Title";
 import { checkNotNull } from "metabase/lib/types";
 import SearchApp from "metabase/search/containers/SearchApp";
 import type { SearchFilters } from "metabase/search/types";
@@ -41,6 +41,8 @@ const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   metric: "Metric",
   action: "Action",
   "indexed-entity": "Indexed record",
+  document: "Document",
+  transform: "Transform",
 };
 
 const TEST_ITEMS: Partial<SearchResult>[] = [

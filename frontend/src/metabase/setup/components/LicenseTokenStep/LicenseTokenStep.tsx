@@ -11,6 +11,7 @@ import { InactiveStep } from "../InactiveStep";
 import type { NumberedStepProps } from "../types";
 
 import { LicenseTokenForm } from "./LicenseTokenForm";
+import styles from "./LicenseTokenStep.module.css";
 
 export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
   const { isStepActive, isStepCompleted } = useStep("license_token");
@@ -49,11 +50,15 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
   }
 
   return (
-    <ActiveStep title={t`Activate your commercial license`} label={stepLabel}>
+    <ActiveStep
+      title={t`Activate your commercial license`}
+      label={stepLabel}
+      className={styles.licenseTokenStep}
+    >
       <Text
         mb="lg"
-        color="text-light"
-      >{t`Unlock access to your paid features before starting`}</Text>
+        c="text-light"
+      >{t`Unlock access to paid features if you'd like to try them out`}</Text>
 
       <LicenseTokenForm
         onSubmit={handleSubmit}

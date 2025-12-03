@@ -1,4 +1,3 @@
-import Humanize from "humanize-plus";
 import type { ReactNode } from "react";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
@@ -16,7 +15,7 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 2,
 });
 
-type FormatNumberOptions = {
+export type FormatNumberOptions = {
   _numberFormatter?: Intl.NumberFormat;
   compact?: boolean;
   currency?: string;
@@ -77,7 +76,10 @@ export function formatNumber(
   number: number | bigint,
   options: FormatNumberJsxOptions = {},
 ): string | ReactNode {
-  options = { ...getDefaultNumberOptions(options), ...options };
+  options = {
+    ...getDefaultNumberOptions(options),
+    ...options,
+  };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
     number = multiply(number, options.scale);
@@ -178,13 +180,17 @@ export function formatChangeWithSign(
 }
 
 export function numberFormatterForOptions(options: FormatNumberOptions) {
-  options = { ...getDefaultNumberOptions(options), ...options };
+  options = {
+    ...getDefaultNumberOptions(options),
+    ...options,
+  };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
-    style: options.number_style,
+    style: options.number_style as Intl.NumberFormatOptions["style"],
     currency: options.currency,
-    currencyDisplay: options.currency_style,
+    currencyDisplay:
+      options.currency_style as Intl.NumberFormatOptions["currencyDisplay"],
     // always use grouping separators, but we may replace/remove them depending on number_separators option
     useGrouping: true,
     minimumIntegerDigits: options.minimumIntegerDigits,
@@ -257,15 +263,23 @@ function _formatNumberCompact(
       }
     }
   } else if (typeof value === "number") {
-    // 1 => 1
-    // 1000 => 1K
     const isDefaultDecimalCount =
       options.maximumFractionDigits ===
       DEFAULT_NUMBER_OPTIONS.maximumFractionDigits;
-    formatted = Humanize.compactInteger(
-      Math.round(value),
-      isDefaultDecimalCount ? 1 : options.maximumFractionDigits,
-    );
+
+    let decimals: number | null =
+      typeof options.decimals === "number" && isFinite(options.decimals)
+        ? options.decimals
+        : null;
+
+    if (decimals == null) {
+      decimals =
+        options.maximumFractionDigits == null || isDefaultDecimalCount
+          ? 1
+          : options.maximumFractionDigits;
+    }
+
+    formatted = compactNumber(value, decimals);
   } else {
     formatted = PRECISION_NUMBER_FORMATTER.format(value);
   }
@@ -331,6 +345,28 @@ function abs(a: number | bigint) {
   return a < 0 ? -a : a;
 }
 
+/**
+ * Multiplies two numbers, handling bigints and floats safely.
+ */
 function multiply(a: number | bigint, b: number) {
-  return typeof a === "bigint" ? a * BigInt(b) : a * b;
+  if (typeof a === "bigint" && Number.isInteger(b)) {
+    return a * BigInt(b);
+  } else {
+    return Number(a) * b;
+  }
+}
+
+function compactNumber(value: number, decimals: number): string {
+  const numberFormat = new Intl.NumberFormat("en", {
+    notation: "compact",
+    useGrouping: false,
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+  });
+  let formatted = numberFormat.format(value);
+  // Match legacy casing for thousands
+  if (formatted.endsWith("K")) {
+    formatted = formatted.replace("K", "k");
+  }
+  return formatted;
 }

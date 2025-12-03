@@ -1,5 +1,7 @@
 // Functions that get key elements in the app
 
+import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
@@ -43,6 +45,18 @@ export function selectDropdown() {
   return popover().findByRole("listbox");
 }
 
+export function miniPicker() {
+  return cy.findByTestId("mini-picker");
+}
+
+export function miniPickerBrowseAll() {
+  return miniPicker().findByText("Browse all");
+}
+
+export function miniPickerHeader() {
+  return cy.findByTestId("mini-picker-header");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
@@ -54,7 +68,7 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("a");
@@ -119,7 +133,7 @@ export function assertNavigationSidebarItemSelected(name, value = "true") {
 
 export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
   navigationSidebar()
-    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("section", { name: "Bookmarks" })
     .findByRole("listitem", { name })
     .should("have.attr", "aria-selected", value);
 }
@@ -149,6 +163,10 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
+ * @param {Object} options
+ * @param {boolean} [options.isEditing] - whether dashboard editing mode is enabled
+ * @param {string} [options.name] - the name of the filter widget to get
+ *
  * @returns HTMLFieldSetElement
  *
  * @example
@@ -165,8 +183,12 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget() {
-  return cy.get("fieldset");
+export function filterWidget({ isEditing = false, name = null } = {}) {
+  const selector = isEditing ? "editing-parameter-widget" : "parameter-widget";
+
+  return name != null
+    ? cy.findAllByTestId(selector).filter(`:contains(${name})`)
+    : cy.findAllByTestId(selector);
 }
 
 export function clearFilterWidget(index = 0) {
@@ -208,6 +230,18 @@ export function toggleFilterWidgetValues(
   });
 }
 
+/**
+ * Moves a dashboard filter to a dashcard / top nav
+ * (it must be in 'editing' mode prior to that)
+ */
+export function moveDashboardFilter(destination, { showFilter = false } = {}) {
+  dashboardParameterSidebar().findByPlaceholderText("Move filter").click();
+  popover().findByText(destination).click();
+  if (showFilter) {
+    undoToast().button("Show filter").click();
+  }
+}
+
 export const openQuestionActions = (action) => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 
@@ -230,6 +264,10 @@ export const queryBuilderFiltersPanel = () => {
 
 export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
+};
+
+export const queryBuilderFooterDisplayToggle = () => {
+  return cy.findByTestId("query-display-tabular-toggle");
 };
 
 export const closeQuestionActions = () => {
@@ -262,11 +300,15 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
+/**
+ * @deprecated Use `moveDnDKitElementByAlias` instead.
+ * Otherwise, the chain will be broken due to "element was removed from the DOM" error
+ */
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
 ) => {
-  const chainable = element
+  element
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
@@ -290,13 +332,37 @@ export const moveDnDKitElement = (
 
   onBeforeDragEnd?.();
 
-  chainable
-    .trigger("pointerup", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
+  cy.document().trigger("pointerup").wait(200);
+};
+
+export const moveDnDKitListElement = (
+  dataTestId,
+  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
+) => {
+  const selector = new RegExp(dataTestId);
+
+  const getCenter = ($el) => {
+    const { x, y, width, height } = $el.getBoundingClientRect();
+
+    return { clientX: x + width / 2, clientY: y + height / 2 };
+  };
+
+  cy.findAllByTestId(selector)
+    .then(($all) => {
+      const dragEl = $all.get(startIndex);
+      const dropEl = $all.get(dropIndex);
+      const dragPoint = getCenter(dragEl);
+      const dropPoint = getCenter(dropEl);
+
+      return { dragPoint, dropPoint, dragEl };
     })
-    .wait(200);
+    .then(({ dragPoint, dropPoint, dragEl }) => {
+      moveDnDKitElement(cy.wrap(dragEl), {
+        vertical: dropPoint.clientY - dragPoint.clientY,
+        horizontal: dropPoint.clientX - dragPoint.clientX,
+        onBeforeDragEnd,
+      });
+    });
 };
 
 export const moveDnDKitElementByAlias = (
@@ -357,6 +423,10 @@ export const undoToastList = () => {
   return cy.findAllByTestId("toast-undo");
 };
 
+export const undoToastListContainer = () => {
+  return cy.findByTestId("undo-list");
+};
+
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
@@ -387,17 +457,18 @@ export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
       clientY: 0,
     });
 
-  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
   cy.get("body")
-    .trigger("mousemove", {
-      clientX: moveX / 2,
-      clientY: 0,
-    })
     .trigger("mousemove", {
       clientX: moveX,
       clientY: 0,
+    })
+    // UI requires time to update, causes flakiness without the delay
+    .wait(100)
+    .trigger("mouseup", {
+      button: 0,
+      clientX: moveX,
+      clientY: 0,
     });
-  cy.get("body").trigger("mouseup", { force: true });
 }
 
 export function openObjectDetail(rowIndex) {
@@ -446,13 +517,19 @@ export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
 
-export function tableHeaderColumn(headerString) {
-  // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
-  // from obscuring the target column in the viewport
-  const objectDetailOffset = 50;
-  tableInteractiveHeader()
-    .findByText(headerString)
-    .scrollIntoView({ offset: { left: -objectDetailOffset } });
+export function tableHeaderColumn(
+  headerString,
+  { scrollIntoView = true } = {},
+) {
+  if (scrollIntoView) {
+    // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
+    // from obscuring the target column in the viewport
+    const objectDetailOffset = 50;
+    tableInteractiveHeader()
+      .findByText(headerString)
+      .scrollIntoView({ offset: { left: -objectDetailOffset } });
+  }
+
   return tableInteractiveHeader().findByText(headerString);
 }
 
@@ -468,6 +545,11 @@ export function segmentEditorPopover() {
   return popover({ testId: "segment-popover" });
 }
 
+/**
+ * @param {Object} params
+ * @param {string[]} params.columns
+ * @param {string[][]} [params.firstRows=[]]
+ */
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
@@ -563,4 +645,20 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
 export function mapPinIcon() {
   return cy.get(".leaflet-marker-icon");
+}
+
+export function waitForLoaderToBeRemoved() {
+  cy.findByTestId("loading-indicator").should("not.exist");
+}
+
+export function leaveConfirmationModal() {
+  return cy.findByTestId("leave-confirmation");
+}
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
 }

@@ -1,17 +1,21 @@
 (ns metabase.xrays.automagic-dashboards.filters
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.schema :as lib.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
   [{base-type :base_type, effective-type :effective_type, unit :unit}]
-  ;; TODO -- not sure why we're excluding year here? Is it because we normally returned it as an integer in the past?
+  ;; Excluding :year because it's (currently) both an extraction and truncation unit.
+  ;; For the purposes of this check, :year is an interesting :unit which yields a time interval, not just a number.
   (and (not ((disj u.date/extract-units :year) unit))
        (isa? (or effective-type base-type) :type/Temporal)))
 
@@ -48,8 +52,9 @@
   "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (filter (fn [{:keys [semantic_type] :as field}]
+       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
                  (or (temporal? field)
+                     (isa? (or effective_type base_type) :type/Boolean)
                      (isa? semantic_type :type/Category))))
        sort-by-interestingness))
 
@@ -74,7 +79,7 @@
 (defn- add-filter
   [dashcard filter-id field]
   (let [mappings (->> (conj (:series dashcard) (:card dashcard))
-                      (keep (fn [card]
+                      (keep (mu/fn [card :- [:maybe ::ads/card]]
                               (when-let [target (filter-for-card card field)]
                                 {:parameter_id filter-id
                                  :target       target
@@ -112,10 +117,12 @@
   (partial remove (fn [{:keys [fingerprint]}]
                     (some-> fingerprint :global :distinct-count (< 2)))))
 
-(defn add-filters
+(mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
-  [dashboard dimensions max-filters]
+  [dashboard :- ::ads/dashboard
+   dimensions
+   max-filters]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
               (field/with-targets (t2/select :model/Field
@@ -143,24 +150,7 @@
                 dashboard)))
           dashboard))))
 
-(defn- flatten-filter-clause
-  "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.
-
-    (flatten-filter-clause [:and
-                            [:= [:field 1 nil] 2]
-                            [:and
-                             [:= [:field 3 nil] 4]
-                             [:= [:field 5 nil] 6]]])
-    ;; -> ([:= [:field 1 nil] 2]
-           [:= [:field 3 nil] 4]
-           [:= [:field 5 nil] 6])"
-  [[clause-name, :as filter-clause]]
-  (when (seq filter-clause)
-    (if (= clause-name :and)
-      (rest (mbql.u/simplify-compound-filter filter-clause))
-      [filter-clause])))
-
-(defn inject-refinement
+(mu/defn inject-refinement :- [:maybe ::lib.schema/filters]
   "Inject a filter refinement into an MBQL filter clause, returning a new filter clause.
 
   There are two reasons why we want to do this: 1) to reduce visual noise when we display applied filters; and 2) some
@@ -170,16 +160,19 @@
   of the latter. Therefore we can rewrite the combined clause to ommit the more broad version from the main clause.
   Assumes both filter clauses can be flattened by recursively merging `:and` claueses
   (ie. no `:and`s inside `:or` or `:not`)."
-  [filter-clause refinement]
-  (let [in-refinement?   (into #{}
-                               (map magic.util/collect-field-references)
-                               (flatten-filter-clause refinement))
-        existing-filters (->> filter-clause
-                              flatten-filter-clause
-                              (remove (comp in-refinement? magic.util/collect-field-references)))]
-    (if (seq existing-filters)
-      ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
-      ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
-      (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
-                                                (cons refinement existing-filters)))
-      refinement)))
+  [filter-clauses :- [:maybe ::lib.schema/filters]
+   refinement     :- [:maybe vector?]]
+  (if (some? refinement)
+    ;; normalize refinement since it's read from the YAML files or whatever
+    (let [refinement        (lib/normalize refinement)
+          ;; TODO (Cam 10/21/2025) -- HACK -- I wanted to use [[lib/filter-parts]] for this but we need to pass in
+          ;; query as part of this. Maybe we can refactor this code so we can use that, or just add a new function to
+          ;; see if we have existing filters against a column.
+          refinement-column (nth refinement 2)
+          ;; remove any existing filters against the column in the refinement filter.
+          filter-clauses'   (into []
+                                  (remove (fn [a-filter]
+                                            (lib.equality/= (nth a-filter 2) refinement-column)))
+                                  (lib/simplify-filters filter-clauses))]
+      (lib/simplify-filters (conj filter-clauses' refinement)))
+    filter-clauses))

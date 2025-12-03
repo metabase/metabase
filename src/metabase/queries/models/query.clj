@@ -1,13 +1,13 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
-   [clojure.walk :as walk]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -76,8 +76,8 @@
 
 (defn save-query-and-update-average-execution-time!
   "Update the recorded average execution time (or insert a new record if needed) for `query` with `query-hash`."
-  [query, ^bytes query-hash, ^Integer execution-time-ms]
-  {:pre [(instance? (Class/forName "[B") query-hash)]}
+  [query ^bytes query-hash ^Integer execution-time-ms]
+  {:pre [(bytes? query-hash)]}
   (or
    ;; if there's already a matching Query update the rolling average
    (update-rolling-average-execution-time! query query-hash execution-time-ms)
@@ -94,77 +94,23 @@
    [:database-id ::lib.schema.id/database]
    [:table-id    [:maybe ::lib.schema.id/table]]])
 
-(mu/defn- pmbql-query->database-and-table-ids :- ::database-and-table-ids
-  [{database-id :database, :as query} :- [:map
-                                          [:lib/type [:= :mbql/query]]]]
-  (if-let [source-card-id (lib.util/source-card-id query)]
-    (let [card (lib.metadata/card query source-card-id)]
-      (merge {:table-id nil} (select-keys card [:database-id :table-id])))
-    (let [table-id (lib.util/source-table-id query)]
-      {:database-id database-id
-       :table-id    table-id})))
-
-(mu/defn- legacy-query->database-and-table-ids :- ::database-and-table-ids
-  [{database-id :database, query-type :type, {:keys [source-table source-query]} :query} :- [:map
-                                                                                             [:type [:enum :query :native]]]]
-  (cond
-    (= :native query-type)  {:database-id database-id, :table-id nil}
-    (integer? source-table) {:database-id database-id, :table-id source-table}
-    (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
-                              (t2/select-one [:model/Card :card_schema [:table_id :table-id] [:database_id :database-id]]
-                                             :id (Integer/parseInt card-id)))
-    (map? source-query)     (legacy-query->database-and-table-ids {:database database-id
-                                                                   :type     query-type
-                                                                   :query    source-query})))
-
 (mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
 
- Handles either pMBQL (MLv2) queries or legacy MBQL queries. Handles source Cards by fetching them as needed."
-  [query :- [:maybe :map]]
-  (when query
-    (when-let [f (case (lib/normalized-query-type query)
-                   :mbql/query      pmbql-query->database-and-table-ids
-                   (:native :query) legacy-query->database-and-table-ids
-                   nil)]
-      (f (mi/maybe-normalize-query :out query)))))
-
-(defn- parse-source-query-id
-  "Return the ID of the card used as source table, if applicable; otherwise return `nil`."
-  [source-table]
-  (when (string? source-table)
-    (when-let [[_ card-id-str] (re-matches #"card__(\d+)" source-table)]
-      (parse-long card-id-str))))
-
-(defn collect-card-ids
-  "Return a sequence of model ids referenced in the MBQL `query`."
-  [query]
-  (let [ids (java.util.HashSet.)
-        walker (fn [form]
-                 (when (map? form)
-                   ;; model references in native queries
-                   (when-let [card-id (:card-id form)]
-                     (when (int? card-id)
-                       (.add ids card-id)))
-                   ;; source tables (possibly in joins)
-                   ;;
-                   ;; MLv2 `:source-card`
-                   (when-let [card-id (:source-card form)]
-                     (.add ids card-id))
-                   ;; legacy MBQL card__<id> `:source-table`
-                   (when-let [card-id (parse-source-query-id (:source-table form))]
-                     (.add ids card-id)))
-                 form)]
-    (walk/prewalk walker query)
-    (seq ids)))
+  Expects MBQL 5 queries."
+  [{database-id :database, :as query} :- ::queries.schema/query]
+  (when (seq query)
+    (if-let [source-card-id (lib.util/source-card-id query)]
+      (let [card (or (lib.metadata/card query source-card-id)
+                     ;; Card may belong to a different Database; fetch from the app DB
+                     (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id source-card-id))]
+        (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
+      (let [table-id (lib.util/source-table-id query)]
+        {:database-id database-id
+         :table-id    table-id}))))
 
 (mu/defn query-is-native? :- :boolean
   "Whether this query (pMBQL or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
   regardless of whether the Card has a native query or not."
-  [query :- :map]
-  (case (lib/normalized-query-type query)
-    :query      false
-    :native     true
-    :mbql/query (let [query (mi/maybe-normalize-query :out query)]
-                  (lib.util/first-stage-is-native? query))
-    false))
+  [query :- [:maybe ::queries.schema/query]]
+  (boolean (some-> query not-empty lib/native-only-query?)))

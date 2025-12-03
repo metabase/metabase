@@ -35,6 +35,7 @@ interface SpecificDatePickerProps {
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
+  readOnly?: boolean;
 }
 
 export function SpecificDatePicker({
@@ -44,6 +45,7 @@ export function SpecificDatePicker({
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: SpecificDatePickerProps) {
   const tabs = useMemo(() => getTabs(availableOperators), [availableOperators]);
   const [value, setValue] = useState(() => initialValue ?? getDefaultValue());
@@ -75,7 +77,12 @@ export function SpecificDatePicker({
   return (
     <Tabs value={value.operator} onChange={handleTabChange}>
       <Flex>
-        <PopoverBackButton p="sm" onClick={onBack} />
+        <PopoverBackButton
+          p="sm"
+          onClick={onBack}
+          disabled={readOnly}
+          withArrow={!readOnly}
+        />
         <Tabs.List className={S.TabList}>
           {tabs.map((tab) => (
             <Tabs.Tab key={tab.operator} value={tab.operator}>

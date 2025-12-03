@@ -16,7 +16,7 @@ import {
   turnIntoModel,
 } from "./helpers/e2e-models-helpers";
 
-const { PRODUCTS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, ORDERS_ID, PRODUCTS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
@@ -37,6 +37,18 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a GUI question into a model", () => {
+    H.createQuestion(
+      {
+        name: "Accounts Model",
+        query: { "source-table": ACCOUNTS_ID },
+        type: "model",
+      },
+      {
+        wrapId: true,
+        idAlias: "accountsModelId",
+      },
+    );
+
     cy.get("@productsQuestionId").then((id) => {
       cy.request("PUT", `/api/card/${id}`, {
         name: "Products Model",
@@ -79,6 +91,37 @@ describe("scenarios > models", () => {
       getCollectionItemRow("Q1").icon("table2");
 
       cy.url().should("not.include", "/question/" + id);
+    });
+
+    cy.log(
+      "Question Lineage should show link to archived models (metabase#52071)",
+    );
+    cy.get("@accountsModelId").then((modelId) => {
+      H.createQuestion(
+        {
+          name: "Accounts Model Quest",
+          query: { "source-table": `card__${modelId}` },
+        },
+        {
+          wrapId: true,
+          idAlias: "accountsQuestionId",
+        },
+      );
+
+      H.archiveQuestion(modelId);
+
+      cy.get("@accountsQuestionId").then((questionId) => {
+        H.visitQuestion(questionId);
+        cy.findByTestId("qb-header-left-side").within(() => {
+          cy.icon("warning").should("exist");
+
+          cy.findByRole("link", { name: /accounts model/i }).should(
+            "have.attr",
+            "href",
+            `/model/${modelId}-accounts-model`,
+          );
+        });
+      });
     });
   });
 
@@ -156,9 +199,6 @@ describe("scenarios > models", () => {
 
     cy.get("@questionId").then((questionId) => {
       cy.wait("@dataset").then(({ response }) => {
-        expect(response.body.json_query.query["source-table"]).to.equal(
-          `card__${questionId}`,
-        );
         expect(response.body.error).to.not.exist;
       });
     });
@@ -322,9 +362,10 @@ describe("scenarios > models", () => {
 
     it("transforms the data picker", () => {
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("Orders Model").should("exist");
         cy.findByText("Orders, Count").should("exist");
@@ -333,11 +374,13 @@ describe("scenarios > models", () => {
         );
         cy.findByText("Products").should("exist");
 
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        H.entityPickerModalItem(0, "Databases").click();
+
+        H.entityPickerModalItem(1, "Orders").should("exist");
+        H.entityPickerModalItem(1, "People").should("exist");
+        H.entityPickerModalItem(1, "Products").should("exist");
+        H.entityPickerModalItem(1, "Reviews").should("exist");
+
         cy.findByText("Orders, Count").should("not.exist");
 
         cy.findByPlaceholderText("Search this database or everywhere…").type(
@@ -382,20 +425,23 @@ describe("scenarios > models", () => {
       cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
 
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders").click();
       });
 
       cy.icon("join_left_outer").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalTab("Data").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        H.entityPickerModalItem(0, "Databases").click();
+        H.entityPickerModalItem(1, "Orders").should("exist");
+        H.entityPickerModalItem(1, "People").should("exist");
+        H.entityPickerModalItem(1, "Products").should("exist");
+        H.entityPickerModalItem(1, "Reviews").should("exist");
 
-        cy.findByText("Products").click();
+        H.entityPickerModalItem(1, "Products").click();
       });
 
       H.getNotebookStep("filter")
@@ -424,19 +470,23 @@ describe("scenarios > models", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
-      cy.findByTestId("save-question-modal").within((modal) => {
+      cy.findByTestId("save-question-modal").within(() => {
+        const recentDashboardName = "Orders in a dashboard";
+        cy.findByLabelText("Where do you want to save this?").should(
+          "have.text",
+          recentDashboardName,
+        );
         cy.findByText("Save").click();
       });
 
-      cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
+      cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*$/);
     });
 
     it("should not display models if nested queries are disabled", () => {
       H.mockSessionProperty("enable-nested-queries", false);
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("not.exist");
-
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");
         cy.findByText("Products").should("exist");

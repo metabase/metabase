@@ -24,6 +24,7 @@ import {
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
+import { isMac } from "metabase/lib/browser";
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
@@ -163,11 +164,8 @@ function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
             key: binding.key,
             scope: binding.scope,
             any(view, evt) {
-              if (
-                !evt.shiftKey &&
-                (evt.ctrlKey || evt.metaKey) &&
-                evt.key === "f"
-              ) {
+              const meta = isMac() ? evt.metaKey : evt.ctrlKey;
+              if (!evt.shiftKey && meta && evt.key === "f") {
                 return openSearchPanel(view);
               }
 

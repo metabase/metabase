@@ -90,7 +90,7 @@ export function Header({
       <div style={{ flexGrow: 1 }} />
 
       <Button.Group>
-        <Tooltip label={t`Undo`}>
+        <Tooltip withinPortal={false} label={t`Undo`}>
           <Button
             size="sm"
             aria-label={t`Undo`}
@@ -104,7 +104,7 @@ export function Header({
             }
           />
         </Tooltip>
-        <Tooltip label={t`Redo`}>
+        <Tooltip withinPortal={false} label={t`Redo`}>
           <Button
             size="sm"
             aria-label={t`Redo`}

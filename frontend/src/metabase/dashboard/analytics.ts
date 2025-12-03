@@ -1,5 +1,9 @@
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
-import type { DashboardId, DashboardWidth } from "metabase-types/api";
+import type {
+  DashboardId,
+  DashboardWidth,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 import type { SectionId } from "./sections";
 
@@ -148,5 +152,39 @@ export const trackFilterRequired = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", {
     event: "dashboard_filter_required",
     dashboard_id: getDashboardId(dashboardId),
+  });
+};
+
+export const trackFilterCreated = (
+  dashboardId: DashboardId,
+  display: VisualizationDisplay | null,
+  filterType?: string,
+) => {
+  trackSimpleEvent({
+    event: "dashboard_filter_created",
+    target_id: getDashboardId(dashboardId),
+    triggered_from: display,
+    event_detail: filterType ?? null,
+  });
+};
+
+export const trackFilterMoved = (
+  dashboardId: DashboardId,
+  origin: VisualizationDisplay | null,
+  destination: VisualizationDisplay | null,
+) => {
+  trackSimpleEvent({
+    event: "dashboard_filter_moved",
+    target_id: getDashboardId(dashboardId),
+    triggered_from: origin,
+    event_detail: destination,
+  });
+};
+
+export const trackDashboardBookmarked = () => {
+  trackSimpleEvent({
+    event: "bookmark_added",
+    event_detail: "dashboard",
+    triggered_from: "dashboard_header",
   });
 };

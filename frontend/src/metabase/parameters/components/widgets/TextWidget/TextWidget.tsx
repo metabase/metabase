@@ -19,6 +19,8 @@ type State = {
   isFocused: boolean;
 };
 
+const MIN_SIZE = 8;
+
 export class TextWidget extends Component<TextWidgetProps, State> {
   static defaultProps = {
     isEditing: false,
@@ -68,11 +70,16 @@ export class TextWidget extends Component<TextWidgetProps, State> {
       ? this.state.value[0]
       : this.state.value;
 
+    const displayValue = String(value ?? "");
+
     return (
       <input
         className={className}
         type="text"
-        value={value ?? ""}
+        value={displayValue}
+        style={{
+          maxWidth: "160px",
+        }}
         onChange={(e) => {
           this.setState({ value: e.target.value });
           if (this.props.commitImmediately) {
@@ -80,11 +87,11 @@ export class TextWidget extends Component<TextWidgetProps, State> {
           }
         }}
         onKeyUp={(e) => {
+          if (e.nativeEvent.isComposing) {
+            return;
+          }
           const target = e.target as HTMLInputElement;
-          if (e.key === "Escape") {
-            target.blur();
-          } else if (e.key === "Enter") {
-            setValue(this.state.value ?? null);
+          if (e.key === "Enter") {
             target.blur();
           }
         }}
@@ -100,6 +107,10 @@ export class TextWidget extends Component<TextWidgetProps, State> {
         placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
         disabled={disabled}
         ref={this.inputRef}
+        size={Math.max(
+          displayValue.length || defaultPlaceholder.length,
+          MIN_SIZE,
+        )}
       />
     );
   }

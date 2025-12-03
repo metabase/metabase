@@ -122,7 +122,7 @@ export const getExample = (
   return flatten(columnsAndSeparators).map(getColumnExample).join("");
 };
 
-const getColumnExample = (
+export const getColumnExample = (
   column: Lib.ColumnMetadata | string | null,
 ): string => {
   if (!column) {
@@ -175,8 +175,8 @@ const getColumnExample = (
   return "text";
 };
 
-export function hasCombinations(query: Lib.Query, stageIndex: number) {
-  return Lib.expressionableColumns(query, stageIndex).length > 0;
+export function hasCombinations(columns: Lib.ColumnMetadata[]) {
+  return columns.length > 0;
 }
 
 export const getNextColumnAndSeparator = (

@@ -60,6 +60,9 @@ export function ColumnInput({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (event.key === "Enter") {
       setOpen(true);
     }

@@ -8,7 +8,9 @@
   - Shared Question downloads
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
-  - Alert attachments"
+  - Alert attachments
+
+  TODO (Cam 9/17/25) -- these tests need to get moved into appropriate module(s)."
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]
@@ -980,14 +982,14 @@
                                                        :type     :native
                                                        :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
         (let [results (all-outputs! card {:export-format :csv})]
-          (is (= {:card-download            110
-                  :unsaved-card-download    110
-                  :alert-attachment         110
-                  :dashcard-download        110
-                  :subscription-attachment  110
-                  :public-question-download 110
-                  :public-dashcard-download 110}
-                 (update-vals results count)))))))
+          (is (=? {:card-download            110
+                   :unsaved-card-download    110
+                   :dashcard-download        110
+                   :alert-attachment         110
+                   :subscription-attachment  110
+                   :public-question-download 110
+                   :public-dashcard-download 110}
+                  (update-vals results count)))))))
   (testing "Downloads row limit can be raised"
     (binding [qp.settings/*minimum-download-row-limit* 100]
       (mt/with-temporary-setting-values [download-row-limit 109]
@@ -996,14 +998,14 @@
                                                          :type     :native
                                                          :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
           (let [results (all-outputs! card {:export-format :csv})]
-            (is (= {:card-download            110
-                    :unsaved-card-download    110
-                    :alert-attachment         110
-                    :dashcard-download        110
-                    :subscription-attachment  110
-                    :public-question-download 110
-                    :public-dashcard-download 110}
-                   (update-vals results count)))))))))
+            (is (=? {:card-download            110
+                     :unsaved-card-download    110
+                     :dashcard-download        110
+                     :alert-attachment         110
+                     :subscription-attachment  110
+                     :public-question-download 110
+                     :public-dashcard-download 110}
+                    (update-vals results count)))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
   (testing "A model's visualization settings are respected in downloads."
@@ -1028,7 +1030,6 @@
                                                                     :field_ref          [:field (mt/id :orders :subtotal) nil]
                                                                     :effective_type     :type/Float
                                                                     :id                 (mt/id :orders :subtotal)
-                                                                    :ident              (mt/ident :orders :subtotal)
                                                                     :visibility_type    :normal
                                                                     :display_name       "Subtotal"
                                                                     :base_type          :type/Float}]}]
@@ -1713,3 +1714,90 @@
             (let [result (card-download card {:export-format :csv :format-rows true :pivot true})]
               (is (= expected (take (count expected) result))
                   (str "Failed for condense_duplicate_totals=" condense?)))))))))
+
+(deftest ^:parallel pivot-bigint-bigdecimal-normalization-test
+  (testing "Ensure key normalization for values-by-key handles BigInts and BigDecimals properly (#62724)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["ID"]
+                                                :columns ["RATING"]
+                                                :values  ["avg"]}}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:avg $price]]
+                                                 ;; Explicitly bin the rating field to ensure we get BigDecimal values
+                                                 ;; from the QP
+                                                 :breakout    [$id [:field $rating {:binning {:strategy :default}}]]
+                                                 :limit       3})}]
+        (let [result (card-download card {:export-format :csv :format-rows false :pivot true})]
+          ;; Verify we get some actual results, not all empty cells for the pivot values
+          (is (= [["1"            "29.46" ""      ""      "29.46"]
+                  ["2"            ""      "70.08" ""      "70.08"]
+                  ["3"            ""      ""      "35.39" "35.39"]
+                  ["Grand totals" ""      "53.98" ""      "55.7464"]]
+                 (rest result))))))
+
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card source-model
+                     {:dataset_query
+                      {:database (mt/id)
+                       :type     :native
+                       :native {:template-tags {}
+                                :query         (str "SELECT 1 as ID, 1 as quarter, 100 as Price FROM DUAL "
+                                                    "UNION "
+                                                    "SELECT 1 as ID, 2 as quarter, 100 as Price FROM DUAL "
+                                                    "UNION "
+                                                    "SELECT 2, 1, 200 FROM DUAL "
+                                                    "UNION "
+                                                    "SELECT 3, 1, 300 FROM DUAL")}}
+                      :result_metadata
+                      (into [] (for [[_ field-name {:keys [base-type]}] [[:field "ID" {:base-type :type/Integer}]
+                                                                         [:field "QUARTER" {:base-type :type/Integer}]
+                                                                         [:field "PRICE" {:base-type :type/Integer}]]]
+                                 {:name         field-name
+                                  :display_name field-name
+                                  :field_ref    [:field field-name {:base-type base-type}]
+                                  :base_type    base-type}))}
+
+                     :model/Card pivot-card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["ID"]
+                                                :columns ["QUARTER"]
+                                                :values  ["avg"]}}
+                      :dataset_query          (mt/mbql-query nil
+                                                {:source-table (str "card__" (:id source-model))
+                                                 :aggregation  [[:avg [:field "PRICE" {:base-type :type/Number}]]]
+                                                 :breakout     [[:field "ID" {:base-type :type/Integer}]
+                                                                [:field "QUARTER" {:base-type :type/Integer}]]})}]
+        (let [result (card-download pivot-card {:export-format :csv :format-rows false :pivot true})]
+          (is (= [["1"            "100.0" "100.0" "100.0"]
+                  ["2"            "200.0" ""      "200.0"]
+                  ["3"            "300.0" ""      "300.0"]
+                  ["Grand totals" "200.0" "100.0" "175.0"]]
+                 (rest result))))))))
+
+(deftest ^:parallel pivot-long-column-names-download-test
+  (testing "Pivot table downloads should include columns with very long names that are present in frontend"
+    (let [long-title (apply str (repeat 10 "Long title"))]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:columns ["CATEGORY"]
+                                                  :rows    ["VENDOR"]
+                                                  :values  ["sum" long-title]}}
+                        :dataset_query          (mt/mbql-query orders
+                                                  {:aggregation [[:sum $total]
+                                                                 [:aggregation-options [:count] {:name         long-title
+                                                                                                 :display-name long-title}]]
+                                                   :breakout    [$product_id->products.category
+                                                                 $product_id->products.vendor]
+                                                   :limit       3})}]
+
+          (testing "download"
+            (let [res     (card-download pivot-card {:export-format :csv :pivot true :format-rows false})
+                  headers (second res)]
+              (is (= 3 (count headers)))
+              (is (some #{long-title} headers)))))))))

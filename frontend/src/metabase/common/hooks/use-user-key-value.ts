@@ -14,6 +14,7 @@ export interface UseUserKeyValueParams<T extends UserKeyValue> {
   namespace: T["namespace"];
   key: T["key"];
   defaultValue?: T["value"];
+  skip?: boolean;
 }
 
 export type UseUserKeyValueResult<T extends UserKeyValue> = {
@@ -29,14 +30,16 @@ export function useUserKeyValue<T extends UserKeyValue>({
   namespace,
   key,
   defaultValue,
+  skip = false,
 }: UseUserKeyValueParams<T>): UseUserKeyValueResult<T> {
-  const user = useSelector(getUser);
+  const user = useSelector(getUser) ?? null;
 
+  const queryParams = user && !skip ? { namespace, key } : skipToken;
   const {
     data: valueFromQuery,
     isLoading: queryIsLoading,
     error: fetchError,
-  } = useGetUserKeyValueQuery(user ? { namespace, key } : skipToken);
+  } = useGetUserKeyValueQuery(queryParams);
 
   const [setMutation, setMutationReq] = useUpdateKeyValueMutation();
   const setValue = useCallback(
@@ -60,6 +63,8 @@ export function useUserKeyValue<T extends UserKeyValue>({
   const isMutating = setMutationReq.isLoading || clearMutationReq.isLoading;
   const error = fetchError ?? setMutationReq.error ?? clearMutationReq.error;
 
+  // 2025-11-10 @chodorowicz:
+  // valueFromQuery for non-existing keys is "", so the default value is not returned
   return {
     value: user ? (valueFromQuery ?? defaultValue) : defaultValue,
     setValue,

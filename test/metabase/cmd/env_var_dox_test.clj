@@ -42,8 +42,47 @@
             [admin-email-docs
              aggregated-query-row-limit-docs]))
 
+(deftest ^:parallel test-format-default
+  (testing "format-default correctly handles conversion of defaults to strings"
+    (let [keyword-default-var {:default :some-keyword}
+          string-default-var {:default "some-string"}
+          nil-default-var {:default nil}
+          false-default-var {:default false}
+          number-default-var {:default 42}]
+      (is (= "Default: `some-keyword`" (#'sut/format-default keyword-default-var)))
+      (is (= "Default: `some-string`" (#'sut/format-default string-default-var)))
+      (is (= "Default: `null`" (#'sut/format-default nil-default-var)))
+      (is (= "Default: `false`" (#'sut/format-default false-default-var)))
+      (is (= "Default: `42`" (#'sut/format-default number-default-var))))))
+
 (deftest ^:parallel test-env-var-docs
   (testing "Environment docs are formatted as expected."
     (let [generated-docs (sut/format-env-var-docs settings-filtered)]
       (is (= expected-docs
              (str/join "\n\n" generated-docs))))))
+
+(deftest ^:parallel format-doc-test
+  (testing "format-doc handles different doc values correctly"
+    (testing "returns string doc values"
+      (is (= "This is documentation"
+             (#'sut/format-doc {:doc "This is documentation"}))))
+    (testing "returns nil for false doc values (not a string)"
+      (is (nil? (#'sut/format-doc {:doc false}))))
+    (testing "returns nil for true doc values (not a string)"
+      (is (nil? (#'sut/format-doc {:doc true}))))
+    (testing "returns nil for nil doc values"
+      (is (nil? (#'sut/format-doc {:doc nil}))))
+    (testing "returns nil when doc key is missing"
+      (is (nil? (#'sut/format-doc {}))))))
+
+(deftest ^:parallel format-env-var-entry-with-false-doc-test
+  (testing "format-env-var-entry doesn't crash when env-var has :doc false"
+    (let [env-var-with-false-doc {:name :test-setting
+                                  :munged-name "test-setting"
+                                  :type :string
+                                  :default "default-value"
+                                  :description (constantly "Test description")
+                                  :doc false
+                                  :visibility :public}]
+      (is (string? (#'sut/format-env-var-entry env-var-with-false-doc)))
+      (is (str/includes? (#'sut/format-env-var-entry env-var-with-false-doc) "MB_TEST_SETTING")))))

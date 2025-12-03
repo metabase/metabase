@@ -14,14 +14,14 @@ import type { RawSeries } from "metabase-types/api";
 export type TransformSeries = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
+  renderingContext?: RenderingContext,
 ) => RawSeries;
 
 export interface TransformedVisualizationProps {
   transformSeries: TransformSeries;
   originalProps: VisualizationProps;
   VisualizationComponent: React.FC<VisualizationProps>;
-  renderingContext: RenderingContext;
+  renderingContext?: RenderingContext;
 }
 
 export const TransformedVisualization = ({

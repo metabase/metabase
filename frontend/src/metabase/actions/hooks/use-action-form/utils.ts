@@ -1,10 +1,9 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import { isEmpty } from "metabase/lib/validate";
-import Field from "metabase-lib/v1/metadata/Field";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   FieldSettings,
   FieldSettingsMap,
@@ -16,7 +15,7 @@ import type {
 
 export function stripTZInfo(dateOrTimeString: string) {
   // strip everything after a trailing tz (e.g. +08:00)
-  return moment(dateOrTimeString.replace(/(\+|-)\d{2}:\d{2}$/, "")).utc(true);
+  return dayjs(dateOrTimeString.replace(/(\+|-)\d{2}:\d{2}$/, "")).utc(true);
 }
 
 export const formatInitialValue = (
@@ -24,14 +23,14 @@ export const formatInitialValue = (
   inputType?: InputSettingType,
 ) => {
   if (!isEmpty(value) && typeof value === "string") {
-    if (inputType === "date" && moment(value).isValid()) {
-      return moment(stripTZInfo(value)).format("YYYY-MM-DD");
+    if (inputType === "date" && dayjs(value).isValid()) {
+      return dayjs(stripTZInfo(value)).format("YYYY-MM-DD");
     }
-    if (inputType === "datetime" && moment(value).isValid()) {
-      return moment(stripTZInfo(value)).format("YYYY-MM-DDTHH:mm:ss");
+    if (inputType === "datetime" && dayjs(value).isValid()) {
+      return dayjs(stripTZInfo(value)).format("YYYY-MM-DDTHH:mm:ss");
     }
     if (inputType === "time") {
-      return moment(stripTZInfo(`2020-01-10T${value}`)).format("HH:mm:ss");
+      return dayjs(stripTZInfo(`2020-01-10T${value}`)).format("HH:mm:ss");
     }
   }
 
@@ -59,48 +58,24 @@ export const formatSubmitValues = (
   return values;
 };
 
-const isNumericParameter = (param: Parameter): boolean =>
-  /integer|float/gi.test(param.type);
-
 const getFieldType = (param: Parameter): "number" | "string" => {
-  return isNumericParameter(param) ? "number" : "string";
+  return getParameterType(param) === "number" ? "number" : "string";
 };
 
-export const getInputType = (param: Parameter, field?: Field) => {
-  if (!field) {
-    return isNumericParameter(param) ? "number" : "string";
+export const getInputType = (param: Parameter): InputSettingType => {
+  const type = getParameterType(param);
+  switch (type) {
+    case "string":
+      return "string";
+    case "number":
+      return "number";
+    case "date":
+      return "datetime";
+    case "boolean":
+      return "boolean";
+    default:
+      return "string";
   }
-
-  if (field.isFK()) {
-    return field.isNumeric() ? "number" : "string";
-  }
-  if (field.isNumeric()) {
-    return "number";
-  }
-  if (field.isBoolean()) {
-    return "boolean";
-  }
-  if (field.isTime()) {
-    return "time";
-  }
-  if (field.isDate()) {
-    return field.isDateWithoutTime() ? "date" : "datetime";
-  }
-  if (
-    field.semantic_type === TYPE.Description ||
-    field.semantic_type === TYPE.Comment ||
-    field.base_type === TYPE.Structured
-  ) {
-    return "text";
-  }
-  if (
-    field.semantic_type === TYPE.Title ||
-    field.semantic_type === TYPE.Email
-  ) {
-    return "string";
-  }
-
-  return "string";
 };
 
 // TODO: @uladzimirdev remove this method once the migration of implicit action fields generating to the BE is complete
@@ -139,25 +114,18 @@ export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
   const fieldSettings: Record<ParameterId, LocalFieldSettings> = {};
 
   params.forEach((param, index) => {
-    const field = new Field({
-      id: param.id,
-      name: param.id,
-      slug: param.id,
-      display_name: param["display-name"],
-      base_type: param.type,
-      semantic_type: param.type,
-    });
+    const title = param["display-name"] ?? param.name;
 
     fieldSettings[param.id] = getDefaultFieldSettings({
       id: param.id,
       name: param.name,
-      title: field.displayName(),
-      placeholder: field.displayName(),
+      title,
+      placeholder: title,
       required: !!param.required,
       order: index,
       description: "",
       fieldType: getFieldType(param),
-      inputType: getInputType(param, field),
+      inputType: getInputType(param),
     });
   });
 

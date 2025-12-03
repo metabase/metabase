@@ -1,7 +1,9 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -176,7 +178,15 @@
           ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
-          (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))))))
+          (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
+        ;; Publish events for each new membership
+        (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
+          (events/publish-event! :event/group-membership-create
+                                 {:user-id api/*current-user-id*
+                                  :object (t2/instance :model/PermissionsGroupMembership
+                                                       {:user_id user-id
+                                                        :group_id group-id
+                                                        :is_group_manager is-group-manager?})}))))))
 
 (defn add-user-to-groups!
   "Add a user to multiple groups"
@@ -196,7 +206,17 @@
   "Removes a user from groups."
   [user-id-or-user group-ids-or-groups]
   (when (seq group-ids-or-groups)
-    (t2/delete! :model/PermissionsGroupMembership :user_id (u/the-id user-id-or-user) :group_id [:in (map u/the-id group-ids-or-groups)])))
+    (let [user-id (u/the-id user-id-or-user)
+          group-ids (map u/the-id group-ids-or-groups)
+          ;; Get the memberships that will be deleted for event publishing
+          memberships (t2/select :model/PermissionsGroupMembership
+                                 :user_id user-id
+                                 :group_id [:in group-ids])]
+      ;; Delete the memberships (this will trigger the before-delete hooks)
+      (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids])
+      (doseq [membership memberships]
+        (events/publish-event! :event/group-membership-delete {:object membership
+                                                               :user-id api/*current-user-id*})))))
 
 (defn remove-user-from-group!
   "Removes a user from a group."

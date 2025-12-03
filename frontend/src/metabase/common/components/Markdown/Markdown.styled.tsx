@@ -5,11 +5,12 @@ import styled from "@emotion/styled";
 import type { FC, ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import type { MarkdownProps } from "./Markdown";
 
 export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
+  color: ${(props) => (props.c ? color(props.c) : "inherit")};
   ${(props) =>
     props.lineClamp &&
     css`

@@ -61,7 +61,7 @@ describe("PasswordPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(fetchMock.done("path:/api/session")).toBe(true);
+      expect(fetchMock.callHistory.done("path:/api/session")).toBe(true);
     });
   });
 

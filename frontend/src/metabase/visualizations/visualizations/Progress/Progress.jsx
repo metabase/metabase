@@ -1,23 +1,30 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import Color from "color";
 import { Component, createRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
+import { ChartSettingGoalInput } from "metabase/visualizations/components/settings/ChartSettingGoalInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { getValue } from "./utils";
+import {
+  calculateProgressMetrics,
+  extractProgressValue,
+  findProgressColumn,
+  getGoalValue,
+  getProgressColors,
+  getProgressMessage,
+} from "./utils";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
@@ -43,20 +50,41 @@ export default class Progress extends Component {
   static defaultSize = getDefaultSize("progress");
 
   static isSensible({ cols, rows }) {
-    return rows.length === 1 && cols.length === 1;
+    return rows.length === 1 && cols.filter(isNumeric).length >= 1;
   }
 
   static checkRenderable([
     {
-      data: { cols, rows },
+      data: { cols },
     },
   ]) {
-    if (!isNumeric(cols[0])) {
-      throw new Error(t`Progress visualization requires a number.`);
+    if (!cols.some(isNumeric)) {
+      throw new Error(
+        t`Progress visualization requires at least one numeric column.`,
+      );
     }
   }
 
   static settings = {
+    ...fieldSetting("progress.value", {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Value`;
+      },
+      fieldFilter: isNumeric,
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.find(isNumeric)?.name || cols[0]?.name,
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.filter(isNumeric).length <= 1,
+    }),
     ...columnSettings({
       getColumns: (
         [
@@ -65,9 +93,12 @@ export default class Progress extends Component {
           },
         ],
         settings,
-      ) => [
-        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
-      ],
+      ) => {
+        const valueField = settings["progress.value"];
+        const column = findProgressColumn(cols, valueField);
+        return [column || cols[0]];
+      },
+      readDependencies: ["progress.value"],
     }),
     "progress.goal": {
       get section() {
@@ -76,8 +107,27 @@ export default class Progress extends Component {
       get title() {
         return t`Goal`;
       },
-      widget: "number",
+      widget: ChartSettingGoalInput,
       default: 0,
+      isValid: ([{ data }], settings) => {
+        const goalSetting = settings["progress.goal"];
+
+        if (typeof goalSetting === "number") {
+          return true;
+        }
+
+        if (typeof goalSetting === "string") {
+          const column = data.cols.find((col) => col.name === goalSetting);
+          return !!(column && isNumeric(column));
+        }
+
+        return false;
+      },
+      getProps: ([{ data }], settings) => ({
+        columns: data.cols,
+        valueField: settings["progress.value"],
+      }),
+      readDependencies: ["progress.value"],
     },
     "progress.color": {
       get section() {
@@ -151,34 +201,32 @@ export default class Progress extends Component {
       visualizationIsClickable,
     } = this.props;
 
-    const value = getValue(rows);
-    const column = cols[0];
-    const goal = settings["progress.goal"] || 0;
+    const valueField = settings["progress.value"];
+    const column = findProgressColumn(cols, valueField);
+    const columnIndex = column
+      ? cols.findIndex((col) => col.name === column.name)
+      : -1;
+
+    const value = extractProgressValue(rows, columnIndex);
+    const goal = getGoalValue(settings["progress.goal"], cols, rows);
+
+    const metrics = calculateProgressMetrics(value, goal);
+    const { hasValidValue, hasValidGoal, barPercent, arrowPercent } = metrics;
 
     const mainColor = settings["progress.color"];
-    const lightColor = Color(mainColor).lighten(0.25).rgb().string();
-    const darkColor = Color(mainColor).darken(0.3).rgb().string();
+    const colors = getProgressColors(mainColor, value, goal);
+    const progressColor = colors.foreground;
+    const restColor = colors.background;
+    const arrowColor = colors.pointer;
 
-    const progressColor = mainColor;
-    const restColor = value > goal ? darkColor : lightColor;
-    const arrowColor = value > goal ? darkColor : mainColor;
+    const barMessage = getProgressMessage(metrics);
 
-    const barPercent = Math.max(0, value < goal ? value / goal : goal / value);
-    const arrowPercent = Math.max(0, value < goal ? value / goal : 1);
-
-    let barMessage;
-    if (value === goal) {
-      barMessage = t`Goal met`;
-    } else if (value > goal) {
-      barMessage = t`Goal exceeded`;
-    }
-
-    const clicked = { value, column, settings };
     const isClickable = onVisualizationClick != null;
 
     const handleClick = (e) => {
-      if (onVisualizationClick && visualizationIsClickable(clicked)) {
-        onVisualizationClick({ ...clicked, event: e.nativeEvent });
+      const clickData = { value, column, settings, event: e.nativeEvent };
+      if (onVisualizationClick && visualizationIsClickable(clickData)) {
+        onVisualizationClick(clickData);
       }
     };
 
@@ -203,7 +251,9 @@ export default class Progress extends Component {
             style={{ height: 20 }}
           >
             <div ref={this.labelRef} style={{ position: "absolute" }}>
-              {formatValue(value, settings.column(column))}
+              {hasValidValue
+                ? formatValue(value, settings.column(column))
+                : t`No data`}
             </div>
           </div>
           <div className={CS.relative} style={{ height: 10, marginBottom: 5 }}>
@@ -260,10 +310,11 @@ export default class Progress extends Component {
           </div>
           <div className={CS.mt1}>
             <span className={CS.floatLeft}>0</span>
-            <span className={CS.floatRight}>{t`Goal ${formatValue(
-              goal,
-              settings.column(column),
-            )}`}</span>
+            <span className={CS.floatRight}>
+              {hasValidGoal
+                ? t`Goal ${formatValue(goal, settings.column(column))}`
+                : t`Goal: Not set`}
+            </span>
           </div>
         </div>
       </div>

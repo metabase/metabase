@@ -6,7 +6,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { AdminEmail } from "./AdminEmail";
 
 interface SetupOpts {
-  adminEmail: string;
+  adminEmail: string | null;
 }
 
 const setup = ({ adminEmail }: SetupOpts) => {
@@ -32,8 +32,14 @@ describe("AdminEmail", () => {
     expect(link).toHaveAttribute("href", "mailto:admin@metabase.test");
   });
 
-  it("renders nothing when there's no admin email", () => {
+  it("renders nothing when email is an empty string (unlikely to ever happen)", () => {
     setup({ adminEmail: "" });
+
+    expect(screen.queryByText("admin@metabase.test")).not.toBeInTheDocument();
+  });
+
+  it("renders nothing when there's no admin email", () => {
+    setup({ adminEmail: null });
 
     expect(screen.queryByText("admin@metabase.test")).not.toBeInTheDocument();
   });

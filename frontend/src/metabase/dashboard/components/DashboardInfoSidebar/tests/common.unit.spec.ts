@@ -55,7 +55,7 @@ describe("DashboardInfoSidebar", () => {
   });
 
   it("should allow to set description", async () => {
-    const { setDashboardAttribute } = await setup();
+    const { dashboard, setDashboardAttribute } = await setup();
 
     await userEvent.click(screen.getByTestId("editable-text"));
     await userEvent.type(
@@ -64,10 +64,10 @@ describe("DashboardInfoSidebar", () => {
     );
     await userEvent.tab();
 
-    expect(setDashboardAttribute).toHaveBeenCalledWith(
-      "description",
-      "some description",
-    );
+    expect(setDashboardAttribute).toHaveBeenCalledWith({
+      id: dashboard.id,
+      attributes: { description: "some description" },
+    });
   });
 
   it("should validate description length", async () => {
@@ -93,7 +93,7 @@ describe("DashboardInfoSidebar", () => {
   });
 
   it("should allow to clear description", async () => {
-    const { setDashboardAttribute } = await setup({
+    const { dashboard, setDashboardAttribute } = await setup({
       dashboard: createMockDashboard({ description: "some description" }),
     });
 
@@ -101,7 +101,10 @@ describe("DashboardInfoSidebar", () => {
     await userEvent.clear(screen.getByPlaceholderText("Add description"));
     await userEvent.tab();
 
-    expect(setDashboardAttribute).toHaveBeenCalledWith("description", "");
+    expect(setDashboardAttribute).toHaveBeenCalledWith({
+      id: dashboard.id,
+      attributes: { description: "" },
+    });
   });
 
   it("should show last edited info", async () => {
@@ -136,7 +139,7 @@ describe("DashboardInfoSidebar", () => {
     });
 
     expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
-    expect(screen.getByText("January 1, 2024")).toBeInTheDocument();
+    expect(await screen.findByText("January 1, 2024")).toBeInTheDocument();
     expect(screen.getByText("by Testy Tableton")).toBeInTheDocument();
   });
 

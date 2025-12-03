@@ -33,6 +33,11 @@ export interface VisualizerVizDefinitionWithColumns
   columns: DatasetColumn[];
 }
 
+export interface VisualizerVizDefinitionWithColumnsAndFallbacks
+  extends VisualizerVizDefinitionWithColumns {
+  datasetFallbacks?: Record<number, Dataset | null | undefined>;
+}
+
 export interface VisualizerState extends VisualizerVizDefinitionWithColumns {
   initialState: VisualizerVizDefinitionWithColumns;
   cards: Card[];
@@ -41,4 +46,5 @@ export interface VisualizerState extends VisualizerVizDefinitionWithColumns {
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
   error: string | null;
   draggedItem: DraggedItem | null;
+  hoveredItems: DraggedColumn[] | null;
 }

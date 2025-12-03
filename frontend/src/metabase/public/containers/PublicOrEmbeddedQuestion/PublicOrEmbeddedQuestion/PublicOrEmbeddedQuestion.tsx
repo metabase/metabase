@@ -119,7 +119,8 @@ export const PublicOrEmbeddedQuestion = ({
       return;
     }
 
-    const parameters = card.parameters || getParametersFromCard(card);
+    const parameters =
+      card.parameters || getParametersFromCard(card, metadataRef.current);
 
     try {
       setResult(null);

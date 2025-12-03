@@ -44,22 +44,25 @@ const setup = async (opts?: SetupOpts) => {
     mockInitialPage = true,
   } = opts ?? {};
 
-  const paginationCtx = {
+  const paginationContext = {
     offset: 0,
     limit: pageSize,
     total: defaultMetabotMockedPrompts.length,
   };
 
   const nextPaginationContext = mockInitialPage
-    ? setupMetabotPromptSuggestionsEndpoint(
+    ? setupMetabotPromptSuggestionsEndpoint({
         metabotId,
-        defaultMetabotMockedPrompts,
-        paginationCtx,
-      )
-    : paginationCtx;
+        prompts: defaultMetabotMockedPrompts,
+        paginationContext,
+      })
+    : paginationContext;
 
   const TestComponent = () => (
-    <MetabotPromptSuggestionPane metabotId={metabotId} pageSize={pageSize} />
+    <MetabotPromptSuggestionPane
+      metabot={{ id: metabotId, collection_id: null }}
+      pageSize={pageSize}
+    />
   );
 
   renderWithProviders(<Route path="/" component={TestComponent} />, {
@@ -81,26 +84,30 @@ describe("suggested prompts", () => {
   });
 
   it("should show loading state", async () => {
-    setupMetabotPromptSuggestionsEndpoint(
-      FIXED_METABOT_IDS.DEFAULT,
-      defaultMetabotMockedPrompts,
-      {
+    setupMetabotPromptSuggestionsEndpoint({
+      metabotId: FIXED_METABOT_IDS.DEFAULT,
+      prompts: defaultMetabotMockedPrompts,
+      paginationContext: {
         offset: 0,
         limit: 3,
         total: defaultMetabotMockedPrompts.length,
       },
-      { delay: 50 },
-    );
+      delay: 50,
+    });
     await setup({ mockInitialPage: false });
     const [loadingRow] = await screen.findAllByTestId("prompt-loading-row");
     expect(loadingRow).toBeInTheDocument();
   });
 
   it("should show empty state", async () => {
-    setupMetabotPromptSuggestionsEndpoint(FIXED_METABOT_IDS.DEFAULT, [], {
-      offset: 0,
-      limit: 3,
-      total: 0,
+    setupMetabotPromptSuggestionsEndpoint({
+      metabotId: FIXED_METABOT_IDS.DEFAULT,
+      prompts: [],
+      paginationContext: {
+        offset: 0,
+        limit: 3,
+        total: 0,
+      },
     });
     await setup({ mockInitialPage: false });
     expect(await screen.findByText("No prompts found.")).toBeInTheDocument();
@@ -121,20 +128,19 @@ describe("suggested prompts", () => {
     await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(0, 3));
     expect(await screen.findByText(/1 - 3/)).toBeInTheDocument();
 
-    const nextNextPaginationContext = setupMetabotPromptSuggestionsEndpoint(
+    const nextNextPaginationContext = setupMetabotPromptSuggestionsEndpoint({
       metabotId,
-      defaultMetabotMockedPrompts,
-      nextPaginationContext,
-    );
+      prompts: defaultMetabotMockedPrompts,
+      paginationContext: nextPaginationContext,
+    });
     await nextPage();
     await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(3, 6));
     expect(await screen.findByText(/4 - 6/)).toBeInTheDocument();
-
-    setupMetabotPromptSuggestionsEndpoint(
+    setupMetabotPromptSuggestionsEndpoint({
       metabotId,
-      defaultMetabotMockedPrompts,
-      nextNextPaginationContext,
-    );
+      prompts: defaultMetabotMockedPrompts,
+      paginationContext: nextNextPaginationContext,
+    });
     await nextPage();
     await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(6, 9));
     expect(await screen.findByText(/7 - 8/)).toBeInTheDocument();
@@ -176,17 +182,26 @@ describe("suggested prompts", () => {
     const [firstPrompt, secondPrompt] = defaultMetabotMockedPrompts;
 
     setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
-    setupMetabotPromptSuggestionsEndpoint(
+    setupMetabotPromptSuggestionsEndpoint({
       metabotId,
-      defaultMetabotMockedPrompts.slice(1),
-      {
+      prompts: defaultMetabotMockedPrompts,
+      paginationContext: {
         offset: 0,
         limit: 1,
         total: defaultMetabotMockedPrompts.length,
       },
-    );
+    });
 
     expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
+    setupMetabotPromptSuggestionsEndpoint({
+      metabotId,
+      prompts: defaultMetabotMockedPrompts.slice(1),
+      paginationContext: {
+        offset: 0,
+        limit: 1,
+        total: defaultMetabotMockedPrompts.length,
+      },
+    });
     await userEvent.click(await screen.findByTestId("prompt-remove"));
 
     expect(await screen.findByText(secondPrompt.prompt)).toBeInTheDocument();
@@ -198,32 +213,32 @@ describe("suggested prompts", () => {
     const [firstPrompt] = defaultMetabotMockedPrompts;
 
     setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
-    setupMetabotPromptSuggestionsEndpoint(
+
+    expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
+    setupMetabotPromptSuggestionsEndpoint({
       metabotId,
-      defaultMetabotMockedPrompts.slice(1),
-      {
+      prompts: defaultMetabotMockedPrompts.slice(1),
+      paginationContext: {
         offset: 0,
         limit: 1,
         total: defaultMetabotMockedPrompts.length,
       },
-    );
-
+    });
     // remove a prompt so when we regenerate we can see it came back
-    expect(await screen.findByText(firstPrompt.prompt)).toBeInTheDocument();
     await userEvent.click(await screen.findByTestId("prompt-remove"));
     await waitFor(() => {
       expect(screen.queryByText(firstPrompt.prompt)).not.toBeInTheDocument();
     });
 
-    setupMetabotPromptSuggestionsEndpoint(
+    setupMetabotPromptSuggestionsEndpoint({
       metabotId,
-      defaultMetabotMockedPrompts,
-      {
+      prompts: defaultMetabotMockedPrompts,
+      paginationContext: {
         offset: 0,
         limit: 1,
         total: defaultMetabotMockedPrompts.length,
       },
-    );
+    });
     // add a delay to endpoint so that loading state can be triggered consistently w/o test flakes
     setupRegenerateMetabotPromptSuggestionsEndpoint(metabotId, { delay: 50 });
 

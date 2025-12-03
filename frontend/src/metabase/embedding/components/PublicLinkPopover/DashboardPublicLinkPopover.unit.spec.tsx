@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -84,23 +84,31 @@ describe("DashboardPublicLinkPopover", () => {
     expect(screen.queryByTestId("extension-option")).not.toBeInTheDocument();
   });
 
-  it("should call Dashboard public link API when creating link", () => {
+  it("should call Dashboard public link API when creating link", async () => {
     setup({ hasPublicLink: false });
 
-    expect(
-      fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`, {
-        method: "POST",
-      }),
-    ).toHaveLength(1);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
+          {
+            method: "POST",
+          },
+        ),
+      ).toHaveLength(1);
+    });
   });
 
   it("should call the Dashboard public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
     await userEvent.click(screen.getByText("Remove public link"));
     expect(
-      fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`, {
-        method: "DELETE",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`,
+        {
+          method: "DELETE",
+        },
+      ),
     ).toHaveLength(1);
   });
 

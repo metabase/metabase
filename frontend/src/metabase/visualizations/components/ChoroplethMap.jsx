@@ -7,15 +7,14 @@ import ss from "simple-statistics";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-// eslint-disable-next-line no-restricted-imports -- deprecated sdk import
-import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
+import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
 import Link from "metabase/common/components/Link";
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";
 import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
@@ -110,7 +109,6 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 }
 
 const mapStateToProps = (state) => ({
-  isSdk: getIsEmbeddingSdk(state),
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
 });
 
@@ -123,7 +121,7 @@ export function getMapUrl(details, props) {
     ? details.url
     : "api/geojson/" + props.settings["map.region"];
 
-  if (!props?.isSdk || !props?.sdkMetabaseInstanceUrl) {
+  if (!isEmbeddingSdk() || !props?.sdkMetabaseInstanceUrl) {
     return mapUrl;
   }
 
@@ -146,7 +144,7 @@ const MapNotFound = () => {
         {isAdmin && (
           <Text component="p" className={CS.mt1}>
             {jt`To add a new map, visit ${(
-              <Link to="/admin/settings/maps" className={CS.link}>
+              <Link key="link" to="/admin/settings/maps" className={CS.link}>
                 {t`Admin settings > Maps`}
               </Link>
             )}.`}
@@ -342,15 +340,15 @@ class ChoroplethMapInner extends Component {
     const onClickFeature =
       isClickable &&
       ((click) => {
-        if (visualizationIsClickable(getFeatureClickObject(rows[0]))) {
-          const featureKey = getFeatureKey(click.feature);
-          const row = rowByFeatureKey.get(featureKey);
-          if (onVisualizationClick) {
-            onVisualizationClick({
-              ...getFeatureClickObject(row, click.feature),
-              event: click.event,
-            });
-          }
+        const featureKey = getFeatureKey(click.feature);
+        const row = rowByFeatureKey.get(featureKey);
+        const clickData = {
+          ...getFeatureClickObject(row, click.feature),
+          event: click.event,
+        };
+
+        if (onVisualizationClick && visualizationIsClickable(clickData)) {
+          onVisualizationClick(clickData);
         }
       });
     const onHoverFeature =
@@ -412,6 +410,7 @@ class ChoroplethMapInner extends Component {
         hovered={hovered}
         onHoverChange={onHoverChange}
         isDashboard={this.props.isDashboard}
+        isDocument={this.props.isDocument}
       >
         {projection ? (
           <LegacyChoropleth

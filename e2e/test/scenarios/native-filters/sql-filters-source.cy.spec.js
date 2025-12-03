@@ -900,7 +900,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     SQLFilter.openTypePickerFromSelectedFilterType("Text");
     SQLFilter.chooseType("Number");
 
-    cy.get("[data-checked='true']").should("have.text", "Input box");
+    cy.findByLabelText("Input box").should("be.checked");
 
     H.setSearchBoxFilterType();
     H.checkFilterListSourceHasValue({ values: [] });
@@ -911,7 +911,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     SQLFilter.openTypePickerFromSelectedFilterType("Number");
     SQLFilter.chooseType("Text");
-    cy.get("[data-checked='true']").should("have.text", "Search box");
+    cy.findByLabelText("Search box").should("be.checked");
     H.checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
   });
 });

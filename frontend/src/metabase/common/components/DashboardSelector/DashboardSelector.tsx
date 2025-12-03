@@ -3,8 +3,10 @@ import { t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import type { DashboardPickerValueItem } from "metabase/common/components/DashboardPicker";
-import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
+import {
+  DashboardPickerModal,
+  type DashboardPickerValueItem,
+} from "metabase/common/components/Pickers/DashboardPicker";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -13,11 +15,13 @@ import { DashboardPickerButton } from "./DashboardSelector.styled";
 interface DashboardSelectorProps {
   onChange: (value?: DashboardId) => void;
   value?: DashboardId;
+  fullWidth?: boolean;
 }
 
 export const DashboardSelector = ({
   onChange,
   value,
+  fullWidth = true,
 }: DashboardSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const {
@@ -54,8 +58,11 @@ export const DashboardSelector = ({
   ``;
   return (
     <Flex>
-      <DashboardPickerButton onClick={() => setIsOpen(true)}>
-        {dashboard?.name || t`Select a dashboard`}
+      <DashboardPickerButton
+        fullWidth={fullWidth}
+        onClick={() => setIsOpen(true)}
+      >
+        {dashboard?.name || t`Pick a dashboard`}
       </DashboardPickerButton>
       {isOpen && (
         <DashboardPickerModal

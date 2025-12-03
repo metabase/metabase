@@ -40,7 +40,10 @@
 ;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
 ;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use
 ;; `db-qualified-table-name` like everyone else.
-(def ^:private ^String test-catalog-name "test_data")
+(defn- test-catalog-name []
+  (if tx/*use-routing-details*
+    "sample_dataset"
+    "test_data"))
 
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOLEAN"
@@ -76,7 +79,7 @@
          :kerberos-keytab-path               (tx/db-test-env-var :presto-jdbc :kerberos-keytab-path nil)
          :kerberos-config-path               (tx/db-test-env-var :presto-jdbc :kerberos-config-path nil)
          :kerberos-service-principal-pattern (tx/db-test-env-var :presto-jdbc :kerberos-service-principal-pattern nil)
-         :catalog                            test-catalog-name
+         :catalog                            (test-catalog-name)
          :schema                             (tx/db-test-env-var :presto-jdbc :schema nil)}]
     (assoc base-details
            :ssl-use-keystore (every? some? (map base-details [:ssl-keystore-path :ssl-keystore-password-value]))
@@ -133,9 +136,9 @@
 
 (defmethod sql.tx/qualified-name-components :presto-jdbc
   ;; use the default schema from the in-memory connector
-  ([_ _db-name]                      [test-catalog-name test-schema])
-  ([_ db-name table-name]            [test-catalog-name test-schema (tx/db-qualified-table-name db-name table-name)])
-  ([_ db-name table-name field-name] [test-catalog-name test-schema (tx/db-qualified-table-name db-name table-name) field-name]))
+  ([_ _db-name]                      [(test-catalog-name) test-schema])
+  ([_ db-name table-name]            [(test-catalog-name) test-schema (tx/db-qualified-table-name db-name table-name)])
+  ([_ db-name table-name field-name] [(test-catalog-name) test-schema (tx/db-qualified-table-name db-name table-name) field-name]))
 
 (defmethod sql.tx/pk-sql-type :presto-jdbc
   [_]
@@ -184,7 +187,7 @@
        {:write? false}
        (fn [^Connection conn]
          ;; look at all the tables in the test schema.
-         (let [^String sql (#'presto-jdbc/describe-schema-sql driver test-catalog-name test-schema)]
+         (let [^String sql (#'presto-jdbc/describe-schema-sql driver (test-catalog-name) test-schema)]
            (with-open [stmt (.createStatement conn)
                        rset (.executeQuery stmt sql)]
              (loop []
@@ -196,3 +199,6 @@
                  :else                                    (recur)))))))
       (catch Throwable _e
         false))))
+
+(defmethod sql.tx/generated-column-sql :presto-jdbc [_ _] nil)
+(defmethod sql.tx/default-column-sql :presto-jdbc [_ _] nil)

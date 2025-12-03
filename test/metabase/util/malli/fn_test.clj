@@ -69,6 +69,23 @@
                                       unit :- [:maybe :keyword]]
                                      (str n \space (or unit :day)))))))))
 
+(deftest ^:parallel capture-schemas-test
+  (are [fn-schema expected] (= expected
+                               (#'mu.fn/capture-schemas fn-schema))
+    [:=> [:cat :int :int [:map [:integer? :boolean]]] :map]
+    '[[:=> [:cat :int :int &input-schema-0-a] :map]
+      {&input-schema-0-a [:map [:integer? :boolean]]}]
+
+    [:function
+     [:=> [:cat string? :any] keyword?]
+     [:=> [:cat string? :any [:* :any]] keyword?]]
+    [[:function
+      [:=> [:cat '&input-schema-0-a :any]           '&return-schema]
+      [:=> [:cat '&input-schema-1-a :any [:* :any]] '&return-schema]]
+     {'&input-schema-0-a string?
+      '&return-schema    keyword?
+      '&input-schema-1-a string?}]))
+
 (deftest ^:parallel instrumented-fn-form-test
   (are [form expected] (= expected
                           (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
@@ -198,13 +215,14 @@
                    & more :- [:* :int]]
                   (reduce + (list* x y more)))]
       (is (= '(let* [&f (clojure.core/fn [x y & more]
-                          (reduce + (list* x y more)))]
+                          (reduce + (list* x y more)))
+                     &input-schema-0-a [:* :int]]
                 (clojure.core/fn
                   ([a b & more]
                    (try
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:maybe [:* :int]] more)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:maybe &input-schema-0-a] more)
                      (clojure.core/->>
                       (clojure.core/apply &f a b more)
                       (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :int))
@@ -236,13 +254,14 @@
                    & {:as options} :- [:map [:integer? :boolean]]]
                   {:options options, :output (+ x y)})]
       (is (= '(let* [&f (clojure.core/fn [x y & {:as options}]
-                          {:options options, :output (+ x y)})]
+                          {:options options, :output (+ x y)})
+                     &input-schema-0-a [:map [:integer? :boolean]]]
                 (clojure.core/fn
                   ([a b & {:as kvs}]
                    (try
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
-                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:map [:integer? :boolean]] kvs)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} &input-schema-0-a kvs)
                      (clojure.core/->>
                       (&f a b kvs)
                       (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :map))

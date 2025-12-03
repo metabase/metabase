@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
-import Input from "metabase/common/components/Input";
 import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Radio from "metabase/common/components/Radio";
 import Toggle from "metabase/common/components/Toggle";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { TextInput } from "metabase/ui/components/inputs/TextInput";
 import type {
   FieldSettings,
   FieldType,
@@ -17,7 +17,6 @@ import type {
 import {
   Divider,
   RequiredToggleLabel,
-  SectionLabel,
   SettingsPopoverBody,
   SettingsTriggerIcon,
   ToggleContainer,
@@ -149,16 +148,14 @@ function PlaceholderInput({
   const id = useUniqueId();
 
   return (
-    <div>
-      <SectionLabel htmlFor={id}>{t`Placeholder text`}</SectionLabel>
-      <Input
-        id={id}
-        fullWidth
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        data-testid="placeholder-input"
-      />
-    </div>
+    <TextInput
+      id={id}
+      w="100%"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      data-testid="placeholder-input"
+      label={t`Placeholder text`}
+    />
   );
 }
 
@@ -201,13 +198,12 @@ function RequiredInput({
       </ToggleContainer>
       {required && (
         <>
-          <SectionLabel htmlFor={`${id}-default`}>
-            {t`Default value`}
-          </SectionLabel>
-          <Input
+          <TextInput
             id={`${id}-default`}
+            label={t`Default value`}
+            data-testid="default-value-input"
             type={getDefaultValueInputType(inputType)}
-            fullWidth
+            w="100%"
             value={defaultValue ?? ""}
             onChange={handleDefaultValueChange}
           />

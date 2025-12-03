@@ -254,6 +254,16 @@
                                :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
                                              (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
 
+(deftest ^:parallel table-exists-test
+  (testing "Make sure checking for table existence works"
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/table-existence-check)
+      (let [venues-table (t2/select-one :model/Table :id (mt/id :venues))
+            fake-table {:name "fake_table_xyz123" :schema (:schema venues-table)}]
+        (is (driver/table-exists? driver/*driver* (mt/db) venues-table)
+            (str "Driver " driver/*driver* " should detect that venues table exists"))
+        (is (not (driver/table-exists? driver/*driver* (mt/db) fake-table))
+            (str "Driver " driver/*driver* " should detect that fake table doesn't exist"))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Begin tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -286,6 +296,52 @@
                     :database-position 2
                     :base-type         #(isa? % :type/Number)}]
                   (describe-fields-for-table (mt/db) table))))))))
+
+(deftest ^:parallel describe-fields-returns-nullability-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset nullable-db
+      (let [table   (t2/select-one :model/Table :id (mt/id :nullable))
+            fields  (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+          (testing ":database-is-nullable should be provided"
+            (is (= [false true false] (mapv :database-is-nullable [a b c]))))
+          (testing ":database-is-nullable should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-nullable [a b c])))))))))
+
+(deftest ^:parallel describe-fields-returns-default-expr-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset default-expr-db
+      (let [table (t2/select-one :model/Table :id (mt/id :default_expr))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+          (testing ":database-default should be provided"
+            ;; SQL Server likes to add some parens
+            (is (=? [nil #"\(*42\)*" nil] (mapv :database-default [a b c]))))
+          (testing ":database-default should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-default [a b c])))))))))
+
+(deftest ^:parallel describe-fields-returns-is-generated-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset generated-column-db
+      (let [table (t2/select-one :model/Table :id (mt/id :generated_column))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+          (testing ":database-is-generated should be provided"
+            (is (= [false true false] (mapv :database-is-generated [a b c]))))
+          (testing ":database-is-generated should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-generated [a b c])))))))))
 
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
@@ -351,6 +407,20 @@
 ;;; End tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; TODO: Uncomment when https://github.com/metabase/metabase/pull/60263 is merged
+#_(deftest data-editing-requires-describe-features-test
+    (testing "Drivers supporting :actions/data-editing must support relevant describe-X features"
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (testing "describe-default-expr feature"
+          (is (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+              (str driver/*driver* " must support :describe-default-expr to support :actions/data-editing")))
+        (testing "describe-is-generated feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+              (str driver/*driver* " must support :describe-is-generated to support :actions/data-editing")))
+        (testing "describe-is-nullable feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+              (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
+
 (deftest query-driver-success-metrics-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "the number of successful and failed queries should be tracked correctly"
@@ -369,3 +439,30 @@
           (qp/process-query success-query)
           (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
           (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))
+
+(deftest python-transform-drivers-multimethods-support
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (let [driver driver/*driver*]
+      (is (get-method driver/create-table! driver))
+      (is (get-method driver/table-name-length-limit driver))
+      (is (get-method driver/drop-table! driver))
+      (is (let [should-be-supported-by-all #{:type/Number :type/Text :type/Date :type/DateTime :type/DateTimeWithTZ :type/Boolean}]
+            (and (get-method driver/type->database-type driver)
+                 (every? #(driver/type->database-type driver %) should-be-supported-by-all))))
+      (is (get-method driver/insert-from-source! [driver :jsonl-file])))))
+
+(driver/register! ::mock-no-deps-driver, :abstract? true)
+
+(deftest deps-ignores-invalid-drivers-test
+  (is (= #{}
+         (driver/native-query-deps ::mock-no-deps-driver nil nil))))
+
+(driver/register! ::mock-deps-driver, :abstract? true)
+
+(defmethod driver/database-supports? [::mock-deps-driver :dependencies/native]
+  [_driver _feature _database]
+  true)
+
+(deftest deps-flags-when-supported-driver-is-not-covered-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+                        (driver/native-query-deps ::mock-deps-driver nil nil))))

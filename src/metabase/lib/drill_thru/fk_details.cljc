@@ -31,6 +31,7 @@
   drills ([[metabase.lib.drill-thru.pk]], [[metabase.lib.drill-thru.fk-details]],
   or [[metabase.lib.drill-thru.zoom]]); see [[metabase.lib.drill-thru.object-details]] for the high-level logic that
   calls out to the individual implementations."
+  (:refer-clojure :exclude [select-keys #?(:clj for)])
   (:require
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
@@ -39,7 +40,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys #?(:clj for)]]))
 
 (mu/defn fk-details-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.fk-details]
   "Return an `:fk-details` 'View details' drill when clicking on the value of a FK column."
@@ -68,21 +71,26 @@
   ;; - Not for this same column, but
   ;; - Relevant to OTHER FKs which point to PKs on the target table;
   ;; then preserve those filters.
-  (let [fk-column-id     (:fk-target-field-id column)
-        fk-column        (some->> fk-column-id (lib.metadata/field query))
-        fk-column-table  (some->> (:table-id fk-column) (lib.metadata/table query))
-        other-fk-filters (for [filter-clause (lib.filter/filters query stage-number)
-                               :let [parts (lib.filter/filter-parts query stage-number filter-clause)]
-                               :when (= (:short (:operator parts)) :=)
-                               :let [other-fk-target (some->> parts
-                                                              :column
-                                                              :fk-target-field-id
-                                                              (lib.metadata/field query))]
-                               :when (and other-fk-target
-                                          (= (:table-id other-fk-target) (:id fk-column-table)) ; FK to this table
-                                          (not= (:id other-fk-target) fk-column-id))]           ; But not this column
-                           (lib.filter/= other-fk-target (first (:args parts))))]
-    (reduce #(lib.filter/filter %1 stage-number %2)
-            (lib.query/query query fk-column-table)
-            (concat other-fk-filters
-                    [(lib.filter/= fk-column object-id)]))))
+  (when-let [fk-column-id (or (:fk-target-field-id column)
+                              (do
+                                (log/warnf "Cannot apply :fk-details drill because column is missing :fk-target-field-id: %s"
+                                           (pr-str column))
+                                nil))]
+    (when-let [fk-column (lib.metadata/field query fk-column-id)]
+      (when-let [fk-column-table (lib.metadata/table query (:table-id fk-column))]
+        (let [other-fk-filters (for [filter-clause (lib.filter/filters query stage-number)
+                                     :let [parts (lib.filter/filter-parts query stage-number filter-clause)]
+                                     :when (= (:short (:operator parts)) :=)
+                                     :let [other-fk-target (some->> parts
+                                                                    :column
+                                                                    :fk-target-field-id
+                                                                    (lib.metadata/field query))]
+                                     :when (and other-fk-target
+                                                (= (:table-id other-fk-target) (:id fk-column-table)) ; FK to this table
+                                                (not= (:id other-fk-target) fk-column-id))] ; But not this column
+                                 (lib.filter/= other-fk-target (first (:args parts))))]
+          (reduce
+           #(lib.filter/filter %1 stage-number %2)
+           (lib.query/query query fk-column-table)
+           (concat other-fk-filters
+                   [(lib.filter/= fk-column object-id)])))))))

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -63,6 +63,26 @@ describe("CollectionHeader", () => {
 
       const input = screen.getByDisplayValue("Personal collection");
       expect(input).toBeDisabled();
+    });
+
+    it("should truncate name if it exceeds 100 characters", async () => {
+      const collection = {
+        name: "Name",
+        can_write: true,
+      };
+
+      const { onUpdateCollection, collection: myCollection } = setup({
+        collection,
+      });
+
+      const input = screen.getByDisplayValue("Name");
+      await userEvent.clear(input);
+      const longName = "a".repeat(110);
+      await userEvent.type(input, `${longName}{Enter}`);
+
+      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+        name: longName.slice(0, 100),
+      });
     });
   });
 
@@ -138,6 +158,31 @@ describe("CollectionHeader", () => {
       expect(input).toBeInTheDocument();
       expect(input).toBeDisabled();
     });
+
+    it("should truncate description if it exceeds 255 characters", async () => {
+      const collection = {
+        description: "Description",
+        can_write: true,
+      };
+
+      const { onUpdateCollection, collection: myCollection } = setup({
+        collection,
+      });
+
+      // show input
+      const editableText = screen.getByText("Description");
+      await userEvent.click(editableText);
+
+      const input = screen.getByDisplayValue("Description");
+      await userEvent.clear(input);
+      const longDescription = "a".repeat(256);
+      await userEvent.type(input, longDescription);
+      await userEvent.tab();
+
+      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+        description: longDescription.slice(0, 255),
+      });
+    });
   });
 
   describe("collection timelines", () => {
@@ -146,16 +191,12 @@ describe("CollectionHeader", () => {
       const button = screen.getByLabelText("calendar icon");
       expect(button).toBeInTheDocument();
 
-      userEvent.click(button);
+      await userEvent.click(button);
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
 
-      const puts = await waitFor(async () => {
-        const puts = await findRequests("PUT");
-        expect(puts).toHaveLength(1);
-        return puts;
-      });
-
-      expect(puts[0].url).toBe(
-        "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/events-menu",
+      expect(puts[0].url).toContain(
+        "/api/user-key-value/namespace/user_acknowledgement/key/events-menu",
       );
     });
   });

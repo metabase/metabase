@@ -38,6 +38,17 @@
 
 (def card-name-regex (re-pattern notification.tu/default-card-name))
 
+(defn- default-slack-blocks
+  [card-id include-image?]
+  (cond-> [{:type "header" :text {:type "plain_text" :text "🔔 Card notification test card" :emoji true}}
+           {:type "section"
+            :text
+            {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Card notification test card>" card-id) :verbatim true}}]
+    include-image?
+    (conj {:type "image"
+           :slack_file {:id (mt/malli=? :string)}
+           :alt_text "Card notification test card"})))
+
 (deftest basic-table-notification-test
   (testing "card notification of a simple table"
     (notification.tu/with-notification-testing-setup!
@@ -72,17 +83,10 @@
 
                 :channel/slack
                 (fn [[message]]
-                  (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                           :text "🔔 Card notification test card"
-                                                           :type "plain_text"}
-                                                    :type "header"}]}
-                                         {:attachment-name "image.png"
-                                          :fallback "Card notification test card",
-                                          :rendered-info {:attachments false
-                                                          :content true
-                                                          :render/text true}
-                                          :title "Card notification test card"}]
-                           :channel-id "#general"}
+                  (is (=? {:blocks
+                           (conj (default-slack-blocks card-id false)
+                                 {:type "section" :text {:type "plain_text" :text "Hello world!!!"}})
+                           :channel "#general"}
                           (notification.tu/slack-message->boolean message))))
 
                 :channel/http
@@ -126,22 +130,15 @@
                   #"Manage your subscriptions"))))
         :channel/slack
         (fn [[message]]
-          (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                   :text "🔔 Card notification test card"
-                                                   :type "plain_text"}
-                                            :type "header"}]}
-                                 {:attachment-name "image.png"
-                                  :fallback "Card notification test card"
-                                  :rendered-info {:attachments false :content true}
-                                  :title "Card notification test card"}]
-                   :channel-id "#general"}
+          (is (=? {:channel "#general"
+                   :blocks (default-slack-blocks (-> notification :payload :card_id) true)}
                   (notification.tu/slack-message->boolean message))))}))))
 
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
     (doseq [limit [1 10]]
-      (with-redefs [notification.payload.execute/rows-to-disk-threadhold 5]
-        (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threadhold)
+      (with-redefs [notification.payload.execute/cells-to-disk-threshold 5]
+        (testing (if (> limit @#'notification.payload.execute/cells-to-disk-threshold)
                    "card has rows saved to disk"
                    "card has rows saved in memory")
           (notification.tu/with-notification-testing-setup!
@@ -171,15 +168,8 @@
                             #"Manage your subscriptions"))))
                   :channel/slack
                   (fn [[message]]
-                    (is (=? {:attachments [{:blocks [{:text {:emoji true
-                                                             :text "🔔 Card notification test card"
-                                                             :type "plain_text"}
-                                                      :type "header"}]}
-                                           {:attachment-name "image.png"
-                                            :fallback "Card notification test card"
-                                            :rendered-info {:attachments false :content true}
-                                            :title "Card notification test card"}]
-                             :channel-id "#general"}
+                    (is (=? {:blocks  (default-slack-blocks (-> notification :payload :card_id) true)
+                             :channel "#general"}
                             (notification.tu/slack-message->boolean message))))
                   :channel/http
                   (fn [[req]]
@@ -194,7 +184,7 @@
 (deftest cards-with-rows-saved-to-disk-will-cleanup-the-files
   (let [f               (atom nil)
         orig-execute-fn @#'notification.payload.execute/execute-card]
-    (with-redefs [notification.payload.execute/rows-to-disk-threadhold 1
+    (with-redefs [notification.payload.execute/cells-to-disk-threshold 1
                   notification.payload.execute/execute-card
                   (fn [& args]
                     (let [result (apply orig-execute-fn args)]
@@ -207,9 +197,9 @@
                          :handlers [@notification.tu/default-email-handler]}]
           (notification/send-notification! notification)
           (testing "sanity check that the file exists in the first place"
-            (is (notification.payload/is-cleanable? @f)))
+            (is (notification.payload/cleanable? @f)))
           (testing "the files are cleaned up"
-            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.TempFileStorage @f))))))))))
+            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.StreamingTempFileStorage @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
@@ -267,40 +257,53 @@
                 (is (= 1 (count messages)))
                 (is (= 0 (count messages)))))}))))))
 
-(deftest ^:parallel goal-met-test
-  (let [alert-above-pulse {:send_condition "goal_above"}
-        alert-below-pulse {:send_condition "goal_below"}
-        progress-result   (fn [val] {:card   {:display                :progress
-                                              :visualization_settings {:progress.goal    5}}
-                                     :result {:data {:rows [[val]]}}})
-        timeseries-result (fn [val] {:card   {:display                :bar
-                                              :visualization_settings {:graph.goal_value 5}}
-                                     :result {:data {:cols [{:source :breakout}
-                                                            {:name           "avg"
-                                                             :source         :aggregation
-                                                             :base_type      :type/Integer
-                                                             :effective-type :type/Integer
-                                                             :semantic_type  :type/Quantity}]
-                                                     :rows [["2021-01-01T00:00:00Z" val]]}}})
-        goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
-    (testing "Progress bar"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6)))))))
-    (testing "Timeseries"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+(defn- progress-result [val]
+  {:card   {:display                :progress
+            :visualization_settings {:progress.goal    5}}
+   :result {:data {:rows [[val]]}}})
+
+(defn- timeseries-result [val]
+  {:card   {:display                :bar
+            :visualization_settings {:graph.goal_value 5}}
+   :result {:data {:cols [{:source :breakout}
+                          {:name           "avg"
+                           :source         :aggregation
+                           :base_type      :type/Integer
+                           :effective-type :type/Integer
+                           :semantic_type  :type/Quantity}]
+                   :rows [["2021-01-01T00:00:00Z" val]]}}})
+
+(deftest ^:parallel goal-met-progress-bar-alert-above-test
+  (testing "Progress bar with alert above"
+    (let [alert-above-pulse {:send_condition "goal_above"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
+      (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
+      (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))))
+
+(deftest ^:parallel goal-met-progress-bar-alert-below-test
+  (testing "Progress bar with alert below"
+    (let [alert-below-pulse {:send_condition "goal_below"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
+      (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
+      (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6))))))))
+
+(deftest ^:parallel goal-met-timeseries-alert-above-test
+  (testing "Timeseries with alert above"
+    (let [alert-above-pulse {:send_condition "goal_above"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
+      (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
+      (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))))
+
+(deftest ^:parallel goal-met-timeseries-alert-below-test
+  (testing "Timeseries with alert below"
+    (let [alert-below-pulse {:send_condition "goal_below"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
+      (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
+      (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6))))))))
 
 (deftest send-condition-above-goal-test
   (testing "skip is the goal is not met"
@@ -415,7 +418,46 @@
 
       (testing "archive if the send is successful"
         (notification/send-notification! notification)
-        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))
+        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))
+        (testing "once archived, notifications will be skipped if trying to send"
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (empty? emails)))}))))))
+
+(deftest send-once-with-goal-test
+  (notification.tu/with-card-notification
+    [notification {:card              {:dataset_query          (mt/mbql-query
+                                                                 checkins
+                                                                 {:aggregation [["count"]]
+                                                                  :filter      [:between $date "2014-04-01" "2014-06-01"]
+                                                                  :breakout    [!day.date]})
+                                       :display                :line
+                                       :visualization_settings {:graph.show_goal  true
+                                                                :graph.goal_value 0
+                                                                :graph.dimensions ["DATE"]
+                                                                :graph.metrics    ["count"]}}
+                   :notification-card {:send_condition :goal_below
+                                       :send_once      true}
+                   :handlers          [@notification.tu/default-email-handler]}]
+    (testing "if the goal is not met, no email is sent and notification is active"
+      (notification.tu/test-send-notification!
+       notification
+       {:channel/email
+        (fn [emails]
+          (is (zero? (count emails)))
+          (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))}))
+
+    (testing "if the goal is met, notification is sent then archived"
+      ;; flip the condition so the goal is met now
+      (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {:send_condition :goal_above})
+      (notification.tu/test-send-notification!
+       (t2/select-one :model/Notification (:id notification))
+       {:channel/email
+        (fn [emails]
+          (is (= 1 (count emails)))
+          (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))}))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
@@ -583,3 +625,30 @@
                                           "ngoc@metabase.com"]
                              :filters    nil}}
                  (mt/latest-audit-log-entry :alert-send (:id notification)))))))))
+
+(deftest ^:parallel progress-value-column-test
+  (testing "Progress charts should use progress.value column instead of first column"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          notification-card {:send_condition "goal_above"}
+          card-part {:card {:display :progress
+                            :visualization_settings {:progress.value "actual_value"
+                                                     :progress.goal "Target"}}
+                     :result {:data {:cols [{:name "ignore_me" :base_type :type/Integer}
+                                            {:name "actual_value" :base_type :type/Integer}
+                                            {:name "Target" :base_type :type/Integer}]
+                                     :rows [[999 120 100]]}}}]
+      (is (true? (goal-met? notification-card card-part))
+          "Should return true when actual_value (120) >= Target (100)"))))
+
+(deftest ^:parallel progress-value-fallback-test
+  (testing "Progress charts should fall back to first numeric column when no progress.value is set"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          notification-card {:send_condition "goal_above"}
+          card-part {:card {:display :progress
+                            :visualization_settings {:progress.goal "Target"}}
+                     :result {:data {:cols [{:name "text_col" :base_type :type/Text}
+                                            {:name "numeric_col" :base_type :type/Integer}
+                                            {:name "Target" :base_type :type/Integer}]
+                                     :rows [["text" 120 100]]}}}]
+      (is (true? (goal-met? notification-card card-part))
+          "Should return true when first numeric column (120) >= Target (100)"))))

@@ -247,11 +247,11 @@ describe("admin > database > database routing", () => {
         .should("exist");
 
       cy.log("should not see database in table metadata db list");
-      cy.visit("/admin/datamodel");
-      cy.findByTestId("selected-database").click();
-      H.popover()
-        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
-        .should("not.exist");
+      H.DataModel.visit();
+
+      H.DataModel.TablePicker.getDatabase(
+        BASE_POSTGRES_DESTINATION_DB_INFO.name,
+      ).should("not.exist");
 
       cy.log("should not see database in permissions pages");
       cy.visit("/admin/permissions/data/database");
@@ -261,8 +261,11 @@ describe("admin > database > database routing", () => {
 
       cy.log("should not see database in data picker");
       cy.visit("/question/notebook");
+      H.miniPicker()
+        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
+        .should("not.exist");
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
         cy.findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name).should(
           "not.exist",
         );

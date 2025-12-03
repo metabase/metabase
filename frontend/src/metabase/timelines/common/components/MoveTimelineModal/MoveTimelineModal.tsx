@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
-} from "metabase/common/components/CollectionPicker";
+} from "metabase/common/components/Pickers/CollectionPicker";
 import { getTimelineName } from "metabase/lib/timelines";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
@@ -12,7 +12,6 @@ export interface MoveTimelineModalProps {
   timeline: Timeline;
   onSubmit: (timeline: Timeline, collectionId: CollectionId) => void;
   onSubmitSuccess?: () => void;
-  onCancel?: () => void;
   onClose: () => void;
 }
 

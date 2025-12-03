@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
@@ -22,13 +20,7 @@ import type { UpdateTargetId } from "../types";
 import { Panel, RoundedBox } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 
-const StrategyEditorForDatabases_Base = ({
-  router,
-  route,
-}: {
-  router: InjectedRouter;
-  route?: Route;
-}) => {
+export const StrategyEditorForDatabases: React.FC = () => {
   const { canOverrideRootStrategy } = PLUGIN_CACHING;
 
   const [
@@ -75,7 +67,7 @@ const StrategyEditorForDatabases_Base = ({
     confirmationModal,
     isStrategyFormDirty,
     setIsStrategyFormDirty,
-  } = useConfirmIfFormIsDirty(router, route);
+  } = useConfirmIfFormIsDirty();
 
   /** Update the targetId (the id of the currently edited model) but confirm if the form is unsaved */
   const updateTargetId: UpdateTargetId = (newTargetId, isFormDirty) => {
@@ -164,12 +156,8 @@ const StrategyEditorForDatabases_Base = ({
             )}
           </Panel>
         </RoundedBox>
-        <UpsellCacheConfig source="performance-data_cache" />
+        <UpsellCacheConfig location="performance-data_cache" />
       </Flex>
     </SettingsPageWrapper>
   );
 };
-
-export const StrategyEditorForDatabases = withRouter(
-  StrategyEditorForDatabases_Base,
-);

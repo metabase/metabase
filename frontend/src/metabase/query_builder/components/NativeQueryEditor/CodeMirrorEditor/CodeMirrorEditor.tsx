@@ -21,7 +21,9 @@ import type { SelectionRange } from "../types";
 
 export type CodeMirrorEditorProps = {
   query: Lib.Query;
+  proposedQuery?: Lib.Query;
   highlightedLineNumbers?: number[];
+  placeholder?: string;
   readOnly?: boolean;
   onChange?: (queryText: string) => void;
   onFormatQuery?: () => void;
@@ -50,7 +52,9 @@ export const CodeMirrorEditor = forwardRef<
 >(function CodeMirrorEditor(
   {
     query,
+    proposedQuery,
     highlightedLineNumbers,
+    placeholder = getPlaceholderText(Lib.engine(query)),
     readOnly,
     onChange,
     onRunQuery,
@@ -62,10 +66,11 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
-  const extensions = useExtensions({ query, onRunQuery });
-
-  const engine = Lib.engine(query);
-  const placeholder = getPlaceholderText(engine);
+  const extensions = useExtensions({
+    query,
+    diff: !!proposedQuery,
+    onRunQuery,
+  });
 
   useImperativeHandle(ref, () => {
     return {
@@ -129,13 +134,17 @@ export const CodeMirrorEditor = forwardRef<
     [highlightedLineNumbers],
   );
 
+  const value = useMemo(() => {
+    return Lib.rawNativeQuery(proposedQuery ?? query);
+  }, [proposedQuery, query]);
+
   return (
     <CodeMirror
       ref={editorRef}
       data-testid="native-query-editor"
       className={S.editor}
       extensions={extensions}
-      value={Lib.rawNativeQuery(query)}
+      value={value}
       readOnly={readOnly}
       onChange={onChange}
       height="100%"

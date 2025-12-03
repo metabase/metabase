@@ -1,17 +1,21 @@
+import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
 import { CountdownIcon } from "metabase/common/components/icons/CountdownIcon";
 import { isNotNull } from "metabase/lib/types";
+import type { ActionIconProps } from "metabase/ui";
 
 type RefreshWidgetTargetProps = {
   period: number | null;
   elapsed: number | null;
-};
+} & ActionIconProps &
+  ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const RefreshWidgetTarget = ({
   period,
   elapsed,
+  ...buttonProps
 }: RefreshWidgetTargetProps) => {
   const showRemaining = isNotNull(elapsed) && isNotNull(period);
 
@@ -21,6 +25,7 @@ export const RefreshWidgetTarget = ({
         tooltipLabel={t`Auto-refresh`}
         icon="clock"
         aria-label={t`Auto Refresh`}
+        {...buttonProps}
       />
     );
   }

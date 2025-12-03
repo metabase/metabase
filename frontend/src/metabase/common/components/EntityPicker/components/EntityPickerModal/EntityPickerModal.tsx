@@ -15,11 +15,19 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import resizeObserver from "metabase/lib/resize-observer";
-import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import {
+  Box,
+  Flex,
+  Icon,
+  Modal,
+  Repeat,
+  Skeleton,
+  TextInput,
+} from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,
+  SearchModel,
   SearchRequest,
   SearchResult,
   SearchResultId,
@@ -56,12 +64,15 @@ export type EntityPickerModalOptions = {
   confirmButtonText?: string | ((model?: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
+  showDatabases?: boolean;
+  showLibrary?: boolean;
 };
 
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
   hasRecents: true,
+  showLibrary: true,
 };
 
 export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
@@ -101,6 +112,7 @@ export interface EntityPickerModalProps<
   searchExtraButtons?: ReactNode[];
   children?: ReactNode;
   disableCloseOnEscape?: boolean;
+  searchModels?: (SearchModel | "table")[];
 }
 
 export function EntityPickerModal<
@@ -127,6 +139,7 @@ export function EntityPickerModal<
   isLoadingTabs = false,
   disableCloseOnEscape = false,
   children,
+  searchModels: _searchModels,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
@@ -140,7 +153,10 @@ export function EntityPickerModal<
         refetchOnMountOrArgChange: true,
       },
     );
-  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+  const searchModels = useMemo(
+    () => _searchModels || getSearchModels(passedTabs),
+    [passedTabs, _searchModels],
+  );
 
   const folderModels = useMemo(
     () => getSearchFolderModels(passedTabs),
@@ -175,7 +191,7 @@ export function EntityPickerModal<
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
 
-  const { data, isFetching } = useSearchQuery(
+  const { data, isFetching, requestId } = useSearchQuery(
     {
       q: debouncedSearchQuery,
       models: searchModels,
@@ -256,6 +272,9 @@ export function EntityPickerModal<
             isLoading={isFetching}
             searchScope={searchScope}
             searchResults={finalSearchResults ?? []}
+            searchEngine={data?.engine}
+            searchRequestId={requestId}
+            searchTerm={searchQuery}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}
@@ -484,7 +503,7 @@ const assertValidProps = (
 };
 
 const EntityPickerLoadingSkeleton = () => (
-  <Box data-testid="loading-indicator">
+  <Box data-testid="loading-indicator" className={S.loadingSkeleton}>
     <Flex px="2rem" gap="1.5rem" mb="3.5rem">
       <Repeat times={3}>
         <Skeleton h="2rem" w="5rem" mb="0.5rem" />

@@ -57,7 +57,7 @@ describe("QuarterPicker", () => {
 
     await userEvent.click(screen.getByText("Q2"));
 
-    expect(onChange).toHaveBeenCalledWith(new Date(2020, 3));
+    expect(onChange).toHaveBeenCalledWith(new Date(2020, 3).toISOString());
   });
 
   it("should be able to change a year", async () => {
@@ -69,6 +69,6 @@ describe("QuarterPicker", () => {
     await userEvent.click(screen.getByText("2024"));
     await userEvent.click(screen.getByText("Q3"));
 
-    expect(onChange).toHaveBeenCalledWith(new Date(2024, 6));
+    expect(onChange).toHaveBeenCalledWith(new Date(2024, 6).toISOString());
   });
 });

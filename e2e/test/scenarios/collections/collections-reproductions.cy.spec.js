@@ -99,10 +99,19 @@ describe("issue 24660", () => {
 
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findAllByText(collectionName).first().click();
 
+      cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
+      cy.findByText(questions[ORDERS_COUNT_QUESTION_ID]).should("not.exist");
+      cy.realType("{esc}");
+    });
+
+    cy.findByPlaceholderText("Search for tables and more...").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findAllByText(collectionName).first().click();
       cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
       cy.findByText(questions[ORDERS_COUNT_QUESTION_ID]).should("not.exist");
     });
@@ -134,5 +143,26 @@ describe("issue 30235", () => {
         cy.findByText("Edit permissions").should("be.visible");
       });
     });
+  });
+});
+
+describe("issue 58231", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+  });
+
+  it("should allow to edit permissions for Usage Analytics collection (metabase#58231)", () => {
+    cy.visit("/collection/2-usage-analytics");
+
+    cy.findByTestId("collection-menu")
+      .findByLabelText("Edit permissions")
+      .should("be.visible")
+      .click();
+
+    H.modal()
+      .findByText("Permissions for Usage analytics")
+      .should("be.visible");
   });
 });

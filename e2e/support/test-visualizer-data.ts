@@ -211,6 +211,20 @@ export const ACCOUNTS_COUNT_BY_COUNTRY: StructuredQuestionDetailsWithName = {
   },
 };
 
+export const ACCOUNTS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
+  display: "bar",
+  name: "Accounts by Created At (Month)",
+  query: {
+    "source-table": ACCOUNTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ACCOUNTS.CREATED_AT, { "temporal-unit": "month" }]],
+  },
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT"],
+    "graph.metrics": ["count"],
+  },
+};
+
 export const ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY: StructuredQuestionDetailsWithName =
   {
     display: "line",

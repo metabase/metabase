@@ -45,6 +45,14 @@
   [topic event]
   (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
 
+(derive ::transform-event ::event)
+(derive :event/transform-create ::transform-event)
+(derive :event/transform-update ::transform-event)
+
+(methodical/defmethod events/publish-event! ::transform-event
+  [topic event]
+  (push-revision! :model/Transform event {:is-creation? (= topic :event/transform-create)}))
+
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
 (derive :event/segment-update ::segment-event)
@@ -53,3 +61,12 @@
 (methodical/defmethod events/publish-event! ::segment-event
   [topic event]
   (push-revision! :model/Segment event {:is-creation? (= topic :event/segment-create)}))
+
+(derive ::document-event ::event)
+(derive :event/document-create ::document-event)
+(derive :event/document-update ::document-event)
+(derive :event/document-delete ::document-event)
+
+(methodical/defmethod events/publish-event! ::document-event
+  [topic event]
+  (push-revision! :model/Document event {:is-creation? (= topic :event/document-create)}))

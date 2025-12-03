@@ -7,6 +7,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
    [metabase.util.time.impl-common :as u.time.impl-common]))
@@ -90,8 +91,8 @@
      :cljs ::string.date))
 
 (mr/def ::time
+  "time literal"
   #?(:clj [:or
-           {:doc/title "time literal"}
            ::string.time
            [:time/local-time
             {:error/message    "instance of java.time.LocalTime"
@@ -141,7 +142,15 @@
   [:merge
    [:ref ::common/options]
    [:map
-    [:effective-type ::common/base-type]]])
+    {:decode/normalize (fn [m]
+                         (when (map? m)
+                           (-> m
+                               common/normalize-options-map
+                               (cond-> (and (:base-type m)
+                                            (not (:effective-type m)))
+                                 (assoc :effective-type (:base-type m))))))}
+    [:effective-type ::common/base-type]
+    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]]])
 
 ;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to
 ;;; literals, to make it easier for drivers to process queries; see

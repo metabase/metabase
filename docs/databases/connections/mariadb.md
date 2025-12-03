@@ -18,6 +18,10 @@ Metabase supports the oldest supported version of Maria DB through the latest st
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -73,13 +77,13 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll be ab
 
 #### Scanning for filter values
 
-Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
+Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a resource-intensive process, particularly if you have a large database.
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
 - **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which rarely have new values added. Use the [Re-scan field values](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### Periodically refingerprint tables
 
@@ -93,7 +97,13 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
 
+## Passwords with special characters
+
+If your password contains characters that aren't UTF-8, then you might need to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This ensures that MariaDB understands the special characters in the password during authentication.
+
 ## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
 See [Database routing](../../permissions/database-routing.md).
 

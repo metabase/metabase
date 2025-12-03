@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
-import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
+import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDashboardQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {

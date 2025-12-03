@@ -30,6 +30,10 @@ Here you can [sync the database schema and rescan field values](../sync-scan.md)
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -73,6 +77,10 @@ To use Oauth as a provider, you'll need to input your:
 - Auth token URL
 - Auth token request headers (a JSON map)
 
+#### IAM authentication
+
+To connect to Amazon RDS instances using IAM authentication instead of a password, see [IAM authentication for AWS RDS](./aws-rds.md#iam-authentication).
+
 ### Schemas
 
 You can specify which schemas you want to sync and scan. Options are:
@@ -98,7 +106,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 
 ### Use a secure connection (SSL)
 
-Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
+Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we recommend keeping SSL turned on to keep your data secure.
 
 #### SSL Mode
 
@@ -184,13 +192,23 @@ Choose whether to enable features related to [Metabase models](../../data-modeli
 
 ### Model actions
 
-Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions are able to read, write, and possibly delete data. Your database user will need write permissions.
+Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
 
 ### Model persistence
 
 We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
 
+## Editable table data
+
+Turn this setting **ON** to enable editing of table data directly within Metabase. When enabled, Admins can create, update, and delete records in your tables through Metabase's interface.
+
+Your database connection will need Write permissions to enable this feature. Meaning: the database user account that you use to connect Metabase to your database must have appropriate privileges to modify data in the tables you want to make editable.
+
+See [privileges](../users-roles-privileges.md).
+
 ## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
 See [Database routing](../../permissions/database-routing.md).
 

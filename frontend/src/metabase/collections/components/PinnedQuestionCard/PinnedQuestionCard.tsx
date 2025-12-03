@@ -12,8 +12,9 @@ import {
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
+import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Group, Icon, type IconName, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -79,7 +80,7 @@ const PinnedQuestionCard = ({
     <CardRoot
       to={item.getUrl()}
       isPreview={isPreview}
-      className={cx(CS.hoverParent, CS.hoverVisibility)}
+      className={cx(CS.hoverChild, CS.hoverVisibility)}
     >
       <Flex h="100%" direction="column">
         {isPreview ? (
@@ -112,7 +113,6 @@ const PinnedQuestionCard = ({
               {({ question, rawSeries, loading, error, errorIcon }) =>
                 loading ? (
                   <CardPreviewSkeleton
-                    name={question?.displayName()}
                     display={question?.display()}
                     description={question?.description()}
                   />
@@ -138,7 +138,7 @@ const PinnedQuestionCard = ({
               description={
                 item.description || DEFAULT_DESCRIPTION[item.model] || ""
               }
-              icon={item.getIcon() as unknown as { name: IconName }}
+              icon={getIcon(item)}
               tooltip={getSkeletonTooltip(item)}
             />
           )}

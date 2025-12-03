@@ -20,4 +20,12 @@ serdes/meta:
   model: Schema
 - id: CATEGORIES
   model: Table
+archived_at: null
+data_authority: unconfigured
+data_layer: null
+data_source: null
 database_require_filter: null
+deactivated_at: null
+is_writable: null
+owner_email: null
+owner_user_id: null

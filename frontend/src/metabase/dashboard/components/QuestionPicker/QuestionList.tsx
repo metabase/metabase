@@ -15,10 +15,11 @@ import type { BaseSelectListItemProps } from "metabase/common/components/SelectL
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Search from "metabase/entities/search";
-import { isEmbeddingSdk } from "metabase/env";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import { getIcon } from "metabase/lib/icon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
@@ -80,7 +81,7 @@ export function QuestionList({
           ...(showOnlyPublicCollections && {
             filter_items_in_personal_collection: "exclude" as const,
           }),
-          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+          models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
             : ["card", "dataset", "metric"],
           offset: queryOffset,
@@ -96,7 +97,7 @@ export function QuestionList({
     !isSearching
       ? {
           id: collectionId,
-          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+          models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
             : ["card", "dataset", "metric"],
           offset: queryOffset,
@@ -145,7 +146,7 @@ export function QuestionList({
               className={S.QuestionListItem}
               name={item.getName()}
               icon={{
-                name: item.getIcon().name,
+                name: getIcon(item).name,
                 size: item.model === "dataset" ? 18 : 16,
                 className: S.QuestionListItemIcon,
               }}
@@ -167,7 +168,7 @@ export function QuestionList({
                   setVisualizerModalCardId(Number(item.id));
                 }}
               >
-                <Icon name="add_data" />
+                <Icon name="lineandbar" />
               </ActionIcon>
             </Tooltip>
           </Flex>

@@ -64,9 +64,12 @@
                   {:aggregation [[:count]]
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
-        (is (= "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
-               (:query (qp.compile/compile-with-inline-parameters query))
-               (-> (qp/process-query query) :data :native_form :query)))))))
+        (let [expected "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
+              replaced "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = decode(unhex('776f77'), 'utf-8')"]
+          (is (= "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
+                 (:query (qp.compile/compile-with-inline-parameters query))))
+          (is (contains? #{expected replaced}
+                         (-> (qp/process-query query) :data :native_form :query))))))))
 
 (deftest paranoid-inline-strings-test
   (mt/test-driver :sparksql
@@ -90,6 +93,12 @@
                     "WHERE"
                     "  `t1`.`name` = decode(unhex('776f77'), 'utf-8')"]
                    (str/split-lines (driver/prettify-native-form :sparksql @the-sql))))))))))
+
+(deftest ^:parallel array-test
+  (mt/test-driver :sparksql
+    (let [query (mt/native-query {:query "select array(1,2,3)"})]
+      (is (= [["[1,2,3]"]]
+             (mt/rows (qp/process-query query)))))))
 
 (deftest ^:parallel read-dates-test
   (testing "DATE columns should come back as LocalDate"

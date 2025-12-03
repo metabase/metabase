@@ -1,0 +1,7 @@
+.paper {
+  border: 1px solid var(--mb-color-border);
+  display: block;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+  width: 100%;
+}

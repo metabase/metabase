@@ -7,6 +7,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -14,11 +15,11 @@
 (defn ^:private job []
   (if (slack/slack-configured?)
     (let [_        (log/info "Starting Slack user/channel startup cache refresh...")
-          start-ms (System/currentTimeMillis)
+          timer    (u/start-timer)
           _        (slack/refresh-channels-and-usernames!)]
       (log/infof "Slack user/channel startup cache refreshed with %s entries, took %sms."
                  (count (:channels (channel.settings/slack-cached-channels-and-usernames)))
-                 (- (System/currentTimeMillis) start-ms)))
+                 (u/since-ms timer)))
     (log/info "Slack is not configured, not refreshing slack user/channel cache.")))
 
 (def ^:private job-key "metabase.task.refresh-channel-cache.job")

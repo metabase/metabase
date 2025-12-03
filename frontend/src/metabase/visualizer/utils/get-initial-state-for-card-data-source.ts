@@ -1,5 +1,6 @@
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
+import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,
@@ -7,13 +8,14 @@ import {
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
+import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Card,
   Dataset,
   DatasetColumn,
   VisualizationDisplay,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase-types/store/visualizer";
 
 import {
   createDimensionColumn,
@@ -72,11 +74,26 @@ function pickColumnsFromTableToBarChart(
 function pickColumns(
   display: VisualizationDisplay,
   originalColumns: DatasetColumn[],
+  settings: ComputedVisualizationSettings,
 ) {
   if (display === "table" || display === "pivot") {
     // if the original card is a table, let's only use two columns
     // in the resulting bar chart
     return pickColumnsFromTableToBarChart(originalColumns);
+  }
+
+  if (isCartesianChart(display)) {
+    const tooltipColumns = (settings["graph.tooltip_columns"] || []).map(
+      getColumnNameFromKey,
+    );
+
+    return originalColumns.filter((col) => {
+      return (
+        settings["graph.metrics"]?.includes(col.name) ||
+        settings["graph.dimensions"]?.includes(col.name) ||
+        tooltipColumns.includes(col.name)
+      );
+    });
   }
 
   return originalColumns;
@@ -85,20 +102,19 @@ function pickColumns(
 export function getInitialStateForCardDataSource(
   card: Card,
   dataset: Dataset,
-): VisualizerVizDefinitionWithColumns {
+): VisualizerVizDefinitionWithColumnsAndFallbacks {
   const {
     data: { cols: originalColumns },
   } = dataset;
 
-  const state: VisualizerVizDefinitionWithColumns = {
+  const state: VisualizerVizDefinitionWithColumnsAndFallbacks = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
       : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
-    settings: {
-      "card.title": card.name,
-    },
+    settings: {},
+    datasetFallbacks: { [card.id]: dataset },
   };
 
   const dataSource = createDataSource("card", card.id, card.name);
@@ -137,8 +153,19 @@ export function getInitialStateForCardDataSource(
     }
   }
 
+  const computedSettings: ComputedVisualizationSettings =
+    getComputedSettingsForSeries([
+      {
+        ...dataset,
+        // Using state.display to get viz settings
+        // relevant to a new visualization vs. original card
+        // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
+        card: { ...card, display: state.display },
+      },
+    ]);
+
   const columnsToRefs: Record<string, string> = {};
-  const columns = pickColumns(card.display, originalColumns);
+  const columns = pickColumns(card.display, originalColumns, computedSettings);
 
   columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
@@ -153,17 +180,6 @@ export function getInitialStateForCardDataSource(
     columnsToRefs[column.name] = columnRef.name;
   });
 
-  const computedSettings: ComputedVisualizationSettings =
-    getComputedSettingsForSeries([
-      {
-        ...dataset,
-        // Using state.display to get viz settings
-        // relevant to a new visualization vs. original card
-        // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
-        card: { ...card, display: state.display },
-      },
-    ]);
-
   const entries = getColumnVizSettings(state.display!)
     .map((setting) => {
       const originalValue = computedSettings[setting];
@@ -173,7 +189,7 @@ export function getInitialStateForCardDataSource(
       }
 
       if (Array.isArray(originalValue)) {
-        // When there're no sensible metrics/dimensions,
+        // When there are no sensible metrics/dimensions,
         // "graph.dimensions" and "graph.metrics" are `[null]`
         if (originalValue.filter(Boolean).length === 0) {
           return;
@@ -210,7 +226,6 @@ export function getInitialStateForCardDataSource(
   state.settings = {
     ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
     ...Object.fromEntries(entries),
-    "card.title": card.name,
   };
 
   return state;

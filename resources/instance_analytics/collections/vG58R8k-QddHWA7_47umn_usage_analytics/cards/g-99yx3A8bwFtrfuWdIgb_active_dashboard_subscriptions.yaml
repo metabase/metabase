@@ -82,7 +82,6 @@ dataset_query:
           - full_name
         - base-type: type/Text
           join-alias: People - Creator
-      ident: join_g-99yx3A8bwFtrfuWdIgb@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
     - alias: Content - Entity Qualified
       condition:
@@ -112,7 +111,6 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Content - Entity Qualified
-      ident: join_g-99yx3A8bwFtrfuWdIgb@0__Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
     source-table: 5ojUtU9iE-DCggHdFPIll
   type: query

@@ -1,14 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
   (:require
-   [clj-time.core :as time]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]))
 
@@ -167,7 +166,7 @@
                        :filter      [:and
                                      [:= $user_id->people.source "Facebook" "Google"]
                                      [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at (- 2020 (.getYear (time/now))) :year]]
+                                     [:time-interval $created_at (- 2020 (t/as (t/local-date) :year)) :year]]
                        :expressions {:pivot-grouping [:abs 0]}
                        :limit       5})]
           (mt/with-native-query-testing-context query
@@ -202,7 +201,7 @@
                                          $created_at
                                          $quantity
                                          $orders.product_id->products.category]})}]})
-           (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+           (mt/metadata-provider))
           (is (= [["Doohickey" 3976]]
                  (mt/formatted-rows
                   [str int]

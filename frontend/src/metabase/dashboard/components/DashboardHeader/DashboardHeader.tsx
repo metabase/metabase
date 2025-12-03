@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Query } from "history";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -10,18 +9,13 @@ import {
   fetchDashboard,
   setSidebar,
 } from "metabase/dashboard/actions";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
-  getDashboardComplete,
   getIsAdditionalInfoVisible,
   getIsDirty,
   getIsEditing,
 } from "metabase/dashboard/selectors";
-import type {
-  DashboardFullscreenControls,
-  DashboardNightModeControls,
-  DashboardRefreshPeriodControls,
-} from "metabase/dashboard/types";
-import { isEmbeddingSdk } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getSetting } from "metabase/selectors/settings";
@@ -35,37 +29,26 @@ import { CancelEditButton, SaveEditButton } from "./buttons";
 
 export type DashboardHeaderProps = {
   dashboard: Dashboard;
-  dashboardBeforeEditing?: Dashboard | null;
-  parameterQueryParams: Query;
-  isAdditionalInfoVisible: boolean;
-} & DashboardFullscreenControls &
-  DashboardRefreshPeriodControls &
-  DashboardNightModeControls;
+};
 
-export const DashboardHeaderInner = ({
-  dashboard,
-  dashboardBeforeEditing,
-  hasNightModeToggle,
-  isFullscreen,
-  isNightMode,
-  parameterQueryParams,
-  onFullscreenChange,
-  onNightModeChange,
-  onRefreshPeriodChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-}: DashboardHeaderProps) => {
+export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
+  const { isGuestEmbed } = useDashboardContext();
 
   useMount(() => {
-    dispatch(fetchPulseFormInput());
+    if (!isGuestEmbed) {
+      dispatch(fetchPulseFormInput());
+    }
   });
 
   const isEditing = useSelector(getIsEditing);
   const isDirty = useSelector(getIsDirty);
   const isAdditionalInfoVisible = useSelector(getIsAdditionalInfoVisible);
+
+  const { dashboardBeforeEditing, parameterQueryParams, isFullscreen } =
+    useDashboardContext();
 
   const isHomepageDashboard = useSelector(
     (state) =>
@@ -74,7 +57,12 @@ export const DashboardHeaderInner = ({
   );
 
   const { data: collection, isLoading: isLoadingCollection } =
-    useGetCollectionQuery({ id: dashboard.collection_id || "root" });
+    useGetCollectionQuery(
+      { id: dashboard.collection_id || "root" },
+      {
+        skip: isGuestEmbed,
+      },
+    );
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
@@ -88,7 +76,7 @@ export const DashboardHeaderInner = ({
     dispatch(
       fetchDashboard({
         dashId: dashboard.id,
-        queryParams: parameterQueryParams,
+        queryParams: parameterQueryParams ?? {},
         options: { preserveParameters: true },
       }),
     );
@@ -123,12 +111,15 @@ export const DashboardHeaderInner = ({
     ];
   };
 
-  if (isLoadingCollection || !collection) {
-    return (
-      <Flex justify="center" py="1.5rem">
-        <Loader size={29} />
-      </Flex>
-    );
+  // We don't fetch collection info for static embedding
+  if (!isGuestEmbed) {
+    if (isLoadingCollection || !collection) {
+      return (
+        <Flex justify="center" py="1.5rem">
+          <Loader size={29} />
+        </Flex>
+      );
+    }
   }
 
   const hasLastEditInfo = dashboard["last-edit-info"] != null;
@@ -150,20 +141,12 @@ export const DashboardHeaderInner = ({
         )}
         editingButtons={editingButtons}
         onLastEditInfoClick={
-          isEmbeddingSdk
+          isEmbeddingSdk()
             ? undefined
             : () => {
                 dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
               }
         }
-        refreshPeriod={refreshPeriod}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-        hasNightModeToggle={hasNightModeToggle}
-        onNightModeChange={onNightModeChange}
-        isNightMode={isNightMode}
       />
 
       <LeaveConfirmModal
@@ -175,12 +158,12 @@ export const DashboardHeaderInner = ({
   );
 };
 
-export const DashboardHeader = (props: DashboardHeaderProps) => {
-  const dashboard = useSelector(getDashboardComplete);
+export const DashboardHeader = () => {
+  const { dashboard } = useDashboardContext();
 
   if (!dashboard) {
     return null;
   }
 
-  return <DashboardHeaderInner {...props} />;
+  return <DashboardHeaderInner dashboard={dashboard} />;
 };

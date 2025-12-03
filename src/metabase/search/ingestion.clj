@@ -51,45 +51,112 @@
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
-  (->> (:search-terms (search.spec/spec (:model m)))
-       (keep m)
-       (map str/trim)
-       (remove str/blank?)
-       (str/join " ")))
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        getter       (if (map? search-terms)
+                       (fn [[k tx]]
+                         (let [tx (if (true? tx) identity tx)]
+                           (some-> (get m k) tx)))
+                       m)
+        xf           (comp (keep getter)
+                           (map str/trim)
+                           (remove str/blank?))]
+    (->> (into [] xf search-terms)
+         (str/join " "))))
+
+(defn- embeddable-text
+  "Generate labeled text for semantic search embeddings.
+  Format:
+    [model]
+    field1: value1
+    field2: value2
+
+  Note: Unlike searchable-text, transformation functions in search-terms
+  (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
+  explosion are specific to full-text search optimization."
+  [m]
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        field-keys   (cond-> search-terms (map? search-terms) keys)
+        header       (str "[" (:model m) "]")
+        fields        (keep (fn [k]
+                              (let [v (get m k)]
+                                (when (not (str/blank? (str v)))
+                                  (str (name k) ": " (str/trim (str v))))))
+                            field-keys)]
+    (str header "\n" (str/join "\n" fields))))
+
+(defn- search-term-columns
+  "Extract column names from search-terms spec for SQL query generation"
+  [search-terms]
+  (if (map? search-terms) (keys search-terms) search-terms))
 
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
 
+(defn- execute-function-attr
+  "Execute a single function attribute and return the result"
+  [attr-key attr-def record]
+  (try
+    (let [f (:fn attr-def)
+          fields (:fields attr-def)
+          input (if fields
+                  (select-keys record fields)
+                  record)]
+      (f input))
+    (catch Exception e
+      (log/warn e "Function execution failed for attribute" attr-key)
+      false)))
+
+(defn- execute-all-function-attrs
+  "Execute all function attributes for a given spec and return computed values"
+  [spec record]
+  (reduce-kv
+   (fn [acc attr-key attr-def]
+     (if (search.spec/function-attr? attr-def)
+       (let [snake-key (keyword (u/->snake_case_en (name attr-key)))]
+         (assoc acc snake-key (execute-function-attr attr-key attr-def record)))
+       acc))
+   {}
+   (:attrs spec)))
+
 (defn- ->document [m]
-  (-> m
-      (perf/select-keys
-       (into [:model] search.spec/attr-columns))
-      (update :archived boolean)
-      (assoc
-       :display_data (display-data m)
-       :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
-       :searchable_text (searchable-text m))))
+  (let [spec (search.spec/spec (:model m))
+        fn-results (execute-all-function-attrs spec m)
+        sql-results (-> m
+                        (perf/select-keys
+                         (into [:model] search.spec/attr-columns))
+                        (update :archived boolean)
+                        (assoc
+                         :display_data (display-data m)
+                         :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
+                         :searchable_text (searchable-text m)
+                         :embeddable_text (embeddable-text m)))]
+    (merge fn-results sql-results)))
 
 (defn- attrs->select-items [attrs]
-  (for [[k v] attrs :when v]
+  (for [[k v] attrs
+        :when (and v (not (search.spec/function-attr? v)))]
     (let [as (keyword (u/->snake_case_en (name k)))]
       (if (true? v) as [v as]))))
 
 (defn- spec-index-query*
   [search-model]
-  (let [spec (search.spec/spec search-model)]
+  (let [spec         (search.spec/spec search-model)
+        fn-deps      (search.spec/collect-fn-attr-req-fields spec)
+        fn-selects   (map (fn [field]
+                            [(keyword (str "this." (name field))) field])
+                          fn-deps)
+        search-terms (set (search-term-columns (:search-terms spec)))]
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
                                                (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
                                                                 term])
-                                                    (:search-terms spec))
+                                                    search-terms)
                                                (mapcat (fn [k] (attrs->select-items
-                                                                (let [search-terms (set (:search-terms spec))]
-                                                                  (->> k
-                                                                       (get spec)
-                                                                       (remove (comp search-terms key))))))
-                                                       [:attrs :render-terms])))
+                                                                (->> (get spec k)
+                                                                     (remove (comp search-terms key)))))
+                                                       [:attrs :render-terms])
+                                               fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]
       :where     (:where spec [:inline [:= 1 1]])
       :left-join (when (:joins spec)
@@ -112,7 +179,14 @@
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
-  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
+  (let [models search.spec/search-models
+        ;; we're pushing indexed entities last in the search items reducible
+        ;; so that more important models gets indexed first, making the partial
+        ;; index more usable earlier
+        sorted-models (cond-> models
+                        (contains? models "indexed-entity")
+                        (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
+    (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
 
 (defn- query->documents [query-reducible]
   (->> query-reducible
@@ -128,6 +202,18 @@
   "Return all existing searchable documents from the database."
   []
   (query->documents (search-items-reducible)))
+
+(defn search-items-count
+  "Returns a count of all searchable items in the database."
+  []
+  (->> (for [model search.spec/search-models]
+         (-> (spec-index-query-where model nil)
+             (assoc :select [[:%count.* :count]])
+             t2/query
+             first
+             :count))
+       (filter some?)
+       (reduce + 0)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."

@@ -34,16 +34,21 @@ jobs:
         AWS_S3_DOWNLOADS_BUCKET: test_bucket
       with:
         script: | # js
-          const { getChangelog } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const R = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
           const version = '${{ inputs.version }}';
 
-          const notes = await getChangelog({
+          const issues = await R.getMilestoneIssues({
             version,
             github,
             owner: context.repo.owner,
             repo: context.repo.repo,
+          });
+
+          const notes = R.getWebsiteChangelog({
+            version,
+            issues,
           });
 
           fs.writeFileSync(`release-notes-preview-${version}.md`, notes);

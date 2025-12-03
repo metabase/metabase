@@ -1,7 +1,6 @@
 (ns metabase.config.core
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [cheshire.core :as json]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
@@ -16,6 +15,14 @@
   (try
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase-enterprise.core.dummy-namespace)
+    true
+    (catch Throwable _
+      false)))
+
+(def ^{:doc "Indicates whether Dev extensions are available" :added "0.56.0"} dev-available?
+  (try
+    #_{:clj-kondo/ignore [:metabase/modules]}
+    (require 'dev.dummy-namespace)
     true
     (catch Throwable _
       false)))
@@ -94,6 +101,9 @@
 (def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= :dev  run-mode))
 (def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= :prod run-mode))
 (def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= :test run-mode))
+;; In E2E mode, we can customize the token check URL (e.g., use staging license tokens) while still ensuring that core app logic is unaffected.
+;; This allows us to run Cypress E2E tests with the production-like behavior.
+(def ^Boolean is-e2e?  "Are we running Cypress E2E tests against the production-ready code?"    (= :e2e run-mode))
 
 ;;; Version stuff
 
@@ -121,6 +131,10 @@
    Looks something like `v0.25.0-snapshot (1de6f3f nested-queries-icon)`."
   (let [{:keys [tag hash]} mb-version-info]
     (format "%s (%s)" tag hash)))
+
+(def ^String mb-version-hash
+  "A string representing the hash of the current version of Metabase."
+  (:hash mb-version-info))
 
 (def ^String mb-app-id-string
   "A formatted version string including the word 'Metabase' appropriate for passing along
@@ -158,12 +172,6 @@
   ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
   mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
-
-(defn mb-user-defaults
-  "Default user details provided as a JSON string at launch time for first-user setup flow."
-  []
-  (when-let [user-json (env/env :mb-user-defaults)]
-    (json/parse-string user-json true)))
 
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.

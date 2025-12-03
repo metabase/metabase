@@ -126,13 +126,13 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("State");
 
-      cy.button("Apply").should("not.exist");
+      H.applyFilterToast().should("not.exist");
 
       H.popover().findByText("AK").click();
       H.popover().button("Add filter").click();
 
-      cy.button("Apply").should("be.visible").click();
-      cy.button("Apply").should("not.exist");
+      H.applyFilterButton().click();
+      H.applyFilterToast().should("not.exist");
 
       cy.location("search").should("eq", "?city=&state=AK");
 
@@ -160,8 +160,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       H.popover().button("Add filter").click();
 
-      cy.button("Apply").should("be.visible").click();
-      cy.button("Apply").should("not.exist");
+      H.applyFilterButton().click();
+      H.applyFilterToast().should("not.exist");
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
@@ -503,9 +503,5 @@ function searchFieldValuesFilter() {
 }
 
 function removeValueForFilter(label) {
-  cy.get("legend")
-    .contains(label)
-    .closest("fieldset")
-    .find(".Icon-close")
-    .click();
+  H.filterWidget({ name: label }).icon("close").click();
 }

@@ -4,19 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
+  type EntityType,
   canonicalCollectionId,
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
 import CollectionName from "metabase/common/components/CollectionName";
-import type {
-  CollectionPickerItem,
-  CollectionPickerModalProps,
-  CollectionPickerOptions,
-} from "metabase/common/components/CollectionPicker";
-import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import FormField from "metabase/common/components/FormField";
+import {
+  type CollectionPickerItem,
+  CollectionPickerModal,
+  type CollectionPickerModalProps,
+  type CollectionPickerOptions,
+} from "metabase/common/components/Pickers/CollectionPicker";
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import Collections from "metabase/entities/collections";
@@ -32,6 +33,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
+  entityType?: EntityType;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
@@ -57,6 +59,7 @@ function FormCollectionPicker({
   placeholder = t`Select a collection`,
   type = "collections",
   filterPersonalCollections,
+  entityType,
   collectionPickerModalProps,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
@@ -153,6 +156,7 @@ function FormCollectionPicker({
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
           options={options}
+          entityType={entityType}
           {...collectionPickerModalProps}
         />
       )}

@@ -1,4 +1,5 @@
 (ns metabase.driver.mongo.execute
+  (:refer-clojure :exclude [every? mapv])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -12,7 +13,8 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? mapv]])
   (:import
    (com.mongodb.client
     AggregateIterable
@@ -107,6 +109,13 @@
 
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------
 
+(defn- get-dbref-part [dbref part-name]
+  (case part-name
+    "$ref" (.getCollectionName ^com.mongodb.DBRef dbref)
+    "$id" (.getId ^com.mongodb.DBRef dbref)
+    "$db" (.getDatabaseName ^com.mongodb.DBRef dbref)
+    nil))
+
 (defn- row->vec [row-col-names]
   (fn [^org.bson.Document row]
     (mapv (fn [col-name]
@@ -114,7 +123,15 @@
                         (reduce
                          (fn [^org.bson.Document object ^String part-name]
                            (when object
-                             (.get object part-name)))
+                             (cond
+                               (instance? org.bson.Document object)
+                               (.get ^org.bson.Document object part-name)
+
+                               (instance? com.mongodb.DBRef object)
+                               (get-dbref-part object part-name)
+
+                               :else
+                               nil)))
                          row
                          (str/split col-name #"\."))
                         (.get row col-name))]
@@ -142,6 +159,15 @@
     ;; TODO - consider what the best batch size option is here. Not sure what the default is.
     (.batchSize 100)
     (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
+
+(defn aggregate-database
+  "Used in testing to enable aggregate on pipelines sourced with $documents stage."
+  [^MongoDatabase db
+   ^ClientSession session
+   stages timeout-ms]
+  (let [pipe      (ArrayList. ^Collection (mongo.conversion/to-document stages))
+        aggregate (.aggregate db session pipe)]
+    (init-aggregate! aggregate timeout-ms)))
 
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db
@@ -189,9 +215,10 @@
         db-name (mongo.db/db-name database)
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
-      (a/go
-        (when (a/<! (driver-api/canceled-chan))
-          (mongo.util/kill-session! client-database session)))
+      (when-let [cancel-chan (driver-api/canceled-chan)]
+        (a/go
+          (when (a/<! cancel-chan)
+            (mongo.util/kill-session! client-database session))))
       (let [aggregate ^AggregateIterable (*aggregate* client-database
                                                       collection-name
                                                       session

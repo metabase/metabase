@@ -1,5 +1,5 @@
 import type { RowValue } from "./dataset";
-import type { FieldReference } from "./query";
+import type { DimensionReference, FieldReference } from "./query";
 import type { Table, TableId } from "./table";
 
 export type FieldId = number;
@@ -59,23 +59,18 @@ export type FieldValuesType = "list" | "search" | "none";
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
+  id: number;
   type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
   human_readable_field?: Field;
 };
 
-export type FieldDimensionOption = {
-  name: string;
-  mbql: unknown[] | null;
-  type: string;
-};
-
 export interface Field {
   id: FieldId | FieldReference;
   table_id: TableId;
   table?: Table;
-  field_ref?: FieldReference;
+  field_ref?: DimensionReference;
 
   name: string;
   display_name: string;
@@ -91,7 +86,7 @@ export interface Field {
   preview_display: boolean;
   position: number;
 
-  parent_id?: FieldId;
+  parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
@@ -99,8 +94,6 @@ export interface Field {
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
-  default_dimension_option?: FieldDimensionOption;
-  dimension_options?: FieldDimensionOption[];
   name_field?: Field;
 
   max_value?: number;
@@ -132,18 +125,18 @@ export interface GetFieldRequest {
 
 export interface UpdateFieldRequest {
   id: FieldId;
-  caveats?: string;
-  description?: string;
+  caveats?: string | null;
+  description?: string | null;
   display_name?: string;
-  fk_target_field_id?: FieldId;
+  fk_target_field_id?: FieldId | null;
   points_of_interest?: string;
-  semantic_type?: string;
-  coercion_strategy?: string;
+  semantic_type?: string | null;
+  coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   has_field_values?: FieldValuesType;
   settings?: FieldFormattingSettings;
-  nfc_path?: string[];
-  json_unfolding?: boolean;
+  nfc_path?: string[] | null;
+  json_unfolding?: boolean | null;
 }
 
 export interface GetFieldValuesResponse {
@@ -155,7 +148,7 @@ export interface GetFieldValuesResponse {
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string;
+  value?: string;
   limit: number;
 }
 
@@ -169,7 +162,7 @@ export interface CreateFieldDimensionRequest {
   id: FieldId;
   type: FieldDimensionType;
   name: string;
-  human_readable_field_id?: FieldId;
+  human_readable_field_id?: FieldId | null;
 }
 
 export interface UpdateFieldValuesRequest {

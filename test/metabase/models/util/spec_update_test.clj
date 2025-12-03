@@ -404,3 +404,225 @@
                     (assoc-in [:bars 0 :name] "Updated Bar 1")
                     (update-in [:bars 0 :quxes] conj {:name "qux1"}))
                 nested-multi-row-spec)))))))
+
+(spec-update/define-spec ref-in-parent-spec
+  "A spec with ref-in-parent references"
+  {:model :parent
+   :compare-cols [:name]
+   :nested-specs {:child {:model :child
+                          :compare-cols [:name]
+                          :ref-in-parent :child_id}}})
+
+(deftest ref-in-parent-create-test
+  (testing "Creating parent with referenced child (ref-in-parent)"
+    (let [new-data {:name "Parent"
+                    :child {:name "Child"}}]
+      (is (= [[:insert-returning-pk! :child {:name "Child"}]
+              [:insert-returning-pk! :parent {:name "Parent" :child_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! nil new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-update-test
+  (testing "Updating referenced child model"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 2
+                         :child {:id 2
+                                 :name "Child"}}
+          new-data (assoc-in existing-data [:child :name] "Updated Child")]
+      (is (= [[:update! :child 2 {:name "Updated Child"}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-delete-test
+  (testing "Deleting referenced child model"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 2
+                         :child {:id 2
+                                 :name "Child"}}
+          new-data (assoc existing-data :child nil)]
+      (is (= [[:delete! :child 2]
+              [:update! :parent 1 {:name "Parent", :child_id nil}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-replace-test
+  (testing "Replacing referenced child with new child"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 1
+                         :child {:id 1
+                                 :name "Child"}}
+          new-data (assoc existing-data :child {:name "New Child"})]
+      (is (= [[:delete! :child 1]
+              [:insert-returning-pk! :child {:name "New Child"}]
+              [:update! :parent 1 {:name "Parent", :child_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-set-nil-test
+  (testing "Setting referenced child to nil"
+    (let [existing-data {:id 1
+                         :name "Parent"
+                         :child_id 2
+                         :child {:id 2
+                                 :name "Child"}}
+          new-data (assoc existing-data :child nil)]
+      (is (= [[:delete! :child 2]
+              [:update! :parent 1 {:name "Parent"
+                                   :child_id nil}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(deftest ref-in-parent-new-child-test
+  (testing "Setting referenced child to nil"
+    (let [existing-data {:id 1
+                         :name "Parent"}
+          new-data (assoc existing-data :child {:name "Child"})]
+      (is (= [[:insert-returning-pk! :child {:name "Child"}]
+              [:update! :parent 1 {:name "Parent", :child_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data ref-in-parent-spec)))))))
+
+(spec-update/define-spec complex-ref-in-parent-spec
+  "A spec with multiple ref-in-parent references"
+  {:model :order
+   :compare-cols [:number]
+   :nested-specs {:customer {:model :customer
+                             :compare-cols [:name]
+                             :ref-in-parent :customer_id}
+                  :items {:model        :item
+                          :multi-row?   true
+                          :fk-column    :order_id
+                          :compare-cols [:product_name :quantity]}
+                  :payment {:model         :payment
+                            :compare-cols  [:amount]
+                            :ref-in-parent :payment_id
+                            :nested-specs  {:processor {:model         :payment_processor
+                                                        :compare-cols  [:name]
+                                                        :ref-in-parent :processor_id}}}}})
+
+(deftest complex-ref-in-parent-test
+  (testing "Complex flow with multiple ref-in-parent relationships"
+    (let [existing-data {:id 1
+                         :number "ORD-123"
+                         :customer_id 10
+                         :payment_id 20
+                         :customer {:id 10
+                                    :name "Existing Customer"}
+                         :items [{:id 101
+                                  :order_id 1
+                                  :product_name "Item 1"
+                                  :quantity 2}]
+                         :payment {:id 20
+                                   :amount 100.00
+                                   :processor_id 30
+                                   :processor {:id 30
+                                               :name "PayCo"}}}
+          new-data (-> existing-data
+                       (assoc-in [:customer :name] "Updated Customer")
+                       (assoc-in [:payment :processor :name] "Updated PayCo")
+                       (update :items conj {:product_name "Item 2" :quantity 1}))]
+      (is (= [[:update! :customer 10 {:name "Updated Customer"}]
+              [:update! :payment_processor 30 {:name "Updated PayCo"}]
+              [:insert! :item [{:product_name "Item 2" :quantity 1 :order_id 1}]]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data complex-ref-in-parent-spec)))))))
+
+(spec-update/define-spec multi-row-with-ref-spec
+  "A spec with ref-in-parent inside a multi-row spec"
+  {:model :project
+   :compare-cols [:name]
+   :nested-specs {:tasks {:model :task
+                          :multi-row? true
+                          :fk-column :project_id
+                          :compare-cols [:description]
+                          :nested-specs {:assignee {:model :user
+                                                    :compare-cols [:name]
+                                                    :ref-in-parent :assignee_id}}}}})
+
+(deftest multi-row-with-ref-create-test
+  (testing "Creating a project with tasks that have assignee references"
+    (let [new-data {:name "New Project"
+                    :tasks [{:description "Task 1"
+                             :assignee {:name "User 1"}}
+                            {:description "Task 2"
+                             :assignee {:name "User 2"}}]}]
+      (is (= [[:insert-returning-pk! :project {:name "New Project"}]
+              [:insert-returning-pk! :user {:name "User 1"}]
+              [:insert-returning-pk! :task {:description "Task 1", :project_id 2, :assignee_id 3}]
+              [:insert-returning-pk! :user {:name "User 2"}]
+              [:insert-returning-pk! :task {:description "Task 2", :project_id 2, :assignee_id 5}]]
+             (with-tracked-operations!
+               (spec-update/do-update! nil new-data multi-row-with-ref-spec)))))))
+
+(deftest multi-row-with-ref-update-test
+  (testing "Updating tasks and their assignees in a project"
+    (let [existing-data {:id 1
+                         :name "Project"
+                         :tasks [{:id 10
+                                  :description "Task 1"
+                                  :project_id 1
+                                  :assignee_id 100
+                                  :assignee {:id 100
+                                             :name "User A"}}
+                                 {:id 11
+                                  :description "Task 2"
+                                  :project_id 1
+                                  :assignee_id 101
+                                  :assignee {:id 101
+                                             :name "User B"}}]}
+          new-data (-> existing-data
+                       (assoc-in [:tasks 0 :assignee :name] "Updated User A")
+                       (assoc-in [:tasks 1 :description] "Updated Task 2"))]
+      (is (= [[:update! :task 11 {:description "Updated Task 2", :project_id 1, :assignee_id 101}]
+              [:update! :user 100 {:name "Updated User A"}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))
+
+(deftest multi-row-with-ref-replace-test
+  (testing "Replacing an assignee in a task"
+    (let [existing-data {:id 1
+                         :name "Project"
+                         :tasks [{:id 10
+                                  :description "Task 1"
+                                  :project_id 1
+                                  :assignee_id 100
+                                  :assignee {:id 100
+                                             :name "User A"}}]}
+          new-data (assoc-in existing-data [:tasks 0 :assignee] {:name "New Assignee"})]
+      (is (= [[:delete! :user 100]
+              [:insert-returning-pk! :user {:name "New Assignee"}]
+              [:update! :task 10 {:description "Task 1", :project_id 1, :assignee_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))
+
+(deftest multi-row-with-ref-add-assignee-test
+  (testing "Adding an assignee to a task that didn't have one"
+    (let [existing-data {:id 1
+                         :name "Project"
+                         :tasks [{:id 10
+                                  :description "Task 1"
+                                  :project_id 1}]}
+          new-data (assoc-in existing-data [:tasks 0 :assignee] {:name "New Assignee"})]
+      (is (= [[:insert-returning-pk! :user {:name "New Assignee"}]
+              [:update! :task 10 {:description "Task 1", :project_id 1, :assignee_id 2}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))
+
+(deftest multi-row-with-ref-remove-assignee-test
+  (testing "Removing an assignee from a task"
+    (let [existing-data {:id 1
+                         :name "Project"
+                         :tasks [{:id 10
+                                  :description "Task 1"
+                                  :project_id 1
+                                  :assignee_id 100
+                                  :assignee {:id 100
+                                             :name "User A"}}]}
+          new-data (update-in existing-data [:tasks 0] dissoc :assignee)]
+      (is (= [[:delete! :user 100]
+              [:update! :task 10 {:description "Task 1", :project_id 1, :assignee_id nil}]]
+             (with-tracked-operations!
+               (spec-update/do-update! existing-data new-data multi-row-with-ref-spec)))))))

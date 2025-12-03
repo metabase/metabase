@@ -16,7 +16,7 @@ export const pkDrill: Drill<Lib.PKDrillThruInfo> = ({
       section: "details",
       title: t`View details`,
       buttonType: "horizontal",
-      icon: "expand",
+      icon: "sidebar_open",
       default: true,
       question: () => applyDrill(drill, objectId),
     },

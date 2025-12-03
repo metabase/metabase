@@ -25,8 +25,6 @@ dataset_query:
   query:
     aggregation:
     - - count
-    aggregation-idents:
-      0: aggregation_JPERH6xYVcj3m2Zw0YVY1@0__0
     filter:
     - =
     - - field
@@ -54,14 +52,12 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - Creator
       fields: none
-      ident: join_JPERH6xYVcj3m2Zw0YVY1@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
 result_metadata:
-- aggregation_index: 0
-  base_type: type/Integer
+- base_type: type/Integer
   display_name: Count
   field_ref:
   - aggregation

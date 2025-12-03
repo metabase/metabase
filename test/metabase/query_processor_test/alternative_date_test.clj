@@ -6,13 +6,15 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u])
   (:import
-   (java.time OffsetDateTime)))
+   (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -38,16 +40,22 @@
 
 (deftest double-coercion-through-model
   (testing "Ensure that coerced values only get coerced once. #33861"
-    (mt/dataset
-      toucan-ms-incidents
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table (mt/id :incidents)}}}]
+    (mt/dataset toucan-ms-incidents
+      (let [mp (lib.tu/mock-metadata-provider
+                (mt/metadata-provider)
+                {:cards [{:id            1
+                          :dataset-query {:database (mt/id)
+                                          :type     :query
+                                          :query    {:source-table (mt/id :incidents)}}}]})]
         (is (= [[1 4 "2015-06-06T10:40:00Z"]
                 [2 0 "2015-06-10T19:51:00Z"]]
-               (mt/rows (qp/process-query {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table (str "card__" card-id)}}))))))))
+               (mt/rows
+                (qp/process-query
+                 (lib/query
+                  mp
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table "card__1"}})))))))))
 
 (defmulti microseconds-test-expected-rows
   {:arglists '([driver])}
@@ -61,8 +69,8 @@
 
 (defmethod microseconds-test-expected-rows :sqlite
   [_driver]
-  [[1 4 "2015-06-06 10:40:00"]
-   [2 0 "2015-06-10 19:51:00"]])
+  [[1 4 "2015-06-06 10:40:00.000000"]
+   [2 0 "2015-06-10 19:51:00.000000"]])
 
 (deftest ^:parallel microseconds-test
   (mt/test-drivers (mt/normal-drivers)
@@ -161,16 +169,16 @@
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
         (let [query (mt/native-query
-                      (merge (mt/count-with-field-filter-query driver/*driver* :sightings :timestamp)
-                             (mt/$ids sightings
-                               {:template-tags {"timestamp" {:name         "timestamp"
-                                                             :display-name "Sighting Timestamp"
-                                                             :type         :dimension
-                                                             :dimension    $timestamp
-                                                             :widget-type  :date/range}}
-                                :parameters    [{:type   :date/range
-                                                 :target [:dimension [:template-tag "timestamp"]]
-                                                 :value  "2014-02-01~2015-02-29"}]})))]
+                     (merge (mt/count-with-field-filter-query driver/*driver* :sightings :timestamp)
+                            (mt/$ids sightings
+                              {:template-tags {"timestamp" {:name         "timestamp"
+                                                            :display-name "Sighting Timestamp"
+                                                            :type         :dimension
+                                                            :dimension    $timestamp
+                                                            :widget-type  :date/range}}
+                               :parameters    [{:type   :date/range
+                                                :target [:dimension [:template-tag "timestamp"]]
+                                                :value  "2014-02-01~2015-02-29"}]})))]
           (testing (format "\nquery = %s" (u/pprint-to-str query))
             (is (= [[41]]
                    (mt/formatted-rows
@@ -397,23 +405,32 @@
                                     :h2       "BYTEA"
                                     :mysql    "VARBINARY(100)"
                                     :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"}}
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-;;; by default, run the test below against drivers that implement [[sql.qp/cast-temporal-byte]] for
-;;; `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` are
+;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]
   [_driver _feature _database]
-  false)
+  true)
 
-(defmethod driver/database-supports? [:sql-jdbc ::yyyymmddhhss-binary-timestamps]
-  [driver _feature _database]
-  (not= (get-method sql.qp/cast-temporal-byte [driver :Coercion/YYYYMMDDHHMMSSBytes->Temporal])
-        (get-method sql.qp/cast-temporal-byte :default)))
+(doseq [driver #{:athena
+                 :bigquery-cloud-sdk
+                 :clickhouse
+                 :databricks
+                 :druid
+                 :snowflake
+                 :sparksql
+                 :sqlserver
+                 :vertica}]
+  (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
+    [_driver _feature _database]
+    false))
 
 (defmulti yyyymmddhhmmss-binary-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-binary-dates]] test below."
@@ -423,9 +440,9 @@
 
 (defmethod yyyymmddhhmmss-binary-dates-expected-rows :default
   [_driver]
-  [])
+  :not-implemented)
 
-(doseq [driver [:h2 :postgres]]
+(doseq [driver [:h2 :postgres :databricks]]
   (defmethod yyyymmddhhmmss-binary-dates-expected-rows driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
@@ -439,6 +456,24 @@
      [2 "bar" #t "2020-04-21T16:43"]
      [3 "baz" #t "2021-04-21T16:43"]]))
 
+(defmethod yyyymmddhhmmss-binary-dates-expected-rows :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod yyyymmddhhmmss-binary-dates-expected-rows :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod yyyymmddhhmmss-binary-dates-expected-rows :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
 (deftest ^:parallel yyyymmddhhmmss-binary-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
     (mt/dataset yyyymmddhhss-binary-times
@@ -450,16 +485,10 @@
                 (assoc (mt/mbql-query times)
                        :middleware {:format-rows? false})))))))))
 
+;; Make a fake feature just for tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-string-timestamps]
   [_driver _feature _database]
-  false)
-
-;;; TODO -- it would be better if we just made this feature `true` by default and opted out for the drivers that DO NOT
-;;; support this feature. That way new drivers get the test automatically without having to opt in.
-(doseq [driver #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}]
-  (defmethod driver/database-supports? [driver ::yyyymmddhhss-string-timestamps]
-    [_driver _feature _database]
-    true))
+  true)
 
 (defmulti yyyymmddhhmmss-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-dates]] test below."
@@ -473,20 +502,27 @@
    [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
    [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
 
-(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk]]
+(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica :presto-jdbc :starburst :athena]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
      [2 "bar" #t "2020-04-21T16:43"]
      [3 "baz" #t "2021-04-21T16:43"]]))
 
-(defmethod yyyymmddhhmmss-dates-expected-rows :redshift
+(defmethod yyyymmddhhmmss-dates-expected-rows :sparksql
   [_driver]
-  [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z[UTC]")]
-   [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z[UTC]")]
-   [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z[UTC]")]])
+  [[1 "foo" (ZonedDateTime/from #t "2019-04-21T16:43Z[UTC]")]
+   [2 "bar" (ZonedDateTime/from #t "2020-04-21T16:43Z[UTC]")]
+   [3 "baz" (ZonedDateTime/from #t "2021-04-21T16:43Z[UTC]")]])
 
-(doseq [driver [:h2 :postgres]]
+(doseq [driver [:redshift]]
+  (defmethod yyyymmddhhmmss-dates-expected-rows driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z[UTC]")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z[UTC]")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z[UTC]")]]))
+
+(doseq [driver [:h2 :postgres :clickhouse :databricks]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
@@ -499,11 +535,16 @@
    [2M "bar" #t "2020-04-21T16:43"]
    [3M "baz" #t "2021-04-21T16:43"]])
 
-(defmethod yyyymmddhhmmss-dates-expected-rows :snowflake
+(defmethod yyyymmddhhmmss-dates-expected-rows :sqlite
   [_driver]
-  [[1 "foo" #t "2609-10-23T10:19:24.300"]
-   [2 "bar" #t "2610-02-16T04:06:04.300"]
-   [3 "baz" #t "2610-06-11T21:52:44.300"]])
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+;; It's better to fail then test than get an error. This way, we can see the actual vs expected value.
+(defmethod yyyymmddhhmmss-dates-expected-rows :default
+  [_driver]
+  :not-implemented)
 
 (deftest ^:parallel yyyymmddhhmmss-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-string-timestamps)
@@ -515,3 +556,85 @@
               (mt/rows (qp/process-query
                         (assoc (mt/mbql-query times)
                                :middleware {:format-rows? false})))))))))
+
+(mt/defdataset iso-binary-coercion
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}
+              :effective-type :type/DateTime
+              :coercion-strategy :Coercion/ISO8601Bytes->Temporal}]
+    [["foo" (.getBytes "2019-04-21 16:43:00")]
+     ["bar" (.getBytes "2020-04-21T16:43:00")]
+     ["baz" (.getBytes "2021-04-21 16:43:00")]]]])
+
+(defmulti binary-dates-expected-rows-iso
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows-iso :default
+  [_driver]
+  :not-implemented)
+
+(doseq [driver [:databricks]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows-iso :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows-iso :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows-iso :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+(deftest ^:parallel yyyymmddhhmmss-binary-dates-iso
+  (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
+    (mt/dataset iso-binary-coercion
+      (is (= (binary-dates-expected-rows-iso driver/*driver*)
+             (sort-by
+              first
+              (mt/rows
+               (qp/process-query
+                (assoc (mt/mbql-query times)
+                       :middleware {:format-rows? false})))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::no-binary-coercion]
+  [driver _feature _database]
+  (not (driver/database-supports? driver ::yyyymmddhhss-binary-timestamps)))
+
+(deftest ^:parallel no-binary-drivers-throws-exception
+  (mt/test-drivers (mt/normal-drivers-with-feature ::no-binary-coercion)
+    (doseq [coercion-strategy [:Coercion/YYYYMMDDHHMMSSBytes->Temporal
+                               :Coercion/ISO8601Bytes->Temporal]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not support"
+                            (sql.qp/cast-temporal-byte driver/*driver* coercion-strategy nil))))))

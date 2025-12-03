@@ -19,9 +19,11 @@ describe("ActionCreator > Implicit Actions", () => {
   it("renders correctly", async () => {
     const { action } = await setup();
 
-    expect(screen.getByText(action.name)).toBeInTheDocument();
-    expect(screen.getByText("Auto tracking schema")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(await screen.findByText(action.name)).toBeInTheDocument();
+    expect(await screen.findByText("Auto tracking schema")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Cancel" }),
+    ).toBeInTheDocument();
 
     expect(screen.queryByText(/New action/i)).not.toBeInTheDocument();
     expect(
@@ -36,7 +38,7 @@ describe("ActionCreator > Implicit Actions", () => {
       }),
     });
 
-    expect(screen.getAllByText("FooBar")).toHaveLength(2);
+    expect(await screen.findAllByText("FooBar")).toHaveLength(2);
   });
 
   it("allows only form settings changes", async () => {
@@ -46,7 +48,7 @@ describe("ActionCreator > Implicit Actions", () => {
       }),
     });
 
-    expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+    expect(await screen.findByDisplayValue(action.name)).toBeDisabled();
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
     expect(queryIcon("grabber")).not.toBeInTheDocument();
   });
@@ -59,7 +61,7 @@ describe("ActionCreator > Implicit Actions", () => {
       canWrite: false,
     });
 
-    expect(screen.getByDisplayValue(action.name)).toBeDisabled();
+    expect(await screen.findByDisplayValue(action.name)).toBeDisabled();
 
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
     expect(queryIcon("grabber")).not.toBeInTheDocument();

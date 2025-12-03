@@ -4,9 +4,11 @@
   There are two approaches to binning, selected by `:strategy`:
   - `{:strategy :bin-width :bin-width 10}` makes 1 or more bins that are 10 wide;
   - `{:strategy :num-bins  :num-bins  12}` splits the column into 12 bins."
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (mr/def ::strategy
   [:enum
@@ -25,7 +27,6 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:field` clause."
   [:and
-   {:doc/title "`:binning` options"}
    [:map
     {:decode/normalize lib.schema.common/normalize-map}
     [:strategy [:ref ::strategy]]]

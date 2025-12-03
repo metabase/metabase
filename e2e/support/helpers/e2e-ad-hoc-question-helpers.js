@@ -11,11 +11,15 @@ const {
 } = SAMPLE_DB_TABLES;
 
 export function adhocQuestionHash(question) {
-  if (question.display) {
+  const questionWithDisplay = {
+    display: "table",
     // without "locking" the display, the QB will run its picking logic and override the setting
-    question = Object.assign({}, question, { displayIsLocked: true });
-  }
-  return btoa(decodeURIComponent(encodeURIComponent(JSON.stringify(question))));
+    displayIsLocked: question.display != null,
+    ...question,
+  };
+  return btoa(
+    decodeURIComponent(encodeURIComponent(JSON.stringify(questionWithDisplay))),
+  );
 }
 
 function newCardHash(type) {
@@ -131,6 +135,8 @@ export function visitQuestionAdhoc(
 ) {
   const questionMode = mode === "notebook" ? "/notebook" : "";
 
+  cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+
   const [url, alias] = getInterceptDetails(question, mode, autorun);
 
   cy.intercept(url).as(alias);
@@ -140,6 +146,7 @@ export function visitQuestionAdhoc(
   runQueryIfNeeded(question, autorun);
 
   if (mode !== "notebook" && !skipWaiting) {
+    cy.wait("@queryMetadata");
     return cy.wait("@" + alias).then((xhr) => callback && callback(xhr));
   }
 
@@ -152,7 +159,7 @@ export function visitQuestionAdhoc(
  *
  * @param {Object} config
  * @param {number} [config.database=SAMPLE_DB_ID]
- * @param {number} config.table
+ * @param {number | TableId} config.table
  * @param {("notebook"|undefined)} [config.mode]
  * @param {number} [config.limit]
  * @param {function} [config.callback]

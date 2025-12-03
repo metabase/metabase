@@ -7,7 +7,7 @@ show_title_breadcrumb: true
 category: "Cloud"
 layout: new-docs
 redirect_from:
-- /cloud/docs/ip-addresses-to-whitelist
+  - /cloud/docs/ip-addresses-to-whitelist
 ---
 
 # IP addresses to whitelist

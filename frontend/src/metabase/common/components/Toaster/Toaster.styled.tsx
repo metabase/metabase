@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, lighten } from "metabase/lib/colors";
 
 interface ToasterContainerProps {
   show: boolean;
@@ -12,7 +12,9 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
   display: flex;
   flex-direction: row;
   overflow-x: hidden;
-  max-width: 388px;
+  min-width: 300px;
+  max-width: 500px;
+  width: fit-content;
   background-color: var(--mb-color-text-dark);
   padding: 16px;
   border-radius: 6px;
@@ -31,7 +33,9 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
 
 export const ToasterMessage = styled.p`
   color: var(--mb-color-text-white);
-  width: 250px;
+  min-width: 150px;
+  max-width: 320px;
+  flex: 1;
   line-height: 24px;
   font-size: 14px;
   margin: 0;
@@ -40,18 +44,19 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${() => alpha(color("bg-white"), 0.1)};
+  background-color: ${() => alpha("bg-white", 0.1)};
   border-radius: 6px;
   color: var(--mb-color-text-white);
-  width: 90px;
   height: fit-content;
   font-size: 14px;
   font-weight: bold;
   transition: background 200ms ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     cursor: pointer;
-    background-color: ${() => alpha(color("bg-white"), 0.3)};
+    background-color: ${() => alpha("bg-white", 0.3)};
   }
 `;
 

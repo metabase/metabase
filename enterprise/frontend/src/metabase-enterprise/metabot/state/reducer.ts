@@ -3,93 +3,241 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory, MetabotStateContext } from "metabase-types/api";
+import type {
+  MetabotHistory,
+  MetabotTodoItem,
+  MetabotTransformInfo,
+  SuggestedTransform,
+} from "metabase-types/api";
 
-import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
+import { TOOL_CALL_MESSAGES } from "../constants";
+
+import { sendAgentRequest } from "./actions";
 import { createMessageId } from "./utils";
 
-export type MetabotAgentChatMessage =
-  | { id: string; role: "agent"; message: string; type: "reply" }
-  | { id: string; role: "agent"; message: string; type: "error" };
-
-export type MetabotUserChatMessage = {
+export type MetabotUserTextChatMessage = {
   id: string;
   role: "user";
+  type: "text";
   message: string;
 };
 
+export type MetabotUserActionChatMessage = {
+  id: string;
+  role: "user";
+  type: "action";
+  message: string;
+  userMessage: string;
+};
+
+export type MetabotAgentTextChatMessage = {
+  id: string;
+  role: "agent";
+  type: "text";
+  message: string;
+};
+
+export type MetabotAgentTodoListChatMessage = {
+  id: string;
+  role: "agent";
+  type: "todo_list";
+  payload: MetabotTodoItem[];
+};
+
+export type MetabotAgentEditSuggestionChatMessage = {
+  id: string;
+  role: "agent";
+  type: "edit_suggestion";
+  model: "transform";
+  payload: {
+    editorTransform: MetabotTransformInfo | undefined;
+    suggestedTransform: MetabotSuggestedTransform;
+  };
+};
+
+export type MetabotDebugToolCallMessage = {
+  id: string;
+  role: "agent";
+  type: "tool_call";
+  name: string;
+  args?: string;
+  status: "started" | "ended";
+  result?: string;
+  is_error?: boolean;
+};
+
+export type MetabotAgentChatMessage =
+  | MetabotAgentTextChatMessage
+  | MetabotAgentTodoListChatMessage
+  | MetabotAgentEditSuggestionChatMessage
+  | MetabotDebugToolCallMessage;
+
+export type MetabotUserChatMessage =
+  | MetabotUserTextChatMessage
+  | MetabotUserActionChatMessage;
+
+export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
+
 export type MetabotChatMessage =
+  | MetabotUserChatMessage
   | MetabotAgentChatMessage
-  | MetabotUserChatMessage;
+  | MetabotDebugChatMessage;
+
+export type MetabotErrorMessage = {
+  type: "message" | "alert";
+  message: string;
+};
+
+export type MetabotToolCall = {
+  id: string;
+  name: string;
+  message: string | undefined;
+  status: "started" | "ended";
+};
+
+export type MetabotSuggestedTransform = SuggestedTransform & {
+  active: boolean;
+  suggestionId: string; // internal unique identifier for marking active/inactive
+};
+
+export type MetabotReactionsState = {
+  navigateToPath: string | null;
+  suggestedTransforms: MetabotSuggestedTransform[];
+};
 
 export interface MetabotState {
-  useStreaming: boolean;
   isProcessing: boolean;
-  conversationId: string | undefined;
+  conversationId: string;
   messages: MetabotChatMessage[];
+  errorMessages: MetabotErrorMessage[];
   visible: boolean;
   history: MetabotHistory;
   state: any;
-  activeToolCall: { id: string; name: string } | undefined;
+  reactions: MetabotReactionsState;
+  activeToolCalls: MetabotToolCall[];
+  experimental: {
+    debugMode: boolean;
+    metabotReqIdOverride: string | undefined;
+    profileOverride: string | undefined;
+  };
 }
 
-export const metabotInitialState: MetabotState = {
-  useStreaming: false,
+export const getMetabotInitialState = (): MetabotState => ({
   isProcessing: false,
-  conversationId: undefined,
+  conversationId: uuid(),
   messages: [],
+  errorMessages: [],
   visible: false,
   history: [],
   state: {},
-  activeToolCall: undefined,
-};
+  reactions: {
+    navigateToPath: null,
+    suggestedTransforms: [],
+  },
+  activeToolCalls: [],
+  experimental: {
+    debugMode: false,
+    metabotReqIdOverride: undefined,
+    profileOverride: undefined,
+  },
+});
 
 export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
-  initialState: metabotInitialState,
+  initialState: getMetabotInitialState(),
   reducers: {
-    toggleStreaming: (state) => {
-      state.useStreaming = !state.useStreaming;
-    },
     addUserMessage: (
       state,
       action: PayloadAction<Omit<MetabotUserChatMessage, "role">>,
     ) => {
-      const { id, message } = action.payload;
+      const { id, message, ...rest } = action.payload;
 
-      const lastMessage = _.last(state.messages);
-      if (lastMessage?.role === "agent" && lastMessage?.type === "error") {
-        state.messages.pop();
-      }
-
-      state.messages.push({ id, role: "user", message });
-      if (state.useStreaming) {
-        state.history.push({ id, role: "user", content: message });
-      }
+      state.errorMessages = [];
+      state.messages.push({ id, role: "user", message, ...rest } as any);
+      state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
       state,
       action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
+      state.activeToolCalls = [];
       state.messages.push({
         id: createMessageId(),
         role: "agent",
-        message: action.payload.message,
-        type: action.payload.type,
-      });
+        ...action.payload,
+        // transforms in message is making this flakily produce possibly infinite
+        // typescript errors. since unused ts-expect-error directives produces
+        // errors, casting this as any to avoid having to add / remove constantly.
+      } as any);
     },
-    setStateContext: (state, action: PayloadAction<MetabotStateContext>) => {
-      state.state = action.payload;
+    addAgentErrorMessage: (
+      state,
+      action: PayloadAction<MetabotErrorMessage>,
+    ) => {
+      state.errorMessages.push(action.payload);
+    },
+    addAgentTextDelta: (state, action: PayloadAction<string>) => {
+      const hasToolCalls = state.activeToolCalls.length > 0;
+      const lastMessage = _.last(state.messages);
+      const canAppend =
+        !hasToolCalls &&
+        lastMessage?.role === "agent" &&
+        lastMessage.type === "text";
+
+      if (canAppend) {
+        lastMessage.message = lastMessage.message + action.payload;
+      } else {
+        state.messages.push({
+          id: createMessageId(),
+          role: "agent",
+          type: "text",
+          message: action.payload,
+        });
+      }
+
+      state.activeToolCalls = hasToolCalls ? [] : state.activeToolCalls;
     },
     toolCallStart: (
       state,
-      action: PayloadAction<{ toolCallId: string; toolName: string }>,
+      action: PayloadAction<{
+        toolCallId: string;
+        toolName: string;
+        args?: string;
+      }>,
     ) => {
-      const { toolCallId, toolName } = action.payload;
-      state.activeToolCall = { id: toolCallId, name: toolName };
+      const { toolCallId, toolName, args } = action.payload;
+      state.messages.push({
+        id: toolCallId,
+        role: "agent",
+        type: "tool_call",
+        name: toolName,
+        args,
+        status: "started",
+      });
+      state.activeToolCalls.push({
+        id: toolCallId,
+        name: toolName,
+        message: TOOL_CALL_MESSAGES[toolName],
+        status: "started",
+      });
     },
-    toolCallEnd: (state) => {
-      state.activeToolCall = undefined;
+    toolCallEnd: (
+      state,
+      action: PayloadAction<{ toolCallId: string; result?: any }>,
+    ) => {
+      state.activeToolCalls = state.activeToolCalls.map((tc) =>
+        tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
+      );
+
+      // Update the message in messages array with result for debug history
+      const message = state.messages.findLast(
+        (msg) =>
+          msg.type === "tool_call" && msg.id === action.payload.toolCallId,
+      );
+      if (message?.type === "tool_call") {
+        message.status = "ended";
+        message.result = action.payload.result;
+      }
     },
     // NOTE: this reducer fn should be made smarter if/when we want to have
     // metabot's `state` object be able to remove / forget values. currently
@@ -97,23 +245,27 @@ export const metabot = createSlice({
     // so if / when this becomes expected, we'll need to do some extra work here
     // NOTE: this doesn't work in non-streaming contexts right now
     rewindStateToMessageId: (state, { payload: id }: PayloadAction<string>) => {
-      if (state.useStreaming) {
-        const messageIndex = state.messages.findLastIndex((m) => id === m.id);
-        const historyIndex = state.history.findLastIndex((h) => id === h.id);
-        if (historyIndex > -1 && messageIndex > -1) {
-          state.isProcessing = false;
-          state.messages = state.messages.slice(0, messageIndex);
-          state.history = state.history.slice(0, historyIndex);
-        }
+      state.isProcessing = false;
+      const messageIndex = state.messages.findLastIndex((m) => id === m.id);
+      if (messageIndex > -1) {
+        state.messages = state.messages.slice(0, messageIndex);
+      }
+
+      const historyIndex = state.history.findLastIndex((h) => id === h.id);
+      if (historyIndex > -1) {
+        state.history = state.history.slice(0, historyIndex);
       }
     },
     resetConversation: (state) => {
       state.messages = [];
+      state.errorMessages = [];
       state.history = [];
       state.state = {};
       state.isProcessing = false;
-      state.activeToolCall = undefined;
+      state.activeToolCalls = [];
       state.conversationId = uuid();
+      state.reactions.suggestedTransforms = [];
+      state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -121,40 +273,106 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
+    setNavigateToPath: (state, action: PayloadAction<string>) => {
+      state.reactions.navigateToPath = action.payload;
+    },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
+    },
+    setMetabotReqIdOverride: (
+      state,
+      action: PayloadAction<string | undefined>,
+    ) => {
+      state.experimental.metabotReqIdOverride = action.payload;
+    },
+    setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
+      state.experimental.profileOverride = action.payload;
+    },
+    setDebugMode: (state, action: PayloadAction<boolean>) => {
+      state.experimental.debugMode = action.payload;
+    },
+    addSuggestedTransform: (
+      state,
+      { payload: transform }: PayloadAction<MetabotSuggestedTransform>,
+    ) => {
+      // mark all other transform w/ same id as inactive before adding new one
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === transform.id) {
+          t.active = false;
+        }
+      });
+      // transform type caused flaky "possible infinite type definition" errorj
+      // ts-expect-error fails when it doesn't fail, so casting to any
+      state.reactions.suggestedTransforms.push(transform as any);
+    },
+    activateSuggestedTransform: (
+      state,
+      action: PayloadAction<{
+        id?: SuggestedTransform["id"];
+        suggestionId: string;
+      }>,
+    ) => {
+      const { id, suggestionId } = action.payload;
+
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === id) {
+          t.active = t.suggestionId === suggestionId;
+        }
+      });
+    },
+    deactivateSuggestedTransform: (
+      state,
+      action: PayloadAction<SuggestedTransform["id"] | undefined>,
+    ) => {
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === action.payload) {
+          t.active = false;
+        }
+      });
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(logout.pending, () => metabotInitialState)
+      .addCase(logout.pending, getMetabotInitialState)
       // streamed response handlers
-      .addCase(sendStreamedAgentRequest.pending, (state) => {
-        state.isProcessing = true;
-      })
-      .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
-        state.history = [
-          ...state.history,
-          ...(action.payload?.history?.slice() ?? []),
-        ];
-        state.state = { ...(action.payload?.state ?? {}) };
-        state.activeToolCall = undefined;
-        state.isProcessing = false;
-      })
-      .addCase(sendStreamedAgentRequest.rejected, (state) => {
-        state.activeToolCall = undefined;
-        state.isProcessing = false;
-      })
-      // non-streamed response handlers
       .addCase(sendAgentRequest.pending, (state) => {
         state.isProcessing = true;
+        state.errorMessages = [];
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
+        state.history = action.payload?.history?.slice() ?? [];
+        state.activeToolCalls = [];
         state.isProcessing = false;
       })
-      .addCase(sendAgentRequest.rejected, (state) => {
+      .addCase(sendAgentRequest.rejected, (state, action) => {
+        // aborted requests needs special state adjustments
+        if (action.payload?.type === "abort") {
+          state.state = { ...(action.payload?.state ?? {}) };
+          state.history = action.payload?.history?.slice() ?? [];
+          if (action.payload.unresolved_tool_calls.length > 0) {
+            // update history w/ synthetic tool_result entries for each unresolved tool call
+            // as having a tool_call without a matching tool_result is invalid
+            const syntheticToolResults =
+              action.payload.unresolved_tool_calls.map((tc) => ({
+                role: "tool" as const,
+                content: "Tool execution interrupted by user",
+                tool_call_id: tc.toolCallId,
+              }));
+            state.history.push(...syntheticToolResults);
+
+            // update message state so that unresolved tools are marked as ended
+            state.messages.forEach((msg) => {
+              if (msg.type === "tool_call" && msg.status === "started") {
+                msg.status = "ended";
+                msg.result = "Tool execution interrupted by user";
+                msg.is_error = true;
+              }
+            });
+          }
+        }
+
+        state.activeToolCalls = [];
         state.isProcessing = false;
       });
   },

@@ -2,12 +2,15 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
-  CollectionId,
   DashboardId,
   DatasetQuery,
+  DraftTransform,
   PaginationResponse,
   RowValue,
-  SearchModel,
+  SuggestedTransform,
+  Transform,
+  UnsavedCard,
+  Version,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -55,18 +58,6 @@ export type MetabotHistory = any[];
 
 export type MetabotStateContext = Record<string, any>;
 
-export type MetabotMessageReaction = {
-  type: "metabot.reaction/message";
-  message: string;
-};
-
-export type MetabotRedirectReaction = {
-  type: "metabot.reaction/redirect";
-  url: string;
-};
-
-export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
-
 export type MetabotColumnType =
   | "number"
   | "string"
@@ -104,6 +95,8 @@ export type MetabotChartConfig = {
     description?: string;
     timestamp: string;
   }>;
+  query?: DatasetQuery;
+  display_type?: CardDisplayType;
 };
 
 export type MetabotCardInfo = {
@@ -126,10 +119,22 @@ export type MetabotAdhocQueryInfo = {
   error?: any;
 };
 
+export type MetabotDocumentInfo = {
+  type: "document";
+  id: number;
+};
+
+export type MetabotTransformInfo =
+  | ({ type: "transform" } & Transform) // edit
+  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
-  | MetabotAdhocQueryInfo;
+  | MetabotAdhocQueryInfo
+  | MetabotDocumentInfo
+  | MetabotTransformInfo;
 
 /* Metabot v3 - API Request Types */
 
@@ -140,10 +145,10 @@ export type MetabotAgentRequest = {
   state: MetabotStateContext;
   conversation_id: string; // uuid
   metabot_id?: string;
+  profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
-  reactions: MetabotReaction[];
   history: MetabotHistory[];
   conversation_id: string;
   state: any;
@@ -187,6 +192,20 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
+export interface MetabotFeedback {
+  metabot_id: MetabotId;
+  feedback: {
+    positive: boolean;
+    message_id: string;
+    issue_type?: string | undefined;
+    freeform_feedback: string;
+  };
+  conversation_data: any;
+  version: Version;
+  submission_time: string;
+  is_admin: boolean;
+}
+
 /* Metabot v3 - Entity Types */
 
 export type MetabotId = number;
@@ -194,17 +213,33 @@ export type MetabotName = string;
 
 export type MetabotInfo = {
   id: MetabotId;
+  entity_id: string;
   name: MetabotName;
+  description: string;
+  use_verified_content: boolean;
+  collection_id: number | null;
+  created_at: string;
+  updated_at: string;
 };
 
-export type MetabotEntity = {
-  name: string;
-  id: CollectionId;
-  model: Extract<SearchModel, "collection">;
-  collection_id: CollectionId;
-  collection_name: string;
-};
+/* Metabot v3 - Document Types */
 
-export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
-  model_id: MetabotEntity["id"];
+export interface MetabotGenerateContentRequest {
+  instructions: string;
+  references?: Record<string, string>;
+}
+
+export interface MetabotGenerateContentResponse {
+  draft_card: (UnsavedCard & { name?: string }) | null;
+  description: string;
+  error: string | null;
+}
+
+/* Metabot v3 - Data Part Types */
+
+export type MetabotTodoItem = {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "high" | "medium" | "low";
 };

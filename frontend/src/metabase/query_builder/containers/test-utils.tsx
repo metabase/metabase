@@ -32,7 +32,7 @@ import {
   within,
 } from "__support__/ui";
 import NewItemMenu from "metabase/common/components/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -123,7 +123,7 @@ export const TEST_MODEL_CARD = createMockCard({
     },
   },
   type: "model",
-  display: "scalar",
+  display: "table",
   description: "Test description",
 });
 
@@ -284,9 +284,12 @@ export const setup = async ({
         <Route path="/model">
           <Route path="new" component={NewModelOptions} />
           <Route path="query" component={TestQueryBuilder} />
+          <Route path="columns" component={TestQueryBuilder} />
           <Route path="metadata" component={TestQueryBuilder} />
           <Route path="notebook" component={TestQueryBuilder} />
+          <Route path=":slug" component={TestQueryBuilder} />
           <Route path=":slug/query" component={TestQueryBuilder} />
+          <Route path=":slug/columns" component={TestQueryBuilder} />
           <Route path=":slug/metadata" component={TestQueryBuilder} />
           <Route path=":slug/notebook" component={TestQueryBuilder} />
         </Route>
@@ -339,8 +342,9 @@ export const startNewNotebookModel = async () => {
   await userEvent.click(screen.getByText("Use the notebook editor"));
   await waitForLoaderToBeRemoved();
 
-  const modal = await screen.findByTestId("entity-picker-modal");
+  const modal = await screen.findByTestId("mini-picker");
   await waitForLoaderToBeRemoved();
+  await userEvent.click(await within(modal).findByText("Sample Database"));
   await userEvent.click(await within(modal).findByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();

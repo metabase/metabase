@@ -8,9 +8,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
-import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { color } from "metabase/ui/utils/colors";
+import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -37,7 +37,7 @@ const ARROW_STROKE_THICKNESS = 1.25;
 const getBackgroundArcColor = () => color("bg-medium");
 const getSegmentLabelColor = () => color("text-dark");
 const getCenterLabelColor = () => color("text-dark");
-const getArrowFillColor = () => color("text-medium");
+const getArrowFillColor = () => color("text-medium-opaque");
 const getArrowStrokeColor = () => color("bg-white");
 
 // in ems, but within the scaled 100px SVG element
@@ -118,10 +118,7 @@ export default class Gauge extends Component {
     },
     "gauge.segments": {
       get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Gauge ranges`;
+        return t`Ranges`;
       },
       getDefault(series) {
         let value = 100;
@@ -134,8 +131,9 @@ export default class Gauge extends Component {
           { min: value, max: value * 2, color: color("success"), label: "" },
         ];
       },
-      widget: ChartSettingGaugeSegments,
+      widget: ChartSettingSegmentsEditor,
       persistDefault: true,
+      noPadding: true,
     },
   };
 
@@ -367,16 +365,24 @@ const GaugeArc = ({
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-  const clicked = segment && { value: segment.min, column, settings };
-  const isClickable = clicked && onVisualizationClick != null;
+  const isClickable = segment != null && onVisualizationClick != null;
   const options = column && settings?.column ? settings.column(column) : {};
   const range = segment ? [segment.min, segment.max] : [];
   const value = range.map((v) => formatValue(v, options)).join(" - ");
   const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
 
   const handleClick = (e) => {
-    if (onVisualizationClick && visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, event: e.nativeEvent });
+    if (!segment) {
+      return;
+    }
+    const clickData = {
+      value: segment.min,
+      column,
+      settings,
+      event: e.nativeEvent,
+    };
+    if (onVisualizationClick && visualizationIsClickable(clickData)) {
+      onVisualizationClick(clickData);
     }
   };
 
@@ -409,16 +415,19 @@ const GaugeArc = ({
 };
 
 const GaugeNeedle = ({ angle, isAnimated = true }) => (
-  <path
-    d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
-    transform={`translate(0,-${INNER_RADIUS}) rotate(${degrees(
-      angle,
-    )}, 0, ${INNER_RADIUS})`}
+  <g
+    transform={`rotate(${degrees(angle)})`}
     style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
-    stroke={getArrowStrokeColor()}
-    strokeWidth={ARROW_STROKE_THICKNESS}
-    fill={getArrowFillColor()}
-  />
+  >
+    <path
+      d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
+      transform={`translate(0,-${INNER_RADIUS})`}
+      style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
+      stroke={getArrowStrokeColor()}
+      strokeWidth={ARROW_STROKE_THICKNESS}
+      fill={getArrowFillColor()}
+    />
+  </g>
 );
 
 const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (

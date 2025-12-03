@@ -22,7 +22,7 @@ export const QuestionRelationshipsTab = ({
         </SidesheetCard>
       )}
       <SidesheetCard title={t`Linked tables`}>
-        <TablesLinkedToQuestion question={question} />
+        <TablesLinkedToQuestion />
       </SidesheetCard>
     </Stack>
   );

@@ -44,6 +44,16 @@
    [:user-id  pos-int?]
    [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
 
+ ;; collection write events
+
+(mr/def ::collection
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object [:fn #(t2/instance-of? :model/Collection %)]]])
+
+(mr/def :event/collection-create ::collection)
+(mr/def :event/collection-update ::collection)
+
 ;; dashboard events
 
 (mr/def ::dashboard
@@ -115,7 +125,8 @@
    [:object [:fn #(t2/instance-of? :model/Database %)]]
    [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
    [:details {:optional true} :map]
-   [:user-id pos-int?]])
+   [:user-id pos-int?]
+   [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mr/def :event/database-create ::database)
 (mr/def :event/database-update ::database)
@@ -160,3 +171,27 @@
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
+
+;; Enterprise remote sync events
+
+(mr/def :event/remote-sync
+  [:map
+   [:sync-type [:enum :initial :incremental :full "import" "export"]]
+   [:collection-id [:maybe ms/NonBlankString]]
+   [:user-id [:maybe pos-int?]]
+   [:timestamp [:maybe :any]]
+   [:branch {:optional true} [:maybe :string]]
+   [:status {:optional true} [:maybe [:enum "success" "error"]]]
+   [:version {:optional true} :string]
+   [:message {:optional true} [:maybe :string]]])
+
+;; snippet events
+
+(mr/def ::snippet
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/NativeQuerySnippet %)]]])
+
+(mr/def :event/snippet-create ::snippet)
+(mr/def :event/snippet-update ::snippet)
+(mr/def :event/snippet-delete ::snippet)

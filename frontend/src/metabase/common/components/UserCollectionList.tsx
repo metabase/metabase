@@ -1,4 +1,7 @@
-import { useListUsersQuery } from "metabase/api";
+import {
+  STANDARD_USER_LIST_PAGE_SIZE as PAGE_SIZE,
+  useListUsersQuery,
+} from "metabase/api";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import Card from "metabase/common/components/Card";
 import { Grid } from "metabase/common/components/Grid";
@@ -10,7 +13,6 @@ import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
 } from "metabase/entities/collections/constants";
-import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Loader } from "metabase/ui";
 
@@ -19,8 +21,6 @@ import {
   ListGridItem,
   ListHeader,
 } from "./UserCollectionList.styled";
-
-const PAGE_SIZE = 27;
 
 export const UserCollectionList = () => {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
@@ -66,7 +66,7 @@ export const UserCollectionList = () => {
                           <Icon
                             name="person"
                             className={CS.mr1}
-                            color={color("text-medium")}
+                            c="text-medium"
                             size={18}
                           />
                           <h3>{user.common_name}</h3>
@@ -79,7 +79,7 @@ export const UserCollectionList = () => {
           </Grid>
         )}
       </Box>
-      <Flex justify="end">
+      <Flex justify="end" className={CS.syncStatusAwarePagination}>
         <PaginationControls
           page={page}
           pageSize={PAGE_SIZE}

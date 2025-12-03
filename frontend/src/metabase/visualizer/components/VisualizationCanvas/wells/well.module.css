@@ -1,0 +1,27 @@
+.Well {
+  flex-wrap: nowrap;
+  background-color: var(--mb-color-bg-light);
+  padding: var(--mantine-spacing-sm);
+  gap: var(--mantine-spacing-sm);
+  border-radius: var(--border-radius-xl);
+  border: 1px dashed var(--border-color);
+  transform: scale(1);
+  transition:
+    transform 0.2s ease-in-out 0.2s,
+    border-color 0.2s ease-in-out 0.2s,
+    background 0.2s ease-in-out 0.2s;
+}
+
+.isActive {
+  border-color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-lighter);
+
+  &.isOver {
+    transform: scale(1.025);
+    background-color: var(--mb-color-brand-light);
+  }
+}
+
+.defaultBorderRadius {
+  border-radius: var(--default-border-radius);
+}

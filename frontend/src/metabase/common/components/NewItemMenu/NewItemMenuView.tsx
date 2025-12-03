@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon, Menu } from "metabase/ui";
@@ -43,6 +44,7 @@ const NewItemMenuView = ({
     if (hasDataAccess) {
       items.push(
         <Menu.Item
+          key="question"
           component={ForwardRefLink}
           to={Urls.newQuestion({
             mode: "notebook",
@@ -60,13 +62,14 @@ const NewItemMenuView = ({
     if (hasNativeWrite) {
       items.push(
         <Menu.Item
+          key="native"
           component={ForwardRefLink}
           to={Urls.newQuestion({
-            type: "native",
+            DEPRECATED_RAW_MBQL_type: "native",
             creationType: "native_question",
             collectionId,
             cardType: "question",
-            databaseId: lastUsedDatabaseId || undefined,
+            DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
           })}
           leftSection={<Icon name="sql" />}
         >
@@ -76,6 +79,7 @@ const NewItemMenuView = ({
     }
     items.push(
       <Menu.Item
+        key="dashboard"
         onClick={() => {
           trackNewMenuItemClicked("dashboard");
           dispatch(setOpenModal("dashboard"));
@@ -86,13 +90,26 @@ const NewItemMenuView = ({
       </Menu.Item>,
     );
 
+    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
+      items.push(
+        <Menu.Item
+          key="document"
+          component={ForwardRefLink}
+          to="/document/new"
+          leftSection={<Icon name="document" />}
+        >
+          {t`Document`}
+        </Menu.Item>,
+      );
+    }
+
     return items;
   }, [
     hasDataAccess,
     hasNativeWrite,
     collectionId,
-    hasDatabaseWithJsonEngine,
     lastUsedDatabaseId,
+    hasDatabaseWithJsonEngine,
     dispatch,
   ]);
 

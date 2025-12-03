@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
@@ -725,37 +724,37 @@
 (deftest ^:parallel joined-literal-expression-test
   (testing "joined literal expression"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals :left-join :nested-queries)
-      (is (= [[2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "25°"]
-              [2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "In-N-Out Burger"]
-              [2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "The Apple Pan"]]
-             (mt/formatted-rows
-              [int str int 1.0 int str str]
-              (mt/run-mbql-query venues
-                {:fields      [$id
-                               $name
-                               $price
-                               [:expression "InversePrice"]
-                               &JoinedCategories.*LiteralInt/Integer
-                               &JoinedCategories.*LiteralString/Text
-                               &JoinedCategories.venues.name]
-                 :expressions {"InversePrice"  [:/ &JoinedCategories.*LiteralInt/Integer $price]
-                               "NameEquals"    [:= &JoinedCategories.*LiteralString/Text $name]}
-                 :filter      [:expression "NameEquals"]
-                 :joins       [{:strategy     :left-join
-                                :condition    [:= $category_id &JoinedCategories.venues.category_id]
-                                :source-query {:source-table $$venues
-                                               :expressions  {"LiteralInt"    [:value 1 {:base_type :type/Integer}]
-                                                              "LiteralString" [:value "Stout Burgers & Beers" {:base_type :type/Text}]}
-                                               :filter       [:!= $name [:expression "LiteralString"]]
-                                               :fields       [$category_id
-                                                              $name
-                                                              [:expression "LiteralInt"]
-                                                              [:expression "LiteralString"]]
-                                               :order-by     [[:asc $category_id]
-                                                              [:asc $id]]}
-                                :alias        "JoinedCategories"}]
-                 :order-by    [[:asc &JoinedCategories.venues.name]]
-                 :limit       3})))))))
+      (let [query (mt/mbql-query venues
+                    {:fields      [$id
+                                   $name
+                                   $price
+                                   [:expression "InversePrice"]
+                                   &JoinedCategories.*LiteralInt/Integer
+                                   &JoinedCategories.*LiteralString/Text
+                                   &JoinedCategories.venues.name]
+                     :expressions {"InversePrice"  [:/ &JoinedCategories.*LiteralInt/Integer $price]
+                                   "NameEquals"    [:= &JoinedCategories.*LiteralString/Text $name]}
+                     :filter      [:expression "NameEquals"]
+                     :joins       [{:strategy     :left-join
+                                    :condition    [:= $category_id &JoinedCategories.venues.category_id]
+                                    :source-query {:source-table $$venues
+                                                   :expressions  {"LiteralInt"    [:value 1 {:base_type :type/Integer}]
+                                                                  "LiteralString" [:value "Stout Burgers & Beers" {:base_type :type/Text}]}
+                                                   :filter       [:!= $name [:expression "LiteralString"]]
+                                                   :fields       [$category_id
+                                                                  $name
+                                                                  [:expression "LiteralInt"]
+                                                                  [:expression "LiteralString"]]
+                                                   :order-by     [[:asc $category_id]
+                                                                  [:asc $id]]}
+                                    :alias        "JoinedCategories"}]
+                     :order-by    [[:asc &JoinedCategories.venues.name]]
+                     :limit       3})]
+        (mt/with-native-query-testing-context query
+          (is (= [[2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "25°"]
+                  [2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "In-N-Out Burger"]
+                  [2 "Stout Burgers & Beers" 2 0.5 1 "Stout Burgers & Beers" "The Apple Pan"]]
+                 (mt/formatted-rows [int str int 1.0 int str str] (qp/process-query query)))))))))
 
 (deftest ^:parallel literal-expressions-inside-nested-and-filtered-aggregations-test
   (testing "nested aggregated and filtered literal expression"
@@ -938,14 +937,14 @@
   [{:keys [num-fields]}]
   (mt/dataset-definition
    (format "no-laziness-%d" num-fields)
-   ["lots-of-fields"
-    (concat
-     [{:field-name "a", :base-type :type/Integer}
-      {:field-name "b", :base-type :type/Integer}]
-     (for [field (no-laziness-dataset-definition-field-names num-fields)]
-       {:field-name (name field), :base-type :type/Integer}))
-    ;; one row
-    [(range (+ num-fields 2))]]))
+   [["lots-of-fields"
+     (concat
+      [{:field-name "a", :base-type :type/Integer}
+       {:field-name "b", :base-type :type/Integer}]
+      (for [field (no-laziness-dataset-definition-field-names num-fields)]
+        {:field-name (name field), :base-type :type/Integer}))
+     ;; one row
+     [(range (+ num-fields 2))]]]))
 
 (defn- no-laziness-dataset-definition [num-fields]
   (->NoLazinessDatasetDefinition num-fields))
@@ -1186,11 +1185,3 @@
                    (mt/formatted-rows
                     [u.date/temporal-str->iso8601-str int int]
                     (qp/process-query query))))))))))
-
-(deftest ^:parallel null-array-test
-  (testing "a null array should be handled gracefully and return nil"
-    (mt/test-drivers (mt/normal-drivers-with-feature :test/null-arrays)
-      (is (= [[nil]]
-             (-> (mt/native-query {:query (tx/native-null-array-query driver/*driver*)})
-                 mt/process-query
-                 mt/rows))))))

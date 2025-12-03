@@ -570,7 +570,7 @@
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
-                                                   :total-els-text     #{"TOTAL"}}]
+                                                   :total-els-text     #{"Total"}}]
                                                  [card-b-doc "Renders legend even if disabled in viz-settings, so that static pie charts are legible, but does not render total if it is disabled."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -581,7 +581,7 @@
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
-                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"TOTAL") doc)
+                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"Total") doc)
                                          (map (fn [el] (-> el :content first)))
                                          set)]
                 (testing test-str
@@ -589,23 +589,6 @@
                          {:legend-els-colours legend-elements
                           :slice-els-colours  slice-elements
                           :total-els-text     total-elements})))))))))))
-
-(deftest render-progress
-  (let [col [{:name          "NumPurchased",
-              :display_name  "NumPurchased",
-              :base_type     :type/Integer
-              :semantic_type nil}]
-        render  (fn [rows]
-                  (body/render :progress :inline pacific-tz
-                               render.tu/test-card
-                               nil
-                               {:cols col :rows rows}))]
-    (testing "Renders without error"
-      (let [rendered-info (render [[25]])]
-        (is (has-inline-image? rendered-info))))
-    (testing "Renders negative value without error"
-      (let [rendered-info (render [[-25]])]
-        (is (has-inline-image? rendered-info))))))
 
 (deftest ^:parallel format-percentage-test
   (are [value expected] (= expected
@@ -825,7 +808,7 @@
                   ;; the series bars each have distinct colours, so we can group by those attrs to get a count.
                   ;; and remove any paths that are 'transparent'
                   series-counts          (-> (group-by #(get-in % [:attrs :fill]) dashcard-path-elements)
-                                             (dissoc "transparent")
+                                             (dissoc "none")
                                              (update-vals count))]
               ;; The series count should be 1 for each series, since we're filtering by a single month of the year
               ;; and each question is set up with a breakout on :created_at by :month, so filtering on a single month produces just 1 bar.
@@ -1023,7 +1006,7 @@
             (let [doc            (render.tu/render-card-as-hickory! card-id)
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 7)
+                                      (take-last 6)
                                       (map str/trim)
                                       first)]
               (testing "Renders with correct day of week first"
@@ -1072,3 +1055,69 @@
                       svg    (html doc)]
                   (testing "Renders with custom whitelabel color"
                     (is (str/includes? svg "#0005FF"))))))))))))
+
+(deftest order-data-handles-duplicated-table-columns-test
+  (testing "order-data function handles duplicated table columns correctly (#62053)"
+    (let [test-cols [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
+                     {:name "NAME" :display_name "Name" :base_type :type/Text}]
+          test-rows [[1 "Alice"] [2 "Bob"]]
+          test-data {:cols test-cols :rows test-rows}
+          ;; Simulate duplicated table columns viz settings
+          viz-settings {:metabase.models.visualization-settings/table-columns
+                        [{:metabase.models.visualization-settings/table-column-name "ID"
+                          :metabase.models.visualization-settings/table-column-enabled true}
+                         {:metabase.models.visualization-settings/table-column-name "ID" ; duplicate
+                          :metabase.models.visualization-settings/table-column-enabled true}
+                         {:metabase.models.visualization-settings/table-column-name "NAME"
+                          :metabase.models.visualization-settings/table-column-enabled true}]}
+          [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
+      (testing "should return cols without errors"
+        (is (= 2 (count ordered-cols)))
+        (is (= "ID" (:name (first ordered-cols))))
+        (is (= "NAME" (:name (second ordered-cols)))))
+      (testing "should return rows without errors"
+        (is (= 2 (count ordered-rows)))
+        (is (= [1 "Alice"] (first ordered-rows)))
+        (is (= [2 "Bob"] (second ordered-rows)))))))
+
+(deftest order-data-respect-table-columns-order-test
+  (testing "order-data respect table-columns order from viz-settings (#62053)"
+    (let [col-names ["ID" "NAME" "EMAIL" "PHONE" "ADDRESS" "CITY" "STATE" "ZIP" "COUNTRY" "CREATED_AT"]
+          test-cols (vec (for [col-name col-names]
+                           {:name         col-name
+                            :display_name col-name
+                            :base_type    :type/Text}))
+          test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
+          test-data {:cols test-cols :rows test-rows}
+          reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
+          viz-settings {:metabase.models.visualization-settings/table-columns
+                        (vec (for [col-name reordered-names]
+                               {:metabase.models.visualization-settings/table-column-name col-name
+                                :metabase.models.visualization-settings/table-column-enabled true}))}
+          [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
+      (testing "cols should follow table-columns order"
+        (is (= reordered-names (map :name ordered-cols))))
+      (testing "rows should be reordered to match columns"
+        (is (= ["alice@example.com" "Alice" "Boston" "MA" "02101" 1 "555-1234" "123 Main St" "USA" "2024-01-01"]
+               (first ordered-rows)))))))
+
+(deftest render-table-with-remapped-with-custom-columns-order-test
+  (mt/with-column-remappings [orders.product_id products.title]
+    (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
+      (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
+                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                                                (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
+                                                                       {:metabase.models.visualization-settings/table-column-name col-name
+                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+        ;; trigger render to gather prep-data for rendering
+        (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
+          (is (=  ["Quantity"
+                   "Created At"
+                   "Discount ($)"
+                   "Total"
+                   "Tax"
+                   "Subtotal"
+                   "User ID"
+                   "ID"
+                   "Product ID [external remap]"]
+                  (map (comp :title second) (-> table :content second (nth 2) second last)))))))))

@@ -36,7 +36,7 @@ Metabase admins can designate collections as "official" with the following effec
 
 Pairing Official badges with [verified items](./content-verification.md) can help everyone in your Metabase sort out which questions people can trust.
 
-To add an Official badge to a collection, an admin can visit the collection and click on the dot dot dot menu (**...**) and select **Make collection official**. Admins can also remove an Official badge in the same menu. Admins can also mark a collection as Official or not when they first create the collection.
+To add an Official badge to a collection, an admin can visit the collection and click on the three-dot menu (**...**) and select **Make collection official**. Admins can also remove an Official badge in the same menu. Admins can also mark a collection as Official or not when they first create the collection.
 
 ## Collection permissions
 
@@ -48,7 +48,7 @@ To add an Official badge to a collection, an admin can visit the collection and 
 
 ## Your personal collection
 
- You'll find your **Your personal collection** in the left side navbar under collections. Only you (and your admins) can view and edit this collection.
+You'll find your **Your personal collection** in the left side navbar under collections. Only you (and your admins) can view and edit this collection.
 
 You can use your personal collection as a scratch space to put experiments and explorations that you don't think would be particularly interesting to the rest of your team, or as a work-in-progress space where you can work on things and then move them to a shared place once they're ready.
 

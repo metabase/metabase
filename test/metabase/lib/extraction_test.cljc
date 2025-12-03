@@ -78,7 +78,7 @@
                          :display-name   "Ship time"
                          :base-type      :type/Time
                          :effective-type :type/Time
-                         :semantic-type  :type/Time)
+                         :semantic-type  nil)
         mp        (lib/composed-metadata-provider
                    (lib.tu/mock-metadata-provider {:fields [ship-time]})
                    meta/metadata-provider)
@@ -95,7 +95,7 @@
                          :display-name   "Expected arrival"
                          :base-type      :type/Date
                          :effective-type :type/Date
-                         :semantic-type  :type/Date)
+                         :semantic-type  nil)
         mp        (lib/composed-metadata-provider
                    (lib.tu/mock-metadata-provider {:fields [arrival]})
                    meta/metadata-provider)

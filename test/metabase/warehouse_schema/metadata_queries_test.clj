@@ -1,68 +1,132 @@
 (ns metabase.warehouse-schema.metadata-queries-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.warehouse-schema.metadata-queries :as metadata-queries]))
 
-(defn- ordered-filter [query]
-  ;; sort by id [:field id option]
-  (update query :filter (fn [filter-clause]
-                          (if (#{:and :or} (first filter-clause))
-                            (into [(first filter-clause)] (sort-by second (rest filter-clause)))
-                            filter-clause))))
+(defn- sort-by-field-id [clauses]
+  (sort-by #(lib.util.match/match-one %
+              [:field _opts (id :guard pos-int?)]
+              id)
+           clauses))
 
-(deftest add-required-filter-if-needed-test
-  (mt/with-temp
-    [:model/Database db               {:engine :h2}
-     :model/Table    product          {:name "PRODUCT" :db_id (:id db)}
-     :model/Field    _product-id      {:name "ID" :table_id (:id product) :base_type :type/Integer}
-     :model/Field    _product-name    {:name "NAME" :table_id (:id product) :base_type :type/Integer}
-     :model/Table    buyer            {:name "BUYER" :database_require_filter true :db_id (:id db)}
-     :model/Field    buyer-id         {:name "ID" :table_id (:id buyer) :base_type :type/Integer :database_partitioned true}
-     :model/Table    order            {:name "ORDER" :database_require_filter true :db_id (:id db)}
-     :model/Field    order-id         {:name "ID" :table_id (:id order) :base_type :type/Integer}
-     :model/Field    _order-buyer-id  {:name "BUYER_ID" :table_id (:id order) :base_type :type/Integer}
-     :model/Field    order-product-id {:name "PRODUCT_ID" :table_id (:id order) :base_type :type/Integer :database_partitioned true}]
-    (mt/with-db db
-      (testing "no op for tables that do not require filter"
-        (let [query (:query (mt/mbql-query product))]
-          (is (= query
-                 (metadata-queries/add-required-filters-if-needed query)))))
+(defn- id
+  ([table]
+   (case table
+     :product 1
+     :buyer   2
+     :order   3))
+  ([table field]
+   (case table
+     :product (case field
+                :id   1
+                :name 2)
+     :buyer   (case field
+                :id 3)
+     :order   (case field
+                :id         4
+                :buyer-id   5
+                :product-id 6))))
 
-      (testing "if the source table requires a filter, add the partitioned filter"
-        (let [query (:query (mt/mbql-query order))]
-          (is (= (assoc query
-                        :filter [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808])
-                 (metadata-queries/add-required-filters-if-needed query)))))
+(defn- mp []
+  (lib.tu/mock-metadata-provider
+   {:database (assoc meta/database :id 1)
+    :tables   [(assoc (meta/table-metadata :products) :name "PRODUCT", :db-id 1, :id (id :product))
+               (assoc (meta/table-metadata :products) :name "BUYER", :db-id 1, :id (id :buyer), :database-require-filter true)
+               (assoc (meta/table-metadata :products) :name "ORDER", :db-id 1, :id (id :order), :database-require-filter true)]
+    :fields   [;; PRODUCT
+               (merge (meta/field-metadata :products :id)
+                      {:table-id (id :product), :name "ID", :id (id :product :id)})
+               (merge (meta/field-metadata :products :id)
+                      {:table-id (id :product), :name "NAME", :id (id :product :name), :base-type :type/Text})
+               ;; BUYER
+               (merge (meta/field-metadata :products :id)
+                      {:table-id (id :buyer), :name "ID", :id (id :buyer :id), :database-partitioned true})
+               ;; ORDER
+               (merge (meta/field-metadata :products :id)
+                      {:table-id (id :order), :name "ID", :id (id :order :id)})
+               (merge (meta/field-metadata :products :id)
+                      {:table-id           (id :order)
+                       :name               "BUYER_ID"
+                       :id                 (id :order :buyer-id)
+                       :semantic-type      :type/FK
+                       :fk-target-field-id (id :buyer :id)})
+               (merge (meta/field-metadata :products :id)
+                      {:table-id             (id :order)
+                       :name                 "PRODUCT_ID"
+                       :id                   (id :order :product-id)
+                       :semantic-type        :type/FK
+                       :fk-target-field-id   (id :product :id)
+                       :database-partitioned true})]}))
 
-      (testing "if a joined table require a filter, add the partitioned filter"
-        (let [query (:query (mt/mbql-query product {:joins [{:source-table (:id order)
-                                                             :condition    [:= $order.product_id $product.id]
-                                                             :alias        "Product"}]}))]
-          (is (= (assoc query
-                        :filter [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808])
-                 (metadata-queries/add-required-filters-if-needed query)))))
+(deftest ^:parallel add-required-filter-if-needed-test
+  (let [mp (mp)]
+    (testing "no op for tables that do not require filter"
+      (let [query (lib/query mp (lib.metadata/table mp (id :product)))]
+        (is (= query
+               (metadata-queries/add-required-filters-if-needed query)))))))
 
-      (testing "if both source tables and joined table require a filter, add both"
-        (let [query (:query (mt/mbql-query order {:joins [{:source-table (:id buyer)
-                                                           :condition    [:= $order.buyer_id $buyer.id]
-                                                           :alias        "BUYER"}]}))]
-          (is (= (-> query
-                     (assoc :filter [:and
-                                     [:> [:field (:id buyer-id) {:base-type :type/Integer}] -9223372036854775808]
-                                     [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808]])
-                     ordered-filter)
-                 (-> query
-                     metadata-queries/add-required-filters-if-needed
-                     ordered-filter)))))
+(deftest ^:parallel add-required-filter-if-needed-test-2
+  (let [mp (mp)]
+    (testing "if the source table requires a filter, add the partitioned filter"
+      (let [query (lib/query mp (lib.metadata/table mp (id :order)))]
+        (is (=? [[:> {}
+                  [:field {} (id :order :product-id)]
+                  -9223372036854775808]]
+                (-> (metadata-queries/add-required-filters-if-needed query)
+                    :stages
+                    first
+                    :filters)))))))
 
-      (testing "Should add an and clause for existing filter"
-        (let [query (:query (mt/mbql-query order {:filter [:> $order.id 1]}))]
-          (is (= (-> query
-                     (assoc :filter [:and
-                                     [:> [:field (:id order-id) nil] 1]
-                                     [:> [:field (:id order-product-id) {:base-type :type/Integer}] -9223372036854775808]])
-                     ordered-filter)
-                 (-> query
-                     metadata-queries/add-required-filters-if-needed
-                     ordered-filter))))))))
+(deftest ^:parallel add-required-filter-if-needed-test-3
+  (let [mp (mp)]
+    (testing "if a joined table require a filter, add the partitioned filter"
+      (let [query (-> (lib/query mp (lib.metadata/table mp (id :product)))
+                      (lib/join (lib.metadata/table mp (id :order))))]
+        (is (=? [[:> {}
+                  [:field {:join-alias string?} (id :order :product-id)]
+                  -9223372036854775808]]
+                (-> (metadata-queries/add-required-filters-if-needed query)
+                    :stages
+                    first
+                    :filters)))))))
+
+(deftest ^:parallel add-required-filter-if-needed-test-4
+  (let [mp (mp)]
+    (testing "if both source tables and joined table require a filter, add both"
+      (let [query (-> (lib/query mp (lib.metadata/table mp (id :order)))
+                      (lib/join (lib.metadata/table mp (id :buyer))))]
+        (is (=? [[:> {}
+                  [:field  {:join-alias string?} (id :buyer :id)]
+                  -9223372036854775808]
+                 [:> {}
+                  [:field {} (id :order :product-id)]
+                  -9223372036854775808]]
+                (-> query
+                    metadata-queries/add-required-filters-if-needed
+                    :stages
+                    first
+                    :filters
+                    sort-by-field-id)))))))
+
+(deftest ^:parallel add-required-filter-if-needed-test-5
+  (let [mp (mp)]
+    (testing "Should add an and clause for existing filter"
+      (let [query (-> (lib/query mp (lib.metadata/table mp (id :order)))
+                      (lib/filter (lib/> (lib.metadata/field mp (id :order :id)) 1)))]
+        (is (=? [[:> {}
+                  [:field {} (id :order :id)]
+                  1]
+                 [:> {}
+                  [:field {} (id :order :product-id)]
+                  -9223372036854775808]]
+                (-> query
+                    metadata-queries/add-required-filters-if-needed
+                    :stages
+                    first
+                    :filters
+                    sort-by-field-id)))))))

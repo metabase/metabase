@@ -18,7 +18,7 @@
   (open-api-spec [this prefix]
     "Get the OpenAPI spec base object (as a Clojure data structure) associated with a Ring handler. `prefix` is the
     route prefix in the Compojure `context` sense, e.g. `/api/` for [[metabase.api-routes.core/routes]], or
-    `/api/user/` by the time we get to [[metabase.users.api]], etc."))
+    `/api/user/` by the time we get to [[metabase.users-rest.api]], etc."))
 
 (extend-protocol OpenAPISpec
   nil
@@ -98,7 +98,7 @@
    [:map
 
     [:type [:= :string]]
-    [:format    {:optional true} [:= :binary]]
+    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid"]]
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
@@ -139,7 +139,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type                 [:= :object]]
     [:properties           {:optional true} [:map-of :string [:ref ::parameter.schema]]]
     [:additionalProperties {:optional true} [:multi
@@ -275,13 +274,27 @@
               [:map
                [:schema ::parameter.schema]]]]])
 
+(mr/def ::path-item.responses
+  [:map-of
+   ;; can be exact status codes: "200" status code ranges: "5XX" and or "default"
+   :string
+   [:map
+    [:description :string]
+    [:content     {:optional true} [:map-of
+                                    [:enum "application/json" "multipart/form-data"]
+                                    [:map [:schema ::parameter.schema]]]]
+    ;; TODO -- headers, links, etc.
+    ]])
+
 (mr/def ::path-item
   [:map
    [:summary     :string]
    [:description :string]
    [:parameters  [:sequential ::parameter]]
    [:requestBody {:optional true} ::path-item.request-body]
-   [:tags        {:optional true} [:sequential :string]]])
+   [:tags        {:optional true} [:sequential :string]]
+   [:deprecated  {:optional true} :boolean]
+   [:responses   ::path-item.responses]])
 
 (mr/def ::components
   [:map

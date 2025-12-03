@@ -4,7 +4,7 @@ import {
   LISTABLE_FIELD_WITH_MANY_VALUES_ID,
   STRING_PK_FIELD_ID,
   metadata,
-} from "./testMocks";
+} from "./testMocks.spec";
 import { getValuesMode, isSearchable, searchField } from "./utils";
 
 describe("Components > FieldValuesWidget > utils", () => {

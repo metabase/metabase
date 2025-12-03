@@ -44,7 +44,9 @@ export function BaseSelectListItem({
       size={size}
       onClick={(event: MouseEvent) => onSelect(id, event)}
       onKeyDown={(event: KeyboardEvent) =>
-        event.key === "Enter" && onSelect(id, event)
+        event.key === "Enter" &&
+        !event.nativeEvent.isComposing &&
+        onSelect(id, event)
       }
       className={className}
       {...rest}

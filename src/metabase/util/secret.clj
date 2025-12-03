@@ -1,29 +1,43 @@
 (ns metabase.util.secret
   (:require
-   [metabase.util.i18n :refer [trs]])
-  (:import (java.io Writer)))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.malli.registry :as mr]
+   [potemkin :as p]
+   [pretty.core :as pretty]))
 
 (set! *warn-on-reflection* true)
 
-;; Define a protocol for secrets to make things harder to accidentally expose.
-(defprotocol ISecret
+;; Define an interface for secrets to make things harder to accidentally expose.
+;;
+;; This uses `definterface` rather than `defprotocol` because [[secret?]] below only works correctly for classes that
+;; implement it at definition time; making it an interface discourages people from thinking an object that you
+;; `extend-protocol`-ed would work
+(p/definterface+ ISecret
   (expose [this] "Expose the secret"))
 
-(defrecord Secret [value-fn]
+(p/deftype+ Secret [value-fn]
   ISecret
   (expose [_this] (value-fn))
+
   Object
-  (toString [_this] (trs "<< REDACTED SECRET >>")))
+  (toString [_this] (trs "<< REDACTED SECRET >>"))
 
-(defmethod print-method Secret
-  [^Secret secret ^Writer writer]
-  (.write writer (.toString secret)))
-
-(defmethod print-dup Secret
-  [^Secret secret ^Writer w]
-  (.write w (.toString secret)))
+  pretty/PrettyPrintable
+  (pretty [this]
+    (.toString this)))
 
 (defn secret
   "Create a `Secret` that can't be accidentally read without calling the `expose` method on it."
   [value]
   (->Secret (constantly value)))
+
+(defn secret?
+  "Whether `x` is an instance of a `Secret`."
+  [x]
+  (instance? metabase.util.secret.ISecret x))
+
+(mr/def ::secret
+  "An instance of a metabase.util.secret.ISecret."
+  [:fn
+   {:error/message "An instance of a metabase.util.secret.ISecret."}
+   #'secret?])

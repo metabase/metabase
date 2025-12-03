@@ -125,6 +125,9 @@ const SingleSelectListField = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&

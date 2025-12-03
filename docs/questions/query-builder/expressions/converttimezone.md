@@ -62,7 +62,7 @@ If **Source Time** is stored as a `timestamp without time zone`, you _must_ prov
 convertTimezone([Source Time], 'EST', 'UTC')
 ```
 
-It's usually a good idea to label `convertTimezone` columns with the name of the target time zone (or add the target time zone to the metadata of a model). We promise this will make your life easier when someone inevitably asks why the numbers don't match.
+It's usually a good idea to label `convertTimezone` columns with the name of the target time zone (or add the target time zone to the metadata of a model). We promise this will make your life easier when someone inevitably questions why the numbers don't match.
 
 If you're not getting the results that you expect:
 
@@ -100,7 +100,7 @@ For more gory details, see [Limitations](#limitations).
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#cast-to-a-specific-data-type) from the Table Metadata page.
 
 To use `convertTimezone` without running into errors or pesky undetectable mistakes, you should know that there are a few varieties of `timestamp` data types:
 
@@ -135,8 +135,8 @@ The Metabase report time zone only applies to `timestamp with time zone` or `tim
 
 | Raw timestamp in your database           | Data type                     | Report time zone | Displayed as           |
 | ---------------------------------------- | ----------------------------- | ---------------- | ---------------------- |
-| `2022-12-28T12:00:00 AT TIME ZONE 'CST'` | `timestamp with time zone`    | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
-| `2022-12-28T12:00:00-06:00`              | `timestamp with offset`       | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
+| `2022-12-28T12:00:00 AT TIME ZONE 'CST'` | `timestamp with time zone`    | 'Canada/Eastern' | Dec 28, 2022, 1:00 PM  |
+| `2022-12-28T12:00:00-06:00`              | `timestamp with offset`       | 'Canada/Eastern' | Dec 28, 2022, 1:00 PM  |
 | `2022-12-28T12:00:00`                    | `timestamp without time zone` | 'Canada/Eastern' | Dec 28, 2022, 12:00 AM |
 
 The Metabase report time zone will not apply to the output of a `convertTimezone` expression. For example:
@@ -187,7 +187,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query-builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [timestamp sample data](#creating-custom-report-dates) is a `timestamp without time zone` stored in a PostgreSQL database:
 

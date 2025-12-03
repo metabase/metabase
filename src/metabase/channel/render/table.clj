@@ -125,7 +125,7 @@
   - Formatted value alone if not a valid numeric value"
   [val {:keys [min max]} col-styles]
   (if-let [num (:num-value val)] ;; Assumes NumericWrapper
-    (let [is-neg?        (< num 1)
+    (let [is-neg?        (< num 0)
           has-neg?       (< min 0)
           normalized-max (clojure.core/max (abs min) (abs max))
           pct-full       (if (zero? normalized-max) 0 (int (* (/ (abs num) normalized-max) 100)))

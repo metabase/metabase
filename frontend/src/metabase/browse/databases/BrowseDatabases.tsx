@@ -7,22 +7,13 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { newDatabase } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import {
-  Box,
-  Group,
-  Icon,
-  SimpleGrid,
-  Stack,
-  type StackProps,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Group, Stack, Text, Title } from "metabase/ui";
 
+import { BrowseCard } from "../components/BrowseCard";
 import {
   BrowseContainer,
   BrowseMain,
@@ -30,6 +21,7 @@ import {
   CenteredEmptyState,
 } from "../components/BrowseContainer.styled";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
+import { BrowseGrid } from "../components/BrowseGrid";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
@@ -65,49 +57,22 @@ export const BrowseDatabases = () => {
     <BrowseContainer>
       <BrowseDataHeader />
       <BrowseMain>
-        <BrowseSection>
-          <SimpleGrid data-testid="database-browser" cols={3}>
+        <BrowseSection direction="column">
+          <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
               databases.map((database) => (
-                <Link to={Urls.browseDatabase(database)} key={database.id}>
-                  <DatabaseCard
-                    bg="bg-white"
-                    className={cx(CS.rounded, CS.bordered, DB.dbCard)}
-                  >
-                    <Icon name="database" color={color("accent2")} size={32} />
-                    <Title order={2} size="md" lh={1.2} c="inherit">
-                      {database.name}
-                    </Title>
-                  </DatabaseCard>
-                </Link>
+                <BrowseCard
+                  to={Urls.browseDatabase(database)}
+                  key={database.id}
+                  title={database.name}
+                  icon="database"
+                  size="lg"
+                  iconColor="accent2" // can we change this? - Yes we can
+                />
               ))}
-
-            {isAdmin && (
-              <Link to={newDatabase()} onClick={() => trackAddDatabaseDBList()}>
-                <DatabaseCard
-                  className={cx(CS.rounded, CS.bordered, DB.addCard)}
-                >
-                  <Group gap="xs">
-                    <CardImageWrapper database={"postgres"} />
-                    <CardImageWrapper database={"mysql"} />
-                    <CardImageWrapper database={"snowflake"} />
-                  </Group>
-                  <div>
-                    <Title order={2} size="md" lh={1.2} c="inherit">
-                      {t`Add a database`}
-                    </Title>
-                    <Text
-                      color="inherit"
-                      fz="sm"
-                      lh={1}
-                      span
-                    >{t`20+ data connectors. Start exploring in minutes.`}</Text>
-                  </div>
-                </DatabaseCard>
-              </Link>
-            )}
-          </SimpleGrid>
+            {isAdmin && <AddDatabaseCard />}
+          </BrowseGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>
@@ -127,15 +92,42 @@ const CardImageWrapper = ({ database }: { database: string }) => {
           "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.10)",
       }}
     >
-      <img src={getEngineLogo(database)} alt={t`${database} database logo`} />
+      <Box
+        component="img"
+        src={getEngineLogo(database)}
+        alt={t`${database} database logo`}
+        h="xl"
+        w="xl"
+        p="xs"
+      />
     </Box>
   );
 };
 
-const DatabaseCard = ({ children, ...props }: StackProps) => {
-  return (
-    <Stack h="8.5rem" justify="space-between" p="lg" {...props}>
-      {children}
+const AddDatabaseCard = () => (
+  <Link to={newDatabase()} onClick={() => trackAddDatabaseDBList()}>
+    <Stack
+      h="8.5rem"
+      justify="space-between"
+      p="lg"
+      className={cx(CS.rounded, CS.bordered, DB.addCard)}
+    >
+      <Group gap="xs">
+        <CardImageWrapper database={"postgres"} />
+        <CardImageWrapper database={"mysql"} />
+        <CardImageWrapper database={"snowflake"} />
+      </Group>
+      <div>
+        <Title order={2} size="md" lh={1.2} c="inherit">
+          {t`Add a database`}
+        </Title>
+        <Text
+          color="inherit"
+          fz="sm"
+          lh={1}
+          span
+        >{t`20+ data connectors. Start exploring in minutes.`}</Text>
+      </div>
     </Stack>
-  );
-};
+  </Link>
+);

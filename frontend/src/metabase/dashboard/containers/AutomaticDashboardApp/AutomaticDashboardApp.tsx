@@ -3,73 +3,55 @@ import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
 import ActionButton from "metabase/common/components/ActionButton";
 import Button from "metabase/common/components/Button";
 import Link from "metabase/common/components/Link";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import DashboardS from "metabase/css/dashboard.module.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
-import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { Dashboard } from "metabase/dashboard/components/Dashboard";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { SetTitle } from "metabase/hoc/Title";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
-import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import { Box, Flex, Group } from "metabase/ui";
+import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
-import { useDashboardUrlQuery } from "../../hooks/use-dashboard-url-query";
 import { XrayIcon } from "../XrayIcon";
 
 import S from "./AutomaticDashboardApp.module.css";
 import { SuggestionsSidebar } from "./SuggestionsSidebar";
+import { trackXRaySaved } from "./analytics";
 
 const SIDEBAR_W = 346;
 
 type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
 const AutomaticDashboardAppInner = () => {
-  const {
-    dashboard,
-    parameters,
-    parameterValues,
-    setParameterValue,
-    isHeaderVisible,
-    tabs,
-    selectedTabId,
-    slowCards,
-    navigateToNewCardFromDashboard,
-    downloadsEnabled,
-  } = useDashboardContext();
+  const { dashboard, parameters, isHeaderVisible, tabs } =
+    useDashboardContext();
+
+  usePageTitle(dashboard?.name || "", { titleIndex: 1 });
 
   const dispatch = useDispatch();
 
-  const saveDashboard = (newDashboard: Omit<Dashboard, "id">) =>
+  const saveDashboard = (newDashboard: Omit<IDashboard, "id">) =>
     dispatch(dashboardApi.endpoints.saveDashboard.initiate(newDashboard));
   const invalidateCollections = () => invalidateTags(null, ["collection"]);
 
-  const [savedDashboardId, setSavedDashboardId] = useState<DashboardId | null>(
-    null,
-  );
+  const [savedDashboardUrl, setSavedDashboardUrl] = useState<string>();
 
   useEffect(() => {
-    if (dashboard?.id) {
-      setSavedDashboardId(null);
-    }
+    setSavedDashboardUrl(undefined);
   }, [dashboard?.id]);
 
   const save = async () => {
@@ -82,6 +64,9 @@ const AutomaticDashboardAppInner = () => {
       if (!newDashboard) {
         return;
       }
+
+      const newDashboardUrl = Urls.dashboard(newDashboard);
+
       dispatch(dashboardApi.util.invalidateTags(invalidateCollections()));
       dispatch(
         addUndo({
@@ -90,7 +75,7 @@ const AutomaticDashboardAppInner = () => {
               {t`Your dashboard was saved`}
               <Link
                 className={cx(CS.link, CS.textBold, CS.ml1)}
-                to={Urls.dashboard(newDashboard)}
+                to={newDashboardUrl}
               >
                 {t`See it`}
               </Link>
@@ -99,7 +84,7 @@ const AutomaticDashboardAppInner = () => {
           icon: "dashboard",
         }),
       );
-      setSavedDashboardId(newDashboard.id);
+      setSavedDashboardUrl(newDashboardUrl);
     }
   };
 
@@ -111,12 +96,10 @@ const AutomaticDashboardAppInner = () => {
 
   return (
     <div
-      className={cx(CS.relative, "AutomaticDashboard", {
+      className={cx(CS.relative, S.Root, "AutomaticDashboard", {
         "AutomaticDashboard--withSidebar": hasSidebar,
       })}
     >
-      {dashboard && <SetTitle title={dashboard.name} />}
-
       {isHeaderVisible && (
         <div
           className={cx(CS.bgWhite, CS.borderBottom)}
@@ -127,38 +110,56 @@ const AutomaticDashboardAppInner = () => {
               <FixedWidthContainer
                 isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
-                <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
+                <Flex
+                  columnGap="md"
+                  justify="space-between"
+                  py="md"
+                  wrap={{ base: "wrap", sm: "nowrap" }}
+                >
                   <FixedWidthContainer
                     data-testid="fixed-width-dashboard-header"
                     className={cx(CS.flex, CS.alignCenter)}
                     isFixedWidth={dashboard?.width === "fixed"}
                   >
                     <XrayIcon />
-                    <DashboardTitle
-                      className={cx(CS.textWrap, CS.mr2, CS.h2)}
-                    />
+                    <Dashboard.Title className={cx(CS.textWrap, CS.h2)} />
                   </FixedWidthContainer>
-                  <div
-                    className={cx(CS.flex, CS.flexGrow1)}
-                    style={{ maxWidth: SIDEBAR_W }}
+                  <Group
+                    align="center"
+                    gap="md"
+                    justify="flex-end"
+                    w={{ base: "auto", md: SIDEBAR_W }}
+                    wrap="nowrap"
                   >
-                    {savedDashboardId != null ? (
-                      <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
+                    {savedDashboardUrl ? (
+                      <>
+                        <Link
+                          className={cx(CS.link, CS.textBold)}
+                          style={{ whiteSpace: "nowrap" }}
+                          to={savedDashboardUrl}
+                        >
+                          {t`See it`}
+                        </Link>
+                        <Button disabled>{t`Saved`}</Button>
+                      </>
                     ) : (
                       <ActionButton
                         className={cx(CS.mlAuto, CS.textNoWrap)}
                         success
                         borderless
-                        actionFn={save}
+                        actionFn={() => {
+                          trackXRaySaved();
+                          return save();
+                        }}
                       >
                         {t`Save this`}
                       </ActionButton>
                     )}
-                  </div>
-                </div>
+                  </Group>
+                </Flex>
                 {dashboard && tabs.length > 1 && (
                   <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                    <DashboardTabs />
+                    <Dashboard.Tabs />
                   </div>
                 )}
               </FixedWidthContainer>
@@ -168,51 +169,23 @@ const AutomaticDashboardAppInner = () => {
       )}
 
       <div
-        className={CS.relative}
-        style={{ paddingRight: hasSidebar ? SIDEBAR_W : undefined }}
+        className={cx(CS.relative, S.DashboardWrapper, {
+          [S.HasSidebar]: hasSidebar,
+        })}
       >
         <div className={cx(CS.wrapper, CS.pb4)}>
           {parameters && parameters.length > 0 && (
             <div className={cx(CS.px1, CS.pt1)}>
               <FixedWidthContainer
-                id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+                id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}
                 data-testid="fixed-width-filters"
                 isFixedWidth={dashboard?.width === "fixed"}
               >
-                <ParametersList
-                  className={CS.mt1}
-                  parameters={getValuePopulatedParameters({
-                    parameters,
-                    values: parameterValues,
-                  })}
-                  setParameterValue={setParameterValue}
-                />
+                <Dashboard.ParametersList />
               </FixedWidthContainer>
             </div>
           )}
-          <LoadingAndErrorWrapper
-            className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull)}
-            loading={!dashboard}
-            noBackground
-          >
-            {() =>
-              dashboard && (
-                <DashboardGridConnected
-                  isXray
-                  dashboard={dashboard}
-                  selectedTabId={selectedTabId}
-                  slowCards={slowCards}
-                  clickBehaviorSidebarDashcard={null}
-                  downloadsEnabled={downloadsEnabled}
-                  autoScrollToDashcardId={undefined}
-                  reportAutoScrolledToDashcard={_.noop}
-                  navigateToNewCardFromDashboard={
-                    navigateToNewCardFromDashboard ?? null
-                  }
-                />
-              )
-            }
-          </LoadingAndErrorWrapper>
+          <Dashboard.Grid />
         </div>
         {more && (
           <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
@@ -258,6 +231,8 @@ export const AutomaticDashboardApp = ({
         dispatch(navigateToNewCardFromDashboard(opts))
       }
       downloadsEnabled={{ pdf: false, results: false }}
+      dashcardMenu={null}
+      dashboardActions={null}
     >
       <AutomaticDashboardAppInner />
     </DashboardContextProvider>

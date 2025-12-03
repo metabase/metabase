@@ -39,7 +39,7 @@
   [_ database]
   (druid.sync/dbms-version database))
 
-(defmethod driver/describe-database :druid
+(defmethod driver/describe-database* :druid
   [_ database]
   (druid.sync/describe-database database))
 

@@ -13,6 +13,7 @@
   "org.apache.hadoop"                {:resource "apache2_0.txt"}
   "org.clojure"                      {:resource "EPL.txt"}
   "org.eclipse.jetty"                {:resource "apache2_0.txt"}
+  "org.eclipse.jetty.ee"             {:resource "apache2_0.txt"}
   "org.opensaml"                     {:resource "apache2_0.txt"}
   "org.ow2.asm"                      {:resource "BSD.txt"}
   "xalan"                            {:resource "apache2_0.txt"}}
@@ -37,6 +38,7 @@
                                 "jersey-client"  {:resource "apache2_0.txt"}
                                 "jersey-servlet" {:resource "GPL1_1.txt"}}
  "com.sun.jersey.contribs"     {"jersey-guice" {:resource "GPL1_1.txt"}}
+ "com.sun.mail"                {"jakarta.mail" {:resource "EPL_2.txt"}}
  "com.thoughtworks.paranamer"  {"paranamer" {:resource "BSD.txt"}}
  "de.rototor.pdfbox"           {"graphics2d" {:resource "apache2_0.txt"}}
  "hiccup"                      {"hiccup" {:resource "EPL.txt"}}
@@ -58,6 +60,7 @@
  "net.thisptr"                 {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                   {"antlr-runtime"  {:resource "BSD.txt"}
                                 "antlr4-runtime" {:resource "BSD.txt"}}
+ "org.eclipse.jgit"            {"org.eclipse.jgit" {:resource "BSD.txt"}}
  "org.eclipse.jetty"           {"jetty-webapp" {:resource "EPL.txt"}}
  "org.eclipse.jetty.toolchain" {"jetty-jakarta-servlet-api" {:resource "EPL.txt"}}
  "org.eclipse.jetty.ee9.websocket" {"jetty-ee9-websocket-jetty-api" {:resource "EPL.txt"}

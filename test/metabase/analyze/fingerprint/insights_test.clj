@@ -51,6 +51,15 @@
   (is (true? (valid-period? #t "2015-01-01" #t "2015-01-08")))
   (is (true? (valid-period? #t "2015-01-01" #t "2015-04-03")))
   (is (true? (valid-period? #t "2015" #t "2016")))
+  ;; Test leap year handling
+  (is (true? (valid-period? #t "2016" #t "2017")))
+  (is (true? (valid-period? #t "2017" #t "2018")))
+  ;; Periods less than 365 days should NOT be inferred as :year
+  (is (not= :year (#'insights/infer-unit (inst->day #t "2015-01-01") (inst->day #t "2015-12-01"))))
+  (is (not= :year (#'insights/infer-unit (inst->day #t "2015-02-01") (inst->day #t "2016-01-01"))))
+  ;; Both 365 and 366 day periods should be inferred as :year
+  (is (= :year (#'insights/infer-unit (inst->day #t "2015-01-01") (inst->day #t "2016-01-01"))))
+  (is (= :year (#'insights/infer-unit (inst->day #t "2016-01-01") (inst->day #t "2017-01-01"))))
   (is (= false (valid-period? #t "2015-01-01" #t "2015-01-09")))
   (is (true? (valid-period? #t "2015-01-01" #t "2015-04-03" :quarter)))
   (is (= false (valid-period? #t "2015-01-01" #t "2015-04-03" :month)))

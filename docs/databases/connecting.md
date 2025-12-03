@@ -69,7 +69,7 @@ Go to **Admin settings** > **Databases** > your database and click **Remove this
 
 ## Restoring the Sample Database
 
-If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample_database), go to **Admin settings** > **Databases** and click **Bring the Sample Database back**.
+If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample-database), go to **Admin settings** > **Databases** and click **Bring the Sample Database back**.
 
 ## Troubleshooting
 

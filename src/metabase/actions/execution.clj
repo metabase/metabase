@@ -3,14 +3,17 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.actions :as lib.schema.actions]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -23,21 +26,23 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn- execute-query-action!
+(mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`."
-  [{:keys [dataset_query model_id] :as action} request-parameters]
+  [{query :dataset_query, model-id :model_id, :as action} :- [:map
+                                                              [:model_id      ::lib.schema.id/card]
+                                                              [:dataset_query ::lib.schema/native-only-query]]
+   request-parameters]
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
   (try
     (let [parameters (for [parameter (:parameters action)]
                        (assoc parameter :value (get request-parameters (:id parameter))))
-          query (-> dataset_query
-                    (update :type keyword)
+          query (-> query
                     (assoc :parameters parameters))]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (binding [qp.perms/*card-id* model_id]
+      (binding [qp.perms/*card-id* model-id]
         (qp.writeback/execute-write-query! query)))
     (catch Throwable e
       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
@@ -48,9 +53,9 @@
                         e))))))
 
 (mu/defn- implicit-action-table
-  [card-id :- pos-int?]
-  (let [card (t2/select-one :model/Card :id card-id)
-        {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+  [card-id :- ::lib.schema.id/card]
+  (let [query              (t2/select-one-fn :dataset_query :model/Card :id card-id)
+        {:keys [table-id]} (query/query->database-and-table-ids query)]
     (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters]
@@ -99,16 +104,18 @@
                 :parameters             request-parameters
                 :destination-parameters destination-param-ids})))
 
+(def ^:private legacy->current
+  {:row/create :model.row/create
+   :row/update :model.row/update
+   :row/delete :model.row/delete})
+
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
-                                   [:row-parameters ::lib.schema.actions/row]
-                                   ;; TODO -- the schema for these should probably be
-                                   ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
-                                   ;; 100% sure about that.
-                                   [:prefetch-parameters {:optional true} [:tuple :any]]]
+                                   [:row-parameters ::actions.args/row]
+                                   [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
   (let [{database-id :db_id
-         table-id :id :as table} (implicit-action-table model_id)
+         table-id    :id :as table} (implicit-action-table model_id)
         table-fields             (:fields table)
         pk-fields                (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
         slug->field-name         (->> table-fields
@@ -130,8 +137,8 @@
                                       (into {}))
         pk-field-name            (:name pk-field)
         row-parameters           (cond-> simple-parameters
-                                   (not= implicit-action :row/create) (dissoc pk-field-name))
-        requires-pk?             (contains? #{:row/delete :row/update} implicit-action)]
+                                   (not= implicit-action :model.row/create) (dissoc pk-field-name))
+        requires-pk?             (contains? #{:model.row/delete :model.row/update} implicit-action)]
     (api/check (or (not requires-pk?)
                    (some? (get simple-parameters pk-field-name)))
                400
@@ -147,25 +154,34 @@
                 [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
 
       requires-pk?
-      (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
-                                    :type "id"
-                                    :value [(get simple-parameters pk-field-name)]}]))))
+      (assoc :prefetch-parameters [{;; parameter ID here is not really important but let's generate something
+                                    ;; consistent rather than random to make this easier to test
+                                    :id     "metabase.actions.execution/prefetch-parameters-pk"
+                                    :target [:dimension [:field (:id pk-field) nil]]
+                                    :type   :id
+                                    :value  [(get simple-parameters pk-field-name)]}]))))
+
+(defn- parse-implicit-action [action-instance]
+  (let [k (keyword (:kind action-instance))]
+    (legacy->current k k)))
 
 (defn- execute-implicit-action!
   [action request-parameters]
-  (let [implicit-action (keyword (:kind action))
+  (let [model-id        (:model_id action)
+        implicit-action (parse-implicit-action action)
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
-        _ (api/check (or (= implicit-action :row/delete) (seq row-parameters))
-                     400
-                     (tru "Implicit parameters must be provided."))
-        arg-map (cond-> query
-                  (= implicit-action :row/create)
-                  (assoc :create-row row-parameters)
+        _               (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
+                                   400
+                                   (tru "Implicit parameters must be provided."))
+        arg-map         (cond-> query
+                          (= implicit-action :model.row/create)
+                          (assoc :create-row row-parameters)
 
-                  (= implicit-action :row/update)
-                  (assoc :update-row row-parameters))]
-    (binding [qp.perms/*card-id* (:model_id action)]
-      (actions/perform-action! implicit-action arg-map))))
+                          (= implicit-action :model.row/update)
+                          (assoc :update-row row-parameters))]
+    (binding [qp.perms/*card-id* model-id]
+      (actions/perform-action! implicit-action arg-map {:scope  {:model-id model-id}
+                                                        :policy :model-action}))))
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
@@ -192,7 +208,7 @@
       (execute-implicit-action! action request-parameters)
       (:query :http)
       (execute-custom-action! action request-parameters)
-      (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
+      (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
@@ -213,10 +229,10 @@
 
 (defn- fetch-implicit-action-values
   [action request-parameters]
-  (api/check (contains? #{"row/update" "row/delete"} (:kind action))
+  (api/check (contains? #{:model.row/update :model.row/delete} (parse-implicit-action action))
              400
              (tru "Values can only be fetched for actions that require a Primary Key."))
-  (let [implicit-action (keyword (:kind action))
+  (let [implicit-action (parse-implicit-action action)
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
               :context     :action

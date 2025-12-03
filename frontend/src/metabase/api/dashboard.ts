@@ -1,4 +1,6 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -34,10 +36,11 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
-    const updateDashboardPropertyMutation = <
+    const updateDashboardPropertiesMutation = <
       Key extends keyof UpdateDashboardRequest,
     >() =>
       builder.mutation<Dashboard, UpdateDashboardPropertyRequest<Key>>({
@@ -83,6 +86,10 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,
@@ -148,6 +155,7 @@ export const dashboardApi = Api.injectEndpoints({
             listTag("dashboard"),
             idTag("dashboard", id),
             tag("parameter-values"),
+            listTag("revision"),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
@@ -193,10 +201,12 @@ export const dashboardApi = Api.injectEndpoints({
           listTag("embed-dashboard"),
         ],
       }),
-      updateDashboardEnableEmbedding:
-        updateDashboardPropertyMutation<"enable_embedding">(),
-      updateDashboardEmbeddingParams:
-        updateDashboardPropertyMutation<"embedding_params">(),
+      updateDashboardEnableEmbedding: updateDashboardPropertiesMutation<
+        "enable_embedding" | "embedding_type"
+      >(),
+      updateDashboardEmbeddingParams: updateDashboardPropertiesMutation<
+        "embedding_params" | "embedding_type"
+      >(),
       listPublicDashboards: builder.query<GetPublicDashboard[], void>({
         query: (params) => ({
           method: "GET",
@@ -264,6 +274,7 @@ export const {
   endpoints: {
     getDashboard,
     deleteDashboardPublicLink,
+    createDashboard,
     createDashboardPublicLink,
     updateDashboardEnableEmbedding,
     updateDashboardEmbeddingParams,

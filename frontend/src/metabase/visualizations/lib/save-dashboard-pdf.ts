@@ -1,6 +1,7 @@
+import Color from "color";
 import { t } from "ttag";
 
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -156,6 +157,18 @@ interface SavePdfProps {
   includeBranding: boolean;
 }
 
+async function isValidColor(str: string) {
+  const { default: jspdf } = await import("jspdf");
+  const pdf = new jspdf();
+  try {
+    pdf.setFillColor(str);
+    return true;
+  } catch {
+    console.warn(`Unsupported color string: "${str}"`);
+    return false;
+  }
+}
+
 export const saveDashboardPdf = async ({
   selector,
   dashboardName,
@@ -178,7 +191,7 @@ export const saveDashboardPdf = async ({
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
   const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
@@ -204,9 +217,17 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  const rawBackgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
+  let backgroundColor =
+    rawBackgroundColor === "transparent"
+      ? "transparent"
+      : Color(rawBackgroundColor).hex();
+
+  if (!(await isValidColor(backgroundColor))) {
+    backgroundColor = "white"; // Fallback to white if the color is invalid
+  }
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(gridNode, {
@@ -215,6 +236,14 @@ export const saveDashboardPdf = async ({
     useCORS: true,
     backgroundColor,
     scale: window.devicePixelRatio || 1,
+    /**
+     * html2canvas-pro creates inline <style> elements that can be blocked by
+     * CSP (observed from Firefox). We created a temporary patch to support
+     * nonce until the library officially implements it.
+     *
+     * @see https://github.com/metabase/metabase/issues/66234
+     */
+    nonce: window.MetabaseNonce,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;

@@ -78,26 +78,32 @@ export const FieldPanel = ({
                 onChange={() => handleGroupToggle(groupItem)}
               />
             </Box>
-            {groupItem.columnItems.map((columnItem, columnIndex) => (
-              <Box mb="1rem" key={columnIndex}>
-                <Checkbox
-                  label={
-                    <Flex ml="0.25rem" align="center">
-                      <Icon name={getColumnIcon(columnItem.column)} />
-                      <Text component="span" ml="0.5rem" lh="1rem" fw={400}>
-                        {columnItem.displayName}
-                      </Text>
-                    </Flex>
-                  }
-                  checked={columnItem.isSelected}
-                  disabled={columnItem.isDisabled}
-                  mb="1.5rem"
-                  size="xs"
-                  aria-label={columnItem.displayName}
-                  onChange={() => handleColumnToggle(columnItem)}
-                />
-              </Box>
-            ))}
+            {groupItem.columnItems.map((columnItem, columnIndex) => {
+              if (columnItem.isHidden) {
+                return null; // Skip hidden columns
+              }
+
+              return (
+                <Box mb="1rem" key={columnIndex}>
+                  <Checkbox
+                    label={
+                      <Flex ml="0.25rem" align="center">
+                        <Icon name={getColumnIcon(columnItem.column)} />
+                        <Text component="span" ml="0.5rem" lh="1rem" fw={400}>
+                          {columnItem.displayName}
+                        </Text>
+                      </Flex>
+                    }
+                    checked={columnItem.isSelected}
+                    disabled={columnItem.isDisabled}
+                    mb="1.5rem"
+                    size="xs"
+                    aria-label={columnItem.displayName}
+                    onChange={() => handleColumnToggle(columnItem)}
+                  />
+                </Box>
+              );
+            })}
           </div>
         );
       })}

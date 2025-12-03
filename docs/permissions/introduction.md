@@ -12,9 +12,10 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ## Key points regarding permissions
 
-- Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people.
+- Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people. Though you can define user attributes to apply permissions person to person.
 - People can be in more than one group.
 - If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has Curate access to a collection, then that person will have curate access to that collection.
+- By default, everyone is in the All users group, so be sure to block that group's access before granting permissions to other groups. Thankfully, Metabase will warn you if the All users group has more permissive permissions than the group you're restricting.
 
 ## What you can set permissions on
 
@@ -36,7 +37,7 @@ At a high-level, Metabase provides several approaches to managing permissions fo
 
 ### Your customers share a single database
 
-[Data sandboxes](./data-sandboxes.md) let you apply row and column-level security, so each customer only sees their data in the tables.
+The [row and column security](./row-and-column-security.md) permission setting lets you restrict rows and columns based on who's logged in.
 
 ### Each customer has their own database
 
@@ -49,10 +50,7 @@ With [Connection impersonation](./impersonation.md), you can manage permissions 
 [collections]: ../exploration-and-organization/collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
-[data-sandboxing]: ./data-sandboxes.md
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
-[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
-[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [snippet-folders]: ../questions/native-editor/snippets.md
 [troubleshooting-permissions]: ../troubleshooting-guide/permissions.md

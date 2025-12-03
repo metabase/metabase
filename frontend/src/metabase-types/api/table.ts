@@ -1,12 +1,16 @@
 import type { Card, CardType } from "./card";
+import type { Collection } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
-import type { Field, FieldDimensionOption, FieldId } from "./field";
+import type { DatasetData } from "./dataset";
+import type { Field, FieldId } from "./field";
 import type { Segment } from "./segment";
+import type { Transform, TransformId } from "./transform";
+import type { UserId } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
 export type TableId = ConcreteTableId | VirtualTableId;
-export type SchemaId = string;
+export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
 export type TableVisibilityType =
   | null
@@ -18,6 +22,15 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
+export type TableDataLayer = "gold" | "silver" | "bronze" | "copper";
+
+export type TableDataSource =
+  | "ingested"
+  | "transform"
+  | "metabase-transform"
+  | "source-data"
+  | "upload";
+
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
 export type Table = {
@@ -26,6 +39,7 @@ export type Table = {
   name: string;
   display_name: string;
   description: string | null;
+  entity_type?: string | null;
 
   db_id: DatabaseId;
   db?: Database;
@@ -36,17 +50,29 @@ export type Table = {
   fields?: Field[];
   segments?: Segment[];
   metrics?: Card[];
-  dimension_options?: Record<string, FieldDimensionOption>;
   field_order: TableFieldOrder;
 
   active: boolean;
   visibility_type: TableVisibilityType;
   initial_sync_status: InitialSyncStatus;
   is_upload: boolean;
+  is_writable?: boolean;
   caveats?: string;
   points_of_interest?: string;
   created_at: string;
   updated_at: string;
+
+  data_source: TableDataSource | null;
+  data_layer: TableDataLayer | null;
+  owner_email: string | null;
+  owner_user_id: UserId | null;
+  estimated_row_count?: number | null;
+  transform_id: TransformId | null; // readonly
+  view_count: number;
+  transform?: Transform;
+
+  published_models?: Card[] | null; // present in /api/table/:id/query_metadata
+  published_as_model?: boolean; // present in /api/database/:id/schemas/:schemaId
 };
 
 export type SchemaName = string;
@@ -75,6 +101,14 @@ export interface TableListQuery {
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields?: boolean;
+
+  term?: string;
+  "data-layer"?: TableDataLayer;
+  "data-source"?: string | null;
+  "owner-user-id"?: UserId | null;
+  "owner-email"?: string | null;
+  "unused-only"?: boolean | null;
+  "orphan-only"?: boolean;
 }
 
 export interface ForeignKey {
@@ -106,6 +140,12 @@ export interface UpdateTableRequest {
   points_of_interest?: string;
   show_in_getting_started?: boolean;
   field_order?: TableFieldOrder;
+
+  data_source?: TableDataSource | null;
+  data_layer?: TableDataLayer | null;
+  entity_type?: string | null;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
 }
 
 export interface UpdateTableListRequest {
@@ -116,11 +156,48 @@ export interface UpdateTableListRequest {
   caveats?: string;
   points_of_interest?: string;
   show_in_getting_started?: boolean;
+
+  data_source?: TableDataSource | null;
+  data_layer?: TableDataLayer | null;
+  entity_type?: string | null;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
 }
 
 export interface UpdateTableFieldsOrderRequest {
   id: TableId;
   field_order: FieldId[];
+}
+
+export interface EditTablesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+  visibility_type?: TableVisibilityType;
+  data_authority?: string;
+  data_source?: TableDataSource | null;
+  data_layer?: TableDataLayer | null;
+  owner_email?: string | null;
+  owner_user_id?: UserId | null;
+  entity_type?: string | null;
+}
+
+export interface SyncTablesSchemaRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface RescanTablesValuesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface DiscardTablesValuesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
 }
 
 export type UploadManagementResponse = Table[];
@@ -129,3 +206,41 @@ export interface DeleteUploadTableRequest {
   tableId: TableId;
   "archive-cards"?: boolean;
 }
+
+export interface GetTableDataRequest {
+  tableId: TableId;
+}
+
+export interface PublishModelsRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+  target_collection_id: number | "library" | null;
+}
+
+export interface PublishModelsResponse {
+  created_count: number;
+  models: Card[];
+  target_collection: Collection | null;
+}
+
+export type TableData = {
+  data: DatasetData;
+  database_id: DatabaseId;
+  table_id: TableId;
+  row_count: number;
+  running_time: number;
+  error?:
+    | string
+    | {
+        status: number; // HTTP status code
+        data?: string;
+      };
+  error_type?: string;
+  error_is_curated?: boolean;
+  status?: string;
+  /** In milliseconds */
+  average_execution_time?: number;
+  /** A date in ISO 8601 format */
+  started_at?: string;
+};

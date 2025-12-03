@@ -18,7 +18,7 @@ function getDefaultValue(
 ): RelativeDatePickerValue {
   return {
     type: "relative",
-    value: direction === "last" ? -30 : 30,
+    value: direction === "past" ? -30 : 30,
     unit: "day",
     offsetValue: -14,
     offsetUnit: "day",
@@ -62,7 +62,7 @@ describe("DateOffsetIntervalPicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
-  describe.each<RelativeIntervalDirection>(["last", "next"])(
+  describe.each<RelativeIntervalDirection>(["past", "future"])(
     "%s",
     (direction) => {
       const defaultValue = getDefaultValue(direction);
@@ -78,7 +78,7 @@ describe("DateOffsetIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -20 : 20,
+          value: direction === "past" ? -20 : 20,
         });
         expect(onSubmit).not.toHaveBeenCalled();
 
@@ -97,7 +97,7 @@ describe("DateOffsetIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -10 : 10,
+          value: direction === "past" ? -10 : 10,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -114,7 +114,7 @@ describe("DateOffsetIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          value: direction === "last" ? -1 : 1,
+          value: direction === "past" ? -1 : 1,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -175,7 +175,7 @@ describe("DateOffsetIntervalPicker", () => {
         expect(screen.getByText("years")).toBeInTheDocument();
         expect(screen.queryByText("months")).not.toBeInTheDocument();
 
-        const suffix = direction === "last" ? "ago" : "from now";
+        const suffix = direction === "past" ? "ago" : "from now";
         await userEvent.click(
           screen.getByRole("textbox", { name: "Starting from unit" }),
         );
@@ -195,7 +195,7 @@ describe("DateOffsetIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          offsetValue: direction === "last" ? -20 : 20,
+          offsetValue: direction === "past" ? -20 : 20,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -211,7 +211,7 @@ describe("DateOffsetIntervalPicker", () => {
 
         expect(onChange).toHaveBeenLastCalledWith({
           ...defaultValue,
-          offsetValue: direction === "last" ? -10 : 10,
+          offsetValue: direction === "past" ? -10 : 10,
         });
         expect(onSubmit).not.toHaveBeenCalled();
       });
@@ -267,7 +267,7 @@ describe("DateOffsetIntervalPicker", () => {
           value: defaultValue,
         });
 
-        const unitText = direction === "last" ? "years ago" : "years from now";
+        const unitText = direction === "past" ? "years ago" : "years from now";
         await userEvent.click(
           screen.getByRole("textbox", { name: "Starting from unit" }),
         );
@@ -309,7 +309,7 @@ describe("DateOffsetIntervalPicker", () => {
           value: defaultValue,
         });
         const rangeText =
-          direction === "last"
+          direction === "past"
             ? "Nov 18 – Dec 17, 2019"
             : "Dec 19, 2019 – Jan 17, 2020";
         expect(screen.getByText(rangeText)).toBeInTheDocument();

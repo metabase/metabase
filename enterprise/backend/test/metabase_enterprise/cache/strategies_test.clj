@@ -7,6 +7,7 @@
    [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]))
 
 (comment
@@ -15,7 +16,6 @@
 (deftest caching-strategies
   (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:cache-granular-controls}
-
       (let [query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 5})
             mkres (fn [input]
                     {:cache/details (if input
@@ -85,97 +85,99 @@
                             (-> (qp/process-query query) (dissoc :data))))))))))))))
 
 (deftest e2e-advanced-caching
-  (mt/with-empty-h2-app-db!
-    (mt/with-premium-features #{:cache-granular-controls}
-      (mt/dataset (mt/dataset-definition "caching1"
-                                         ["table"
-                                          [{:field-name "value" :indexed? true :base-type :type/Text}]
-                                          [["a"] ["b"] ["c"]]])
-        (mt/with-temp [:model/Card       card1 {:dataset_query (mt/mbql-query table)}
-                       :model/Card       card2 {:dataset_query (mt/mbql-query table)}
-                       :model/Card       card3 {:dataset_query (mt/mbql-query table)}
-                       :model/Card       card4 {:dataset_query (mt/mbql-query table)}
+  (binding [search.ingestion/*force-sync* true
+            search.ingestion/*disable-updates* true]
+    (mt/with-empty-h2-app-db!
+      (mt/with-premium-features #{:cache-granular-controls}
+        (mt/dataset (mt/dataset-definition "caching1"
+                                           [["table"
+                                             [{:field-name "value" :indexed? true :base-type :type/Text}]
+                                             [["a"] ["b"] ["c"]]]])
+          (mt/with-temp [:model/Card       card1 {:dataset_query (mt/mbql-query table)}
+                         :model/Card       card2 {:dataset_query (mt/mbql-query table)}
+                         :model/Card       card3 {:dataset_query (mt/mbql-query table)}
+                         :model/Card       card4 {:dataset_query (mt/mbql-query table)}
 
-                       :model/CacheConfig _cr {:model    "root"
-                                               :model_id 0
-                                               :strategy :ttl
-                                               :config   {:multiplier      200
-                                                          :min_duration_ms 10}}
-                       :model/CacheConfig _c1 {:model    "question"
-                                               :model_id (:id card1)
-                                               :strategy :ttl
-                                               :config   {:multiplier      100
-                                                          :min_duration_ms 0}}
-                       :model/CacheConfig _c2 {:model    "question"
-                                               :model_id (:id card2)
-                                               :strategy :duration
-                                               :config   {:duration 1
-                                                          :unit     "minutes"}}
-                       :model/CacheConfig _c3 {:model    "question"
-                                               :model_id (:id card3)
-                                               :strategy :schedule
-                                               :config   {:schedule "0 0/2 * * * ? *"}}]
-          (let [t     (fn [seconds]
-                        (t/plus #t "2024-02-13T10:00:00Z" (t/duration seconds :seconds)))
-                mkres (fn [input]
-                        {:cache/details (if input
-                                          {:cached true, :updated_at input, :hash some?}
-                                          {:stored true, :hash some?})
-                         :row_count     3
-                         :status        :completed})]
-            (testing "strategy = ttl"
-              (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
-                (mt/with-clock (t 0)
-                  (let [q (with-redefs [query/average-execution-time-ms (constantly 1000)]
-                            (#'qp.card/query-for-card card1 [] {} {} {}))]
-                    (is (=? {:type :ttl :multiplier 100}
-                            (:cache-strategy q)))
-                    (is (=? (mkres nil)
-                            (-> (qp/process-query q) (dissoc :data))))
-                    (testing "There is cache on second call"
-                      (is (=? (mkres (t 0))
-                              (-> (qp/process-query q) (dissoc :data)))))
-                    (testing "No cache after expiration"
-                      (mt/with-clock (t 101) ;; avg execution time 1s * multiplier 100 + 1
-                        (is (=? (mkres nil)
-                                (-> (qp/process-query q) (dissoc :data))))))))))
-
-            (testing "strategy = duration"
-              (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
-                (mt/with-clock (t 0)
-                  (let [q (#'qp.card/query-for-card card2 [] {} {} {})]
-                    (is (=? {:type :duration}
-                            (:cache-strategy q)))
-                    (is (=? (mkres nil)
-                            (-> (qp/process-query q) (dissoc :data))))
-                    (testing "There is cache on the next call"
-                      (is (=? (mkres (t 0))
-                              (-> (qp/process-query q) (dissoc :data)))))
-                    (testing "No cache after expiration"
-                      (mt/with-clock (t 61)
-                        (is (=? (mkres nil)
-                                (-> (qp/process-query q) (dissoc :data))))))))))
-
-            (testing "strategy = schedule"
-              (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
-                (mt/with-clock (t 0)
-                  (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
-                  (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
-                    (is (=? {:type :schedule}
-                            (:cache-strategy q)))
-                    (is (=? (mkres nil)
-                            (-> (qp/process-query q) (dissoc :data))))
-                    (testing "There is cache on second call"
-                      (is (=? (mkres (t 0))
-                              (-> (qp/process-query q) (dissoc :data)))))))
-                (testing "No cache after job ran again"
-                  (mt/with-clock (t 121)
-                    (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
-                    (let [q (#'qp.card/query-for-card card3 {} {} {} {})]
+                         :model/CacheConfig _cr {:model    "root"
+                                                 :model_id 0
+                                                 :strategy :ttl
+                                                 :config   {:multiplier      200
+                                                            :min_duration_ms 10}}
+                         :model/CacheConfig _c1 {:model    "question"
+                                                 :model_id (:id card1)
+                                                 :strategy :ttl
+                                                 :config   {:multiplier      100
+                                                            :min_duration_ms 0}}
+                         :model/CacheConfig _c2 {:model    "question"
+                                                 :model_id (:id card2)
+                                                 :strategy :duration
+                                                 :config   {:duration 1
+                                                            :unit     "minutes"}}
+                         :model/CacheConfig _c3 {:model    "question"
+                                                 :model_id (:id card3)
+                                                 :strategy :schedule
+                                                 :config   {:schedule "0 0/2 * * * ? *"}}]
+            (let [t     (fn [seconds]
+                          (t/plus #t "2024-02-13T10:00:00Z" (t/duration seconds :seconds)))
+                  mkres (fn [input]
+                          {:cache/details (if input
+                                            {:cached true, :updated_at input, :hash some?}
+                                            {:stored true, :hash some?})
+                           :row_count     3
+                           :status        :completed})]
+              (testing "strategy = ttl"
+                (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+                  (mt/with-clock (t 0)
+                    (let [q (with-redefs [query/average-execution-time-ms (constantly 1000)]
+                              (#'qp.card/query-for-card card1 [] {} {} {}))]
+                      (is (=? {:type :ttl :multiplier 100}
+                              (:cache-strategy q)))
                       (is (=? (mkres nil)
-                              (-> (qp/process-query q) (dissoc :data)))))))))
+                              (-> (qp/process-query q) (dissoc :data))))
+                      (testing "There is cache on second call"
+                        (is (=? (mkres (t 0))
+                                (-> (qp/process-query q) (dissoc :data)))))
+                      (testing "No cache after expiration"
+                        (mt/with-clock (t 101) ;; avg execution time 1s * multiplier 100 + 1
+                          (is (=? (mkres nil)
+                                  (-> (qp/process-query q) (dissoc :data))))))))))
 
-            (testing "default strategy = ttl"
-              (let [q (#'qp.card/query-for-card card4 [] {} {} {})]
-                (is (=? {:type :ttl :multiplier 200}
-                        (:cache-strategy q)))))))))))
+              (testing "strategy = duration"
+                (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+                  (mt/with-clock (t 0)
+                    (let [q (#'qp.card/query-for-card card2 [] {} {} {})]
+                      (is (=? {:type :duration}
+                              (:cache-strategy q)))
+                      (is (=? (mkres nil)
+                              (-> (qp/process-query q) (dissoc :data))))
+                      (testing "There is cache on the next call"
+                        (is (=? (mkres (t 0))
+                                (-> (qp/process-query q) (dissoc :data)))))
+                      (testing "No cache after expiration"
+                        (mt/with-clock (t 61)
+                          (is (=? (mkres nil)
+                                  (-> (qp/process-query q) (dissoc :data))))))))))
+
+              (testing "strategy = schedule"
+                (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+                  (mt/with-clock (t 0)
+                    (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
+                    (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
+                      (is (=? {:type :schedule}
+                              (:cache-strategy q)))
+                      (is (=? (mkres nil)
+                              (-> (qp/process-query q) (dissoc :data))))
+                      (testing "There is cache on second call"
+                        (is (=? (mkres (t 0))
+                                (-> (qp/process-query q) (dissoc :data)))))))
+                  (testing "No cache after job ran again"
+                    (mt/with-clock (t 121)
+                      (is (pos? (:schedule-invalidated (#'task.cache/refresh-cache-configs!))))
+                      (let [q (#'qp.card/query-for-card card3 [] {} {} {})]
+                        (is (=? (mkres nil)
+                                (-> (qp/process-query q) (dissoc :data)))))))))
+
+              (testing "default strategy = ttl"
+                (let [q (#'qp.card/query-for-card card4 [] {} {} {})]
+                  (is (=? {:type :ttl :multiplier 200}
+                          (:cache-strategy q))))))))))))

@@ -45,6 +45,9 @@ driver:
       visible-if:
         advanced-options: true
     - default-advanced-options
+extra:
+  db-routing-info:
+    text: Route queries on this database to a different BigQuery **project** or Google Cloud account based on the person's user attribute. Each BigQuery destination must have identical schemas.
 init:
   - step: load-namespace
     namespace: metabase.driver.bigquery-cloud-sdk

@@ -44,6 +44,10 @@ Here you can [sync the database schema and rescan field values](../sync-scan.md)
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -160,6 +164,14 @@ If you're having trouble with your BigQuery connection, you can check out this [
 ## Model features
 
 There aren't (yet) any model features available for BigQuery.
+
+## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+Database routing for BigQuery works between BigQuery **projects** with identical schemas.
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

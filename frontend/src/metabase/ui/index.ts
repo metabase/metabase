@@ -6,6 +6,7 @@ export type {
   MantineTheme,
   MantineThemeOther,
   MantineThemeOverride,
+  PolymorphicComponentProps,
 } from "@mantine/core";
 export { useHover } from "@mantine/hooks";
 export * from "./components";

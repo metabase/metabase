@@ -5,12 +5,14 @@ import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
+import { formatNumber } from "metabase/lib/formatting";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -47,7 +49,7 @@ function patchQuestion(question: Question) {
   if (!isNative) {
     const [sampleColumn] = Lib.orderableColumns(query, 0);
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
-    return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
+    return question.setQuery(nextQuery);
   } else {
     const query = question.legacyNativeQuery() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
@@ -88,7 +90,13 @@ async function setup({
   });
 
   renderWithProviders(<QuestionRowCount />, {
-    storeInitialState: { qb: state },
+    storeInitialState: {
+      qb: state,
+      entities: createMockEntitiesState({
+        databases: isReadOnly ? [] : databases,
+        questions: "id" in card ? [card] : [],
+      }),
+    },
   });
 
   const rowCount = await screen.findByLabelText("Row count");
@@ -188,7 +196,7 @@ describe("QuestionRowCount", () => {
 
           await waitFor(() =>
             expect(rowCount).toHaveTextContent(
-              `Showing first ${HARD_ROW_LIMIT} rows`,
+              `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
             ),
           );
         });
@@ -237,7 +245,7 @@ describe("QuestionRowCount", () => {
           const { rowCount } = await setup({ question: getCard(), result });
 
           expect(rowCount).toHaveTextContent(
-            `Showing first ${HARD_ROW_LIMIT} rows`,
+            `Showing first ${formatNumber(HARD_ROW_LIMIT)} rows`,
           );
         });
 

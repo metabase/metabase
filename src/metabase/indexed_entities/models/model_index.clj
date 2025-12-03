@@ -2,9 +2,9 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.ident :as lib.ident]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -30,8 +30,11 @@
 #_(derive :model/ModelIndex :hook/search-index)
 
 (t2/deftransforms :model/ModelIndex
-  {:pk_ref    mi/transform-field-ref
-   :value_ref mi/transform-field-ref})
+  ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
+  ;; first place!) on the way out
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  {:pk_ref    mi/transform-legacy-field-ref
+   :value_ref mi/transform-legacy-field-ref})
 
 (t2/define-before-delete :model/ModelIndex
   [model-index]
@@ -49,13 +52,13 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
-(mu/defn- fix-expression-refs :- mbql.s/Field
+(mu/defn- fix-expression-refs :- ::mbql.s/FieldOrExpressionRef
   "Convert expression ref into a field ref.
 
   Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
   don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
   `:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- mbql.s/Field
+  [field-ref :- ::mbql.s/FieldOrExpressionRef
    base-type :- ::lib.schema.common/base-type]
   (case (first field-ref)
     :field field-ref
@@ -78,17 +81,17 @@
   (let [model     (t2/select-one :model/Card :id (:model_id model-index))
         fix       (mu/fn [field-ref :- some?
                           base-type :- ::lib.schema.common/base-type]
-                    (-> field-ref mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
+                    (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
         pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
     (try
       [nil (->> (qp/process-query
+                 ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
                  {:database (:database_id model)
                   :type     :query
                   :query    {:source-table (format "card__%d" (:id model))
                              :breakout     [pk-ref value-ref]
-                             :breakout-idents (lib.ident/indexed-idents 2)
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e

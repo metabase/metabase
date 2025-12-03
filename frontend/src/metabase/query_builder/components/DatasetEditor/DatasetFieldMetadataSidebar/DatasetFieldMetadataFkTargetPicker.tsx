@@ -1,8 +1,6 @@
 import { useField } from "formik";
-import { useEffect } from "react";
 
-import Databases from "metabase/entities/databases";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useListDatabaseIdFieldsQuery } from "metabase/api";
 import { FkTargetPicker } from "metabase/metadata/components";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 
@@ -17,10 +15,9 @@ export const DatasetFieldMetadataFkTargetPicker = ({
   field,
   onChange,
 }: Props) => {
-  const dispatch = useDispatch();
   const [formField, _meta, { setValue }] = useField("fk_target_field_id");
-  const idFields = useSelector((state) => {
-    return Databases.selectors.getIdFields(state, { databaseId });
+  const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
+    id: databaseId,
   });
 
   const handleChange = (value: FieldId | null) => {
@@ -28,13 +25,13 @@ export const DatasetFieldMetadataFkTargetPicker = ({
     onChange(value);
   };
 
-  useEffect(() => {
-    dispatch(Databases.objectActions.fetchIdFields({ id: databaseId }));
-  }, [databaseId, dispatch]);
-
   return (
     <FkTargetPicker
+      comboboxProps={{
+        width: 300,
+      }}
       field={field}
+      fw="bold"
       idFields={idFields}
       value={formField.value}
       onChange={handleChange}

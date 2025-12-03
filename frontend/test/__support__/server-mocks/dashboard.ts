@@ -12,10 +12,25 @@ import { createMockDashboard } from "metabase-types/api/mocks";
 
 export function setupDashboardEndpoints(dashboard: Dashboard) {
   fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
-  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (url) => {
-    const lastCall = fetchMock.lastCall(url);
+  fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (call) => {
+    const lastCall = fetchMock.callHistory.lastCall(call.url);
     return createMockDashboard(await lastCall?.request?.json());
   });
+}
+
+export function setupAutoDashboardEndpoints(
+  dashboard: Dashboard,
+  metadata: DashboardQueryMetadata,
+) {
+  fetchMock.get(
+    `path:/api/automagic-dashboards/table/${dashboard.id}`,
+    dashboard,
+  );
+  fetchMock.get(
+    `path:/api/automagic-dashboards/table/${dashboard.id}/query_metadata`,
+    metadata,
+  );
+  fetchMock.post(`path:/api/dashboard/save`, dashboard);
 }
 
 export function setupDashboardCreateEndpoint(dashboard: Partial<Dashboard>) {

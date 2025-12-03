@@ -23,10 +23,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
     H.openSharingMenu("Embed");
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByText("public embedding").should("be.visible");
-      cy.findByText("Static embedding").should("be.visible");
-    });
+    H.embedModalContent().should("be.visible");
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
@@ -70,7 +67,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByRole("link", { name: /configure Slack/i }).should(
         "have.attr",
         "href",
-        "/admin/settings/notifications/slack",
+        "/admin/settings/notifications",
       );
     });
   });
@@ -112,13 +109,13 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.sidebar().findByText("Email it").click();
 
-        const input = cy.findByPlaceholderText(
-          "Enter user names or email addresses",
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+        H.popover().should("be.visible").and("contain", `${admin.first_name}`);
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+        cy.findByPlaceholderText("Enter user names or email addresses").should(
+          "not.have.value",
         );
-        input.click().type(`${admin.first_name}`);
-        input.type("{esc}");
-
-        input.should("have.value", `${admin.first_name}`);
 
         cy.findByTestId("token-field-popover").should("not.exist");
       });
@@ -133,15 +130,19 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.popover().isRenderedWithinViewport();
       });
 
-      it.skip("should not send attachments by default if not explicitly selected (metabase#28673)", () => {
-        openDashboardSubscriptions();
-        assignRecipient();
+      it(
+        "should not send attachments by default if not explicitly selected (metabase#28673)",
+        { tags: "@skip" },
+        () => {
+          openDashboardSubscriptions();
+          assignRecipient();
 
-        cy.findByLabelText("Attach results").should("not.be.checked");
-        H.sendEmailAndAssert(
-          ({ attachments }) => expect(attachments).to.be.empty,
-        );
-      });
+          cy.findByLabelText("Attach results").should("not.be.checked");
+          H.sendEmailAndAssert(
+            ({ attachments }) => expect(attachments).to.be.empty,
+          );
+        },
+      );
     });
 
     describe("with existing subscriptions", () => {
@@ -327,6 +328,29 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
     });
 
+    it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
+      assignRecipient();
+
+      cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Questions to attach").click();
+      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments").should("be.checked");
+
+      H.sendEmailAndAssert((email) => {
+        expect(email.attachments).to.not.be.empty;
+        const csvAttachment = email.attachments.find(
+          (attachment) => attachment.contentType === "text/csv",
+        );
+        expect(csvAttachment).to.exist;
+        expect(csvAttachment.fileName).to.include("Orders");
+        expect(email.html).to.not.include("Orders chart");
+        expect(email.html).to.include(
+          "Dashboard content available in attached files",
+        );
+        expect(email.html).to.include("Orders in a dashboard");
+      });
+    });
+
     it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -489,13 +513,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.be.disabled");
     });
 
-    it("should disable subscriptions for non-admin users", () => {
+    it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openSharingMenu();
-      H.sharingMenu()
-        .findByText("Can't send subscriptions")
-        .should("be.visible");
+      H.sharingMenu().findByText("Subscriptions").should("be.visible");
     });
   });
 
@@ -791,14 +813,9 @@ function assignRecipient({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  const input = cy.findByPlaceholderText("Enter user names or email addresses");
-  input.click().type(`${user.first_name} ${user.last_name}`);
-
-  cy.findByTestId("token-field-popover").within(() => {
-    cy.findByText(`${user.first_name} ${user.last_name}`).click();
-  });
-
-  input.blur(); // blur is needed to close the popover
+  cy.findByPlaceholderText("Enter user names or email addresses")
+    .type(`${user.first_name} ${user.last_name}{enter}`)
+    .blur();
 }
 
 function assignRecipients({
@@ -808,14 +825,9 @@ function assignRecipients({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  const userInput = users
-    .map((user) => `${user.first_name} ${user.last_name}{enter}`)
-    .join("");
-
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .click()
-    .type(userInput)
-    .blur(); // blur is needed to close the popover
+  cy.findByPlaceholderText("Enter user names or email addresses").click();
+  users.forEach(({ first_name }) => H.popover().contains(first_name).click());
+  cy.realPress("Escape");
 }
 
 function clickButton(name) {

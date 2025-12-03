@@ -18,6 +18,7 @@ import {
   provideUserListTags,
   provideUserTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const userApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -51,14 +52,15 @@ export const userApi = Api.injectEndpoints({
         url: "/api/user",
         body,
       }),
-      invalidatesTags: (_, error) => invalidateTags(error, [listTag("user")]),
-      onQueryStarted: async (request, { dispatch, queryFulfilled }) => {
-        if (request.password) {
-          const { data: user } = await queryFulfilled;
-          const payload = { id: user.id, password: request.password };
-          dispatch({ type: STORE_TEMPORARY_PASSWORD, payload });
-        }
-      },
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("user"), listTag("permissions-group")]),
+      onQueryStarted: (request, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (user) => {
+          if (request.password) {
+            const payload = { id: user.id, password: request.password };
+            dispatch({ type: STORE_TEMPORARY_PASSWORD, payload });
+          }
+        }),
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
       query: ({ id, old_password, password }) => ({
@@ -66,7 +68,7 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}/password`,
         body: { old_password, password },
       }),
-      onQueryStarted: async ({ id, password }, { dispatch }) => {
+      onQueryStarted: ({ id, password }, { dispatch }) => {
         dispatch({ type: STORE_TEMPORARY_PASSWORD, payload: { id, password } });
       },
       invalidatesTags: (_, error, { id }) =>
@@ -104,11 +106,11 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
-      onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
-        // used to keep current user state in sync
-        const { data: user } = await queryFulfilled;
-        dispatch(userUpdated(user));
-      },
+      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (user) => {
+          // used to keep current user state in sync
+          dispatch(userUpdated(user));
+        }),
     }),
     listUserAttributes: builder.query<string[], void>({
       query: () => "/api/mt/user/attributes",
@@ -116,6 +118,10 @@ export const userApi = Api.injectEndpoints({
     }),
   }),
 });
+
+/** To minimize requests, useListUsersQuery should be invoked where possible
+ * with this limit and an offset of 0 */
+export const STANDARD_USER_LIST_PAGE_SIZE = 27;
 
 export const {
   useListUsersQuery,

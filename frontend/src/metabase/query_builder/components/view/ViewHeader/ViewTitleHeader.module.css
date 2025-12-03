@@ -1,10 +1,26 @@
 .FilterButton {
   &[data-variant="default"] {
-    transition: background 300ms linear;
+    transition:
+      background 300ms linear,
+      border 300ms linear;
 
     &:hover {
       color: var(--mb-color-filter);
-      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 10%,
+        var(--mb-color-white)
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 40%,
+        var(--mb-color-white)
+      );
+    }
+
+    /* this pevents the divider between the button group from changing color */
+    &:hover&.FiltersActive {
+      border-right-color: var(--mb-color-border);
     }
   }
 }
@@ -12,10 +28,21 @@
 .FilterButtonAttachment {
   &[data-variant="default"] {
     padding: 0.5rem;
-    transition: background 300ms linear;
+    transition:
+      background 300ms linear,
+      border 300ms linear;
 
     &:hover {
-      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 10%,
+        var(--mb-color-white)
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 40%,
+        var(--mb-color-white)
+      );
     }
 
     &:hover,
@@ -34,7 +61,11 @@
   line-height: 1rem;
   padding-inline: 0.5rem;
   color: var(--mb-color-text-primary);
-  background-color: color-mix(in srgb, var(--mb-color-filter) 15%, white);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-filter) 15%,
+    var(--mb-color-white)
+  );
 }
 
 .SummarizeButton {
@@ -44,8 +75,56 @@
 
   &:hover:not([data-active="true"]) {
     color: var(--mb-color-summarize);
-    border-color: color-mix(in srgb, var(--mb-color-summarize) 40%, white);
-    background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
+    border-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize) 40%,
+      var(--mb-color-white)
+    );
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize) 15%,
+      var(--mb-color-white)
+    );
+  }
+}
+
+.NotebookButton {
+  transition:
+    background 300ms linear,
+    border 300ms linear;
+
+  &:hover:not([data-active="true"]) {
+    color: var(--mb-color-brand);
+    border-color: color-mix(
+      in srgb,
+      var(--mb-color-brand) 40%,
+      var(--mb-color-white)
+    );
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand) 15%,
+      var(--mb-color-white)
+    );
+  }
+}
+
+.ToggleNativeQueryButton {
+  transition:
+    background 300ms linear,
+    border 300ms linear;
+
+  &:hover:not([data-active="true"]) {
+    color: var(--mb-color-brand);
+    border-color: color-mix(
+      in srgb,
+      var(--mb-color-brand) 40%,
+      var(--mb-color-white)
+    );
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand) 15%,
+      var(--mb-color-white)
+    );
   }
 }
 
@@ -150,6 +229,7 @@
 
 .SavedQuestionHeaderButtonContainer {
   right: 0.38rem;
+  width: 100%;
 
   &.isModelOrMetric {
     right: 0;
@@ -157,6 +237,9 @@
 }
 
 .SavedQuestionLeftSideRoot {
+  width: 100%;
+  min-width: 0;
+
   .SavedQuestionHeaderButtonContainer {
     transition: all 400ms ease;
     position: relative;

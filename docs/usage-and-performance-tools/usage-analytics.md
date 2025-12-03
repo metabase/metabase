@@ -28,7 +28,7 @@ There are only two access types for the Usage analytics collection: **View** and
 
 Additionally, this Usage analytics collection has a default sub-collection called "Custom reports" which you can use to save duplicated/modified questions, dashboards, and models. This sub-collection inherits the same permissions, but it's not view-only; admins have curate access by default, and can grant other groups view access.
 
->  If you're upgrading from a version older than 48, people in groups with monitoring access will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
+> If you're upgrading from a version older than 48, people in groups with monitoring access will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
 
 ## Viewing usage insights for a question, dashboard, or model
 
@@ -46,7 +46,7 @@ Metabase will take you to the relevant usage dashboard and plug in the item's ID
 
 By default, Metabase will keep the data about [activity](#activity-log-model), [views](#view-log-model), and [query execution](#query-log-model) for **720 days**. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).
 
-Metabase Open Source edition, which is also used on the [Metabase Cloud Starter plan](https://www.metabase.com/pricing/), doesn't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade from the Open Source/Starter to a Pro or Enterprise plan, you'll only see View and Activity data in Usage Analytics _starting from the time when you upgraded_.
+If you're on the Metabase Open Source Edition, or on the [Metabase Cloud Starter plan](https://www.metabase.com/pricing/), Metabase doesn't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade to a Pro or Enterprise plan, either self-hosted or Cloud, you'll only see View and Activity data in Usage Analytics _starting from the time when you upgraded_.
 
 ## Creating custom reports
 

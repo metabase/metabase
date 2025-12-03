@@ -1,6 +1,8 @@
 import {
+  type MantineTheme,
   type MantineThemeOverride,
   SegmentedControl,
+  type SegmentedControlProps,
   rem,
 } from "@mantine/core";
 
@@ -22,11 +24,31 @@ export const segmentedControlOverrides: MantineThemeOverride["components"] = {
       root: {
         "--sc-active-text-color": props.c ?? "var(--mb-color-text-dark)",
         "--sc-background-color": props.bg ?? "var(--mb-color-bg-medium)",
-        "--sc-padding": props.fullWidth
-          ? `${theme.spacing.sm} ${theme.spacing.md}`
-          : theme.spacing.sm,
+        ...(!props.color && {
+          "--sc-color": "var(--mb-color-bg-white)",
+        }),
+        "--sc-padding": getPadding(theme, props),
         "--sc-font-size": theme.fontSizes.md,
       },
     }),
   }),
 };
+
+function getPadding(
+  theme: MantineTheme,
+  { fullWidth, size }: SegmentedControlProps,
+): string {
+  if (fullWidth) {
+    if (size === "sm") {
+      return `${theme.spacing.xs} ${theme.spacing.sm}`;
+    }
+
+    return `${theme.spacing.sm} ${theme.spacing.md}`;
+  }
+
+  if (size === "sm") {
+    return theme.spacing.xs;
+  }
+
+  return theme.spacing.sm;
+}

@@ -10,7 +10,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]))
+   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -182,12 +183,15 @@
             ;; and hence no zoom-in-timeseries drill thru should be returned.
             bucketing   [:day :hour]]
       (testing (str "aggregation = " aggregation ", bucketing = " bucketing)
-        (lib.drill-thru.tu/test-drill-not-returned
-         (zoom-in-timeseries-drill-for-orders-created-at
-          metadata-provider-with-orders-created-at-as-date
-          aggregation
-          bucketing
-          {"CREATED_AT" "2022-12-01"}))))))
+        ;; it should not even be legacy to give this column `:hour` bucketing, so disable Malli enforcement to
+        ;; simulate it having it anyway
+        (mu/disable-enforcement
+          (lib.drill-thru.tu/test-drill-not-returned
+           (zoom-in-timeseries-drill-for-orders-created-at
+            metadata-provider-with-orders-created-at-as-date
+            aggregation
+            bucketing
+            {"CREATED_AT" "2022-12-01"})))))))
 
 (deftest ^:parallel returns-zoom-in-timeseries-for-multi-stage-query-test
   (lib.drill-thru.tu/test-returns-drill
@@ -199,8 +203,8 @@
     :expected     {:type      :drill-thru/zoom-in.timeseries
                    :next-unit :week
                    ;; the "underlying" dimension is reconstructed from the row.
-                   :dimension {:column     {:name       "CREATED_AT"
-                                            :lib/source :source/breakouts}
+                   :dimension {:column     {:name          "CREATED_AT"
+                                            :lib/breakout? true}
                                :column-ref [:field {} (meta/id :orders :created-at)]
                                :value      "2022-12-01T00:00:00+02:00"}}}))
 

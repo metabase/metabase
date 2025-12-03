@@ -1,4 +1,7 @@
-import type { Dataset, JsonQuery } from "metabase-types/api";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
+import type { DashboardId, Dataset, JsonQuery } from "metabase-types/api";
 
 interface TileCoordinate {
   x: number | string;
@@ -7,7 +10,7 @@ interface TileCoordinate {
 
 interface TileUrlParams {
   cardId?: number;
-  dashboardId?: number;
+  dashboardId?: DashboardId;
   dashcardId?: number;
   zoom: string | number;
   coord: TileCoordinate;
@@ -17,6 +20,12 @@ interface TileUrlParams {
   uuid?: string;
   token?: string;
   datasetResult?: Dataset;
+  /**
+   * Indicates whether the tile URL is being generated for a preview embed context.
+   * You probably don't need to set this manually as it defaults to `IS_EMBED_PREVIEW` (it's used for tests).
+   * @default IS_EMBED_PREVIEW
+   */
+  isEmbedPreview?: boolean;
 }
 
 export function getTileUrl(params: TileUrlParams): string {
@@ -32,6 +41,7 @@ export function getTileUrl(params: TileUrlParams): string {
     uuid,
     token,
     datasetResult,
+    isEmbedPreview = IS_EMBED_PREVIEW,
   } = params;
 
   const parameters = datasetResult?.json_query?.parameters ?? [];
@@ -39,6 +49,19 @@ export function getTileUrl(params: TileUrlParams): string {
   const isDashboard = dashboardId && dashcardId && cardId;
 
   if (isDashboard) {
+    // isAutoDashboard
+    if (typeof dashboardId === "string" && dashboardId.startsWith("/auto")) {
+      return adhocQueryTileUrl(zoom, coord, latField, lonField, datasetQuery);
+    }
+
+    if (
+      typeof dashboardId === "string" &&
+      !isUuid(dashboardId) && // public dashboard
+      !isJWT(dashboardId) // embedded dashboard
+    ) {
+      throw new Error("dashboardId must be an int, an uuid or a jwt");
+    }
+
     const isPublicDashboard = uuid;
 
     if (isPublicDashboard) {
@@ -64,6 +87,7 @@ export function getTileUrl(params: TileUrlParams): string {
         coord,
         latField,
         lonField,
+        isEmbedPreview,
         parameters,
       );
     }
@@ -102,6 +126,7 @@ export function getTileUrl(params: TileUrlParams): string {
         coord,
         latField,
         lonField,
+        isEmbedPreview,
         parameters,
       );
     }
@@ -130,9 +155,12 @@ function adhocQueryTileUrl(
   lonField: string,
   datasetQuery: any,
 ): string {
-  return `/api/tiles/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}?query=${encodeURIComponent(
-    JSON.stringify(datasetQuery),
-  )}`;
+  const params = new URLSearchParams({
+    query: JSON.stringify(datasetQuery),
+    latField,
+    lonField,
+  });
+  return `/api/tiles/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
 function savedQuestionTileUrl(
@@ -143,15 +171,18 @@ function savedQuestionTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `/api/tiles/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  const params = new URLSearchParams({
+    latField,
+    lonField,
+  });
   if (parameters && parameters.length > 0) {
-    url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
+    params.set("parameters", JSON.stringify(parameters));
   }
-  return url;
+  return `/api/tiles/${cardId}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
 function dashboardTileUrl(
-  dashboardId: number,
+  dashboardId: DashboardId,
   dashcardId: number,
   cardId: number,
   zoom: string | number,
@@ -160,11 +191,14 @@ function dashboardTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `/api/tiles/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  const params = new URLSearchParams({
+    latField,
+    lonField,
+  });
   if (parameters && parameters.length > 0) {
-    url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
+    params.set("parameters", JSON.stringify(parameters));
   }
-  return url;
+  return `/api/tiles/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
 function publicCardTileUrl(
@@ -175,11 +209,14 @@ function publicCardTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `/api/public/tiles/card/${token}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  const params = new URLSearchParams({
+    latField,
+    lonField,
+  });
   if (parameters && parameters.length > 0) {
-    url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
+    params.set("parameters", JSON.stringify(parameters));
   }
-  return url;
+  return `/api/public/tiles/card/${token}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
 function publicDashboardTileUrl(
@@ -192,11 +229,14 @@ function publicDashboardTileUrl(
   lonField: string,
   parameters?: unknown[],
 ): string {
-  let url = `/api/public/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  const params = new URLSearchParams({
+    latField,
+    lonField,
+  });
   if (parameters && parameters.length > 0) {
-    url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
+    params.set("parameters", JSON.stringify(parameters));
   }
-  return url;
+  return `/api/public/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
 function embedCardTileUrl(
@@ -205,13 +245,20 @@ function embedCardTileUrl(
   coord: TileCoordinate,
   latField: string,
   lonField: string,
+  isEmbedPreview: boolean,
   parameters?: unknown[],
 ): string {
-  let url = `/api/embed/tiles/card/${token}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  const params = new URLSearchParams({
+    latField,
+    lonField,
+  });
   if (parameters && parameters.length > 0) {
-    url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
+    params.set("parameters", JSON.stringify(parameters));
   }
-  return url;
+
+  const endpoint = isEmbedPreview ? "preview_embed" : "embed";
+
+  return `/api/${endpoint}/tiles/card/${token}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }
 
 function embedDashboardTileUrl(
@@ -222,11 +269,16 @@ function embedDashboardTileUrl(
   coord: TileCoordinate,
   latField: string,
   lonField: string,
+  isEmbedPreview: boolean,
   parameters?: unknown[],
 ): string {
-  let url = `/api/embed/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}/${latField}/${lonField}`;
+  const params = new URLSearchParams({
+    latField,
+    lonField,
+  });
   if (parameters && parameters.length > 0) {
-    url += `?parameters=${encodeURIComponent(JSON.stringify(parameters))}`;
+    params.set("parameters", JSON.stringify(parameters));
   }
-  return url;
+  const endpoint = isEmbedPreview ? "preview_embed" : "embed";
+  return `/api/${endpoint}/tiles/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${zoom}/${coord.x}/${coord.y}?${params.toString()}`;
 }

@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, screen } from "__support__/ui";
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
@@ -32,6 +33,10 @@ describe("DataStep", () => {
 
   describe("link to data source", () => {
     describe("embedding SDK context", () => {
+      beforeEach(async () => {
+        await mockIsEmbeddingSdk();
+      });
+
       it("should not show the tooltip", async () => {
         setup({ isEmbeddingSdk: true });
 
@@ -49,7 +54,7 @@ describe("DataStep", () => {
           const dataSource = await screen.findByText("Orders");
           fireEvent.click(dataSource, clickConfig);
 
-          expect(await screen.findByText("Products")).toBeInTheDocument();
+          expect(await screen.findByText("Orders")).toBeInTheDocument();
           expect(mockWindowOpen).not.toHaveBeenCalled();
           mockWindowOpen.mockClear();
         },

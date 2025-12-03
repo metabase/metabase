@@ -16,6 +16,9 @@ const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
       className={cx({ [cx(CS.textBrand, CS.borderBrand)]: limit != null })}
       placeholder={t`Pick a limit`}
       onKeyPress={(e) => {
+        if (e.nativeEvent.isComposing) {
+          return;
+        }
         if (e.key === "Enter") {
           const value = parseInt(e.target.value, 10);
           if (value > 0) {

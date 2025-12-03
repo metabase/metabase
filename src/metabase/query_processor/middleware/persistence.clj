@@ -8,13 +8,13 @@
   "Removes persisted information if user is sandboxed or uses connection impersonation. `:persisted-info/native` is set
   in [[metabase.query-processor.middleware.fetch-source-query]].
 
-  Sandboxing is detected by the presence of the :query-permissions/perms key added by row-level-restrictions middleware.
+  Sandboxing is detected by the presence of a :query-permissions/sandboxed-table key anywhere in the provided query
 
   It may be be possible to use the persistence cache with sandboxing and/or impersonation at a later date with further
   work, but for now we skip the cache in these cases."
-  [{perms :query-permissions/perms :as query}]
+  [query]
   (if (and api/*current-user-id*
-           (or perms ;; sandboxed?
+           (or (some? (lib.util.match/match-one query (m :guard (every-pred map? :query-permissions/sandboxed-table))))
                (perms/impersonation-enforced-for-db? (:database query))))
     (lib.util.match/replace query
       (x :guard (every-pred map? :persisted-info/native))

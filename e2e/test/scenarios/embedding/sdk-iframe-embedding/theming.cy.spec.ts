@@ -33,20 +33,29 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
 
   it("should apply custom themes", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      theme: DARK_THEME,
-      dashboardId: ORDERS_DASHBOARD_ID,
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
+      metabaseConfig: {
+        theme: DARK_THEME,
+      },
     });
 
     cy.wait("@getDashboard");
 
     frame.within(() => {
-      cy.get(".mb-wrapper").should(
+      cy.findByTestId("dashboard").should(
         "have.css",
         "background-color",
         DARK_THEME.colors.background,
       );
 
-      cy.findByText("2000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         DARK_THEME.colors["text-primary"],
@@ -72,18 +81,27 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         const DARK_THEME = ${JSON.stringify(DARK_THEME)};
 
         function setLightTheme() {
-          embed.updateSettings({ theme: LIGHT_THEME });
+          defineMetabaseConfig({ theme: LIGHT_THEME });
         }
 
         function setDarkTheme() {
-          embed.updateSettings({ theme: DARK_THEME });
+          defineMetabaseConfig({ theme: DARK_THEME });
         }
       </script>
     `;
 
     const frame = H.loadSdkIframeEmbedTestPage({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      theme: LIGHT_THEME,
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
+      metabaseConfig: {
+        theme: LIGHT_THEME,
+      },
       insertHtml: { beforeEmbed: THEME_SWITCHER_HTML },
     });
 
@@ -92,13 +110,25 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     cy.log("1. verify colors in light theme");
 
     frame.within(() => {
+      cy.findByTestId("dashboard").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
+      cy.findByTestId("dashboard-header-container").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
       cy.findByText("Product ID").should(
         "have.css",
         "color",
         LIGHT_THEME.colors.brand,
       );
 
-      cy.findByText("2000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         LIGHT_THEME.colors["text-primary"],
@@ -112,7 +142,13 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     });
 
     frame.within(() => {
-      cy.get(".mb-wrapper").should(
+      cy.findByTestId("dashboard").should(
+        "have.css",
+        "background-color",
+        DARK_THEME.colors.background,
+      );
+
+      cy.findByTestId("dashboard-header-container").should(
         "have.css",
         "background-color",
         DARK_THEME.colors.background,
@@ -124,7 +160,7 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         DARK_THEME.colors.brand,
       );
 
-      cy.findByText("2000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         DARK_THEME.colors["text-primary"],
@@ -138,13 +174,25 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
     });
 
     frame.within(() => {
+      cy.findByTestId("dashboard").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
+      cy.findByTestId("dashboard-header-container").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 255, 255)",
+      );
+
       cy.findByText("Product ID").should(
         "have.css",
         "color",
         LIGHT_THEME.colors.brand,
       );
 
-      cy.findByText("2000 rows").should(
+      cy.findByText("Showing first 2,000 rows").should(
         "have.css",
         "color",
         LIGHT_THEME.colors["text-primary"],

@@ -2,6 +2,7 @@ import {
   setupApiKeyEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
@@ -80,6 +81,7 @@ export const setup = async (
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([]);
   setupApiKeyEndpoints(testApiKeys);
+  setupTokenStatusEndpoint({ valid: isEnterprise });
 
   renderWithProviders(
     <div>

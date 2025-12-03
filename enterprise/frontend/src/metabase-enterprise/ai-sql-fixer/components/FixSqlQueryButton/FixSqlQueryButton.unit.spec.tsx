@@ -5,10 +5,10 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { FixSqlQueryButton } from "./FixSqlQueryButton";
 
 // Mock the useMetabotAgent hook
-const mockStartNewConversation = jest.fn();
+const mockSubmitInput = jest.fn();
 jest.mock("metabase-enterprise/metabot/hooks", () => ({
   useMetabotAgent: () => ({
-    startNewConversation: mockStartNewConversation,
+    submitInput: mockSubmitInput,
   }),
 }));
 
@@ -28,13 +28,13 @@ describe("FixSqlQueryButton", () => {
     ).toBeInTheDocument();
   });
 
-  it("should start a new conversation when clicked", async () => {
+  it("should submit a prompt to the metabot agent when clicked", async () => {
     setup();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Have Metabot fix it/ }),
     );
 
-    expect(mockStartNewConversation).toHaveBeenCalledWith("Fix this SQL query");
+    expect(mockSubmitInput).toHaveBeenCalledWith("Fix this SQL query");
   });
 });

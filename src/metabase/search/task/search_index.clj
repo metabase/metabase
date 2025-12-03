@@ -8,8 +8,7 @@
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
-   [metabase.util.queue :as queue]
-   [metabase.util.quick-task :as quick-task])
+   [metabase.util.queue :as queue])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -40,10 +39,10 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (search/reindex!))
+  (search/reindex! {:async? false}))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
-  (quick-task/submit-task! (init!)))
+  (doto (Thread. ^Runnable init!) .start))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
@@ -65,4 +64,5 @@
   (ingestion/start-listener!))
 
 (comment
-  (task/job-exists? reindex-job-key))
+  (task/job-exists? reindex-job-key)
+  (task/trigger-now! reindex-job-key))

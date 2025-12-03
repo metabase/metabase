@@ -1,16 +1,17 @@
 import { jt, t } from "ttag";
 
 const RocketGlobeIllustrationSrc = "app/assets/img/rocket-globe.svg";
+import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
-import { UpsellBanner, UpsellCard } from "./components";
+import { UpsellBanner } from "./components";
 
 // the default 200px width will break the title into two lines
 const UPSELL_CARD_WIDTH = 202;
 const CLOUD_PAGE = "/admin/settings/cloud";
 
-export const UpsellHosting = ({ source }: { source: string }) => {
+export const UpsellHosting = ({ location }: { location: string }) => {
   const isHosted = useSelector(getIsHosted);
 
   if (isHosted) {
@@ -24,7 +25,7 @@ export const UpsellHosting = ({ source }: { source: string }) => {
       buttonText={t`Learn more`}
       internalLink={CLOUD_PAGE}
       illustrationSrc={RocketGlobeIllustrationSrc}
-      source={source}
+      location={location}
       maxWidth={UPSELL_CARD_WIDTH}
     >
       {jt`${(
@@ -34,7 +35,7 @@ export const UpsellHosting = ({ source }: { source: string }) => {
   );
 };
 
-export const UpsellHostingBanner = ({ source }: { source: string }) => {
+export const UpsellHostingBanner = ({ location }: { location: string }) => {
   const isHosted = useSelector(getIsHosted);
 
   if (isHosted) {
@@ -47,7 +48,7 @@ export const UpsellHostingBanner = ({ source }: { source: string }) => {
       campaign="hosting"
       buttonText={t`Learn more`}
       internalLink="/admin/settings/cloud"
-      source={source}
+      location={location}
     >
       {jt`${(
         <strong key="migrate">{t`Migrate to Metabase Cloud`}</strong>
@@ -56,7 +57,7 @@ export const UpsellHostingBanner = ({ source }: { source: string }) => {
   );
 };
 
-export const UpsellHostingUpdates = ({ source }: { source: string }) => {
+export const UpsellHostingUpdates = ({ location }: { location: string }) => {
   const isHosted = useSelector(getIsHosted);
 
   if (isHosted) {
@@ -70,7 +71,7 @@ export const UpsellHostingUpdates = ({ source }: { source: string }) => {
       buttonText={t`Learn more`}
       internalLink={CLOUD_PAGE}
       illustrationSrc={RocketGlobeIllustrationSrc}
-      source={source}
+      location={location}
       maxWidth={UPSELL_CARD_WIDTH}
     >
       {jt`${(

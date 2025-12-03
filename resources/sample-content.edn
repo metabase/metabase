@@ -6,7 +6,7 @@
    :timezone "UTC",
    :is_attached_dwh false,
    :auto_run_queries true,
-   :metadata_sync_schedule "0 43 * * * ? *",
+   :metadata_sync_schedule "0 50 * * * ? *",
    :name "Sample Database",
    :settings nil,
    :caveats
@@ -3548,7 +3548,7 @@
    :source_card_id nil,
    :table_id 2,
    :result_metadata
-   "[{\"active\":true,\"base_type\":\"type/DateTime\",\"coercion_strategy\":null,\"database_type\":\"TIMESTAMP\",\"description\":\"The date and time an order was submitted.\",\"display_name\":\"Created At: Quarter\",\"effective_type\":\"type/DateTime\",\"field_ref\":[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"quarter\"}],\"fk_target_field_id\":null,\"id\":13,\"name\":\"CREATED_AT\",\"nfc_path\":null,\"parent_id\":null,\"position\":7,\"semantic_type\":\"type/CreationTimestamp\",\"settings\":{\"time_enabled\":\"milliseconds\"},\"source\":\"breakout\",\"table_id\":2,\"unit\":\"quarter\",\"visibility_type\":\"normal\"},{\"aggregation_index\":0,\"base_type\":\"type/Float\",\"display_name\":\"Sum of Total\",\"field_ref\":[\"aggregation\",0],\"name\":\"sum\",\"semantic_type\":\"type/Currency\",\"settings\":{\"currency\":\"USD\"},\"source\":\"aggregation\"}]",
+   "[{\"active\":true,\"base_type\":\"type/DateTime\",\"coercion_strategy\":null,\"database_type\":\"TIMESTAMP\",\"description\":\"The date and time an order was submitted.\",\"display_name\":\"Created At: Quarter\",\"effective_type\":\"type/DateTime\",\"field_ref\":[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"quarter\"}],\"fk_target_field_id\":null,\"id\":13,\"name\":\"CREATED_AT\",\"nfc_path\":null,\"parent_id\":null,\"position\":7,\"semantic_type\":\"type/CreationTimestamp\",\"settings\":{\"time_enabled\":\"milliseconds\"},\"source\":\"breakout\",\"table_id\":2,\"unit\":\"quarter\",\"visibility_type\":\"normal\"},{\"base_type\":\"type/Float\",\"display_name\":\"Sum of Total\",\"field_ref\":[\"aggregation\",0],\"name\":\"sum\",\"semantic_type\":\"type/Currency\",\"settings\":{\"currency\":\"USD\"},\"source\":\"aggregation\"}]",
    :initially_published_at nil,
    :database_id 1,
    :enable_embedding false,
@@ -4606,7 +4606,7 @@
    :name "E-commerce",
    :personal_owner_id nil,
    :type nil,
-   :is_sample false,
+   :is_sample true,
    :id 3,
    :archived_directly true,
    :entity_id "54O0IbgCzm290Nnxf1wRH",

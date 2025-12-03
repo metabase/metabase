@@ -15,10 +15,12 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
@@ -38,11 +40,9 @@
   (testing "Check that we add safe connection options to connection strings"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))))
-
   (testing "Check that we override shady connection string options set by shady admins with safe ones"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;"))))
-
   (testing "Check that we override the INIT connection string option"
     (is (= "file:my-file;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;INIT=ANYTHING_HERE_WILL_BE_IGNORED")))))
@@ -51,11 +51,9 @@
   (testing "make sure we return the USER from db details if it is a keyword key in details..."
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db", :USER "cam"}))))
-
   (testing "or a string key..."
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db", "USER" "cam"}))))
-
   (testing "or part of the `db` connection string itself"
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db;USER=cam"})))))
@@ -81,7 +79,9 @@
       (is (instance? clojure.lang.ExceptionInfo result))
       (is (partial= {:cause "Malicious keys detected"
                      :data {:keys ["TRACE_LEVEL_SYSTEM_OUT"]}}
-                    (Throwable->map result)))))
+                    (Throwable->map result))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties-2
   (testing "Reject connection details which lie about their driver"
     (let [conn "mem:fake-h2-db"
           f (fn f [details]
@@ -111,15 +111,21 @@
                t/zone-id
                .normalized)))))
 
-(deftest disallow-admin-accounts-test
+(deftest ^:parallel disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
     (mt/with-temp [:model/Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
-           (qp/process-query {:database (:id db)
-                              :type     :native
-                              :native   {:query "SELECT 1"}}))))))
+      (doseq [[query-type query] {"legacy MBQL query"
+                                  {:database (:id db)
+                                   :type     :native
+                                   :native   {:query "SELECT 1"}}
+
+                                  "MBQL 5 query"
+                                  (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1")}]
+        (testing query-type
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
+               (qp/process-query query))))))))
 
 (deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
@@ -222,7 +228,7 @@
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     #_{:clj-kondo/ignore [:equals-true]}
-    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select 1"
       "update venues set name = 'bill'"
       "delete venues"
@@ -243,7 +249,7 @@
       "create table venues"
       "alter table venues add column address varchar(255)")
 
-    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -251,10 +257,10 @@
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
 
-    (is (= nil (#'h2/check-action-commands-allowed {:database (u/the-id (mt/db)) :native {:query nil}})))
+    (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
 
     (is (= nil (#'h2/check-action-commands-allowed
-                {:database (u/the-id (mt/db))
+                {:database (mt/id)
                  :engine :h2
                  :native {:query (str/join "; "
                                            ["select 1"
@@ -266,17 +272,25 @@
       (is (thrown? clojure.lang.ExceptionInfo
                    #"DDL commands are not allowed to be used with h2."
                    (#'h2/check-action-commands-allowed
-                    {:database (u/the-id (mt/db))
+                    {:database (mt/id)
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
+
+(defn- check-read-only-statements [query]
+  (mt/with-metadata-provider (mt/id)
+    (-> query
+        qp.preprocess/preprocess
+        qp.compile/attach-compiled-query
+        (#'h2/check-read-only-statements))))
 
 (deftest ^:parallel check-read-only-test
   (testing "read only statements should pass"
     (are [query] (nil?
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:engine :h2
-                      :native {:query query}})))
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}})))
       "select * from orders"
       "select 1; select 2;"
       "explain select * from orders"
@@ -294,8 +308,9 @@
                   #"Only SELECT statements are allowed in a native query."
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:engine :h2
-                      :native {:query query}}))
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}}))
                   "update venues set name = 'bill'")
       "insert into venues (name) values ('bill')"
       "delete venues"
@@ -345,7 +360,7 @@
   (mt/test-driver :h2
     (when config/ee-available?
       (let [audit-db-expected-id 13371337
-            original-audit-db    (t2/select-one 'Database :is_audit true)]
+            original-audit-db    (t2/select-one :model/Database :is_audit true)]
         (is (not= ::mbc/noop (mbc/ensure-audit-db-installed!))
             "Make sure we call the right ensure-audit-db-installed! impl")
         (try
@@ -361,14 +376,14 @@
             (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
-;; API tests are in [[metabase.actions.api-test]]
+;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type    :metabase.actions.error/violate-not-null-constraint
             :message "Ranking must have values."
             :errors  {"RANKING" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-not-null-constraint nil :row/created
+            :h2 actions.error/violate-not-null-constraint nil :model.row/created
             "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])")))))
 
 (deftest actions-maybe-parse-sql-error-test-2
@@ -394,26 +409,35 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Other tables rely on this row so it cannot be deleted.",
+            :message "Other rows refer to this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/delete
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/delete
             "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-5
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to create a new record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/create
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/create
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-6
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/update
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/update
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
+
+(deftest ^:parallel actions-maybe-parse-sql-violate-check-constraint-test
+  (testing "violate check constraint"
+    (is (= {:type :metabase.actions.error/violate-check-constraint,
+            :message "Some of your values violate the constraint: users_email_check"
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-check-constraint nil :model.row/create
+            "Check constraint violation: \"users_email_check\"")))))

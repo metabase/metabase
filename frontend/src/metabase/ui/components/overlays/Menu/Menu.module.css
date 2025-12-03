@@ -1,7 +1,7 @@
 .dropdown {
   padding: 0.75rem;
   min-width: 11.5rem;
-  overflow: auto;
+  overflow: visible;
   background-color: var(--mb-color-background);
   border-color: var(--mb-color-border);
 }
@@ -12,17 +12,19 @@
   line-height: var(--mantine-line-height-lg);
   padding: var(--mantine-spacing-sm);
 
-  &:disabled {
+  &[data-disabled="true"] {
     color: var(--mb-color-text-light);
+    opacity: 1;
   }
 
-  &[data-hovered] {
-    color: var(--mb-color-text-hover);
+  &:hover:not([data-disabled="true"]) {
     background-color: var(--mb-color-background-hover);
+  }
 
-    .itemSection[data-position="right"] {
-      color: var(--mb-color-text-hover);
-    }
+  &:focus {
+    outline: none;
+    background-color: var(--mb-color-background-hover);
+    border: none;
   }
 }
 

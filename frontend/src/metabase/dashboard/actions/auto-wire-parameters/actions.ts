@@ -13,12 +13,16 @@ import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import {
   getDashCardById,
   getDashboard,
+  getDashboardHeaderParameters,
   getParameters,
   getQuestions,
   getSelectedTabId,
   getTabs,
 } from "metabase/dashboard/selectors";
-import { isQuestionDashCard } from "metabase/dashboard/utils";
+import {
+  findDashCardForInlineParameter,
+  isQuestionDashCard,
+} from "metabase/dashboard/utils";
 import {
   getMappingOptionByTarget,
   getParameterMappingOptions,
@@ -60,11 +64,14 @@ export function showAutoWireToast(
       excludeDashcardIds: [dashcard.id],
     });
 
+    const dashcards = Object.values(dashboardState.dashcards);
+
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
       parameter,
       dashcardsToAutoApply,
       target,
       questions,
+      dashcards,
     );
 
     const shouldShowToast = dashcardAttributes.length > 0;
@@ -85,6 +92,7 @@ export function showAutoWireToast(
       dashcard,
       target,
       questions,
+      dashcards,
     );
 
     const tabs = getTabs(getState());
@@ -126,8 +134,10 @@ export function showAutoWireToastNewCard({
     }
 
     const questions = getQuestions(getState());
-    const parameters = getParameters(getState());
     const selectedTabId = getSelectedTabId(getState());
+
+    // Inline dashcard parameters should not be used for auto-wiring
+    const parameters = getDashboardHeaderParameters(getState());
 
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,
@@ -151,11 +161,17 @@ export function showAutoWireToastNewCard({
     const processedParameterIds = new Set();
 
     for (const parameter of parameters) {
+      const parameterDashcard = findDashCardForInlineParameter(
+        parameter.id,
+        Object.values(dashcards),
+      );
+
       const dashcardMappingOptions = getParameterMappingOptions(
         targetQuestion,
         parameter,
         targetDashcard.card,
         targetDashcard,
+        parameterDashcard,
       );
 
       for (const dashcard of dashcards) {

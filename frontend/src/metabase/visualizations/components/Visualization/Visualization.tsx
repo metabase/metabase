@@ -1,6 +1,6 @@
 /* eslint-disable complexity */
 import cx from "classnames";
-import {
+import React, {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
@@ -9,7 +9,6 @@ import {
   type Ref,
   forwardRef,
 } from "react";
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +18,7 @@ import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
@@ -27,7 +27,7 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -53,6 +53,7 @@ import {
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
+  type VisualizationGridSize,
   type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
   isRegularClickAction,
@@ -70,7 +71,6 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
-  DatasetQuery,
   RawSeries,
   Series,
   SingleSeries,
@@ -83,7 +83,7 @@ import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
-import LoadingView from "./LoadingView";
+import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -104,6 +104,7 @@ type StateProps = {
   isRawTable: boolean;
   isEmbeddingSdk: boolean;
   scrollToLastColumn: boolean;
+  isDownloadingToImage: boolean;
 };
 
 type ForwardedRefProps = {
@@ -129,10 +130,7 @@ type VisualizationOwnProps = {
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
-  gridSize?: {
-    width: number;
-    height: number;
-  };
+  gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
   headerIcon?: IconProps;
@@ -140,17 +138,20 @@ type VisualizationOwnProps = {
   height?: number | null;
   isAction?: boolean;
   isDashboard?: boolean;
+  isDocument?: boolean;
   isMobile?: boolean;
+  isRunning?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
   rawSeries?: (
     | SingleSeries
     | {
-        card: Card<DatasetQuery>;
+        card: Card;
       }
   )[];
   visualizerRawSeries?: RawSeries;
@@ -164,6 +165,7 @@ type VisualizationOwnProps = {
   tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
+  zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
     showSidebarTitle?: boolean;
@@ -200,11 +202,12 @@ type VisualizationState = {
 };
 
 const mapStateToProps = (state: State): StateProps => ({
-  hasDevWatermark: getTokenFeature(state, "development-mode"),
+  hasDevWatermark: getTokenFeature(state, "development_mode"),
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
-  isEmbeddingSdk: getIsEmbeddingSdk(state),
+  isEmbeddingSdk: isEmbeddingSdk(),
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
+  isDownloadingToImage: getIsDownloadingToImage(state),
 });
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
@@ -223,8 +226,9 @@ const isLoading = (series: Series | null) => {
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
   const firstCard = rawSeriesArray[0]?.card;
-  const isNative = firstCard?.dataset_query?.type === "native";
-  const isNativeView = isNative && props.queryBuilderMode === "view";
+  const firstQuestion = firstCard != null ? new Question(firstCard) : undefined;
+  const isNativeView =
+    props.queryBuilderMode === "view" && firstQuestion?.isNative();
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
@@ -256,10 +260,10 @@ class Visualization extends PureComponent<
     height: 0,
     isAction: false,
     isDashboard: false,
+    isDocument: false,
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
-    isNightMode: false,
     isPreviewing: false,
     isQueryBuilder: false,
     isSettings: false,
@@ -350,7 +354,11 @@ class Visualization extends PureComponent<
     const { rawSeries = [] } = props;
 
     let warnings = state.warnings || [];
-    if (state.series && state.series[0].card.display !== "table") {
+    if (
+      state.series &&
+      state.series[0].card.display !== "table" &&
+      state.series[0].card.display !== "list"
+    ) {
       warnings = warnings.concat(
         rawSeries
           .filter(
@@ -391,14 +399,67 @@ class Visualization extends PureComponent<
     }
   };
 
-  _getQuestionForCardCached(
+  private static getQuestionForCard(
     metadata: Metadata | undefined,
     card: Card | undefined,
   ) {
     return !!card && !!metadata ? new Question(card, metadata) : undefined;
   }
 
-  getMode(
+  _getClickActionsCached(
+    clickedObject: ClickObject | null | undefined,
+    mode: ClickActionModeGetter | Mode | QueryClickActionsMode | undefined,
+    computedSettings: Record<string, string>,
+    dashcard?: DashboardCard,
+    metadata?: Metadata,
+    rawSeries: (
+      | SingleSeries
+      | {
+          card: Card;
+        }
+    )[] = [],
+    visualizerRawSeries: RawSeries = [],
+    isRawTable = false,
+    getExtraDataForClick: (
+      clicked: ClickObject | null,
+    ) => Record<string, unknown> = () => ({}),
+  ) {
+    if (!clickedObject) {
+      return [];
+    }
+
+    const clicked = isVisualizerDashboardCard(dashcard)
+      ? formatVisualizerClickObject(
+          clickedObject,
+          visualizerRawSeries,
+          dashcard.visualization_settings.visualization.columnValuesMapping,
+        )
+      : clickedObject;
+
+    const card = Visualization.findCardById(
+      clicked.cardId,
+      dashcard,
+      rawSeries,
+      visualizerRawSeries,
+    );
+    const question = Visualization.getQuestionForCard(metadata, card);
+    const modeInstance = Visualization.getMode(mode, question);
+
+    return modeInstance
+      ? modeInstance.actionsForClick(
+          {
+            ...clicked,
+            extraData: {
+              ...getExtraDataForClick(clicked),
+              isRawTable,
+            },
+          },
+          computedSettings,
+        )
+      : [];
+  }
+
+  private static getMode(
     modeOrModeGetter:
       | ClickActionModeGetter
       | Mode
@@ -427,54 +488,49 @@ class Visualization extends PureComponent<
   }
 
   getClickActions(clickedObject?: ClickObject | null) {
-    if (!clickedObject) {
-      return [];
-    }
-
     const {
+      mode,
       dashcard,
       metadata,
-      visualizerRawSeries = [],
+      rawSeries,
+      visualizerRawSeries,
       isRawTable,
-      getExtraDataForClick = () => ({}),
+      getExtraDataForClick,
     } = this.props;
 
-    const clicked = isVisualizerDashboardCard(dashcard)
-      ? formatVisualizerClickObject(
-          clickedObject,
-          visualizerRawSeries,
-          dashcard.visualization_settings.visualization.columnValuesMapping,
-        )
-      : clickedObject;
+    const { computedSettings } = this.state;
 
-    const card = this.findCardById(clicked.cardId);
-
-    const question = this._getQuestionForCardCached(metadata, card);
-    const mode = this.getMode(this.props.mode, question);
-
-    return mode
-      ? mode.actionsForClick(
-          {
-            ...clicked,
-            extraData: {
-              ...getExtraDataForClick(clicked),
-              isRawTable,
-            },
-          },
-          this.state.computedSettings,
-        )
-      : [];
+    return this._getClickActionsCached(
+      clickedObject,
+      mode,
+      computedSettings,
+      dashcard,
+      metadata,
+      rawSeries,
+      visualizerRawSeries,
+      isRawTable,
+      getExtraDataForClick,
+    );
   }
 
-  findCardById = (cardId?: CardId | null) => {
-    const { dashcard, rawSeries = [], visualizerRawSeries = [] } = this.props;
+  private static findCardById(
+    cardId?: CardId | null,
+    dashcard?: DashboardCard,
+    rawSeries: (
+      | SingleSeries
+      | {
+          card: Card;
+        }
+    )[] = [],
+    visualizerRawSeries: RawSeries = [],
+  ) {
     const isVisualizerViz = isVisualizerDashboardCard(dashcard);
     const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
     return (
       lookupSeries.find((series) => series.card.id === cardId)?.card ??
       lookupSeries[0].card
     );
-  };
+  }
 
   getNormalizedSizes = () => {
     const { width, height } = this.props;
@@ -529,8 +585,16 @@ class Visualization extends PureComponent<
     nextCard,
     objectId,
   }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
-    this.props.onChangeCardAndRun?.({
-      previousCard: this.findCardById(nextCard?.id),
+    const { dashcard, rawSeries, visualizerRawSeries, onChangeCardAndRun } =
+      this.props;
+
+    onChangeCardAndRun?.({
+      previousCard: Visualization.findCardById(
+        nextCard?.id,
+        dashcard,
+        rawSeries,
+        visualizerRawSeries,
+      ),
       nextCard,
       objectId,
     });
@@ -585,26 +649,33 @@ class Visualization extends PureComponent<
       height: rawHeight,
       isAction,
       isDashboard,
+      isDocument,
       isEditing,
       isEmbeddingSdk,
       isFullscreen,
       isMobile,
-      isNightMode,
       isObjectDetail,
       isPreviewing,
       isRawTable,
       isQueryBuilder,
+      isRunning,
       isSettings,
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
       isSlow,
+      isDownloadingToImage,
       metadata,
       mode,
       onEditSummary,
       queryBuilderMode,
       rawSeries = [],
+      isSelectable,
+      rowChecked,
+      onAllSelectClick,
+      onRowSelectClick,
       visualizerRawSeries,
       renderEmptyMessage,
+      renderLoadingView = LoadingView,
       renderTableHeader,
       replacementContent,
       scrollToColumn,
@@ -627,6 +698,8 @@ class Visualization extends PureComponent<
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
       titleMenuItems,
+      zoomedRowIndex,
+      tableFooterExtraButtons,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -641,6 +714,11 @@ class Visualization extends PureComponent<
 
     // disable hover when click action is active
     if (clickActions.length > 0) {
+      hovered = null;
+    }
+
+    // disable hover when exporting chart as an image (png download)
+    if (isDownloadingToImage) {
       hovered = null;
     }
 
@@ -784,7 +862,7 @@ class Visualization extends PureComponent<
             replacementContent
           ) : isDashboard && noResults ? (
             <NoResultsView isSmall={small} />
-          ) : error ? (
+          ) : error && !isRunning ? (
             <ErrorView
               error={errorMessageOverride ?? error}
               icon={errorIcon}
@@ -794,10 +872,10 @@ class Visualization extends PureComponent<
           ) : genericError ? (
             <SmallGenericError bordered={false} />
           ) : loading ? (
-            <LoadingView
-              expectedDuration={expectedDuration}
-              isSlow={!!isSlow}
-            />
+            renderLoadingView({
+              expectedDuration,
+              isSlow,
+            })
           ) : isPlaceholder ? (
             <EmptyVizState
               chartType={visualization?.identifier}
@@ -810,7 +888,7 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{ position: "relative" }}
+                style={{ position: hasDevWatermark ? "relative" : undefined }}
               >
                 <VisualizationRenderedWrapper
                   onRendered={this.handleVisualizationRendered}
@@ -839,12 +917,12 @@ class Visualization extends PureComponent<
                     height={rawHeight}
                     hovered={hovered}
                     isDashboard={!!isDashboard}
+                    isDocument={!!isDocument}
                     isEditing={!!isEditing}
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
                     isVisualizerViz={isVisualizerViz}
-                    isNightMode={!!isNightMode}
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
                     isRawTable={isRawTable}
@@ -872,6 +950,7 @@ class Visualization extends PureComponent<
                     width={rawWidth}
                     uuid={uuid}
                     token={token}
+                    zoomedRowIndex={zoomedRowIndex}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
                       this.props.onChangeCardAndRun
@@ -892,6 +971,12 @@ class Visualization extends PureComponent<
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
+                    tableFooterExtraButtons={tableFooterExtraButtons}
+                    // These props are only used by the table on the Erroring Questions admin page
+                    isSelectable={isSelectable}
+                    rowChecked={rowChecked}
+                    onAllSelectClick={onAllSelectClick}
+                    onRowSelectClick={onRowSelectClick}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}
@@ -917,7 +1002,7 @@ class Visualization extends PureComponent<
 }
 
 const VisualizationMemoized = memoizeClass<Visualization>(
-  "_getQuestionForCardCached",
+  "_getClickActionsCached",
 )(Visualization);
 
 // eslint-disable-next-line import/no-default-export

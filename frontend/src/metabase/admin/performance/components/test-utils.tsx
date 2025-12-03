@@ -1,5 +1,10 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabasesEndpoints,
+  setupTokenStatusEndpoint,
+} from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -25,7 +30,7 @@ export interface SetupOpts {
 }
 
 export const setupStrategyEditorForDatabases = ({
-  hasEnterprisePlugins,
+  hasEnterprisePlugins = false,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
@@ -40,6 +45,7 @@ export const setupStrategyEditorForDatabases = ({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
 
   const cacheConfigs = [
     createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
@@ -63,9 +69,15 @@ export const setupStrategyEditorForDatabases = ({
   );
   setupDatabasesEndpoints(databases);
 
-  return renderWithProviders(<StrategyEditorForDatabases />, {
-    storeInitialState,
-  });
+  const TestStrategyEditorForDatabases = () => <StrategyEditorForDatabases />;
+
+  return renderWithProviders(
+    <Route path="*" component={TestStrategyEditorForDatabases} />,
+    {
+      storeInitialState,
+      withRouter: true,
+    },
+  );
 };
 
 export const getSaveButton = async () =>

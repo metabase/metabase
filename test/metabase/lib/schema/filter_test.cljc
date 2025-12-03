@@ -1,13 +1,16 @@
 (ns metabase.lib.schema.filter-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]
    [metabase.util.malli.registry :as mr]))
 
-(comment metabase.lib.schema/keep-me)
+(comment metabase.lib.schema/keep-me
+         #?(:cljs metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (defn- ensure-uuids [filter-expr]
   (walk/postwalk
@@ -111,3 +114,26 @@
     (let [bson-field [:field {:base-type :type/Array :effective-type :type/Array} 1]]
       (testing "is comparable"
         (is (mr/validate ::expression/boolean (ensure-uuids [:= {} bson-field "abc"])))))))
+
+(deftest ^:parallel normalize-clause-add-options-map-test
+  (is (=? [:=
+           {:lib/uuid string?}
+           [:field {:lib/uuid string?} 2]
+           [:field {:join-alias "Parent", :lib/uuid string?} 1]]
+          (lib/normalize
+           :mbql.clause/=
+           [:=
+            [:field {} 2]
+            [:field {:join-alias "Parent"} 1]]))))
+
+(deftest ^:parallel normalize-clause-add-uuids-test
+  (is (=? [:=
+           {:lib/uuid string?}
+           [:field {:lib/uuid string?, :base-type :type/BigInteger} "ID"]
+           [:value {:lib/uuid string?, :base-type :type/BigInteger, :effective-type :type/BigInteger} 144]]
+          (lib/normalize
+           :mbql.clause/=
+           [:=
+            {}
+            [:field {:base-type :type/BigInteger} "ID"]
+            [:value {:base-type :type/BigInteger} 144]]))))

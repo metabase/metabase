@@ -38,10 +38,16 @@
          (mapcat keys)
          (distinct)
          (take max-login-attributes))
-        (t2/select-fn-reducible :login_attributes [:model/User :login_attributes]
-                                {:where [:and
-                                         [:not= :login_attributes nil]
-                                         [:not= :login_attributes "{}"]]})))
+        (t2/select-fn-reducible (comp (partial apply merge)
+                                      (juxt :jwt_attributes :login_attributes))
+                                [:model/User :login_attributes :jwt_attributes]
+                                {:where [:or
+                                         [:and
+                                          [:not= :jwt_attributes nil]
+                                          [:not= :jwt_attributes "{}"]]
+                                         [:and
+                                          [:not= :login_attributes nil]
+                                          [:not= :login_attributes "{}"]]]})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/mt/user` routes."

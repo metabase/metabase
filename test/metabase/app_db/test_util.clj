@@ -74,12 +74,15 @@
 (defn liquibase-file->included-ids
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.
   Ids are orderer in the order it's defined in migration file."
-  [file-path db-type]
-  (let [content (u.yaml/from-file (io/resource file-path))]
+  [file-path db-type conn]
+  (let [content (u.yaml/from-file (io/resource file-path))
+        lb-type (if (= "MariaDB" (.getDatabaseProductName (.getMetaData ^java.sql.Connection conn)))
+                  :mariadb
+                  db-type)]
     (->> (:databaseChangeLog content)
-      ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current db-type
+      ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current lb-type
          (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
-                                                        (not (str/includes? dbms (name db-type))))))
+                                                        (not (str/includes? dbms (name lb-type))))))
       ;; remove ignored changeSets
          (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
@@ -96,5 +99,5 @@
 
 (defn all-liquibase-ids
   "Returns a set of all changeset IDs from all migration files."
-  [include-legacy? driver]
-  (apply concat (map #(liquibase-file->included-ids % driver) (all-migration-files include-legacy?))))
+  [include-legacy? driver conn]
+  (apply concat (map #(liquibase-file->included-ids % driver conn) (all-migration-files include-legacy?))))

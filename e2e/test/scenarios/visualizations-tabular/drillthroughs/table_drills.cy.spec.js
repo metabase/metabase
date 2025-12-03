@@ -23,7 +23,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     it(`should display proper drills on cell click for unaggregated query - development-mode: ${devMode}`, () => {
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = devMode;
+          res.body["token-features"].development_mode = devMode;
         });
       });
       H.openReviewsTable({ limit: 3 });
@@ -540,5 +540,47 @@ describe("Issue 58247", () => {
     H.popover().findByText("Does not contain…").click();
 
     H.popover().findByText("Does not contain").should("be.visible");
+  });
+});
+
+describe("Issue 40061", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const questionDetails = {
+    display: "table",
+    dataset_query: {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          "Created At 2": [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+        },
+        aggregation: [["count"]],
+        breakout: [
+          ["expression", "Created At 2", { "base-type": "type/DateTime" }],
+        ],
+      },
+    },
+  };
+
+  it("should be able extract dates based on a custom column (metabase#40061)", () => {
+    H.visitQuestionAdhoc(questionDetails);
+    cy.findByTestId("table-header").findByText("Created At 2: Day").click();
+    H.popover().findByText("Extract day, month…").click();
+    H.popover().findByText("Year").click();
+    cy.findByTestId("table-header").findByText("Year").should("exist");
+    cy.findByTestId("question-row-count")
+      .findByText("Showing 1,421 rows")
+      .should("exist");
   });
 });

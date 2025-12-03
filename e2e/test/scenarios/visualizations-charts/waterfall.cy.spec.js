@@ -11,8 +11,8 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
-    H.chartPathWithFillColor("#88BF4D").should("be.visible");
-    H.chartPathWithFillColor("#4C5773").should("be.visible");
+    H.chartPathWithFillColor("#88BF4D").should("be.visible"); // A bar
+    H.chartPathWithFillColor("#303D46").should("be.visible"); // Total bar
     H.echartsContainer().get("text").contains("Total");
 
     if (xLabel) {
@@ -416,7 +416,7 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    const totalBarColor = "#4C5773";
+    const totalBarColor = "#303D46";
 
     H.chartPathWithFillColor(totalBarColor).realHover();
 

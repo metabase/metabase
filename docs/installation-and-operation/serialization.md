@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Serialization" %}
 
-Once you really get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
+Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
@@ -20,7 +20,7 @@ To help you out in situations like this, Metabase has a serialization feature wh
 There are two ways to run these `export` and `import` commands:
 
 - [Using CLI commands](#serialization-with-cli-commands)
-- [Through the API](#serialization-via-the-api).
+- [Through the API](#serialization-via-the-api)
 
 > We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
 
@@ -50,6 +50,8 @@ Metabase will only export the following entities:
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
+- Transforms (including jobs)
+- Documents (without comments)
 - Actions
 - Models
 - Metrics
@@ -61,7 +63,7 @@ Metabase will only export the following entities:
 - Events and timelines
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
-All other entities—including users, groups, permissions, alerts, subscriptions—won't get exported.
+All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported.
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 
@@ -296,7 +298,7 @@ This ID refers to the collection where the question was saved. In a real export,
 
 ### Entity IDs work with embedding
 
-Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Interactive embedding](../embedding/interactive-embedding.md), and the [Embedded Analytics SDK](../embedding/sdk/introduction.md).
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Embedded analytics JS](../embedding/embedded-analytics-js.md), [Interactive embedding](../embedding/interactive-embedding.md), and the [Embedded analytics SDK](../embedding/sdk/introduction.md).
 
 A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
 
@@ -377,7 +379,7 @@ If you're instead looking to do a one-time migration from the default H2 databas
 
 ### You'll need to manually add license tokens
 
-Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
 
 ### Metabase adds logs to exports and imports
 
@@ -633,7 +635,7 @@ tar -xvf  metabase_data.tgz
 ```sh
 curl \
   -H 'x-api-key: YOUR_API_KEY' \
-  -X POST 'http://your-metabase-url/api/ee/serialization/export' \
+  -X POST 'https://your-metabase-url/api/ee/serialization/export' \
   -o metabase_data.tgz
 ```
 
@@ -669,7 +671,7 @@ From the directory where you've stored your GZIP-compressed file, run:
 curl -X POST \
   -H 'x-api-key: YOUR_API_KEY' \
   -F file=@metabase_data.tgz \
-  'http://your-metabase-url/api/ee/serialization/import' \
+  'https://your-metabase-url/api/ee/serialization/import' \
   -o -
 ```
 

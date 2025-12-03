@@ -430,7 +430,10 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping();
 
-      H.findDashCardAction(H.getDashboardCard(1), "Replace").click();
+      H.getDashboardCard(1)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Replace")
+        .click();
 
       H.modal().findByText("Orders, Count").click();
 
@@ -799,9 +802,11 @@ function getTableCell(columnName, rowIndex) {
       .toArray()
       .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
     // eslint-disable-next-line no-unsafe-element-filtering
-    const row = cy.findAllByRole("row").eq(rowIndex);
-    // eslint-disable-next-line no-unsafe-element-filtering
-    row.findAllByTestId("cell-data").eq(columnHeaderIndex).as("cellData");
+    cy.findAllByRole("row")
+      .eq(rowIndex)
+      .findAllByTestId("cell-data")
+      .eq(columnHeaderIndex)
+      .as("cellData");
   });
 
   return cy.get("@cellData");

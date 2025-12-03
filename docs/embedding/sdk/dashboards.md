@@ -8,7 +8,7 @@ title: "Embedded analytics SDK - dashboards"
 
 You can embed an interactive, editable, or static dashboard.
 
-**Please keep in mind - embedding multiple instances of dashboards on the same page is not yet supported.**
+**Keep in mind that embedding multiple instances of dashboards on the same page is not yet supported.**
 
 ## Embedding a dashboard
 
@@ -19,6 +19,7 @@ You can embed a dashboard using the one of the dashboard components:
 A lightweight dashboard component. Use this component when you want to display results without letting people interact with the data.
 
 #### API Reference
+
 - [Component](./api/StaticDashboard.html)
 - [Props](./api/StaticDashboardProps.html)
 
@@ -31,6 +32,7 @@ A lightweight dashboard component. Use this component when you want to display r
 A dashboard component with drill downs, click behaviors, and the ability to view and click into questions. Use this component when you want to allow people to explore their data.
 
 #### API Reference
+
 - [Component](./api/InteractiveDashboard.html)
 - [Props](./api/InteractiveDashboardProps.html)
 
@@ -43,6 +45,7 @@ A dashboard component with drill downs, click behaviors, and the ability to view
 A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard. Use this component when you want to give people the ability to modify your dashboards, for example in an admin panel in your app.
 
 #### API Reference
+
 - [Component](./api/EditableDashboard.html)
 - [Props](./api/EditableDashboardProps.html)
 
@@ -126,6 +129,10 @@ If you want to replace the existing menu with your own component, you can do so 
 {% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
 ```
 
+### `mapQuestionClickActions`
+
+You can customize what happens when people click on a data point on a dashboard with the `mapQuestionClickActions` plugin. See [mapQuestionClickActions](./questions.md#mapquestionclickactions).
+
 ## Creating dashboards
 
 Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
@@ -134,11 +141,15 @@ Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateD
 
 Use this hook if you'd like to have total control over the UI and settings.
 
+Until the Embedded analytics SDK is fully loaded and initialized, the hook returns `null`.
+
 #### API Reference
+
 - [Hook](./api/useCreateDashboardApi.html)
 - [Options](./api/CreateDashboardValues.html)
 
 #### Example
+
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-hook" %}
 ```
@@ -149,11 +160,13 @@ Use this hook if you'd like to have total control over the UI and settings.
 
 ### `CreateDashboardModal`
 
-#### API Refernce
+#### API Reference
+
 - [Component](./api/CreateDashboardModal.html)
 - [Props](./api/CreateDashboardModalProps.html)
 
 #### Example
+
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-component" %}
 ```
@@ -161,4 +174,3 @@ Use this hook if you'd like to have total control over the UI and settings.
 #### Props
 
 {% include_file "{{ dirname }}/api/snippets/CreateDashboardModalProps.md" snippet="properties" %}
-

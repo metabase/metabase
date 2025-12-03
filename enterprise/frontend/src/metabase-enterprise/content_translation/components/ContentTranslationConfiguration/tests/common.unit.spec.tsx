@@ -15,7 +15,7 @@ describe("ContentTranslationConfiguration", () => {
         screen.getByTestId("content-translation-configuration"),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("Localizing user-generated content"),
+        screen.getByText("Translate embedded dashboards and questions"),
       ).toBeInTheDocument();
     });
 
@@ -24,11 +24,11 @@ describe("ContentTranslationConfiguration", () => {
 
       expect(
         screen.getByText(
-          "You can upload a translation dictionary to handle user-generated strings, like dashboard names.",
+          /Upload a translation dictionary to translate strings both in Metabase content \(like dashboard titles\) and in the data itself \(like column names and values\)/,
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("The dictionary must be a CSV with these columns:"),
+        screen.getByText(/The dictionary must be a CSV with these columns:/),
       ).toBeInTheDocument();
       expect(screen.getByText("Locale Code")).toBeInTheDocument();
       expect(screen.getByText("String")).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("ContentTranslationConfiguration", () => {
 
       expect(
         screen.getByText(
-          "Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.",
+          /Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links/,
         ),
       ).toBeInTheDocument();
     });
@@ -50,7 +50,7 @@ describe("ContentTranslationConfiguration", () => {
 
       expect(
         screen.getByText(
-          "Uploading a new dictionary will replace the existing dictionary.",
+          /Uploading a new dictionary will replace the existing dictionary/,
         ),
       ).toBeInTheDocument();
     });
@@ -60,11 +60,13 @@ describe("ContentTranslationConfiguration", () => {
 
       expect(
         screen.getByRole("button", {
-          name: /Download translation dictionary/i,
+          name: /Get translation dictionary template/i,
         }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Upload translation dictionary/i }),
+        screen.getByRole("button", {
+          name: /Upload edited translation dictionary/i,
+        }),
       ).toBeInTheDocument();
     });
   });

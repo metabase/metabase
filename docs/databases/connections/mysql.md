@@ -18,6 +18,10 @@ Metabase supports the oldest supported version through the latest stable version
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -37,6 +41,16 @@ The database username for the account that you want to use to connect to your da
 ### Password
 
 The password for the username that you use to connect to the database.
+
+### Use an authentication provider
+
+{% include plans-blockquote.html feature="Authenticating with a provider" %}
+
+Instead of a password, you can authenticate with a supported provider. Only for self-hosted Pro and Enterprise plans.
+
+#### IAM authentication
+
+To connect to Amazon RDS instances using IAM authentication instead of a password, see [IAM authentication for AWS RDS](./aws-rds.md#iam-authentication).
 
 ### Use a secure connection (SSL)
 
@@ -76,7 +90,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Connecting to MySQL 8+ servers
 
-Metabase uses the MariaDB connector to connect to MySQL servers. The MariaDB connector lacks support for MySQL 8's default authentication plugin. In order to connect, you'll need to change the plugin used by the Metabase user:
+Metabase uses the MariaDB connector to connect to MySQL servers. The MariaDB connector lacks support for MySQL 8's default authentication plugin. To connect, you'll need to change the plugin used by the Metabase user:
 
 ```
 mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';
@@ -169,19 +183,33 @@ mysql:
 
 - You may want to check in with the vendor that's hosting the platform, as Vitess can run into issues returning metadata from the information schema. Metabase needs this metadata to populate its application database; if Metabase can't get that metadata, fields may not appear (or appear empty).
 
+## Passwords with special characters
+
+If your password contains characters that aren't UTF-8, then you might need to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This ensures that MySQL understands the special characters in the password during authentication.
+
 ## Model features
 
 Choose whether to enable features related to [Metabase models](../../data-modeling/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
 
 ### Model actions
 
-Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions are able to read, write, and possibly delete data. Your database user will need write permissions.
+Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
 
 ### Model persistence
 
 We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
 
+## Editable table data
+
+Turn this setting **ON** to enable editing of table data directly within Metabase. When enabled, Admins can create, update, and delete records in your tables through Metabase's interface.
+
+Your database connection will need Write permissions to enable this feature. Meaning: the database user account that you use to connect Metabase to your database must have appropriate privileges to modify data in the tables you want to make editable.
+
+See [privileges](../users-roles-privileges.md).
+
 ## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
 See [Database routing](../../permissions/database-routing.md).
 

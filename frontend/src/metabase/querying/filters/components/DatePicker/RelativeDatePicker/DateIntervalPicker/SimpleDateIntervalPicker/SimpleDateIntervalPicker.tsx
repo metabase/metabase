@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
+import { NumberInputWithFallbackValue } from "metabase/querying/filters/components/DatePicker/NumberInputWithFallbackValue/NumberInputWithFallbackValue";
 import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/filters/types";
-import { Group, NumberInput, Select } from "metabase/ui";
+import { Group, Select } from "metabase/ui";
 
 import { IncludeCurrentSwitch } from "../../IncludeCurrentSwitch";
 import { getInterval, getUnitOptions, setInterval } from "../../utils";
@@ -24,8 +25,8 @@ export function SimpleDateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
 
-  const handleIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
   };
@@ -40,7 +41,8 @@ export function SimpleDateIntervalPicker({
   return (
     <>
       <Group>
-        <NumberInput
+        <NumberInputWithFallbackValue
+          allowDecimal={false}
           value={interval}
           aria-label={t`Interval`}
           w="4rem"

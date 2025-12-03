@@ -1,10 +1,12 @@
 (ns metabase.lib.parse
+  "Code for parsing parameters in raw SQL strings."
+  (:refer-clojure :exclude [some empty? #?(:clj for)])
   (:require
    [clojure.string :as str]
-   [metabase.lib.parse-param :as parse-param]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [some empty? #?(:clj for)]]))
 
 (defn- combine-adjacent-strings
   "Returns any adjacent strings in coll combined together"
@@ -86,7 +88,7 @@
       (empty? (str/trim k))
       (maybe-throw-error parse-error-type (tru "'''{{...}}''' clauses cannot be empty."))
 
-      :else [(parse-param/parse-param k)])))
+      :else [{:type :metabase.lib.parse/param, :name k}])))
 
 (defn- optional [{:keys [parse-error-type]} parsed]
   (if-not (some #(and (map? %) (#{::param ::function-param} (:type %)))

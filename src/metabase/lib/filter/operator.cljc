@@ -87,15 +87,6 @@
   [(operator-def :is-null :is-empty)
    (operator-def :not-null :not-empty)])
 
-(def join-operators
-  "Operators that should be listed as options in join conditions."
-  [(assoc (operator-def :=) :default true)
-   (operator-def :>)
-   (operator-def :<)
-   (operator-def :>=)
-   (operator-def :<=)
-   (operator-def :!=)])
-
 (mu/defn filter-operators :- [:sequential ::lib.schema.filter/operator]
   "The list of available filter operators.
    The order of operators is relevant for the front end.

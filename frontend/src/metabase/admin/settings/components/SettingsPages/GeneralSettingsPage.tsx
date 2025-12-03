@@ -4,22 +4,29 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
+import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 
+import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
+
 export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
+  const hasHostingFeature = useHasTokenFeature("hosting");
+  const enableAnonymousTracking = !hasHostingFeature;
 
   return (
     <SettingsPageWrapper title={t`General`}>
+      <DevInstanceBanner />
+
       <SettingsSection title={t`App config`}>
         <AdminSettingInput
           name="site-name"
@@ -31,19 +38,23 @@ export function GeneralSettingsPage() {
 
         <HttpsOnlyWidget />
 
+        <PLUGIN_SEMANTIC_SEARCH.SearchSettingsWidget />
+
         <CustomHomepageDashboardSetting />
 
         <PLUGIN_LANDING_PAGE.LandingPageWidget />
       </SettingsSection>
 
-      <SettingsSection title={t`Email and tracking`}>
+      <SettingsSection
+        title={enableAnonymousTracking ? t`Email and tracking` : t`Email`}
+      >
         <AdminSettingInput
           name="admin-email"
           title={t`Email address for help requests`}
           inputType="text"
         />
 
-        <AnonymousTrackingInput />
+        {enableAnonymousTracking && <AnonymousTrackingInput />}
       </SettingsSection>
 
       <SettingsSection title={t`Tables, X-Rays and domains`}>
@@ -77,6 +88,7 @@ export function GeneralSettingsPage() {
           inputType="textarea"
         />
       </SettingsSection>
+      <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>
   );
 }

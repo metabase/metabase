@@ -1,13 +1,15 @@
 (ns metabase.lib.metric
-  "A Metric is a saved MBQL query stage snippet with EXACTLY ONE `:aggregation` and optionally a `:filter` (boolean)
-  expression. Can be passed into the `:aggregation`s list."
+  "A Metric is a special type of Card that you can do special metric stuff with. (Not sure exactly what said special
+  stuff is TBH.)"
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -15,9 +17,9 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys not-empty]]))
 
 (defn- resolve-metric [query card-id]
   (when (pos-int? card-id)
@@ -26,16 +28,16 @@
 (mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
   (when dataset-query
-    (let [normalized-definition (cond-> dataset-query
-                                  (not (contains? dataset-query :lib/type))
-                                  ;; legacy; needs conversion
-                                  (-> mbql.normalize/normalize lib.convert/->pMBQL))]
+    (let [normalized-definition (case (lib.util/normalized-mbql-version dataset-query)
+                                  ;; TODO (Cam 10/7/25) -- not sure we'll ever see legacy queries here anymore since
+                                  ;; they get normalized to MBQL 5 coming out of the app DB
+                                  :mbql-version/legacy (-> dataset-query mbql.normalize/normalize lib.convert/->pMBQL)
+                                  :mbql-version/mbql5  (lib.normalize/normalize ::lib.schema/query dataset-query))]
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id ::lib.join/join-alias], :as metric-metadata}]
-  (let [effective-type (or (:effective-type metric-metadata)
-                           (:base-type metric-metadata)
+  [{:keys [id], join-alias ::lib.join/join-alias, :as metric-metadata}]
+  (let [effective-type (or ((some-fn :effective-type :base-type) metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
                              (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
                                (when (isa? ag-effective-type :type/*)
@@ -76,7 +78,7 @@
   [query stage-number metric-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
-   (select-keys metric-metadata [:description :aggregation-position])))
+   (select-keys metric-metadata [:description :aggregation-position :display-name])))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
   [query stage-number [_tag opts metric-id-or-name]]
@@ -146,13 +148,8 @@
           inner-aggregation (first (lib.aggregation/aggregations metric-query))
           inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
       (-> inner-meta
-          (assoc :display-name           (:name metric-meta) ; Metric card's name
-                 :lib/hack-original-name (:name metric-meta) ; Metric card's name
-                 :name                   (:name inner-meta)) ; Name of the inner aggregation column
-          ;; We emphatically DO NOT want to use the `:ident` of the inner aggregation from the metric's definition.
-          ;; If the `[:metric ...]` ref is a top-level aggregation, it will have its own ident, which we should use.
-          ;; If there is no ident in the `[:metric ...]` ref then *drop* the ident from column.
-          (u/assoc-dissoc :ident (:ident opts))
+          (assoc :display-name (:name metric-meta) ; Metric card's name
+                 :name         (:name inner-meta)) ; Name of the inner aggregation column
           ;; If the :metric ref has a :name option, that overrides the metric card's name.
           (cond-> (:name opts) (assoc :name (:name opts)))))
     {:lib/type :metadata/metric

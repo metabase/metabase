@@ -84,7 +84,7 @@ import Users from "metabase/entities/users";
 class MyList extends React.Component {
   render() {
     const { users } = this.props;
-    return <div>{users.map(u => u.first_name)}</div>;
+    return <div>{users.map((u) => u.first_name)}</div>;
   }
 }
 ```
@@ -128,7 +128,6 @@ For the most part we follow the [Airbnb React/JSX Style Guide](https://github.co
 - Prefer React [function components over class components](https://reactjs.org/docs/components-and-props.html#function-and-class-components)
 - Avoid creating new components within the `containers` folder, as this approach has been deprecated. Instead, store both connected and view components in the `components` folder for a more unified and efficient organization. If a connected component grows substantially in size and you need to extract a view component, opt for using the `View` suffix.
 - For control components, typically we use `value` and `onChange`. Controls that have options (e.x. `Radio`, `Select`) usually take an `options` array of objects with `name` and `value` properties.
-- Components named like `FooModal` and `FooPopover` typically refer to the modal/popover _content_ which should be used inside a `Modal`/`ModalWithTrigger` or `Popover`/`PopoverWithTrigger`
 - Components named like `FooWidget` typically include a `FooPopover` inside a `PopoverWithTrigger` with some sort of trigger element, often `FooName`
 
 - Use arrow function instance properties if you need to bind a method in a class (instead of `this.method = this.method.bind(this);` in the constructor), but only if the function needs to be bound (e.x. if you're passing it as a prop to a React component)
@@ -141,7 +140,7 @@ class MyComponent extends React.Component {
     this.handleChange = this.handleChange.bind(this);
   }
   // YES:
-  handleChange = e => {
+  handleChange = (e) => {
     // ...
   };
   // no need to bind:
@@ -200,11 +199,11 @@ function MyComponent(props) {
   return <div>...</div>;
 }
 // NO:
-const MyComponent = props => {
+const MyComponent = (props) => {
   return <div>...</div>;
 };
 // YES:
-const double = n => n * 2;
+const double = (n) => n * 2;
 // ALSO OK:
 function double(n) {
   return n * 2;
@@ -259,7 +258,7 @@ function getFoo(a, b, c) {
 }
 ```
 
-- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as todos--record those by creating a new issue in Github. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
+- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as todos--record those by creating a new issue in GitHub. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
 
 ```javascript
 
@@ -351,7 +350,7 @@ for (let i = 0; i < list.length; i++) {
 }
 
 // do this
-const foo = list.filter(entry => entry.bar !== false);
+const foo = list.filter((entry) => entry.bar !== false);
 ```
 
 When dealing with business logic you don't want to be concerned with the specifics of the language. Instead of writing `const query = new Question(card).query();` which entails instantiating a new `Question` instance and calling a `query` method on said instance, you should introduce a function like `getQueryFromCard(card)` so that implementers can avoid thinking about what goes into getting a `query` value from a card.
@@ -378,7 +377,7 @@ const Foo = () => <div className={S.primary} />;
 import styled from "@emotion/styled";
 
 const Foo = styled.div`
-  color: ${props => props.color};
+  color: ${(props) => props.color};
 `;
 
 const Bar = ({ color }) => <Foo color={color} />;

@@ -39,3 +39,13 @@ export const Error = {
     icon: "warning",
   },
 };
+
+export const WithCloseButton = {
+  render: Template,
+
+  args: {
+    children: "Alert with close button",
+    icon: "info",
+    onClose: () => alert("Alert closed"),
+  },
+};

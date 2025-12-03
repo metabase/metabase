@@ -1,0 +1,184 @@
+# .github/workflows/reusable-doc-update.yml
+name: Reusable - Update Documentation
+
+# This workflow is designed to be called by other workflows.
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        description: "The branch to check out and create a PR against"
+        required: true
+        type: string
+    secrets:
+      automation_token:
+        description: "A token with permissions to create branches and PRs"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-docs:
+    name: Update documentation for ${{ inputs.target_branch }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.automation_token }}
+          ref: ${{ inputs.target_branch }}
+
+      - name: Prepare backend environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Generate environment variables documentation
+        id: generate_env_docs
+        run: |
+          set -e  # Exit on any error
+          # Ensure we're on the target branch for documentation generation
+          git checkout ${{ inputs.target_branch }}
+          echo "Generating environment variables documentation from branch: ${{ inputs.target_branch }}"
+          clojure -M:ee:doc environment-variables-documentation
+        continue-on-error: false
+
+      - name: Generate config template documentation
+        id: generate_config_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating config template documentation..."
+          clojure -M:ee:doc config-template
+        continue-on-error: false
+
+      - name: Generate API documentation
+        id: generate_api_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating API documentation..."
+          clojure -M:ee:doc api-documentation
+        continue-on-error: false
+
+      - name: Generate command documentation
+        id: generate_command_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating API documentation..."
+          clojure -M:ee:doc command-documentation
+        continue-on-error: false
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet docs/; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in docs directory"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in docs directory"
+          fi
+
+      - name: Create branch and commit changes
+        id: commit_and_push
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          BRANCH_NAME="docs/auto-update-${{ inputs.target_branch }}-$(date +%Y-%m-%d-%H%M%S)"
+          echo "Creating branch: $BRANCH_NAME"
+
+          # Create and switch to new branch from current target branch
+          git checkout -b "$BRANCH_NAME"
+
+          # Stage and commit changes
+          git add docs/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 1
+          fi
+
+          git commit -m "Update generated docs (${{ inputs.target_branch }})" --no-verify
+          git push -u origin "$BRANCH_NAME"
+
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "Successfully created and pushed branch"
+
+      - name: Create pull request
+        id: create_pr
+        if: steps.check_changes.outputs.changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.automation_token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          CHANGES_SUMMARY=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | head -10 | sed 's/^/- /' || echo "- No specific files detected")
+          TOTAL_CHANGES=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | wc -l || echo "0")
+          BRANCH_NAME="${{ steps.commit_and_push.outputs.branch_name }}"
+
+          echo "Creating PR with branch: $BRANCH_NAME"
+          echo "Changes detected: $TOTAL_CHANGES files"
+
+          for i in {1..3}; do
+            echo "Attempt $i of 3..."
+            if gh pr create \
+              --base "${{ inputs.target_branch }}" \
+              --head "$BRANCH_NAME" \
+              --title "Auto-update documentation for ${{ inputs.target_branch }}" \
+              --body "This PR contains automatically generated documentation updates.
+
+          ## Changes detected
+          The following documentation files were updated:
+          $CHANGES_SUMMARY
+          $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and $((TOTAL_CHANGES - 10)) more files")
+
+          ## Generation commands
+          Documentation was generated using:
+          - \`clojure -M:ee:doc environment-variables-documentation\`
+          - \`clojure -M:ee:doc config-template\`
+          - \`clojure -M:ee:doc api-documentation\`
+
+          Please review the changes and merge if they look correct." \
+              --label "Type:Documentation" \
+              --label "no-backport" \
+              --reviewer "metabase/tech-writers"; then
+              echo "PR created successfully on attempt $i"
+              break
+            else
+              echo "PR creation failed on attempt $i"
+              if [ $i -eq 3 ]; then
+                echo "All attempts failed. Exiting with error."
+                exit 1
+              fi
+              echo "Waiting 10 seconds before retry..."
+              sleep 10
+            fi
+          done
+
+      - name: Skip PR creation
+        if: steps.check_changes.outputs.changes == 'false'
+        run: |
+          echo "No documentation changes detected, skipping PR creation"
+
+      - name: Workflow summary
+        if: always()
+        run: |
+          if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
+            if [ "${{ steps.commit_and_push.outcome }}" == "success" ]; then
+              if [ "${{ steps.create_pr.outcome }}" == "success" ]; then
+                echo "## ✅ Documentation Updated Successfully" >> $GITHUB_STEP_SUMMARY
+                echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
+                echo "- PR created targeting **${{ inputs.target_branch }}**" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "## ⚠️ Branch Created but PR Failed" >> $GITHUB_STEP_SUMMARY
+                echo "- Branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
+                echo "- Manual PR creation required" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "## ❌ Failed to Create Branch" >> $GITHUB_STEP_SUMMARY
+              echo "- Check workflow logs for details" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "## ℹ️ No Changes Detected" >> $GITHUB_STEP_SUMMARY
+            echo "- Documentation is up to date on **${{ inputs.target_branch }}**" >> $GITHUB_STEP_SUMMARY
+          fi

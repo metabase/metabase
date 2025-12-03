@@ -63,17 +63,17 @@
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
 
             (testing "makes sure the change log filename are correctly set"
-              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
+              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver* conn))
                      (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
 
-              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
+              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver* conn))
                      (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml")))
 
               (is (= []
                      (remove #(str/starts-with? % "v56.") (t2/select-fn-set :id table-name :filename "migrations/056_update_migrations.yaml"))))
 
               (is (= (t2/select-fn-set :id table-name)
-                     (set (mdb.test-util/all-liquibase-ids true driver/*driver*)))))))))))
+                     (set (mdb.test-util/all-liquibase-ids true driver/*driver* conn)))))))))))
 
 (deftest wait-for-all-locks-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -89,7 +89,7 @@
               (is (= :timed-out (liquibase/wait-for-all-locks sleep-ms timeout-ms)))))
           (testing "Will return successfully if the lock is released while we are waiting"
             (let [migrate-ms 100
-                  timeout-ms 200
+                  timeout-ms 500
                   locked     (promise)]
               (future
                 (liquibase/with-scope-locked liquibase
@@ -152,6 +152,11 @@
         (is (nil? (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
         (.update liquibase "")
         (is (< 52 (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))))))
+
+(deftest extract-numbers-special-case-test
+  (testing "when specific migration verison is passed reports different major version"
+    (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-06-05T16:48:48"))))
+    (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-05-19T16:48:48"))))))
 
 (deftest rollback-major-version
   (mt/test-drivers #{:h2 :mysql :rollback}

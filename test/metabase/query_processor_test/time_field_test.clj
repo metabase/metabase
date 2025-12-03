@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -120,7 +119,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
     (testing "Sanity check: make sure time columns for attempted-murders test dataset (used in tests below) is loaded correctly"
       (mt/dataset attempted-murders
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               attempts (lib.metadata/table metadata-provider (mt/id :attempts))
               id       (lib.metadata/field metadata-provider (mt/id :attempts :id))
               time     (lib.metadata/field metadata-provider (mt/id :attempts :time))
@@ -142,7 +141,7 @@
   (testing "#21269"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
       (mt/dataset attempted-murders
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               attempts (lib.metadata/table metadata-provider (mt/id :attempts))
               id       (lib.metadata/field metadata-provider (mt/id :attempts :id))
               time     (lib.metadata/field metadata-provider (mt/id :attempts time-column))

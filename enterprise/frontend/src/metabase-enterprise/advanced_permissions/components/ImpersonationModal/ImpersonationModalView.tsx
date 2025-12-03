@@ -15,7 +15,7 @@ import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { UserAttribute } from "metabase-types/api";
+import type { UserAttributeKey } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
 
@@ -29,10 +29,10 @@ const ROLE_ATTRIBUTION_MAPPING_SCHEMA = Yup.object({
 });
 
 type ImpersonationModalViewProps = {
-  attributes: UserAttribute[];
-  selectedAttribute?: UserAttribute;
+  attributes: UserAttributeKey[];
+  selectedAttribute?: UserAttributeKey;
   database: Database;
-  onSave: (attribute: UserAttribute) => void;
+  onSave: (attribute: UserAttributeKey) => void;
   onCancel: () => void;
 };
 
@@ -63,7 +63,7 @@ export const ImpersonationModalView = ({
 
   const hasAttributes = attributeOptions.length > 0;
 
-  const handleSubmit = ({ attribute }: { attribute?: UserAttribute }) => {
+  const handleSubmit = ({ attribute }: { attribute?: UserAttributeKey }) => {
     if (attribute != null) {
       onSave(attribute);
     }

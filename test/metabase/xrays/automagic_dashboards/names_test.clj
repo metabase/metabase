@@ -3,12 +3,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [metabase.xrays.automagic-dashboards.names :as names]))
+   [metabase.xrays.automagic-dashboards.names :as names]
+   [metabase.xrays.automagic-dashboards.schema :as ads]))
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
@@ -36,7 +39,9 @@
                                :week-of-year    (u.date/extract dt :week-of-year)}]
         (testing (format "unit = %s" unit)
           (is (= (str expected)
-                 (str (names/humanize-datetime t-str unit))))))))
+                 (str (#'names/humanize-datetime t-str unit)))))))))
+
+(deftest ^:parallel temporal-humanization-test-2
   (testing "Extracted unit handling"
     (is (= :sunday (#'u.date/start-of-week)) "adjust the test, it assumes Sunday as first day of the week")
     (let [t 3]                          ; t = 2 or t = 4 would also work
@@ -49,11 +54,11 @@
                                :week-of-year    t}]
         (testing (format "unit = %s" unit)
           (is (= (str expected)
-                 (str (names/humanize-datetime t unit)))))))))
+                 (str (#'names/humanize-datetime t unit)))))))))
 
 (deftest ^:parallel pluralize-test
   (are [expected n] (= (str expected)
-                       (str (names/pluralize n)))
+                       (str (#'names/pluralize n)))
     (tru "{0}st" 1)   1
     (tru "{0}nd" 22)  22
     (tru "{0}rd" 303) 303
@@ -65,9 +70,13 @@
     (doseq [unit (disj (set (concat u.date/extract-units u.date/truncate-units))
                        :iso-day-of-year :second-of-minute :millisecond)]
       (testing unit
-        (is (some? (names/humanize-datetime "1990-09-09T12:30:00" unit)))))))
+        (is (some? (#'names/humanize-datetime "1990-09-09T12:30:00" unit)))))))
 
 ;;; ------------------- Cell titles -------------------
+
+(defn- cell-title [root cell-query]
+  (names/cell-title root (lib/normalize ::ads/root.cell-query cell-query)))
+
 (deftest ^:parallel cell-title-test
   (mt/$ids venues
     (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :venues)
@@ -78,30 +87,30 @@
       (testing "Should humanize equal filter"
         (is (= "number of Venues where Name is Test"
                ;; Test specifically the un-normalized form (metabase#15737)
-               (names/cell-title root ["=" ["field" %name nil] "Test"]))))
+               (cell-title root ["=" ["field" %name nil] "Test"]))))
       (testing "Should humanize greater than filter"
         (is (= "number of Venues where Name is greater than Test"
-               (names/cell-title root [">" ["field" %name nil] "Test"]))))
+               (cell-title root [">" ["field" %name nil] "Test"]))))
       (testing "Should humanize at least filter"
         (is (= "number of Venues where Name is at least Test"
-               (names/cell-title root [">=" ["field" %name nil] "Test"]))))
+               (cell-title root [">=" ["field" %name nil] "Test"]))))
       (testing "Should humanize less than filter"
         (is (= "number of Venues where Name is less than Test"
-               (names/cell-title root ["<" ["field" %name nil] "Test"]))))
+               (cell-title root ["<" ["field" %name nil] "Test"]))))
       (testing "Should humanize no more than filter"
         (is (= "number of Venues where Name is no more than Test"
-               (names/cell-title root ["<=" ["field" %name nil] "Test"]))))
+               (cell-title root ["<=" ["field" %name nil] "Test"]))))
       (testing "Should humanize and filter"
         (is (= "number of Venues where Name is Test and Price is 0"
-               (names/cell-title root ["and"
-                                       ["=" $name "Test"]
-                                       ["=" $price 0]]))))
+               (cell-title root ["and"
+                                 ["=" $name "Test"]
+                                 ["=" $price 0]]))))
       (testing "Should humanize between filter"
         (is (= "number of Venues where Name is between A and J"
-               (names/cell-title root ["between" $name "A", "J"]))))
+               (cell-title root ["between" $name "A", "J"]))))
       (testing "Should humanize inside filter"
         (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
-               (names/cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
+               (cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
 
 (deftest ^:parallel cell-title-default-test
   (mt/$ids venues
@@ -111,8 +120,9 @@
                                                                 :database (mt/id)})
           root  (magic/->root query)]
       (testing "Just say \"relates to\" when we don't know what the operator is"
-        (is (= "number of Venues where Name relates to Test"
-               (names/cell-title root ["???" ["field" %name nil] "Test"])))))))
+        (mu/disable-enforcement
+          (is (= "number of Venues where Name relates to Test"
+                 (cell-title root ["???" [:field {:lib/uuid (str (random-uuid))} %name] "Test"]))))))))
 
 (deftest ^:parallel cell-title-with-dates-comparison-test
   (testing "Ensure cell titles with date comparisons display correctly"
@@ -126,24 +136,24 @@
         ;; humanize-datetime which we probably should not do right now.
         (testing "Should humanize temporal field with = test"
           (is (= "number of Users where Last Login is on September 9, 1990"
-                 (names/cell-title root
-                                   ["=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+                 (cell-title root
+                             ["=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
         (testing "Should humanize temporal field with > test"
           (is (= "number of Users where Last Login is after on September 9, 1990"
-                 (names/cell-title root
-                                   [">" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+                 (cell-title root
+                             [">" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
         (testing "Should humanize temporal field with < test"
           (is (= "number of Users where Last Login is before on September 9, 1990"
-                 (names/cell-title root
-                                   ["<" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+                 (cell-title root
+                             ["<" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
         (testing "Should humanize temporal field with >= test"
           (is (= "number of Users where Last Login is not before on September 9, 1990"
-                 (names/cell-title root
-                                   [">=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+                 (cell-title root
+                             [">=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
         (testing "Should humanize temporal field with <= test"
           (is (= "number of Users where Last Login is not after on September 9, 1990"
-                 (names/cell-title root
-                                   ["<=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))))))
+                 (cell-title root
+                             ["<=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))))))
 
 (deftest ^:parallel no-null-cell-title-temporal-units-35170-test
   (testing "Ensure various permutations of temporal units produce valid strings (without nulls in them)
@@ -156,34 +166,38 @@
             root  (magic/->root query)]
         (testing "Should not contain nulls when temporal-unit is hour"
           (is (= "number of Users where Last Login is at 12 PM, September 9, 1990"
-                 (names/cell-title root
-                                   ["=" ["field" %last_login {:temporal-unit :hour}] "1990-09-09T12:30:00"]))))
+                 (cell-title root
+                             ["=" ["field" %last_login {:temporal-unit :hour}] "1990-09-09T12:30:00"]))))
         (testing "Should not contain nulls when temporal-unit is day"
           (is (= "number of Users where Last Login is on January 1, 2020"
-                 (names/cell-title root
-                                   ["=" ["field" %last_login {:temporal-unit :day}] "2020"]))))
+                 (cell-title root
+                             ["=" ["field" %last_login {:temporal-unit :day}] "2020"]))))
         (testing "Should not contain nulls when temporal-unit is month"
           (is (= "number of Users where Last Login is in January 2020"
-                 (names/cell-title root
-                                   ["=" ["field" %last_login {:temporal-unit :month}] "2020"]))))
+                 (cell-title root
+                             ["=" ["field" %last_login {:temporal-unit :month}] "2020"]))))
         (testing "Should not contain nulls when temporal-unit is quarter"
           (is (= "number of Users where Last Login is in Q1 - 2020"
-                 (names/cell-title root
-                                   ["=" ["field" %last_login {:temporal-unit :quarter}] "2020"]))))
+                 (cell-title root
+                             ["=" ["field" %last_login {:temporal-unit :quarter}] "2020"]))))
         ;; This was producing "number of Users where null of Last Login is 2020" originally
         (testing "Should not contain nulls when temporal-unit is year"
           (is (= "number of Users where year of Last Login is 2020"
-                 (names/cell-title root
-                                   ["=" ["field" %last_login {:temporal-unit :year}] "2020"]))))))))
+                 (cell-title root
+                             ["=" ["field" %last_login {:temporal-unit :year}] "2020"]))))))))
 
 (deftest ^:parallel humanize-filter-value-works-for-expressions-16680-test
   (testing "Expressions can be used in humanized names in addition to fields"
     (mt/dataset test-data
       (is (= "TestColumn is 2 and Created At is in February 2024"
              (#'names/humanize-filter-value
-              nil
-              ["and"
-               ["=" ["expression" "TestColumn" {:base-type "type/Integer"}] 2]
-               ["=" ["field" (mt/id :orders :created_at)
-                     {:base-type "type/DateTime", :temporal-unit "month"}]
+              {:database (mt/id)}
+              [:and
+               {:lib/uuid "433ee131-2210-4b94-88fb-ff4967eaa555"}
+               [:= {:lib/uuid "02a0746d-cf2d-4878-b5e6-26bce3e81986"}
+                [:expression {:base-type :type/Integer, :lib/uuid "9ec2cd31-02b9-404d-a63b-681a140b9498"} "TestColumn"]
+                2]
+               [:= {:lib/uuid "88ddba2f-5047-4b31-9c7f-6c0b5bc8ffd9"}
+                [:field {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "c40000a9-da61-410d-8822-0b888fd2396a"}
+                 (mt/id :orders :created_at)]
                 "2024-02-01T00:00:00Z"]]))))))

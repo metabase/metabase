@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Flex } from "metabase/ui";
 
 import type { DataSourcePart } from "../QuestionDataSource/utils";
@@ -37,7 +38,8 @@ interface HeadBreadcrumbsProps {
   variant?: "head" | "subhead";
   parts: DataSourcePart[];
   divider?: string | ReactElement;
-  inactiveColor?: string;
+  inactiveColor?: ColorName;
+  isObjectDetail?: boolean;
 }
 
 export function HeadBreadcrumbs({
@@ -47,6 +49,7 @@ export function HeadBreadcrumbs({
   inactiveColor,
   ...props
 }: HeadBreadcrumbsProps) {
+  const { isObjectDetail, ...rest } = props;
   return (
     <Flex
       align="center"
@@ -55,7 +58,7 @@ export function HeadBreadcrumbs({
       className={cx(HeaderBreadcrumbsS.Container, {
         [HeaderBreadcrumbsS.headVariant]: variant === "head",
       })}
-      {...props}
+      {...rest}
     >
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;

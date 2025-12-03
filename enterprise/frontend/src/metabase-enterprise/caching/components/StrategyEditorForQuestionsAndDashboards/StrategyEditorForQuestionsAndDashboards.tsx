@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,8 +12,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { ClientSortableTable } from "metabase/common/components/Table/ClientSortableTable";
 import type { ColumnItem } from "metabase/common/components/Table/types";
-import { Center, Flex, Skeleton, Stack } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { Center, Flex, Repeat, Skeleton, Stack } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
@@ -34,13 +31,7 @@ import { formatValueForSorting } from "./utils";
 
 type CacheableItemResult = DashboardResult | QuestionResult;
 
-const _StrategyEditorForQuestionsAndDashboards = ({
-  router,
-  route,
-}: {
-  router: InjectedRouter;
-  route?: Route;
-}) => {
+export const StrategyEditorForQuestionsAndDashboards = () => {
   const [
     // The targetId is the id of the object that is currently being edited
     targetId,
@@ -93,6 +84,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       ? {
           models: ["card"],
           ids: questionIds,
+          include_dashboard_questions: true,
           //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
         }
       : skipToken,
@@ -178,7 +170,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
     confirmationModal,
     isStrategyFormDirty,
     setIsStrategyFormDirty,
-  } = useConfirmIfFormIsDirty(router, route);
+  } = useConfirmIfFormIsDirty();
 
   /** Change the target, but first confirm if the form is unsaved */
   const updateTarget: UpdateTarget = useCallback(
@@ -304,10 +296,6 @@ const _StrategyEditorForQuestionsAndDashboards = ({
     </SettingsPageWrapper>
   );
 };
-
-export const StrategyEditorForQuestionsAndDashboards = withRouter(
-  _StrategyEditorForQuestionsAndDashboards,
-);
 
 const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
   <ClientSortableTable<{ id: number }>

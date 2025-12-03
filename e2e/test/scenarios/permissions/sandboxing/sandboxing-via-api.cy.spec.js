@@ -33,32 +33,36 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis").first().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit user").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update").click();
+      cy.findByTestId("admin-people-list-table")
+        .icon("ellipsis")
+        .first()
+        .click();
+      H.popover().findByText("Edit user").click();
+      H.modal().within(() => {
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("3");
+        cy.findByText("Update").click();
+      });
     });
 
     it("should add key attributes to a new user", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Invite someone").click();
-      cy.findByPlaceholderText("Johnny").type("John");
-      cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
-        "john@smith.test",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("1");
-      cy.findAllByText("Create").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
+      cy.button("Invite someone").click();
+      H.modal().within(() => {
+        cy.findByPlaceholderText("Johnny").type("John");
+        cy.findByPlaceholderText("Appleseed").type("Smith");
+        cy.findByPlaceholderText("nicetoseeyou@email.com").type(
+          "john@smith.test",
+        );
+
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("1");
+        cy.findAllByText("Create").click();
+        cy.button("Done").click();
+      });
     });
   });
 
@@ -224,10 +228,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
       );
-      H.modifyPermission("collection", 0, "Sandboxed");
+      H.modifyPermission("collection", 0, "Row and column security");
       H.modal().findByText("Pick a column").click();
       H.popover().findByText("Category").click();
-      H.modal().findByText("Pick a user attribute").click();
+      H.modal().findByPlaceholderText("Pick a user attribute").click();
       H.popover().findByText("attr_cat").click();
       H.modal().button("Save").click();
       H.savePermissions();
@@ -416,6 +420,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
                 [
                   [">", ["field", ORDERS.DISCOUNT, null], 0],
                   ["field", ORDERS.DISCOUNT],
+                  // no idea why this is here, a `case` subclause only has two args, this actually makes this invalid.
                   null,
                 ],
               ],
@@ -933,7 +938,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.icon("eye")
         .eq(1) // No better way of doing this, unfortunately (see table above)
         .click();
-      H.popover().findByText("Sandboxed").click();
+      H.popover().findByText("Row and column security").click();
       cy.button("Change").click();
       H.modal()
         .findByText(
@@ -957,8 +962,8 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       createJoinedQuestion("14766_joined");
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1144,64 +1149,60 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.contains("37.65");
     });
 
-    it(
-      "unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)",
-      { tags: "@flaky" },
-      () => {
-        H.remapDisplayValueToFK({
-          display_value: ORDERS.USER_ID,
-          name: "User ID",
-          fk: PEOPLE.NAME,
-        });
+    it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
+      H.remapDisplayValueToFK({
+        display_value: ORDERS.USER_ID,
+        name: "User ID",
+        fk: PEOPLE.NAME,
+      });
 
-        // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
-        cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
-          table_id: REVIEWS_ID,
-          special_type: "type/FK",
-          name: "PRODUCT_ID",
-          fk_target_field_id: ORDERS.ID,
-          display_name: "Product ID",
-        });
+      // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
+      cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
+        table_id: REVIEWS_ID,
+        special_type: "type/FK",
+        name: "PRODUCT_ID",
+        fk_target_field_id: ORDERS.ID,
+        display_name: "Product ID",
+      });
 
-        cy.sandboxTable({
-          table_id: ORDERS_ID,
-          attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
-          },
-        });
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+        },
+      });
 
-        cy.sandboxTable({
-          table_id: PEOPLE_ID,
-          attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
-          },
-        });
+      cy.sandboxTable({
+        table_id: PEOPLE_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
+        },
+      });
 
-        cy.sandboxTable({
-          table_id: REVIEWS_ID,
-          attribute_remappings: {
-            attr_uid: [
-              "dimension",
-              [
-                "fk->",
-                ["field-id", REVIEWS.PRODUCT_ID],
-                ["field-id", ORDERS.USER_ID],
-              ],
+      cy.sandboxTable({
+        table_id: REVIEWS_ID,
+        attribute_remappings: {
+          attr_uid: [
+            "dimension",
+            [
+              "fk->",
+              ["field-id", REVIEWS.PRODUCT_ID],
+              ["field-id", ORDERS.USER_ID],
             ],
-          },
-        });
-        cy.signOut();
-        cy.signInAsSandboxedUser();
+          ],
+        },
+      });
+      cy.signOut();
+      cy.signInAsSandboxedUser();
 
-        H.openReviewsTable({
-          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
-        });
-        H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
-        H.assertDatasetReqIsSandboxed();
+      H.openReviewsTable({
+        callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
+      });
+      H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
+      H.assertDatasetReqIsSandboxed();
 
-        // Add positive assertion once this issue is fixed
-      },
-    );
+      // Add positive assertion once this issue is fixed
+    });
 
     it(
       "sandboxed user should receive sandboxed dashboard subscription",
@@ -1259,7 +1260,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
         );
         H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
-        H.popover().findByText("Edit sandboxed access").click();
+        H.popover().findByText("Edit row and column security").click();
         H.modal().findAllByTestId("select-button").contains("Category").click();
         H.popover()
           .findByLabelText("Category")

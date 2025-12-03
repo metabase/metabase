@@ -11,7 +11,7 @@ redirect_from:
 Integrating your SSO with Metabase allows you to:
 
 - Provision a Metabase account when someone logs in to Metabase.
-- Automatically pass user attributes from your SSO to Metabase in order to power [data sandboxes](../permissions/data-sandboxes.md).
+- Automatically pass user attributes from your SSO to Metabase to power [row and column security](../permissions/row-and-column-security.md).
 - Let people access Metabase without re-authenticating.
 
 ## Confirm the password for your Metabase admin account
@@ -82,7 +82,7 @@ Different IdPs use different names for the redirect URL. Here are some common ex
 
 ### User attributes
 
-Metabase will automatically log in people who've been authenticated by your SAML identity provider. In order to do so, the first assertion returned in the identity provider's SAML response _must_ contain attributes for each person's first name, last name, and email.
+Metabase will automatically log in people who've been authenticated by your SAML identity provider. To do so, the first assertion returned in the identity provider's SAML response _must_ contain attributes for each person's first name, last name, and email.
 
 Most IdPs already include these assertions by default, but some (such as [Okta](./saml-okta.md)) must be configured to include them.
 
@@ -126,7 +126,7 @@ We recommend that you set this value to make your SAML configuration more secure
 
 The SAML identity provider certificate is an encoded certificate that Metabase will use when connecting to the IdP URI. The certificate will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important!
 
-Your IdP might have you download this certificate as a file (usually `.cer` or `.pem`), which you'll then need to open up in a text editor in order to copy the contents to then paste into the box in Metabase.
+Your IdP might have you download this certificate as a file (usually `.cer` or `.pem`), which you'll then need to open up in a text editor to copy the contents to then paste into the box in Metabase.
 
 Note that your certificate text may include header and footer comments that look like `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`. These comments should be included when pasting your certificate text into Metabase.
 
@@ -160,6 +160,16 @@ So if your Metabase is served at `metabase.example.com` the logout service POST 
 https://metabase.example.com/auth/sso/handle_slo
 ```
 
+### Enable SAML SLO
+
+SLO isn’t configurable from the Metabase interface. To enable it, you’ll need to set the following options using environment variables or your Metabase configuration file:
+
+- [`MB_SAML_SLO_ENABLED`](../configuring-metabase/environment-variables.md#mb_saml_slo_enabled) to `true`;
+- [`MB_SAML_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_saml_identity_provider_uri) to your IdP’s SLO endpoint;
+- [`MB_SESSION_COOKIE_SAMESITE`](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite) to `none`.
+
+For the `MB_SESSION_COOKIE_SAMESITE` setting to work with `none`, Metabase must be served over HTTPS. Browsers like Chrome will block cookies in cross-site requests if SSL is not enabled. Without HTTPS, logout requests from your IdP (such as Okta) won’t include the session cookie, which means Metabase won’t be able to end the session properly.
+
 ## Synchronizing group membership with your IdP
 
 This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP. This setting may not correlate to group functionality provided by your IdP; you may need to create a separate user attribute to set people's Metabase groups, like `metabaseGroups`.
@@ -182,7 +192,7 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 
 ## Creating Metabase accounts with SSO
 
-> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
+> Paid plans [charge for each additional account](../cloud/how-billing-works.md#what-counts-as-a-user-account).
 
 A new SSO login will automatically create a new Metabase account.
 
@@ -198,7 +208,7 @@ To _require_ people to log in with SSO, disable password authentication from **A
 
 ## New account notification emails
 
-When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, you can toggle them off at the bottom of the Authentication page.
+When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, go to **Admin settings > Authentication > User provisioning**, and toggle off **"Notify admins of new users provisioned from SSO"**
 
 ## Example code using SAML
 

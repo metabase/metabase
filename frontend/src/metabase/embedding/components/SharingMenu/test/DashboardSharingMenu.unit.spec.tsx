@@ -76,7 +76,7 @@ describe("DashboardSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it("should show 'subscriptions' option when email is set up", async () => {
+      it("should show 'subscriptions' option when email is set up, but slack is not setup", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
@@ -86,7 +86,7 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Subscriptions")).toBeInTheDocument();
       });
 
-      it("should show disabled 'subscriptions' option when email is not set up", async () => {
+      it("should show 'subscriptions' option when email is not set up, but slack is setup", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isEmailSetup: false,
@@ -94,7 +94,7 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         expect(
-          await screen.findByText("Can't send subscriptions"),
+          await screen.findByText("Subscriptions", { exact: true }),
         ).toBeInTheDocument();
       });
 
@@ -163,13 +163,14 @@ describe("DashboardSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should show a 'public links are off' menu item if public sharing is disabled", async () => {
+      it('should show an "Enable" link if public sharing is disabled', async () => {
         setupDashboardSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
         await openMenu();
-        expect(screen.getByText("Public links are off")).toBeInTheDocument();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
+        expect(screen.getByText("Enable")).toBeInTheDocument();
         expect(
           screen.queryByText("Create a public link"),
         ).not.toBeInTheDocument();

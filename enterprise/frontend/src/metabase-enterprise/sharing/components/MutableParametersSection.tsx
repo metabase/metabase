@@ -16,6 +16,8 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, ParameterId, Pulse } from "metabase-types/api";
 
+import { getSortedParameters } from "./utils";
+
 export type MutableParametersSectionProps = {
   className?: string;
   parameters: UiParameter[];
@@ -33,6 +35,10 @@ export const MutableParametersSection = ({
   setPulseParameters,
   hiddenParameters,
 }: MutableParametersSectionProps) => {
+  const sortedParameters = useMemo(() => {
+    return getSortedParameters(dashboard, parameters);
+  }, [parameters, dashboard]);
+
   const pulseParameters = getPulseParameters(pulse);
   const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
@@ -40,12 +46,12 @@ export const MutableParametersSection = ({
   }, {});
 
   const valuePopulatedParameters = getDefaultValuePopulatedParameters(
-    parameters,
+    sortedParameters,
     pulseParamValuesById,
   );
 
   const setParameterValue = (id: ParameterId, value: any) => {
-    const parameter = parameters.find((parameter) => parameter.id === id);
+    const parameter = sortedParameters.find((parameter) => parameter.id === id);
     const operator = parameter && deriveFieldOperatorFromParameter(parameter);
     const filteredParameters = pulseParameters.filter(
       (parameter) => parameter.id !== id,
@@ -63,8 +69,8 @@ export const MutableParametersSection = ({
   };
 
   const connectedParameters = useMemo(() => {
-    return getVisibleParameters(parameters, hiddenParameters);
-  }, [parameters, hiddenParameters]);
+    return getVisibleParameters(sortedParameters, hiddenParameters);
+  }, [sortedParameters, hiddenParameters]);
 
   return _.isEmpty(connectedParameters) ? null : (
     <CollapseSection
@@ -77,7 +83,7 @@ export const MutableParametersSection = ({
       <ParametersList
         className={cx(CS.alignStretch, CS.rowGap1)}
         vertical
-        dashboard={dashboard}
+        dashboardId={dashboard?.id}
         parameters={valuePopulatedParameters}
         hideParameters={hiddenParameters}
         setParameterValue={setParameterValue}

@@ -1,22 +1,36 @@
-import type { Cell, Table } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Cell, Row, Table } from "@tanstack/react-table";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import _ from "underscore";
 
-import type { DataGridSelection, SelectedCell } from "../types";
+import type { CellId, DataGridSelection } from "../types";
+import { formatCellValueForCopy } from "../utils/formatting";
 
 const noopHandlers: DataGridSelection["handlers"] = {
   handleCellMouseDown: _.noop,
   handleCellMouseUp: _.noop,
   handleCellMouseOver: _.noop,
-  handleCellsKeyDown: _.noop,
+  handleCellDoubleClick: _.noop,
 };
 
-export type SelectedCellRowMap = Record<string, SelectedCell[]>;
+type CellsMap = Record<string, CellId[]>;
 
+/**
+ * Configuration options for the cell selection hook.
+ */
 interface UseCellSelectionProps {
-  gridRef: React.RefObject<HTMLDivElement>;
+  /** Table instance from TanStack Table */
   table: Table<any>;
+  /** Ref to the grid element */
+  gridRef: RefObject<HTMLDivElement>;
+  /** Whether cell selection is enabled */
   isEnabled?: boolean;
+  /** Optional function to scroll to a specific cell */
   scrollTo?: ({
     rowIndex,
     columnIndex,
@@ -24,53 +38,78 @@ interface UseCellSelectionProps {
     rowIndex?: number;
     columnIndex?: number;
   }) => void;
-  onChangeSelection?: (cells: SelectedCell[]) => void;
+  /** Callback when selection changes */
+  onChangeSelection?: (cells: CellId[]) => void;
 }
 
+/**
+ * Hook that provides cell selection functionality for data grids.
+ *
+ * Features:
+ * - Single and multi-cell selection with mouse and keyboard
+ * - Copy selected cells with Cmd/Ctrl+C (formatted) or Shift+Cmd/Ctrl+C (raw)
+ * - Keyboard navigation with arrow keys
+ * - Click outside to clear selection
+ *
+ * @param props - Configuration options
+ * @returns Object with selection state and event handlers
+ */
 export const useCellSelection = ({
   gridRef,
-  table,
   isEnabled = false,
-  scrollTo,
   onChangeSelection,
+  scrollTo,
+  table,
 }: UseCellSelectionProps): DataGridSelection => {
-  const [selectedCells, setSelectedCells] = useState<SelectedCell[]>([]);
-
-  const [selectedStartCell, setSelectedStartCell] =
-    useState<SelectedCell | null>(null);
+  const [selectedCells, setSelectedCells] = useState<CellId[]>([]);
+  const [focusedCell, setFocusedCell] = useState<CellId | null>(null);
+  const [selectedStartCell, setSelectedStartCell] = useState<CellId | null>(
+    null,
+  );
   const [isMouseDown, setIsMouseDown] = useState(false);
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(getCellValues(table, selectedCells));
-  }, [table, selectedCells]);
+  const handleCopy = useCallback(
+    async (useRawValues = false) => {
+      const formattedText = getCellValues(
+        gridRef,
+        table,
+        selectedCells,
+        useRawValues,
+      );
+      await navigator.clipboard.writeText(formattedText);
+    },
+    [gridRef, table, selectedCells],
+  );
 
   const handleClickOutside = useCallback(
-    (event: MouseEvent) => {
-      if (!isEnabled || !gridRef?.current) {
+    (e: MouseEvent) => {
+      if (!isEnabled) {
         return;
       }
 
-      if (!gridRef.current.contains(event.target as Node)) {
-        setSelectedCells([]);
-        onChangeSelection?.([]);
+      const target = e.target as HTMLElement;
+      const isInsideSelectableCell = target.closest("[data-selectable-cell]");
+      if (isInsideSelectableCell || selectedCells.length === 0) {
+        return;
       }
+
+      setSelectedCells([]);
+      setFocusedCell(null);
+      setSelectedStartCell(null);
+      onChangeSelection?.([]);
     },
-    [isEnabled, gridRef, onChangeSelection],
+    [isEnabled, onChangeSelection, selectedCells.length],
   );
 
   useEffect(() => {
-    if (isEnabled && gridRef?.current) {
+    if (isEnabled) {
       document.addEventListener("mousedown", handleClickOutside);
 
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [isEnabled, gridRef, handleClickOutside]);
-
-  const canSelectCell = useCallback((cell: Cell<any, any>) => {
-    return cell.getContext().column.columnDef.meta?.enableSelection;
-  }, []);
+  }, [isEnabled, handleClickOutside]);
 
   const getLastSelectedCell = useCallback(() => {
     const lastSelectedCell = selectedCells[selectedCells.length - 1];
@@ -115,7 +154,7 @@ export const useCellSelection = ({
       scrollTo?.({ rowIndex: previousRowIndex });
       return newSelection;
     }
-  }, [getLastSelectedCell, table, scrollTo, canSelectCell]);
+  }, [getLastSelectedCell, table, scrollTo]);
 
   const navigateDown = useCallback(() => {
     const selectedCell = getLastSelectedCell();
@@ -132,7 +171,7 @@ export const useCellSelection = ({
       scrollTo?.({ rowIndex: nextRowIndex });
       return newSelection;
     }
-  }, [getLastSelectedCell, table, scrollTo, canSelectCell]);
+  }, [getLastSelectedCell, table, scrollTo]);
 
   const navigateLeft = useCallback(() => {
     const selectedCell = getLastSelectedCell();
@@ -147,7 +186,7 @@ export const useCellSelection = ({
       scrollTo?.({ columnIndex: previousColumnIndex });
       return newSelection;
     }
-  }, [getLastSelectedCell, canSelectCell, scrollTo]);
+  }, [getLastSelectedCell, scrollTo]);
 
   const navigateRight = useCallback(() => {
     const selectedCell = getLastSelectedCell();
@@ -162,56 +201,7 @@ export const useCellSelection = ({
       scrollTo?.({ columnIndex: nextColumnIndex });
       return newSelection;
     }
-  }, [getLastSelectedCell, canSelectCell, scrollTo]);
-
-  const handleCellsKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      let newSelection: SelectedCell[] | undefined;
-      switch (e.key) {
-        case "Escape": {
-          newSelection = [];
-          break;
-        }
-        case "c": {
-          if (e.metaKey || e.ctrlKey) {
-            handleCopy();
-          }
-          break;
-        }
-        case "ArrowDown": {
-          newSelection = navigateDown();
-          break;
-        }
-        case "ArrowUp": {
-          newSelection = navigateUp();
-          break;
-        }
-        case "ArrowLeft": {
-          newSelection = navigateLeft();
-          break;
-        }
-        case "ArrowRight": {
-          newSelection = navigateRight();
-          break;
-        }
-      }
-
-      if (newSelection) {
-        setSelectedCells(newSelection);
-        onChangeSelection?.(newSelection);
-      }
-    },
-    [
-      handleCopy,
-      onChangeSelection,
-      navigateDown,
-      navigateUp,
-      navigateLeft,
-      navigateRight,
-    ],
-  );
+  }, [getLastSelectedCell, scrollTo]);
 
   const isRowSelected = useCallback(
     (rowId: string) => {
@@ -233,6 +223,16 @@ export const useCellSelection = ({
     [selectedCells, isEnabled],
   );
 
+  const isCellFocused = useCallback(
+    (cell: Cell<any, any>) => {
+      if (!isEnabled || !focusedCell) {
+        return false;
+      }
+      return focusedCell.cellId === cell.id;
+    },
+    [focusedCell, isEnabled],
+  );
+
   const updateRangeSelection = useCallback(
     (cell: Cell<any, any>) => {
       if (!selectedStartCell) {
@@ -243,28 +243,20 @@ export const useCellSelection = ({
         table,
         selectedStartCell,
         getCellSelectionData(cell),
-      ) as SelectedCell[];
+      ) as CellId[];
 
-      setSelectedCells((prev) => {
-        const startIndex = prev.findIndex(
-          (c) => c.cellId === selectedStartCell.cellId,
-        );
-        const prevSelectedCells = prev.slice(0, startIndex);
-        const newCellSelection = selectedCellsInRange.filter(
-          (c) => c.cellId !== selectedStartCell.cellId,
-        );
-
-        return [...prevSelectedCells, selectedStartCell, ...newCellSelection];
-      });
+      setSelectedCells(selectedCellsInRange);
     },
     [selectedStartCell, table],
   );
 
   const handleCellMouseDown = useCallback(
     (e: React.MouseEvent<HTMLElement>, cell: Cell<any, any>) => {
-      const canSelect =
-        cell.getContext().column.columnDef.meta?.enableSelection;
-      if (!canSelect) {
+      if (!_.isEqual(focusedCell, getCellSelectionData(cell))) {
+        setFocusedCell(null);
+      }
+
+      if (!canSelectCell(cell)) {
         return;
       }
 
@@ -292,7 +284,7 @@ export const useCellSelection = ({
 
       setIsMouseDown(true);
     },
-    [isMouseDown, updateRangeSelection],
+    [focusedCell, isMouseDown, updateRangeSelection],
   );
 
   const handleCellMouseUp = useCallback(
@@ -314,21 +306,131 @@ export const useCellSelection = ({
         updateRangeSelection(cell);
       }
     },
-    [selectedCells, isMouseDown, onChangeSelection, updateRangeSelection],
+    [isMouseDown, onChangeSelection, selectedCells, updateRangeSelection],
   );
+
+  const handleCellDoubleClick = useCallback(
+    (cell: Cell<any, any>) => {
+      if (!canSelectCell(cell)) {
+        return;
+      }
+
+      const cellData = getCellSelectionData(cell);
+      setFocusedCell(cellData);
+      const newSelection = [cellData];
+      setSelectedCells(newSelection);
+      onChangeSelection?.(newSelection);
+    },
+    [onChangeSelection],
+  );
+
+  // Attach keyboard handlers to window when we have selection or focused cell
+  useEffect(() => {
+    if (!isEnabled || selectedCells.length === 0) {
+      return;
+    }
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      let handled = false;
+
+      switch (e.key) {
+        case "Escape": {
+          handled = true;
+          setSelectedCells([]);
+          setFocusedCell(null);
+          setSelectedStartCell(null);
+          onChangeSelection?.([]);
+          break;
+        }
+        case "c": {
+          if (e.metaKey || e.ctrlKey) {
+            if (focusedCell) {
+              return;
+            }
+            handled = true;
+            if (e.shiftKey) {
+              handleCopy(true);
+            } else {
+              handleCopy();
+            }
+          }
+          break;
+        }
+        case "ArrowDown": {
+          handled = true;
+          const newSelection = navigateDown();
+          if (newSelection) {
+            setSelectedCells(newSelection);
+            onChangeSelection?.(newSelection);
+          }
+          break;
+        }
+        case "ArrowUp": {
+          handled = true;
+          const newSelection = navigateUp();
+          if (newSelection) {
+            setSelectedCells(newSelection);
+            onChangeSelection?.(newSelection);
+          }
+          break;
+        }
+        case "ArrowLeft": {
+          handled = true;
+          const newSelection = navigateLeft();
+          if (newSelection) {
+            setSelectedCells(newSelection);
+            onChangeSelection?.(newSelection);
+          }
+          break;
+        }
+        case "ArrowRight": {
+          handled = true;
+          const newSelection = navigateRight();
+          if (newSelection) {
+            setSelectedCells(newSelection);
+            onChangeSelection?.(newSelection);
+          }
+          break;
+        }
+      }
+
+      if (handled) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [
+    isEnabled,
+    selectedCells,
+    focusedCell,
+    handleCopy,
+    navigateDown,
+    navigateUp,
+    navigateLeft,
+    navigateRight,
+    onChangeSelection,
+  ]);
 
   return useMemo(
     () => ({
       isEnabled,
       selectedCells,
+      focusedCell,
       isCellSelected,
+      isCellFocused,
       isRowSelected,
       handlers: isEnabled
         ? {
             handleCellMouseDown,
             handleCellMouseUp,
             handleCellMouseOver,
-            handleCellsKeyDown,
+            handleCellDoubleClick,
           }
         : noopHandlers,
     }),
@@ -336,62 +438,180 @@ export const useCellSelection = ({
       handleCellMouseDown,
       handleCellMouseUp,
       handleCellMouseOver,
-      handleCellsKeyDown,
+      handleCellDoubleClick,
       isCellSelected,
+      isCellFocused,
       isRowSelected,
       selectedCells,
+      focusedCell,
       isEnabled,
     ],
   );
 };
 
-const getCellValues = (table: Table<unknown>, cells: SelectedCell[]) => {
-  const rows = cells.reduce<SelectedCellRowMap>(
-    (acc: SelectedCellRowMap, cellIds: SelectedCell) => {
-      const cellsForRow = acc[cellIds.rowId] ?? [];
-      return {
-        ...acc,
-        [cellIds.rowId]: [...cellsForRow, cellIds],
-      };
-    },
-    {},
-  );
-
-  return Object.keys(rows)
-    .map((rowId) => {
-      const selectedCells = rows[rowId]!;
-      const row = table.getRow(rowId);
-
-      const cellValues = [];
-      for (const cell of row.getAllCells()) {
-        if (selectedCells.find((c) => c.cellId === cell.id)) {
-          cellValues.push(cell?.getValue());
-        }
-      }
-
-      return cellValues.join("\t");
-    })
-    .join("\n");
+const groupCellsByRow = (cells: CellId[]) => {
+  return cells.reduce<CellsMap>((acc, cellData) => {
+    const cellsForRow = acc[cellData.rowId] ?? [];
+    return {
+      ...acc,
+      [cellData.rowId]: [...cellsForRow, cellData],
+    };
+  }, {});
 };
 
-const getCellSelectionData = (cell: Cell<any, any>) => ({
+const groupCellsByColumn = (cells: CellId[]) => {
+  return cells.reduce<CellsMap>((acc, cellData) => {
+    const cellsForColumn = acc[cellData.columnId] ?? [];
+    return {
+      ...acc,
+      [cellData.columnId]: [...cellsForColumn, cellData],
+    };
+  }, {});
+};
+
+/**
+ * Extracts values from cells in a single row, applying formatting as needed.
+ */
+const extractRowCellValues = (
+  row: Row<unknown>,
+  selectedCells: CellId[],
+  useRawValues: boolean,
+): string[] => {
+  const cellValues: string[] = [];
+  const selectedCellIds = new Set(selectedCells.map((c) => c.cellId));
+
+  for (const cell of row.getAllCells()) {
+    if (selectedCellIds.has(cell.id)) {
+      cellValues.push(extractCellValue(row.index, cell, useRawValues));
+    }
+  }
+
+  return cellValues;
+};
+
+const extractCellValue = (
+  rowIndex: number,
+  cell: Cell<unknown, unknown>,
+  useRawValues: boolean,
+) => {
+  const rawValue = cell.getValue();
+  const clipboardFormatter = useRawValues
+    ? undefined
+    : cell.column.columnDef.meta?.clipboardFormatter;
+  return formatCellValueForCopy(
+    rawValue,
+    clipboardFormatter,
+    rowIndex,
+    cell.column.id,
+  );
+};
+
+/**
+ * Converts selected cells to clipboard-ready text format.
+ *
+ * @param gridRef - Ref to the grid html element
+ * @param table - The table instance
+ * @param cells - Array of selected cells
+ * @param useRawValues - Whether to use raw values instead of formatted ones
+ * @returns Tab-separated values with newlines between rows
+ */
+const getCellValues = (
+  gridRef: RefObject<HTMLDivElement>,
+  table: Table<unknown>,
+  cells: CellId[],
+  useRawValues = false,
+): string => {
+  if (cells.length === 0) {
+    return "";
+  }
+
+  const rowGroups = groupCellsByRow(cells);
+  const columnGroups = groupCellsByColumn(cells);
+
+  const columnIds = Object.keys(columnGroups);
+
+  const headerRow = columnIds
+    .map((columnId) => {
+      return columnId
+        ? gridRef.current?.querySelector(`[data-header-id="${columnId}"]`)
+            ?.textContent
+        : undefined;
+    })
+    .filter(Boolean) as string[];
+
+  if (columnIds.length !== headerRow.length) {
+    // Couldn't retrieve all headers: copy the data only
+    return Object.keys(rowGroups)
+      .map((rowId) => {
+        try {
+          const row = table.getRow(rowId);
+          const selectedCells = rowGroups[rowId]!;
+          const cellValues = extractRowCellValues(
+            row,
+            selectedCells,
+            useRawValues,
+          );
+          return cellValues.join("\t");
+        } catch (error) {
+          console.warn(`Error processing row ${rowId}:`, error);
+          return "";
+        }
+      })
+      .filter((rowText) => rowText.length > 0)
+      .join("\n");
+  }
+
+  const dataRows = Object.keys(rowGroups)
+    .map((rowId) => {
+      try {
+        const row = table.getRow(rowId);
+        const cellByColumnId = row._getAllCellsByColumnId();
+        return columnIds
+          .map((columnId) => {
+            if (
+              cellByColumnId[columnId] &&
+              rowGroups[rowId].some((cellId) => cellId.columnId === columnId)
+            ) {
+              return extractCellValue(
+                row.index,
+                cellByColumnId[columnId],
+                useRawValues,
+              );
+            }
+
+            return "";
+          })
+          .join("\t");
+      } catch (error) {
+        console.warn(`Error processing row ${rowId}:`, error);
+        return "";
+      }
+    })
+    .filter((rowText) => rowText.length > 0);
+
+  // Combine headers and data
+  return [headerRow.join("\t"), ...dataRows].join("\n");
+};
+
+const canSelectCell = (cell: Cell<any, any>) => {
+  return cell.column.columnDef.meta?.enableSelection;
+};
+
+const getCellSelectionData = (cell: Cell<any, any>): CellId => ({
   rowId: cell.row.id,
   columnId: cell.column.id,
   cellId: cell.id,
 });
 
-const getSelectedCellTableData = (
-  table: Table<unknown>,
-  cell: SelectedCell,
-) => {
+const getSelectedCellTableData = (table: Table<unknown>, cell: CellId) => {
   const row = table.getRow(cell.rowId);
   return row.getAllCells().find((c) => c.id === cell.cellId);
 };
 
 const getCellsBetween = (
   table: Table<unknown>,
-  cell1: SelectedCell,
-  cell2: SelectedCell,
+  cell1: CellId,
+  cell2: CellId,
 ) => {
   const cell1Data = getSelectedCellTableData(table, cell1);
   const cell2Data = getSelectedCellTableData(table, cell2);

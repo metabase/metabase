@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.empty-string-is-null
     :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -34,9 +35,12 @@
                               :expression-literals       true
                               :now                       true
                               :identifiers-with-spaces   true
+                              :uuid-type                 true
                               :percentile-aggregations   false
                               :test/jvm-timezone-setting false
-                              :database-routing          false}]
+                              :database-routing          false
+                              :describe-is-nullable      true
+                              :describe-default-expr     true}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -56,6 +60,7 @@
     :Numeric                   :type/Decimal
     :Double                    :type/Decimal
     :Float                     :type/Float
+    :Uuid                      :type/UUID
     :Date                      :type/Date
     :Time                      :type/Time
     :TimeTz                    :type/TimeWithLocalTZ
@@ -82,6 +87,10 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_driver _seconds-or-milliseconds honeysql-expr]
   (h2x/with-database-type-info [:to_timestamp honeysql-expr] "timestamp"))
+
+(defmethod sql.qp/cast-temporal-string [:vertica :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
 
 ;; TODO - not sure if needed or not
 (defn- cast-timestamp
@@ -133,7 +142,8 @@
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
-        timestamptz? (h2x/is-of-type? expr "timestamptz")]
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? expr "timestamptz"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           expr
@@ -288,9 +298,9 @@
        (catch Throwable e
          (log/error e "Failed to fetch materialized views for this database"))))
 
-(defmethod driver/describe-database :vertica
+(defmethod driver/describe-database* :vertica
   [driver database]
-  (-> ((get-method driver/describe-database :sql-jdbc) driver database)
+  (-> ((get-method driver/describe-database* :sql-jdbc) driver database)
       (update :tables set/union (materialized-views database))))
 
 (defmethod driver/db-default-timezone :vertica

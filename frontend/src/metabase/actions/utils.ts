@@ -169,8 +169,7 @@ export const getFormTitle = (action: WritebackAction): string => {
 
 function hasDataFromExplicitAction(result: any) {
   const isInsert = result["created-row"];
-  const isUpdate =
-    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
+  const isUpdate = result["rows-affected"] > 0 || result["rows-updated"] > 0;
   const isDelete = result["rows-deleted"]?.[0] > 0;
   return !isInsert && !isUpdate && !isDelete;
 }

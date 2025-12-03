@@ -19,6 +19,8 @@
                             [:field (mt/id :people :id) {:base-type "type/UUID"}]
                             "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]}))))))))
 
+;;; see also [[metabase.lib.field.resolution-test/resolve-field-missing-join-alias-test]]
+;;; and [[metabase.query-processor.util.add-alias-info-test/resolve-field-missing-join-alias-test]]
 (deftest ^:parallel joined-uuid-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uuid-type :test/uuids-in-create-table-statements)
     (testing "Query with joins"
@@ -30,6 +32,8 @@
                             :condition    [:= &d.dogs.person_id $people.id]
                             :alias        "d"}]
                    :filter [:=
+                            ;; incorrect field ref! Should have the join alias `d`. But we should be able to figure it
+                            ;; out anyway.
                             [:field (mt/id :dogs :id) {:base-type "type/UUID"}]
                             "27e164bc-54f8-47a0-a85a-9f0e90dd7667"]}))))))))
 
@@ -39,12 +43,12 @@
     (testing "uuid field filters"
       (mt/dataset uuid-dogs
         (let [query (assoc (mt/native-query
-                             (assoc (mt/count-with-field-filter-query driver/*driver* :people :id "27e164bc-54f8-47a0-a85a-9f0e90dd7667")
-                                    :template-tags {"id" {:name         "id"
-                                                          :display-name "id"
-                                                          :type         :dimension
-                                                          :widget-type  :id
-                                                          :dimension    [:field (mt/id :people :id) nil]}}))
+                            (assoc (mt/count-with-field-filter-query driver/*driver* :people :id "27e164bc-54f8-47a0-a85a-9f0e90dd7667")
+                                   :template-tags {"id" {:name         "id"
+                                                         :display-name "id"
+                                                         :type         :dimension
+                                                         :widget-type  :id
+                                                         :dimension    [:field (mt/id :people :id) nil]}}))
                            :parameters [{:type   :id
                                          :name   "id"
                                          :target [:dimension [:template-tag "id"]]

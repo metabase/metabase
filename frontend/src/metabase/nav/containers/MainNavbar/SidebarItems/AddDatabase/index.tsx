@@ -1,1 +1,0 @@
-export { AddDatabase } from "./AddDatabase";

@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -39,118 +40,6 @@ describe("issue 9339", () => {
   });
 });
 
-describe.skip("issue 12496", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  const datePickerInput = (picker, input) =>
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy
-      .findAllByTestId("specific-date-picker")
-      .eq(picker)
-      .find("input")
-      .eq(input);
-  const setup = (unit) => {
-    H.createQuestion(
-      {
-        name: `Orders by Created At: ${unit}`,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": unit }]],
-          filter: [
-            "between",
-            ["field", ORDERS.CREATED_AT, null],
-            "2022-04-01",
-            "2022-05-31",
-          ],
-        },
-        display: "line",
-      },
-      { visitQuestion: true },
-    );
-    // When a filter is added above, we have to unhide the filter pills:
-    cy.findByTestId("filters-visibility-control").click();
-  };
-
-  it("should display correct day range in filter pill when drilling into a week", () => {
-    setup("week");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 24–30, 2022")
-      .click();
-    H.popover().within(() => {
-      cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/24/2022");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
-      });
-    });
-  });
-
-  it("should display correct day range in filter pill when drilling into a month", () => {
-    setup("month");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 2022")
-      .click();
-    H.popover().within(() => {
-      cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/01/2022");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
-      });
-    });
-  });
-
-  it("should display correct day range in filter pill when drilling into a hour", () => {
-    setup("hour");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022, 6:00–59 PM")
-      .click();
-    H.popover().within(() => {
-      cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/30/2022");
-        datePickerInput(0, 1).should("have.value", "6");
-        datePickerInput(0, 2).should("have.value", "00");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
-        datePickerInput(1, 1).should("have.value", "6");
-        datePickerInput(1, 2).should("have.value", "59");
-      });
-    });
-  });
-
-  it("should display correct minute in filter pill when drilling into a minute", () => {
-    setup("minute");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022, 6:56 PM")
-      .click();
-    H.popover().within(() => {
-      datePickerInput(0, 0).should("have.value", "04/30/2022");
-      datePickerInput(0, 1).should("have.value", "6");
-      datePickerInput(0, 2).should("have.value", "56");
-    });
-  });
-
-  it("should display correct minute in filter pill when drilling into a day", () => {
-    setup("day");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022")
-      .click();
-    H.popover().within(() => {
-      datePickerInput(0, 0).should("have.value", "04/30/2022");
-    });
-  });
-});
-
 describe("issue 16621", () => {
   beforeEach(() => {
     H.restore();
@@ -179,7 +68,7 @@ describe("issue 16621", () => {
   });
 });
 
-describe("issue 18770", { tags: "@flaky" }, () => {
+describe("issue 18770", () => {
   const questionDetails = {
     name: "18770",
     query: {
@@ -264,8 +153,7 @@ describe("issue 20683", { tags: "@external" }, () => {
 
   it("should filter postgres with the 'current quarter' filter (metabase#20683)", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -537,7 +425,7 @@ describe("issue 45410", () => {
       cy.findByText("abc2@example.com")
         .next("button")
         .then(([removeButton]) => {
-          cy.icon("info_filled").then(([infoIcon]) => {
+          cy.icon("info").then(([infoIcon]) => {
             const removeButtonRect = removeButton.getBoundingClientRect();
             const infoIconRect = infoIcon.getBoundingClientRect();
             expect(removeButtonRect.right).to.be.lte(infoIconRect.left);
@@ -731,7 +619,7 @@ describe("issue 25994", () => {
   });
 });
 
-describe.skip("issue 26861", () => {
+describe("issue 26861", { tags: "@skip" }, () => {
   const filter = {
     id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
     name: "filter",
@@ -821,9 +709,8 @@ describe("issue 29094", () => {
 
   it("disallows adding a filter using non-boolean custom expression (metabase#29094)", () => {
     H.startNewQuestion();
-
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -898,15 +785,18 @@ describe("issue 31340", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept("GET", "/api/field/*/search/*").as("search");
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.PASSWORD,
+    });
 
-    cy.findByTestId("column-PASSWORD")
-      .findByDisplayValue("Password")
-      .type(`{selectAll}${LONG_COLUMN_NAME}`)
+    H.DataModel.FieldSection.getNameInput()
+      .focus()
+      .clear()
+      .type(LONG_COLUMN_NAME)
       .blur();
-
     cy.wait("@fieldUpdate");
 
     H.createQuestion(
@@ -1041,71 +931,6 @@ describe("metabase#32985", () => {
   });
 });
 
-describe.skip("metabase#44550", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display the filter with an offset appropriately in the time-series chrome and in the filter modal (metabase#44550)", () => {
-    const questionDetails = {
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "base-type": "type/DateTime",
-              "temporal-unit": "month",
-            },
-          ],
-        ],
-        filter: [
-          "between",
-          [
-            "+",
-            [
-              "field",
-              ORDERS.CREATED_AT,
-              {
-                "base-type": "type/DateTime",
-              },
-            ],
-            ["interval", 7, "day"],
-          ],
-          ["relative-datetime", -30, "day"],
-          ["relative-datetime", 0, "day"],
-        ],
-      },
-      type: "query",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    cy.findByTestId("filters-visibility-control").click();
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Created At is in the previous 30 days, starting 7 days ago",
-    );
-
-    cy.log("Repro for the time-series chrome");
-    cy.findByTestId("timeseries-filter-button")
-      .should("not.have.text", "All time")
-      .and("contain", /previous 30 days/i)
-      .and("contain", /7 days ago/i);
-
-    cy.log("Repro for the filter modal");
-    H.filter();
-    // Not entirely sure how the DOM looks like in this scenario.
-    // TODO: Update the test if needed.
-    cy.findByTestId("filter-column-Created At")
-      .should("contain", /previous 30 days/i)
-      .and("contain", /7 days ago/i);
-  });
-});
-
 describe("issue 35043", () => {
   beforeEach(() => {
     H.restore();
@@ -1170,8 +995,7 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.startNewQuestion();
 
     cy.log("filter picker - new filter");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("Writable Postgres12").click();
       cy.findByText("Many Data Types").click();
     });
@@ -1294,7 +1118,7 @@ describe("issue 45877", () => {
     };
 
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    cy.get("fieldset").should("contain", "Expected Invoice").click();
+    H.filterWidget().should("contain", "Expected Invoice").click();
     H.popover().within(() => {
       cy.findByPlaceholderText("Search the list").should("exist");
 
@@ -1312,7 +1136,7 @@ describe("issue 45877", () => {
     // We don't even have to run the query to reproduce this issue
     // so let's not waste time and resources doing so.
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    cy.get("fieldset").should("contain", "false").click();
+    H.filterWidget().should("contain", "false").click();
     H.popover().within(() => {
       cy.findAllByLabelText("true").should("have.length", 1);
       cy.findAllByLabelText("false")
@@ -1623,6 +1447,30 @@ describe("issue 58923", () => {
               cy.wrap(top - bottom).should("be.gt", 16);
             });
         });
+      });
+  });
+});
+
+describe("issue QUE-1359", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render an outline on the custom expression item in the filter popover (QUE-1359)", () => {
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    Cypress._.times(10, () => cy.realPress("ArrowDown"));
+
+    H.popover()
+      .findByText("Custom Expression")
+      .parent()
+      .then((el) => {
+        cy.wrap(window.getComputedStyle(el[0]).outline).should(
+          "contain",
+          "solid",
+        );
       });
   });
 });

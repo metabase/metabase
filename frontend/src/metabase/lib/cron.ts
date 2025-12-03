@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { memoize } from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { has24HourModeSetting } from "metabase/lib/time";
+import { has24HourModeSetting } from "metabase/lib/time-dayjs";
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {
@@ -85,6 +85,7 @@ export const getScheduleExplanation = memoize(
   },
 );
 
+// Remove seconds and years
 export function formatCronExpressionForUI(cronExpression: string): string {
   const [, ...partsWithoutSeconds] = cronExpression.split(" ");
   const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);

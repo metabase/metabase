@@ -50,7 +50,7 @@ export function NewPulseSidebar({
             onClick={onNewSlackPulse}
           />
         ) : (
-          <Link to="/admin/settings/notifications/slack">
+          <Link to="/admin/settings/notifications">
             <ChannelCard title={t`Configure Slack`} channel="slack" />
           </Link>
         )}

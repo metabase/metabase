@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_DATE_COLUMNS],
-              ["Summaries", ["Created At: Month", "Created At: Year"]],
+              ["Summaries", ["Created At: Month", "User → Created At: Year"]],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -94,7 +94,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_DATE_COLUMNS],
-              ["Summaries", ["Created At: Month", "Created At: Year"]],
+              ["Summaries", ["Created At: Month", "User → Created At: Year"]],
             ],
           );
           QSHelpers.verifyNoDashcardMappingOptions(
@@ -124,8 +124,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_TEXT_COLUMNS],
-              ["Summaries", ["Category"]],
-              ["Summaries (2)", ["Reviewer", "Category"]],
+              ["Summaries", ["Product → Category"]],
+              [
+                "Summaries (2)",
+                [
+                  "Reviews - Created At: Month → Reviewer",
+                  "Product → Category",
+                ],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -146,8 +152,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_TEXT_COLUMNS],
-              ["Summaries", ["Category"]],
-              ["Summaries (2)", ["Reviewer", "Category"]],
+              ["Summaries", ["Product → Category"]],
+              [
+                "Summaries (2)",
+                [
+                  "Reviews - Created At: Month → Reviewer",
+                  "Product → Category",
+                ],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -157,7 +169,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
@@ -169,7 +181,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
@@ -200,7 +212,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_NUMBER_COLUMNS],
               ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-              ["Summaries (2)", ["Count", "Sum of Rating"]],
+              [
+                "Summaries (2)",
+                ["Count", "Sum of Reviews - Created At: Month → Rating"],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -226,7 +241,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_NUMBER_COLUMNS],
               ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-              ["Summaries (2)", ["Count", "Sum of Rating"]],
+              [
+                "Summaries (2)",
+                ["Count", "Sum of Reviews - Created At: Month → Rating"],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -264,9 +282,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply1stStageExplicitJoinFilter();
-          QSHelpers.waitForPublicDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(953);
@@ -282,9 +299,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply1stStageExplicitJoinFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(953);
@@ -312,8 +329,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it.skip("1st stage implicit join (joined data source)", () => {
+        it("1st stage implicit join (joined data source)", () => {
           QSHelpers.setup1stStageImplicitJoinFromJoinFilter();
 
           QSHelpers.verifyDashcardRowsCount({
@@ -367,8 +383,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it.skip("1st stage breakout", () => {
+        it("1st stage breakout", () => {
           QSHelpers.setup1stStageBreakoutFilter();
 
           QSHelpers.verifyDashcardRowsCount({
@@ -427,9 +442,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply2ndStageCustomColumnFilter();
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(31);
@@ -445,9 +460,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply2ndStageCustomColumnFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(31);
@@ -496,9 +511,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply2ndStageAggregationFilter();
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(6);
@@ -520,9 +535,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply2ndStageAggregationFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(6);
@@ -577,9 +592,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(4);
           QSHelpers.apply2ndStageBreakoutFilter();
-          QSHelpers.waitForPublicDashboardData();
+          QSHelpers.waitForPublicDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(1077);
@@ -601,9 +616,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(4);
           QSHelpers.apply2ndStageBreakoutFilter();
-          QSHelpers.waitForEmbeddedDashboardData();
+          QSHelpers.waitForEmbeddedDashboardData(2);
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(1077);

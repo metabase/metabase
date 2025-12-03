@@ -18,7 +18,7 @@
   process-virtual-dashcard]
  [notification.payload.temp-storage
   cleanup!
-  is-cleanable?])
+  cleanable?])
 
 (mr/def ::Notification
   "Schema for the notification."
@@ -152,7 +152,7 @@
          :context (default-context)))
 
 (defmulti skip-reason
-  "Determine whether a notification should be sent. Default to true."
+  "Determine whether a notification should be sent. Default to nil."
   {:arglists '([notification-payload])}
   :payload_type)
 

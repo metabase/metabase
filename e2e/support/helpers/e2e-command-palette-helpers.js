@@ -21,7 +21,7 @@ export const pressHome = () => cy.realPress("{home}");
 export const pressEnd = () => cy.realPress("{end}");
 
 export const commandPaletteInput = () =>
-  cy.findByPlaceholderText("Search for anything or jump somewhere…");
+  cy.findByPlaceholderText("Search for anything…");
 
 export const commandPaletteSearch = (query, viewAll = true) => {
   cy.intercept("GET", "/api/search?q=*").as("paletteSearch");
@@ -31,7 +31,7 @@ export const commandPaletteSearch = (query, viewAll = true) => {
 
   if (viewAll) {
     commandPalette()
-      .findByRole("option", { name: /View and filter/ })
+      .findByRole("link", { name: /View and filter/ })
       .click();
   }
 };

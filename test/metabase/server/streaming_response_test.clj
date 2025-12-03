@@ -3,17 +3,21 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [compojure.response]
    [metabase.driver :as driver]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.server.instance :as server.instance]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.json :as json])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
+   (java.io Closeable InputStream)
    (java.util.concurrent Executors)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
@@ -113,13 +117,13 @@
           (dotimes [_ num-requests]
             (future (http/post url request)))
           (Thread/sleep 100)
-          (let [start-time-ms (System/currentTimeMillis)]
+          (let [timer (u/start-timer)]
             (is (= {:status "ok"} (client/client :get 200 "health")))
             (testing "Health endpoint should complete before the first round of queries completes"
               (is (> @remaining (inc (- num-requests thread-pool-size)))))
             (testing "Health endpoint should complete in under 500ms regardless of how many queries are running"
               (testing "(Usually this is under 100ms but might be a little over if CircleCI is being slow)"
-                (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
+                (let [elapsed-ms (u/since-ms timer)]
                   (is (< elapsed-ms 500)))))))))))
 
 (deftest cancelation-test
@@ -138,15 +142,62 @@
                                                           nil)
                   futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
               (is (future? futur))
-             ;; wait a little while for the query to start running -- this should usually happen fairly quickly
+              ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
               (future-cancel futur)
-             ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
+              ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
               (is (loop [[wait & more] (repeat 10 100)]
                     (or @canceled?
                         (when wait
                           (Thread/sleep (long wait))
                           (recur more))))))))))))
+
+(deftest canceling-chan-is-working-test
+  (let [cnt      (atom 30)
+        canceled (atom nil)
+        handler  (fn [req respond _raise]
+                   (respond
+                    (compojure.response/render
+                     (streaming-response/streaming-response {:content-type "text/event-stream; charset=utf-8"
+                                                             :headers {"Transfer-Encoding" "chunked"}} [os canceled-chan]
+                       (try
+                         (loop []
+                           (if (a/poll! canceled-chan)
+                             (reset! canceled :nice)
+                             (do
+                               (.write os (.getBytes (str "msg-" @cnt)))
+                               (.write os (.getBytes "\n"))
+                               (.flush os)
+                               (swap! cnt dec)
+                               (Thread/sleep 10)
+                               (when (pos? @cnt)
+                                 (recur)))))
+                         (catch Exception _e
+                           (reset! canceled :not-nice))))
+                     req)))
+        server   (doto (server.instance/create-server handler {:port 0 :join? false})
+                   .start)
+        url      (str "http://localhost:" (.. server getURI getPort))]
+    (try
+      (with-redefs [streaming-response/async-cancellation-poll-interval-ms 5]
+        (testing "Closing body stops request handler"
+          (let [res (http/request {:method          :post :url url
+                                   :as              :stream
+                                   :decompress-body false})]
+            (.read ^InputStream (:body res)) ;; start the handler
+            ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
+            (.close ^Closeable (:http-client res))
+            (u/poll {:thunk       #(deref canceled)
+                     :done?       some?
+                     :interval-ms 5})
+            ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
+            (is (< 20 @cnt) "Stopped writing when channel closed")
+            (testing "cancellation is working"
+              ;; we're not checking for particular way of cancelling, because cancellation poll interval can conflict
+              ;; with Thread/sleep and will make this test flaky
+              (is (some? @canceled))))))
+      (finally
+        (.stop server)))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
@@ -175,3 +226,107 @@
              (deref complete-promise 1000 ::timed-out)))
         (is (= "2 cans"
                (String. (.toByteArray os) "UTF-8")))))))
+
+(deftest write-error-includes-stacktrace-when-hide-stacktraces-disabled-test
+  (testing "write-error! includes stacktrace and exception chain when hide-stacktraces is false"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [exception (ex-info "Test error message" {:custom-data "test-value"})]
+          (#'streaming-response/write-error! os exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Test error message" (:cause error-response))
+                "Response includes the error message")
+            (is (contains? error-response :trace)
+                "Response should contain :trace key")
+            (is (vector? (:trace error-response))
+                "Stacktrace should be a vector")
+            (is (contains? error-response :via)
+                "Response should contain :via key")
+            (is (= "test-value" (get-in error-response [:data :custom-data]))
+                "Response should include custom data from ex-info")))))))
+
+(deftest write-error-omits-stacktrace-when-hide-stacktraces-enabled-test
+  (testing "write-error! omits stacktrace and exception chain when hide-stacktraces is true"
+    (mt/with-temporary-setting-values [hide-stacktraces true]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [exception (ex-info "Test error message with sensitive info" {:custom-data "test-value"})]
+          (#'streaming-response/write-error! os exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Test error message with sensitive info" (:cause error-response))
+                "Response includes the error message")
+            (is (not (contains? error-response :trace))
+                "Response should not contain :trace key")
+            (is (not (contains? error-response :via))
+                "Response should not contain :via key")
+            (is (= "test-value" (get-in error-response [:data :custom-data]))
+                "Response should include custom data from ex-info")
+            (is (contains? error-response :_status)
+                "Response should include :_status")))))))
+
+(deftest write-error-nested-exception-with-stacktraces-disabled-test
+  (testing "write-error! includes nested exception details when hide-stacktraces is false"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [inner-exception (ex-info "Inner error" {:inner-data "secret"})
+              outer-exception (ex-info "Outer error" {:outer-data "visible"} inner-exception)]
+          (#'streaming-response/write-error! os outer-exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (contains? error-response :via)
+                "Response should contain :via key")
+            (is (> (count (:via error-response)) 1)
+                "Exception chain should include multiple exceptions")))))))
+
+(deftest write-error-nested-exception-with-stacktraces-enabled-test
+  (testing "write-error! omits nested exception details when hide-stacktraces is true"
+    (mt/with-temporary-setting-values [hide-stacktraces true]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [inner-exception (ex-info "Inner error" {:inner-data "secret"})
+              outer-exception (ex-info "Outer error" {:outer-data "visible"} inner-exception)]
+          (#'streaming-response/write-error! os outer-exception :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (not (contains? error-response :via))
+                "Response should not contain :via key with nested exception information")))))))
+
+(deftest write-error-map-preserves-sensitive-keys-when-hide-stacktraces-disabled-test
+  (testing "write-error! preserves sensitive keys when a map is supplied and hide-stacktraces is false"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [error-map {:message "Error occurred"
+                         :stacktrace ["line1" "line2" "line3"]
+                         :trace ["frame1" "frame2"]
+                         :via [{:type "Exception1"} {:type "Exception2"}]
+                         :custom-data "preserve-me"}]
+          (#'streaming-response/write-error! os error-map :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Error occurred" (:message error-response))
+                "Response should include the message")
+            (is (contains? error-response :stacktrace)
+                "Response should contain :stacktrace key")
+            (is (contains? error-response :trace)
+                "Response should contain :trace key")
+            (is (contains? error-response :via)
+                "Response should contain :via key")
+            (is (= "preserve-me" (:custom-data error-response))
+                "Response should include custom data")))))))
+
+(deftest write-error-map-omits-sensitive-keys-when-hide-stacktraces-enabled-test
+  (testing "write-error! omits sensitive keys when a map is supplied and hide-stacktraces is true"
+    (mt/with-temporary-setting-values [hide-stacktraces true]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [error-map {:message "Error occurred"
+                         :stacktrace ["line1" "line2" "line3"]
+                         :trace ["frame1" "frame2"]
+                         :via [{:type "Exception1"} {:type "Exception2"}]
+                         :custom-data "preserve-me"}]
+          (#'streaming-response/write-error! os error-map :api)
+          (let [error-response (json/decode (String. (.toByteArray os) "UTF-8") true)]
+            (is (= "Error occurred" (:message error-response))
+                "Response should include the message")
+            (is (not (contains? error-response :stacktrace))
+                "Response should not contain :stacktrace key")
+            (is (not (contains? error-response :trace))
+                "Response should not contain :trace key")
+            (is (not (contains? error-response :via))
+                "Response should not contain :via key")
+            (is (= "preserve-me" (:custom-data error-response))
+                "Response should still include custom data")))))))

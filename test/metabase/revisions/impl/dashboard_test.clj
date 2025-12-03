@@ -35,12 +35,14 @@
                                      :dashboard_tab_id       nil
                                      :action_id              nil
                                      :parameter_mappings     []
+                                     :inline_parameters      []
                                      :visualization_settings {}
                                      :dashboard_id           dashboard-id}]
               :tabs                []
               :archived            false
               :collection_position nil
               :enable_embedding    false
+              :embedding_type      nil
               :embedding_params    nil
               :parameters          []
               :width               "fixed"}
@@ -246,6 +248,7 @@
                                                                          value)
                                (= col :made_public_by_id)          (mt/user->id :crowberto)
                                (= col :embedding_params)           {:category_name "locked"}
+                               (= col :embedding_type)             "static-legacy"
                                (= col :public_uuid)                (str (random-uuid))
                                (int? value)                        (inc value)
                                (boolean? value)                    (not value)
@@ -360,6 +363,7 @@
                                 :archived            false
                                 :collection_position nil
                                 :enable_embedding    false
+                                :embedding_type      nil
                                 :embedding_params    nil
                                 :parameters          []
                                 :width               "fixed"}
@@ -381,12 +385,14 @@
                                        :dashboard_tab_id       nil
                                        :action_id              nil
                                        :parameter_mappings     []
+                                       :inline_parameters      []
                                        :visualization_settings {}
                                        :dashboard_id           dashboard-id}]
                 :tabs                []
                 :archived            false
                 :collection_position nil
                 :enable_embedding    false
+                :embedding_type      nil
                 :embedding_params    nil
                 :parameters          []
                 :width               "fixed"}
@@ -419,12 +425,14 @@
                                        :dashboard_tab_id       nil
                                        :action_id              nil
                                        :parameter_mappings     []
+                                       :inline_parameters      []
                                        :visualization_settings {}
                                        :dashboard_id           dashboard-id}]
                 :tabs                []
                 :archived            false
                 :collection_position nil
                 :enable_embedding    false
+                :embedding_type      nil
                 :embedding_params    nil
                 :parameters          []
                 :width               "fixed"}

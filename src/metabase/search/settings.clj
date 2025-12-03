@@ -14,9 +14,11 @@
   :audit      :getter)
 
 (defsetting search-engine
-  (i18n/deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
-  :visibility :internal
+  (i18n/deferred-tru "Which engine to use by default for search. Supported values are :in-place, :appdb, and :semantic")
+  :visibility :authenticated
   :export?    false
+  :setter     :none
+  ;; TODO (Chris 2025-11-07) Would be good to remove the default and just use [search.engine/default-engine-precedence]
   :default    :appdb
   :type       :keyword)
 
@@ -31,7 +33,7 @@
 
 (defsetting search-language
   (i18n/deferred-tru "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
-  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''")
+  Value must be a valid configured language option in your database such as ''english'' or ''simple''")
   :visibility :internal
   :export?    false
   :encryption :no

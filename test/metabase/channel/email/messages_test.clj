@@ -121,11 +121,11 @@
           (is (= 1 (count @mt/inbox))))))))
 
 (deftest all-admin-recipients
-  (mt/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
-                                  :name          "Test API key"
-                                  :user_id       (mt/user->id :crowberto)
-                                  :creator_id    (mt/user->id :crowberto)
-                                  :updated_by_id (mt/user->id :crowberto)}]
+  (mt/with-temp [:model/ApiKey _ {::api-key/unhashed-key (api-key/generate-key)
+                                  :name                  "Test API key"
+                                  :user_id               (mt/user->id :crowberto)
+                                  :creator_id            (mt/user->id :crowberto)
+                                  :updated_by_id         (mt/user->id :crowberto)}]
     (testing "all-admin-recipients returns all admin emails"
       (let [emails (#'messages/all-admin-recipients)]
         (is (some #(= % "crowberto@metabase.com") emails))

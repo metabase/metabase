@@ -57,11 +57,19 @@ export async function setup({
   setupCardsEndpoints(model ? [model] : []);
 
   if (action) {
-    fetchMock.get(`path:/api/action/${action.id}`, action);
-    fetchMock.delete(`path:/api/action/${action.id}/public_link`, 204);
-    fetchMock.post(`path:/api/action/${action.id}/public_link`, {
-      uuid: "mock-uuid",
+    fetchMock.get(`path:/api/action/${action.id}`, action, {
+      name: `action-${action.id}-get`,
     });
+    fetchMock.delete(`path:/api/action/${action.id}/public_link`, 204, {
+      name: `public-link-${action.id}-delete`,
+    });
+    fetchMock.post(
+      `path:/api/action/${action.id}/public_link`,
+      {
+        uuid: "mock-uuid",
+      },
+      { name: `public-link-${action.id}-post` },
+    );
   }
 
   renderWithProviders(
@@ -86,7 +94,9 @@ export async function setup({
   if (action) {
     await waitFor(() => {
       expect(
-        fetchMock.calls(`path:/api/action/${action.id}`, { method: "GET" }),
+        fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
+          method: "GET",
+        }),
       ).toHaveLength(1);
     });
   }

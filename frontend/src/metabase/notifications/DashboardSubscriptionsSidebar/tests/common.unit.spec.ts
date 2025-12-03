@@ -78,9 +78,8 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(await screen.findByText("Send email now"));
 
-      const payload = await fetchMock
-        ?.lastCall("path:/api/pulse/test")
-        ?.request?.json();
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
       expect(payload.cards).toHaveLength(1);
       expect(payload.cards[0].id).toEqual(dashcard.id);
     });

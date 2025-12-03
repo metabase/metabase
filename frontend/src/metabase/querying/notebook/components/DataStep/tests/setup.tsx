@@ -9,10 +9,6 @@ import { createMockModelResult } from "metabase/browse/models/test-utils";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../../test-utils";
 import type { NotebookStep } from "../../../types";
@@ -52,10 +48,6 @@ export const setup = ({
     setupSearchEndpoints([]);
   }
 
-  const storeInitialState = createMockState({
-    embed: createMockEmbedState({ isEmbeddingSdk }),
-  });
-
   renderWithProviders(
     <NotebookProvider>
       <DataStep
@@ -69,7 +61,6 @@ export const setup = ({
         updateQuery={updateQuery}
       />
     </NotebookProvider>,
-    { storeInitialState },
   );
 
   const getNextQuery = (): Lib.Query => {

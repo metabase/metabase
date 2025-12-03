@@ -31,9 +31,9 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Parameter,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   QuestionDashboardCard,
-  UserAttribute,
+  UserAttributeMap,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
 
@@ -65,8 +65,8 @@ export function getDataFromClicked({
 }: {
   extraData?: {
     dashboard?: Dashboard;
-    parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
-    userAttributes?: Record<UserAttribute, UserAttribute> | null;
+    parameterValuesBySlug?: ParameterValuesMap;
+    userAttributes?: UserAttributeMap | null;
   };
   dimensions?: DimensionType[];
   data?: (ClickObjectDataRow & {
@@ -240,6 +240,7 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,
+          boolean: TYPE.Boolean,
         }[type]
       : undefined;
 
@@ -424,6 +425,15 @@ export function formatSourceForTarget(
         "date/single",
         sourceDateUnit,
       );
+    }
+  }
+
+  if (parameter?.type === "number/between" && "column" in datum) {
+    const value = datum.value;
+    const binWidth = datum.column?.binning_info?.bin_width;
+
+    if (binWidth != null && typeof value === "number") {
+      return [value, value + binWidth];
     }
   }
 

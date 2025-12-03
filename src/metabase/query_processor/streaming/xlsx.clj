@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -12,12 +13,12 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv some]])
   (:import
    (java.io OutputStream)
    (java.time
@@ -27,6 +28,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime)
+   (java.util UUID)
    (org.apache.poi.ss.usermodel
     Cell
     DataConsolidateFunction
@@ -315,6 +317,10 @@
   {:arglists '([cell value styles typed-styles])}
   (fn [^Cell _cell value _styles _typed-styles]
     (type value)))
+
+(defmethod set-cell! UUID
+  [^Cell cell ^UUID uuid _styles _typed-styles]
+  (.setCellValue cell (str uuid)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them
@@ -668,10 +674,9 @@
         (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
-                                                                pivot-export-options) ordered-cols))
+                                                                (m/filter-vals some? pivot-export-options)) ordered-cols))
               non-pivot-cols (pivot/columns-without-pivot-group ordered-cols)]
           (vreset! pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
-          (def pivot-spec pivot-spec)
           (if pivot-spec
             ;; If we're generating a pivot table, just initialize the `pivot-data` volatile but not the workbook, yet
             (vreset! pivot-data
@@ -705,7 +710,7 @@
           (if @pivot-data
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (when (or (not group)
-                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                      (= qp.pivot.postprocess/non-pivot-row-group (int group)))
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
                 (add-row! @workbook-sheet (inc row-num) row' ordered-cols' viz-settings cell-styles typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)

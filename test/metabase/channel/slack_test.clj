@@ -213,11 +213,7 @@
         (mt/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
           (is (=? expected
-                  (slack/post-chat-message! "C94712B6X" ":wow:"))))
-        (mt/with-temporary-setting-values [slack-app-token "test-token"
-                                           slack-token nil]
-          (is (=? expected
-                  (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
+                  (slack/post-chat-message! {:channel "C94712B6X" :text ":wow:"}))))))))
 
 (deftest slack-token-error-test
   (notification.tu/with-send-notification-sync
@@ -230,7 +226,7 @@
           (testing "If a slack token is revoked, an email should be sent to admins, and the `slack-token-valid?` setting
                    should be set to false"
             (try
-              (slack/post-chat-message! "C94712B6X" ":wow:")
+              (slack/post-chat-message! {:channel "C94712B6X" :text ":wow:"})
               (catch Throwable e
                 (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (let [recipient->emails (mt/summarize-multipart-email #"Your Slack connection stopped working.")]
@@ -245,7 +241,7 @@
           (testing "If `slack-token-valid?` is already false, no email should be sent"
             (mt/reset-inbox!)
             (try
-              (slack/post-chat-message! "C94712B6X" ":wow:")
+              (slack/post-chat-message! {:channel "C94712B6X" :text ":wow:"})
               (catch Throwable e
                 (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))))))
