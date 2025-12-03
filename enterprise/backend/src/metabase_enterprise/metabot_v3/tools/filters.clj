@@ -151,15 +151,15 @@
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
+        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
-        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         query (as-> base-query $q
                 (reduce add-filter
                         $q
-                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
+                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) filters))
                 (reduce add-breakout
                         $q
-                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
+                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
@@ -234,9 +234,9 @@
   (let [card (metabot-v3.tools.u/get-card model-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
+        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
-        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -415,12 +415,12 @@
             api/*is-superuser?* true]
     (-> (filter-records #_{:data-source {:tabl-id 3}
                            :filters [{:operation "number-greater-than"
-                                      :field-id "t3/6"
+                                      :field-id "t3-6"
                                       :value 50}]}
          {:data-source {:table-id 1}
           :filters [{:operation "greater-than"
                      :bucket "month-of-year"
-                     :field-id "t1/3"
+                     :field-id "t1-3"
                      :value #_"2020-01-01" 1}]})
         :structured-output :query qp/process-query :data :native_form :query))
   -)

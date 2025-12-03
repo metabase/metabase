@@ -253,7 +253,7 @@ describe("user > settings", () => {
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
 
-      cy.findByDisplayValue("Light").click();
+      cy.findByDisplayValue("Use system default").click();
       H.popover().findByText("Dark").click();
       assertDarkMode();
 
@@ -264,6 +264,27 @@ describe("user > settings", () => {
       //Need to take focus off the inpout
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
       cy.realPress([metaKey, "Shift", "L"]);
+      assertDarkMode();
+    });
+
+    it("should persist theme selection on browser change", () => {
+      cy.intercept("PUT", "/api/setting/color-scheme").as("saveSetting");
+
+      cy.visit("/account/profile");
+
+      cy.findByDisplayValue("Use system default").click();
+      H.popover().findByText("Dark").click();
+      assertDarkMode();
+
+      cy.wait("@saveSetting");
+
+      // emulate browser change by deleting localStorage values
+      cy.window().then((win) => {
+        win.sessionStorage.clear();
+        win.localStorage.clear();
+      });
+
+      cy.visit("/account/profile");
       assertDarkMode();
     });
   });
