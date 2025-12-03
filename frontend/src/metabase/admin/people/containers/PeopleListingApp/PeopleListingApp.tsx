@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
