@@ -1,4 +1,3 @@
-## MAGE (Metabase Automation Genius Engine) completions. [auto-installed]
 function __mage_complete_tasks
   if not test "$__mage_tasks"
     if test -n "$MB_DIR"
@@ -10,4 +9,3 @@ function __mage_complete_tasks
 end
 
 complete -c mage -a "(__mage_complete_tasks)" -d 'tasks'
-## END MAGE [auto-installed]

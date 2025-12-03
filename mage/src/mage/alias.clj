@@ -35,7 +35,8 @@
 
 (defn- install-to-file [file-path new-content]
   (let [existing-content (or (read-file-safe file-path) "")
-        updated-content (replace-between-markers existing-content new-content)]
+        new-content-with-markers (str marker-start "\n" new-content "\n" marker-end)
+        updated-content (replace-between-markers existing-content new-content-with-markers)]
     (fs/create-dirs (fs/parent file-path))
     (spit file-path updated-content)
     file-path))
