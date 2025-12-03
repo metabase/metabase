@@ -53,7 +53,7 @@ describe("EditUserStrategyModal", () => {
     await screen.findByText("User strategy");
   });
 
-  it("should correctly display single-tenancy as selected if use-tenants setting is false", async () => {
+  it("should correctly select single-tenancy if use-tenants setting is false", async () => {
     await setup();
 
     expect(
