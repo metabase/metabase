@@ -13,6 +13,7 @@ import {
   useUpdatePermissionsGroupMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -22,15 +23,14 @@ import { GroupsListing } from "../components/GroupsListing";
 
 export const GroupsListingApp = ({
   external,
-  title,
   description,
 }: {
   external?: boolean;
-  title?: string;
   description?: string;
 }) => {
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
+  const isUsingTenants = useSetting("use-tenants");
 
   const { data, isLoading, error } = useListPermissionsGroupsQuery({});
   const groups = useMemo(() => {
@@ -67,8 +67,16 @@ export const GroupsListingApp = ({
     }
   };
 
+  const pageTitle = useMemo(() => {
+    if (!isUsingTenants) {
+      return t`Groups`;
+    }
+
+    return external ? t`Tenant Groups` : t`Internal Groups`;
+  }, [external, isUsingTenants]);
+
   return (
-    <SettingsPageWrapper title={title ?? t`Groups`}>
+    <SettingsPageWrapper title={pageTitle}>
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <GroupsListing
