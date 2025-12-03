@@ -19,12 +19,14 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
+import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -44,7 +46,9 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
@@ -123,7 +127,8 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   >;
 
 const SdkDashboardInner = ({
-  dashboardId,
+  dashboardId: rawDashboardId,
+  token: rawToken,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -149,6 +154,24 @@ const SdkDashboardInner = ({
   dataPickerProps,
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+
+  const {
+    resourceId: dashboardId,
+    token,
+    tokenError,
+  } = useExtractResourceIdFromJwtToken({
+    isGuestEmbed,
+    resourceId: rawDashboardId,
+    token: rawToken ?? undefined,
+  });
+
+  useEffect(() => {
+    if (isGuestEmbed && token) {
+      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
+    }
+  }, [isGuestEmbed, token]);
+
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
     onLoadWithoutCards,
@@ -158,12 +181,10 @@ const SdkDashboardInner = ({
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
 
   const { displayOptions } = useSdkDashboardParams({
-    dashboardId,
     withDownloads,
     withTitle,
     withCardTitle,
     hiddenParameters,
-    initialParameters,
   });
 
   const {
@@ -236,6 +257,22 @@ const SdkDashboardInner = ({
     );
   }
 
+  if (tokenError) {
+    return (
+      <SdkDashboardStyledWrapper className={className} style={style}>
+        <SdkError message={tokenError} />;
+      </SdkDashboardStyledWrapper>
+    );
+  }
+
+  if (isStaticEmbeddingEntityLoadingError(errorPage, { isGuestEmbed })) {
+    return (
+      <SdkDashboardStyledWrapper className={className} style={style}>
+        <SdkError message={errorPage.data ?? t`Something's gone wrong`} />
+      </SdkDashboardStyledWrapper>
+    );
+  }
+
   // Passing an invalid entity ID format results in a 400 Bad Request.
   // We can show this as a generic "not found" error on the frontend.
   const isDashboardNotFound =
@@ -244,7 +281,7 @@ const SdkDashboardInner = ({
   if (!dashboardId || isDashboardNotFound) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
-        <DashboardNotFoundError id={dashboardId} />
+        <DashboardNotFoundError id={dashboardId ?? ""} />
       </SdkDashboardStyledWrapper>
     );
   }
@@ -263,6 +300,8 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
+      token={token}
+      isGuestEmbed={isGuestEmbed}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={
         navigateToNewCardFromDashboard !== undefined
@@ -313,8 +352,8 @@ const SdkDashboardInner = ({
       }}
       autoScrollToDashcardId={autoScrollToDashcardId}
     >
-      {match(finalRenderMode)
-        .with("question", () => (
+      {match({ finalRenderMode, isGuestEmbed })
+        .with({ finalRenderMode: "question" }, () => (
           <SdkDashboardStyledWrapperWithRef className={className} style={style}>
             <SdkAdHocQuestion
               // `adhocQuestionUrl` would have value if renderMode is "question"
@@ -327,7 +366,7 @@ const SdkDashboardInner = ({
             </SdkAdHocQuestion>
           </SdkDashboardStyledWrapperWithRef>
         ))
-        .with("dashboard", () => (
+        .with({ finalRenderMode: "dashboard" }, () => (
           <SdkDashboardProvider
             plugins={plugins}
             onEditQuestion={onEditQuestion}
@@ -342,29 +381,37 @@ const SdkDashboardInner = ({
             )}
           </SdkDashboardProvider>
         ))
-        .with("queryBuilder", () => (
-          <DashboardQueryBuilder
-            onCreate={(question) => {
-              setNewDashboardQuestionId(question.id);
-              setRenderMode("dashboard");
-              dashboardContextProviderRef.current?.refetchDashboard();
-            }}
-            onNavigateBack={() => {
-              setRenderMode("dashboard");
-            }}
-            dataPickerProps={dataPickerProps}
-            onVisualizationChange={onVisualizationChange}
-          />
-        ))
+        .with({ finalRenderMode: "queryBuilder" }, ({ isGuestEmbed }) =>
+          isGuestEmbed ? (
+            <SdkDashboardStyledWrapper className={className} style={style}>
+              <SdkError
+                message={t`You can't save questions in Guest Embed mode`}
+              />
+            </SdkDashboardStyledWrapper>
+          ) : (
+            <DashboardQueryBuilder
+              onCreate={(question) => {
+                setNewDashboardQuestionId(question.id);
+                setRenderMode("dashboard");
+                dashboardContextProviderRef.current?.refetchDashboard();
+              }}
+              onNavigateBack={() => {
+                setRenderMode("dashboard");
+              }}
+              dataPickerProps={dataPickerProps}
+              onVisualizationChange={onVisualizationChange}
+            />
+          ),
+        )
         .exhaustive()}
       {modalContent}
     </DashboardContextProvider>
   );
 };
 
-export const SdkDashboard = withPublicComponentWrapper(
-  SdkDashboardInner,
-) as typeof SdkDashboardInner &
+export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
+  supportsGuestEmbed: true,
+}) as typeof SdkDashboardInner &
   Pick<
     typeof Dashboard,
     | "Grid"

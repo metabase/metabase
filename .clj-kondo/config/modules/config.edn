@@ -1227,6 +1227,7 @@
            session
            settings
            system
+           users
            util
            enterprise/sso}}
 
@@ -1895,7 +1896,6 @@
    :uses #{analyze
            api
            collections
-           config
            driver
            events
            graph

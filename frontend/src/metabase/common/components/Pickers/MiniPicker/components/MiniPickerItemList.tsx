@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   skipToken,
@@ -51,9 +52,10 @@ export function MiniPickerItemList() {
 
 function RootItemList() {
   const { data: databases } = useListDatabasesQuery();
-  const { setPath, isHidden } = useMiniPickerContext();
+  const { setPath, isHidden, models, shouldShowLibrary } =
+    useMiniPickerContext();
   const { data: libraryCollection, isLoading } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+    PLUGIN_DATA_STUDIO.useGetResolvedLibraryCollection();
   const enableNestedQueries = useSetting("enable-nested-queries");
 
   if (isLoading) {
@@ -83,7 +85,14 @@ function RootItemList() {
     );
   }
 
-  if (libraryCollection) {
+  if (
+    libraryCollection &&
+    _.intersection(models, [
+      ...(libraryCollection.below || []),
+      ...(libraryCollection.here || []),
+    ]).length &&
+    shouldShowLibrary
+  ) {
     return (
       <CollectionItemList
         parent={{

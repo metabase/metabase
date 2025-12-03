@@ -82,7 +82,7 @@
 (defn public-bb-tasks-list
   "Returns all public bb tasks as a vector of strings."
   []
-  (->> "bb tasks"
+  (->> (str project-root-directory "/bin/bb tasks")
        shl
        (drop 2)
        (map (comp first #(str/split % #"\s+")))
@@ -102,6 +102,19 @@
 (defn updated-files
   "Sequence of filenames that have changes in Git relative to `diff-target`."
   ([] (updated-files "HEAD"))
+  ([diff-target]
+   (->> (shell {:out :string :dir project-root-directory}
+               "git" "diff" "--name-only" diff-target)
+        :out
+        (str/split-lines)
+        ;; filter out any files that have been deleted/moved
+        (remove #{""})
+        (filter (fn [filename]
+                  (fs/exists? (str project-root-directory "/" filename)))))))
+
+(defn updated-clojure-files
+  "Sequence of filenames that have changes in Git relative to `diff-target`."
+  ([] (updated-clojure-files "HEAD"))
   ([diff-target]
    (->> (shell {:out :string :dir project-root-directory}
                "git" "diff" "--name-only" diff-target
@@ -200,7 +213,7 @@
        :mage/error (str "You don't have " (c/yellow cmd) " installed. Please install it to use this task.")
        :babashka/exit 1}))))
 
-(defn fzf-select
+(defn fzf-select!
   "Uses fzf to offer interactive selections.
 
    If the user doesn't have fzf installed, explains instructions
@@ -238,3 +251,13 @@
 (defn since-ms
   "Called on the return value of start-timer, returns the elapsed time in milliseconds."
   [timer] (/ (- (System/nanoTime) timer) 1e6))
+
+(defn exit
+  "When invoked from a babashka namespace spawned from mage, exits with the given exit code.
+  Will not crash your repl. Prefer this to System/exit!"
+  ([exit-code]
+   (throw (ex-info "" {:mage/quiet true
+                       :babashka/exit exit-code})))
+  ([message exit-code]
+   (println message)
+   (throw (ex-info "" {:mage/quiet true :babashka/exit exit-code}))))

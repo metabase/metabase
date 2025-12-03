@@ -37,7 +37,6 @@ jobs:
     env:
       MB_EDITION: ${{ inputs.edition }}
       DISPLAY: ""
-      QA_DB_ENABLED: true
       PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
@@ -58,7 +57,6 @@ jobs:
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
-      CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,9 +78,9 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
-          postgres: ${{ inputs.name != 'mongo' }}
-          mysql: ${{ inputs.name != 'mongo' }}
-          mongo: ${{ inputs.name == 'mongo' }}
+          postgres: true
+          mysql: true
+          mongo: true
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact

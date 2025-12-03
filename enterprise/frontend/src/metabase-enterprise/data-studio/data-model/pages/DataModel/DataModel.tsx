@@ -235,6 +235,7 @@ function DataModelContent({ params }: Props) {
                     key={getRawTableFieldId(field)}
                     parent={parentField}
                     table={table}
+                    eventSource="data_studio"
                     onFieldValuesClick={openFieldValuesModal}
                     onPreviewClick={togglePreview}
                   />

@@ -4,6 +4,7 @@ import dedent from "ts-dedent";
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createLibraryWithItems } from "e2e/support/test-library-data";
 import type {
   CardType,
   PythonTransformTableAliases,
@@ -83,6 +84,31 @@ describe("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
       H.expectUnstructuredSnowplowEvent({
         event: "transform_created",
+      });
+    });
+
+    it("should not show you the library in the mini picker when building transforms (uxw-2403)", () => {
+      createLibraryWithItems();
+
+      visitTransformListPage();
+      getTransformsSidebar().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+      H.miniPicker().within(() => {
+        cy.findByText(DB_NAME).should("exist");
+        cy.findByText("Our analytics").should("exist");
+        cy.findByText("Browse all").should("exist");
+        cy.findByText("Data").should("not.exist");
+      });
+
+      cy.findByRole("link", { name: "Exit data studio" }).click();
+      H.modal().button("Discard changes").click();
+      H.newButton("Question").click();
+
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").should("not.exist");
+        cy.findByText("Browse all").should("exist");
+        cy.findByText("Data").click();
+        cy.findByText("Trusted Orders Model").should("exist");
       });
     });
 

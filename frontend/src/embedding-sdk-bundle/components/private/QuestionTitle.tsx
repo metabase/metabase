@@ -2,6 +2,7 @@ import cx from "classnames";
 
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import {
   getAdHocQuestionDescription,
   shouldRenderAdhocDescription,
@@ -49,6 +50,7 @@ export const QuestionTitle = ({
   style,
 }: QuestionTitleProps) => {
   const questionTitle = getQuestionTitle({ question });
+  const tc = useTranslateContent();
 
   if (questionTitle === null) {
     return null;
@@ -56,7 +58,7 @@ export const QuestionTitle = ({
 
   return (
     <h2 className={cx(CS.h2, CS.textWrap, className)} style={style}>
-      {questionTitle}
+      {tc(questionTitle)}
     </h2>
   );
 };

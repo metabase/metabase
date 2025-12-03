@@ -9,7 +9,6 @@ export const createWrappedSearchResult = (
   return {
     ...result,
     getUrl: options.getUrl ?? (() => "/collection/root"),
-    getIcon: options.getIcon ?? (() => ({ name: "folder" })),
     getCollection: options.getCollection ?? (() => result.collection),
   };
 };
