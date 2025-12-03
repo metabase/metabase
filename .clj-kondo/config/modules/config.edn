@@ -1956,8 +1956,8 @@
            appearance
            audit-app
            embedding
-           premium-features
            permissions
+           premium-features
            enterprise/sso}}
 
   enterprise/gsheets
