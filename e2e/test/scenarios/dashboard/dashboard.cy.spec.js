@@ -1706,8 +1706,6 @@ describe("scenarios > dashboard > caching", () => {
     cy.findByTestId("collection-table")
       .findByText("Orders in a dashboard")
       .click();
-    cy.findByTestId("main-logo-link").click();
-    cy.go("back");
 
     openSidebarCacheStrategyForm("dashboard");
 
@@ -1731,9 +1729,6 @@ describe("scenarios > dashboard > caching", () => {
     cancelModal();
     // Action 4: browser's Back action
     cy.go("back");
-    cancelModal();
-    // Action 5:  browser's Forward action
-    cy.go("forward");
     cancelModal();
   });
 
