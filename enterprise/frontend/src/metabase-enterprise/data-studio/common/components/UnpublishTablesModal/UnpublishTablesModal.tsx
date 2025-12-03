@@ -7,6 +7,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
   Button,
@@ -112,6 +113,7 @@ function ModalBody({
     table_ids: tableIds,
   });
   const [unpublishTables] = useUnpublishTablesMutation();
+  const { sendSuccessToast } = useMetadataToasts();
 
   if (isLoading || error != null || data == null) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -127,6 +129,7 @@ function ModalBody({
       schema_ids: schemaIds,
       table_ids: tableIds,
     }).unwrap();
+    sendSuccessToast(t`Unpublished`);
     onUnpublish();
   };
 

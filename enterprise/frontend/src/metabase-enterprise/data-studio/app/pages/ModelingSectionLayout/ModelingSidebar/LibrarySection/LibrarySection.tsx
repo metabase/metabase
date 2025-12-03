@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { isLibraryCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -31,7 +30,6 @@ export function LibrarySection({
   const isAdmin = useSelector(getUserIsAdmin);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
-  const { sendSuccessToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
   const rootCollection = useMemo(
@@ -41,7 +39,6 @@ export function LibrarySection({
 
   const handleCreate = (collection: Collection) => {
     closeModal();
-    sendSuccessToast(t`Library created`);
     dispatch(push(Urls.dataStudioCollection(collection.id)));
   };
 

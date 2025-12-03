@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
   Button,
@@ -71,9 +72,11 @@ type ModalBodyProps = {
 
 function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
   const [createLibrary] = useCreateLibraryMutation();
+  const { sendSuccessToast } = useMetadataToasts();
 
   const handleSubmit = async () => {
     const collection = await createLibrary().unwrap();
+    sendSuccessToast(t`Library created`);
     onCreate(collection);
   };
 

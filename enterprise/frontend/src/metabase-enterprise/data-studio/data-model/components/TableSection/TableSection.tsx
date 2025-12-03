@@ -28,8 +28,9 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { usePublishTables } from "metabase-enterprise/data-studio/common/hooks/use-publish-tables";
-import { useUnpublishTables } from "metabase-enterprise/data-studio/common/hooks/use-unpublish-tables";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
+import { PublishTablesModal } from "metabase-enterprise/data-studio/common/components/PublishTablesModal";
+import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
@@ -45,6 +46,8 @@ interface Props {
   onSyncOptionsClick: () => void;
 }
 
+type TableModalType = "library" | "publish" | "unpublish";
+
 const TableSectionBase = ({
   table,
   activeFieldId,
@@ -55,14 +58,11 @@ const TableSectionBase = ({
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
+  const [modalType, setModalType] = useState<TableModalType>();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
-  const { publishModal, isPublishing, handlePublish } = usePublishTables({
-    hasLibrary,
-  });
-  const { unpublishModal, handleUnpublish } = useUnpublishTables();
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -155,6 +155,18 @@ const TableSectionBase = ({
     }
   };
 
+  const handlePublishToggle = () => {
+    if (!hasLibrary) {
+      setModalType("library");
+    } else {
+      setModalType(table.is_published ? "unpublish" : "publish");
+    }
+  };
+
+  const handleCloseModal = () => {
+    setModalType(undefined);
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box className={S.header} bg="accent-gray-light" px="lg" mt="lg">
@@ -178,12 +190,7 @@ const TableSectionBase = ({
             leftSection={
               <Icon name={table.is_published ? "unpublish" : "publish"} />
             }
-            disabled={isPublishing}
-            onClick={() =>
-              table.is_published
-                ? handleUnpublish({ tableIds: [table.id] })
-                : handlePublish({ tableIds: [table.id] })
-            }
+            onClick={handlePublishToggle}
           >
             {table.is_published ? t`Unpublish` : t`Publish`}
           </Button>
@@ -314,8 +321,23 @@ const TableSectionBase = ({
           )}
         </Stack>
       </Box>
-      {publishModal}
-      {unpublishModal}
+      <CreateLibraryModal
+        isOpened={modalType === "library"}
+        onCreate={() => setModalType("publish")}
+        onClose={handleCloseModal}
+      />
+      <PublishTablesModal
+        isOpened={modalType === "publish"}
+        tableIds={[table.id]}
+        onPublish={handleCloseModal}
+        onClose={handleCloseModal}
+      />
+      <UnpublishTablesModal
+        isOpened={modalType === "unpublish"}
+        tableIds={[table.id]}
+        onUnpublish={handleCloseModal}
+        onClose={handleCloseModal}
+      />
     </Stack>
   );
 };

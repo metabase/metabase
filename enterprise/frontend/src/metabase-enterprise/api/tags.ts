@@ -15,6 +15,8 @@ import type {
   DependencyGraph,
   DependencyNode,
   DocumentDependencyNode,
+  GetTableSelectionInfoResponse,
+  PublishTableInfo,
   PythonLibrary,
   SandboxDependencyNode,
   SnippetDependencyNode,
@@ -291,4 +293,16 @@ export function provideSupportAccessGrantListTags(
     listTag("support-access-grant"),
     ...grants.flatMap(provideSupportAccessGrantTags),
   ];
+}
+
+export function providePublishTableTags(
+  table: PublishTableInfo,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("table", table.id)];
+}
+
+export function provideTableSelectionTags(
+  _response: GetTableSelectionInfoResponse,
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("table")];
 }

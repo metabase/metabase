@@ -1,3 +1,4 @@
+import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -7,6 +8,9 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
   Button,
@@ -22,7 +26,6 @@ import {
   usePublishTablesMutation,
 } from "metabase-enterprise/api";
 import type {
-  Collection,
   DatabaseId,
   PublishTableInfo,
   SchemaId,
@@ -34,7 +37,7 @@ type PublishTablesModalProps = {
   schemaIds?: SchemaId[];
   tableIds?: TableId[];
   isOpened: boolean;
-  onPublish: (collection: Collection) => void;
+  onPublish: () => void;
   onClose: () => void;
 };
 
@@ -96,7 +99,7 @@ type ModalBodyProps = {
   databaseIds: DatabaseId[] | undefined;
   schemaIds: SchemaId[] | undefined;
   tableIds: TableId[] | undefined;
-  onPublish: (collection: Collection) => void;
+  onPublish: () => void;
   onClose: () => void;
 };
 
@@ -113,6 +116,8 @@ function ModalBody({
     table_ids: tableIds,
   });
   const [publishTables] = usePublishTablesMutation();
+  const { sendSuccessToast } = useMetadataToasts();
+  const dispatch = useDispatch();
 
   if (isLoading || error != null || data == null) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -128,7 +133,12 @@ function ModalBody({
       schema_ids: schemaIds,
       table_ids: tableIds,
     }).unwrap();
-    onPublish(target_collection);
+    sendSuccessToast(
+      t`Published`,
+      () => dispatch(push(Urls.dataStudioCollection(target_collection.id))),
+      t`Go to ${target_collection.name}`,
+    );
+    onPublish();
   };
 
   return (
