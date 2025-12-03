@@ -2,7 +2,6 @@ import { useMemo } from "react";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import type { LibraryCollectionType } from "metabase/plugins";
-import type { UserWithApplicationPermissions } from "metabase/plugins/oss/permissions";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
@@ -20,7 +19,7 @@ export function canAccessDataStudio(state: State) {
   if (getUserIsAdmin(state)) {
     return true;
   }
-  const user = getUser(state) as UserWithApplicationPermissions | null;
+  const user = getUser(state);
   return user?.permissions?.can_access_data_studio ?? false;
 }
 

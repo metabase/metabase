@@ -52,6 +52,7 @@ export interface UserPermissions {
   can_access_monitoring?: boolean;
   can_access_setting?: boolean;
   can_access_subscription?: boolean;
+  can_access_data_studio?: boolean;
 }
 
 export interface User extends BaseUser {
