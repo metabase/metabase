@@ -2,11 +2,11 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
+  isDedicatedTenantCollectionRoot,
   isInstanceAnalyticsCustomCollection,
   isPersonalCollection,
   isRootCollection,
   isRootPersonalCollection,
-  isDedicatedTenantCollectionRoot,
 } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
@@ -81,7 +81,12 @@ export const CollectionMenu = ({
     );
   }
 
-  if (isAdmin && !isPersonal && !isDedicatedTenantCollectionRoot(collection)) {
+  if (
+    isAdmin &&
+    !isPersonal &&
+    !isDedicatedTenantCollectionRoot(collection) &&
+    !isSharedTenantCollection
+  ) {
     editItems.push(
       <Menu.Item
         key="collection-edit"
