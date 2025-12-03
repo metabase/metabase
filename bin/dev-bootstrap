@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Colors for output (will be extracted to shared utils later)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
+print_header() {
+    echo -e "\n${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BOLD}${BLUE}  $1${NC}"
+    echo -e "${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
+}
+
+print_step() {
+    echo -e "\n${BOLD}${BLUE}→${NC} ${BOLD}$1${NC}"
+}
+
+print_success() {
+    echo -e "  ${GREEN}✓${NC} $1"
+}
+
+print_error() {
+    echo -e "  ${RED}✗${NC} $1"
+}
+
+print_warning() {
+    echo -e "  ${YELLOW}⚠${NC} $1"
+}
+
+get_file_age() {
+    local file="$1"
+    if [ ! -f "$file" ]; then
+        echo "not found"
+        return
+    fi
+
+    local now=$(date +%s)
+    local file_time=$(stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null)
+    local age_seconds=$((now - file_time))
+
+    if [ $age_seconds -lt 60 ]; then
+        echo "${age_seconds}s ago"
+    elif [ $age_seconds -lt 3600 ]; then
+        echo "$((age_seconds / 60))m ago"
+    elif [ $age_seconds -lt 86400 ]; then
+        echo "$((age_seconds / 3600))h ago"
+    else
+        echo "$((age_seconds / 86400))d ago"
+    fi
+}
+
+check_required_tools() {
+    local missing=()
+
+    if ! command -v node &> /dev/null; then
+        missing+=("node")
+    fi
+
+    if ! command -v yarn &> /dev/null; then
+        missing+=("yarn")
+    fi
+
+    if ! command -v java &> /dev/null; then
+        missing+=("java")
+    fi
+
+    if ! command -v clojure &> /dev/null; then
+        missing+=("clojure")
+    fi
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo -e "${RED}${BOLD}Missing required tools:${NC} ${missing[*]}"
+        echo ""
+        echo "Run ./bin/dev-requirements to check your development environment."
+        echo ""
+        echo "If you'd like an automated setup, run ./bin/dev-install (uses mise)."
+        exit 1
+    fi
+}
+
+install_frontend_deps() {
+    print_step "Installing frontend dependencies"
+
+    if yarn install --frozen-lockfile --prefer-offline; then
+        print_success "Frontend dependencies installed"
+    else
+        print_error "Failed to install frontend dependencies"
+        exit 1
+    fi
+}
+
+install_backend_deps() {
+    print_step "Downloading backend dependencies"
+
+    if clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P; then
+        print_success "Backend dependencies downloaded"
+    else
+        print_error "Failed to download backend dependencies"
+        exit 1
+    fi
+}
+
+ask_yes_no() {
+    local prompt=$1
+    local default=${2:-y}
+    local yn
+
+    if [ "$default" = "y" ]; then
+        prompt="$prompt [Y/n] "
+    else
+        prompt="$prompt [y/N] "
+    fi
+
+    read -r -p "$prompt" yn
+    yn=${yn:-$default}
+
+    case "$yn" in
+        [Yy]*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+build_jar() {
+    print_step "Building Metabase JAR (this may take a while)"
+
+    if ./bin/build.sh; then
+        print_success "Metabase JAR built successfully"
+    else
+        print_error "Failed to build Metabase JAR"
+        exit 1
+    fi
+}
+
+main() {
+    print_header "Metabase Development Bootstrap"
+
+    echo "This script will:"
+    echo "  1. Verify required tools are installed"
+    echo "  2. Install frontend dependencies (yarn)"
+    echo "  3. Download backend dependencies (Clojure)"
+    echo "  4. Build the Metabase JAR"
+    echo ""
+
+    print_step "Checking required tools"
+    check_required_tools
+    print_success "All required tools found"
+
+    install_frontend_deps
+    install_backend_deps
+
+    # Check for existing JAR and show its age
+    local jar_file="target/uberjar/metabase.jar"
+    local jar_age=$(get_file_age "$jar_file")
+
+    echo ""
+    if [ "$jar_age" = "not found" ]; then
+        if ask_yes_no "Build the Metabase JAR? (takes several minutes)" "n"; then
+            build_jar
+        else
+            print_warning "Skipping JAR build"
+            echo "      You can build it later with: ./bin/build.sh"
+        fi
+    else
+        echo -e "  ${GREEN}✓${NC} Existing JAR found (built ${jar_age})"
+        if ask_yes_no "Rebuild it?" "n"; then
+            build_jar
+        else
+            print_warning "Keeping existing JAR"
+        fi
+    fi
+
+    print_header "Bootstrap Complete!"
+
+    echo "Your development environment is ready."
+    echo ""
+    echo "To start the backend:  clojure -M:dev:run"
+    echo "To start the frontend: yarn build-hot"
+    echo ""
+    echo "For more information, see docs/developers-guide/devenv.md"
+    echo ""
+}
+
+main "$@"
