@@ -302,13 +302,13 @@ export function provideBulkTableInfoTags(
 }
 
 export function provideBulkTableSelectionInfoTags({
-  selected_tables,
+  selected_table,
   published_downstream_tables,
   unpublished_upstream_tables,
 }: BulkTableSelectionInfo): TagDescription<EnterpriseTagType>[] {
   return [
     listTag("table"),
-    ...selected_tables.flatMap(provideBulkTableInfoTags),
+    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
     ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
     ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
   ];

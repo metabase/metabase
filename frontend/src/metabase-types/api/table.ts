@@ -249,8 +249,11 @@ export interface BulkTableSelection {
 }
 
 export interface BulkTableSelectionInfo {
-  selected_tables: BulkTableInfo[];
+  // if only one table was selected, returns this table, otherwise null
+  selected_table: BulkTableInfo | null;
+  // tables outside the selection that use selected tables for remapping
   published_downstream_tables: BulkTableInfo[];
+  // tables outside the selection that are used for remapping by selected tables
   unpublished_upstream_tables: BulkTableInfo[];
 }
 

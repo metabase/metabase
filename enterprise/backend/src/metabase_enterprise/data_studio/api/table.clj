@@ -175,15 +175,15 @@
   (api/check-superuser)
   (let [fields            [:model/Table :id :db_id :name :display_name :schema :is_published]
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        selected-tables   (t2/select fields {:where where})
-        selected-ids      (set (map :id selected-tables))
+        selected-ids      (t2/select-fn-set :id :model/Table {:where where})
+        selected-table    (when (= 1 (count selected-ids)) (t2/select-one fields :id (first selected-ids)))
         upstream-ids      (set/difference (all-upstream-table-ids selected-ids) selected-ids)
         downstream-ids    (set/difference (all-downstream-table-ids selected-ids) selected-ids)
         upstream-tables   (when (seq upstream-ids)
                             (t2/select fields :id [:in upstream-ids]))
         downstream-tables (when (seq downstream-ids)
                             (t2/select fields :id [:in downstream-ids]))]
-    {:selected_tables             selected-tables
+    {:selected_table              selected-table
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
 

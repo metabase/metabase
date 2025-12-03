@@ -378,24 +378,37 @@
                      :model/Table    {t1 :id} {:db_id db-id :name "orders" :schema "PUBLIC" :is_published false}
                      :model/Table    {t2 :id} {:db_id db-id :name "products" :schema "PUBLIC" :is_published true}
                      :model/Table    _        {:db_id db-id :name "people" :schema "PUBLIC" :is_published false}]
-        (testing "returns published and unpublished tables in selection with all required fields"
+        (testing "returns a published table in selection with all required fields"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [t2]})]
+            (is (=? {:selected_table {:id           t2
+                                      :db_id        db-id
+                                      :name         "products"
+                                      :display_name "Products"
+                                      :schema       "PUBLIC"
+                                      :is_published true}}
+                    response))))
+        (testing "returns an unpublished table in selection with all required fields"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [t1]})]
+            (is (=? {:selected_table {:id           t1
+                                      :db_id        db-id
+                                      :name         "orders"
+                                      :display_name "Orders"
+                                      :schema       "PUBLIC"
+                                      :is_published false}}
+                    response))))
+        (testing "returns nil for :selected_table when there are multiple selected tables"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [t1 t2]})]
-            (is (=? {:selected_tables   [{:id           t2
-                                          :db_id        db-id
-                                          :name         "products"
-                                          :display_name "Products"
-                                          :schema       "PUBLIC"}
-                                         {:id           t1
-                                          :db_id        db-id
-                                          :name         "orders"
-                                          :display_name "Orders"
-                                          :schema       "PUBLIC"}]}
-                    response))
+            (is (=? {:selected_table nil}
+                    response))))
+        (testing "tables with no remapping should have empty upstream/downstream"
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
+                                               {:table_ids [t2]})]
             (is (=? {:published_downstream_tables []
                      :unpublished_upstream_tables []}
-                    response)
-                "tables with no remapping should have empty upstream/downstream")))))))
+                    response))))))))
 
 (deftest selection-with-remapping-test
   (mt/with-premium-features #{:data-studio}
@@ -420,11 +433,11 @@
         (testing "selecting orders returns products as upstream dependency"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [orders-id]})]
-            (is (=? {:selected_tables             [{:id           orders-id
+            (is (=? {:selected_table               {:id           orders-id
                                                     :db_id        db-id
                                                     :name         "orders"
                                                     :display_name "Orders"
-                                                    :schema       "PUBLIC"}]
+                                                    :schema       "PUBLIC"}
                      :unpublished_upstream_tables [{:id           products-id
                                                     :db_id        db-id
                                                     :name         "products"
@@ -436,11 +449,11 @@
           (t2/update! :model/Table products-id {:is_published true})
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [products-id]})]
-            (is (=? {:selected_tables             [{:id           products-id
+            (is (=? {:selected_table               {:id           products-id
                                                     :db_id        db-id
                                                     :name         "products"
                                                     :display_name "Products"
-                                                    :schema       "PUBLIC"}]
+                                                    :schema       "PUBLIC"}
                      :unpublished_upstream_tables []}
                     response))
             ;; orders is unpublished and depends on products
@@ -453,11 +466,11 @@
           (t2/update! :model/Table products-id {:is_published true})
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [products-id]})]
-            (is (=? {:selected_tables             [{:id           products-id
+            (is (=? {:selected_table               {:id           products-id
                                                     :db_id        db-id
                                                     :name         "products"
                                                     :display_name "Products"
-                                                    :schema       "PUBLIC"}]
+                                                    :schema       "PUBLIC"}
                      :published_downstream_tables [{:id           orders-id
                                                     :db_id        db-id
                                                     :name         "orders"
@@ -505,11 +518,11 @@
         (testing "selecting order_items returns orders and customers as upstream (recursive)"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [items-id]})]
-            (is (=? {:selected_tables             [{:id           items-id
+            (is (=? {:selected_table               {:id           items-id
                                                     :db_id        db-id
                                                     :name         "order_items"
                                                     :display_name "Order Items"
-                                                    :schema       "PUBLIC"}]
+                                                    :schema       "PUBLIC"}
                      :unpublished_upstream_tables (mt/malli=? [:sequential {:min 2 :max 2} :map])}
                     response))
             (is (= #{orders-id customers-id}
@@ -558,11 +571,11 @@
         (testing "selecting customers returns orders and order_items as downstream (recursive)"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [customers-id]})]
-            (is (=? {:selected_tables             [{:id           customers-id
+            (is (=? {:selected_table               {:id           customers-id
                                                     :db_id        db-id
                                                     :name         "customers"
                                                     :display_name "Customers"
-                                                    :schema       "PUBLIC"}]
+                                                    :schema       "PUBLIC"}
                      :published_downstream_tables (mt/malli=? [:sequential {:min 2 :max 2} :map])}
                     response))
             (is (= #{orders-id items-id}

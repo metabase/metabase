@@ -86,8 +86,8 @@ function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
     return null;
   }
 
-  const { selected_tables, published_downstream_tables } = data;
-  return <>{getTitle(selected_tables, published_downstream_tables)}</>;
+  const { selected_table, published_downstream_tables } = data;
+  return <>{getTitle(selected_table, published_downstream_tables)}</>;
 }
 
 type ModalBodyProps = {
@@ -117,7 +117,7 @@ function ModalBody({
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { selected_tables, published_downstream_tables } = data;
+  const { selected_table, published_downstream_tables } = data;
 
   const handleSubmit = async () => {
     await unpublishTables({
@@ -134,11 +134,11 @@ function ModalBody({
       <Form>
         <Stack gap="sm">
           <Text>
-            {getInfoMessage(selected_tables, published_downstream_tables)}
+            {getInfoMessage(selected_table, published_downstream_tables)}
           </Text>
           {published_downstream_tables.length > 0 && (
             <>
-              <Text>{getForeignKeyMessage(selected_tables)}</Text>
+              <Text>{getForeignKeyMessage(selected_table)}</Text>
               <List spacing="sm">
                 {published_downstream_tables.map((table) => (
                   <List.Item key={table.id} fw="bold">
@@ -156,7 +156,7 @@ function ModalBody({
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
           <FormSubmitButton
             label={getSubmitButtonLabel(
-              selected_tables,
+              selected_table,
               published_downstream_tables,
             )}
             variant="filled"
@@ -169,13 +169,13 @@ function ModalBody({
 }
 
 function getTitle(
-  selectedTables: BulkTableInfo[],
+  selectedTable: BulkTableInfo | null,
   publishedRemappedTables: BulkTableInfo[],
 ) {
-  if (selectedTables.length === 1) {
+  if (selectedTable != null) {
     return publishedRemappedTables.length > 0
-      ? t`Unpublish ${selectedTables[0].display_name} and the tables that depend on it?`
-      : t`Unpublish ${selectedTables[0].display_name}?`;
+      ? t`Unpublish ${selectedTable.display_name} and the tables that depend on it?`
+      : t`Unpublish ${selectedTable.display_name}?`;
   }
 
   return publishedRemappedTables.length > 0
@@ -184,27 +184,27 @@ function getTitle(
 }
 
 function getInfoMessage(
-  selectedTables: BulkTableInfo[],
+  selectedTable: BulkTableInfo | null,
   publishedRemappedTables: BulkTableInfo[],
 ) {
-  return selectedTables.length === 1 && publishedRemappedTables.length === 0
+  return selectedTables != null && publishedRemappedTables.length === 0
     ? t`This will remove this table from the Library.`
     : t`This will remove these tables from the Library.`;
 }
 
-function getForeignKeyMessage(selectedTables: BulkTableInfo[]) {
-  return selectedTables.length === 1
+function getForeignKeyMessage(selectedTable: BulkTableInfo | null) {
+  return selectedTable != null
     ? jt`Because values in ${(
-        <strong key="table">{selectedTables[0].display_name}</strong>
+        <strong key="table">{selectedTable.display_name}</strong>
       )} are used as display values in other published tables, you'll need to unpublish these, too:`
     : t`Because values in some of the tables you've selected are used as display values in other published tables, you'll need to unpublish the tables below, too:`;
 }
 
 function getSubmitButtonLabel(
-  selectedTables: BulkTableInfo[],
+  selectedTable: BulkTableInfo | null,
   publishedRemappedTables: BulkTableInfo[],
 ) {
-  return selectedTables.length === 1 && publishedRemappedTables.length === 0
+  return selectedTable != null && publishedRemappedTables.length === 0
     ? t`Unpublish this table`
     : t`Unpublish these tables`;
 }
