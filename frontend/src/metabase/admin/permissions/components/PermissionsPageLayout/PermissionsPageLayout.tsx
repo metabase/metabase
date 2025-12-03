@@ -140,6 +140,12 @@ export function PermissionsPageLayout({
           />
         )}
 
+        <LeaveRouteConfirmModal
+          isEnabled={Boolean(isDirty)}
+          route={route}
+          onConfirm={() => onLoad?.()}
+        />
+
         <ConfirmModal
           opened={saveError != null}
           onClose={clearSaveError}
