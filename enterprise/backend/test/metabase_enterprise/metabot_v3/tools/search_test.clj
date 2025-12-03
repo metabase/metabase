@@ -414,4 +414,3 @@
                                     (map (comp first #(str/split % #"\s") :name))))]
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
-
