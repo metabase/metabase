@@ -1,0 +1,106 @@
+{
+  "realm": "metabase",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@metabase.test",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123"
+        }
+      ]
+    },
+    {
+      "username": "testuser",
+      "email": "testuser@metabase.test",
+      "firstName": "Test",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test123"
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "Metabase",
+      "name": "Metabase SAML Client",
+      "enabled": true,
+      "protocol": "saml",
+      "frontchannelLogout": true,
+      "attributes": {
+        "saml.authnstatement": "true",
+        "saml.server.signature": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml.client.signature": "false",
+        "saml.assertion.signature": "true",
+        "saml.encrypt": "false",
+        "saml_force_name_id_format": "false",
+        "saml.multivalued.roles": "false",
+        "saml_name_id_format": "email",
+        "saml_signature_canonicalization_method": "http://www.w3.org/2001/10/xml-exc-c14n#"
+      },
+      "redirectUris": [
+        "http://localhost:3000/auth/sso*",
+        "http://localhost:8080/auth/sso*",
+        "http://metabase.localhost:3000/auth/sso*"
+      ],
+      "defaultClientScopes": [],
+      "optionalClientScopes": [],
+      "baseUrl": "http://metabase.localhost:3000",
+      "adminUrl": "http://metabase.localhost:3000",
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "email",
+            "attribute.name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+          }
+        },
+        {
+          "name": "firstName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "firstName",
+            "attribute.name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
+          }
+        },
+        {
+          "name": "lastName",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.nameformat": "Basic",
+            "user.attribute": "lastName",
+            "attribute.name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"
+          }
+        }
+      ]
+    }
+  ]
+}

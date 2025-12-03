@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: metabase-keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8090:8080"
+    volumes:
+      - .:/opt/keycloak/data/import
+    command:
+      - start-dev
+      - --import-realm
+    networks:
+      - metabase-saml
+
+networks:
+  metabase-saml:
+    driver: bridge
