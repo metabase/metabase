@@ -26,8 +26,8 @@ import {
   usePublishTablesMutation,
 } from "metabase-enterprise/api";
 import type {
+  BulkTableInfo,
   DatabaseId,
-  PublishTableInfo,
   SchemaId,
   TableId,
 } from "metabase-types/api";
@@ -176,8 +176,8 @@ function ModalBody({
 }
 
 function getTitle(
-  selectedTables: PublishTableInfo[],
-  unpublishedRemappedTables: PublishTableInfo[],
+  selectedTables: BulkTableInfo[],
+  unpublishedRemappedTables: BulkTableInfo[],
 ) {
   if (selectedTables.length === 1) {
     return unpublishedRemappedTables.length > 0
@@ -190,7 +190,7 @@ function getTitle(
     : t`Publish these tables?`;
 }
 
-function getForeignKeyMessage(selectedTables: PublishTableInfo[]) {
+function getForeignKeyMessage(selectedTables: BulkTableInfo[]) {
   return selectedTables.length === 1
     ? jt`Because ${(
         <strong key="table">{selectedTables[0].display_name}</strong>
@@ -199,8 +199,8 @@ function getForeignKeyMessage(selectedTables: PublishTableInfo[]) {
 }
 
 function getSubmitButtonLabel(
-  selectedTables: PublishTableInfo[],
-  unpublishedRemappedTables: PublishTableInfo[],
+  selectedTables: BulkTableInfo[],
+  unpublishedRemappedTables: BulkTableInfo[],
 ) {
   return selectedTables.length === 1 && unpublishedRemappedTables.length === 0
     ? t`Publish this table`

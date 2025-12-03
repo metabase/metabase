@@ -233,7 +233,7 @@ export type TableData = {
   started_at?: string;
 };
 
-export interface PublishTableInfo {
+export interface BulkTableInfo {
   id: TableId;
   db_id: DatabaseId;
   name: string;
@@ -241,31 +241,19 @@ export interface PublishTableInfo {
   schema: string | null;
 }
 
-export interface GetTableSelectionInfoRequest {
+export interface BulkTableSelection {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
 }
 
-export interface GetTableSelectionInfoResponse {
-  published_tables: PublishTableInfo[];
-  published_downstream_tables: PublishTableInfo[];
-  unpublished_tables: PublishTableInfo[];
-  unpublished_upstream_tables: PublishTableInfo[];
-}
-
-export interface PublishTablesRequest {
-  database_ids?: DatabaseId[];
-  schema_ids?: SchemaId[];
-  table_ids?: TableId[];
+export interface BulkTableSelectionInfo {
+  published_tables: BulkTableInfo[];
+  published_downstream_tables: BulkTableInfo[];
+  unpublished_tables: BulkTableInfo[];
+  unpublished_upstream_tables: BulkTableInfo[];
 }
 
 export interface PublishTablesResponse {
   target_collection: Collection;
-}
-
-export interface UnpublishTablesRequest {
-  database_ids?: DatabaseId[];
-  schema_ids?: SchemaId[];
-  table_ids?: TableId[];
 }

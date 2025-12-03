@@ -1,13 +1,11 @@
 import type {
+  BulkTableSelection,
+  BulkTableSelectionInfo,
   DiscardTablesValuesRequest,
   EditTablesRequest,
-  GetTableSelectionInfoRequest,
-  GetTableSelectionInfoResponse,
-  PublishTablesRequest,
   PublishTablesResponse,
   RescanTablesValuesRequest,
   SyncTablesSchemaRequest as SyncTablesSchemasRequest,
-  UnpublishTablesRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -16,8 +14,8 @@ import { invalidateTags, listTag, tag } from "./tags";
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     getTableSelectionInfo: builder.query<
-      GetTableSelectionInfoResponse,
-      GetTableSelectionInfoRequest
+      BulkTableSelectionInfo,
+      BulkTableSelection
     >({
       query: (body) => ({
         method: "POST",
@@ -70,10 +68,7 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    publishTables: builder.mutation<
-      PublishTablesResponse,
-      PublishTablesRequest
-    >({
+    publishTables: builder.mutation<PublishTablesResponse, BulkTableSelection>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/publish-tables",
@@ -82,7 +77,7 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
     }),
-    unpublishTables: builder.mutation<void, UnpublishTablesRequest>({
+    unpublishTables: builder.mutation<void, BulkTableSelection>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/unpublish-tables",

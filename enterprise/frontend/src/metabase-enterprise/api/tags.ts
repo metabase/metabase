@@ -9,14 +9,14 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import type {
+  BulkTableInfo,
+  BulkTableSelectionInfo,
   CardDependencyNode,
   Comment,
   DashboardDependencyNode,
   DependencyGraph,
   DependencyNode,
   DocumentDependencyNode,
-  GetTableSelectionInfoResponse,
-  PublishTableInfo,
   PythonLibrary,
   SandboxDependencyNode,
   SnippetDependencyNode,
@@ -296,13 +296,13 @@ export function provideSupportAccessGrantListTags(
 }
 
 export function providePublishTableTags(
-  table: PublishTableInfo,
+  table: BulkTableInfo,
 ): TagDescription<EnterpriseTagType>[] {
   return [idTag("table", table.id)];
 }
 
 export function provideTableSelectionTags(
-  _response: GetTableSelectionInfoResponse,
+  _response: BulkTableSelectionInfo,
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("table")];
 }

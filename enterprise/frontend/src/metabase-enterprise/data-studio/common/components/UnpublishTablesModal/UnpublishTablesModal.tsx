@@ -23,8 +23,8 @@ import {
   useUnpublishTablesMutation,
 } from "metabase-enterprise/api";
 import type {
+  BulkTableInfo,
   DatabaseId,
-  PublishTableInfo,
   SchemaId,
   TableId,
 } from "metabase-types/api";
@@ -171,8 +171,8 @@ function ModalBody({
 }
 
 function getTitle(
-  selectedTables: PublishTableInfo[],
-  publishedRemappedTables: PublishTableInfo[],
+  selectedTables: BulkTableInfo[],
+  publishedRemappedTables: BulkTableInfo[],
 ) {
   if (selectedTables.length === 1) {
     return publishedRemappedTables.length > 0
@@ -186,15 +186,15 @@ function getTitle(
 }
 
 function getInfoMessage(
-  selectedTables: PublishTableInfo[],
-  publishedRemappedTables: PublishTableInfo[],
+  selectedTables: BulkTableInfo[],
+  publishedRemappedTables: BulkTableInfo[],
 ) {
   return selectedTables.length === 1 && publishedRemappedTables.length === 0
     ? t`This will remove this table from the Library.`
     : t`This will remove these tables from the Library.`;
 }
 
-function getForeignKeyMessage(selectedTables: PublishTableInfo[]) {
+function getForeignKeyMessage(selectedTables: BulkTableInfo[]) {
   return selectedTables.length === 1
     ? jt`Because values in ${(
         <strong key="table">{selectedTables[0].display_name}</strong>
@@ -203,8 +203,8 @@ function getForeignKeyMessage(selectedTables: PublishTableInfo[]) {
 }
 
 function getSubmitButtonLabel(
-  selectedTables: PublishTableInfo[],
-  publishedRemappedTables: PublishTableInfo[],
+  selectedTables: BulkTableInfo[],
+  publishedRemappedTables: BulkTableInfo[],
 ) {
   return selectedTables.length === 1 && publishedRemappedTables.length === 0
     ? t`Unpublish this table`
