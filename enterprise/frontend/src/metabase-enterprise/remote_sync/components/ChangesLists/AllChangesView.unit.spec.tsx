@@ -25,20 +25,14 @@ const deletedEntity = createMockRemoteSyncEntity({
 
 const setup = ({
   entities = [updatedEntity],
-  isTenantCollectionsRemoteSyncEnabled = false,
 }: {
   entities: RemoteSyncEntity[];
-  isTenantCollectionsRemoteSyncEnabled?: boolean;
 }) => {
   const collections = [createMockCollection({ name: "Entity Collection" })];
 
   fetchMock.get("/api/collection/tree", collections);
   fetchMock.get("/api/collection/tree?namespace=shared-tenant-collection", []);
   fetchMock.get("path:/api/session/properties", {});
-  fetchMock.get("path:/api/setting", {
-    "tenant-collections-remote-sync-enabled":
-      isTenantCollectionsRemoteSyncEnabled,
-  });
 
   renderWithProviders(
     <AllChangesView entities={entities} collections={collections} />,
@@ -69,7 +63,7 @@ describe("AllChangesView", () => {
   });
 
   describe("namespaced collections", () => {
-    it("should display collections from namespaces like shared-tenant-collection when feature is enabled", () => {
+    it("should display collections from namespaces like shared-tenant-collection", () => {
       const namespacedCollection = createMockCollection({
         id: 10,
         name: "Tenant Collection",
@@ -89,9 +83,6 @@ describe("AllChangesView", () => {
         namespacedCollection,
       ]);
       fetchMock.get("path:/api/session/properties", {});
-      fetchMock.get("path:/api/setting", {
-        "tenant-collections-remote-sync-enabled": true,
-      });
 
       renderWithProviders(
         <AllChangesView
@@ -106,7 +97,7 @@ describe("AllChangesView", () => {
       ).toBeInTheDocument();
     });
 
-    it("should display collection hierarchy for namespaced collections with ancestors when feature is enabled", () => {
+    it("should display collection hierarchy for namespaced collections with ancestors", () => {
       const parentCollection = createMockCollection({
         id: 5,
         name: "Parent Tenant Collection",
@@ -134,9 +125,6 @@ describe("AllChangesView", () => {
         childCollection,
       ]);
       fetchMock.get("path:/api/session/properties", {});
-      fetchMock.get("path:/api/setting", {
-        "tenant-collections-remote-sync-enabled": true,
-      });
 
       renderWithProviders(
         <AllChangesView
@@ -150,7 +138,7 @@ describe("AllChangesView", () => {
       expect(screen.getByText("Item in Child Collection")).toBeInTheDocument();
     });
 
-    it("should not fetch tenant collections when feature is disabled", () => {
+    it("should display regular items in collections", () => {
       const entityInCollection = createMockRemoteSyncEntity({
         id: 20,
         name: "Regular Item",
@@ -161,7 +149,6 @@ describe("AllChangesView", () => {
 
       setup({
         entities: [entityInCollection],
-        isTenantCollectionsRemoteSyncEnabled: false,
       });
 
       expect(screen.getByText("Entity Collection")).toBeInTheDocument();

@@ -6,6 +6,7 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
+import { CollectionRemoteSyncToggle } from "./components/CollectionRemoteSyncToggle";
 import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings/RemoteSyncAdminSettings";
 import { SyncedCollectionsSidebarSection } from "./components/SyncedCollectionsSidebarSection/SyncedCollectionsSidebarSection";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
@@ -22,6 +23,7 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;
+    PLUGIN_REMOTE_SYNC.CollectionRemoteSyncToggle = CollectionRemoteSyncToggle;
     PLUGIN_REMOTE_SYNC.REMOTE_SYNC_INVALIDATION_TAGS =
       REMOTE_SYNC_INVALIDATION_TAGS;
     PLUGIN_REMOTE_SYNC.useSyncStatus = useSyncStatus;

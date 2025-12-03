@@ -50,9 +50,9 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
           (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
-            (mt/with-temp [:model/Collection {child-id :id :as child} {:name "Child Collection"
-                                                                       :namespace :tenant-specific
-                                                                       :location (collection/children-location tenant-coll)}]
+            (mt/with-temp [:model/Collection child {:name "Child Collection"
+                                                    :namespace :tenant-specific
+                                                    :location (collection/children-location tenant-coll)}]
               (testing "child has tenant-specific namespace"
                 (is (= :tenant-specific (:namespace child))))
 

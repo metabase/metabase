@@ -6,7 +6,6 @@ import {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { CreateCollectionForm } from "metabase/collections/components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "metabase/collections/components/CreateCollectionForm/CreateCollectionForm";
 import { Tree } from "metabase/common/components/tree";
@@ -33,10 +32,6 @@ export const MainNavSharedCollections = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
 
-  const { value: isTenantCollectionsRemoteSyncEnabled } = useAdminSetting(
-    "tenant-collections-remote-sync-enabled",
-  );
-
   const { data: tenantCollections } = useListCollectionsTreeQuery(
     { namespace: "shared-tenant-collection" },
     {
@@ -44,14 +39,20 @@ export const MainNavSharedCollections = () => {
     },
   );
 
-  // Fetch flat list of tenant collections for dirty state calculation
+  // Fetch flat list of tenant collections to check if any are remote-synced
   const { data: tenantCollectionsList = [] } = useListCollectionsQuery(
     { namespace: "shared-tenant-collection" },
-    { skip: !isTenantsEnabled || !isTenantCollectionsRemoteSyncEnabled },
+    { skip: !isTenantsEnabled },
+  );
+
+  // Check if any tenant collections have is_remote_synced=true
+  const hasRemoteSyncedTenantCollections = useMemo(
+    () => tenantCollectionsList.some((c) => c.is_remote_synced),
+    [tenantCollectionsList],
   );
 
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
-    skip: !isTenantCollectionsRemoteSyncEnabled,
+    skip: !hasRemoteSyncedTenantCollections,
     refetchOnFocus: true,
   });
 
@@ -62,31 +63,15 @@ export const MainNavSharedCollections = () => {
     [tenantCollections],
   );
 
-  // Merge tenant collections into the changed collections map
-  // This ensures dirty state is correctly shown for items in tenant namespace collections
-  const changedCollections = useMemo(() => {
-    if (!dirtyData?.changedCollections) {
-      return {};
-    }
-
-    const merged = { ...dirtyData.changedCollections };
-
-    // Add tenant collections to the changed collections map
-    // This allows showChangesBadge to work correctly for tenant namespace collections
-    tenantCollectionsList.forEach((collection) => {
-      if (typeof collection.id === "number" && merged[collection.id]) {
-        // Collection ID is already in the map (has dirty items)
-        return;
-      }
-    });
-
-    return merged;
-  }, [dirtyData?.changedCollections, tenantCollectionsList]);
+  const changedCollections = useMemo(
+    () => dirtyData?.changedCollections ?? {},
+    [dirtyData?.changedCollections],
+  );
 
   const showChangesBadge = useCallback(
     (itemId?: number | string) => {
       if (
-        !isTenantCollectionsRemoteSyncEnabled ||
+        !hasRemoteSyncedTenantCollections ||
         !changedCollections ||
         typeof itemId !== "number"
       ) {
@@ -95,7 +80,7 @@ export const MainNavSharedCollections = () => {
 
       return !!changedCollections[itemId];
     },
-    [isTenantCollectionsRemoteSyncEnabled, changedCollections],
+    [hasRemoteSyncedTenantCollections, changedCollections],
   );
 
   const handleCreateTenantCollection = useCallback(

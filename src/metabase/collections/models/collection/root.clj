@@ -4,7 +4,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [potemkin.types :as p.types]
@@ -62,8 +61,9 @@
                 :namespace collection-namespace
                 :is_personal false
                 :id "root"
-                :is_remote_synced (when (= (keyword collection-namespace) :shared-tenant-collection)
-                                    (remote-sync/tenant-collections-remote-sync-enabled?))))
+                ;; Root collection itself is not remote-synced; individual top-level collections
+                ;; within the shared-tenant-collection namespace can be toggled individually.
+                :is_remote_synced false))
 
 (defn hydrated-root-collection
   "Return the root collection entity."

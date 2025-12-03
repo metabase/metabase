@@ -9,7 +9,10 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_REMOTE_SYNC,
+} from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -64,6 +67,10 @@ export const CollectionInfoSidebar = ({
             </Stack>
             <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay
               collection={collection}
+            />
+            <PLUGIN_REMOTE_SYNC.CollectionRemoteSyncToggle
+              collection={collection}
+              onUpdateCollection={onUpdateCollection}
             />
           </Stack>
         </SidesheetCard>

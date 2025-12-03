@@ -5,13 +5,20 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { Collection } from "metabase-types/api";
 
 import type { SyncedCollectionsSidebarSectionProps } from "../types";
+
+export type CollectionRemoteSyncToggleProps = {
+  collection: Collection;
+  onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
+};
 
 const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
+  CollectionRemoteSyncToggle: PluginPlaceholder,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -26,6 +33,7 @@ export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
+  CollectionRemoteSyncToggle: ComponentType<CollectionRemoteSyncToggleProps>;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;

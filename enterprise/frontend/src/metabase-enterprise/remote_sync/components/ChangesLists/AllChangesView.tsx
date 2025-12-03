@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import {
   Box,
   Divider,
@@ -45,15 +44,11 @@ export const AllChangesView = ({
 }: AllChangesViewProps) => {
   const { data: collectionTree = [] } = useListCollectionsTreeQuery();
 
-  const { value: isTenantCollectionsRemoteSyncEnabled } = useAdminSetting(
-    "tenant-collections-remote-sync-enabled",
-  );
-
-  // Fetch collection tree for shared-tenant-collections namespace only if the feature is enabled
-  const { data: tenantCollectionTree = [] } = useListCollectionsTreeQuery(
-    { namespace: "shared-tenant-collection" },
-    { skip: !isTenantCollectionsRemoteSyncEnabled },
-  );
+  // Fetch collection tree for shared-tenant-collections namespace
+  // This is needed to show changes in tenant collections that have is_remote_synced=true
+  const { data: tenantCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "shared-tenant-collection",
+  });
 
   const collectionMap = useMemo(() => {
     const map = new Map([

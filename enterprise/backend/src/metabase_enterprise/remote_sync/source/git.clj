@@ -98,9 +98,9 @@
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
-                      {:url       url
+                      {:url url
                        :repo-path repo-path
-                       :error     (.getMessage e)} e)))))
+                       :error (.getMessage e)} e)))))
 
 (defn- open-jgit [^File repo-path args]
   (if (.exists repo-path)
@@ -228,9 +228,15 @@
   "Writes multiple files to the git repository and commits the changes.
 
   Takes a snapshot map containing a :git Git instance and :version, a commit message string,
-  and a sequence of file maps each with :path and :content keys (paths should be relative to the repository root).
+  and a sequence of file specs (paths should be relative to the repository root).
+
+  Each file spec is a map with either:
+  - :path and :content keys for writing/updating a file
+  - :path and :remove? true for recursively removing all files at that path
+
   Replaces all files in the branch organized by collection prefix - files not in the provided list but in the same
-  collection prefix will be deleted.
+  collection prefix will be deleted. Removal entries with empty paths are no-ops. Removing non-existent paths
+  is also a no-op (idempotent).
 
   Returns the version written. Throws ExceptionInfo if the write or push
   operation fails."
@@ -242,15 +248,21 @@
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
             builder (.builder index)
-            updated-prefixes (into #{} (map (fn [{:keys [path content]}]
-                                              (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                                                    entry (doto (DirCacheEntry. ^String path)
-                                                            (.setFileMode FileMode/REGULAR_FILE)
-                                                            (.setObjectId blob-id))]
-                                                (.add builder entry))
-                                              (path-prefix path)) files))]
+            updated-prefixes (into #{}
+                                   (comp
+                                    (map (fn [{:keys [path content remove?]}]
+                                           (when-not remove?
+                                             (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
+                                                   entry (doto (DirCacheEntry. ^String path)
+                                                           (.setFileMode FileMode/REGULAR_FILE)
+                                                           (.setObjectId blob-id))]
+                                               (.add builder entry)))
+                                           (when (not-empty path)
+                                             (path-prefix path))))
+                                    (remove nil?))
+                                   files)]
 
-        ;; Copy existing tree entries, excluding the file we're updating
+        ;; Copy existing tree entries, excluding files under updated-prefixes
         (when parent-id
           (with-open [rev-walk (RevWalk. repo)
                       tree-walk (TreeWalk. repo)]
@@ -258,11 +270,12 @@
               (.addTree tree-walk (.getTree commit))
               (.setRecursive tree-walk true)
               (while (.next tree-walk)
-                (when-not (matches-prefix (.getPathString tree-walk) updated-prefixes)
-                  (let [entry (doto (DirCacheEntry. (.getPathString tree-walk))
-                                (.setFileMode (.getFileMode tree-walk 0))
-                                (.setObjectId (.getObjectId tree-walk 0)))]
-                    (.add builder entry)))))))
+                (let [path (.getPathString tree-walk)]
+                  (when-not (matches-prefix path updated-prefixes)
+                    (let [entry (doto (DirCacheEntry. path)
+                                  (.setFileMode (.getFileMode tree-walk 0))
+                                  (.setObjectId (.getObjectId tree-walk 0)))]
+                      (.add builder entry))))))))
 
         (.finish builder)
 
@@ -392,7 +405,7 @@
 (defn- get-jgit [^File path {:keys [url token] :as args}]
   (if-let [obj (get @jgit (.getPath path))]
     obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:url   url
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:url url
                                                                      :token token})
                                              (when-not (has-data? (assoc args :git <>))
                                                (FileUtils/deleteDirectory path)

@@ -205,6 +205,7 @@ export interface UpdateCollectionRequest {
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  is_remote_synced?: boolean;
 }
 
 export interface CreateCollectionRequest {

@@ -1539,6 +1539,50 @@
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
+(defn- validate-remote-synced-update!
+  "Validates that is_remote_synced can only be directly set on top-level tenant collections.
+   Child collections must inherit from their parent."
+  [collection-before-update collection-updates]
+  (when (contains? collection-updates :is_remote_synced)
+    (let [is-top-level? (= "/" (:location collection-before-update))
+          is-tenant-ns? (collection/shared-tenant-collection? collection-before-update)]
+      (when-not (and is-top-level? is-tenant-ns?)
+        (throw (ex-info "is_remote_synced can only be set on top-level tenant collections"
+                        {:status-code 400}))))))
+
+(defn- check-remote-sync-toggle!
+  "Performs dependency/dependent checks when toggling is_remote_synced on a collection.
+   - When enabling (false -> true): Check for non-remote-synced dependencies
+   - When disabling (true -> false): Check for remote-synced dependents"
+  [collection new-value]
+  (let [old-value (:is_remote_synced collection)]
+    (when (not= (boolean old-value) (boolean new-value))
+      (if new-value
+        ;; Enabling remote sync - check that all dependencies are also remote-synced
+        (collection/check-non-remote-synced-dependencies collection)
+        ;; Disabling remote sync - check that nothing in remote-synced collections depends on this
+        (collection/check-remote-synced-dependents (:id collection) collection)))))
+
+(defn- cascade-remote-synced-to-descendants!
+  "Updates is_remote_synced on all descendant collections when a top-level collection is toggled.
+   Uses t2/query with HoneySQL to avoid triggering model callbacks that may fail."
+  [collection-id new-value]
+  (let [collection (t2/select-one :model/Collection :id collection-id)
+        location-prefix (str (:location collection) collection-id "/%")]
+    (t2/query {:update (t2/table-name :model/Collection)
+               :set    {:is_remote_synced new-value}
+               :where  [:like :location location-prefix]})))
+
+(defn- update-remote-synced-if-needed!
+  "If the collection-updates contain is_remote_synced, validate and apply the change with cascade."
+  [collection-before-update collection-updates]
+  (when (contains? collection-updates :is_remote_synced)
+    (let [new-value (:is_remote_synced collection-updates)]
+      (t2/with-transaction [_]
+        (t2/update! :model/Collection (:id collection-before-update) {:is_remote_synced new-value})
+        (cascade-remote-synced-to-descendants! (:id collection-before-update) new-value)
+        (check-remote-sync-toggle! collection-before-update new-value)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -1549,12 +1593,13 @@
                     [:id ms/PositiveInt]]
    _query-params
    {authority-level :authority_level, :as collection-updates} :- [:map
-                                                                  [:name            {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:description     {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:archived        {:default false} [:maybe ms/BooleanValue]]
-                                                                  [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:type            {:optional true} [:maybe CollectionType]]
-                                                                  [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+                                                                  [:name             {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:description      {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:archived         {:default false} [:maybe ms/BooleanValue]]
+                                                                  [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
+                                                                  [:type             {:optional true} [:maybe CollectionType]]
+                                                                  [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]
+                                                                  [:is_remote_synced {:optional true} [:maybe ms/BooleanValue]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; if authority_level is changing, make sure we're allowed to do that
@@ -1562,13 +1607,18 @@
                (not= (keyword authority-level) (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
+    ;; if is_remote_synced is changing, validate that it's allowed (only top-level tenant collections)
+    (validate-remote-synced-update! collection-before-update collection-updates)
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
+    ;; Also not `is_remote_synced` since we handle that separately with cascade logic.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
       (when (seq updates)
         (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
+    ;; if we're toggling is_remote_synced, do that with dependency checks and cascade
+    (update-remote-synced-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
       (when config/ee-available?
         (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*}))
