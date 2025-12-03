@@ -2,15 +2,13 @@
   (:require
    [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
-   [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [metabase.collections.models.collection :as collection]))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
 
