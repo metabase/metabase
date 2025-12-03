@@ -38,44 +38,48 @@
 (deftest can-get-tenant-info
   (mt/with-temp [:model/Tenant {id1 :id} {:name "Tenant Name" :slug "sluggy" :attributes {"env" "test"}}
                  :model/User _ {:tenant_id id1}]
-    (is (= {:id id1
-            :name "Tenant Name"
-            :is_active true
-            :slug "sluggy"
-            :member_count 1
-            :attributes {:env "test"}}
-           (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id1))))))
+    (is (=? {:id id1
+             :name "Tenant Name"
+             :is_active true
+             :slug "sluggy"
+             :member_count 1
+             :attributes {:env "test"}
+             :tenant_collection_id integer?}
+            (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id1))))))
 
 (deftest can-update-tenant-name
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}
                  :model/Tenant _ {:name "Other Name" :slug "sluggy2"}]
-    (is (= {:id id
-            :name "New Name"
-            :slug "sluggy"
-            :is_active true
-            :member_count 0
-            :attributes nil}
-           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"})))
+    (is (=? {:id id
+             :name "New Name"
+             :slug "sluggy"
+             :is_active true
+             :member_count 0
+             :attributes nil
+             :tenant_collection_id integer?}
+            (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"})))
     (is (= "This name is already taken."
            (mt/user-http-request :crowberto :put 400 (str "ee/tenant/" id) {:name "Other Name"})))
     (testing "Can send current name without error"
-      (is (= {:id id
-              :name "New Name"
-              :slug "sluggy"
-              :is_active true
-              :member_count 0
-              :attributes nil}
-             (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"}))))))
+      (is (=? {:id id
+               :name "New Name"
+               :slug "sluggy"
+               :is_active true
+               :member_count 0
+               :attributes nil
+               :tenant_collection_id integer?}
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"}))))))
 
 (deftest can-mark-tenant-as-active-or-inactive
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}]
-    (is (= {:id id
-            :name "Tenant Name"
-            :slug "sluggy"
-            :is_active false
-            :attributes nil
-            :member_count 0}
-           (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:is_active false})))))
+    (is (=? {:id id
+             :name "Tenant Name"
+             :slug "sluggy"
+             :is_active false
+             :attributes nil
+             :member_count 0
+             :tenant_collection_id integer?}
+            (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:is_active false})))))
 
 (deftest can-list-tenants
   (testing "I can list tenants"
@@ -246,12 +250,13 @@
             response (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
                                            {:attributes updated-attrs})]
         (is (= updated-attrs (:attributes (t2/select-one :model/Tenant :id id))))
-        (is (= {:id id
-                :name "Tenant Test"
-                :slug "test-tenant"
-                :is_active true
-                :member_count 0}
-               (dissoc response :attributes))))))
+        (is (=? {:id id
+                 :name "Tenant Test"
+                 :slug "test-tenant"
+                 :is_active true
+                 :member_count 0
+                 :tenant_collection_id integer?}
+                (dissoc response :attributes))))))
 
   (testing "Can update extisting attributes"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 2"
@@ -560,21 +565,19 @@
         (mt/with-temp [:model/Tenant {tenant-id :id
                                       tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}
                        :model/User {tenant-user-id :id} {:tenant_id tenant-id}]
-          (mt/with-perm-for-group-and-table! (perms/all-external-users-group)
-            (mt/id :venues)
-            :perms/view-data
-            :unrestricted
-            (let [card-data {:name "New Card"
-                             :collection_id tenant-collection-id
-                             :visualization_settings {}
-                             :display "table"
-                             :database_id (mt/id)
-                             :dataset_query (mt/mbql-query venues)}
-                  response (mt/user-http-request tenant-user-id :post 200 "card" card-data)]
-              ;; TODO look into why this is failing
-              (testing "card is created in tenant collection"
-                (is (some? (:id response)))
-                (is (= tenant-collection-id (:collection_id response)))))))))))
+          (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/view-data :unrestricted
+            (mt/with-perm-for-group-and-table! (perms/all-external-users-group) (mt/id :venues) :perms/create-queries :query-builder
+              (let [card-data {:name "New Card"
+                               :collection_id tenant-collection-id
+                               :visualization_settings {}
+                               :display "table"
+                               :database_id (mt/id)
+                               :dataset_query (mt/mbql-query venues)}
+                    response (mt/user-http-request tenant-user-id :post 200 "card" card-data)]
+                ;; TODO look into why this is failing
+                (testing "card is created in tenant collection"
+                  (is (some? (:id response)))
+                  (is (= tenant-collection-id (:collection_id response))))))))))))
 
 (deftest can-create-dashboards-in-tenant-collections-test
   (testing "Can create dashboards in tenant collections"
