@@ -124,7 +124,7 @@ export const MainNavSharedCollections = () => {
           <SidebarHeading>{t`My tenant collection`}</SidebarHeading>
           <PaddedSidebarLink
             icon="folder"
-            url={Urls.collection({id: userTenantCollectionId})}
+            url={Urls.collection({ id: userTenantCollectionId })}
           >
             {t`My Tenant Collection`}
           </PaddedSidebarLink>
@@ -150,10 +150,7 @@ export const MainNavSharedCollections = () => {
           }
         />
         {isAdmin && (
-          <PaddedSidebarLink
-            icon="folder"
-            url={tenantSpecificCollections()}
-          >
+          <PaddedSidebarLink icon="folder" url={tenantSpecificCollections()}>
             {t`Tenant-Specific Collections`}
           </PaddedSidebarLink>
         )}
