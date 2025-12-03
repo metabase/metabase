@@ -35,6 +35,7 @@ export type MetabaseCollectionItem = {
     | "library-models"
     | "library-metrics"
     | "shared-tenant-collection"
+    | "tenant-specific-root-collection"
     | "model"
     | "question"
     | "metric"

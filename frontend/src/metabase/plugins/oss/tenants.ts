@@ -44,6 +44,7 @@ export const PLUGIN_TENANTS: {
   TenantCollectionItemList: (
     props: CollectionItemListProps,
   ) => React.ReactElement | null;
+  TenantCollectionList: React.ComponentType;
 } = getDefaultPluginTenants();
 
 /**

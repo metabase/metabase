@@ -220,7 +220,6 @@ export function setupTenantCollectionItemsEndpoint({
     },
     {
       name: `tenant-collection-${collection.id}-items`,
-      overwriteRoutes: false,
     },
   );
 }
