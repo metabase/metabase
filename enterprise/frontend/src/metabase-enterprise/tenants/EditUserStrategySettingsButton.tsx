@@ -6,7 +6,7 @@ import * as Urls from "metabase-enterprise/urls";
 
 export const EditUserStrategySettingsButton = () => (
   <Link to={Urls.editUserStrategy()}>
-    <Tooltip label={t`Create tenant collection`}>
+    <Tooltip label={t`Edit user strategy`}>
       <ActionIcon
         size="lg"
         variant="outline"
