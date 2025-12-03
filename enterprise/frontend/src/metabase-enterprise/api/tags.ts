@@ -295,14 +295,21 @@ export function provideSupportAccessGrantListTags(
   ];
 }
 
-export function providePublishTableTags(
+export function provideBulkTableInfoTags(
   table: BulkTableInfo,
 ): TagDescription<EnterpriseTagType>[] {
   return [idTag("table", table.id)];
 }
 
-export function provideTableSelectionTags(
-  _response: BulkTableSelectionInfo,
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("table")];
+export function provideBulkTableSelectionInfoTags({
+  selected_tables,
+  published_downstream_tables,
+  unpublished_upstream_tables,
+}: BulkTableSelectionInfo): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("table"),
+    ...selected_tables.flatMap(provideBulkTableInfoTags),
+    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
+    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
 }

@@ -9,7 +9,12 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag, tag } from "./tags";
+import {
+  invalidateTags,
+  listTag,
+  provideBulkTableSelectionInfoTags,
+  tag,
+} from "./tags";
 
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -22,6 +27,8 @@ export const tableApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/data-studio/table/selection",
         body,
       }),
+      providesTags: (response) =>
+        response ? provideBulkTableSelectionInfoTags(response) : [],
     }),
     editTables: builder.mutation<Record<string, never>, EditTablesRequest>({
       query: (body) => ({
