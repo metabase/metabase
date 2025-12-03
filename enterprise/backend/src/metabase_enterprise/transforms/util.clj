@@ -466,7 +466,12 @@
   "Returns an xform for a transform source type filter."
   [types]
   (if-let [types (->> types (map keyword) set not-empty)]
-    (filter #(types (-> % :source :type keyword)))
+    (filter (fn [transform]
+              (let [source-type (-> transform :source :type keyword)
+                    query-type  (some-> transform :source :query :type keyword)]
+                (if (= source-type :python)
+                  (contains? types :python)
+                  (contains? types query-type)))))
     identity))
 
 (defn ->database-id-filter-xf

@@ -123,7 +123,7 @@
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:exclude_workspace_id {:optional true} [:maybe ms/PositiveInt]]
     [:database_id {:optional true} [:maybe ms/PositiveInt]]
-    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "python"])]]]]
+    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
 
 (api.macros/defendpoint :post "/validate-target"
