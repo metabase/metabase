@@ -54,10 +54,12 @@
      (with-new-search-if-available* ~@body)))
 
 (defmacro with-legacy-search
-  "Ensure legacy search, which doesn't require an index, is used."
+  "Ensure legacy search, which doesn't require an index, is used.
+   When split-semantic-terms is enabled, semantic queries go to :search.engine/semantic
+   and keyword queries fall back to :search.engine/in-place."
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/in-place)
-                               search.engine/active-engines (constantly [])]
+                               search.engine/supported-engines (constantly [:search.engine/semantic :search.engine/in-place])]
      ~@body))
 
 (defmacro with-new-search-and-legacy-search
