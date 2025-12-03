@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import { entityForObject } from "metabase/lib/schema";
-import type { IconName } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -74,9 +72,4 @@ export const getMaxRecentModelCount = (
     return 4;
   }
   return 0;
-};
-
-export const getIcon = (item: unknown): { name: IconName; color: string } => {
-  const entity = entityForObject(item);
-  return entity?.objectSelectors?.getIcon?.(item) || { name: "folder" };
 };

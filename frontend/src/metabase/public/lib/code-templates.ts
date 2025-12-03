@@ -75,7 +75,7 @@ export const node = {
 
 const jwt = require("jsonwebtoken");
 
-const METABASE_SITE_URL = ${JSON.stringify(siteUrl)};
+${withIframeSnippet ? `const METABASE_SITE_URL = ${JSON.stringify(siteUrl)};` : ""}
 const METABASE_SECRET_KEY = ${JSON.stringify(secretKey)};
 
 const payload = {
@@ -118,7 +118,7 @@ export const python = {
 import jwt
 import time
 
-METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
+${withIframeSnippet ? `METABASE_SITE_URL = ${JSON.stringify(siteUrl)}` : ""}
 METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
 payload = {
@@ -160,7 +160,7 @@ export const ruby = {
 
 require 'jwt'
 
-METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
+${withIframeSnippet ? `METABASE_SITE_URL = ${JSON.stringify(siteUrl)}` : ""}
 METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
 payload = {
@@ -198,7 +198,7 @@ export const clojure = {
   }: CodeSampleParameters) =>
     `(require '[buddy.sign.jwt :as jwt])
 
-(def metabase-site-url   ${JSON.stringify(siteUrl)})
+${withIframeSnippet ? `(def metabase-site-url   ${JSON.stringify(siteUrl)})` : ""}
 (def metabase-secret-key ${JSON.stringify(secretKey)})
 
 (def payload

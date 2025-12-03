@@ -272,7 +272,14 @@ const CollectionItemsTableContentInner = ({
         onClick={onClick}
         visibleColumnsMap={visibleColumnsMap}
       />
-      <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+      <div
+        className={cx(
+          CS.flex,
+          CS.justifyEnd,
+          CS.my3,
+          CS.syncStatusAwarePagination,
+        )}
+      >
         {hasPagination && (
           <PaginationControls
             showTotal
