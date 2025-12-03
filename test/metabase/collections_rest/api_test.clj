@@ -74,7 +74,7 @@
                  :name "Our analytics"
                  :authority_level nil
                  :is_personal false
-                 :is_remote_synced nil
+                 :is_remote_synced false
                  :id "root"
                  :can_restore false
                  :can_delete false}
@@ -1522,6 +1522,7 @@
                  :name "Our analytics",
                  :id false,
                  :can_write true
+                 :is_remote_synced false
                  :is_personal false}
                 {:name "Rasta Toucan's Personal Collection",
                  :id true,
@@ -1546,6 +1547,7 @@
               :authority_level nil
               :parent_id nil
               :is_personal false
+              :is_remote_synced false
               :can_delete false}
              (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
