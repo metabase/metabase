@@ -110,6 +110,7 @@ export type {
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,
+  MetabaseThemePreset,
   MetabaseUser,
   SdkEntityToken,
   SdkCollectionId,
