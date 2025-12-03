@@ -1,4 +1,4 @@
-import { exec as execCallback } from "node:child_process";
+import { exec as execCallback } from "child_process";
 import path from "node:path";
 import { promisify } from "util";
 
