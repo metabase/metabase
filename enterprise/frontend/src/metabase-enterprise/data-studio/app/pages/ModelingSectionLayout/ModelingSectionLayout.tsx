@@ -90,7 +90,8 @@ export function ModelingSectionLayout() {
 
   return (
     <SectionLayout>
-      <Stack px="3.5rem" pt="4rem">
+      {/* FIXME: Either make the table or page scrollable. Currently, scrolling the page scrolls the side nav. */}
+      <Stack px="3.5rem" pt="4rem" bg="background-light" mih="100%">
         <Flex gap="0.5rem">
           <TextInput
             placeholder="Search..."

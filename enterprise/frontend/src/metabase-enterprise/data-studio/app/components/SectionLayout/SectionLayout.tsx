@@ -9,36 +9,34 @@ import S from "./SectionLayout.module.css";
 
 type SectionLayoutProps = {
   title?: ReactNode;
-  tabs?: ReactNode;
   children?: ReactNode;
 };
 
-export function SectionLayout({ title, tabs, children }: SectionLayoutProps) {
+export function SectionLayout({ title, children }: SectionLayoutProps) {
   return (
     <Stack h="100%" gap={0}>
-      <Flex
-        data-testid="data-studio-header"
-        className={S.header}
-        px="lg"
-        py="md"
-        justify="space-between"
-        align={tabs ? "start" : "center"}
-        aria-label={t`Navigation bar`}
-      >
-        <Stack gap="sm">
-          {title}
-          {tabs}
-        </Stack>
-        <Group>
-          <PLUGIN_METABOT.MetabotDataStudioButton
-            variant="subtle"
-            bd="1px solid var(--mb-color-border)"
-          />
-          <Button component={Link} to="/">
-            {t`Exit data studio`}
-          </Button>
-        </Group>
-      </Flex>
+      {title && (
+        <Flex
+          data-testid="data-studio-header"
+          className={S.header}
+          px="lg"
+          py="md"
+          justify="space-between"
+          align="center"
+          aria-label={t`Navigation bar`}
+        >
+          <Stack gap="sm">{title}</Stack>
+          <Group>
+            <PLUGIN_METABOT.MetabotDataStudioButton
+              variant="subtle"
+              bd="1px solid var(--mb-color-border)"
+            />
+            <Button component={Link} to="/">
+              {t`Exit data studio`}
+            </Button>
+          </Group>
+        </Flex>
+      )}
       <Flex flex={1} mih={0} miw={0}>
         <Box flex={1} miw={0}>
           {children}
