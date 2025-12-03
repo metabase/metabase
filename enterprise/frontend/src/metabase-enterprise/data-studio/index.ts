@@ -1,13 +1,9 @@
 import { t } from "ttag";
 
-import {
-  applicationPermissionsReducer,
-  getApplicationPermissionsRoutes,
-} from "metabase/admin/permissions/application-permissions";
+import { setupApplicationPermissionsPlugin } from "metabase/admin/permissions/application-permissions";
 import {
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_DATA_STUDIO,
-  PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { NavbarLibrarySection } from "metabase-enterprise/data-studio/nav/components/NavbarLibrarySection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -38,21 +34,15 @@ export function initializePlugin() {
     PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType =
       useGetLibraryChildCollectionByType;
 
+    setupApplicationPermissionsPlugin();
+
     PLUGIN_APPLICATION_PERMISSIONS.registerPermission({
       key: "data-studio",
       columnName: t`Data Studio access`,
       columnHint: t`This grants access to the Data Studio`,
     });
 
-    PLUGIN_APPLICATION_PERMISSIONS.getRoutes = getApplicationPermissionsRoutes;
-    PLUGIN_APPLICATION_PERMISSIONS.tabs = [
-      { name: t`Application`, value: `application` },
-    ];
-
     PLUGIN_APPLICATION_PERMISSIONS.selectors.canAccessDataStudio =
       canAccessDataStudio;
-
-    PLUGIN_REDUCERS.applicationPermissionsPlugin =
-      applicationPermissionsReducer;
   }
 }
