@@ -18279,7 +18279,7 @@
     "/api/ee/library/" : {
       "post" : {
         "summary" : "POST /api/ee/library/",
-        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires superuser permissions.",
+        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires data-studio application permission.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
