@@ -151,7 +151,9 @@ function ModalBody({
               <Text>{getForeignKeyMessage(selectedTables)}</Text>
               <List spacing="sm">
                 {unpublished_upstream_tables.map((table) => (
-                  <List.Item key={table.id}>{table.display_name}</List.Item>
+                  <List.Item key={table.id} fw="bold">
+                    {table.display_name}
+                  </List.Item>
                 ))}
               </List>
             </>
