@@ -32,6 +32,13 @@
   [:map
    [:overwrite? :boolean]])
 
+(defn- transform-opts [{:keys [transform-type]}]
+  (case transform-type
+    :table {:overwrite? true}
+
+    ;; once we have more than just append, dispatch on :target-incremental-strategy
+    :table-incremental {}))
+
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
 
@@ -43,15 +50,16 @@
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
-           features (transforms.util/required-database-features transform)
            transform-details {:db-id db
+                              :database database
                               :transform-id   id
                               :transform-type (keyword (:type target))
                               :conn-spec (driver/connection-spec driver database)
-                              :query (transforms.util/compile-source source)
+                              :query (transforms.util/compile-source transform)
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
-           opts {:overwrite? true}]
+           opts (transform-opts transform-details)
+           features (transforms.util/required-database-features transform)]
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                          {:driver driver, :database database})))
@@ -68,7 +76,7 @@
             run-id driver transform-details
             (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
          (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-           (transforms.util/sync-target! target database run-id)
+           (transforms.util/sync-target! target database)
          ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
            (events/publish-event! :event/transform-run-complete {:object transform-details}))))
      (catch Throwable t
