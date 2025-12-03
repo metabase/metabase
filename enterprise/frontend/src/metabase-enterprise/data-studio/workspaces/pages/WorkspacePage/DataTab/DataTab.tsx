@@ -1,15 +1,22 @@
 import { t } from "ttag";
 
 import { Stack, Text } from "metabase/ui";
-import type { WorkspaceTablesResponse } from "metabase-types/api";
+import type {
+  WorkspaceTablesResponse,
+  WorkspaceTransformItem,
+} from "metabase-types/api";
+
+import { useWorkspace } from "../WorkspaceProvider";
 
 import { TableListItem } from "./TableListItem";
 
 type DataTabProps = {
   tables: WorkspaceTablesResponse;
+  workspaceTransforms: WorkspaceTransformItem[];
 };
 
-export const DataTab = ({ tables }: DataTabProps) => {
+export const DataTab = ({ tables, workspaceTransforms }: DataTabProps) => {
+  const { hasTransformEdits } = useWorkspace();
   return (
     <Stack h="100%" gap="sm">
       <Stack
@@ -19,16 +26,25 @@ export const DataTab = ({ tables }: DataTabProps) => {
       >
         <Text fw={600}>{t`Data active in this workspace`}</Text>
         <Stack gap={0}>
-          {tables.outputs.map((table, index) => (
-            <TableListItem
-              key={`output-${index}`}
-              name={table.global?.table || ""}
-              schema={table.global?.schema}
-              icon="table"
-              type="output"
-              hasChanges={!!table.workspace}
-            />
-          ))}
+          {tables.outputs.map((table: any, index: number) => {
+            const transform = table.workspace
+              ? workspaceTransforms.find(
+                  (t: any) => t.id === table.workspace?.["transform-id"],
+                )
+              : undefined;
+            const hasChanges = transform ? hasTransformEdits(transform) : false;
+
+            return (
+              <TableListItem
+                key={`output-${index}`}
+                name={table.global?.table || ""}
+                schema={table.global?.schema}
+                icon="pivot_table"
+                type="output"
+                hasChanges={hasChanges}
+              />
+            );
+          })}
         </Stack>
         <Stack gap={0}>
           {tables.inputs.map((table, index) => (

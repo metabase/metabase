@@ -390,7 +390,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               />
             </Tabs.Panel>
             <Tabs.Panel value="data" p="md">
-              <DataTab tables={workspaceTables} />
+              <DataTab
+                tables={workspaceTables}
+                workspaceTransforms={workspaceTransforms}
+              />
             </Tabs.Panel>
           </Tabs>
         </Box>
