@@ -20,3 +20,9 @@
   flex: 1;
   min-width: 0;
 }
+
+.actionIcon {
+  &:hover {
+    background-color: var(--mb-color-bg-medium) !important;
+  }
+}

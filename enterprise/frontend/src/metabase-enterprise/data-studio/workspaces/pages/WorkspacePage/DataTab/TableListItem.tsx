@@ -1,5 +1,14 @@
-import type { IconName } from "metabase/ui";
-import { Box, Icon, Text } from "metabase/ui";
+import { t } from "ttag";
+
+import {
+  ActionIcon,
+  Box,
+  Icon,
+  type IconName,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import type { WorkspaceTransformItem } from "metabase-types/api";
 
 import { StatusDot } from "../components/StatusDot/StatusDot";
 
@@ -11,6 +20,8 @@ type TableListItemProps = {
   icon?: IconName;
   type: "input" | "output";
   hasChanges?: boolean;
+  transform?: WorkspaceTransformItem;
+  onTransformClick?: (transform: WorkspaceTransformItem) => void;
 };
 
 export const TableListItem = ({
@@ -19,8 +30,16 @@ export const TableListItem = ({
   icon = "table",
   type,
   hasChanges = false,
+  transform,
+  onTransformClick,
 }: TableListItemProps) => {
   const displayName = schema ? `${schema}.${name}` : name;
+
+  const handleTransformClick = () => {
+    if (transform && onTransformClick) {
+      onTransformClick(transform);
+    }
+  };
 
   return (
     <Box className={S.root}>
@@ -29,8 +48,18 @@ export const TableListItem = ({
         {displayName}
       </Text>
       {hasChanges && <StatusDot status="changed" />}
-      {type === "output" && (
-        <Icon name="code_block" ml="auto" size={14} c="text-medium" />
+      {type === "output" && transform && (
+        <Tooltip label={t`Open transform`} position="top">
+          <ActionIcon
+            className={S.actionIcon}
+            ml="auto"
+            size="sm"
+            variant="subtle"
+            onClick={handleTransformClick}
+          >
+            <Icon name="code_block" size={14} c="text-medium" />
+          </ActionIcon>
+        </Tooltip>
       )}
     </Box>
   );

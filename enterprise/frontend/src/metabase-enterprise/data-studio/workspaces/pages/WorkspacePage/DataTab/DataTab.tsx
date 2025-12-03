@@ -4,6 +4,7 @@ import { Stack, Text } from "metabase/ui";
 import type {
   WorkspaceTablesResponse,
   WorkspaceTransformItem,
+  Transform,
 } from "metabase-types/api";
 
 import { useWorkspace } from "../WorkspaceProvider";
@@ -13,9 +14,16 @@ import { TableListItem } from "./TableListItem";
 type DataTabProps = {
   tables: WorkspaceTablesResponse;
   workspaceTransforms: WorkspaceTransformItem[];
+  dbTransforms: Transform[];
+  onTransformClick?: (transform: WorkspaceTransformItem) => void;
 };
 
-export const DataTab = ({ tables, workspaceTransforms }: DataTabProps) => {
+export const DataTab = ({
+  tables,
+  workspaceTransforms,
+  dbTransforms,
+  onTransformClick,
+}: DataTabProps) => {
   const { hasTransformEdits } = useWorkspace();
   return (
     <Stack h="100%" gap="sm">
@@ -27,12 +35,19 @@ export const DataTab = ({ tables, workspaceTransforms }: DataTabProps) => {
         <Text fw={600}>{t`Data active in this workspace`}</Text>
         <Stack gap={0}>
           {tables.outputs.map((table: any, index: number) => {
-            const transform = table.workspace
+            const workspaceTransform = table.workspace
               ? workspaceTransforms.find(
                   (t: any) => t.id === table.workspace?.["transform-id"],
                 )
               : undefined;
-            const hasChanges = transform ? hasTransformEdits(transform) : false;
+            const originalTransform = workspaceTransform
+              ? dbTransforms.find(
+                  (t: any) => t.id === workspaceTransform.upstream_id,
+                )
+              : undefined;
+            const hasChanges = originalTransform
+              ? hasTransformEdits(originalTransform)
+              : false;
 
             return (
               <TableListItem
@@ -42,6 +57,8 @@ export const DataTab = ({ tables, workspaceTransforms }: DataTabProps) => {
                 icon="pivot_table"
                 type="output"
                 hasChanges={hasChanges}
+                transform={workspaceTransform}
+                onTransformClick={onTransformClick}
               />
             );
           })}

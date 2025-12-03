@@ -43,7 +43,7 @@ export interface WorkspaceContextValue {
     editedTransform?: EditedTransform | null,
   ) => void;
   hasUnsavedChanges: () => boolean;
-  hasTransformEdits: (transform: Transform) => boolean;
+  hasTransformEdits: (originalTransform: Transform) => boolean;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -254,13 +254,13 @@ export const WorkspaceProvider = ({
   }, [editedTransforms]);
 
   const hasTransformEdits = useCallback(
-    (transform: Transform) => {
-      const edited = editedTransforms.get(transform.id);
+    (originalTransform: Transform) => {
+      const edited = editedTransforms.get(originalTransform.id);
       return (
         edited != null &&
-        (!isSameSource(edited.source, transform.source) ||
-          edited.name !== transform.name ||
-          edited.target.name !== transform.target.name)
+        (!isSameSource(edited.source, originalTransform.source) ||
+          edited.name !== originalTransform.name ||
+          edited.target.name !== originalTransform.target.name)
       );
     },
     [editedTransforms],

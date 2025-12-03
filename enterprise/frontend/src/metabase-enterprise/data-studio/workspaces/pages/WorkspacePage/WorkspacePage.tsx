@@ -3,7 +3,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import EditableText from "metabase/common/components/EditableText";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -27,6 +26,8 @@ import {
   useMergeWorkspaceMutation,
   useUpdateWorkspaceNameMutation,
 } from "metabase-enterprise/api";
+import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type { Transform } from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
@@ -230,15 +231,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       >
         <Flex gap="xs" align="center">
           <Icon name="git_branch" size="1rem" aria-hidden />
-          <EditableText
+          <PaneHeaderInput
             initialValue={workspace.name}
-            onChange={handleWorkspaceNameChange}
             placeholder={t`Workspace name`}
-            style={{
-              fontSize: "var(--mantine-h3-font-size)",
-              fontWeight: "var(--mantine-h3-font-weight)",
-              lineHeight: "var(--mantine-h3-line-height)",
-            }}
+            maxLength={NAME_MAX_LENGTH}
+            onChange={handleWorkspaceNameChange}
           />
         </Flex>
         <Button
@@ -393,6 +390,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               <DataTab
                 tables={workspaceTables}
                 workspaceTransforms={workspaceTransforms}
+                dbTransforms={dbTransforms}
+                onTransformClick={(transform) => {
+                  setTab(String(transform.id));
+                  addOpenedTransform(transform);
+                  setActiveTransform(transform);
+                }}
               />
             </Tabs.Panel>
           </Tabs>
