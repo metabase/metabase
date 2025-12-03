@@ -178,8 +178,8 @@
                                                          :archived                            false
                                                          :limit                               limit
                                                          :offset                              0}
-                                                   ;; Don't include search-native-query key if nil so that we don't
-                                                   ;; inadvertently filter out search models that don't support it
+                                                  ;; Don't include search-native-query key if nil so that we don't
+                                                  ;; inadvertently filter out search models that don't support it
                                                   search-native-query
                                                   (assoc :search-native-query (boolean search-native-query))
                                                   use-verified?
@@ -214,5 +214,4 @@
     (->> fused-results
          (take limit)
          (map postprocess-search-result)
-         enrich-with-collection-descriptions
-         vec)))
+         enrich-with-collection-descriptions)))
