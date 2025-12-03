@@ -1,5 +1,5 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { confirmModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
+import { cancelConfirmationModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
 
 import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
@@ -86,27 +86,22 @@ describe("scenarios > question > caching", () => {
       cy.findByText(/Caching settings/).should("be.visible");
       durationRadioButton().click();
     });
-
-    const cancelModal = () =>
-      confirmModal()
-        .findByRole("button", { name: /Cancel/ })
-        .click();
     // Action 1: clicking on cross button
     cacheStrategySidesheet().findByRole("button", { name: /Close/ }).click();
-    cancelModal();
+    cancelConfirmationModal();
     // Action 2: ESC button
     cy.get("body").type("{esc}");
-    cancelModal();
+    cancelConfirmationModal();
     // Action 3: click outside
-    // When a user clicks somewhere outside he basically clicks on the toppest one
+    // When a user clicks somewhere outside he basically clicks on the top one
     cy.findAllByTestId("modal-overlay")
       .should("have.length.gte", 1)
       .last()
       .click();
-    cancelModal();
+    cancelConfirmationModal();
     // Action 4: browser's Back action
     cy.go("back");
-    cancelModal();
+    cancelConfirmationModal();
   });
 
   it("can click 'Clear cache' for a question", () => {
