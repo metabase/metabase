@@ -4,7 +4,6 @@
    [metabase-enterprise.tenants.model :as tenants.model]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -15,8 +14,7 @@
   (testing "Creating a Tenant automatically creates a dedicated collection"
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Tenant {tenant-id :id
-                                      tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
+        (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}]
           (testing "tenant_collection_id is set and references a valid collection"
             (is (some? tenant-collection-id))
             (is (t2/exists? :model/Collection :id tenant-collection-id)))
@@ -88,7 +86,7 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "TestyLilTenant" :slug "test"}
-                       :model/Collection {regular-coll-id :id :as regular-coll} {:name "Regular Collection" :location "/"}]
+                       :model/Collection regular-coll {:name "Regular Collection" :location "/"}]
           (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
             (testing "returns true for tenant root collection"
               (is (collection/is-dedicated-tenant-collection-or-descendant? tenant-coll)))
@@ -96,9 +94,9 @@
             (testing "returns false for regular collection"
               (is (not (collection/is-dedicated-tenant-collection-or-descendant? regular-coll))))
 
-            (mt/with-temp [:model/Collection {child-id :id :as child} {:name "Child"
-                                                                       :namespace "tenant-specific"
-                                                                       :location (collection/children-location tenant-coll)}]
+            (mt/with-temp [:model/Collection child {:name "Child"
+                                                    :namespace "tenant-specific"
+                                                    :location (collection/children-location tenant-coll)}]
               (testing "returns true for tenant collection descendant"
                 (is (collection/is-dedicated-tenant-collection-or-descendant? child))))))))))
 
