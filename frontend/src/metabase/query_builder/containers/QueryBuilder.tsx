@@ -335,6 +335,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     if (isWithinIframe() && !isRouteInSync) {
       return null; // Don't initialize query builder until route syncs (metabase#65500)
     }
+    debugger;
     initializeQB(location, params);
   });
 

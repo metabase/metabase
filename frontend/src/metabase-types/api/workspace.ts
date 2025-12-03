@@ -50,7 +50,7 @@ export type WorkspaceTransformItem = {
 
 export type WorkspaceContents = {
   contents: {
-    transforms: WorkspaceTransformItem[];
+    transforms: Transform[];
   };
 };
 

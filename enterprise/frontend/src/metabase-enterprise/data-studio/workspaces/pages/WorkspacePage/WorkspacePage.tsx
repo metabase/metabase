@@ -32,7 +32,7 @@ import type { Transform } from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
-import { DataTab } from "./DataTab/DataTab";
+import { DataTabSidebar } from "./DataTab/DataTabSidebar";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab";
@@ -387,7 +387,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               />
             </Tabs.Panel>
             <Tabs.Panel value="data" p="md">
-              <DataTab
+              <DataTabSidebar
                 tables={workspaceTables}
                 workspaceTransforms={workspaceTransforms}
                 dbTransforms={dbTransforms}

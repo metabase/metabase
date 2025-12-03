@@ -18,7 +18,7 @@ type DataTabProps = {
   onTransformClick?: (transform: WorkspaceTransformItem) => void;
 };
 
-export const DataTab = ({
+export const DataTabSidebar = ({
   tables,
   workspaceTransforms,
   dbTransforms,
