@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { Stack, Text } from "metabase/ui";
 import type {
+  TableId,
   WorkspaceTablesResponse,
   WorkspaceTransformItem,
   Transform,
@@ -11,19 +12,23 @@ import { useWorkspace } from "../WorkspaceProvider";
 
 import { TableListItem } from "./TableListItem";
 
-type DataTabProps = {
+type DataTabSidebarProps = {
   tables: WorkspaceTablesResponse;
   workspaceTransforms: WorkspaceTransformItem[];
   dbTransforms: Transform[];
+  selectedTableId?: TableId | null;
   onTransformClick?: (transform: WorkspaceTransformItem) => void;
+  onTableSelect?: (tableId: TableId) => void;
 };
 
 export const DataTabSidebar = ({
   tables,
   workspaceTransforms,
   dbTransforms,
+  selectedTableId,
   onTransformClick,
-}: DataTabProps) => {
+  onTableSelect,
+}: DataTabSidebarProps) => {
   const { hasTransformEdits } = useWorkspace();
   return (
     <Stack h="100%" gap="sm">
@@ -34,20 +39,21 @@ export const DataTabSidebar = ({
       >
         <Text fw={600}>{t`Data active in this workspace`}</Text>
         <Stack gap={0}>
-          {tables.outputs.map((table: any, index: number) => {
+          {tables.outputs.map((table, index: number) => {
             const workspaceTransform = table.workspace
               ? workspaceTransforms.find(
-                  (t: any) => t.id === table.workspace?.["transform-id"],
+                  (t) => t.id === table.workspace?.["transform-id"],
                 )
               : undefined;
             const originalTransform = workspaceTransform
               ? dbTransforms.find(
-                  (t: any) => t.id === workspaceTransform.upstream_id,
+                  (t) => t.id === workspaceTransform.upstream_id,
                 )
               : undefined;
             const hasChanges = originalTransform
               ? hasTransformEdits(originalTransform)
               : false;
+            const tableId = table.workspace?.["table-id"];
 
             return (
               <TableListItem
@@ -58,7 +64,10 @@ export const DataTabSidebar = ({
                 type="output"
                 hasChanges={hasChanges}
                 transform={workspaceTransform}
+                tableId={tableId}
+                isSelected={tableId === selectedTableId}
                 onTransformClick={onTransformClick}
+                onTableClick={onTableSelect}
               />
             );
           })}

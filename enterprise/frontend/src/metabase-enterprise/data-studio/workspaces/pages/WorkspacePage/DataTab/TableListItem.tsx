@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import {
@@ -8,7 +9,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { WorkspaceTransformItem } from "metabase-types/api";
+import type { TableId, WorkspaceTransformItem } from "metabase-types/api";
 
 import { StatusDot } from "../components/StatusDot/StatusDot";
 
@@ -21,7 +22,10 @@ type TableListItemProps = {
   type: "input" | "output";
   hasChanges?: boolean;
   transform?: WorkspaceTransformItem;
+  tableId?: TableId;
+  isSelected?: boolean;
   onTransformClick?: (transform: WorkspaceTransformItem) => void;
+  onTableClick?: (tableId: TableId) => void;
 };
 
 export const TableListItem = ({
@@ -31,19 +35,41 @@ export const TableListItem = ({
   type,
   hasChanges = false,
   transform,
+  tableId,
+  isSelected = false,
   onTransformClick,
+  onTableClick,
 }: TableListItemProps) => {
   const displayName = schema ? `${schema}.${name}` : name;
 
-  const handleTransformClick = () => {
+  const handleTransformClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (transform && onTransformClick) {
       onTransformClick(transform);
     }
   };
 
+  const handleTableClick = () => {
+    if (tableId && onTableClick) {
+      onTableClick(tableId);
+    }
+  };
+
+  const isClickable = type === "output" && tableId && onTableClick;
+
   return (
-    <Box className={S.root}>
-      <Icon name={icon} size={14} c={type === "input" ? "orange" : "green"} />
+    <Box
+      className={cx(S.root, {
+        [S.selected]: isSelected,
+        [S.clickable]: isClickable,
+      })}
+      onClick={isClickable ? handleTableClick : undefined}
+    >
+      <Icon
+        name={icon}
+        size={14}
+        // c={type === "input" ? "brand" : "green"}
+      />
       <Text className={S.name} c="text-dark" truncate>
         {displayName}
       </Text>

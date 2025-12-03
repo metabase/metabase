@@ -28,11 +28,11 @@ import {
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
-import type { Transform } from "metabase-types/api";
+import type { TableId, Transform } from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
-import { DataTabSidebar } from "./DataTab/DataTabSidebar";
+import { DataTab, DataTabSidebar } from "./DataTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab";
@@ -55,6 +55,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { sendErrorToast } = useMetadataToasts();
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const [tab, setTab] = useState<string>("setup");
+  const [selectedTableId, setSelectedTableId] = useState<TableId | null>(null);
 
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
 
@@ -205,6 +206,14 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     [workspace, id, updateWorkspaceName, sendErrorToast],
   );
 
+  const handleTableSelect = useCallback(
+    (tableId: TableId) => {
+      setSelectedTableId(tableId);
+      setTab("data-preview");
+    },
+    [setTab],
+  );
+
   if (isLoadingWorkspace) {
     return (
       <Box p="lg">
@@ -291,6 +300,26 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     </Group>
                   </Tabs.Tab>
                 )}
+                {selectedTableId && (
+                  <Tabs.Tab value="data-preview">
+                    <Group gap="xs" wrap="nowrap">
+                      <Icon name="table" aria-hidden />
+                      {t`Data Preview`}
+                      <ActionIcon
+                        size="1rem"
+                        p="0"
+                        ml="xs"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedTableId(null);
+                          setTab("setup");
+                        }}
+                      >
+                        <Icon name="close" size={10} aria-hidden />
+                      </ActionIcon>
+                    </Group>
+                  </Tabs.Tab>
+                )}
                 {openedTransforms.map((transform, index) => (
                   <Tabs.Tab
                     key={transform.id}
@@ -327,6 +356,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   <MetabotTab />
                 </Tabs.Panel>
               )}
+
+              <Tabs.Panel value="data-preview" h="100%">
+                <DataTab
+                  databaseId={workspace?.database_id ?? null}
+                  tableId={selectedTableId}
+                />
+              </Tabs.Panel>
 
               <Tabs.Panel value={String(activeTransform?.id)} h="100%">
                 {openedTransforms.length === 0 ||
@@ -391,11 +427,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 tables={workspaceTables}
                 workspaceTransforms={workspaceTransforms}
                 dbTransforms={dbTransforms}
+                selectedTableId={selectedTableId}
                 onTransformClick={(transform) => {
                   setTab(String(transform.id));
                   addOpenedTransform(transform);
                   setActiveTransform(transform);
                 }}
+                onTableSelect={handleTableSelect}
               />
             </Tabs.Panel>
           </Tabs>
