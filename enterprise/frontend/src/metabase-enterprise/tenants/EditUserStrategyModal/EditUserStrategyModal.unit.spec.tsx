@@ -21,6 +21,7 @@ import { EditUserStrategyModal } from "./EditUserStrategyModal";
 interface SetupOpts {
   useTenants?: boolean;
   setupEndpoints?: () => void;
+  onClose?: () => void;
 }
 
 const setup = async (options?: SetupOpts) => {
@@ -35,11 +36,14 @@ const setup = async (options?: SetupOpts) => {
   ]);
   options?.setupEndpoints?.();
 
-  renderWithProviders(<EditUserStrategyModal onClose={() => {}} />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState(settings),
-    }),
-  });
+  renderWithProviders(
+    <EditUserStrategyModal onClose={options?.onClose ?? (() => {})} />,
+    {
+      storeInitialState: createMockState({
+        settings: createMockSettingsState(settings),
+      }),
+    },
+  );
 };
 
 describe("EditUserStrategyModal", () => {
@@ -150,5 +154,39 @@ describe("EditUserStrategyModal", () => {
 
     await userEvent.click(screen.getByRole("radio", { name: /Single tenant/ }));
     expect(applyButton).toBeDisabled();
+  });
+
+  it("should clear selection when cancel button is clicked", async () => {
+    const onClose = jest.fn();
+    await setup({ onClose });
+
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+
+    // Change selection to multi-tenant
+    await userEvent.click(screen.getByRole("radio", { name: /Multi tenant/ }));
+
+    expect(
+      screen.getByRole("radio", { name: /Multi tenant/, checked: true }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Cancel/ }));
+
+    // selection should revert back to single tenant
+    expect(
+      screen.getByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(0);
   });
 });

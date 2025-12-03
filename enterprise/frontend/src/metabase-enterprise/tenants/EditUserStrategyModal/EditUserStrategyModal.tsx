@@ -46,6 +46,11 @@ export const EditUserStrategyModal = ({
     onClose();
   };
 
+  const handleCancel = () => {
+    setSelectedStrategy(initialStrategy);
+    onClose();
+  };
+
   const strategyOptions = [
     {
       value: "single-tenant",
@@ -99,7 +104,7 @@ export const EditUserStrategyModal = ({
           </Radio.Group>
 
           <Flex justify="flex-end" gap="md" mt="md">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={handleCancel}>
               {t`Cancel`}
             </Button>
 
