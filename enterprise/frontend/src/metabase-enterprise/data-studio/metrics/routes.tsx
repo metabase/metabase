@@ -1,8 +1,7 @@
 import { IndexRoute, Route } from "react-router";
 
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
-import { MetricCachingPage } from "./pages/MetricCachingPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
 import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
@@ -19,8 +18,12 @@ export function getDataStudioMetricRoutes() {
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
-      {/* TODO: Add "is allowed" condition */}
-      <Route path=":cardId/caching" component={MetricCachingPage} />
+      {PLUGIN_CACHING.isGranularCachingEnabled() && (
+        <Route
+          path=":cardId/caching"
+          component={PLUGIN_CACHING.MetricCachingPage}
+        />
+      )}
     </Route>
   );
 }

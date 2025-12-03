@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { InjectedRouter, Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrateg
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
+import type { MetricSettingsPageProps } from "metabase/plugins/oss/caching";
 import { Box, Center, Flex } from "metabase/ui";
 import { getItemName } from "metabase-enterprise/caching/components/utils";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
@@ -17,16 +17,6 @@ import Question from "metabase-lib/v1/Question";
 import type { CacheableModel } from "metabase-types/api";
 
 import { MetricHeader } from "../../components/MetricHeader";
-
-type MetricSettingsPageParams = {
-  cardId: string;
-};
-
-type MetricSettingsPageProps = {
-  params: MetricSettingsPageParams;
-  router?: InjectedRouter;
-  route?: Route;
-};
 
 const configurableModels: CacheableModel[] = ["question"];
 

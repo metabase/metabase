@@ -1,4 +1,5 @@
 import type { ComponentType, Dispatch, SetStateAction } from "react";
+import type { InjectedRouter, Route } from "react-router";
 
 import {
   getPerformanceTabMetadata,
@@ -33,6 +34,12 @@ export type PreemptiveCachingSwitchProps = {
   handleSwitchToggle: () => void;
 };
 
+export type MetricSettingsPageProps = {
+  params: { cardId: string };
+  router?: InjectedRouter;
+  route?: Route;
+};
+
 const getDefaultPluginCaching = () => ({
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
@@ -52,6 +59,8 @@ const getDefaultPluginCaching = () => ({
   getTabMetadata: getPerformanceTabMetadata,
   PreemptiveCachingSwitch:
     PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
+  MetricCachingPage:
+    PluginPlaceholder as ComponentType<MetricSettingsPageProps>,
 });
 
 export const PLUGIN_CACHING = getDefaultPluginCaching();
