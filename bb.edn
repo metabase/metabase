@@ -27,7 +27,7 @@
    :requires   [[mage.alias :as alias]]
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum "bash" "zsh" "fish"]]]
+                [:tuple [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
    :task       (task! (alias/instructions parsed))}
 
   cljfmt-staged
@@ -45,7 +45,8 @@
                 ["./bin/mage cljfmt-files src" "Format all files in src"]
                 ["./bin/mage cljfmt-files -c src" "Check all files in src"]]
    :options    [["-c" "--force-check" "Check staged files"]]
-   :arg-schema [:sequential [:string {:description "Files or directories to format."}]]
+   :arg-schema [:sequential [:string {:name "file-or-directory"
+                                      :description "Files or directories to format."}]]
    :task       (task! (format/files parsed))}
 
   cljfmt-all
@@ -61,7 +62,7 @@
    :examples   [["./bin/mage cljfmt-updated" "Format updated files relative to HEAD"]
                 ["./bin/mage cljfmt-updated master" "Format updated files relative to master"]]
    :options    [["-c" "--force-check" "Check staged files"]]
-   :arg-schema [:or [:tuple] [:tuple :string]]
+   :arg-schema [:or [:tuple] [:tuple [:string :name "git-ref" :description "Git ref to compare against"]]]
    :task       (task! (format/updated parsed))}
 
   kondo
@@ -110,8 +111,8 @@
                 ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
    :requires   [[mage.start-db :as start-db]]
    :arg-schema [:tuple
-                [:enum :postgres :mysql :mariadb :mongo]
-                [:enum :oldest :latest]]
+                [:enum {:name "db"} :postgres :mysql :mariadb :mongo]
+                [:enum {:name "relative-version"} :oldest :latest]]
    :db-info      {:postgres {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
                   :mysql    {:ports {:oldest 3308  :latest 3309}  :eol-url "https://endoflife.date/api/mysql.json"}
                   :mariadb  {:ports {:oldest 3306  :latest 3307}  :eol-url "https://endoflife.date/api/mariadb.json"}
@@ -158,8 +159,8 @@
                 ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]
                 ["-p" "--port PORT" "you can optionally provide a port to run the jar on, if not, we use a sane port."]]
    :arg-schema [:or
-                [:tuple [:string {:desc "version"}]]
-                [:tuple [:string {:desc "version"}] [:string {:desc "path"}]]]
+                [:tuple [:string {:name "version"}]]
+                [:tuple [:string {:name "version"}] [:string {:name "path"}]]]
    :usage-fn  (fn [_]
                 (-> "Version can have the following forms:"
                     (str "\n  -" (c/green "50")  " for the latest enterprise version of release 50")
@@ -202,21 +203,22 @@
                 ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
-                [:string {:description "Files or directories (recursive) to test"}]]
+                [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
    :requires   [[mage.quick-test-runner :as qtr]] 
    :task       (task! (qtr/go parsed))}
   
   affected-modules
-  {:doc      "Prints information about which backend modules have changes compared to a Git ref e.g. `master`"
-   :examples [["./bin/mage affected-modules master"]
+  {:doc      "Which backend modules have changes?"
+   :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]
               ["./bin/mage affected-modules"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref"}]]]
    :requires [[mage.modules]]
    :task     (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
   can-skip-driver-tests
-  {:doc      "Returns zero (success) if we can skip driver tests based on changes related to a Git ref e.g. `master`"
-   :examples [["./bin/mage can-skip-driver-tests master"]
-              ["./bin/mage can-skip-driver-tests"]]
+  {:doc      "Can we skip driver tests for this branch?"
+   :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]
+              ["./bin/mage can-skip-driver-tests" "Returns zero (success) if we can skip driver tests based on changes? (defaults to master)"]]
    :requires [[mage.modules]]
    :task     (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
@@ -250,11 +252,11 @@
                 "Treats each changeset as an atomic unit to avoid conflicts within changesets.\n"
                 "Preserves original formatting including blank lines and footer warnings"))
    :arg-schema [:tuple
-                [:string {:description "ancestor's version (base)"}]
-                [:string {:description "current version (ours)"}]
-                [:string {:description "other branch's version (theirs)"}]
-                [:int    {:optional true :description "conflict marker size" :min 0}]
-                [:string {:optional true :description "file path"}]]
+                [:string {:name "base" :description "ancestor's version (base)"}]
+                [:string {:name "ours" :description "current version (ours)"}]
+                [:string {:name "theirs" :description "other branch's version (theirs)"}]
+                [:int    {:name "conflict-marker-size" :description "conflict marker size" :min 0}]
+                [:string {:name "file-path" :description "file path"}]]
    :requires [[mage.merge-yaml-migrations]]
    :task (task! (mage.merge-yaml-migrations/-main parsed))}
   
@@ -294,10 +296,13 @@
   {:doc      "Check that code is readable parens a file"
    :requires [[mage.readability-check :as readability]]
    :arg-schema [:or
-                [:tuple [:string {:description "File to check"}]]
+                [:tuple [:string {:name "file"
+                                  :description "File to check"}]]
                 [:tuple
-                 [:string {:description "File to check"}]
-                 [:int {:description "A line in the file" :min 1}]]]
+                 [:string {:name "file"
+                           :description "File to check"}]
+                 [:int {:name "line-number"
+                        :description "A line in the file" :min 1}]]]
    :examples [["./bin/mage -check-readable dev/src/dev.clj"
                "Check file for readability"]
               ["./bin/mage -check-readable dev/src/dev.clj 300"
@@ -328,7 +333,7 @@
    :options    [["-n" "--negate" "Negate the result of the calculation"]
                 ["-a" "--also-add N" "Add N to the result of the calculation"]]
    ;; (optional) `:arg-schema` is a malli schema for the arguments passed to the task, after the options
-   :arg-schema [:tuple :int [:enum :+ :-] :int]
+   :arg-schema [:tuple [:int {:name "number-a"}] [:enum {:name "operation"} :+ :-] [:int {:name "number-b"}]]
    ;; (optional) `:usage-fn` is a function called with the current-task map.
    ;; Returns a string containing extra-detailed usage information.
    :usage-fn   (fn [{:keys [doc] :as _task}]
@@ -366,5 +371,5 @@
   {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
    :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
-   :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
+   :arg-schema [:sequential [:string {:name "glob-pattern" :description "Glob pattern to match files"}]]
    :task     (task! (fix-whitespace/run-clean parsed))}}}
