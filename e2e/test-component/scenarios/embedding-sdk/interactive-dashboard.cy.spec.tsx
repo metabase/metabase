@@ -5,7 +5,6 @@ import {
 } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
-import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -22,8 +21,6 @@ import type {
   DashboardCard,
   Parameter,
 } from "metabase-types/api";
-
-const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
 const { ORDERS } = SAMPLE_DATABASE;
 
