@@ -1,10 +1,13 @@
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { Modal, Select, Stack, Text } from "metabase/ui";
+import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
+
+import S from "./EditUserStrategyModal.module.css";
 
 interface EditUserStrategyModalProps {
   onClose: () => void;
@@ -18,44 +21,98 @@ export const EditUserStrategyModal = ({
   const { isLoading, error, value, updateSetting } =
     useAdminSetting("use-tenants");
 
-  const strategy = value ? "multi-tenant" : "single-tenant";
+  const initialStrategy = value ? "multi-tenant" : "single-tenant";
 
-  const data = [
-    { label: t`Single tenant`, value: "single-tenant" },
-    { label: t`Multi tenant`, value: "multi-tenant" },
-  ];
+  // Needed to disable the apply button when the strategy does not change
+  const [selectedStrategy, setSelectedStrategy] = useState(initialStrategy);
 
-  const handleStrategyChange = async (value: string) => {
-    await updateSetting({
+  useEffect(() => {
+    setSelectedStrategy(initialStrategy);
+  }, [initialStrategy]);
+
+  const handleApply = async () => {
+    const response = await updateSetting({
       key: "use-tenants",
-      value: value === "multi-tenant",
+      value: selectedStrategy === "multi-tenant",
     });
-    await dispatch(permissionApi.util.invalidateTags(["permissions-group"]));
+
+    // Revert selection to initial value if update fails
+    if (response.error) {
+      setSelectedStrategy(initialStrategy);
+      return;
+    }
+
+    dispatch(permissionApi.util.invalidateTags(["permissions-group"]));
+    onClose();
   };
+
+  const handleCancel = () => {
+    setSelectedStrategy(initialStrategy);
+    onClose();
+  };
+
+  const strategyOptions = [
+    {
+      value: "single-tenant",
+      title: t`Single tenant`,
+      // eslint-disable-next-line no-literal-metabase-strings -- in admin settings
+      description: t`All users exist in the same world and are managed via Metabase groups. Ideal for internal company analytics, proof of concept, or simple embedding setups.`,
+    },
+    {
+      value: "multi-tenant",
+      title: t`Multi tenant`,
+      description: t`Each tenant operates in an isolated environment with dedicated resources and permissions. Best for SaaS platforms, scalable embedding, or strict data isolation needs.`,
+    },
+  ];
 
   return (
     <Modal
       opened
-      title={t`People settings`}
+      title={t`User strategy`}
       padding="xl"
-      size="lg"
+      size="md"
       onClose={onClose}
     >
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        <Stack gap="md" mt="lg" mb="xl">
-          <Select
-            label={t`User strategy`}
-            placeholder={t`Pick value`}
-            data={data}
-            defaultValue="single-tenant"
-            value={strategy}
-            onChange={handleStrategyChange}
-          />
+        <Stack gap="md" mt="sm">
+          <Radio.Group value={selectedStrategy} onChange={setSelectedStrategy}>
+            <Stack gap="md">
+              {strategyOptions.map((option) => (
+                <Radio.Card
+                  key={option.value}
+                  value={option.value}
+                  radius="md"
+                  p="md"
+                  className={S.radioCard}
+                >
+                  <Group wrap="nowrap">
+                    <Radio.Indicator />
 
-          <Text c="text-secondary">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- This link only shows for admins. */}
-            {t`All users exist in the same world and are managed via Metabase groups. Best for internal company analytics or one off embedding setups or proofs of concept.`}
-          </Text>
+                    <div>
+                      <Text fw={700} fz="lg" lh="xl" mb="xs">
+                        {option.title}
+                      </Text>
+
+                      <Text c="text-secondary" fz="sm" lh="lg">
+                        {option.description}
+                      </Text>
+                    </div>
+                  </Group>
+                </Radio.Card>
+              ))}
+            </Stack>
+          </Radio.Group>
+
+          <Flex justify="flex-end" gap="md" mt="md">
+            <Button variant="outline" onClick={handleCancel}>
+              {t`Cancel`}
+            </Button>
+
+            <Button
+              onClick={handleApply}
+              disabled={initialStrategy === selectedStrategy}
+            >{t`Apply`}</Button>
+          </Flex>
         </Stack>
       </LoadingAndErrorWrapper>
     </Modal>

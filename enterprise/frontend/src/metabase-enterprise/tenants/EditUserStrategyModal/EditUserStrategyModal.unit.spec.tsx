@@ -21,6 +21,7 @@ import { EditUserStrategyModal } from "./EditUserStrategyModal";
 interface SetupOpts {
   useTenants?: boolean;
   setupEndpoints?: () => void;
+  onClose?: () => void;
 }
 
 const setup = async (options?: SetupOpts) => {
@@ -35,75 +36,155 @@ const setup = async (options?: SetupOpts) => {
   ]);
   options?.setupEndpoints?.();
 
-  renderWithProviders(<EditUserStrategyModal onClose={() => {}} />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState(settings),
-    }),
-  });
+  renderWithProviders(
+    <EditUserStrategyModal onClose={options?.onClose ?? (() => {})} />,
+    {
+      storeInitialState: createMockState({
+        settings: createMockSettingsState(settings),
+      }),
+    },
+  );
 };
 
 describe("EditUserStrategyModal", () => {
   it("should handle loading state", async () => {
     await setup();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
-    await screen.findByLabelText("User strategy");
+    await screen.findByText("User strategy");
   });
 
-  it("should correctly set to single-tenancy if use-tenants setting is false", async () => {
+  it("should correctly select single-tenancy if use-tenants setting is false", async () => {
     await setup();
 
-    const select = await userStrategySelect();
-    expect(select).toBeInTheDocument();
-    expect(select).toHaveValue("Single tenant");
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
   });
 
-  it("should correctly set to multi-tenancy if use-tenants setting is true", async () => {
+  it("should correctly display multi-tenancy as selected if use-tenants setting is true", async () => {
     await setup({ useTenants: true });
 
-    const select = await userStrategySelect();
-    expect(select).toBeInTheDocument();
-    expect(select).toHaveValue("Multi tenant");
+    expect(
+      await screen.findByRole("radio", {
+        name: /Multi tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
   });
 
-  it("should correctly update user strategy", async () => {
+  it("should allow changing selection and applying the change", async () => {
     await setup();
 
-    const select1 = await userStrategySelect();
-    expect(select1).toBeInTheDocument();
-    expect(select1).toHaveValue("Single tenant");
+    const multiTenantCard = await screen.findByRole("radio", {
+      name: /Multi tenant/,
+      checked: false,
+    });
+    expect(multiTenantCard).toBeInTheDocument();
+    await userEvent.click(multiTenantCard);
 
-    await userEvent.click(select1);
-    setupPropertiesEndpoints(createMockSettings({ "use-tenants": true }));
-    await userEvent.click(await screen.findByText("Multi tenant"));
+    expect(
+      screen.getByRole("radio", { name: /Multi tenant/, checked: true }),
+    ).toBeInTheDocument();
+
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
+    await userEvent.click(applyButton);
+
     await waitFor(async () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
     });
 
-    const select2 = await userStrategySelect();
-    expect(select2).toBeInTheDocument();
-    expect(select2).toHaveValue("Multi tenant");
+    const puts = await findRequests("PUT");
+    expect(puts[0].body).toEqual({ value: true });
   });
 
-  it("should handle failing to update", async () => {
-    await setup({
-      setupEndpoints: () => {
-        fetchMock.put("path:/api/setting/use-tenants", 500);
-      },
+  it("reverts the selected user strategy if the setting update fails", async () => {
+    fetchMock.put("path:/api/setting/use-tenants", {
+      throws: new Error("Internal server error"),
     });
 
-    const select1 = await userStrategySelect();
-    expect(select1).toBeInTheDocument();
-    expect(select1).toHaveValue("Single tenant");
+    await setup();
 
-    await userEvent.click(select1);
-    await userEvent.click(await screen.findByText("Multi tenant"));
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+
+    const multiTenantCard = screen.getByRole("radio", {
+      name: /Multi tenant/,
+    });
+    await userEvent.click(multiTenantCard);
+
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
+    await userEvent.click(applyButton);
+
     await waitFor(() => findRequests("PUT"));
 
-    const select2 = await userStrategySelect();
-    expect(select2).toBeInTheDocument();
-    expect(select2).toHaveValue("Single tenant");
+    // Revert to single tenant as the API call failed
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("should disable the apply button when the user strategy has not changed", async () => {
+    await setup();
+
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+
+    const applyButton = screen.getByRole("button", { name: /Apply/ });
+    expect(applyButton).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Multi tenant/ }));
+    expect(applyButton).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Single tenant/ }));
+    expect(applyButton).toBeDisabled();
+  });
+
+  it("should clear selection when cancel button is clicked", async () => {
+    const onClose = jest.fn();
+    await setup({ onClose });
+
+    expect(
+      await screen.findByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+
+    // Change selection to multi-tenant
+    await userEvent.click(screen.getByRole("radio", { name: /Multi tenant/ }));
+
+    expect(
+      screen.getByRole("radio", { name: /Multi tenant/, checked: true }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Cancel/ }));
+
+    // selection should revert back to single tenant
+    expect(
+      screen.getByRole("radio", {
+        name: /Single tenant/,
+        checked: true,
+      }),
+    ).toBeInTheDocument();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(0);
   });
 });
-
-const userStrategySelect = () => screen.findByLabelText("User strategy");
