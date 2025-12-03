@@ -30,6 +30,7 @@ const COLLECTION_SCHEMA = Yup.object({
 
   authority_level: Yup.mixed().oneOf(["official", null]).default(null),
   parent_id: Yup.number().nullable(),
+  namespace: Yup.string().nullable().default(null),
 });
 
 export interface CreateCollectionProperties {
@@ -97,7 +98,7 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={onSubmit}
     >
-      {({ dirty }) => (
+      {({ dirty, setFieldValue }) => (
         <Form>
           <FormInput
             name="name"
@@ -115,6 +116,9 @@ function CreateCollectionForm({
           {showCollectionPicker && (
             <FormCollectionPicker
               name="parent_id"
+              setNamespace={(namespace) =>
+                setFieldValue("namespace", namespace)
+              }
               title={t`Collection it's saved in`}
               filterPersonalCollections={filterPersonalCollections}
               entityType="collection"

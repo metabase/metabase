@@ -272,6 +272,7 @@ export function canonicalCollectionId(
 ): number | null {
   if (
     collectionId === "root" ||
+    collectionId === "tenant" ||
     collectionId === null ||
     collectionId === undefined
   ) {
