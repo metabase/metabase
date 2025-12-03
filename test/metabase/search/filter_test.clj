@@ -11,7 +11,7 @@
    [metabase.search.test-util :as search.tu]))
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+                                  (search.tu/with-new-search-if-available (thunk)))))
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))
