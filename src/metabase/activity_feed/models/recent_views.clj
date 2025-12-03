@@ -81,21 +81,18 @@
   "Keywords representing entity types that can be returned as recent views."
   ;; n.b.: `:card`, `metric` and `:dataset` are stored in recent_views as "card", and a join with report_card is
   ;; needed to distinguish between them. `:dataset` is an alias for `:model/Card` with type "model".
-  (cond-> [:card :dataset :metric
-           :dashboard :table :collection]
-    config/ee-available? (conj :document)))
+  [:card :dataset :metric :dashboard :table :collection :document])
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (let [base-mapping {:dataset :model/Card
-                      :card       :model/Card
-                      :dashboard  :model/Dashboard
-                      :table      :model/Table
-                      :collection :model/Collection}
-        document-mapping (when config/ee-available?
-                           {:document :model/Document})]
-    (get (merge base-mapping document-mapping) rvm)))
+  (get {:dataset :model/Card
+        :card :model/Card
+        :dashboard :model/Dashboard
+        :table :model/Table
+        :collection :model/Collection
+        :document :model/Document}
+       rvm))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id

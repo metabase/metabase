@@ -1864,15 +1864,14 @@
                                                                                    [:= :collection_id id]
                                                                                    (when skip-archived [:not :archived])]})]
                                {["Card" card-id] {"Collection" id}}))
-        documents   (when config/ee-available?
-                      (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
-                                                                                [:and [:= :collection_id id]
-                                                                                 (when skip-archived [:not :archived])]})]
-                                 {["Document" doc-id] {"Collection" id}})))
-        timelines       (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and
-                                                                                               [:= :collection_id id]
-                                                                                               (when skip-archived [:not :archived])]})]
-                                   {["Timeline" timeline-id] {"Collection" id}}))]
+        documents   (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
+                                                                              [:and [:= :collection_id id]
+                                                                               (when skip-archived [:not :archived])]})]
+                               {["Document" doc-id] {"Collection" id}}))
+        timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and
+                                                                                           [:= :collection_id id]
+                                                                                           (when skip-archived [:not :archived])]})]
+                               {["Timeline" timeline-id] {"Collection" id}}))]
     (merge child-colls dashboards cards documents timelines)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]

@@ -422,8 +422,7 @@
    old-position  :- [:maybe ms/PositiveInt]
    new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (doseq [model (cond-> '[Card Dashboard Pulse]
-                                     config/ee-available? (conj 'Document))]
+                     (doseq [model '[Card Dashboard Pulse Document]]
                        (t2/update! model {:collection_id       collection-id
                                           :collection_position position-update-clause}
                                    {:collection_position [plus-or-minus :collection_position 1]})))]
@@ -570,6 +569,7 @@
    "dashboard"         {:db-model :model/Dashboard          :alias :dashboard}
    "database"          {:db-model :model/Database           :alias :database}
    "dataset"           {:db-model :model/Card               :alias :card}
+   "document"          {:db-model :model/Document           :alias :document}
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}
