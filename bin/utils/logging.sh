@@ -20,15 +20,15 @@ unset _DEVUTILS_LOGGING_DIR
 
 # Print a prominent header (for script titles, major sections)
 print_header() {
-    echo -e "\n${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "\n${BOLD}${BLUE}===================================================================${NC}"
     echo -e "${BOLD}${BLUE}  $1${NC}"
-    echo -e "${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
+    echo -e "${BOLD}${BLUE}===================================================================${NC}\n"
 }
 
 # Print a section header (for grouping related output)
 print_section() {
     echo -e "\n${BOLD}$1${NC}"
-    echo -e "${BOLD}$(printf '─%.0s' {1..63})${NC}"
+    echo -e "${BOLD}$(printf -- '-%.0s' {1..63})${NC}"
 }
 
 # Print a step indicator (for progress through tasks)

@@ -212,9 +212,9 @@ main() {
             print_warning "Multiple version managers detected!"
             echo "     Having multiple version managers can cause conflicts where different"
             echo "     tools compete to manage the same runtime versions. This may lead to:"
-            echo "       • Unexpected version switches"
-            echo "       • PATH conflicts"
-            echo "       • Shell initialization slowdowns"
+            echo "       - Unexpected version switches"
+            echo "       - PATH conflicts"
+            echo "       - Shell initialization slowdowns"
             echo ""
             echo -e "  💡 ${BOLD}Recommendation:${NC} Use only one version manager (we recommend mise)."
         fi
@@ -229,13 +229,13 @@ main() {
     if [ -n "$node_version" ]; then
         node_major=$(echo "$node_version" | sed 's/v//' | cut -d. -f1)
         if [ "$node_major" -ge 22 ]; then
-            print_found "Node.js $node_version (meets requirement: ≥22)"
+            print_found "Node.js $node_version (meets requirement: >= 22)"
         else
-            print_warning "Node.js $node_version (required: ≥22)"
+            print_warning "Node.js $node_version (required: >= 22)"
             requirements_met=false
         fi
     else
-        print_not_found "Node.js (required: ≥22)"
+        print_not_found "Node.js (required: >= 22)"
         requirements_met=false
     fi
 
@@ -322,15 +322,15 @@ main() {
     required_clojure_version=$(get_required_clojure_version)
 
     echo -e "  ${BOLD}Required Tools:${NC}"
-    echo "    • Node.js ≥22 (currently specified in .nvmrc)"
-    echo "    • Yarn Classic 1.x (NOT Yarn 2+, NO Corepack)"
-    echo "    • Java 21 with Eclipse Temurin distribution (for Clojure backend)"
+    echo "    - Node.js >= 22 (currently specified in .nvmrc)"
+    echo "    - Yarn Classic 1.x (NOT Yarn 2+, NO Corepack)"
+    echo "    - Java 21 with Eclipse Temurin distribution (for Clojure backend)"
     if [ -n "$required_clojure_version" ]; then
-        echo "    • Clojure CLI (for Clojure $required_clojure_version specified in deps.edn)"
+        echo "    - Clojure CLI (for Clojure $required_clojure_version specified in deps.edn)"
     else
-        echo "    • Clojure CLI"
+        echo "    - Clojure CLI"
     fi
-    echo "    • Babashka (for mage task automation)"
+    echo "    - Babashka (for mage task automation)"
     echo ""
     echo -e "  ${BOLD}Optional Tools (quality of life):${NC}"
     print_optional_tool bat "bat - A cat clone with syntax highlighting" "https://github.com/sharkdp/bat"
@@ -345,9 +345,9 @@ main() {
     print_section "Recommended Setup"
 
     echo -e "  ${BOLD}${GREEN}We recommend using 'mise'${NC} for version management because:"
-    echo "    • Manages Node.js, Java, and other tools in one place"
-    echo "    • Automatically switches versions per-project"
-    echo "    • Cross-platform and actively maintained"
+    echo "    - Manages Node.js, Java, and other tools in one place"
+    echo "    - Automatically switches versions per-project"
+    echo "    - Cross-platform and actively maintained"
     echo ""
     echo "    Learn more: https://mise.jdx.dev/getting-started.html"
 
