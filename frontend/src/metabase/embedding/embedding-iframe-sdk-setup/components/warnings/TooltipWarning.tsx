@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { Flex, HoverCard, Icon } from "metabase/ui";
 
 export type TooltipWarningMode = "default" | "custom";
@@ -37,7 +38,11 @@ export const TooltipWarning = ({
   );
   const hoverCard = disabled ? (
     <HoverCard position="bottom">
-      <HoverCard.Target>{iconElement}</HoverCard.Target>
+      <HoverCard.Target>
+        <Flex align="center" className={CS.cursorPointer}>
+          {iconElement}
+        </Flex>
+      </HoverCard.Target>
       <HoverCard.Dropdown>{warning}</HoverCard.Dropdown>
     </HoverCard>
   ) : null;

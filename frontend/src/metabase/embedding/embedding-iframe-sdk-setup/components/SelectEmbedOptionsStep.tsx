@@ -20,8 +20,6 @@ import {
   Radio,
   Stack,
   Text,
-  Tooltip,
-  useHover,
 } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -169,7 +167,6 @@ const AuthenticationSection = () => {
 const BehaviorSection = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
   const hasEmailSetup = useHasEmailSetup();
-  const hoverTarget = useHover();
 
   const behaviorSection = useMemo(() => {
     return match(settings)
@@ -270,27 +267,36 @@ const BehaviorSection = () => {
             <WithNotAvailableForGuestEmbedsWarning
               campaign={UPSELL_CAMPAIGN_BEHAVIOR}
             >
-              {({ disabled }) => (
-                <Flex ref={hoverTarget.ref} align="center" gap="xs">
-                  <Checkbox
-                    disabled={!hasEmailSetup || disabled}
-                    label={t`Allow subscriptions`}
-                    checked={settings.withSubscriptions}
-                    onChange={(e) =>
-                      updateSettings({ withSubscriptions: e.target.checked })
-                    }
-                  />
-                  {!hasEmailSetup && (
-                    <Tooltip
-                      // Allow the tooltip to open when hovering over the whole checkbox line, but positioning it on the info icon
-                      opened={hoverTarget.hovered}
-                      label={t`Please set up email to allow subscriptions`}
-                    >
-                      <Icon name="info" c="var(--mb-color-text-tertiary)" />
-                    </Tooltip>
-                  )}
-                </Flex>
-              )}
+              {({ disabled: disabledInGuestEmbedding }) => {
+                return (
+                  <Flex align="center" gap="xs">
+                    <Checkbox
+                      disabled={!hasEmailSetup || disabledInGuestEmbedding}
+                      label={t`Allow subscriptions`}
+                      checked={settings.withSubscriptions}
+                      onChange={(e) =>
+                        updateSettings({ withSubscriptions: e.target.checked })
+                      }
+                    />
+                    {!hasEmailSetup && !disabledInGuestEmbedding && (
+                      <HoverCard position="bottom">
+                        <HoverCard.Target>
+                          <Icon
+                            name="info"
+                            size={14}
+                            c="var(--mb-color-text-secondary)"
+                          />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown>
+                          <Text lh="md" p="md">
+                            {t`Please set up email to allow subscriptions`}
+                          </Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
+                    )}
+                  </Flex>
+                );
+              }}
             </WithNotAvailableForGuestEmbedsWarning>
           </Stack>
         ),
@@ -307,13 +313,7 @@ const BehaviorSection = () => {
         ),
       )
       .otherwise(() => null);
-  }, [
-    hasEmailSetup,
-    hoverTarget.hovered,
-    hoverTarget.ref,
-    settings,
-    updateSettings,
-  ]);
+  }, [hasEmailSetup, settings, updateSettings]);
 
   if (behaviorSection === null) {
     return null;

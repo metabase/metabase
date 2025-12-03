@@ -178,12 +178,18 @@ describe(suiteTitle, () => {
     getEmbedSidebar()
       .findByLabelText("Allow subscriptions")
       .should("not.be.checked")
-      .and("be.disabled")
-      .realHover();
+      .and("be.disabled");
 
-    H.tooltip()
-      .findByText("Please set up email to allow subscriptions")
-      .should("be.visible");
+    cy.log("Email warning should only be shown on non-guest embedding");
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .closest("[data-testid=tooltip-warning]")
+      .icon("info")
+      .realHover();
+    H.hovercard().should(
+      "contain.text",
+      "Not available if Guest Mode is selected",
+    );
 
     H.getSimpleEmbedIframeContent()
       .findByRole("button", { name: "Subscriptions" })
@@ -197,7 +203,19 @@ describe(suiteTitle, () => {
       event_detail: "settings=default",
     });
 
-    codeBlock().should("contain", 'with-subscriptions="false"');
+    cy.log("test non-guest embeds");
+    getEmbedSidebar().within(() => {
+      cy.button("Back").click();
+      cy.findByLabelText("Existing Metabase session").click();
+      cy.findByLabelText("Allow subscriptions")
+        .closest("[data-testid=tooltip-warning]")
+        .icon("info")
+        .realHover();
+    });
+    H.hovercard().should(
+      "contain.text",
+      "Please set up email to allow subscriptions",
+    );
   });
 
   it("toggles subscriptions for dashboard when email is set up", () => {
