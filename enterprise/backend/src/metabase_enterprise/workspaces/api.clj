@@ -2,7 +2,6 @@
   "`/api/ee/workspace/` routes"
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.dag :as ws.dag]
@@ -385,7 +384,10 @@
    _query-params
    {:keys [db_id target]} :- [:map
                               [:db_id {:optional true} ms/PositiveInt]
-                              [:target ::transforms.schema/transform-target]]]
+                              [:target [:map
+                                        [:type [:= "table"]]
+                                        [:schema {:optional true} [:or ms/NonBlankString :nil]]
+                                        [:name :string]]]]]
   (cond
     (transforms.util/target-table-exists? {:target (merge {:database db_id} target)
                                            :source {:type :python}})
