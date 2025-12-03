@@ -194,7 +194,7 @@ describe("Tenants - management", () => {
       cy.findByRole("link", { name: /Eagle/ }).should("not.exist");
     });
 
-    cy.findByLabelText("Deactivated").click();
+    cy.findByRole("tab", { name: "Deactivated" }).click();
 
     cy.findByTestId("admin-content-table").within(() => {
       cy.findByRole("link", { name: /Parrot/ }).should("not.exist");
@@ -251,18 +251,19 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: /Tenants/ }).click();
     cy.findByTestId("admin-content-table").should("contain.text", "1");
 
-    cy.findByLabelText("Deactivated").click();
+    cy.findByRole("tab", { name: "Deactivated" }).click();
     cy.findByTestId("admin-content-table")
       .findByRole("button", { name: /ellipsis/ })
       .click();
     H.popover().findByText("Reactivate tenant").click();
     H.modal().button("Reactivate").click();
-    cy.findByTestId("admin-panel").should(
-      "contain.text",
-      "No matching tenants found.",
-    );
 
-    cy.findByLabelText("Active").click();
+    cy.log(
+      "after reactivating the last deactivated tenant, tabs should disappear and show all active tenants",
+    );
+    cy.findByRole("tab", { name: "Deactivated" }).should("not.exist");
+    cy.findByRole("tab", { name: /Active/ }).should("not.exist");
+
     cy.findByTestId("admin-content-table").within(() => {
       cy.findByRole("link", { name: /Parrot/ }).should("exist");
       cy.findByRole("link", { name: /Eagle/ }).should("exist");
@@ -495,6 +496,34 @@ describe("Tenants - management", () => {
       });
     });
   });
+
+  it("should allow creating a shared tenant collection from tenants page", () => {
+    cy.request("PUT", "/api/setting", { "use-tenants": true });
+    createTenants();
+
+    cy.visit("/admin/tenants");
+
+    cy.log("click the create tenant collection button");
+    cy.icon("add_collection").click();
+
+    H.modal().within(() => {
+      cy.findByRole("heading", {
+        name: /New shared tenant collection/,
+      }).should("be.visible");
+
+      cy.findByLabelText(/name/i).type("Acme Shared");
+      cy.findByLabelText(/description/i).should("exist");
+      cy.findByText(/collection it's saved in/i).should("not.exist");
+      cy.button("Create").click();
+    });
+
+    cy.log("takes you to the newly created collection");
+    cy.location("pathname").should("match", /^\/collection\/\d+/);
+    cy.findByTestId("collection-name-heading").should(
+      "contain.text",
+      "Acme Shared",
+    );
+  });
 });
 
 describe("tenant users", () => {
@@ -596,7 +625,7 @@ describe("tenant users", () => {
     H.popover().findByText("Deactivate user").click();
     H.modal().button("Deactivate").click();
 
-    cy.findByRole("tab", { name: /deactivated/i }).click({ force: true });
+    cy.findByRole("tab", { name: "Deactivated" }).click({ force: true });
 
     cy.findByTestId("admin-layout-content").findByText("3 people found");
 
@@ -624,7 +653,7 @@ describe("tenant users", () => {
     H.tooltip().should("contain.text", "Reactivate this account");
 
     cy.findByRole("link", { name: /tenants/i }).click();
-    cy.findByRole("radio", { name: /deactivated/i }).click({ force: true });
+    cy.findByRole("tab", { name: "Deactivated" }).click();
 
     cy.findAllByRole("row")
       .contains("tr", "doohickey")
