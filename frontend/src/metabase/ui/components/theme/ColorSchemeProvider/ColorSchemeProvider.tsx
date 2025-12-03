@@ -1,8 +1,8 @@
 import {
   type ReactNode,
   createContext,
+  useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -10,11 +10,11 @@ import { useMedia } from "react-use";
 import { noop } from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type {
+  ColorScheme,
+  ResolvedColorScheme,
+} from "metabase/lib/color-scheme";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-
-export type ResolvedColorScheme = "light" | "dark";
-
-export type ColorScheme = "auto" | ResolvedColorScheme;
 
 interface ColorSchemeContextType {
   colorScheme: ColorScheme;
@@ -38,6 +38,7 @@ interface ColorSchemeProviderProps {
   children: ReactNode;
   defaultColorScheme?: ColorScheme;
   forceColorScheme?: ResolvedColorScheme | null;
+  onUpdateColorScheme?: (scheme: ColorScheme) => void;
 }
 
 const getNextScheme = (scheme: ResolvedColorScheme) =>
@@ -47,20 +48,15 @@ export function ColorSchemeProvider({
   children,
   defaultColorScheme = "auto",
   forceColorScheme,
+  onUpdateColorScheme,
 }: ColorSchemeProviderProps) {
   const systemColorScheme = useMedia("(prefers-color-scheme: dark)")
     ? "dark"
     : "light";
-  const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
-    // Try to get saved preference from localStorage
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("metabase-color-scheme");
-      if (saved === "light" || saved === "dark" || saved === "auto") {
-        return saved;
-      }
-    }
-    return defaultColorScheme;
-  });
+
+  const [colorScheme, setColorScheme] = useState<ColorScheme>(
+    defaultColorScheme || "auto",
+  );
   const resolvedColorScheme = useMemo(() => {
     if (forceColorScheme) {
       return forceColorScheme;
@@ -71,20 +67,24 @@ export function ColorSchemeProvider({
     return colorScheme === "auto" ? systemColorScheme : colorScheme;
   }, [colorScheme, forceColorScheme, systemColorScheme]);
 
-  useEffect(() => {
-    localStorage.setItem("metabase-color-scheme", colorScheme);
-  }, [colorScheme]);
+  const handleColorSchemeUpdate = useCallback(
+    (value: ColorScheme) => {
+      setColorScheme(value);
+      onUpdateColorScheme?.(value);
+    },
+    [onUpdateColorScheme],
+  );
 
   const value: ColorSchemeContextType = isEmbeddingSdk()
     ? defaultValue
     : {
         colorScheme,
         resolvedColorScheme,
-        setColorScheme,
+        setColorScheme: handleColorSchemeUpdate,
         systemColorScheme,
         toggleColorScheme: () => {
           const nextScheme = getNextScheme(resolvedColorScheme);
-          setColorScheme(
+          handleColorSchemeUpdate(
             nextScheme === systemColorScheme ? "auto" : nextScheme,
           );
         },
