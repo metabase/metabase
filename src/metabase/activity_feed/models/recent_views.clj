@@ -551,6 +551,30 @@
           (cond-> processed-item
             (not (:include-metadata? options)) (dissoc :result_metadata)))))))
 
+;; ================== Recent Documents ==================
+
+(defn- document-recents
+  "Query to select recent document data. Returns documents with their collection information
+  for use in recent views display."
+  [document-ids]
+  (if-not (seq document-ids)
+    []
+    (let [documents (t2/select :model/Document
+                               {:select [:d.id
+                                         :d.name
+                                         :d.archived
+                                         [:d.collection_id :entity-coll-id]
+                                         [:c.id :collection_id]
+                                         [:c.name :collection_name]
+                                         [:c.authority_level :collection_authority_level]]
+                                :from [[:document :d]]
+                                :where [:in :d.id document-ids]
+                                :left-join [[:collection :c]
+                                            [:and
+                                             [:= :c.id :d.collection_id]
+                                             [:= :c.archived false]]]})]
+      documents)))
+
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card
          dashboard-ids  :dashboard
@@ -563,7 +587,7 @@
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))
      :table      (m/index-by :id (table-recents table-ids))
-     :document   (m/index-by :id ((requiring-resolve 'metabase.documents.recent-views/select-documents-for-recents) document-ids))}))
+     :document   (m/index-by :id (document-recents document-ids))}))
 
 (def ^:private ItemValidator (mr/validator Item))
 

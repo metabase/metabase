@@ -91,7 +91,6 @@
            app-db
            collections
            config
-           documents
            events
            models
            util}}
@@ -388,7 +387,7 @@
   comments
   {:team "UX West"
    :api  #{metabase.comments.api
-          metabase.comments.init}
+           metabase.comments.init}
    :uses #{analytics
            api
            channel
@@ -498,8 +497,7 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
-           metabase.documents.prose-mirror
-           metabase.documents.recent-views}
+           metabase.documents.prose-mirror}
    :uses #{activity-feed
            api
            app-db

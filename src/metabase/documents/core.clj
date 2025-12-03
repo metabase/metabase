@@ -10,6 +10,4 @@
 
 (p/import-vars
  [metabase.documents.api.document
-  get-document]
- [metabase.documents.recent-views
-  select-documents-for-recents])
+  get-document])
