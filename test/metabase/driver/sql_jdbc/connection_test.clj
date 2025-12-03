@@ -636,11 +636,20 @@
     (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))
 
 (defn- count-swapped-pools-for-db
-  "Count the number of swapped connection pools for a given database ID."
+  "Count the number of swapped connection pools for a given database ID.
+  Since pools are keyed by [db-id, details-hash], we need to iterate through
+  all cache entries and count those matching the db-id."
   [db-id]
-  (if (.getIfPresent ^Cache @#'sql-jdbc.conn/swapped-connection-pools db-id)
-    1
-    0))
+  (let [cache ^Cache @#'sql-jdbc.conn/swapped-connection-pools]
+    (count (filter (fn [[cached-db-id _details-hash]]
+                     (= cached-db-id db-id))
+                   (keys (.asMap cache))))))
+
+(defn- swap-cache-key
+  "Helper to compute the cache key for a swapped pool, matching the implementation in connection.clj.
+  Takes a db map (with :id, :engine, :details) and returns [db-id, jdbc-spec-hash]."
+  [db]
+  [(:id db) (#'sql-jdbc.conn/jdbc-spec-hash db)])
 
 (deftest with-swapped-connection-details-test
   (testing "Swap connection details temporarily"
@@ -660,6 +669,30 @@
           (sql-jdbc.conn/invalidate-pool-for-db! db)
           (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
             (is (some? spec))))))))
+
+(deftest different-swap-details-get-separate-pools-test
+  (testing "Different swap details for the same database get separate pools, identical details share pools"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [db    (mt/db)
+            db-id (u/the-id db)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (let [pool-a-1 (atom nil)
+              pool-b   (atom nil)
+              pool-a-2 (atom nil)]
+          (testing "User A swaps with their credentials"
+            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a"}
+              (reset! pool-a-1 (sql-jdbc.conn/db->pooled-connection-spec db))
+              (is (= 1 (count-swapped-pools-for-db db-id)) "First swap creates one pool")))
+          (testing "User B swaps with different credentials"
+            (driver/with-swapped-connection-details db-id {:user "user-b" :password "pass-b"}
+              (reset! pool-b (sql-jdbc.conn/db->pooled-connection-spec db))
+              (is (= 2 (count-swapped-pools-for-db db-id)) "Different swap details create a second pool")
+              (is (not (identical? @pool-a-1 @pool-b)) "Different swap details return different pool instances")))
+          (testing "User A returns - should reuse their original pool (still in cache due to TTL)"
+            (driver/with-swapped-connection-details db-id {:user "user-a" :password "pass-a"}
+              (reset! pool-a-2 (sql-jdbc.conn/db->pooled-connection-spec db))
+              (is (= 2 (count-swapped-pools-for-db db-id)) "Identical swap details reuse existing pool")
+              (is (identical? @pool-a-1 @pool-a-2) "Identical swap details return the same pool instance"))))))))
 
 (deftest with-swapped-connection-details-nested-test
   (testing "Nested swaps for the same database throw an exception"
@@ -712,23 +745,27 @@
     (mt/test-drivers (mt/normal-drivers)
       (let [db           (mt/db)
             db-id        (u/the-id db)
+            swap-details {:test-swap true}
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
         (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]
-          (driver/with-swapped-connection-details db-id {:test-swap true}
+          (driver/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))
               (is (some? pool-1))
 
               ;; Simulate password expiration by modifying the cached pool
-              (let [cache ^Cache @#'sql-jdbc.conn/swapped-connection-pools
+              ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
+              (let [cache             ^Cache @#'sql-jdbc.conn/swapped-connection-pools
+                    swapped-db        (update db :details merge swap-details)
+                    cache-key         (swap-cache-key swapped-db)
                     ;; Use a fixed past timestamp (year 2020) to simulate expired password
                     expired-timestamp 1577836800000]
-                (.put cache db-id (assoc pool-1 :password-expiry-timestamp expired-timestamp)))
+                (.put cache cache-key (assoc pool-1 :password-expiry-timestamp expired-timestamp)))
 
               ;; Next call should detect invalid pool and recreate
               (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
@@ -741,13 +778,14 @@
     (mt/test-drivers (mt/normal-drivers)
       (let [db           (mt/db)
             db-id        (u/the-id db)
+            swap-details {:test-swap true}
             create-count (atom 0)]
         (sql-jdbc.conn/invalidate-pool-for-db! db)
         (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
                                                    (fn [db]
                                                      (swap! create-count inc)
                                                      (original db)))]
-          (driver/with-swapped-connection-details db-id {:test-swap true}
+          (driver/with-swapped-connection-details db-id swap-details
             ;; First call creates a pool
             (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
               (is (= 1 @create-count))
@@ -755,8 +793,11 @@
 
               ;; Simulate closed tunnel by modifying the cached pool
               ;; We add a tunnel-session that reports as closed
-              (let [cache ^Cache @#'sql-jdbc.conn/swapped-connection-pools]
-                (.put cache db-id (assoc pool-1 :tunnel-session :mock-closed-session)))
+              ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
+              (let [cache      ^Cache @#'sql-jdbc.conn/swapped-connection-pools
+                    swapped-db (update db :details merge swap-details)
+                    cache-key  (swap-cache-key swapped-db)]
+                (.put cache cache-key (assoc pool-1 :tunnel-session :mock-closed-session)))
 
               ;; Mock ssh-tunnel-open? to return false for our mock session
               (with-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
