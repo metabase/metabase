@@ -2,57 +2,9 @@
 
 set -euo pipefail
 
-# Colors for output (will be extracted to shared utils later)
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
-
-print_header() {
-    echo -e "\n${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BOLD}${BLUE}  $1${NC}"
-    echo -e "${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
-}
-
-print_step() {
-    echo -e "\n${BOLD}${BLUE}→${NC} ${BOLD}$1${NC}"
-}
-
-print_success() {
-    echo -e "  ${GREEN}✓${NC} $1"
-}
-
-print_error() {
-    echo -e "  ${RED}✗${NC} $1"
-}
-
-print_warning() {
-    echo -e "  ${YELLOW}⚠${NC} $1"
-}
-
-get_file_age() {
-    local file="$1"
-    if [ ! -f "$file" ]; then
-        echo "not found"
-        return
-    fi
-
-    local now=$(date +%s)
-    local file_time=$(stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null)
-    local age_seconds=$((now - file_time))
-
-    if [ $age_seconds -lt 60 ]; then
-        echo "${age_seconds}s ago"
-    elif [ $age_seconds -lt 3600 ]; then
-        echo "$((age_seconds / 60))m ago"
-    elif [ $age_seconds -lt 86400 ]; then
-        echo "$((age_seconds / 3600))h ago"
-    else
-        echo "$((age_seconds / 86400))d ago"
-    fi
-}
+# Load shared utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/utils/all.sh"
 
 check_required_tools() {
     local missing=()
@@ -105,26 +57,6 @@ install_backend_deps() {
     fi
 }
 
-ask_yes_no() {
-    local prompt=$1
-    local default=${2:-y}
-    local yn
-
-    if [ "$default" = "y" ]; then
-        prompt="$prompt [Y/n] "
-    else
-        prompt="$prompt [y/N] "
-    fi
-
-    read -r -p "$prompt" yn
-    yn=${yn:-$default}
-
-    case "$yn" in
-        [Yy]*) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
 build_jar() {
     print_step "Building Metabase JAR (this may take a while)"
 
@@ -166,7 +98,7 @@ main() {
             echo "      You can build it later with: ./bin/build.sh"
         fi
     else
-        echo -e "  ${GREEN}✓${NC} Existing JAR found (built ${jar_age})"
+        print_success "Existing JAR found (built ${jar_age})"
         if ask_yes_no "Rebuild it?" "n"; then
             build_jar
         else
