@@ -11,6 +11,7 @@ import {
 } from "metabase/ui";
 import type { TableId, WorkspaceTransformItem } from "metabase-types/api";
 
+import type { OpenTable } from "../WorkspaceProvider";
 import { StatusDot } from "../components/StatusDot/StatusDot";
 
 import S from "./TableListItem.module.css";
@@ -25,7 +26,7 @@ type TableListItemProps = {
   tableId?: TableId;
   isSelected?: boolean;
   onTransformClick?: (transform: WorkspaceTransformItem) => void;
-  onTableClick?: (tableId: TableId) => void;
+  onTableClick?: (table: OpenTable) => void;
 };
 
 export const TableListItem = ({
@@ -51,7 +52,7 @@ export const TableListItem = ({
 
   const handleTableClick = () => {
     if (tableId && onTableClick) {
-      onTableClick(tableId);
+      onTableClick({ tableId, name, schema });
     }
   };
 

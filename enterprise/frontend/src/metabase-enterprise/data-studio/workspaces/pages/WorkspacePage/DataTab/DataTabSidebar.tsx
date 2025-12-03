@@ -8,7 +8,7 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import { useWorkspace } from "../WorkspaceProvider";
+import { type OpenTable, useWorkspace } from "../WorkspaceProvider";
 
 import { TableListItem } from "./TableListItem";
 
@@ -18,7 +18,7 @@ type DataTabSidebarProps = {
   dbTransforms: Transform[];
   selectedTableId?: TableId | null;
   onTransformClick?: (transform: WorkspaceTransformItem) => void;
-  onTableSelect?: (tableId: TableId) => void;
+  onTableSelect?: (table: OpenTable) => void;
 };
 
 export const DataTabSidebar = ({
@@ -80,6 +80,8 @@ export const DataTabSidebar = ({
               schema={table.schema}
               icon="table"
               type="input"
+              onTransformClick={onTransformClick}
+              onTableClick={onTableSelect}
             />
           ))}
         </Stack>

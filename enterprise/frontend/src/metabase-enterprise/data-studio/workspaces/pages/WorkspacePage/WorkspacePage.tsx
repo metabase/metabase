@@ -28,7 +28,7 @@ import {
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
-import type { TableId, Transform } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
@@ -39,6 +39,7 @@ import { TransformTab } from "./TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
   type EditedTransform,
+  type OpenTable,
   WorkspaceProvider,
   useWorkspace,
 } from "./WorkspaceProvider";
@@ -55,7 +56,6 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { sendErrorToast } = useMetadataToasts();
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const [tab, setTab] = useState<string>("setup");
-  const [selectedTableId, setSelectedTableId] = useState<TableId | null>(null);
 
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
 
@@ -103,6 +103,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     removeOpenedTransform,
     patchEditedTransform,
     hasUnsavedChanges,
+    openedTables,
+    activeTable,
+    setActiveTable,
+    addOpenedTable,
+    removeOpenedTable,
   } = useWorkspace();
 
   const workspaceTransforms = useMemo(
@@ -113,10 +118,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   useEffect(() => {
     if (activeTransform) {
       setTab(String(activeTransform.id));
+    } else if (activeTable) {
+      setTab(`table-${activeTable.tableId}`);
     } else {
       setTab("setup");
     }
-  }, [id, activeTransform]);
+  }, [id, activeTransform, activeTable]);
 
   const tabsListRef = useRef<HTMLDivElement>(null);
 
@@ -207,11 +214,51 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   );
 
   const handleTableSelect = useCallback(
-    (tableId: TableId) => {
-      setSelectedTableId(tableId);
-      setTab("data-preview");
+    (table: OpenTable) => {
+      addOpenedTable(table);
+      setActiveTable(table);
+      setActiveTransform(undefined);
     },
-    [setTab],
+    [addOpenedTable, setActiveTable, setActiveTransform],
+  );
+
+  const handleTableClose = useCallback(
+    (event: React.MouseEvent, table: OpenTable, index: number) => {
+      event.stopPropagation();
+
+      const isActive = activeTable?.tableId === table.tableId;
+      const remaining = openedTables.filter(
+        (item) => item.tableId !== table.tableId,
+      );
+
+      removeOpenedTable(table.tableId);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (index > 0 && remaining.length > 0) {
+        setActiveTable(remaining[index - 1]);
+        setTab(`table-${remaining[index - 1].tableId}`);
+      } else if (remaining.length > 0) {
+        setActiveTable(remaining[0]);
+        setTab(`table-${remaining[0].tableId}`);
+      } else if (openedTransforms.length > 0) {
+        setActiveTransform(openedTransforms[openedTransforms.length - 1]);
+      } else {
+        setActiveTable(undefined);
+        setTab("setup");
+      }
+    },
+    [
+      activeTable,
+      openedTables,
+      openedTransforms,
+      removeOpenedTable,
+      setActiveTable,
+      setActiveTransform,
+      setTab,
+    ],
   );
 
   if (isLoadingWorkspace) {
@@ -274,8 +321,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               if (tab) {
                 setTab(tab);
               }
-              if (tab === "setup" || (tab === "metabot" && activeTransform)) {
+              if (
+                tab === "setup" ||
+                (tab === "metabot" && (activeTransform || activeTable))
+              ) {
                 setActiveTransform(undefined);
+                setActiveTable(undefined);
               }
             }}
           >
@@ -300,26 +351,33 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     </Group>
                   </Tabs.Tab>
                 )}
-                {selectedTableId && (
-                  <Tabs.Tab value="data-preview">
+                {openedTables.map((table, index) => (
+                  <Tabs.Tab
+                    key={`table-${table.tableId}`}
+                    value={`table-${table.tableId}`}
+                    onClick={() => {
+                      setActiveTable(table);
+                      setActiveTransform(undefined);
+                    }}
+                  >
                     <Group gap="xs" wrap="nowrap">
                       <Icon name="table" aria-hidden />
-                      {t`Data Preview`}
-                      <ActionIcon
-                        size="1rem"
-                        p="0"
-                        ml="xs"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedTableId(null);
-                          setTab("setup");
-                        }}
-                      >
-                        <Icon name="close" size={10} aria-hidden />
+                      {table.schema
+                        ? `${table.schema}.${table.name}`
+                        : table.name}
+                      <ActionIcon size="1rem" p="0" ml="xs">
+                        <Icon
+                          name="close"
+                          size={10}
+                          aria-hidden
+                          onClick={(event) =>
+                            handleTableClose(event, table, index)
+                          }
+                        />
                       </ActionIcon>
                     </Group>
                   </Tabs.Tab>
-                )}
+                ))}
                 {openedTransforms.map((transform, index) => (
                   <Tabs.Tab
                     key={transform.id}
@@ -357,11 +415,13 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 </Tabs.Panel>
               )}
 
-              <Tabs.Panel value="data-preview" h="100%">
-                <DataTab
-                  databaseId={workspace?.database_id ?? null}
-                  tableId={selectedTableId}
-                />
+              <Tabs.Panel value={`table-${activeTable?.tableId}`} h="100%">
+                {!activeTable ? null : (
+                  <DataTab
+                    databaseId={workspace?.database_id ?? null}
+                    tableId={activeTable.tableId}
+                  />
+                )}
               </Tabs.Panel>
 
               <Tabs.Panel value={String(activeTransform?.id)} h="100%">
@@ -419,6 +479,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   setTab(String(transform.id));
                   addOpenedTransform(transform);
                   setActiveTransform(transform);
+                  setActiveTable(undefined);
                 }}
               />
             </Tabs.Panel>
@@ -427,11 +488,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 tables={workspaceTables}
                 workspaceTransforms={workspaceTransforms}
                 dbTransforms={dbTransforms}
-                selectedTableId={selectedTableId}
+                selectedTableId={activeTable?.tableId}
                 onTransformClick={(transform) => {
                   setTab(String(transform.id));
                   addOpenedTransform(transform);
                   setActiveTransform(transform);
+                  setActiveTable(undefined);
                 }}
                 onTableSelect={handleTableSelect}
               />
