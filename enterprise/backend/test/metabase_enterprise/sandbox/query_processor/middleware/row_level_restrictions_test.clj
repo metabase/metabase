@@ -1612,10 +1612,19 @@
 (deftest long-column-names-sandbox-native-query-test
   (testing "Issue #66405: Sandboxing with native SQL query should work with long column names"
     (data/dataset long-names-dataset
-      (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT * FROM LONG_TABLE"})}}}
-        (let [result (mt/user-http-request :rasta :post 202 "dataset"
-                                           (mt/mbql-query long_table {:limit 5}))]
-          (is (= "completed" (:status result))
-              "Query should complete successfully")
-          (is (seq (get-in result [:data :rows]))
-              "Query should return rows"))))))
+      (testing "with SELECT * (no filtering)"
+        (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT * FROM LONG_TABLE"})}}}
+          (is (=? {:status "completed"
+                   :row_count 2}
+                  (mt/user-http-request :rasta :post 202 "dataset"
+                                        (mt/mbql-query long_table {:limit 5}))))))
+      (testing "with filtering (verifies sandbox is actually applied)"
+        (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT * FROM LONG_TABLE WHERE LONG_TABLE.COLUMN_NAME_WITH_AN_INCREDIBLY_VERBOSE_AND_EXCEEDINGLY_DETAILED_DESCRIPTION_THAT_NEVER_SEEMS_TO_END LIKE 'First%'"})}}}
+          (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                             (mt/mbql-query long_table))]
+            (is (=? {:status "completed"
+                     :row_count 1}
+                    result))
+            (is (= "First row, first column"
+                   ;; The first column (index 0) is the auto-generated ID, the text column is at index 1
+                   (-> result :data :rows first second)))))))))
