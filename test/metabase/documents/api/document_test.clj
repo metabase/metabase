@@ -2233,63 +2233,64 @@
 
 (deftest download-document-card-respects-download-permissions-test
   (testing "POST /api/document/:document-id/card/:card-id/query/:export-format respects database download permissions"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection {coll-id :id} {}
-                       :model/Card {card-id :id} {:name "Test Card"
-                                                  :dataset_query (mt/mbql-query venues {:limit 10})
-                                                  :display :table
-                                                  :collection_id coll-id}
-                       :model/Document {doc-id :id} {:name "Test Document"
-                                                     :collection_id coll-id
-                                                     :document {:type "doc"
-                                                                :content [{:type "cardEmbed"
-                                                                           :attrs {:id card-id}}]}}]
-          (t2/update! :model/Card card-id {:document_id doc-id})
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:advanced-permissions}
+       (mt/with-non-admin-groups-no-root-collection-perms
+         (mt/with-temp [:model/Collection {coll-id :id} {}
+                        :model/Card {card-id :id} {:name "Test Card"
+                                                   :dataset_query (mt/mbql-query venues {:limit 10})
+                                                   :display :table
+                                                   :collection_id coll-id}
+                        :model/Document {doc-id :id} {:name "Test Document"
+                                                      :collection_id coll-id
+                                                      :document {:type "doc"
+                                                                 :content [{:type "cardEmbed"
+                                                                            :attrs {:id card-id}}]}}]
+           (t2/update! :model/Card card-id {:document_id doc-id})
 
-          (let [all-users-group (perms/all-users-group)]
-            ;; Grant collection read permissions so user can access the document
-            (perms/grant-collection-read-permissions! all-users-group coll-id)
+           (let [all-users-group (perms/all-users-group)]
+              ;; Grant collection read permissions so user can access the document
+             (perms/grant-collection-read-permissions! all-users-group coll-id)
 
-            (testing "User without download permissions yields permissions error in body (streaming uses 200)"
-              ;; Set download permissions to :no (no downloads allowed) for All Users group
-              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
+             (testing "User without download permissions yields permissions error in body (streaming uses 200)"
+                ;; Set download permissions to :no (no downloads allowed) for All Users group
+               (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
 
-              (is (malli= [:map
-                           [:status [:= "failed"]]
-                           [:error_type [:= "missing-required-permissions"]]
-                           [:ex-data [:map
-                                      [:permissions-error? [:= true]]]]]
-                          (mt/user-http-request :rasta
-                                                :post 200
-                                                (format "document/%s/card/%s/query/csv" doc-id card-id)
-                                                {:parameters []
-                                                 :format_rows false
-                                                 :pivot_results false}))))
+               (is (malli= [:map
+                            [:status [:= "failed"]]
+                            [:error_type [:= "missing-required-permissions"]]
+                            [:ex-data [:map
+                                       [:permissions-error? [:= true]]]]]
+                           (mt/user-http-request :rasta
+                                                 :post 200
+                                                 (format "document/%s/card/%s/query/csv" doc-id card-id)
+                                                 {:parameters []
+                                                  :format_rows false
+                                                  :pivot_results false}))))
 
-            (testing "User with limited download permissions (10k rows) can download"
-              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :ten-thousand-rows)
+             (testing "User with limited download permissions (10k rows) can download"
+               (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :ten-thousand-rows)
 
-              (let [response (mt/user-http-request :rasta
-                                                   :post 200
-                                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
-                                                   {:parameters []
-                                                    :format_rows false
-                                                    :pivot_results false})]
-                (is (some? response))
-                (is (string? response))))
+               (let [response (mt/user-http-request :rasta
+                                                    :post 200
+                                                    (format "document/%s/card/%s/query/csv" doc-id card-id)
+                                                    {:parameters []
+                                                     :format_rows false
+                                                     :pivot_results false})]
+                 (is (some? response))
+                 (is (string? response))))
 
-            (testing "User with full download permissions can download"
-              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :one-million-rows)
+             (testing "User with full download permissions can download"
+               (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :one-million-rows)
 
-              (let [response (mt/user-http-request :rasta
-                                                   :post 200
-                                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
-                                                   {:parameters []
-                                                    :format_rows false
-                                                    :pivot_results false})]
-                (is (some? response))
-                (is (string? response))))))))))
+               (let [response (mt/user-http-request :rasta
+                                                    :post 200
+                                                    (format "document/%s/card/%s/query/csv" doc-id card-id)
+                                                    {:parameters []
+                                                     :format_rows false
+                                                     :pivot_results false})]
+                 (is (some? response))
+                 (is (string? response)))))))))))
 
 (defn- prose-mirror-with-smartlink
   "Create a ProseMirror AST with a smartlink to a card."
