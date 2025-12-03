@@ -29,13 +29,13 @@ export function InteractiveEmbeddingSettingsCard() {
 
   return (
     <EmbeddingSettingsCard
-      title={t`Enable legacy interactive embedding`}
+      title={t`Enable full app embedding`}
       description={t`A way to embed the entire Metabase app in an iframe. It integrates your permissions and SSO to give people the right level ofaccess to query and drill-down into your data.`}
       settingKey="enable-embedding-interactive"
       alertInfoText={c(
         "{0} is the link to switch binaries. {1} is the link to upsell the SDK. {2} is the link to implement JWT or SAML authentication.",
       )
-        .jt`The new embedding methods give you more flexibility. Interactive embedding and Static embedding will be deprecated in a future version of Metabase. ${(
+        .jt`The new embedding methods give you more flexibility. Full app embedding and Static embedding will be deprecated in a future version of Metabase. ${(
         <ExternalLink
           key="migration-guide-from-legacy-embedding"
           href={quickStartUrl}

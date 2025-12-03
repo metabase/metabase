@@ -585,6 +585,7 @@ export type UserSettings = {
     SdkIframeEmbedSetupSettings,
     "theme" | "useExistingUserSession"
   > | null;
+  "color-scheme"?: string;
 };
 
 /**
