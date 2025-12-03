@@ -2083,10 +2083,10 @@
                  (for [doc (mt/user-http-request :crowberto :get 200 "document/public")]
                    (m/map-vals boolean doc)))))))))
 
-;;; ---------------------------------------- GET /api/ee/public/document/:uuid ----------------------------------------------
+;;; ---------------------------------------- GET /api/public/document/:uuid ----------------------------------------------
 
 (deftest fetch-public-document-test
-  (testing "GET /api/ee/public/document/:uuid"
+  (testing "GET /api/public/document/:uuid"
     (testing "Test that we can fetch a public Document"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
@@ -2097,7 +2097,7 @@
                         (mt/client :get 200 (str "public/document/" (:public_uuid document))))))))))
 
 (deftest public-document-returns-only-safe-fields-test
-  (testing "GET /api/ee/public/document/:uuid should only return safe fields"
+  (testing "GET /api/public/document/:uuid should only return safe fields"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
                                                                           :document (documents.test-util/text->prose-mirror-ast "Public test content")})]
@@ -2115,7 +2115,7 @@
             (is (not (contains? result :description)))))))))
 
 (deftest get-public-document-errors-test
-  (testing "GET /api/ee/public/document/:uuid"
+  (testing "GET /api/public/document/:uuid"
     (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (mt/with-temp [:model/Document document (document-with-public-link {})]
@@ -2146,7 +2146,7 @@
                (mt/user-http-request :crowberto :delete 404 (format "document/%d/public-link" (:id document)))))))))
 
 (deftest public-document-not-accessible-when-archived-test
-  (testing "GET /api/ee/public/document/:uuid should not work for archived documents"
+  (testing "GET /api/public/document/:uuid should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {})]
         (let [uuid (:public_uuid document)]
@@ -2290,6 +2290,7 @@
                                                     :pivot_results false})]
                 (is (some? response))
                 (is (string? response))))))))))
+
 (defn- prose-mirror-with-smartlink
   "Create a ProseMirror AST with a smartlink to a card."
   [text card-id]
