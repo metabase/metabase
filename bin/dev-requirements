@@ -34,8 +34,9 @@ print_optional_tool() {
     if command -v "$cmd" &> /dev/null; then
         echo -e "    ${GREEN}✓${NC} $name ($url)"
     else
-        echo -e "    ${RED}✗${NC} $name ($url)"
+        echo -e "    ${RED}✗${NC} $name"
     fi
+    echo -e "      ${DIM}$url${NC}"
 }
 
 # Detection functions
