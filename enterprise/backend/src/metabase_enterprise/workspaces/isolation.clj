@@ -52,18 +52,17 @@
 
 (defmulti grant-read-access-to-tables!
   "Grant read access to these tables."
-  {:added "0.59.0" :arglists '([database workspace tables])}
+  {:added "0.59.0" :arglists '([database username tables])}
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
 
 (defmethod grant-read-access-to-tables! :postgres
-  [database workspace tables]
+  [database username tables]
   (let [driver         (driver.u/database->driver database)
         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (:details database))
-        read-user-name (-> workspace :database_details :user)
         sqls           (->> (for [table tables]
-                              [(format "GRANT USAGE ON SCHEMA %s TO %s" (:schema table) read-user-name)
-                               (format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) read-user-name)])
+                              [(format "GRANT USAGE ON SCHEMA %s TO %s" (:schema table) username)
+                               (format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) username)])
                             flatten
                             ;; drop mutliple grant usage on the same schema
                             distinct)]
@@ -213,7 +212,6 @@
                       [(format "DROP TABLE IF EXISTS \"%s\".\"%s\""
                                schema-name table-name)]))
      s+t-tuples)))
-
 
 (defn do-with-workspace-isolation
   "Impl of* with-workspace-isolation*."

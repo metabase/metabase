@@ -138,7 +138,7 @@
                                                          (map :id)
                                                          seq)]
                                  (t2/select :model/Table :id [:in table-ids]))]
-              (ws.isolation/grant-read-access-to-tables! database workspace input-tables)
+              (ws.isolation/grant-read-access-to-tables! database (-> workspace :database_details :user) input-tables)
               (t2/update! :model/Workspace {:id (:id workspace)} {:graph graph})
               (assoc workspace :graph graph))
             (assoc workspace :graph {})))))))
