@@ -136,21 +136,16 @@ export const createShouldShowItem = (
       return isNullOrUndefined(databaseId) || item.dbId === databaseId;
     }
 
-    if (item.model === "card") {
-      return (
-        canCollectionCardBeUsed(item as CollectionItem) &&
-        (isNullOrUndefined(databaseId) ||
-          !hasDatabaseId(item) ||
-          isNullOrUndefined(item.database_id))
-      );
+    const hasNoDb =
+      isNullOrUndefined(databaseId) ||
+      !hasDatabaseId(item) ||
+      isNullOrUndefined(item.database_id);
+
+    if (item.model === "card" && models.includes(item.model)) {
+      return hasNoDb || canCollectionCardBeUsed(item as CollectionItem);
     }
 
-    if (
-      (isNullOrUndefined(databaseId) ||
-        !hasDatabaseId(item) ||
-        isNullOrUndefined(item.database_id)) &&
-      models.includes(item.model)
-    ) {
+    if (hasNoDb && models.includes(item.model)) {
       return true;
     }
 
