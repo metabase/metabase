@@ -1,19 +1,17 @@
-import type { ComponentProviderProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import type { ComponentProviderInternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
 
 import { useNormalizeComponentProviderProps } from "./use-normalize-component-provider-props";
 
-jest.mock("metabase/plugins", () => ({
-  PLUGIN_EMBEDDING_SDK: {
-    isEnabled: jest.fn(),
-  },
+jest.mock("embedding-sdk-bundle/store", () => ({
+  useSdkSelector: jest.fn(),
 }));
 
-const mockIsEnabled = PLUGIN_EMBEDDING_SDK.isEnabled as jest.Mock;
+const mockUseSdkSelector = useSdkSelector as jest.Mock;
 
 const BASE_PROPS = {
   authConfig: { uri: "http://localhost" },
-} as unknown as Omit<ComponentProviderProps, "children">;
+} as unknown as ComponentProviderInternalProps;
 
 const FULL_THEME = {
   preset: "light" as const,
@@ -23,7 +21,7 @@ const FULL_THEME = {
 describe("useNormalizeComponentProviderProps", () => {
   describe("when embedding SDK feature is enabled", () => {
     beforeEach(() => {
-      mockIsEnabled.mockReturnValue(true);
+      mockUseSdkSelector.mockReturnValue(true);
     });
 
     it("returns props unchanged", () => {
@@ -51,7 +49,7 @@ describe("useNormalizeComponentProviderProps", () => {
 
   describe("when embedding SDK feature is disabled (OSS)", () => {
     beforeEach(() => {
-      mockIsEnabled.mockReturnValue(false);
+      mockUseSdkSelector.mockReturnValue(false);
     });
 
     it("removes locale from props", () => {
