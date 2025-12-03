@@ -1,0 +1,6 @@
+(ns metabase-enterprise.workspaces.driver.init
+  "Load all workspace driver implementations.
+   Require this namespace to ensure all driver methods are registered."
+  (:require
+   [metabase-enterprise.workspaces.driver.h2]
+   [metabase-enterprise.workspaces.driver.postgres]))

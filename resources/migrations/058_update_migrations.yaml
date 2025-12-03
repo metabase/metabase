@@ -1969,15 +1969,6 @@ databaseChangeLog:
         # will be deleted with the table
 
   - changeSet:
-      id: v58.2025-11-27T12:00:00
-      author: qnkhuat
-      comment: Add workspace.database_details to keep db specifc details used for isolation
-      changes:
-        - addColumn:
-            tableName: workspace
-            columns:
-              - column:
-                  name: database_details
       id: v58.2025-11-27T10:00:00
       author: christruter
       comment: Add collection_id column to transform table

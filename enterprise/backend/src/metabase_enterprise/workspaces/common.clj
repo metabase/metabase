@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.mirroring :as ws.mirroring]
    [metabase.api-keys.core :as api-key]
@@ -94,7 +95,7 @@
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
                                                 :workspace_id (:id ws)})
-        schema  (ws.isolation/isolation-schema-name (:id ws))
+        schema  (driver.common/isolation-schema-name (:id ws))
         ws      (assoc ws
                        :collection_id (:id coll)
                        :schema schema)]
