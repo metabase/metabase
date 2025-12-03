@@ -53,6 +53,10 @@ export function miniPickerBrowseAll() {
   return miniPicker().findByText("Browse all");
 }
 
+export function miniPickerOurAnalytics() {
+  return miniPicker().findByText("Our analytics");
+}
+
 export function miniPickerHeader() {
   return cy.findByTestId("mini-picker-header");
 }
