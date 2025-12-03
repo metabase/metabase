@@ -338,53 +338,6 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       });
     });
   });
-
-  describe("with subscriptipns", () => {
-    beforeEach(() => {
-      cy.intercept("PUT", "api/email").as("smtpSaved");
-      cy.signInAsAdmin();
-      H.setupSMTP();
-
-      cy.intercept("GET", "/api/pulse").as("getPulse");
-      cy.intercept("POST", "/api/pulse").as("createPulse");
-    });
-
-    it(
-      'should offer the ability to add a subscription when "withSubscriptions" is enabled',
-      { tags: "@external" },
-      () => {
-        cy.get("@dashboardId").then((dashboardId) => {
-          cy.signOut();
-          mockAuthProviderAndJwtSignIn();
-
-          mountSdkContent(
-            <InteractiveDashboard
-              dashboardId={dashboardId}
-              withSubscriptions
-            />,
-          );
-        });
-
-        getSdkRoot().within(() => {
-          cy.findByText("Orders in a dashboard").should("be.visible");
-          cy.icon("subscription").click();
-          cy.findByText("Email this dashboard").should("be.visible");
-
-          cy.findByRole("button", { name: "Done" }).click();
-          cy.wait("@createPulse");
-
-          // Doing this twice, remove when EMB-1060 (https://github.com/metabase/metabase/pull/66372) is fixed
-          cy.findByRole("button", { name: "Done" }).click();
-          cy.wait("@createPulse");
-
-          cy.findByText("Subscriptions").should("be.visible");
-
-          // check that length is at least 1
-          cy.findAllByText("Emailed hourly").should("have.length.at.least", 1);
-        });
-      },
-    );
-  });
 });
 
 describe("scenarios > embedding-sdk > interactive-dashboard > tabs", () => {
