@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-import CS from "metabase/css/core/index.css";
-import { Box, Flex, HoverCard, Icon } from "metabase/ui";
+import { Flex, HoverCard, Icon } from "metabase/ui";
 
 export type TooltipWarningMode = "default" | "custom";
 
@@ -27,24 +26,18 @@ export const TooltipWarning = ({
     return children({ disabled: false, hoverCard: null });
   }
 
-  const iconElement = (
-    <Box>
-      {icon ?? (
-        <Icon
-          name={"info"}
-          size={14}
-          c="text-medium"
-          cursor="pointer"
-          style={{ flexShrink: 0 }}
-        />
-      )}
-    </Box>
+  const iconElement = icon ?? (
+    <Icon
+      name={"info"}
+      size={14}
+      c="var(--mb-color-text-secondary)"
+      cursor="pointer"
+      style={{ flexShrink: 0 }}
+    />
   );
   const hoverCard = disabled ? (
     <HoverCard position="bottom">
-      <HoverCard.Target>
-        <Box className={CS.cursorPointer}>{iconElement}</Box>
-      </HoverCard.Target>
+      <HoverCard.Target>{iconElement}</HoverCard.Target>
       <HoverCard.Dropdown>{warning}</HoverCard.Dropdown>
     </HoverCard>
   ) : null;
