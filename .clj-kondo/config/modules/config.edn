@@ -1957,6 +1957,7 @@
            audit-app
            embedding
            premium-features
+           permissions
            enterprise/sso}}
 
   enterprise/gsheets

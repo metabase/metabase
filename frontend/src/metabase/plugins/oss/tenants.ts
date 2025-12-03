@@ -6,6 +6,7 @@ import type { Collection, Group, User } from "metabase-types/api";
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
 const getDefaultPluginTenants = () => ({
+  isEnabled: false,
   userStrategyRoute: null as React.ReactElement | null,
   tenantsRoutes: null as React.ReactElement | null,
   EditUserStrategySettingsButton: PluginPlaceholder,
@@ -26,6 +27,7 @@ const getDefaultPluginTenants = () => ({
 });
 
 export const PLUGIN_TENANTS: {
+  isEnabled: boolean;
   userStrategyRoute: React.ReactElement | null;
   tenantsRoutes: React.ReactElement | null;
   EditUserStrategySettingsButton: React.ComponentType;
