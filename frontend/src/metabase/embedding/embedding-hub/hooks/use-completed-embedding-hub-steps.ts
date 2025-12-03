@@ -26,6 +26,7 @@ export const useCompletedEmbeddingHubSteps = (): {
         "secure-embeds": false,
         "embed-production": false,
         "create-models": false,
+        "setup-tenants": false,
       };
     }
 
