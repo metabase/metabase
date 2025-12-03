@@ -48,7 +48,7 @@ runs:
         path: |
           ${{ steps.pnpm-cache.outputs.dir }}
           node_modules
-        key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+        key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
