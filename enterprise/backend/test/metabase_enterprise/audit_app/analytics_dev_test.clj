@@ -9,10 +9,11 @@
 (deftest postgres-only-requirement-test
   (testing "Analytics dev mode requires PostgreSQL"
     (when-not (= :postgres (mdb/db-type))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Analytics dev mode requires PostgreSQL AppDB"
-           (#'analytics-dev/analytics-dev-mode-setup))))))
+      (mt/with-temporary-setting-values [analytics-dev-mode true]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Analytics dev mode requires PostgreSQL AppDB"
+             (#'analytics-dev/analytics-dev-mode-setup)))))))
 
 (deftest yaml->dev-test
   (testing "yaml->dev replaces canonical creator with user email"
