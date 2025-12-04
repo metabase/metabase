@@ -1964,7 +1964,7 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: Database details used for isolation of this workspace
                   constraints:
-                    nullable: false
+                    nullable: true
       rollback:
         # will be deleted with the table
 

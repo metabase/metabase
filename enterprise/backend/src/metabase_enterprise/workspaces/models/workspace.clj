@@ -45,10 +45,6 @@
                    (update-in acc [(:workspace_id e) (type->grouping (:type e))] (fnil conj []) e))
                  {}))))
 
-(t2/define-before-insert :model/Workspace
-  [workspace]
-  (merge {:database_details {}} workspace))
-
 (methodical/defmethod t2/batched-hydrate [:model/Workspace :contents]
   "Batch hydrate `Workspace` contents"
   [_model k wses]

@@ -6,6 +6,10 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.core :as workspaces]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -15,13 +19,16 @@
   (workspaces/with-workspace-isolation workspace
     (transforms.i/execute! transform opts)))
 
+(defn- mbql->native [query]
+  (qp.store/with-metadata-provider (mt/id)
+    (sql.qp/mbql->native driver/*driver* (qp.preprocess/preprocess query))))
+
 (deftest isolation-e2e-test
-  (mt/test-drivers #_(mt/normal-drivers-with-feature :isolation) #{:postgres}
+  (mt/test-drivers #_(mt/normal-drivers-with-feature :workspace) #{:postgres #_:h2}
     (mt/with-model-cleanup [:model/Transform :model/Workspace]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform 1"
                                                           :source {:type  "query"
-                                                                   ;; TODO we should use native query here
-                                                                   :query (mt/mbql-query orders {:limit 1})}
+                                                                   :query (mt/native-query (mbql->native (mt/mbql-query orders {:limit 1})))}
                                                           :target {:type "table"
                                                                    :name (str "test_table_1_" (mt/random-name))}}]
         (let [workspace             (mt/with-current-user (mt/user->id :crowberto)
@@ -45,4 +52,4 @@
             (is (thrown-with-msg?
                  Exception
                  #"ERROR: permission denied for table.*"
-                 (execute-workspace-transform! workspace (t2/select-one :model/Transform isolated-transform-id) {:run-method :manual})))))))))
+                 #p (execute-workspace-transform! workspace (t2/select-one :model/Transform isolated-transform-id) {:run-method :manual})))))))))
