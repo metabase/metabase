@@ -296,6 +296,16 @@ describe("scenarios > data studio > published tables", () => {
     H.assertQueryBuilderRowCount(93);
   });
 
+  it("should be able to access a published sandboxed table", () => {
+    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+    sandboxProductsOnCategory();
+    H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+    cy.signIn("sandboxed");
+    H.visitQuestionAdhoc(productsQuestionDetails);
+    H.assertQueryBuilderRowCount(54);
+  });
+
   it("should be able to use list field values with sandboxing", () => {
     H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
     sandboxProductsOnCategory();
