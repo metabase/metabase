@@ -61,7 +61,12 @@ describe("scenarios > data studio > published tables", () => {
 
     cy.signIn("nodata");
     cy.visit("/");
-    H.newButton("Question").click();
+    H.newButton().click();
+    H.popover().within(() => {
+      cy.findByText("Question").should("be.visible");
+      cy.findByText("SQL query").should("not.exist");
+      cy.findByText("Question").click();
+    });
     H.popover().within(() => {
       cy.findByText("Data").click();
       cy.findByText("Products").should("be.visible");
