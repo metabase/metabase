@@ -23,6 +23,11 @@
   [& body]
   `(do-with-setting-access-control (fn [] ~@body)))
 
+(defn- add-settings-last-updated-cookie
+  "Add a cookie with the current settings-last-updated timestamp to the response."
+  [response]
+  (assoc-in response [:mb/cookies :cookie/settings-cache-timestamp] true))
+
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
 (api.macros/defendpoint :get "/"
   "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
@@ -42,7 +47,7 @@
    settings :- [:map-of kebab-cased-keyword :any]]
   (with-setting-access-control
     (setting/set-many! settings))
-  api/generic-204-no-content)
+  (add-settings-last-updated-cookie api/generic-204-no-content))
 
 (api.macros/defendpoint :get "/:key"
   "Fetch a single `Setting`."
@@ -60,4 +65,4 @@
    {:keys [value]} :- [:map [:value :any]]]
   (with-setting-access-control
     (setting/set! key value))
-  api/generic-204-no-content)
+  (add-settings-last-updated-cookie api/generic-204-no-content))
