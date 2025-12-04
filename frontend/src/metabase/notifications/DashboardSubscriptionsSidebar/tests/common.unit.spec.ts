@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
+import type { Pulse } from "metabase-types/api";
 
 import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
 
@@ -87,55 +88,101 @@ describe("DashboardSubscriptionsSidebar", () => {
         ),
       ).not.toBeInTheDocument();
     });
-  });
 
-  describe("archiving a pulse", () => {
-    beforeEach(() => {
-      fetchMock.put({ url: "path:/api/pulse/11", response: { cards: [] } });
-    });
+    it(`should close the sidebar when the last pulse is archived and ${testScenarioCondition}`, async () => {
+      const pulses = [
+        {
+          channels: [
+            {
+              schedule_type: "daily",
+              schedule_hour: 0,
+              channel_type: "email",
+              enabled: true,
+            },
+          ],
+          name: "E-commerce Insights",
+          id: 10,
+          cards: [],
+        },
+        {
+          channels: [
+            {
+              schedule_type: "hourly",
+              channel_type: "email",
+              enabled: true,
+            },
+          ],
+          name: "E-commerce Insights",
+          id: 11,
+          cards: [],
+        },
+      ] satisfies (Pulse & { id: number })[];
 
-    it("should close the sidebar when a pulse is archived and isEmbeddingSdk is true", async () => {
+      // Dynamically modify `pulses` so that we get the new updated list of pulses after archiving
+      fetchMock.put({
+        url: "path:/api/pulse/10",
+        response: () => {
+          pulses.splice(
+            pulses.findIndex((pulse) => pulse.id === 10),
+            1,
+          );
+          return {};
+        },
+      });
+      fetchMock.put({
+        url: "path:/api/pulse/11",
+        response: () => {
+          pulses.splice(
+            pulses.findIndex((pulse) => pulse.id === 11),
+            1,
+          );
+          return {};
+        },
+      });
+
       const setSharing = jest.fn();
 
       setup({
         isEmbeddingSdk: true,
         email: true,
-        slack: false,
+        slack,
         setSharing,
-        pulses: [
-          {
-            channels: [
-              {
-                schedule_type: "hourly",
-                channel_type: "email",
-                enabled: true,
-              },
-            ],
-            name: "E-commerce Insights",
-            id: 11,
-            cards: [],
-          },
-        ],
+        pulses,
       });
 
+      // Delete the first subscription
       expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
-      await userEvent.click(await screen.findByText("Emailed hourly"));
+      await userEvent.click(
+        await screen.findByText("Emailed daily at 12:00 AM"),
+      );
       expect(
         await screen.findByText("Email this dashboard"),
       ).toBeInTheDocument();
-
       await userEvent.click(
         await screen.findByText("Delete this subscription"),
       );
 
-      const modal = await screen.findByTestId(
-        "delete-confirmation-modal-pulse",
+      let modal = screen.getByRole("dialog");
+      await userEvent.click(await within(modal).findByRole("checkbox"));
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Delete" }),
       );
 
-      await userEvent.click(await within(modal).findByTestId("confirm-item-0"));
+      expect(setSharing).not.toHaveBeenCalled();
 
+      // Delete the last subscription
+      await userEvent.click(await screen.findByText("Emailed hourly"));
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
       await userEvent.click(
-        (await within(modal).findAllByRole("button", { name: "Delete" }))[0],
+        await screen.findByText("Delete this subscription"),
+      );
+
+      modal = screen.getByRole("dialog");
+      await userEvent.click(await within(modal).findByRole("checkbox"));
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Delete" }),
       );
 
       expect(setSharing).toHaveBeenCalledWith(false);

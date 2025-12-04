@@ -166,7 +166,7 @@ export function setup(
   fetchMock.get({
     url: `path:/api/pulse`,
     query: { dashboard_id: dashboard.id },
-    response: [...pulses],
+    response: () => pulses,
   });
 
   fetchMock.post("path:/api/pulse/test", 200);
