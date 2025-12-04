@@ -16,6 +16,18 @@ const productsQuestionDetails: QuestionDetails = {
   },
 };
 
+const productsByTimeQuestionDetails: QuestionDetails = {
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }]],
+    },
+  },
+};
+
 const peopleQuestionDetails: QuestionDetails = {
   dataset_query: {
     type: "query",
@@ -328,6 +340,19 @@ describe("scenarios > data studio > published tables", () => {
     H.visitQuestionAdhoc(productsQuestionDetails);
     H.main()
       .findByText("Sorry, you don't have permission to run this query.")
+      .should("be.visible");
+  });
+
+  it("should be able to x-ray a table", () => {
+    H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+    cy.signIn("nodata");
+    H.visitQuestionAdhoc(productsByTimeQuestionDetails);
+    H.cartesianChartCircle().first().click();
+    H.popover().findByText("Automatic insights…").click();
+    H.popover().findByText("X-ray").click();
+    H.main()
+      .findByText(/A closer look at number of Products/)
       .should("be.visible");
   });
 });
