@@ -865,7 +865,6 @@
   {:team "UX West"
    :api  #{metabase.permissions.core
            metabase.permissions.init
-           metabase.permissions.published-tables
            metabase.permissions.schema}
    :uses #{api
            app-db
@@ -1849,12 +1848,16 @@
 
   enterprise/data-studio
   {:team "Gadget"
-   :api  #{metabase-enterprise.data-studio.api}
+   :api  #{metabase-enterprise.data-studio.api
+           metabase-enterprise.data-studio.permissions.published-tables}
    :uses #{api
            collections
            database-routing
            driver
            events
+           models
+           permissions
+           premium-features
            request
            sync
            util

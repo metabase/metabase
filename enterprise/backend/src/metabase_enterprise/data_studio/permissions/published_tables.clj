@@ -1,8 +1,10 @@
-(ns metabase-enterprise.permissions.published-tables
+(ns metabase-enterprise.data-studio.permissions.published-tables
   "Enterprise implementation of published table permissions.
   Provides query access to published tables via collection permissions."
   (:require
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
 
@@ -37,3 +39,10 @@
                        [:= :db_id database-id]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))
+
+(defenterprise can-access-via-collection?
+  "Returns true if the user can access this published table via collection read permissions."
+  :feature :data-studio
+  [table]
+  (when (:is_published table)
+    (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection table :read))))

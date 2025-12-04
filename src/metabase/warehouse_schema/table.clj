@@ -35,7 +35,7 @@
   "Returns true if the user can access this published table via collection read permissions.
   OSS returns false (published tables don't grant access).
   Enterprise checks collection permissions for published tables."
-  metabase-enterprise.warehouse-schema.table
+  metabase-enterprise.data-studio.permissions.published-tables
   [_table]
   false)
 
