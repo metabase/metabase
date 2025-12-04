@@ -672,7 +672,7 @@
                                       :name "Tenant McTenantson"}]
         (mt/with-model-cleanup [:model/User]
           (mt/with-temporary-setting-values [use-tenants false]
-            (let [response (client/client-real-response :get 302 "/auth/sso"
+            (let [response (client/client-real-response :get 403 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
                                                         :jwt
@@ -682,17 +682,16 @@
                                                           :first_name "New"
                                                           :last_name "User"}
                                                          default-jwt-secret))]
-              (is (saml-test/successful-login? response))
+              (is (not (saml-test/successful-login? response)))
               (is
                (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))
-          (testing "they should be able to log in again"
+          (testing "they should be able to log in without the tenant bit, of course"
             (let [response (client/client-real-response :get 302 "/auth/sso"
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
                                                         :jwt
                                                         (jwt/sign
                                                          {:email "newuser@metabase.com"
-                                                          :tenant "tenant-mctenantson"
                                                           :first_name "New"
                                                           :last_name "User"}
                                                          default-jwt-secret))]
