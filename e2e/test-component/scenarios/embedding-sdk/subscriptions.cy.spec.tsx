@@ -44,16 +44,9 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
 
     mockAuthProviderAndJwtSignIn();
 
-    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-
-    cy.intercept("PUT", "api/email").as("smtpSaved");
     cy.signInAsAdmin();
     H.setupSMTP();
 
-    cy.intercept("GET", "/api/pulse").as("getPulse");
     cy.intercept("POST", "/api/pulse").as("createPulse");
   });
 
