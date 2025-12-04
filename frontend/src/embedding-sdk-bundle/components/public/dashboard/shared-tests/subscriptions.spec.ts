@@ -66,8 +66,6 @@ export function addPremiumSubscriptionsTests(
         expect(
           await dashboardHeader.findByLabelText("Subscriptions"),
         ).toBeInTheDocument();
-
-        // TODO (Kelvin 2025-11-17) add more assertions when working on EMB-976. e.g. when clicking the button the sidebar is correctly shown.
       },
     );
 
