@@ -11,7 +11,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.timezones-test :as timezones-test]
+   [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]

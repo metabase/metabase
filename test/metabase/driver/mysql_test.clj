@@ -23,7 +23,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
+   [metabase.query-processor.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
@@ -89,7 +89,7 @@
 
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
-  ;; See [[metabase.query-processor-test.date-time-zone-functions-test/extract-week-tests]] for something that tests
+  ;; See [[metabase.query-processor.date-time-zone-functions-test/extract-week-tests]] for something that tests
   ;; that this actually returns correct results.
   (testing :week-of-year-instance
     (doseq [[start-of-week expected] {:sunday
