@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useMemo } from "react";
+import { Link } from "react-router";
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useHasEmailSetup, useSetting } from "metabase/common/hooks";
 import {
@@ -24,7 +25,6 @@ import {
   Radio,
   Stack,
   Text,
-  Tooltip,
 } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -284,15 +284,33 @@ const BehaviorSection = () => {
                       }
                     />
                     {!hasEmailSetup && !disabledInGuestEmbedding && (
-                      <Tooltip
-                        label={t`Please set up email to allow subscriptions`}
-                      >
-                        <Icon
-                          name="info"
-                          size={14}
-                          c="var(--mb-color-text-secondary)"
-                        />
-                      </Tooltip>
+                      <HoverCard closeDelay={99999999}>
+                        <HoverCard.Target>
+                          <Icon
+                            name="info"
+                            size={14}
+                            c="var(--mb-color-text-secondary)"
+                          />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown p="sm">
+                          <Text>{c(
+                            "{0} is a link to email settings page with text 'admin settings'",
+                          ).jt`To allow subscriptions, set up email in ${(
+                            <Link
+                              key="admin-settings-link"
+                              to="/admin/settings/email"
+                            >
+                              <Text
+                                display="inline"
+                                c="var(--mb-color-text-brand)"
+                                fw="bold"
+                              >{c(
+                                "is a link in a sentence 'To allow subscriptions, set up email in admin settings'",
+                              ).t`admin settings`}</Text>
+                            </Link>
+                          )}`}</Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
                     )}
                   </Flex>
                 );

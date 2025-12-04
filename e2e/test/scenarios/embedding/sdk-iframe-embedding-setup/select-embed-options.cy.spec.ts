@@ -288,9 +288,9 @@ describe(suiteTitle, () => {
         .icon("info")
         .realHover();
     });
-    H.tooltip().should(
+    H.hovercard().should(
       "contain.text",
-      "Please set up email to allow subscriptions",
+      "To allow subscriptions, set up email in admin settings",
     );
   });
 
