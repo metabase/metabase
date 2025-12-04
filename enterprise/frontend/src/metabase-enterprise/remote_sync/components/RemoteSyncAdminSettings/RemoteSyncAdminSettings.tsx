@@ -55,6 +55,7 @@ import {
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
+import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 
 import { PullChangesButton } from "./PullChangesButton";
 
@@ -188,6 +189,7 @@ export const RemoteSyncAdminSettings = () => {
   );
 
   const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
+  const useTenants = useSetting("use-tenants");
   const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
 
   return (
@@ -324,6 +326,18 @@ export const RemoteSyncAdminSettings = () => {
           </FormProvider>
         </Box>
       </SettingsSection>
+
+      {isRemoteSyncEnabled && useTenants && (
+        <SettingsSection>
+          <Box maw="52rem">
+            <Title order={3} mb="xs">{t`Shared Tenant Collections`}</Title>
+            <Text c="text-medium" size="sm" mb="md">
+              {t`Enable remote sync for shared tenant collections to include them in Git synchronization.`}
+            </Text>
+            <SharedTenantCollectionsList />
+          </Box>
+        </SettingsSection>
+      )}
 
       {changeBranchConfirmationModal}
       {disableConfirmationModal}

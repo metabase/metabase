@@ -121,7 +121,7 @@ export const MainNavSharedCollections = () => {
       {shouldShowSharedCollectionsSection && (
         <SidebarSection>
           <Flex align="center" justify="space-between">
-            <SidebarHeading>{t`Tenant collections`}</SidebarHeading>
+            <SidebarHeading>{t`External collections`}</SidebarHeading>
             {isAdmin && (
               <Tooltip label={t`Create a new tenant collection`}>
                 <ActionIcon
@@ -143,7 +143,7 @@ export const MainNavSharedCollections = () => {
             }
           />
           {isAdmin && (
-            <PaddedSidebarLink icon="folder" url={tenantSpecificCollections()}>
+            <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
               {t`Tenant-Specific Collections`}
             </PaddedSidebarLink>
           )}
