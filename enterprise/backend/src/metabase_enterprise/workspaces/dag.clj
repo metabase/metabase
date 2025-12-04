@@ -84,17 +84,17 @@
     (when (seq starting-tuples)
       (rows->entity-set
        (t2/query {:with-recursive
-                  [[:starting (tuples->starting-cte starting-tuples)]
-                   [cte-name {:union-all
-                              [{:select [:entity_type :entity_id]
-                                :from   [:starting]}
-                               {:select [[result-type :entity_type]
-                                         [result-id :entity_id]]
-                                :from   [[:dependency :d]]
-                                :join   [[cte-name :r]
-                                         [:and
-                                          [:= match-type :r.entity_type]
-                                          [:= match-id :r.entity_id]]]}]}]]
+                  [[[:starting {:columns [:entity_type :entity_id]}] (tuples->starting-cte starting-tuples)]
+                   [[cte-name {:columns [:entity_type :entity_id]}] {:union-all
+                                                                     [{:select [:entity_type :entity_id]
+                                                                       :from   [:starting]}
+                                                                      {:select [[result-type :entity_type]
+                                                                                [result-id :entity_id]]
+                                                                       :from   [[:dependency :d]]
+                                                                       :join   [[cte-name :r]
+                                                                                [:and
+                                                                                 [:= match-type :r.entity_type]
+                                                                                 [:= match-id :r.entity_id]]]}]}]]
                   :select [:entity_type :entity_id]
                   :from   [cte-name]})))))
 
@@ -197,17 +197,17 @@
   (when (seq transform-ids)
     (let [starting-tuples (mapv (fn [id] ["transform" id]) transform-ids)
           rows (t2/query {:with-recursive
-                          [[:starting (tuples->starting-cte starting-tuples)]
-                           [:upstream {:union-all
-                                       [{:select [:entity_type :entity_id]
-                                         :from   [:starting]}
-                                        {:select [[:d.to_entity_type :entity_type]
-                                                  [:d.to_entity_id :entity_id]]
-                                         :from   [[:dependency :d]]
-                                         :join   [[:upstream :r]
-                                                  [:and
-                                                   [:= :d.from_entity_type :r.entity_type]
-                                                   [:= :d.from_entity_id :r.entity_id]]]}]}]]
+                          [[[:starting {:columns [:entity_type :entity_id]}] (tuples->starting-cte starting-tuples)]
+                           [[:upstream {:columns [:entity_type :entity_id]}] {:union-all
+                                                                              [{:select [:entity_type :entity_id]
+                                                                                :from   [:starting]}
+                                                                               {:select [[:d.to_entity_type :entity_type]
+                                                                                         [:d.to_entity_id :entity_id]]
+                                                                                :from   [[:dependency :d]]
+                                                                                :join   [[:upstream :r]
+                                                                                         [:and
+                                                                                          [:= :d.from_entity_type :r.entity_type]
+                                                                                          [:= :d.from_entity_id :r.entity_id]]]}]}]]
                           :select-distinct [:entity_id]
                           :from   [:upstream]
                           :where  [:= :entity_type "card"]})]

@@ -4,7 +4,6 @@
   gap: var(--mantine-spacing-sm);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-sm);
-  cursor: pointer;
   flex-wrap: nowrap;
 
   &:hover .menu {
@@ -16,11 +15,20 @@
   }
 }
 
+.clickable {
+  cursor: pointer;
+}
+
+.selected {
+  background-color: var(--mb-color-bg-medium);
+}
 .name {
   flex: 1;
   min-width: 0;
 }
 
-.menu {
-  visibility: hidden;
+.actionIcon {
+  &:hover {
+    background-color: var(--mb-color-bg-medium) !important;
+  }
 }

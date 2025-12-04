@@ -3,7 +3,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import EditableText from "metabase/common/components/EditableText";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -22,20 +21,25 @@ import {
 } from "metabase/ui";
 import {
   useGetWorkspaceQuery,
+  useGetWorkspaceTablesQuery,
   useListTransformsQuery,
   useMergeWorkspaceMutation,
   useUpdateWorkspaceNameMutation,
 } from "metabase-enterprise/api";
+import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type { Transform } from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
+import { DataTab, DataTabSidebar } from "./DataTab";
 import { MetabotTab } from "./MetabotTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
   type EditedTransform,
+  type OpenTable,
   WorkspaceProvider,
   useWorkspace,
 } from "./WorkspaceProvider";
@@ -58,6 +62,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { data: allTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+  const { data: workspaceTables = { inputs: [], outputs: [] } } =
+    useGetWorkspaceTablesQuery(id);
 
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
@@ -97,6 +103,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     removeOpenedTransform,
     patchEditedTransform,
     hasUnsavedChanges,
+    openedTables,
+    activeTable,
+    setActiveTable,
+    addOpenedTable,
+    removeOpenedTable,
   } = useWorkspace();
 
   const workspaceTransforms = useMemo(
@@ -107,10 +118,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   useEffect(() => {
     if (activeTransform) {
       setTab(String(activeTransform.id));
+    } else if (activeTable) {
+      setTab(`table-${activeTable.tableId}`);
     } else {
       setTab("setup");
     }
-  }, [id, activeTransform]);
+  }, [id, activeTransform, activeTable]);
 
   const tabsListRef = useRef<HTMLDivElement>(null);
 
@@ -200,6 +213,54 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     [workspace, id, updateWorkspaceName, sendErrorToast],
   );
 
+  const handleTableSelect = useCallback(
+    (table: OpenTable) => {
+      addOpenedTable(table);
+      setActiveTable(table);
+      setActiveTransform(undefined);
+    },
+    [addOpenedTable, setActiveTable, setActiveTransform],
+  );
+
+  const handleTableClose = useCallback(
+    (event: React.MouseEvent, table: OpenTable, index: number) => {
+      event.stopPropagation();
+
+      const isActive = activeTable?.tableId === table.tableId;
+      const remaining = openedTables.filter(
+        (item) => item.tableId !== table.tableId,
+      );
+
+      removeOpenedTable(table.tableId);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (index > 0 && remaining.length > 0) {
+        setActiveTable(remaining[index - 1]);
+        setTab(`table-${remaining[index - 1].tableId}`);
+      } else if (remaining.length > 0) {
+        setActiveTable(remaining[0]);
+        setTab(`table-${remaining[0].tableId}`);
+      } else if (openedTransforms.length > 0) {
+        setActiveTransform(openedTransforms[openedTransforms.length - 1]);
+      } else {
+        setActiveTable(undefined);
+        setTab("setup");
+      }
+    },
+    [
+      activeTable,
+      openedTables,
+      openedTransforms,
+      removeOpenedTable,
+      setActiveTable,
+      setActiveTransform,
+      setTab,
+    ],
+  );
+
   if (isLoadingWorkspace) {
     return (
       <Box p="lg">
@@ -226,15 +287,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       >
         <Flex gap="xs" align="center">
           <Icon name="git_branch" size="1rem" aria-hidden />
-          <EditableText
+          <PaneHeaderInput
             initialValue={workspace.name}
-            onChange={handleWorkspaceNameChange}
             placeholder={t`Workspace name`}
-            style={{
-              fontSize: "var(--mantine-h3-font-size)",
-              fontWeight: "var(--mantine-h3-font-weight)",
-              lineHeight: "var(--mantine-h3-line-height)",
-            }}
+            maxLength={NAME_MAX_LENGTH}
+            onChange={handleWorkspaceNameChange}
           />
         </Flex>
         <Button
@@ -264,8 +321,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               if (tab) {
                 setTab(tab);
               }
-              if (tab === "setup" || (tab === "metabot" && activeTransform)) {
+              if (
+                tab === "setup" ||
+                (tab === "metabot" && (activeTransform || activeTable))
+              ) {
                 setActiveTransform(undefined);
+                setActiveTable(undefined);
               }
             }}
           >
@@ -290,6 +351,33 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     </Group>
                   </Tabs.Tab>
                 )}
+                {openedTables.map((table, index) => (
+                  <Tabs.Tab
+                    key={`table-${table.tableId}`}
+                    value={`table-${table.tableId}`}
+                    onClick={() => {
+                      setActiveTable(table);
+                      setActiveTransform(undefined);
+                    }}
+                  >
+                    <Group gap="xs" wrap="nowrap">
+                      <Icon name="table" aria-hidden />
+                      {table.schema
+                        ? `${table.schema}.${table.name}`
+                        : table.name}
+                      <ActionIcon size="1rem" p="0" ml="xs">
+                        <Icon
+                          name="close"
+                          size={10}
+                          aria-hidden
+                          onClick={(event) =>
+                            handleTableClose(event, table, index)
+                          }
+                        />
+                      </ActionIcon>
+                    </Group>
+                  </Tabs.Tab>
+                ))}
                 {openedTransforms.map((transform, index) => (
                   <Tabs.Tab
                     key={transform.id}
@@ -327,6 +415,15 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                 </Tabs.Panel>
               )}
 
+              <Tabs.Panel value={`table-${activeTable?.tableId}`} h="100%">
+                {!activeTable ? null : (
+                  <DataTab
+                    databaseId={workspace?.database_id ?? null}
+                    tableId={activeTable.tableId}
+                  />
+                )}
+              </Tabs.Panel>
+
               <Tabs.Panel value={String(activeTransform?.id)} h="100%">
                 {openedTransforms.length === 0 ||
                 !activeTransform ||
@@ -359,6 +456,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             >
               <Tabs.List className={styles.tabsPanel}>
                 <Tabs.Tab value="code">{t`Code`}</Tabs.Tab>
+                <Tabs.Tab value="data">{t`Data`}</Tabs.Tab>
               </Tabs.List>
               {sourceDb && (
                 <AddTransformMenu
@@ -381,7 +479,23 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   setTab(String(transform.id));
                   addOpenedTransform(transform);
                   setActiveTransform(transform);
+                  setActiveTable(undefined);
                 }}
+              />
+            </Tabs.Panel>
+            <Tabs.Panel value="data" p="md">
+              <DataTabSidebar
+                tables={workspaceTables}
+                workspaceTransforms={workspaceTransforms}
+                dbTransforms={dbTransforms}
+                selectedTableId={activeTable?.tableId}
+                onTransformClick={(transform) => {
+                  setTab(String(transform.id));
+                  addOpenedTransform(transform);
+                  setActiveTransform(transform);
+                  setActiveTable(undefined);
+                }}
+                onTableSelect={handleTableSelect}
               />
             </Tabs.Panel>
           </Tabs>

@@ -4,9 +4,10 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { Form, FormProvider, FormTextInput } from "metabase/forms";
+import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
-import { useRunTransformMutation } from "metabase-enterprise/api";
+import { useRunTransformMutation, workspaceApi } from "metabase-enterprise/api";
 import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
 import {
   isSameSource,
@@ -49,6 +50,7 @@ export const TransformTab = ({
     isChangeTargetModalOpen,
     { open: openChangeTargetModal, close: closeChangeTargetModal },
   ] = useDisclosure();
+  const dispatch = useDispatch();
 
   const hasSourceChanged = !isSameSource(
     editedTransform.source,
@@ -65,6 +67,16 @@ export const TransformTab = ({
   const handleRun = async () => {
     try {
       await runTransform(transform.id).unwrap();
+
+      // Invalidate the workspace tables cache since transform execution
+      // may affect the list of workspace tables.
+      if (transform.workspace_id) {
+        dispatch(
+          workspaceApi.util.invalidateTags([
+            { type: "workspace", id: transform.workspace_id },
+          ]),
+        );
+      }
     } catch (error) {
       console.error("Failed to run transform", error);
     }
@@ -88,6 +100,7 @@ export const TransformTab = ({
 
   const validationSchemaExtension = useTransformValidation({
     databaseId,
+    target: transform.target,
     workspaceId,
   });
 
