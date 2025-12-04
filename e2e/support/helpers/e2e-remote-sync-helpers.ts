@@ -14,22 +14,25 @@ import {
 
 export const LOCAL_GIT_PATH =
   Cypress.config("projectRoot") + "/e2e/tmp/test-repo";
-export const LIBRARY_FIXTURE_PATH =
-  Cypress.config("projectRoot") + "/e2e/support/assets/example_library";
+export const SYNCED_COLLECTION_FIXTURE_PATH =
+  Cypress.config("projectRoot") +
+  "/e2e/support/assets/example_synced_collection";
 
-// Copy the sample library from the fixture folder to the working directory
-export const copyLibraryFixture = () => {
+// Copy the sample synced collection from the fixture folder to the working directory
+export const copySyncedCollectionFixture = () => {
   cy.task("copyDirectory", {
-    source: LIBRARY_FIXTURE_PATH,
+    source: SYNCED_COLLECTION_FIXTURE_PATH,
     destination: LOCAL_GIT_PATH,
   });
 };
 
-export const checkoutLibraryBranch = (branch: string) => {
+export const checkoutSyncedCollectionBranch = (branch: string) => {
   cy.exec("git -C " + LOCAL_GIT_PATH + ` checkout -b  '${branch}'`);
 };
 
-export const commitToLibrary = (message = "Adding content to library") => {
+export const commitToRepo = (
+  message = "Adding content to synced collection",
+) => {
   cy.exec(
     "git -C " +
       LOCAL_GIT_PATH +
@@ -74,7 +77,7 @@ export const stashChanges = () => {
 };
 
 // function to examine the working directory and return an array of the files present
-export const wrapLibraryFiles = (alias = "libraryFiles") => {
+export const wrapSyncedCollectionFiles = (alias = "syncedCollectionFiles") => {
   stashChanges();
   cy.task("readDirectory", LOCAL_GIT_PATH).then((files) => {
     cy.wrap(
@@ -85,22 +88,22 @@ export const wrapLibraryFiles = (alias = "libraryFiles") => {
   });
 };
 
-// Wraps the library collection for use in tests
-export const wrapLibraryCollection = (alias = "library", n = 0) => {
+// Wraps the synced collection for use in tests
+export const wrapSyncedCollection = (alias = "syncedCollection", n = 0) => {
   if (n > 3) {
-    throw new Error("Could not find library collection");
+    throw new Error("Could not find Synced Collection");
   }
 
   cy.request("/api/collection").then(({ body: collections }) => {
-    const libraryCollection = collections.find(
+    const syncedCollection = collections.find(
       (c: Collection) => c.type === "remote-synced" && c.location === "/",
     );
 
-    if (libraryCollection) {
-      cy.wrap(libraryCollection).as(alias);
+    if (syncedCollection) {
+      cy.wrap(syncedCollection).as(alias);
     } else {
       cy.wait(500);
-      wrapLibraryCollection(alias, n + 1);
+      wrapSyncedCollection(alias, n + 1);
     }
   });
 };
@@ -113,11 +116,11 @@ export const updateRemoteQuestion = (
   assertionsFn?: (val: Record<string, any>) => void,
   commitMessage = "Local Update",
 ) => {
-  wrapLibraryFiles();
-  cy.get("@libraryFiles").then((libraryFiles) => {
-    const questionFilePath = (libraryFiles as unknown as string[]).find(
-      (file) => file.includes("remote_sync_test_question.yaml"),
-    );
+  wrapSyncedCollectionFiles();
+  cy.get("@syncedCollectionFiles").then((syncedCollectionFiles) => {
+    const questionFilePath = (
+      syncedCollectionFiles as unknown as string[]
+    ).find((file) => file.includes("remote_sync_test_question.yaml"));
 
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
@@ -134,7 +137,7 @@ export const updateRemoteQuestion = (
   });
 };
 
-export const moveCollectionItemToLibrary = (name: string) => {
+export const moveCollectionItemToSyncedCollection = (name: string) => {
   navigationSidebar()
     .findByRole("treeitem", { name: /Our analytics/ })
     .click();
@@ -144,21 +147,21 @@ export const moveCollectionItemToLibrary = (name: string) => {
 
   entityPickerModal().within(() => {
     cy.findAllByRole("tab", { name: /Browse|Collections/ }).click();
-    entityPickerModalItem(1, "Library").click();
+    entityPickerModalItem(1, "Synced Collection").click();
     cy.button("Move").click();
   });
 
   getSyncStatusIndicators().should("have.length", 1);
 
   navigationSidebar()
-    .findByRole("treeitem", { name: /Library/ })
+    .findByRole("treeitem", { name: /Synced Collection/ })
     .click();
   collectionTable().findByText(name).should("exist");
 };
 
-export const goToLibrary = (opts?: Partial<Cypress.ClickOptions>) =>
+export const goToSyncedCollection = (opts?: Partial<Cypress.ClickOptions>) =>
   navigationSidebar()
-    .findByRole("treeitem", { name: /Library/ })
+    .findByRole("treeitem", { name: /Synced Collection/ })
     .click(opts);
 
 export const branchPicker = (opts?: Partial<MatcherOptions>) =>

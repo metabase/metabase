@@ -1,9 +1,9 @@
 authority_level: null
 description: null
 archived: false
-slug: library
+slug: synced_collection
 archive_operation_id: null
-name: Library
+name: Synced Collection
 personal_owner_id: null
 type: remote-synced
 is_sample: false
@@ -11,7 +11,7 @@ parent_id: null
 serdes/meta:
 - model: Collection
   id: AF_m-cEw4pFjXYd90_tnj
-  label: library
+  label: synced_collection
 archived_directly: null
 entity_id: AF_m-cEw4pFjXYd90_tnj
 namespace: null
