@@ -164,6 +164,26 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
+    it("should create a question with table and question sources", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(productsQuestionDetails, { mode: "notebook" });
+      H.getNotebookStep("data").button("Join data").click();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        cy.findByText("Orders").click();
+      });
+      H.getNotebookStep("join").button("Summarize").click();
+      H.popover().findByText("Count of rows").click();
+      H.visualize();
+      H.assertQueryBuilderRowCount(1);
+
+      H.saveQuestion("Test question", { wrapId: true });
+      H.visitQuestion("@questionId");
+      H.assertQueryBuilderRowCount(1);
+    });
+
     it("should be able to drill-thru", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
 
