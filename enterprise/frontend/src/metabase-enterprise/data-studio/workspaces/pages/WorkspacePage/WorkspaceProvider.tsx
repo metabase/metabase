@@ -11,9 +11,16 @@ import { checkNotNull } from "metabase/lib/types";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type {
   DraftTransformSource,
+  TableId,
   Transform,
   TransformTargetType,
 } from "metabase-types/api";
+
+export interface OpenTable {
+  tableId: TableId;
+  name: string;
+  schema?: string | null;
+}
 
 export interface EditedTransform {
   name: string;
@@ -43,6 +50,12 @@ export interface WorkspaceContextValue {
     editedTransform?: EditedTransform | null,
   ) => void;
   hasUnsavedChanges: () => boolean;
+  hasTransformEdits: (originalTransform: Transform) => boolean;
+  openedTables: OpenTable[];
+  activeTable: OpenTable | undefined;
+  setActiveTable: (table: OpenTable | undefined) => void;
+  addOpenedTable: (table: OpenTable) => void;
+  removeOpenedTable: (tableId: TableId) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -54,6 +67,8 @@ interface WorkspaceState {
   activeTransform: Transform | undefined;
   editedTransforms: Map<number, EditedTransform>;
   runTransforms: Set<number>;
+  openedTables: OpenTable[];
+  activeTable: OpenTable | undefined;
 }
 
 interface WorkspaceProviderProps {
@@ -66,6 +81,8 @@ const createEmptyWorkspaceState = (): WorkspaceState => ({
   activeTransform: undefined,
   editedTransforms: new Map(),
   runTransforms: new Set(),
+  openedTables: [],
+  activeTable: undefined,
 });
 
 export const WorkspaceProvider = ({
@@ -86,8 +103,14 @@ export const WorkspaceProvider = ({
     return newState;
   }, [workspaceId, workspaceStates]);
 
-  const { openedTransforms, activeTransform, editedTransforms, runTransforms } =
-    currentState;
+  const {
+    openedTransforms,
+    activeTransform,
+    editedTransforms,
+    runTransforms,
+    openedTables,
+    activeTable,
+  } = currentState;
 
   const updateWorkspaceState = useCallback(
     (updater: (state: WorkspaceState) => WorkspaceState) => {
@@ -252,6 +275,83 @@ export const WorkspaceProvider = ({
     return editedTransforms.size > 0;
   }, [editedTransforms]);
 
+  const hasTransformEdits = useCallback(
+    (originalTransform: Transform) => {
+      const edited = editedTransforms.get(originalTransform.id);
+      return (
+        edited != null &&
+        (!isSameSource(edited.source, originalTransform.source) ||
+          edited.name !== originalTransform.name ||
+          edited.target.name !== originalTransform.target.name)
+      );
+    },
+    [editedTransforms],
+  );
+
+  const setActiveTable = useCallback(
+    (table: OpenTable | undefined) => {
+      updateWorkspaceState((state) => ({
+        ...state,
+        activeTable: table,
+      }));
+    },
+    [updateWorkspaceState],
+  );
+
+  const addOpenedTable = useCallback(
+    (table: OpenTable) => {
+      updateWorkspaceState((state) => {
+        const exists = state.openedTables.some(
+          (item) => item.tableId === table.tableId,
+        );
+        if (exists) {
+          return {
+            ...state,
+            activeTable: table,
+          };
+        }
+        return {
+          ...state,
+          openedTables: [...state.openedTables, table],
+          activeTable: table,
+        };
+      });
+    },
+    [updateWorkspaceState],
+  );
+
+  const removeOpenedTable = useCallback(
+    (tableId: TableId) => {
+      updateWorkspaceState((state) => {
+        const filteredTables = state.openedTables.filter(
+          (item) => item.tableId !== tableId,
+        );
+
+        let newActiveTable = state.activeTable;
+        if (state.activeTable?.tableId === tableId) {
+          const currentIndex = state.openedTables.findIndex(
+            (item) => item.tableId === tableId,
+          );
+
+          if (currentIndex > 0) {
+            newActiveTable = state.openedTables[currentIndex - 1];
+          } else if (filteredTables.length > 0) {
+            newActiveTable = filteredTables[0];
+          } else {
+            newActiveTable = undefined;
+          }
+        }
+
+        return {
+          ...state,
+          openedTables: filteredTables,
+          activeTable: newActiveTable,
+        };
+      });
+    },
+    [updateWorkspaceState],
+  );
+
   const activeEditedTransform = activeTransform
     ? (editedTransforms.get(activeTransform.id) ?? activeTransform)
     : activeTransform;
@@ -270,6 +370,12 @@ export const WorkspaceProvider = ({
       runTransforms,
       updateTransformState,
       hasUnsavedChanges,
+      hasTransformEdits,
+      openedTables,
+      activeTable,
+      setActiveTable,
+      addOpenedTable,
+      removeOpenedTable,
     }),
     [
       openedTransforms,
@@ -284,6 +390,12 @@ export const WorkspaceProvider = ({
       removeEditedTransform,
       updateTransformState,
       hasUnsavedChanges,
+      hasTransformEdits,
+      openedTables,
+      activeTable,
+      setActiveTable,
+      addOpenedTable,
+      removeOpenedTable,
     ],
   );
 
