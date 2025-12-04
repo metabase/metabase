@@ -13,6 +13,22 @@
 #   3. Run: ./bin/dev-bootstrap
 #
 # mise will automatically activate the correct versions when you cd into this directory.
+#
+# IDE/Editor users (not cd'd into the repo):
+# ------------------------------------------
+# If your workflow doesn't involve cd'ing into the repo (e.g., Emacs server,
+# IDE running commands with absolute paths), you have two options:
+#
+#   1. Use mise shims (recommended for IDEs):
+#      Add ~/.local/share/mise/shims to your PATH instead of using `mise activate`.
+#      Shims determine the correct tool version at runtime based on the command's
+#      working directory.
+#
+#   2. Use the -C flag to specify the project directory:
+#      mise exec -C /path/to/metabase -- yarn build
+#
+#   3. Set MISE_PROJECT_DIR environment variable:
+#      MISE_PROJECT_DIR=/path/to/metabase yarn build
 
 [settings]
 # Automatically install tools when entering the project directory
