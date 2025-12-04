@@ -49,3 +49,23 @@ describe("MainNavSharedCollections > create shared tenant collection button", ()
     ).not.toBeInTheDocument();
   });
 });
+
+describe("MainNavSharedCollections > section visibility", () => {
+  it("shows the section for admins when there are no collections", async () => {
+    setup({ isAdmin: true, tenantCollections: [] });
+
+    expect(await screen.findByText("Tenant collections")).toBeInTheDocument();
+  });
+
+  it("shows the section for non-admins when some collections exist", async () => {
+    setup({ isAdmin: false, tenantCollections: MOCK_TENANT_COLLECTIONS });
+
+    expect(await screen.findByText("Tenant collections")).toBeInTheDocument();
+  });
+
+  it("hides the section for non-admins when there are no collections", () => {
+    setup({ isAdmin: false, tenantCollections: [] });
+
+    expect(screen.queryByText("Tenant collections")).not.toBeInTheDocument();
+  });
+});
