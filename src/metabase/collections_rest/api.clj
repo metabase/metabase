@@ -80,7 +80,7 @@
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
   By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only include-library?]}]
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -103,7 +103,11 @@
                           [:not-in :type [collection/library-collection-type
                                           collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
-                       (perms/audit-namespace-clause :namespace namespace)
+                       [:or
+                        (when (contains? namespaces nil)
+                          [:= :namespace nil])
+                        (when (seq namespaces)
+                          [:in :namespace namespaces])]
                        (collection/visible-collection-filter-clause
                         :id
                         {:include-archived-items    (if archived
@@ -146,7 +150,11 @@
   (as->
    (select-collections {:archived                       (boolean archived)
                         :exclude-other-user-collections exclude-other-user-collections
-                        :namespace                      namespace
+                        :namespaces                     (cond
+                                                          namespace [namespace]
+                                                          (premium-features/enable-audit-app?) #{"analytics" nil}
+                                                          :else
+                                                          #{nil})
                         :shallow                        false
                         :personal-only                  personal-only
                         :include-library?               true}) collections
@@ -210,21 +218,33 @@
   subtree (below).
 
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
-  some point in the future."
+  some point in the future.
+
+  By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a
+  `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look
+  at. For example, `namespaces=analytics&namespaces=` would match the default behavior."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace shallow collection-id]}
+           namespace namespaces shallow collection-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:include-library                {:default false} [:maybe :boolean]]
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+       [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
        [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/check-400
+   (not (and namespace (seq namespaces))))
   (let [archived    (if exclude-archived false nil)
+        namespaces (cond
+                     namespace #{namespace}
+                     (seq namespaces) (into #{} (map not-empty namespaces))
+                     (premium-features/enable-audit-app?) #{nil "analytics"}
+                     :else #{nil})
         collections (-> (select-collections {:archived                       archived
                                              :exclude-other-user-collections exclude-other-user-collections
-                                             :namespace                      namespace
+                                             :namespaces                     namespaces
                                              :shallow                        shallow
                                              :collection-id                  collection-id
                                              :include-library?               include-library})
