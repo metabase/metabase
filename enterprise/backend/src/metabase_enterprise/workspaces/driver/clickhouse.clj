@@ -11,8 +11,8 @@
 
 (defmethod isolation/init-workspace-database-isolation! :clickhouse
   [database workspace]
-  (let [db-name   (driver.common/isolation-schema-name (:id workspace))
-        read-user {:user     (driver.common/isolation-user-name (:id workspace))
+  (let [db-name   (driver.common/isolation-namespace-name workspace)
+        read-user {:user     (driver.common/isolation-user-name workspace)
                    :password (driver.common/random-isolated-password)}]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
@@ -35,7 +35,6 @@
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         ;; ClickHouse: CREATE TABLE new AS old copies structure only (no data)
-        ;; No ALTER OWNER needed - user already has GRANT ALL on the isolated database
         (.execute ^java.sql.Statement stmt
                   (format "CREATE TABLE `%s`.`%s` AS `%s`.`%s`"
                           isolated-db
@@ -57,4 +56,15 @@
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^java.sql.Statement stmt ^String sql))
+        (.executeBatch ^java.sql.Statement stmt)))))
+
+(defmethod isolation/drop-isolated-tables! :clickhouse
+  [database s+t-tuples]
+  (when (seq s+t-tuples)
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [[db-name table-name] s+t-tuples]
+          (.addBatch ^java.sql.Statement stmt
+                     ^String (format "DROP TABLE IF EXISTS `%s`.`%s`"
+                                     db-name table-name)))
         (.executeBatch ^java.sql.Statement stmt)))))
