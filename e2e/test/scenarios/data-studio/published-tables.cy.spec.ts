@@ -4,7 +4,7 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { QuestionDetails } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const productsQuestionDetails: QuestionDetails = {
   dataset_query: {
@@ -146,10 +146,63 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(2);
     });
 
-    it("should be able to use list field values when sandboxed", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
+    it("should be able to use list field values with FK remapping", () => {
+      cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+        has_field_values: "list",
+      });
+      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+        name: "Product ID",
+        type: "external",
+        human_readable_field_id: PRODUCTS.TITLE,
+      });
+      H.publishTables({ table_ids: [ORDERS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(ordersQuestionDetails);
+      H.tableInteractive()
+        .findByText("Awesome Concrete Shoes")
+        .should("be.visible");
+      H.tableHeaderClick("Product ID");
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Rustic Paper Wallet").click();
+        cy.button("Add filter").click();
+      });
+      H.assertQueryBuilderRowCount(93);
+    });
+
+    it("should be able to use search field values with remapping", () => {
+      cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+        has_field_values: "search",
+      });
+      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+        name: "Product ID",
+        type: "external",
+        human_readable_field_id: PRODUCTS.TITLE,
+      });
+      H.publishTables({ table_ids: [ORDERS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(ordersQuestionDetails);
+      H.tableInteractive()
+        .findByText("Awesome Concrete Shoes")
+        .should("be.visible");
+      H.tableHeaderClick("Product ID");
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByPlaceholderText("Search by Title or enter an ID").type(
+          "Rustic Paper",
+        );
+        cy.findByText("Rustic Paper Wallet").click();
+        cy.button("Add filter").click();
+      });
+      H.assertQueryBuilderRowCount(93);
+    });
+
+    it("should be able to use list field values with sandboxing", () => {
       H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       sandboxProductsOnCategory();
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("sandboxed");
       H.visitQuestionAdhoc(productsQuestionDetails);
@@ -164,10 +217,32 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(54);
     });
 
-    it("should not be able to access the table data when blocked", () => {
+    it("should be able to use search field values with sandboxing", () => {
+      cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
+        has_field_values: "search",
+      });
+      H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+      sandboxProductsOnCategory();
       H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+      cy.signIn("sandboxed");
+      H.visitQuestionAdhoc(productsQuestionDetails);
+      H.tableHeaderClick("Category");
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByPlaceholderText("Search by Category").type("get");
+        cy.findByText("Widget").should("be.visible");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").click();
+        cy.button("Add filter").click();
+      });
+      H.assertQueryBuilderRowCount(54);
+    });
+
+    it("should not be able to access the table data when blocked", () => {
       H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
