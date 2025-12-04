@@ -1,12 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
-import { Form, FormProvider, FormTextInput } from "metabase/forms";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, rem } from "metabase/ui";
 import { useRunTransformMutation, workspaceApi } from "metabase-enterprise/api";
 import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
 import {
@@ -21,7 +19,6 @@ import type {
   WorkspaceId,
 } from "metabase-types/api";
 
-import { useTransformValidation } from "./AddTransformMenu";
 import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
@@ -56,9 +53,7 @@ export const TransformTab = ({
     editedTransform.source,
     transform.source,
   );
-  const hasTargetNameChanged =
-    transform.target.name !== editedTransform.target.name;
-  const hasChanges = hasSourceChanged || hasTargetNameChanged;
+  const hasChanges = hasSourceChanged;
 
   const isSaved = transform.workspace_id === workspaceId;
 
@@ -85,59 +80,6 @@ export const TransformTab = ({
   const handleSourceChange = (source: DraftTransformSource) => {
     onChange({ source });
   };
-
-  const handleNameChange = useCallback(
-    (name: string) => {
-      onChange({
-        target: {
-          type: editedTransform.target.type,
-          name,
-        },
-      });
-    },
-    [onChange, editedTransform.target.type],
-  );
-
-  const validationSchemaExtension = useTransformValidation({
-    databaseId,
-    target: transform.target,
-    workspaceId,
-  });
-
-  const validationSchema = useMemo(
-    () =>
-      Yup.object({
-        targetName:
-          validationSchemaExtension?.targetName ||
-          Yup.string().required("Target table name is required"),
-        targetSchema: Yup.string().nullable(),
-      }),
-    [validationSchemaExtension],
-  );
-
-  const initialValues = useMemo(
-    () => ({
-      targetName: editedTransform.target.name,
-      targetSchema: transform.target.schema || null,
-    }),
-    [editedTransform.target.name, transform.target.schema],
-  );
-
-  const handleFormSubmit = useCallback(
-    (values: typeof initialValues) => {
-      handleNameChange(values.targetName);
-    },
-    [handleNameChange],
-  );
-
-  const handleFieldChange = useCallback(
-    (field: string, value: string) => {
-      if (field === "targetName") {
-        handleNameChange(value);
-      }
-    },
-    [handleNameChange],
-  );
 
   const handleTargetUpdate = useCallback(
     (updatedTransform: Transform) => {
@@ -185,33 +127,7 @@ export const TransformTab = ({
         p="md"
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
-        <Group>
-          {isSaved && (
-            <FormProvider
-              key={transform.id}
-              initialValues={initialValues}
-              validationSchema={validationSchema}
-              onSubmit={handleFormSubmit}
-            >
-              <Form>
-                <Group>
-                  <Text
-                    c="text-dark"
-                    component="label"
-                    fw="bold"
-                  >{t`Output table`}</Text>
-                  <FormTextInput
-                    name="targetName"
-                    miw={rem(300)}
-                    onChange={(e) =>
-                      handleFieldChange("targetName", e.target.value)
-                    }
-                  />
-                </Group>
-              </Form>
-            </FormProvider>
-          )}
-        </Group>
+        <Group />
 
         <Group>
           {isSaved && (
