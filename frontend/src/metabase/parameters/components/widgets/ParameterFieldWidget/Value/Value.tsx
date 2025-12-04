@@ -1,5 +1,6 @@
 import { isValidElement } from "react";
 
+import { useSetting } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -9,6 +10,7 @@ import RemappedValue from "./RemappedValue";
 
 export const Value = ({
   value: rawValue,
+  column,
   ...rawOptions
 }: {
   value: unknown;
@@ -18,8 +20,10 @@ export const Value = ({
   parameter?: Parameter;
   cardId?: number;
   dashboardId?: DashboardId;
+  ignoreInstanceSettings?: boolean;
 } & OptionsType) => {
   const tc = useTranslateContent<unknown>();
+  const formattingSettings = useSetting("custom-formatting");
 
   if (rawOptions.hide) {
     return null;
@@ -27,9 +31,24 @@ export const Value = ({
 
   const value = tc(rawValue);
 
-  const options = {
+  let options = {
     ...rawOptions,
+    column,
     displayValue: tc(rawOptions.displayValue),
+  };
+
+  if (!options.ignoreInstanceSettings) {
+    options = {
+      ...options,
+      ...formattingSettings?.["type/Number"],
+      ...formattingSettings?.["type/Temporal"],
+      ...formattingSettings?.["type/Currency"],
+    };
+  }
+
+  options = {
+    ...options,
+    ...column?.settings,
   };
 
   if (rawOptions.remap) {
