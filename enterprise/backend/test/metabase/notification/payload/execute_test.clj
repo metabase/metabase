@@ -1,4 +1,4 @@
-(ns metabase-enterprise.notification.payload.execute-test
+(ns metabase.notification.payload.execute-test
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.execute :as notification.payload.execute]
