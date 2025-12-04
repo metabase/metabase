@@ -406,6 +406,35 @@ describe("scenarios > data studio > modeling > metrics", () => {
       .findByText("No metrics yet")
       .should("be.visible");
   });
+
+  describe("caching", () => {
+    it("should allow changing metric caching settings", () => {
+      cy.log("Navigate to Data Studio Modeling");
+      cy.visit("/data-studio/modeling");
+
+      cy.log("Select Metrics collection from sidebar");
+      H.DataStudio.ModelingSidebar.collectionsTree()
+        .findByText("Metrics")
+        .click();
+
+      cy.log("Click on the metric from the collection view");
+      H.DataStudio.Modeling.collectionPage().should("be.visible");
+      cy.findByRole("table").findByText("Trusted Orders Metric").click();
+
+      cy.log("Navigate to caching tab");
+      H.DataStudio.Metrics.cachingTab().click();
+
+      cy.log("Change the setting and save");
+      cy.findByRole("radio", { name: /Use default/ }).should("be.checked");
+      cy.findByRole("radio", { name: /Duration/ }).click();
+      cy.findByRole("button", { name: "Save" }).click();
+
+      cy.log("Navigate away and come back to verify the change is persisted");
+      H.DataStudio.Metrics.overviewTab().click();
+      H.DataStudio.Metrics.cachingTab().click();
+      cy.findByRole("radio", { name: /Duration/ }).should("be.checked");
+    });
+  });
 });
 
 function visitModelingPage() {

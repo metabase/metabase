@@ -6,10 +6,11 @@ import { useUpdateCardMutation } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { CardMoreMenu } from "metabase/questions/components/CardMoreMenu";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
 
@@ -137,6 +138,17 @@ function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
     tabs.push({
       label: t`Dependencies`,
       to: Urls.dataStudioMetricDependencies(card.id),
+    });
+  }
+
+  const isCacheableQuestion =
+    PLUGIN_CACHING.isGranularCachingEnabled() &&
+    PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
+
+  if (isCacheableQuestion) {
+    tabs.push({
+      label: t`Caching`,
+      to: Urls.dataStudioMetricCaching(card.id),
     });
   }
 
