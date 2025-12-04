@@ -68,30 +68,34 @@ clojure = "1.12.3.1577"
 babashka = "1.12.212"
 
 # =============================================================================
-# Optional Tools (quality of life)
+# Other Tools (quality of life)
 # =============================================================================
 # Uncomment any tools you'd like mise to manage for you.
 
 # bat - A cat clone with syntax highlighting
 # https://github.com/sharkdp/bat
-# bat = "latest"
+bat = "latest"
 
 # fzf - A fuzzy finder for the terminal
 # https://github.com/junegunn/fzf
-# fzf = "latest"
+fzf = "latest"
 
 # fd - A fast alternative to find
 # https://github.com/sharkdp/fd
-# fd = "latest"
+fd = "latest"
 
 # ripgrep - A fast alternative to grep
 # https://github.com/BurntSushi/ripgrep
-# ripgrep = "latest"
+ripgrep = "latest"
 
 # GitHub CLI - for GitHub operations from the terminal
 # https://cli.github.com/
-# gh = "latest"
+gh = "latest"
 
 # AWS CLI - for AWS operations
 # https://aws.amazon.com/cli/
-# awscli = "latest"
+awscli = "latest"
+
+# AWS CLI - for AWS operations
+# https://aws.amazon.com/cli/
+op = "latest"
