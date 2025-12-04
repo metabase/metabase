@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
@@ -62,13 +61,13 @@
   (let [permissions-set      @api/*current-user-permissions-set*
         db-ids               (t2/select-pks-set :model/Database)
         user-id              api/*current-user-id*
-        _                    (data-perms/prime-db-cache db-ids)
+        _                    (perms/prime-db-cache db-ids)
         create-query-perms   (into #{}
                                    (map (fn [db-id]
-                                          (data-perms/most-permissive-database-permission-for-user
+                                          (perms/most-permissive-database-permission-for-user
                                            user-id :perms/create-queries db-id)))
                                    db-ids)
-        can-create-queries?  (or (-> (some #(data-perms/at-least-as-permissive?
+        can-create-queries?  (or (-> (some #(perms/at-least-as-permissive?
                                              :perms/create-queries % :query-builder)
                                            create-query-perms)
                                      boolean)

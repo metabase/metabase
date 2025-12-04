@@ -48,48 +48,51 @@
 
 ;;; ------------------------------------------------ Remapping Graph Traversal ------------------------------------------------
 
-(defn- upstream-table-ids
-  "Given a set of table IDs, find all tables that these tables depend on via FK remapping (Dimensions).
-  A table T1 depends on table T2 if T1 has a field with a Dimension of type :external pointing to a field in T2."
-  [table-ids]
-  (if (empty? table-ids)
+(defn- remapped-table-ids
+  "Find tables connected via FK remapping (Dimensions).
+  `input-field` and `output-field` are field aliases (:source_field or :target_field).
+  Returns table IDs from `output-field` that are connected to `tables` via `input-field`.
+  `tables` can be a set of table IDs or a HoneySQL subquery map."
+  [input-field output-field tables]
+  (if (empty? tables)
     #{}
-    (set (map :table_id
-              (t2/query {:select [[:target_field.table_id :table_id]]
-                         :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [[(t2/table-name :model/Field) :source_field]
-                                  [:= :dim.field_id :source_field.id]
-                                  [(t2/table-name :model/Field) :target_field]
-                                  [:= :dim.human_readable_field_id :target_field.id]]
-                         :where  [:and
-                                  [:= :dim.type "external"]
-                                  [:in :source_field.table_id table-ids]
-                                  [:not [:in :target_field.table_id table-ids]]]})))))
+    (let [input-table-id  (keyword (name input-field) "table_id")
+          output-table-id (keyword (name output-field) "table_id")]
+      (into #{} (map :table_id)
+            (t2/reducible-query {:select [[output-table-id :table_id]]
+                                 :from   [[(t2/table-name :model/Dimension) :dim]]
+                                 :join   [[(t2/table-name :model/Field) :source_field]
+                                          [:= :dim.field_id :source_field.id]
+                                          [(t2/table-name :model/Field) :target_field]
+                                          [:= :dim.human_readable_field_id :target_field.id]]
+                                 :where  [:and
+                                          [:= :dim.type "external"]
+                                          [:in input-table-id tables]
+                                          [:not [:in output-table-id tables]]]})))))
+
+(defn- upstream-table-ids
+  "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
+  via FK remapping (Dimensions)."
+  [source-tables]
+  (remapped-table-ids :source_field :target_field source-tables))
 
 (defn- downstream-table-ids
-  "Given a set of table IDs, find all tables that depend on these tables via FK remapping (Dimensions).
-  A table T1 is a dependent of table T2 if T1 has a field with a Dimension of type :external pointing to a field in T2."
-  [table-ids]
-  (if (empty? table-ids)
-    #{}
-    (set (map :table_id
-              (t2/query {:select [[:source_field.table_id :table_id]]
-                         :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [[(t2/table-name :model/Field) :source_field]
-                                  [:= :dim.field_id :source_field.id]
-                                  [(t2/table-name :model/Field) :target_field]
-                                  [:= :dim.human_readable_field_id :target_field.id]]
-                         :where  [:and
-                                  [:= :dim.type "external"]
-                                  [:in :target_field.table_id table-ids]
-                                  [:not [:in :source_field.table_id table-ids]]]})))))
+  "Given a table selector (set of IDs or subquery), find all tables that depend on these tables
+  via FK remapping (Dimensions)."
+  [target-tables]
+  (remapped-table-ids :target_field :source_field target-tables))
+
+(defn- table-subquery
+  "Create a subquery that selects table IDs matching the given WHERE clause."
+  [where]
+  {:select [:id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph
-  "Recursively traverse the remapping graph in a given direction.
-  Returns all table IDs reachable from the starting table IDs (including the starting set)."
-  [neighbors-fn initial-table-ids]
-  (loop [visited (set initial-table-ids)
-         frontier (set initial-table-ids)]
+  "Recursively traverse the remapping graph starting from initial-ids.
+  Returns all reachable table IDs (including initial-ids)."
+  [neighbors-fn initial-ids]
+  (loop [visited initial-ids
+         frontier initial-ids]
     (let [new-neighbors (set/difference (neighbors-fn frontier) visited)]
       (if (empty? new-neighbors)
         visited
@@ -97,14 +100,24 @@
                new-neighbors)))))
 
 (defn- all-upstream-table-ids
-  "Get all upstream table IDs recursively for the given table IDs (including the input IDs)."
-  [table-ids]
-  (traverse-graph upstream-table-ids table-ids))
+  "Get all upstream table IDs recursively for tables matching the given WHERE clause.
+  The first hop uses a subquery to avoid materializing potentially millions of IDs;
+  subsequent hops use IDs since remappings are rare."
+  [source-table-where]
+  (let [initial-ids (upstream-table-ids (table-subquery source-table-where))]
+    (if (empty? initial-ids)
+      #{}
+      (traverse-graph upstream-table-ids initial-ids))))
 
 (defn- all-downstream-table-ids
-  "Get all downstream table IDs recursively for the given table IDs (including the input IDs)."
-  [table-ids]
-  (traverse-graph downstream-table-ids table-ids))
+  "Get all downstream table IDs recursively for tables matching the given WHERE clause.
+  The first hop uses a subquery to avoid materializing potentially millions of IDs;
+  subsequent hops use IDs since remappings are rare."
+  [target-table-where]
+  (let [initial-ids (downstream-table-ids (table-subquery target-table-where))]
+    (if (empty? initial-ids)
+      #{}
+      (traverse-graph downstream-table-ids initial-ids))))
 
 (mr/def ::data-sources
   (into [:enum {:decode/string keyword}] table/data-sources))
@@ -175,10 +188,11 @@
   (api/check-superuser)
   (let [fields            [:model/Table :id :db_id :name :display_name :schema :is_published]
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        selected-ids      (t2/select-fn-set :id :model/Table {:where where})
-        selected-table    (when (= 1 (count selected-ids)) (t2/select-one fields :id (first selected-ids)))
-        upstream-ids      (set/difference (all-upstream-table-ids selected-ids) selected-ids)
-        downstream-ids    (set/difference (all-downstream-table-ids selected-ids) selected-ids)
+        selected-tables   (t2/select fields {:where where :limit 2})
+        selected-table    (when-not (next selected-tables)
+                            (first selected-tables))
+        upstream-ids      (all-upstream-table-ids where)
+        downstream-ids    (all-downstream-table-ids where)
         upstream-tables   (when (seq upstream-ids)
                             (t2/select fields :id [:in upstream-ids]))
         downstream-tables (when (seq downstream-ids)
@@ -201,13 +215,14 @@
                                               {:status-code 409}))
                               (first colls)))
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        selected-ids      (t2/select-pks-set :model/Table {:where where})
-        all-ids           (all-upstream-table-ids selected-ids)]
-    (when (seq all-ids)
-      (t2/query {:update (t2/table-name :model/Table)
-                 :set    {:collection_id (:id target-collection)
-                          :is_published  true}
-                 :where  [:in :id all-ids]}))
+        upstream-ids      (all-upstream-table-ids where)
+        update-where      (if (seq upstream-ids)
+                            [:or where [:in :id upstream-ids]]
+                            where)]
+    (t2/query {:update (t2/table-name :model/Table)
+               :set    {:collection_id (:id target-collection)
+                        :is_published  true}
+               :where  update-where})
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables"
@@ -216,14 +231,15 @@
    _query-params
    body :- ::table-selectors]
   (api/check-superuser)
-  (let [where        (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        selected-ids (t2/select-pks-set :model/Table {:where where})
-        all-ids      (all-downstream-table-ids selected-ids)]
-    (when (seq all-ids)
-      (t2/query {:update (t2/table-name :model/Table)
-                 :set    {:collection_id nil
-                          :is_published  false}
-                 :where  [:in :id all-ids]}))
+  (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        downstream-ids  (all-downstream-table-ids where)
+        update-where    (if (seq downstream-ids)
+                          [:or where [:in :id downstream-ids]]
+                          where)]
+    (t2/query {:update (t2/table-name :model/Table)
+               :set    {:collection_id nil
+                        :is_published  false}
+               :where  update-where})
     api/generic-204-no-content))
 
 (defn- sync-schema-async!
