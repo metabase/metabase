@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-management.api.collection-test
+(ns metabase-enterprise.content-verification.api.collection-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
