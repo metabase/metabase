@@ -53,7 +53,6 @@
   (merge
    {:account             (tx/db-test-env-var-or-throw :snowflake :account)
     :user                (tx/db-test-env-var-or-throw :snowflake :user)
-    :role                (tx/db-test-env-var-or-throw :snowflake :role)
     :private-key-options "uploaded"
     :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
     :use-password false
