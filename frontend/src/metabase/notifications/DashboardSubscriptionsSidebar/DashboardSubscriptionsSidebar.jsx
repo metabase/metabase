@@ -129,6 +129,8 @@ class DashboardSubscriptionsSidebarInner extends Component {
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
     params: PropTypes.object,
+    // From Pulses.loadList HOC
+    loading: PropTypes.bool,
   };
 
   componentDidMount() {
@@ -138,7 +140,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
   componentDidUpdate(prevProps) {
     const { editingMode } = this.state;
-    const { isAdmin, pulses } = this.props;
+    const { isAdmin, pulses, loading: isSubscriptionListLoading } = this.props;
 
     /**
      * (EMB-976): In SDK/EAJS context we need to avoid showing the NEW_PULSE view (the view that lets users select
@@ -148,7 +150,15 @@ class DashboardSubscriptionsSidebarInner extends Component {
      * Otherwise, we won't show the subscription button to open this sidebar
      * in the first place.
      */
-    if (isEmbeddingSdk() && shouldDisplayNewPulse(editingMode, pulses)) {
+    if (
+      isEmbeddingSdk() &&
+      shouldDisplayNewPulse(editingMode, pulses) &&
+      /**
+       * Ensure we don't prematurely switch to ADD_EMAIL while the pulse list is loading.
+       * When loading completes, shouldDisplayNewPulse() will correctly return false if the list is empty.
+       */
+      !isSubscriptionListLoading
+    ) {
       this.setState({
         editingMode: EDITING_MODES.ADD_EMAIL,
       });
