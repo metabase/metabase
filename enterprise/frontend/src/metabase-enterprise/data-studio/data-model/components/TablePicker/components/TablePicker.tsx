@@ -16,6 +16,7 @@ import {
   rem,
 } from "metabase/ui";
 
+import { useDataModelApi } from "../../../pages/DataModel/contexts/DataModelApiContext";
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
 import type { RouteParams } from "../../../pages/DataModel/types";
 import type { ChangeOptions, FilterState, TreePath } from "../types";
@@ -41,6 +42,7 @@ export function TablePicker({
 }: TablePickerProps) {
   const { selectedTables, selectedSchemas, selectedDatabases, resetSelection } =
     useSelection();
+  const { invokeAction } = useDataModelApi();
 
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -56,16 +58,12 @@ export function TablePicker({
   const filtersCount = getFiltersCount(filters);
 
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
-  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
-    null,
-  );
 
-  function handlePublishSuccess() {
-    if (onUpdateCallback) {
-      onUpdateCallback();
-    }
+  const handlePublishSuccess = () => {
+    invokeAction("refetchFilteredTables");
+    invokeAction("refetchSelectedTables");
     resetSelection();
-  }
+  };
 
   useEffect(() => {
     const togglingBetweenSearchAndTree =
@@ -145,18 +143,9 @@ export function TablePicker({
 
       <Box mih={0} flex="1 1 auto">
         {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree
-            path={path}
-            onChange={onChange}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
+          <Tree path={path} onChange={onChange} />
         ) : (
-          <SearchNew
-            query={deferredQuery}
-            params={params}
-            filters={filters}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
+          <SearchNew query={deferredQuery} params={params} filters={filters} />
         )}
       </Box>
 

@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { useDataModelApi } from "metabase-enterprise/data-studio/data-model/pages/DataModel/contexts/DataModelApiContext";
 import type { TableId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -15,17 +16,15 @@ import {
   toggleSchemaSelection,
 } from "../bulk-selection.utils";
 import { useExpandedState, useTableLoader } from "../hooks";
-import type {
-  ChangeOptions,
-  DatabaseNode,
-  ExpandedItem,
-  ExpandedSchemaItem,
-  FlatItem,
-  SchemaItem,
-  TreeNode,
-  TreePath,
-} from "../types";
 import {
+  type ChangeOptions,
+  type DatabaseNode,
+  type ExpandedItem,
+  type ExpandedSchemaItem,
+  type FlatItem,
+  type SchemaItem,
+  type TreeNode,
+  type TreePath,
   isDatabaseItem,
   isDatabaseNode,
   isSchemaItem,
@@ -41,10 +40,9 @@ import { TablePickerResults } from "./Results";
 interface Props {
   path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
-  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
+export function Tree({ path, onChange }: Props) {
   const {
     selectedTables,
     setSelectedTables,
@@ -55,12 +53,8 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   } = useSelection();
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
-  const { tree, reload } = useTableLoader(path);
-
-  useEffect(() => {
-    setOnUpdateCallback(() => () => reload(path));
-    return () => setOnUpdateCallback(null);
-  }, [path, reload, setOnUpdateCallback]);
+  const { tree, reload } = useTableLoader();
+  const { registerAction, unregisterAction } = useDataModelApi();
 
   const items = flatten(tree, {
     isExpanded,
@@ -72,6 +66,13 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
       databases: selectedDatabases,
     },
   });
+
+  /**
+   * Initial loading all databases, schemas, tables for the current path
+   */
+  useEffect(() => {
+    reload(path);
+  }, [reload, path]);
 
   useEffect(() => {
     const expandedDatabases = items.filter(
@@ -241,6 +242,19 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     setSelectedTables,
     setSelectedSchemas,
   ]);
+
+  const refetchSelectedTables = useCallback(() => {
+    const selectedTableNodes = items
+      .filter((item) => isTableNode(item))
+      .filter((tableNode) => selectedTables.has(tableNode.value.tableId));
+
+    selectedTableNodes.forEach((tableNode) => reload(tableNode.value));
+  }, [items, reload, selectedTables]);
+
+  useEffect(() => {
+    registerAction("refetchSelectedTables", refetchSelectedTables);
+    return () => unregisterAction("refetchSelectedTables");
+  }, [refetchSelectedTables, registerAction, unregisterAction]);
 
   if (isEmpty) {
     return <EmptyState title={t`No data to show`} />;

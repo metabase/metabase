@@ -30,6 +30,7 @@ import { TableAttributesEditBulk } from "../../components/TableSection/TableAttr
 
 import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";
+import { DataModelApiProvider } from "./contexts/DataModelApiContext";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 
@@ -42,9 +43,11 @@ interface Props {
 export const DataModel = ({ children, location, params }: Props) => {
   return (
     <SelectionProvider>
-      <DataModelContent location={location} params={params}>
-        {children}
-      </DataModelContent>
+      <DataModelApiProvider>
+        <DataModelContent location={location} params={params}>
+          {children}
+        </DataModelContent>
+      </DataModelApiProvider>
     </SelectionProvider>
   );
 };

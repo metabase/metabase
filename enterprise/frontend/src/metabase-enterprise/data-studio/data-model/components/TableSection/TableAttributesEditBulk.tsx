@@ -17,6 +17,7 @@ import type {
   UserId,
 } from "metabase-types/api";
 
+import { useDataModelApi } from "../../pages/DataModel/contexts/DataModelApiContext";
 import { useSelection } from "../../pages/DataModel/contexts/SelectionContext";
 import { SyncOptionsModal } from "../SyncOptionsModal";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
@@ -43,6 +44,7 @@ export function TableAttributesEditBulk() {
   const [userId, setUserId] = useState<UserId | "unknown" | null>(null);
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
+  const { invokeAction } = useDataModelApi();
 
   const hasOnlyTablesSelected =
     selectedTables.size > 0 &&
@@ -97,6 +99,11 @@ export function TableAttributesEditBulk() {
     if (entityType) {
       setEntityType(entityType);
     }
+    invokeAction("refetchSelectedTables");
+  };
+
+  const handlePublishSuccess = () => {
+    invokeAction("refetchSelectedTables");
   };
 
   useEffect(() => {
@@ -241,6 +248,7 @@ export function TableAttributesEditBulk() {
         databases={selectedDatabases}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
+        onSuccess={handlePublishSuccess}
       />
 
       <SyncOptionsModal

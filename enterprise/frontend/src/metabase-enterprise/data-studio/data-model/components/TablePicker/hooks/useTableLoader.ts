@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useDeepCompareEffect, useLatest } from "react-use";
+import { useLatest } from "react-use";
 import _ from "underscore";
 
 import {
@@ -21,7 +21,7 @@ import type {
 import { merge, node, rootNode, toKey } from "../utils";
 
 /**
- * For the currently view path, fetches the database, schema and table (or any subset that applies to the path).
+ * Provides a function that fetches for a specific path the database, schema and table (or any subset that applies to the path).
  *
  * This state is managed at the top-level so we can generate a flat list of all nodes in the tree,
  * which makes virtualization possible.
@@ -31,7 +31,7 @@ import { merge, node, rootNode, toKey } from "../utils";
  *
  * This works by fetching the data and then recursively merging the results into the tree of data that was already fetched.
  */
-export function useTableLoader(path: TreePath) {
+export function useTableLoader() {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
@@ -150,7 +150,7 @@ export function useTableLoader(path: TreePath) {
   const pendingPathsRef = useRef(new Set<string>());
 
   const load = useCallback(
-    async function (path: TreePath) {
+    async (path: TreePath) => {
       const key = toKey({
         databaseId: path.databaseId,
         schemaName: path.schemaName,
@@ -196,17 +196,6 @@ export function useTableLoader(path: TreePath) {
     },
     [getDatabases, getSchemas, getTables],
   );
-
-  useDeepCompareEffect(() => {
-    load(path);
-  }, [
-    load,
-    path,
-    // When a table is modified, e.g. we change display_name with PUT /api/table/:id
-    // we need to manually call the lazy RTK hooks, so that the the updated table
-    // is refetched here. We detect this modification with tables.isFetching.
-    tables.isFetching,
-  ]);
 
   return { tree, reload: load };
 }
