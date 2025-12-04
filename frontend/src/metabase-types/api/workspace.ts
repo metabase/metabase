@@ -110,8 +110,9 @@ export type CreateWorkspaceTransformRequest = {
 export type CreateWorkspaceTransformResponse = Transform;
 
 export type WorkspaceTable = {
-  schema?: string | null;
-  table?: string | null;
+  id?: number;
+  schema: string | null;
+  table: string | null;
 };
 
 export type WorkspaceOutputTable = {

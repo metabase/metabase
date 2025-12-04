@@ -80,6 +80,7 @@ export const DataTabSidebar = ({
               schema={table.schema}
               icon="table"
               type="input"
+              tableId={table.id}
               onTransformClick={onTransformClick}
               onTableClick={onTableSelect}
             />

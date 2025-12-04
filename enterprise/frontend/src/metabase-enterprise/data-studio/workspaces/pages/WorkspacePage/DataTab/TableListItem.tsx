@@ -56,7 +56,7 @@ export const TableListItem = ({
     }
   };
 
-  const isClickable = type === "output" && tableId && onTableClick;
+  const isClickable = tableId && onTableClick;
 
   return (
     <Box
@@ -69,7 +69,7 @@ export const TableListItem = ({
       <Icon
         name={icon}
         size={14}
-        // c={type === "input" ? "brand" : "green"}
+        c={type === "input" ? "summarize" : "warning"}
       />
       <Text className={S.name} c="text-dark" truncate>
         {displayName}
