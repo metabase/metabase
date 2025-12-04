@@ -58,7 +58,7 @@ const init = async () => {
     `);
   } else {
     printBold("⏳ Starting live backend with hot reloading");
-    await CypressBackend.run();
+    await CypressBackend.runFromSource();
   }
 
   if (options.GENERATE_SNAPSHOTS) {

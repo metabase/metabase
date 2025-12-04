@@ -31,7 +31,7 @@ const CypressBackend = {
     dbFile: process.env.MB_DB_FILE,
     host: `http://localhost:${process.env.MB_JETTY_PORT}`,
   },
-  async start(jarPath = "target/uberjar/metabase.jar") {
+  async runFromJar(jarPath = "target/uberjar/metabase.jar") {
     if (!this.server.process) {
       process.env.JDK_JAVA_OPTIONS = getJvmOptsFromDepsEdn();
       this.server.process = spawn("java", ["-jar", jarPath], {
@@ -45,7 +45,7 @@ const CypressBackend = {
       }
     }
   },
-  async run() {
+  async runFromSource() {
     if (!this.server.process) {
       const edition = process.env.MB_EDITION || "ee";
 
