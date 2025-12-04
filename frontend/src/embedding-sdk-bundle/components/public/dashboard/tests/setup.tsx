@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { indexBy } from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -24,7 +25,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Box } from "metabase/ui";
-import type { DashboardCard } from "metabase-types/api";
+import type { DashboardCard, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -118,7 +119,8 @@ export interface SetupSdkDashboardOptions extends NotificationChannelSetup {
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];
-  hasEmbeddingEnterprisePlugin?: boolean;
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
+  tokenFeatures?: Partial<TokenFeatures>;
 }
 
 interface NotificationChannelSetup {
@@ -138,7 +140,8 @@ export const setupSdkDashboard = async ({
   dashboardName = "Dashboard",
   dataPickerProps,
   dashcards = DEFAULT_DASHCARDS,
-  hasEmbeddingEnterprisePlugin = false,
+  enterprisePlugins = [],
+  tokenFeatures = {},
   isEmailConfigured = false,
   isSlackConfigured = false,
 }: SetupSdkDashboardOptions) => {
@@ -209,10 +212,11 @@ export const setupSdkDashboard = async ({
       },
       dashcards: indexBy(dashcards, "id"),
     }),
+    tokenFeatures,
   });
 
-  if (hasEmbeddingEnterprisePlugin) {
-    setupEnterpriseOnlyPlugin("embedding");
+  if (enterprisePlugins.length > 0) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithSDKProviders(

@@ -1,14 +1,46 @@
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import type { SetupSdkDashboardOptions } from "../tests/setup";
 
-export function addSubscriptionTests(
-  setup: (
-    options?: Omit<SetupSdkDashboardOptions, "component">,
-  ) => Promise<{ dashboard: Dashboard }>,
+type SetupOpts = Omit<SetupSdkDashboardOptions, "component">;
+
+export function addEnterpriseSubscriptionsTests(
+  setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
 ) {
-  describe("Subscriptions Button", () => {
+  describe(`Subscriptions Button (enterprise)`, () => {
+    it.each([
+      { isSlackConfigured: false, isEmailConfigured: false },
+      { isSlackConfigured: false, isEmailConfigured: true },
+      { isSlackConfigured: true, isEmailConfigured: false },
+      { isSlackConfigured: true, isEmailConfigured: true },
+    ])(
+      "should not show subscriptions button without `embedding_sdk` token feature (isSlackConfigured: $isSlackConfigured, isEmailConfigured: $isEmailConfigured)",
+      async ({ isSlackConfigured, isEmailConfigured }) => {
+        await setup({
+          props: { withSubscriptions: true },
+          isEmailConfigured,
+          isSlackConfigured,
+        });
+
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
+
+        const dashboardHeader = within(screen.getByTestId("dashboard-header"));
+
+        expect(
+          dashboardHeader.queryByLabelText("Subscriptions"),
+        ).not.toBeInTheDocument();
+      },
+    );
+  });
+}
+
+export function addPremiumSubscriptionsTests(
+  setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
+) {
+  describe("Subscriptions Button (premium)", () => {
     it.each([
       {
         isSlackConfigured: false,
@@ -25,17 +57,15 @@ export function addSubscriptionTests(
           isSlackConfigured,
         });
 
-        await waitFor(() => {
-          expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-        });
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
 
         const dashboardHeader = within(screen.getByTestId("dashboard-header"));
 
         expect(
           await dashboardHeader.findByLabelText("Subscriptions"),
         ).toBeInTheDocument();
-
-        // TODO (Kelvin 2025-11-17) add more assertions when working on EMB-976. e.g. when clicking the button the sidebar is correctly shown.
       },
     );
 
@@ -65,9 +95,9 @@ export function addSubscriptionTests(
           isSlackConfigured,
         });
 
-        await waitFor(() => {
-          expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-        });
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
 
         const dashboardHeader = within(screen.getByTestId("dashboard-header"));
 
@@ -103,9 +133,9 @@ export function addSubscriptionTests(
           isSlackConfigured,
         });
 
-        await waitFor(() => {
-          expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-        });
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
 
         const dashboardHeader = within(screen.getByTestId("dashboard-header"));
 

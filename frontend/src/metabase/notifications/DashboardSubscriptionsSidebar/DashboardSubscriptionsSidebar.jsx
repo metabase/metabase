@@ -171,7 +171,12 @@ class DashboardSubscriptionsSidebarInner extends Component {
   }
 
   fetchUsers = async () => {
-    this.setState({ users: (await UserApi.list()).data });
+    if (isEmbeddingSdk()) {
+      // We don't need the the list of users in SDK/EAJS context because we will hard code the recipient to the logged in user.
+      this.setState({ users: [] });
+    } else {
+      this.setState({ users: (await UserApi.list()).data });
+    }
   };
 
   forwardNonAdmins = ({ prevProps }) => {

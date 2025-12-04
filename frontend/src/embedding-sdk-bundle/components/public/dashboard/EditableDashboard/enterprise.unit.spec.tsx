@@ -10,7 +10,7 @@ import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { addSubscriptionTests } from "../shared-tests/subscriptions.spec";
+import { addEnterpriseSubscriptionsTests } from "../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
@@ -18,18 +18,21 @@ import {
 
 import { EditableDashboard } from "./EditableDashboard";
 
-const setup = async (
+const setupEnterprise = async (
   options: Omit<SetupSdkDashboardOptions, "component"> = {},
 ) => {
   return setupSdkDashboard({
     ...options,
+    enterprisePlugins: ["sdk_subscriptions", "embedding"],
     component: EditableDashboard,
   });
 };
 
 describe("EditableDashboard", () => {
+  addEnterpriseSubscriptionsTests(setupEnterprise);
+
   it("should support dashboard editing", async () => {
-    await setup();
+    await setupEnterprise();
 
     await waitFor(() => {
       expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
@@ -51,7 +54,7 @@ describe("EditableDashboard", () => {
   });
 
   it("should show the edit and download button if downloads are enabled", async () => {
-    await setup({
+    await setupEnterprise({
       props: { withDownloads: true },
     });
 
@@ -75,7 +78,7 @@ describe("EditableDashboard", () => {
   });
 
   it("should not show download button if downloads are disabled", async () => {
-    await setup({
+    await setupEnterprise({
       props: { withDownloads: false },
     });
 
@@ -98,42 +101,8 @@ describe("EditableDashboard", () => {
     ).not.toBeInTheDocument();
   });
 
-  addSubscriptionTests(setup);
-
-  it("should allow to create a new question in addition to adding existing questions", async () => {
-    await setup({ hasEmbeddingEnterprisePlugin: true });
-    setupSimpleDataPickerEndpoints();
-
-    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-
-    await userEvent.click(
-      within(screen.getByTestId("dashboard-header")).getByLabelText(
-        "Edit dashboard",
-      ),
-    );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Add questions" }),
-    );
-    await userEvent.click(screen.getByRole("button", { name: "New Question" }));
-
-    // We should render the simple data picker at this point
-    expect(screen.queryByTestId("dashboard-header")).not.toBeInTheDocument();
-    expect(
-      await screen.findByRole("button", { name: "Pick your starting data" }),
-    ).toBeInTheDocument();
-
-    // Default `entityTypes` should be `["model", "table"]`
-    // EmbeddingDataPicker makes a call to `/api/search` with limit=0 to decide if SimpleDataPicker should be used
-    // then SimpleDataPicker makes a call to `/api/search` to fetch the data
-    const dataPickerDataCalls = fetchMock.callHistory.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(2);
-    const dataPickerDataCallUrl = dataPickerDataCalls[1].url;
-    expect(dataPickerDataCallUrl).toContain("models=dataset");
-    expect(dataPickerDataCallUrl).toContain("models=table");
-  });
-
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
-    await setup({ dashboardName: "Test dashboard" });
+    await setupEnterprise({ dashboardName: "Test dashboard" });
     setupSimpleDataPickerEndpoints();
 
     expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
@@ -163,7 +132,7 @@ describe("EditableDashboard", () => {
   });
 
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
-    await setup({
+    await setupEnterprise({
       dataPickerProps: {
         entityTypes: ["model"],
       },
@@ -199,14 +168,14 @@ describe("EditableDashboard", () => {
   });
 
   it("should show 'Add a chart' button on empty dashboards", async () => {
-    await setup({ dashcards: [] });
+    await setupEnterprise({ dashcards: [] });
 
     expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
     expect(screen.getByText("Add a chart")).toBeInTheDocument();
   });
 
   it("should allow editing the dashboard title", async () => {
-    await setup();
+    await setupEnterprise();
 
     expect(screen.getByTestId("dashboard-name-heading")).toBeEnabled();
   });

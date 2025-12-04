@@ -1,30 +1,16 @@
-import type { ButtonHTMLAttributes } from "react";
-import { t } from "ttag";
+import { PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK } from "embedding-sdk-bundle/components/public/subscriptions";
+import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useHasEmailSetup } from "metabase/common/hooks";
-import { toggleSharing } from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/lib/redux";
-import type { ActionIconProps } from "metabase/ui";
-
-export const DashboardSubscriptionsButton = (
-  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
-) => {
-  const dispatch = useDispatch();
-  const handleClick = () => dispatch(toggleSharing());
-
-  // We decided not to show the subscriptions button if email is not set up
-  const hasEmailSetup = useHasEmailSetup();
-  if (!hasEmailSetup) {
-    return null;
+export function DashboardSubscriptionsButton() {
+  if (isEmbeddingEajs()) {
+    return <PLUGIN_EMBEDDING_IFRAME_SDK.DashboardSubscriptionsButton />;
   }
 
-  return (
-    <ToolbarButton
-      icon="subscription"
-      tooltipLabel={t`Subscriptions`}
-      onClick={handleClick}
-      {...props}
-    />
-  );
-};
+  // This flag isn't exclusive it could mean we're on either SDK or EAJS
+  if (isEmbeddingSdk()) {
+    return <PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton />;
+  }
+
+  return null;
+}
