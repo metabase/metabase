@@ -15,6 +15,8 @@ import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
+import { SHARED_TENANT_NAMESPACE } from "../utils";
+
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
 const personalCollectionsRoot: CollectionPickerItem = {
@@ -79,7 +81,24 @@ export const useRootCollectionPickerItems = (
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
 
-    if (options.showLibrary && libraryCollection) {
+    // If restricted to shared-tenant namespace, only show tenant root
+    if (options?.restrictToNamespace === SHARED_TENANT_NAMESPACE) {
+      if (tenantsEnabled && currentUser) {
+        collectionItems.push({
+          name: t`Shared Tenant Collections`,
+          id: "tenant",
+          namespace: SHARED_TENANT_NAMESPACE,
+          here: ["collection", "card", "dashboard"],
+          description: null,
+          can_write: true,
+          model: "collection",
+          location: "/",
+        });
+      }
+      return collectionItems;
+    }
+
+    if (options?.showLibrary && libraryCollection) {
       collectionItems.push({
         ...libraryCollection,
         model: "collection",
@@ -87,7 +106,7 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showDatabases && databases.length > 0) {
+    if (options?.showDatabases && databases.length > 0) {
       collectionItems.push({
         id: "databases",
         name: t`Databases`,
@@ -99,7 +118,7 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showRootCollection || options.namespace === "snippets") {
+    if (options?.showRootCollection || options?.namespace === "snippets") {
       if (rootCollection && !rootCollectionError) {
         collectionItems.push({
           ...rootCollection,
@@ -107,7 +126,7 @@ export const useRootCollectionPickerItems = (
           here: ["collection"],
           location: "/",
           name:
-            options.namespace === "snippets"
+            options?.namespace === "snippets"
               ? t`Top folder`
               : rootCollection.name,
         });
@@ -125,8 +144,8 @@ export const useRootCollectionPickerItems = (
     }
 
     if (
-      options.showPersonalCollections &&
-      options.namespace !== "snippets" &&
+      options?.showPersonalCollections &&
+      options?.namespace !== "snippets" &&
       currentUser &&
       !!personalCollection
     ) {
@@ -142,11 +161,18 @@ export const useRootCollectionPickerItems = (
       }
     }
 
-    if (tenantsEnabled && currentUser) {
+    // Only show tenant collections if NOT restricted to a different namespace
+    // When restrictToNamespace is "default", we exclude tenant collections
+    const shouldShowTenantCollections =
+      tenantsEnabled &&
+      currentUser &&
+      options?.restrictToNamespace !== "default";
+
+    if (shouldShowTenantCollections) {
       collectionItems.push({
         name: t`Shared Tenant Collections`,
         id: "tenant",
-        namespace: "shared-tenant-collection",
+        namespace: SHARED_TENANT_NAMESPACE,
         here: ["collection", "card", "dashboard"],
         description: null,
         can_write: true,
@@ -156,7 +182,7 @@ export const useRootCollectionPickerItems = (
     }
 
     const userTenantCollectionId = currentUser?.tenant_collection_id;
-    if (tenantsEnabled && userTenantCollectionId) {
+    if (shouldShowTenantCollections && userTenantCollectionId) {
       collectionItems.push({
         name: t`My Tenant Collection`,
         id: userTenantCollectionId,

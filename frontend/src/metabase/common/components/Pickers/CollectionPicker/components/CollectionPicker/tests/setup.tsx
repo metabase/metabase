@@ -24,6 +24,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import type {
   CollectionPickerItem,
+  CollectionPickerOptions,
   CollectionPickerStatePath,
 } from "../../../types";
 import { CollectionPicker } from "../CollectionPicker";
@@ -196,12 +197,14 @@ export interface SetupOpts {
   };
   onItemSelect?: (item: CollectionPickerItem) => void;
   ee?: boolean;
+  options?: CollectionPickerOptions;
 }
 
 export const setup = ({
   initialValue = { id: "root", model: "collection" },
   onItemSelect = jest.fn<void, [CollectionPickerItem]>(),
   ee = false,
+  options,
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
 
@@ -264,6 +267,7 @@ export const setup = ({
         onInit={jest.fn()}
         onItemSelect={onItemSelect}
         onPathChange={handlePathChange}
+        options={options}
       />
     );
   }

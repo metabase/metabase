@@ -90,6 +90,13 @@ export type CollectionPickerOptions = EntityPickerModalOptions & {
    * namespace root collections (like tenant root) will be disabled.
    */
   savingModel?: "collection" | "dashboard" | "question" | "model";
+  /**
+   * Restricts the picker to only show collections in a specific namespace.
+   * - When set to "shared-tenant-collection", only the tenant root is shown.
+   * - When set to "default", the tenant root is hidden and regular collections are shown.
+   * - When undefined, all roots are shown (default behavior).
+   */
+  restrictToNamespace?: string;
 };
 
 export type CollectionItemListProps = ListProps<
