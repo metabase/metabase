@@ -114,7 +114,8 @@
          "metabase.deps-edn-test"
          "metabase.driver."
          "metabase.test."
-         "metabase.test.data."]))
+         "metabase.test.data."
+         "metabuild-common."])) ; utils for build scripts
 
 ;; only warn once per namespace
 (let [warned-namespaces (atom #{})]
