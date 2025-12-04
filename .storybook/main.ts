@@ -36,7 +36,7 @@ const config: StorybookConfig = {
         fallback: {
           ...config.resolve?.fallback,
           // Explicitly point to the browser polyfill to avoid conflict with our workspace package named 'util'
-          util: require.resolve("node-libs-browser/node_modules/util/"),
+          util: require.resolve("util/"),
         },
       },
       plugins: [
