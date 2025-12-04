@@ -91,18 +91,6 @@ get_mise_activation_line() {
     esac
 }
 
-has_homebrew() {
-    command -v brew &> /dev/null
-}
-
-has_mise() {
-    command -v mise &> /dev/null
-}
-
-has_curl() {
-    command -v curl &> /dev/null
-}
-
 # =============================================================================
 # Installation Functions
 # =============================================================================
@@ -121,7 +109,7 @@ install_mise_homebrew() {
 install_mise_official() {
     print_step "Installing mise via official installer"
 
-    if ! has_curl; then
+    if ! has_tool curl; then
         print_error "curl is required but not installed"
         exit 1
     fi
@@ -153,7 +141,7 @@ update_mise() {
 }
 
 install_mise() {
-    if has_mise; then
+    if has_tool mise; then
         print_success "mise is already installed ($(mise --version))"
         update_mise
         return 0
@@ -163,11 +151,7 @@ install_mise() {
 
     case "$os" in
         macos)
-            if has_homebrew; then
-                install_mise_homebrew || install_mise_official
-            else
-                install_mise_official
-            fi
+            install_mise_official
             ;;
         linux)
             install_mise_official
@@ -240,7 +224,7 @@ setup_shell_integration() {
         echo "$activation_line" >> "$rc_file"
 
         print_success "Added mise activation to $rc_file"
-        print_warning "Run 'source $rc_file' or restart your shell to activate mise"
+        echo "      mise is available in this script and will auto-activate in new shells"
     else
         print_warning "Skipped shell integration"
         echo "      You'll need to manually activate mise in each session:"
@@ -265,6 +249,7 @@ install_tools() {
     # Install all tools
     if mise install; then
         print_success "All tools installed successfully"
+        
     else
         print_error "Failed to install some tools"
         echo "      Try running 'mise install' manually to see detailed errors"
@@ -282,10 +267,11 @@ main() {
     print_header "Metabase Development Environment Setup"
 
     echo "This script will:"
-    echo "  1. Install mise (if not already installed)"
-    echo "  2. Configure shell integration (with your permission)"
-    echo "  3. Install all required development tools"
-    echo "  4. Run dev-bootstrap to set up the project"
+    echo "  1. Check prerequisites"
+    echo "  2. Install mise (if not already installed)"
+    echo "  3. Configure shell integration (with your permission)"
+    echo "  4. Install all required development tools"
+    echo "  5. Run dev-bootstrap to set up the project"
     echo ""
 
     # Check prerequisites
@@ -310,7 +296,7 @@ main() {
         fi
     fi
 
-    if ! has_curl; then
+    if ! has_tool curl; then
         print_error "curl is required but not installed"
         exit 1
     fi
@@ -320,11 +306,11 @@ main() {
     install_mise
 
     # Verify mise is now available
-    if ! has_mise; then
+    if ! has_tool mise; then
         # Try adding common mise locations to PATH
         export PATH="$HOME/.local/bin:$HOME/.mise/bin:$PATH"
 
-        if ! has_mise; then
+        if ! has_tool mise; then
             print_error "mise installation succeeded but 'mise' command not found"
             echo "      Try restarting your shell and running this script again"
             exit 1
@@ -337,9 +323,14 @@ main() {
     # Install tools
     install_tools
 
+    # Activate mise for this script session so installed tools are available
+    eval "$(mise activate bash)"
+
     # Run dev-bootstrap
     echo ""
-    if ask_yes_no "Run dev-bootstrap to complete setup?" "y"; then
+    if ask_yes_no "Run dev-bootstrap to complete setup by downloading libraries?" "y"; then
+        echo ""
+        print_step "Running bin/dev-bootstrap"
         echo ""
         "$SCRIPT_DIR/dev-bootstrap"
     else
@@ -349,18 +340,37 @@ main() {
 
     print_header "Setup Complete!"
 
-    echo "Your Metabase development environment is ready."
+    echo "Your development environment is ready."
     echo ""
-    echo "If this is a new shell integration, restart your shell or run:"
+
     local shell_name=$(detect_shell)
     local rc_file=$(get_shell_rc_file "$shell_name")
-    if [ -n "$rc_file" ]; then
-        echo "  source $rc_file"
-    fi
+
+    # Provide next steps
+    echo -e "${BOLD}${GREEN}Next step: Open a new terminal window to get started.${NC}"
     echo ""
-    echo "Then you can start developing:"
-    echo "  clojure -M:dev:run    # Start backend"
-    echo "  yarn build-hot        # Start frontend"
+    echo -e "${DIM}(Or to continue in this terminal, run:"
+    if [ "$shell_name" = "zsh" ]; then
+        echo "  eval \"\$(mise activate zsh)\""
+    elif [ "$shell_name" = "bash" ]; then
+        echo "  eval \"\$(mise activate bash)\""
+    elif [ "$shell_name" = "fish" ]; then
+        echo "  mise activate fish | source"
+    else
+        echo "  eval \"\$(mise activate)\""
+    fi
+    echo -e ")${NC}"
+    echo ""
+    echo -e "${BOLD}Then start developing:${NC}"
+    echo ""
+    echo "Backend (from source):"
+    echo "  clojure -M:dev:drivers:drivers-dev:ee:ee-dev:dev-start --hot"
+    echo ""
+    echo "Backend (from JAR):"
+    echo "  java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar"
+    echo ""
+    echo "Frontend:"
+    echo "  yarn build-hot"
     echo ""
 }
 
