@@ -363,6 +363,7 @@
           (testing "Make sure we get the expected collections when collection-id is nil"
             (let [collections (#'api.collection/select-collections {:archived false
                                                                     :exclude-other-user-collections false
+                                                                    :namespaces #{nil}
                                                                     :shallow true
                                                                     :permissions-set #{"/"}})]
               (is (= #{{:name "A"}
@@ -376,6 +377,7 @@
           (testing "Make sure we get the expected collections when collection-id is an integer"
             (let [collections (#'api.collection/select-collections {:archived false
                                                                     :exclude-other-user-collections false
+                                                                    :namespaces #{nil}
                                                                     :shallow true
                                                                     :collection-id (:id a)
                                                                     :permissions-set #{"/"}})]
@@ -499,6 +501,39 @@
             (testing "?namespace=stamps"
               (is (= []
                      (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=stamps")))))))))))
+
+(deftest collection-tree-namespaces-parameter-test
+  (testing "GET /api/collection/tree"
+    (testing "namespaces parameter allows specifying multiple namespaces"
+      (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Collection"}
+                     :model/Collection {coins-id :id} {:name "Coin Collection", :namespace "currency"}
+                     :model/Collection {stamps-id :id} {:name "Stamp Collection", :namespace "stamps"}]
+        (let [ids [normal-id coins-id stamps-id]]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coins-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) stamps-id)
+
+          (testing "single namespace via namespaces param"
+            (is (= [{:name "Coin Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespaces=currency")))))
+
+          (testing "multiple namespaces via repeated namespaces param"
+            (is (= [{:name "Coin Collection", :children []}
+                    {:name "Stamp Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree" :namespaces ["currency" "stamps"])))))
+
+          (testing "empty string in namespaces matches nil namespace (default collections)"
+            (is (= [{:name "Normal Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree?namespaces=")))))
+
+          (testing "combining nil namespace with other namespaces"
+            (is (= [{:name "Coin Collection", :children []}
+                    {:name "Normal Collection", :children []}]
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree" :namespaces ["currency" ""]))
+                   (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree" :namespaces ["currency" nil])))))
+
+          (testing "namespace and namespaces params are mutually exclusive"
+            (is (= "Invalid Request."
+                   (mt/user-http-request :rasta :get 400 "collection/tree?namespace=currency&namespaces=stamps")))))))))
 
 (deftest collection-tree-elide-collections-with-no-permissions-test
   (testing "GET /api/collection/tree"
