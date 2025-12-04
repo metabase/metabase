@@ -33,11 +33,11 @@ const config: StorybookConfig = {
         ...config.resolve,
         alias: { ...config.resolve?.alias, ...appConfig.resolve.alias },
         extensions: appConfig.resolve.extensions,
-        // fallback: {
-        //   ...config.resolve?.fallback,
-        //   // Use node-libs-browser's util since we have a workspace package named 'util'
-        //   util: require.resolve("node-libs-browser/node_modules/util/"),
-        // },
+        fallback: {
+          ...config.resolve?.fallback,
+          // Explicitly point to the browser polyfill to avoid conflict with our workspace package named 'util'
+          util: require.resolve("node-libs-browser/node_modules/util/"),
+        },
       },
       plugins: [
         ...(config.plugins ?? []),
