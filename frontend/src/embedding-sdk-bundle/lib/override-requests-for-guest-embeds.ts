@@ -3,7 +3,7 @@ import {
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { embedBase, internalBase } from "metabase/services";
+import { getEmbedBase, internalBase } from "metabase/services";
 
 const getIgnoreOverridePatterns = () => [
   sessionPropertiesPath,
@@ -34,35 +34,35 @@ const EMBED_URL_TRANSFORMATIONS: Record<
   { url: string; method: "GET" | "POST" }
 > = {
   [URL_PATTERNS.CARD_QUERY]: {
-    url: `${embedBase}/card/:token/query`,
+    url: `${getEmbedBase()}/card/:token/query`,
     method: "GET",
   },
   [URL_PATTERNS.CARD_PIVOT_QUERY]: {
-    url: `${embedBase}/pivot/card/:token/query`,
+    url: `${getEmbedBase()}/pivot/card/:token/query`,
     method: "GET",
   },
   [URL_PATTERNS.CARD_PARAMETER_VALUES]: {
-    url: `${embedBase}/card/:token/params/:paramId/values`,
+    url: `${getEmbedBase()}/card/:token/params/:paramId/values`,
     method: "GET",
   },
   [URL_PATTERNS.CARD_PARAMETER_SEARCH]: {
-    url: `${embedBase}/card/:token/params/:paramId/search/:query`,
+    url: `${getEmbedBase()}/card/:token/params/:paramId/search/:query`,
     method: "GET",
   },
   [URL_PATTERNS.CARD_PARAMETER_REMAPPING]: {
-    url: `${embedBase}/card/:token/params/:paramId/remapping`,
+    url: `${getEmbedBase()}/card/:token/params/:paramId/remapping`,
     method: "GET",
   },
   [URL_PATTERNS.DASHBOARD_PARAMETER_VALUES]: {
-    url: `${embedBase}/dashboard/:token/params/:paramId/values`,
+    url: `${getEmbedBase()}/dashboard/:token/params/:paramId/values`,
     method: "GET",
   },
   [URL_PATTERNS.DASHBOARD_PARAMETER_SEARCH]: {
-    url: `${embedBase}/dashboard/:token/params/:paramId/search/:query`,
+    url: `${getEmbedBase()}/dashboard/:token/params/:paramId/search/:query`,
     method: "GET",
   },
   [URL_PATTERNS.DASHBOARD_PARAMETER_REMAPPING]: {
-    url: `${embedBase}/dashboard/:token/params/:paramId/remapping`,
+    url: `${getEmbedBase()}/dashboard/:token/params/:paramId/remapping`,
     method: "GET",
   },
 } as const;
@@ -149,8 +149,8 @@ function getRequestTransformation({
  * Replaces the standard API base path with the embed API base path.
  */
 function replaceWithEmbedBase(url: string): string {
-  if (url.includes(internalBase) && !url.includes(embedBase)) {
-    return url.replace(internalBase, embedBase);
+  if (url.includes(internalBase) && !url.includes(getEmbedBase())) {
+    return url.replace(internalBase, getEmbedBase());
   }
   return url;
 }

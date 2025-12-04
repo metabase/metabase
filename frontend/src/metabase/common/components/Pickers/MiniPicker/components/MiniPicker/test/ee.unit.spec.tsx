@@ -41,13 +41,37 @@ describe("library", () => {
       collectionItems: [LIBRARY_MODELS_COLELCTION, LIBRARY_METRICS_COLELCTION],
     });
 
-    setup({}, createMockTokenFeatures({ data_studio: true }));
+    setup(
+      {},
+      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+    );
 
     expect(await screen.findByText("metrics")).toBeInTheDocument();
     expect(await screen.findByText("data")).toBeInTheDocument();
   });
 
   it("should hide an empty library collection", async () => {
+    fetchMock.get("/api/ee/library", {
+      ...LIBRARY_COLLECTION,
+      below: [],
+    });
+    setupCollectionItemsEndpoint({
+      collection: LIBRARY_COLLECTION,
+      collectionItems: [
+        { ...LIBRARY_MODELS_COLELCTION, here: undefined },
+        { ...LIBRARY_METRICS_COLELCTION, here: undefined },
+      ],
+    });
+
+    setup(
+      { models: ["dataset", "metric"] },
+      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+    );
+
+    expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+  });
+
+  it("should drill into child folders when you only have metrics or models", async () => {
     fetchMock.get("/api/ee/library", {
       ...LIBRARY_COLLECTION,
       below: ["dataset"],
@@ -60,9 +84,18 @@ describe("library", () => {
       ],
     });
 
-    setup({}, createMockTokenFeatures({ data_studio: true }));
+    setupCollectionItemsEndpoint({
+      collection: LIBRARY_MODELS_COLELCTION,
+      collectionItems: [
+        createMockCollectionItem({ model: "dataset", name: "Surprise" }),
+      ],
+    });
 
-    expect(await screen.findByText("data")).toBeInTheDocument();
+    setup(
+      { models: ["dataset", "metric"] },
+      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+    );
+    expect(await screen.findByText("Surprise")).toBeInTheDocument();
     expect(screen.queryByText("metrics")).not.toBeInTheDocument();
   });
 
@@ -75,7 +108,7 @@ describe("library", () => {
 
     setup(
       { shouldShowLibrary: false },
-      createMockTokenFeatures({ data_studio: true }),
+      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
     );
 
     expect(await screen.findByText("Mini Db")).toBeInTheDocument();

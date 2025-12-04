@@ -228,43 +228,15 @@
                 mock-documents-for-embeddings
                 base-embedding-vectors)))
 
-(def ^:dynamic *extra-mock-embeddings*
-  "Dynamic var for test-specific mock embeddings. Merged with [[mock-embeddings]] in [[get-mock-embedding]]."
-  nil)
-
-(defn- parse-entity-name
-  "Extract the entity name from embeddable text format.
-   E.g., '[dashboard]\\nname: My Dashboard\\n...' -> 'My Dashboard'"
-  [text]
-  (second (re-find #"(?m)^name:\s*(.+)$" text)))
-
 (defn get-mock-embedding
-  "Lookup the embedding for `text` in [[*extra-mock-embeddings*]] first, then [[mock-embeddings]].
-   Lookups try both the raw text and the parsed entity name from embeddable text format."
+  "Lookup the embedding for `text` in [[mock-embeddings]]."
   [text]
-  (let [entity-name (parse-entity-name text)]
-    (or (get *extra-mock-embeddings* text)
-        (get *extra-mock-embeddings* entity-name)
-        (get mock-embeddings text)
-        (get mock-embeddings entity-name)
-        [0.01 0.02 0.03 0.04])))
+  (get mock-embeddings text [0.01 0.02 0.03 0.04]))
 
 (defn get-mock-embeddings-batch
   "Lookup embeddings for multiple texts in [[mock-embeddings]]."
   [texts]
   (mapv get-mock-embedding texts))
-
-(defmacro with-mock-embeddings
-  "Bind extra mock embeddings for the duration of `body`. The embeddings map should be
-   a map from text strings to 4-dimensional vectors, e.g.:
-
-   (with-mock-embeddings
-     {\"belligerent\" [0.9 0.1 0.0 0.0]
-      \"combative\"   [0.91 0.11 0.01 0.01]}  ; similar vector = semantic match
-     ...)"
-  [embeddings-map & body]
-  `(binding [*extra-mock-embeddings* ~embeddings-map]
-     ~@body))
 
 ;;;; mock provider
 
@@ -474,7 +446,7 @@
   `(do-with-indexable-documents! (fn [] ~@body)))
 
 (defn index-all!
-  "Run indexer synchronously until we've exhausted polling all documents"
+  "Run indexer synchonously until we've exhausted polling all documents"
   []
   (let [metadata-row   {:indexer_last_poll Instant/EPOCH
                         :indexer_last_seen Instant/EPOCH}

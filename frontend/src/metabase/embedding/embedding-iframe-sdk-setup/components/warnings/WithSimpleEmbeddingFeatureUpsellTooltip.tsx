@@ -45,7 +45,7 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
           buttonText={t`Upgrade to Metabase Pro`}
           maxWidth={UPSELL_CARD_WIDTH}
         >
-          {t`Upgrade to get access to embeds with single sign-on, drill through, the SDK for React, and more.`}
+          {t`Upgrade to get access to embeds with single sign-on, drill through, advanced theming, the SDK for React, and more.`}
         </UpsellCard>
       }
       disabled={disabled}
