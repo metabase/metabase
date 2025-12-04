@@ -106,9 +106,15 @@
 (defn- test-namespace-lives-outside-of-module-system? [ns-symb]
   (some (fn [prefix]
           (str/starts-with? (name ns-symb) prefix))
-        ["metabase.driver."
+        ["build-drivers."
          "build."
-         "lint-migrations-file-test"]))
+         "i18n." ; bin/i18n
+         "lint-migrations-file-test"
+         "main-test" ; bin/release-list
+         "metabase.deps-edn-test"
+         "metabase.driver."
+         "metabase.test."
+         "metabase.test.data."]))
 
 ;; only warn once per namespace
 (let [warned-namespaces (atom #{})]
