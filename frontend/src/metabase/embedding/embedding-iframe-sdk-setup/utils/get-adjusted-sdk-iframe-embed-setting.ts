@@ -59,7 +59,6 @@ export const getAdjustedSdkIframeEmbedSetting = ({
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
         }),
-        useExistingUserSession: settings.useExistingUserSession,
       }),
     )
     .otherwise(({ settings }) => settings);
