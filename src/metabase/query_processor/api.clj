@@ -88,6 +88,10 @@
                                       rff))
           (qp/process-query (update query :info merge info) rff))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
@@ -119,6 +123,10 @@
     json-key
     (keyword json-key)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
@@ -162,7 +170,12 @@
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/query_metadata"
   "Get all of the required query metadata for an ad-hoc query."
   [_route-params
@@ -172,6 +185,10 @@
   (lib-be/with-metadata-provider-cache
     (queries/batch-fetch-query-metadata [query])))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
   [_route-params
@@ -187,6 +204,10 @@
       (cond-> compiled
         pretty (update :query prettify)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
@@ -227,6 +248,10 @@
    parameter query
    (fn [] (parameter-field-values field-ids query))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
   [_route-params
@@ -237,6 +262,10 @@
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [{:keys [query]} :- [:map
@@ -262,6 +291,10 @@
             first))
       [value]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
   [_route-params
