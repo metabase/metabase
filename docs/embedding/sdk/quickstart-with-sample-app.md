@@ -24,27 +24,49 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 
 ## Quick setup with Docker
 
-This quick setup will run a Docker container with the sample app and a sample Metabase.
+This setup will run a Docker container with the sample app and a sample Metabase.
 
-1. Copy `.env.docker.example` to `.env.docker`.
-2. In the `.env.docker` file, replace `<your_enterprise_token>` with your premium embedding token.
-3. In the top-level directory, run:
-   ```bash
-   yarn start
-   ```
+1. Clone the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable).
+
+
+```bash
+git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
+```
+
+2. Check out branch corresponding to the Metabase and SDK version you want to try. For example, if you want to check out version {{page.version}}:
+
+```bash
+git checkout {{page.version}}-stable
+```
+
+3. Copy the environment template file:
+
+   In the cloned directory, run:
+
+```bash
+cp .env.docker.example .env.docker
+```
+
+4. In the `.env.docker` file, replace `<your_enterprise_token>` with your premium embedding token.
+
+5. In the top-level directory, run:
+
+```bash
+yarn start
+```
 
 This script will:
 
 - Pull a Metabase Docker image and run it in a container.
-- Set up JWT SSO in Metabase.
-- Build and run the sample application with an embedded interactive question.
+- Set up [JWT SSO in Metabase](../../people-and-groups/authenticating-with-jwt.md)
+- Build and run the sample application with an embedded question.
 
-The app will start on [http://localhost:4400](http://localhost:4400).
+6. The app will start on [http://localhost:4400](http://localhost:4400).
 
-That's it! You should be [up and running](#at-this-point-you-should-be-up-and-running).
+That's it!
 
 If you want to log in to the sample Metabase this command set up, visit [http://localhost:4300](http://localhost:4300). You can log in with email and password as Rene Descartes:
-
+E
 - email: rene@example.com
 - password: foobarbaz
 
@@ -76,15 +98,15 @@ Let's go.
 
 You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing/).
 
-Or run it locally. Here's a docker one-liner:
+Or run it locally. Here's a [docker](../../installation-and-operation/running-metabase-on-docker.md) one-liner:
 
-```sh
+```bash
 docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
 ```
 
 You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
 
-```sh
+```bash
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
@@ -224,7 +246,7 @@ Start the client app:
 npm start
 ```
 
-Your browser should automatically open the app. By default, the app runs on [http://localhost:3100](localhost:3100).
+Your browser should automatically open the app. By default, the app runs on [http://localhost:3100](http://localhost:3100).
 
 ## At this point, you should be up and running
 
