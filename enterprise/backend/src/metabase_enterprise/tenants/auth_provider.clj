@@ -31,7 +31,7 @@
                        :status-code 403}))
 
       (and user-exists?
-           (not= tenant_id (u/the-id existing-tenant)))
+           (not= tenant_id (u/id existing-tenant)))
       (throw (ex-info "Tenant ID mismatch with existing user"
                       {:user/tenant-id tenant_id
                        :user/tenant-slug (t2/select-one-fn :slug :model/Tenant :id tenant_id)
@@ -57,10 +57,12 @@
     (do (validate-with-tenants-disabled! request existing-tenant)
         request)
     (do (validate-user-and-tenant-slug! user existing-tenant (boolean tenant-slug))
-        (assoc-in request [:user-data :tenant_id]
-                  (u/the-id (or existing-tenant
-                                (request/as-admin
-                                 (api.tenants/create-tenant! {:slug tenant-slug :name tenant-slug}))))))))
+        (cond-> request
+          (boolean tenant-slug)
+          (assoc-in [:user-data :tenant_id]
+                    (u/the-id (or existing-tenant
+                                  (request/as-admin
+                                   (api.tenants/create-tenant! {:slug tenant-slug :name tenant-slug})))))))))
 
 (methodical/defmethod auth-identity/login! ::create-tenant-if-not-exists
   [provider {:keys [user tenant-slug]
