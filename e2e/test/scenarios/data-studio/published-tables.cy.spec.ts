@@ -45,7 +45,7 @@ describe("scenarios > data studio > published tables", () => {
   });
 
   describe("query builder", () => {
-    it("should be able to create a query based on a published table", () => {
+    it("should create a question based on a published table", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("nodata");
@@ -65,7 +65,7 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(200);
     });
 
-    it("should be able to use explicit joins when not all FK tables are published", () => {
+    it("should create a question with explicit joins when not all FK tables are published", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
 
       cy.signIn("nodata");
@@ -87,7 +87,7 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to use implicit joins when not all FK tables are published", () => {
+    it("should create a question with implicit joins when not all FK tables are published", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
 
       cy.signIn("nodata");
@@ -111,7 +111,7 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to use table segments", () => {
+    it("should create a question with a table segment", () => {
       H.createSegment({
         name: "ID segment",
         table_id: PRODUCTS_ID,
@@ -138,7 +138,7 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to use table metrics", () => {
+    it("should create a question with a table metric", () => {
       H.createQuestion({
         name: "Count metric",
         type: "metric",
