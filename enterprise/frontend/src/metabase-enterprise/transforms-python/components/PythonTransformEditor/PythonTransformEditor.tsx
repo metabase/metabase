@@ -2,7 +2,11 @@ import { useHotkeys } from "@mantine/hooks";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
-import type { PythonTransformTableAliases, Table } from "metabase-types/api";
+import type {
+  DatabaseId,
+  PythonTransformTableAliases,
+  Table,
+} from "metabase-types/api";
 
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
@@ -35,7 +39,7 @@ export function PythonTransformEditor({
   };
 
   const handleDataChange = (
-    database: number,
+    database: DatabaseId,
     sourceTables: PythonTransformTableAliases,
     tableInfo: Table[],
   ) => {

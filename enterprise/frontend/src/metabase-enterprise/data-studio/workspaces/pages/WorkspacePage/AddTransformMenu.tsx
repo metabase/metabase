@@ -19,6 +19,7 @@ import {
   getInitialPythonSource,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
 import type {
+  CreateWorkspaceTransformRequest,
   DatabaseId,
   Transform,
   TransformSource,
@@ -72,34 +73,35 @@ export const AddTransformMenu = ({
   const handleSubmit = useCallback(
     async (values: NewTransformValues): Promise<Transform> => {
       const source = getSource(modalType!);
-      const request = values.incremental
-        ? {
-            id: workspaceId,
-            name: values.name,
-            description: null,
-            source,
-            target: {
-              type: "table-incremental" as const,
-              name: values.targetName,
-              schema: values.targetSchema,
-              database: databaseId,
-              "target-incremental-strategy": {
-                type: "append" as const,
+      const request: CreateWorkspaceTransformRequest & { id: WorkspaceId } =
+        values.incremental
+          ? {
+              id: workspaceId,
+              name: values.name,
+              description: null,
+              source,
+              target: {
+                type: "table-incremental" as const,
+                name: values.targetName,
+                schema: values.targetSchema,
+                database: databaseId,
+                "target-incremental-strategy": {
+                  type: "append" as const,
+                },
               },
-            },
-          }
-        : {
-            id: workspaceId,
-            name: values.name,
-            description: null,
-            source,
-            target: {
-              type: "table" as const,
-              name: values.targetName,
-              schema: values.targetSchema,
-              database: databaseId,
-            },
-          };
+            }
+          : {
+              id: workspaceId,
+              name: values.name,
+              description: null,
+              source,
+              target: {
+                type: "table" as const,
+                name: values.targetName,
+                schema: values.targetSchema,
+                database: databaseId,
+              },
+            };
 
       const transform = await createWorkspaceTransform(request).unwrap();
       onCreate(transform);
