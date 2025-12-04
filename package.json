@@ -371,6 +371,7 @@
     "elliptic": "^6.6.1",
     "fetch-mock/path-to-regexp": "3.3.0",
     "follow-redirects": "^1.15.5",
+    "js-yaml": "^4.1.1",
     "jsdom": "^22.1.0",
     "json5": "2.2.2",
     "mdast-util-to-hast": "^13.2.1",
