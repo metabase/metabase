@@ -295,21 +295,24 @@ export const MetabotComponent = memo(
           direction="column"
           mb="md"
         >
-          <Button
-            variant="subtle"
+          <Box
             pos="absolute"
             top={0}
             right={0}
             p="sm"
             m="sm"
-            size="sm"
             opacity="0.5"
             className={S.closeButton}
-            onClick={() => deleteNode()}
           >
-            <Icon name="close" data-hide-on-print />
-            <Icon name="metabot" data-show-on-print />
-          </Button>
+            {editor.options.editable ? (
+              <Button variant="subtle" size="sm" onClick={() => deleteNode()}>
+                <Icon name="close" data-hide-on-print />
+                <Icon name="metabot" data-show-on-print />
+              </Button>
+            ) : (
+              <Icon name="metabot" />
+            )}
+          </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
             <Box
               className={S.placeholder}
@@ -319,7 +322,7 @@ export const MetabotComponent = memo(
               {t`Ask Metabot to generate a chart for you, and use @ to select a specific Database to use`}
             </Box>
             <NodeViewContent
-              contentEditable={!isLoading}
+              contentEditable={isLoading ? false : undefined}
               className={S.codeBlockTextArea}
             />
           </Flex>
@@ -343,25 +346,27 @@ export const MetabotComponent = memo(
                 </Flex>
               ) : null}
             </Flex>
-            <Tooltip
-              label={tooltip}
-              disabled={tooltip == null}
-              position="bottom"
-            >
-              <Button
-                size="sm"
-                disabled={!isMetabotEnabled}
-                onClick={() =>
-                  isLoading ? handleStopMetabot() : handleRunMetabot()
-                }
-                classNames={{
-                  label: CS.flex, // ensures icon is vertically centered
-                }}
-                data-hide-on-print
+            {editor.options.editable && (
+              <Tooltip
+                label={tooltip}
+                disabled={tooltip == null}
+                position="bottom"
               >
-                {isLoading ? <Icon name="close" /> : t`Run`}
-              </Button>
-            </Tooltip>
+                <Button
+                  size="sm"
+                  disabled={!isMetabotEnabled}
+                  onClick={() =>
+                    isLoading ? handleStopMetabot() : handleRunMetabot()
+                  }
+                  classNames={{
+                    label: CS.flex, // ensures icon is vertically centered
+                  }}
+                  data-hide-on-print
+                >
+                  {isLoading ? <Icon name="close" /> : t`Run`}
+                </Button>
+              </Tooltip>
+            )}
           </Flex>
         </Flex>
       </NodeViewWrapper>
