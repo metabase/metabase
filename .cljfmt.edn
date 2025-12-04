@@ -43,9 +43,6 @@
   with-meta                                                                            [[:default]]
   ;; library stuff. Libraries that specify their own `:style/indent` specs are included in the section after this
   ;; since it is generated automatically.
-  clojure.core.logic/fresh                                                             [[:block 1]]
-  clojure.core.logic/matcha                                                            [[:block 1]]
-  clojure.core.logic/run                                                               [[:block 2]]
   clojure.core.match/match                                                             [[:block 1]]
   clojure.test.check.properties/for-all                                                [[:block 1]]
   clojure.test.check.properties/for-all*                                               [[:block 1]]
