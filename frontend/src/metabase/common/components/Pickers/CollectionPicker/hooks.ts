@@ -39,7 +39,7 @@ export const useRootCollectionPickerItems = (
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery();
+    useListDatabasesQuery(undefined, { skip: !options.showDatabases });
   const databases = databaseData?.data ?? [];
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
