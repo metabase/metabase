@@ -7,21 +7,39 @@ import type {
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   QuestionEmbedOptions,
+  SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
 } from "../types";
 
+import { getCommonEmbedSettings } from "./get-common-embed-settings";
+
 export const getDefaultSdkIframeEmbedSettings = ({
+  initialState,
   experience,
   resourceId,
+  isSimpleEmbedFeatureAvailable,
+  isGuestEmbedsEnabled,
 }: {
+  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;
+  isSimpleEmbedFeatureAvailable: boolean;
+  isGuestEmbedsEnabled: boolean;
 }): SdkIframeEmbedSetupSettings => {
-  const templateDefaults = match(experience)
+  const baseSettingsDefaults: Partial<SdkIframeEmbedBaseSettings> = {
+    useExistingUserSession: true,
+    // When `simple embed` feature is not available, we allow to set only a theme preset, so we default it to `light`
+    ...(!isSimpleEmbedFeatureAvailable && {
+      theme: { preset: "light" },
+    }),
+  };
+
+  const experienceSettingsDefaults = match(experience)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
@@ -68,8 +86,13 @@ export const getDefaultSdkIframeEmbedSettings = ({
     .exhaustive();
 
   return {
-    ...templateDefaults,
-    useExistingUserSession: true,
+    ...baseSettingsDefaults,
+    ...experienceSettingsDefaults,
+    ...getCommonEmbedSettings({
+      state: initialState,
+      experience,
+      isGuestEmbedsEnabled,
+    }),
   };
 };
 

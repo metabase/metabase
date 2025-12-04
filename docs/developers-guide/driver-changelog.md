@@ -8,6 +8,8 @@ title: Driver interface changelog
 
 - Added a `:collate` feature for drivers that support collation settings on text fields
 
+- Added `metabase.driver/compile-insert` to implement incremental transforms.
+
 ## Metabase 0.57.0
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.

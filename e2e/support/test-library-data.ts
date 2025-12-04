@@ -68,3 +68,26 @@ export function createLibraryWithItems() {
     },
   );
 }
+
+export function createLibraryWithModel() {
+  return H.createLibrary().then(
+    (response: Cypress.Response<LibraryResponse>) => {
+      const body = response.body;
+      const modelsCollection = body.effective_children?.find(
+        (child) => child.name === "Data",
+      );
+
+      return H.createQuestion(TRUSTED_ORDERS_MODEL, {
+        wrapId: true,
+        idAlias: "trustedOrdersModelId",
+      }).then(() =>
+        cy.get("@trustedOrdersModelId").then((modelId) =>
+          cy.request("PUT", `/api/card/${modelId}`, {
+            type: "model",
+            collection_id: modelsCollection?.id,
+          }),
+        ),
+      );
+    },
+  );
+}

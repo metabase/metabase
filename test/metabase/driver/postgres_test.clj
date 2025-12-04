@@ -1,6 +1,7 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require
+   [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -33,6 +34,10 @@
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
@@ -51,7 +56,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
-   (org.postgresql.util PGobject)))
+   (org.postgresql.util PGobject PSQLException PSQLState)))
 
 (set! *warn-on-reflection* true)
 
@@ -1979,3 +1984,56 @@
       (let [pg-obj (make-pgobject "foo_type" "abc_val")
             pg-obj-map {:data [pg-obj] :metadata {:type "test"}}]
         (test-pgobject-caching pg-obj-map)))))
+
+(deftest canceled-query-no-stacktrace-test
+  (mt/test-driver :postgres
+    (letfn [(catch-exceptions [run]
+              (let [query    (merge {:type :query, :database 1} {})
+                    metadata {}
+                    rows     []
+                    qp       (fn [query rff]
+                               (run)
+                               (binding [qp.pipeline/*execute* (fn [_driver _query respond]
+                                                                 (respond metadata rows))]
+                                 (qp.pipeline/*run* query rff)))
+                    qp       (catch-exceptions/catch-exceptions qp)
+                    result   (driver/with-driver :h2
+                               (qp (qp/userland-query query) qp.reducible/default-rff))]
+                (cond-> result
+                  (map? result) (update :data dissoc :rows))))
+            (cancel-messages []
+              (comp
+               (filter (comp #(str/includes? % "canceling statement due to user request")
+                             :message))
+               ;; grab first line of the log message to exclude huge stacktrace
+               (map (comp first str/split-lines :message))))]
+      (mt/with-log-messages-for-level [log-messages :error]
+        (testing "Regular exceptions are logged"
+          (catch-exceptions (fn [] (throw (ex-info "Regular error during query" {}))))
+          (is (>= (count (log-messages)) 1)
+              "Regular exceptions should be logged")))
+      (testing "Query cancellation exceptions are not logged"
+        (mt/with-log-messages-for-level [log-messages :error]
+          (let [pg-cancel-ex (PSQLException. "canceling statement due to user request" PSQLState/QUERY_CANCELED)]
+            ;; Wrap it in an ExceptionInfo with the :query-canceled? flag, as our code does
+            (catch-exceptions
+             (fn [] (throw (ex-info "Error executing query: canceling statement due to user request"
+                                    {:driver :postgres
+                                     :sql    ["SELECT pg_sleep(1000)"]
+                                     :params []
+                                     :type   qp.error-type/invalid-query
+                                     :query/query-canceled? true}
+                                    pg-cancel-ex)))))
+          (is (= 0 (count (into [] (cancel-messages) (log-messages))))
+              "Query cancellation exceptions should not be logged")))
+
+      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
+        (future
+          (Thread/sleep 400)
+          (a/put! qp.pipeline/*canceled-chan* :cancel))
+        (mt/with-log-messages-for-level [messages :error]
+          (let [response (qp/process-query (assoc-in (mt/native-query {:query "select pg_sleep(8), false"})
+                                                     [:middleware :userland-query?] true))]
+            (is (= "ERROR: canceling statement due to user request" (:error response)))
+            (let [bad-messages (into [] (cancel-messages) (messages))]
+              (is (empty? bad-messages)))))))))

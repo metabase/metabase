@@ -10,6 +10,7 @@ import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
+import type { MetadataEventSource } from "../../DataModelV1/types";
 import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
@@ -23,6 +24,7 @@ interface Props {
   field: Field;
   table: Table;
   parent?: Field;
+  eventSource: MetadataEventSource;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
 }
@@ -32,6 +34,7 @@ const FieldSectionBase = ({
   field,
   parent,
   table,
+  eventSource,
   onFieldValuesClick,
   onPreviewClick,
 }: Props) => {
@@ -137,10 +140,19 @@ const FieldSectionBase = ({
       </Stack>
 
       <Stack gap="xl" px="lg">
-        <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} table={table} />
-        <BehaviorSection databaseId={databaseId} field={field} />
-        <FormattingSection field={field} />
+        <DataSection field={field} eventSource={eventSource} />
+        <MetadataSection
+          databaseId={databaseId}
+          field={field}
+          table={table}
+          eventSource={eventSource}
+        />
+        <BehaviorSection
+          databaseId={databaseId}
+          field={field}
+          eventSource={eventSource}
+        />
+        <FormattingSection field={field} eventSource={eventSource} />
       </Stack>
     </Stack>
   );

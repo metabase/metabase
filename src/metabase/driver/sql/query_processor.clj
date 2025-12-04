@@ -2067,9 +2067,18 @@
 
 (defmethod driver/compile-transform :sql
   [driver {:keys [query output-table]}]
-  (format-honeysql driver
-                   {:create-table-as [(keyword output-table)]
-                    :raw query}))
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver
+                             {:create-table-as [(keyword output-table)]
+                              :raw sql-query}))
+     sql-params]))
+
+(defmethod driver/compile-insert :sql
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver
+                             {:insert-into [(keyword output-table) {:raw sql-query}]}))
+     sql-params]))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]

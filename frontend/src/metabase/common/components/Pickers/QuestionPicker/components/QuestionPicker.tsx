@@ -49,7 +49,10 @@ interface QuestionPickerProps {
   onItemSelect: (item: QuestionPickerItem) => void;
   onPathChange: (path: QuestionPickerStatePath) => void;
   onTablesPathChange?: (path: TablePickerStatePath) => void;
-  shouldDisableItem?: (item: QuestionPickerItem) => boolean;
+  shouldDisableItem?: (
+    item: QuestionPickerItem,
+    models?: QuestionPickerModel[],
+  ) => boolean;
 }
 
 export const QuestionPicker = ({
@@ -216,7 +219,11 @@ export const QuestionPicker = ({
       path={path}
       listResolver={CollectionItemPickerResolver}
       shouldShowItem={shouldShowItem}
-      shouldDisableItem={shouldDisableItem}
+      shouldDisableItem={
+        shouldDisableItem
+          ? (item) => shouldDisableItem(item, models)
+          : undefined
+      }
       tablesPath={tablesPath}
       onTablesPathChange={onTablesPathChange}
     />

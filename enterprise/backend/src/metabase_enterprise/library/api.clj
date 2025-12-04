@@ -50,8 +50,9 @@
         (t2/hydrate
          :can_write
          :effective_children)
-        (add-here-and-below))
-    {:message "Library does not exist"}))
+        (add-here-and-below)
+        (assoc :model "collection"))
+    {:data nil}))
 
 (defn- select-collections
   []

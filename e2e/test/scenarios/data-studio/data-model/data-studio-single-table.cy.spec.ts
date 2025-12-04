@@ -17,6 +17,7 @@ interface PublishModelResponse {
 
 describe("Table editing", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
@@ -51,7 +52,7 @@ describe("Table editing", () => {
       const expectedDate = new Date(updatedAt).toLocaleString();
       const viewCount = response?.body.view_count ?? 0;
 
-      cy.findByLabelText("Name on disk").should("have.text", "ORDERS");
+      cy.findByLabelText("Name in the database").should("have.text", "ORDERS");
       cy.findByLabelText("Last updated at").should("have.text", expectedDate);
       cy.findByLabelText("View count").should("have.text", viewCount);
       cy.findByLabelText("Est. row count").should("not.exist");
@@ -108,6 +109,10 @@ describe("Table editing", () => {
         });
       });
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_published",
+      });
+
       // Should not show info modal again
       cy.go("back");
 
@@ -127,7 +132,7 @@ describe("Table editing", () => {
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
-    H.selectHasValue("Owner", "No one").click();
+    H.selectHasValue("Owner", "Unspecified").click();
     H.selectDropdown().contains("Bobby Tables").click();
     H.undoToastListContainer()
       .findByText("Table owner updated")
@@ -136,7 +141,7 @@ describe("Table editing", () => {
     H.selectHasValue("Visibility type", "Bronze").click();
     H.selectDropdown().contains("Gold").click();
     H.undoToastListContainer()
-      .findByText("Table layer updated")
+      .findByText("Table visibility type updated")
       .should("be.visible");
 
     H.selectHasValue("Entity type", "Transaction").click();
@@ -145,7 +150,7 @@ describe("Table editing", () => {
       .findByText("Entity type updated")
       .should("be.visible");
 
-    H.selectHasValue("Source", "Unknown").click();
+    H.selectHasValue("Source", "Unspecified").click();
     H.selectDropdown().contains("Ingested").click();
     H.undoToastListContainer()
       .findByText("Table data source updated")

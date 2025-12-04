@@ -21,11 +21,13 @@
   alias
   {:doc        "Installs 'mage' alias and autocomplete"
    :examples   [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
-                ["./bin/mage alias zsh" "Prints shell script to put into .zshrc for zsh users"]]
+                ["./bin/mage alias install fish" "Installs mage alias for fish shell"]
+                ["./bin/mage alias print zsh" "Prints shell script to put into .zshrc for zsh users"]]
    :requires   [[mage.alias :as alias]]
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum "bash" "zsh" "fish"]]]
+                [:tuple [:enum "bash" "zsh" "fish"]]
+                [:tuple [:enum "install" "print"] [:enum "bash" "zsh" "fish"]]]
    :task       (task! (alias/instructions parsed))}
 
   cljfmt-staged
@@ -179,6 +181,8 @@
    :requires [[mage.be-dev :refer [nrepl-eval]]]
    :options  [["-c" "--comment-id ID" "Notify about this comment id"]
               ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :examples [["./bin/mage notify -c 1234" "Notify about comment with id 1234"]
+              ["./bin/mage notify --comment-id 5678 --port 59498" "Notify about comment with id 5678 on nrepl port 59498"]]
    :task     (let [opts (:options (cli/parse! (current-task)))
                    ;; note: no quoting -> expect it to be int
                    code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
@@ -309,14 +313,15 @@
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
-         :requires [[mage.core-test]
-                    [clojure.test :refer [run-tests]]]
-         :task     (run-tests 'mage.core-test)}
-
-  -test-examples
-  {:doc      "Runs every example and checks that it exits with 0"
-   :requires [[mage.examples-test :as examples-test]]
-   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
+         :requires [[mage.core-test] ;; loads the actual tests
+                    [mage.util :as u]
+                    [clojure.test]]
+         :task     (let [results (clojure.test/run-all-tests (re-pattern "^mage\\..*"))]
+                     (if (zero? (+ (:fail results) (:error results)))
+                       (println (c/green "All mage tests passed!"))
+                       (do
+                         (println (c/red "Some mage tests failed."))
+                         (u/exit 1))))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:

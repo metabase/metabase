@@ -248,27 +248,27 @@ function getTableDescriptionInput() {
 }
 
 function getTableSortButton() {
-  return getTableSection().button(/Sorting/);
+  return getTableSection().findByRole("button", { name: "Sorting" });
 }
 
 function getTableSortDoneButton() {
-  return getTableSection().button(/Done/);
+  return getTableSection().findByRole("button", { name: "Done" });
 }
 
 function getTableSortOrderInput() {
-  return getTableSection().findByLabelText("Column order");
+  return getTableSection().findByRole("radiogroup", { name: "Column order" });
 }
 
 function getTableSyncOptionsButton() {
-  return getTableSection().button(/Sync/);
+  return getTableSection().findByRole("button", { name: /Sync/ });
 }
 
 function getTableSectionField(name: string) {
-  return getTableSection().findByLabelText(name);
+  return getTableSection().findByRole("listitem", { name });
 }
 
 function getTableSectionSortableField(name: string) {
-  return getTableSection().findByLabelText(name);
+  return getTableSection().findByRole("listitem", { name });
 }
 
 function getTableSectionSortableFields() {
@@ -276,7 +276,7 @@ function getTableSectionSortableFields() {
 }
 
 function getTableSectionVisibilityTypeInput() {
-  return getTableSection().findByLabelText("Visibility type");
+  return getTableSection().findByRole("textbox", { name: "Visibility type" });
 }
 
 function getTableSectionFieldNameInput(name: string) {

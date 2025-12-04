@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
 const getDefaultPluginAdminSettings = () => ({
-  InteractiveEmbeddingSettings: null,
+  InteractiveEmbeddingSettingsCard: null,
   LicenseAndBillingSettings: PluginPlaceholder,
   useUpsellFlow: (_props: {
     campaign: string;
@@ -16,7 +16,7 @@ const getDefaultPluginAdminSettings = () => ({
 });
 
 export const PLUGIN_ADMIN_SETTINGS: {
-  InteractiveEmbeddingSettings: ComponentType | null;
+  InteractiveEmbeddingSettingsCard: ComponentType | null;
   LicenseAndBillingSettings: ComponentType;
   useUpsellFlow: (props: { campaign: string; location: string }) => {
     triggerUpsellFlow: (() => void) | undefined;
