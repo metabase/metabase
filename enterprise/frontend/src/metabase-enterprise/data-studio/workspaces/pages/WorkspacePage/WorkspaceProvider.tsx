@@ -38,7 +38,10 @@ export interface WorkspaceContextValue {
   ) => void;
   removeEditedTransform: (transformId: number) => void;
   runTransforms: Set<number>;
-  markTransformAsRun: (transformId: number) => void;
+  updateTransformState: (
+    transform: Transform,
+    editedTransform?: EditedTransform | null,
+  ) => void;
   hasUnsavedChanges: () => boolean;
 }
 
@@ -211,12 +214,34 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
-  const markTransformAsRun = useCallback(
-    (transformId: number) => {
-      updateWorkspaceState((state) => ({
-        ...state,
-        runTransforms: new Set(state.runTransforms).add(transformId),
-      }));
+  const updateTransformState = useCallback(
+    (transform: Transform, editedTransform?: EditedTransform | null) => {
+      updateWorkspaceState((state) => {
+        const openedTransforms = state.openedTransforms.map((item) =>
+          item.id === transform.id ? transform : item,
+        );
+
+        const newEditedTransforms = new Map(state.editedTransforms);
+        if (editedTransform == null) {
+          newEditedTransforms.delete(transform.id);
+        } else {
+          newEditedTransforms.set(transform.id, editedTransform);
+        }
+
+        const newRunTransforms = new Set(state.runTransforms);
+        newRunTransforms.delete(transform.id);
+
+        return {
+          ...state,
+          openedTransforms,
+          activeTransform:
+            state.activeTransform?.id === transform.id
+              ? transform
+              : state.activeTransform,
+          editedTransforms: newEditedTransforms,
+          runTransforms: newRunTransforms,
+        };
+      });
     },
     [updateWorkspaceState],
   );
@@ -241,7 +266,7 @@ export const WorkspaceProvider = ({
       patchEditedTransform,
       removeEditedTransform,
       runTransforms,
-      markTransformAsRun,
+      updateTransformState,
       hasUnsavedChanges,
     }),
     [
@@ -255,7 +280,7 @@ export const WorkspaceProvider = ({
       removeOpenedTransform,
       patchEditedTransform,
       removeEditedTransform,
-      markTransformAsRun,
+      updateTransformState,
       hasUnsavedChanges,
     ],
   );
