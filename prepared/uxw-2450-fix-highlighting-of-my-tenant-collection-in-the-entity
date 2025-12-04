@@ -1,4 +1,0 @@
-{
-  "subject": "Fix dedicated tenant collection root in collection picker as tenant user",
-  "body": "Closes UXW-2450\nCloses UXW-2460\n"
-}
