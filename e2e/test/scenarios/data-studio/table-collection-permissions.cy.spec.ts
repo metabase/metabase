@@ -4,7 +4,8 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { QuestionDetails } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE_ID, REVIEWS } =
+  SAMPLE_DATABASE;
 
 const productsQuestionDetails: QuestionDetails = {
   dataset_query: {
@@ -263,6 +264,82 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("remapping", () => {
+    it("should automatically publish all tables referenced by FK remapping, recursively", () => {
+      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+        name: "Product ID",
+        type: "external",
+        human_readable_field_id: PRODUCTS.TITLE,
+      });
+      cy.request("PUT", `/api/field/${PRODUCTS.RATING}`, {
+        semantic_type: "type/FK",
+        fk_target_field_id: REVIEWS.ID,
+      });
+      cy.request("POST", `/api/field/${PRODUCTS.RATING}/dimension`, {
+        name: "Rating",
+        type: "external",
+        human_readable_field_id: REVIEWS.REVIEWER,
+      });
+      H.DataModel.visitDataStudio();
+      H.DataModel.TablePicker.getTable("Orders").click();
+      cy.findByRole("button", { name: /Publish/ }).click();
+      H.modal().within(() => {
+        cy.findByText("Products").should("be.visible");
+        cy.findByText("Reviews").should("be.visible");
+        cy.findByText("People").should("not.exist");
+        cy.button("Publish these tables").click();
+      });
+      H.undoToast().findByText("Published").should("be.visible");
+
+      cy.signIn("nodata");
+      cy.visit("/");
+      librarySidebarSection().findByText("Data").click();
+      H.collectionTable().within(() => {
+        cy.findByText("Products").should("be.visible");
+        cy.findByText("Reviews").should("be.visible");
+        cy.findByText("Orders").click();
+      });
+      H.tableInteractive().should("be.visible");
+      H.tableHeaderColumn("Product ID").should("be.visible");
+    });
+
+    it("should automatically unpublish all tables referenced by FK remapping, recursively", () => {
+      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+        name: "Product ID",
+        type: "external",
+        human_readable_field_id: PRODUCTS.TITLE,
+      });
+      cy.request("PUT", `/api/field/${PRODUCTS.RATING}`, {
+        semantic_type: "type/FK",
+        fk_target_field_id: REVIEWS.ID,
+      });
+      cy.request("POST", `/api/field/${PRODUCTS.RATING}/dimension`, {
+        name: "Rating",
+        type: "external",
+        human_readable_field_id: REVIEWS.REVIEWER,
+      });
+      H.publishTables({ table_ids: [ORDERS_ID, PEOPLE_ID] });
+      H.DataModel.visitDataStudio();
+      H.DataModel.TablePicker.getTable("Reviews").click();
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().within(() => {
+        cy.findByText("Products").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText("People").should("not.exist");
+        cy.button("Unpublish these tables").click();
+      });
+      H.undoToast().findByText("Unpublished").should("be.visible");
+
+      cy.signIn("nodata");
+      cy.visit("/");
+      librarySidebarSection().findByText("Data").click();
+      H.collectionTable().within(() => {
+        cy.findByText("People").should("be.visible");
+        cy.findByText("Products").should("not.exist");
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Reviews").should("not.exist");
+      });
+    });
+
     it("should be able to use list field values with FK remapping", () => {
       cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
         has_field_values: "list",
@@ -395,7 +472,7 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("unpublishing", () => {
-    it("should not be able to access a previously published table when it is unpublished", () => {
+    it("should not be able to access a previously published table when it was unpublished", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
       H.unpublishTables({ table_ids: [PRODUCTS_ID] });
 
@@ -409,6 +486,7 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.unpublishTables({ database_ids: [SAMPLE_DB_ID] });
 
       cy.signIn("nodata");
+      cy.visit("/");
       H.newButton().click();
       H.popover().within(() => {
         cy.findByText("Dashboard").should("be.visible");
@@ -424,10 +502,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("nodata");
       cy.visit("/");
-      H.navigationSidebar()
-        .findByLabelText("Library")
-        .findByText("Data")
-        .click();
+      librarySidebarSection().findByText("Data").click();
       H.collectionTable().findByText("Products").click();
       assertPermissionError();
     });
@@ -437,6 +512,7 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.activateToken("starter");
 
       cy.signIn("nodata");
+      cy.visit("/");
       H.newButton().click();
       H.popover().within(() => {
         cy.findByText("Dashboard").should("be.visible");
@@ -446,10 +522,6 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 });
 
-function popoverByIndex(index: number) {
-  return H.popover().should("have.length", 2).eq(index);
-}
-
 function sandboxProductsOnCategory() {
   cy.sandboxTable({
     table_id: PRODUCTS_ID,
@@ -457,6 +529,14 @@ function sandboxProductsOnCategory() {
       attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
     },
   });
+}
+
+function popoverByIndex(index: number) {
+  return H.popover().should("have.length", 2).eq(index);
+}
+
+function librarySidebarSection() {
+  return H.navigationSidebar().findByRole("section", { name: "Library" });
 }
 
 function assertPermissionError() {
