@@ -4,7 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [mage.merge-yaml-migrations :as merge-yaml]))
 
-(def fixtures-dir "bin/merge-yaml-migrations-test/fixtures")
+(def fixtures-dir "mage/resources/merge-yaml-migrations-test/fixtures")
 
 (defn- fixture-path [filename]
   (str fixtures-dir "/" filename))

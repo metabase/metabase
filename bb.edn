@@ -62,7 +62,7 @@
    :examples   [["./bin/mage cljfmt-updated" "Format updated files relative to HEAD"]
                 ["./bin/mage cljfmt-updated master" "Format updated files relative to master"]]
    :options    [["-c" "--force-check" "Check staged files"]]
-   :arg-schema [:or [:tuple] [:tuple [:string :name "git-ref" :description "Git ref to compare against"]]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref" :description "Git ref to compare against"}]]]
    :task       (task! (format/updated parsed))}
 
   kondo
