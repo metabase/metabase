@@ -13,6 +13,7 @@ import { getUrl } from "./utils";
 
 type Props = TreePath & {
   params: RouteParams;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 };
 
 export function RouterTablePicker({ params, ...props }: Props) {
@@ -25,6 +26,7 @@ export function RouterTablePicker({ params, ...props }: Props) {
     databaseId: propDatabaseId,
     schemaName: propSchemaName,
     tableId: propTableId,
+    setOnUpdateCallback,
   } = props;
 
   const onChange = useCallback(
@@ -67,7 +69,14 @@ export function RouterTablePicker({ params, ...props }: Props) {
     });
   }, [propDatabaseId, propSchemaName, propTableId]);
 
-  return <TablePicker path={value} onChange={onChange} params={params} />;
+  return (
+    <TablePicker
+      path={value}
+      onChange={onChange}
+      params={params}
+      setOnUpdateCallback={setOnUpdateCallback}
+    />
+  );
 }
 
 export function UncontrolledTablePicker({

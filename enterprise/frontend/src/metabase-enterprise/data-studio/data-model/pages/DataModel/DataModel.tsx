@@ -30,7 +30,6 @@ import { TableAttributesEditBulk } from "../../components/TableSection/TableAttr
 
 import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";
-import { DataModelApiProvider } from "./contexts/DataModelApiContext";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 
@@ -43,11 +42,9 @@ interface Props {
 export const DataModel = ({ children, location, params }: Props) => {
   return (
     <SelectionProvider>
-      <DataModelApiProvider>
-        <DataModelContent location={location} params={params}>
-          {children}
-        </DataModelContent>
-      </DataModelApiProvider>
+      <DataModelContent location={location} params={params}>
+        {children}
+      </DataModelContent>
     </SelectionProvider>
   );
 };
@@ -118,6 +115,10 @@ function DataModelContent({ params }: Props) {
     },
   );
 
+  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
+    null,
+  );
+
   if (databasesData?.data?.length === 0) {
     return <NoDatabasesEmptyState />;
   }
@@ -156,6 +157,7 @@ function DataModelContent({ params }: Props) {
           schemaName={schemaName}
           tableId={navigationTableId}
           params={params}
+          setOnUpdateCallback={setOnUpdateCallback}
         />
       </Stack>
 
@@ -183,7 +185,7 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <TableAttributesEditBulk />
+            <TableAttributesEditBulk onUpdate={() => onUpdateCallback?.()} />
           </Stack>
         )}
 

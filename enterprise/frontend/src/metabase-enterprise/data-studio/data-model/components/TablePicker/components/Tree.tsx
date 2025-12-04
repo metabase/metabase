@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-import { useDataModelApi } from "metabase-enterprise/data-studio/data-model/pages/DataModel/contexts/DataModelApiContext";
 import type { TableId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -42,9 +41,10 @@ import { TablePickerResults } from "./Results";
 interface Props {
   path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function Tree({ path, onChange }: Props) {
+export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const {
     selectedTables,
     setSelectedTables,
@@ -56,8 +56,6 @@ export function Tree({ path, onChange }: Props) {
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader();
-  const { registerAction, unregisterAction } = useDataModelApi();
-
   const items = flatten(tree, {
     isExpanded,
     addLoadingNodes: true,
@@ -254,9 +252,9 @@ export function Tree({ path, onChange }: Props) {
   }, [items, reload, selectedTables]);
 
   useEffect(() => {
-    registerAction("refetchSelectedTables", refetchSelectedTables);
-    return () => unregisterAction("refetchSelectedTables");
-  }, [refetchSelectedTables, registerAction, unregisterAction]);
+    setOnUpdateCallback(refetchSelectedTables);
+    return () => setOnUpdateCallback(null);
+  }, [refetchSelectedTables, setOnUpdateCallback]);
 
   if (isEmpty) {
     return <EmptyState title={t`No data to show`} />;

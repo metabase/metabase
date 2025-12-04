@@ -5,7 +5,6 @@ import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
-import { useDataModelApi } from "metabase-enterprise/data-studio/data-model/pages/DataModel/contexts/DataModelApiContext";
 import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -32,6 +31,7 @@ interface SearchNewProps {
   query: string;
   params: RouteParams;
   filters: FilterState;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
 function buildResultTree(tables: Table[]): RootNode {
@@ -95,7 +95,12 @@ function buildResultTree(tables: Table[]): RootNode {
   return root;
 }
 
-export function SearchNew({ query, params, filters }: SearchNewProps) {
+export function SearchNew({
+  query,
+  params,
+  filters,
+  setOnUpdateCallback,
+}: SearchNewProps) {
   const {
     selectedTables,
     setSelectedTables,
@@ -147,12 +152,10 @@ export function SearchNew({ query, params, filters }: SearchNewProps) {
 
   const isLoading = isLoadingTables || isLoadingDatabases;
 
-  const { registerAction, unregisterAction } = useDataModelApi();
-
   useEffect(() => {
-    registerAction("refetchFilteredTables", () => refetch());
-    return () => unregisterAction("refetchFilteredTables");
-  }, [refetch, registerAction, unregisterAction]);
+    setOnUpdateCallback(refetch);
+    return () => setOnUpdateCallback(null);
+  }, [refetch, setOnUpdateCallback]);
 
   const resultTree = useMemo(
     () => buildResultTree(filteredTables),
