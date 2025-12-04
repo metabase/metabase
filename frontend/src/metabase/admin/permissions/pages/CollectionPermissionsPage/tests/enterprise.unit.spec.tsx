@@ -16,6 +16,24 @@ import {
 const tokenFeatures = { tenants: true, audit_app: true };
 
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
+  describe("Tenant Collections Tab", () => {
+    it("shows the tab when tenants are enabled", async () => {
+      setup({ tokenFeatures, settings: { "use-tenants": true } });
+
+      expect(
+        await screen.findByRole("radio", { name: "Tenant Collections" }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the tab when tenants are disabled", async () => {
+      setup({ tokenFeatures, settings: { "use-tenants": false } });
+
+      expect(
+        screen.queryByRole("radio", { name: "Tenant Collections" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("External Users Group", () => {
     it("should not be able get access to Our Analytics", async () => {
       await setup({
