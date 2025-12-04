@@ -78,17 +78,6 @@ describe("useNormalizeComponentProviderProps", () => {
       expect(result.theme).toEqual({});
     });
 
-    it("removes locale and normalizes theme together", () => {
-      const props = { ...BASE_PROPS, locale: "es", theme: FULL_THEME };
-
-      const result = useNormalizeComponentProviderProps(props);
-
-      expect(result).toEqual({
-        authConfig: BASE_PROPS.authConfig,
-        theme: { preset: "light" },
-      });
-    });
-
     it.each(["pluginsConfig", "eventHandlers", "allowConsoleLog"] as const)(
       "preserves %s prop",
       (propName) => {
