@@ -56,6 +56,17 @@ describe("scenarios > data studio > table publishing", () => {
     H.createLibrary();
   });
 
+  describe("unpublishing", () => {
+    it("should not be able to access a published table when it is unpublished", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+      H.unpublishTables({ table_ids: [PRODUCTS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(productsQuestionDetails);
+      assertPermissionError();
+    });
+  });
+
   describe("queries", () => {
     it("should create a question based on a published table", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
@@ -387,17 +398,6 @@ describe("scenarios > data studio > table publishing", () => {
       H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      assertPermissionError();
-    });
-  });
-
-  describe("unpublishing", () => {
-    it("should not be able to access a published table when it is unpublished", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.unpublishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
