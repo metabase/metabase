@@ -391,6 +391,7 @@
     "typescript-plugin-css-modules": "^5.1.0",
     "url": "^0.11.4",
     "use-sync-external-store": "^1.6.0",
+    "util": "^0.12.5",
     "web-streams-polyfill": "^4.1.0",
     "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
