@@ -165,7 +165,7 @@ Be sure to hit the **Save and enable** button, or all is void.
 
 ## Set up the application environment
 
-[Clone the sample app](#clone-the-sample-app) and `cd` into it.
+[Clone the sample app](#clone-the-sample-app-repo) and `cd` into it.
 
 In the sample app's main directory, copy the `.env.example` template to `.env`.
 
