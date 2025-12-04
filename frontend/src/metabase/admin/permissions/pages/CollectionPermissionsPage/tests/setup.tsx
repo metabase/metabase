@@ -13,6 +13,7 @@ import type {
   Collection,
   CollectionPermissionsGraph,
   GroupInfo,
+  Settings,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -142,6 +143,7 @@ interface SetupOptions {
   permissionsGraph?: CollectionPermissionsGraph;
   permissionGroups?: GroupInfo[];
   tokenFeatures?: Partial<TokenFeatures>;
+  settings?: Partial<Settings>;
 }
 
 export function setup({
@@ -151,11 +153,13 @@ export function setup({
   permissionsGraph = defaultPermissionsGraph,
   permissionGroups = defaultPermissionGroups,
   tokenFeatures,
+  settings = {},
 }: Partial<SetupOptions> = {}) {
   const initialState = createMockState({
     settings: mockSettings({
       "application-colors": {},
       "token-features": createMockTokenFeatures(tokenFeatures ?? {}),
+      ...settings,
     }),
   });
 
