@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "1d1043aa6bf930ccd33848f1972fb5392c5e2ac4"
+  },
+  "upstream": {
+    "branch": "uxw-2457-hide-tenant-collections-sidebar-section-when-no-collections"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66539,
+        "gqlID": "PR_kwDOAczgH863Aqss"
+      }
+    }
   }
 }
