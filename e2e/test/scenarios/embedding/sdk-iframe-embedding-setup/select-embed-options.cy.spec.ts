@@ -87,7 +87,7 @@ function assertUpsellForOption(label: string) {
   H.hovercard().should("contain.text", "Get more powerful embedding");
   H.hovercard().should(
     "contain.text",
-    "Upgrade to get access to embeds with single sign-on, drill through, the SDK for React, and more.",
+    "Upgrade to get access to embeds with single sign-on, drill through, advanced theming, the SDK for React, and more.",
   );
   H.hovercard().should("contain.text", "Upgrade to Metabase Pro");
 }
