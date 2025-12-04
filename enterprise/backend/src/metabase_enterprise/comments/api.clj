@@ -90,7 +90,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
@@ -153,6 +158,10 @@
   (notify-comment! (-> (t2/select-one :model/Comment :id comment-id)
                        (t2/hydrate :creator :reactions))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new comment"
   [_route-params
@@ -186,6 +195,10 @@
                             :user-id api/*current-user-id*})
     comment))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
@@ -220,6 +233,10 @@
                               :user-id api/*current-user-id*})
       updated-comment)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
@@ -245,6 +262,10 @@
     ;; Return 204 No Content
     api/generic-204-no-content))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:comment-id/reaction"
   "Toggle a reaction on a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
@@ -260,6 +281,10 @@
 
     (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
   [_route _query _body req]
@@ -270,7 +295,7 @@
                                                       :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
     ;; do not forget to uncomment tests (both api and e2e)
-    {:data   (->> (t2/select [:model/User :id :first_name :last_name]
+    {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
                              (-> clauses
                                  (sql.helpers/order-by [:%lower.first_name :asc]
                                                        [:%lower.last_name :asc]
