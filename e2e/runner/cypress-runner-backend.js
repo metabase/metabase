@@ -32,6 +32,10 @@ const CypressBackend = {
     host: `http://localhost:${process.env.MB_JETTY_PORT}`,
   },
   async runFromJar(jarPath = "target/uberjar/metabase.jar") {
+    if (!fs.existsSync(jarPath)) {
+      console.log("Build the JAR with ./bin/build.sh\n");
+      throw new Error(`JAR ${jarPath} does not exist!`);
+    }
     if (!this.server.process) {
       process.env.JDK_JAVA_OPTIONS = getJvmOptsFromDepsEdn();
       this.server.process = spawn("java", ["-jar", jarPath], {

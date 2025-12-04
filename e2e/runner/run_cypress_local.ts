@@ -15,6 +15,7 @@ const options = {
   CYPRESS_TESTING_TYPE: "e2e", // e2e | component
   CYPRESS_GUI: true,
   GENERATE_SNAPSHOTS: true,
+  JAR_PATH: undefined,
   ...booleanify(process.env),
 };
 
@@ -38,6 +39,7 @@ printBold(`Running Cypress with options:
   - CYPRESS_TESTING_TYPE : ${options.CYPRESS_TESTING_TYPE}
   - CYPRESS_GUI          : ${options.CYPRESS_GUI}
   - GENERATE_SNAPSHOTS   : ${options.GENERATE_SNAPSHOTS}
+  - JAR_PATH             : ${options.JAR_PATH}
 `);
 
 const init = async () => {
@@ -45,20 +47,40 @@ const init = async () => {
   const userOverrides = await parseArguments(cliArguments);
 
   const { isBackendRunning } = CypressBackend;
+  const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
 
   printBold("⏳ Starting containers");
   shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
 
-  if (isBackendRunning) {
-    printBold("⚠️ Your backend is already running");
-    console.log(`If tests fail or if something doesn't work:
+  if (options.JAR_PATH) {
+    if (isBackendRunning || isFrontendRunning) {
+      printBold("⚠️ Your backend and/or frontend are already running");
+      console.log(`You wanted to test against a pre-built Metabase JAR:
+        - It will spin up both the backend and the frontend for you
+        - Kill the existing processes and run the script again
+        `);
+
+      isBackendRunning && console.log(`Kill backend pid: ${isBackendRunning}`);
+      isFrontendRunning &&
+        console.log(`Kill frontend pid: ${isFrontendRunning}`);
+
+      process.exit(FAILURE_EXIT_CODE);
+    } else {
+      printBold("⏳ Starting Metabase from a JAR");
+      await CypressBackend.runFromJar(options.JAR_PATH);
+    }
+  } else {
+    if (isBackendRunning) {
+      printBold("⚠️ Your backend is already running");
+      console.log(`If tests fail or if something doesn't work:
       - Kill the pid ${isBackendRunning}
       - Run *yarn test-cypress* again
       - This will spin up the live backend with the correct settings for e2e tests
     `);
-  } else {
-    printBold("⏳ Starting live backend with hot reloading");
-    await CypressBackend.runFromSource();
+    } else {
+      printBold("⏳ Starting live backend with hot reloading");
+      await CypressBackend.runFromSource();
+    }
   }
 
   if (options.GENERATE_SNAPSHOTS) {
@@ -79,7 +101,6 @@ const init = async () => {
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
   }
 
-  const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
   if (!isFrontendRunning && options.CYPRESS_TESTING_TYPE === "e2e") {
     printBold(
       "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
