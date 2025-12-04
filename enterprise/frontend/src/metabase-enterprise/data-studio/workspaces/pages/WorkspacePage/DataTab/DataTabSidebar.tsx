@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { Stack, Text } from "metabase/ui";
 import type {
   TableId,
+  Transform,
   WorkspaceTablesResponse,
   WorkspaceTransformItem,
-  Transform,
 } from "metabase-types/api";
 
 import { type OpenTable, useWorkspace } from "../WorkspaceProvider";
@@ -58,8 +58,8 @@ export const DataTabSidebar = ({
             return (
               <TableListItem
                 key={`output-${index}`}
-                name={table.global?.table || ""}
-                schema={table.global?.schema}
+                name={table.workspace?.table || ""}
+                schema={table.workspace?.schema}
                 icon="pivot_table"
                 type="output"
                 hasChanges={hasChanges}

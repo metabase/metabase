@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -7,7 +6,7 @@ import { Box, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
-import { useTableQuestion } from "./useTableQuestion";
+import { useTablePreview } from "./useTablePreview";
 
 interface DataTabProps {
   databaseId: DatabaseId | null;
@@ -15,24 +14,10 @@ interface DataTabProps {
 }
 
 export function DataTab({ databaseId, tableId }: DataTabProps) {
-  const { question, result, isLoading, isRunning, error } = useTableQuestion({
+  const { rawSeries, isFetching, error } = useTablePreview({
     databaseId,
     tableId,
   });
-
-  const rawSeries = useMemo(() => {
-    if (!question || !result) {
-      return null;
-    }
-
-    return [
-      {
-        card: question.card(),
-        data: result.data,
-        error: result.error,
-      },
-    ];
-  }, [question, result]);
 
   if (!databaseId || !tableId) {
     return (
@@ -42,7 +27,7 @@ export function DataTab({ databaseId, tableId }: DataTabProps) {
     );
   }
 
-  if (isLoading || isRunning) {
+  if (isFetching) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -54,7 +39,7 @@ export function DataTab({ databaseId, tableId }: DataTabProps) {
     );
   }
 
-  if (!rawSeries || !question) {
+  if (!rawSeries) {
     return (
       <Stack h="100%" align="center" justify="center">
         <Text c="text-medium">{t`No data available`}</Text>
@@ -64,14 +49,7 @@ export function DataTab({ databaseId, tableId }: DataTabProps) {
 
   return (
     <Box h="100%" className={CS.relative}>
-      <Visualization
-        rawSeries={rawSeries}
-        metadata={question.metadata()}
-        className={CS.spread}
-        showTitle={false}
-        isDashboard={false}
-        isQueryBuilder={false}
-      />
+      <Visualization queryBuilderMode="dataset" rawSeries={rawSeries} />
     </Box>
   );
 }

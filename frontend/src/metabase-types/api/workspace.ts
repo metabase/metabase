@@ -120,6 +120,8 @@ export type WorkspaceOutputTable = {
   workspace?: {
     "transform-id": number;
     "table-id": number;
+    schema: string | null;
+    table: string | null;
   };
 };
 

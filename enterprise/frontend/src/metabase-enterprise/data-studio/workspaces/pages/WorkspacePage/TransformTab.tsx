@@ -4,14 +4,22 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { Form, FormProvider, FormTextInput } from "metabase/forms";
+<<<<<<< HEAD
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
-import { useRunTransformMutation } from "metabase-enterprise/api";
+import { useRunTransformMutation, workspaceApi } from "metabase-enterprise/api";
 import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
 import {
   isSameSource,
   isTransformRunning,
 } from "metabase-enterprise/transforms/utils";
+=======
+import { useDispatch } from "metabase/lib/redux";
+import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import { useRunTransformMutation } from "metabase-enterprise/api";
+import { workspaceApi } from "metabase-enterprise/api/workspace";
+import { isSameSource } from "metabase-enterprise/transforms/utils";
+>>>>>>> b495f64cbdf (Cleanup. Add tables refetching on transform run)
 import type {
   DatabaseId,
   DraftTransformSource,
@@ -25,6 +33,7 @@ import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
 import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
+import { useDispatch } from "metabase/lib/redux";
 
 interface Props {
   databaseId: DatabaseId;
@@ -49,6 +58,7 @@ export const TransformTab = ({
     isChangeTargetModalOpen,
     { open: openChangeTargetModal, close: closeChangeTargetModal },
   ] = useDisclosure();
+  const dispatch = useDispatch();
 
   const hasSourceChanged = !isSameSource(
     editedTransform.source,
@@ -65,6 +75,16 @@ export const TransformTab = ({
   const handleRun = async () => {
     try {
       await runTransform(transform.id).unwrap();
+
+      // Invalidate the workspace tables cache since transform execution
+      // may affect the list of workspace tables.
+      if (transform.workspace_id) {
+        dispatch(
+          workspaceApi.util.invalidateTags([
+            { type: "workspace", id: transform.workspace_id },
+          ]),
+        );
+      }
     } catch (error) {
       console.error("Failed to run transform", error);
     }

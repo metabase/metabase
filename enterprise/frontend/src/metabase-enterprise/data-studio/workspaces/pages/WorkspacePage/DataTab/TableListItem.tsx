@@ -69,7 +69,7 @@ export const TableListItem = ({
       <Icon
         name={icon}
         size={14}
-        c={type === "input" ? "summarize" : "warning"}
+        c={type === "input" ? "saturated-green" : "saturated-yellow"}
       />
       <Text className={S.name} c="text-dark" truncate>
         {displayName}
