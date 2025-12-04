@@ -18,7 +18,7 @@
   }
 
   & svg {
-    color: var(--mb-color-primary);
+    color: var(--mb-color-brand);
   }
 
   & svg[data-role="chevron"] {

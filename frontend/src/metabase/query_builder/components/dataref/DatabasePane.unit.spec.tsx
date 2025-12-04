@@ -9,8 +9,8 @@ import {
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 
-import type { DatabaseTablesPaneProps } from "./DatabaseTablesPane";
-import { DatabaseTablesPane } from "./DatabaseTablesPane";
+import type { DatabasePaneProps } from "./DatabasePane";
+import { DatabasePane } from "./DatabasePane";
 
 const database = createMockDatabase();
 
@@ -47,13 +47,11 @@ const defaultProps = {
   onItemClick: jest.fn(),
 };
 
-const setup = (options?: Partial<DatabaseTablesPaneProps>) => {
-  return renderWithProviders(
-    <DatabaseTablesPane {...defaultProps} {...options} />,
-  );
+const setup = (options?: Partial<DatabasePaneProps>) => {
+  return renderWithProviders(<DatabasePane {...defaultProps} {...options} />);
 };
 
-describe("DatabaseTablesPane", () => {
+describe("DatabasePane", () => {
   it("should show tables with initial_sync_status='incomplete' as non-interactive (disabled)", async () => {
     setup({
       searchResults: [incompleteTableSearchResult],
