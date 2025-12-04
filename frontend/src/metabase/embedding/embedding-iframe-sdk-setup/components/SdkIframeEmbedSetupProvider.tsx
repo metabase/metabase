@@ -20,6 +20,7 @@ import {
   useGetCurrentResource,
   useParametersValues,
   useRecentItems,
+  useSdkIframeEmbedNavigation,
 } from "../hooks";
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type { SdkIframeEmbedSetupStep } from "../types";
@@ -141,6 +142,21 @@ export const SdkIframeEmbedSetupProvider = ({
     embeddingParameters,
   });
 
+  const { handleNext, handleBack, canGoBack, isFirstStep, isLastStep } =
+    useSdkIframeEmbedNavigation({
+      isSimpleEmbedFeatureAvailable,
+      isGuestEmbedsEnabled,
+      initialState,
+      experience,
+      resource,
+      currentStep,
+      defaultStep,
+      setCurrentStep,
+      settings,
+      defaultSettings,
+      embeddingParameters,
+    });
+
   const value: SdkIframeEmbedSetupContextType = {
     isSimpleEmbedFeatureAvailable,
     isSimpleEmbeddingEnabled,
@@ -149,6 +165,11 @@ export const SdkIframeEmbedSetupProvider = ({
     isGuestEmbedsTermsAccepted,
     currentStep,
     setCurrentStep,
+    handleNext,
+    handleBack,
+    canGoBack,
+    isFirstStep,
+    isLastStep,
     initialState,
     experience,
     resource,

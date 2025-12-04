@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
+import { AuthenticationSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/AuthenticationSection";
 import { WithSimpleEmbeddingFeatureUpsellTooltip } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
@@ -29,6 +30,7 @@ export const SelectEmbedExperienceStep = () => {
     recentQuestions,
   } = useSdkIframeEmbedSetupContext();
 
+  const isGuestEmbed = !!settings.isGuest;
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
 
   const handleEmbedExperienceChange = (
@@ -71,44 +73,51 @@ export const SelectEmbedExperienceStep = () => {
   });
 
   return (
-    <Card p="md" mb="md">
-      <Text size="lg" fw="bold" mb="md">
-        {t`Select your embed experience`}
-      </Text>
+    <>
+      <AuthenticationSection />
 
-      <Radio.Group
-        value={experience}
-        onChange={(experience) =>
-          handleEmbedExperienceChange(
-            experience as SdkIframeEmbedSetupExperience,
-          )
-        }
-      >
-        <Stack gap="md">
-          {experiences.map((experience) => (
-            <WithSimpleEmbeddingFeatureUpsellTooltip
-              key={experience.value}
-              mode="custom"
-              enableTooltip={experience.showUpsell === true}
-              campaign={UPSELL_CAMPAIGN_EXPERIENCE}
-            >
-              {({ disabled, hoverCard }) => (
-                <Radio
-                  value={experience.value}
-                  label={
-                    <Flex gap="xs" align="center">
-                      {experience.title}
-                      {hoverCard}
-                    </Flex>
-                  }
-                  description={experience.description}
-                  disabled={disabled}
-                />
-              )}
-            </WithSimpleEmbeddingFeatureUpsellTooltip>
-          ))}
-        </Stack>
-      </Radio.Group>
-    </Card>
+      <Card p="md" mb="md">
+        <Text size="lg" fw="bold" mb="md">
+          {t`Select your embed experience`}
+        </Text>
+
+        <Radio.Group
+          value={experience}
+          onChange={(experience) =>
+            handleEmbedExperienceChange(
+              experience as SdkIframeEmbedSetupExperience,
+            )
+          }
+        >
+          <Stack gap="md">
+            {experiences.map((experience) => (
+              <WithSimpleEmbeddingFeatureUpsellTooltip
+                key={experience.value}
+                mode="custom"
+                enableTooltip={experience.showUpsell === true}
+                campaign={UPSELL_CAMPAIGN_EXPERIENCE}
+              >
+                {({ disabled, hoverCard }) => (
+                  <Radio
+                    value={experience.value}
+                    label={
+                      <Flex gap="xs" align="center">
+                        {experience.title}
+                        {hoverCard}
+                      </Flex>
+                    }
+                    description={experience.description}
+                    disabled={
+                      disabled ||
+                      (isGuestEmbed && !experience.supportsGuestEmbed)
+                    }
+                  />
+                )}
+              </WithSimpleEmbeddingFeatureUpsellTooltip>
+            ))}
+          </Stack>
+        </Radio.Group>
+      </Card>
+    </>
   );
 };

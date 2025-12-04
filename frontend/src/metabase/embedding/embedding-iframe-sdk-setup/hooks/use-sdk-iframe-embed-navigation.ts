@@ -1,28 +1,43 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
+import type { SdkIframeEmbedSetupStep } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+
 import {
   trackEmbedWizardExperienceCompleted,
   trackEmbedWizardOptionsCompleted,
   trackEmbedWizardResourceSelectionCompleted,
 } from "../analytics";
 import { EMBED_STEPS } from "../constants";
-import { useSdkIframeEmbedSetupContext } from "../context";
+import type { SdkIframeEmbedSetupContextType } from "../context";
 
-export function useSdkIframeEmbedNavigation() {
-  const {
-    isSimpleEmbedFeatureAvailable,
-    isGuestEmbedsEnabled,
-    initialState,
-    experience,
-    resource,
-    currentStep,
-    setCurrentStep,
-    settings,
-    defaultSettings,
-    embeddingParameters,
-  } = useSdkIframeEmbedSetupContext();
-
+export function useSdkIframeEmbedNavigation({
+  isSimpleEmbedFeatureAvailable,
+  isGuestEmbedsEnabled,
+  initialState,
+  experience,
+  resource,
+  defaultStep,
+  currentStep,
+  setCurrentStep,
+  settings,
+  defaultSettings,
+  embeddingParameters,
+}: Pick<
+  SdkIframeEmbedSetupContextType,
+  | "isSimpleEmbedFeatureAvailable"
+  | "isGuestEmbedsEnabled"
+  | "initialState"
+  | "experience"
+  | "resource"
+  | "currentStep"
+  | "setCurrentStep"
+  | "settings"
+  | "defaultSettings"
+  | "embeddingParameters"
+> & {
+  defaultStep: SdkIframeEmbedSetupStep;
+}) {
   const availableSteps = useMemo(() => {
     // Exclude non-applicable steps for the current embed type
     return EMBED_STEPS.filter((step) => !step.skipFor?.includes(experience));
@@ -82,16 +97,15 @@ export function useSdkIframeEmbedNavigation() {
     (step) => step.id === currentStep,
   );
 
-  const canGoNext = currentIndex < availableSteps.length - 1;
-  const canGoBack = currentIndex > 0;
-
+  const isFirstStep = currentStep === defaultStep;
   const isLastStep = currentIndex === availableSteps.length - 1;
 
-  const StepContent = useMemo(
-    () =>
-      EMBED_STEPS.find((step) => step.id === currentStep)?.component ?? noop,
-    [currentStep],
+  const defaultStepIndex = EMBED_STEPS.findIndex(
+    ({ id }) => id === defaultStep,
   );
+
+  const canGoNext = currentIndex < availableSteps.length - 1;
+  const canGoBack = currentIndex > defaultStepIndex;
 
   return {
     handleNext,
@@ -100,9 +114,7 @@ export function useSdkIframeEmbedNavigation() {
     canGoNext,
     canGoBack,
 
+    isFirstStep,
     isLastStep,
-    StepContent,
   };
 }
-
-const noop = () => null;
