@@ -268,7 +268,7 @@ describe("scenarios > data studio > published tables", () => {
     H.assertQueryBuilderRowCount(93);
   });
 
-  it("should be able to use search field values with remapping", () => {
+  it("should be able to use search field values with FK remapping", () => {
     cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
       has_field_values: "search",
     });
