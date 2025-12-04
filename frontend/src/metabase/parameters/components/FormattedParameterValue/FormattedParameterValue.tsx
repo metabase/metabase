@@ -40,7 +40,6 @@ function FormattedParameterValue({
   dashboardId,
   placeholder,
   isPopoverOpen = false,
-  dataTestId = "parameter-value",
 }: FormattedParameterValueProps) {
   if (parameterHasNoDisplayValue(value)) {
     return placeholder;
@@ -71,24 +70,15 @@ function FormattedParameterValue({
           cardId={cardId}
           dashboardId={dashboardId}
           displayValue={label}
-          data-testid={dataTestId}
         />
       );
     }
 
     if (label) {
-      return (
-        <span data-testid={dataTestId}>
-          {formatParameterValue(label, parameter)}
-        </span>
-      );
+      return <span>{formatParameterValue(label, parameter)}</span>;
     }
 
-    return (
-      <span data-testid={dataTestId}>
-        {formatParameterValue(value, parameter)}
-      </span>
-    );
+    return <span>{formatParameterValue(value, parameter)}</span>;
   };
 
   if (isStringParameter(parameter)) {
