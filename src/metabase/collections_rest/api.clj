@@ -233,13 +233,15 @@
                                                (t2/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
-                                       {:table (->> (t2/query {:select-distinct [:collection_id]
-                                                               :from :metabase_table
-                                                               :where [:and
-                                                                       [:= :is_published true]
-                                                                       [:= :archived_at nil]]})
-                                                    (map :collection_id)
-                                                    (into #{}))})
+                                       ;; Tables in collections are an EE feature (data-studio)
+                                       (when (premium-features/has-feature? :data-studio)
+                                         {:table (->> (t2/query {:select-distinct [:collection_id]
+                                                                 :from :metabase_table
+                                                                 :where [:and
+                                                                         [:= :is_published true]
+                                                                         [:= :archived_at nil]]})
+                                                      (map :collection_id)
+                                                      (into #{}))}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -738,16 +740,19 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
+        ;; Tables in collections are an EE feature (data-studio)
         collections-containing-tables
-        (->> (when (seq descendant-collection-ids)
-               (t2/query {:select-distinct [:collection_id]
-                          :from :metabase_table
-                          :where [:and
-                                  [:= :is_published true]
-                                  [:= :archived_at nil]
-                                  [:in :collection_id descendant-collection-ids]]}))
-             (map :collection_id)
-             (into #{}))
+        (if (premium-features/has-feature? :data-studio)
+          (->> (when (seq descendant-collection-ids)
+                 (t2/query {:select-distinct [:collection_id]
+                            :from :metabase_table
+                            :where [:and
+                                    [:= :is_published true]
+                                    [:= :archived_at nil]
+                                    [:in :collection_id descendant-collection-ids]]}))
+               (map :collection_id)
+               (into #{}))
+          #{})
 
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
@@ -1024,8 +1029,9 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline
-                                             :table]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
+                                      ;; Tables in collections are an EE feature (data-studio)
+                                      (premium-features/has-feature? :data-studio) (conj :table)
                                       (premium-features/enable-documents?) (conj :document))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))

@@ -62,6 +62,23 @@
             (is (partial= {:can_access_db_details true}
                           (user-permissions :rasta)))))))))
 
+(deftest current-user-query-permissions-published-table-test
+  (testing "GET /api/user/current can_create_queries respects published tables"
+    (mt/with-premium-features #{:data-studio}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "user with collection permission on published table should have can_create_queries true"
+          (mt/with-temp [:model/Collection collection {}
+                         :model/Table      _table     {:db_id         (mt/id)
+                                                       :is_published  true
+                                                       :collection_id (:id collection)}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) (:id collection))
+            (mt/with-no-data-perms-for-all-users!
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))))))
+
 (deftest new-database-view-data-permission-level-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/Database         {db-id :id}      {}

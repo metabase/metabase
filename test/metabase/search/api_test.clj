@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
@@ -1932,99 +1931,16 @@
         (is (= #{card-1}
                (set (map :id (:data results)))))))))
 
-(deftest published-table-collection-filter-test
-  (testing "Published tables are included in collection-filtered search"
-    (mt/with-temp
-      [:model/Collection {parent-coll :id} {:name "Parent Collection" :location "/"}
-       :model/Collection {child-coll :id}  {:name "Child Collection"
-                                            :location (collection/location-path parent-coll)}
-       :model/Card       {card-1 :id}      {:collection_id parent-coll :name "Parent Card"}
-       :model/Table      {table-1 :id}     {:name "Published Table" :is_published true :collection_id parent-coll}
-       :model/Table      {table-2 :id}     {:name "Child Published Table" :is_published true :collection_id child-coll}
-       :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
-       :model/Table      {table-4 :id}     {:name "Root Published Table" :is_published true :collection_id nil}]
-      (testing "Global search"
-        (let [results (mt/user-http-request :crowberto :get 200 "search")]
-          (is (=? [{:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
-                    :database_id (mt/id)
-                    :id table-1
-                    :model "table"
-                    :name "Published Table"
-                    :table_id table-1
-                    :table_name "Published Table"}
-                   {:collection {:authority_level nil, :id child-coll, :name "Child Collection", :type nil}
-                    :database_id (mt/id)
-                    :id table-2
-                    :model "table"
-                    :name "Child Published Table"
-                    :table_id table-2
-                    :table_name "Child Published Table"}
-                   {:database_id (mt/id)
-                    :id table-3
-                    :model "table"
-                    :name "Unpublished Table"
-                    :table_id table-3
-                    :table_name "Unpublished Table"}
-                   {:collection {:authority_level nil, :id "root", :name "Our analytics", :type nil}
-                    :database_id (mt/id)
-                    :id table-4
-                    :model "table"
-                    :name "Root Published Table"
-                    :table_id table-4
-                    :table_name "Root Published Table"}]
-                  (->> (:data results)
-                       (filter (comp #{table-1 table-2 table-3 table-4} :id))
-                       (sort-by :id))))))
-      (testing "Filter by parent collection returns published tables in that collection and descendants"
-        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-          (is (=? {:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type nil}
-                   :database_id (mt/id)
-                   :id table-1
-                   :model "table"
-                   :name "Published Table"
-                   :table_id table-1
-                   :table_name "Published Table"}
-                  (m/find-first (comp #{table-1} :id) (:data results))))
-          (is (contains? (set (map :id (:data results))) table-1)
-              "Published table in parent collection should be included")
-          (is (contains? (set (map :id (:data results))) table-2)
-              "Published table in child collection should be included")
-          (is (contains? (set (map :id (:data results))) card-1)
-              "Card in parent collection should be included")))
-      (testing "Unpublished tables are not included in collection filter results"
-        (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-          (is (not (contains? (set (map :id (:data results))) table-3))
-              "Unpublished table should not be in results")))))
-  (testing "Published tables in root collection (collection_id=nil) appear in unfiltered search"
-    (mt/with-temp
-      [:model/Table {root-table :id} {:name "Root Published Searchable" :is_published true :collection_id nil}]
-      (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Root Published Searchable")]
-        (is (some #(= root-table (:id %)) (:data results))
-            "Root published table should appear in search results"))))
-  (testing "Published tables appear as collection items, unpublished as database items"
-    (mt/with-temp
-      [:model/Database   {db-id :id}       {:name "Context Test DB"}
-       :model/Collection {coll-id :id}     {:name "Context Test Collection" :location "/"}
-       :model/Table      {pub-table :id}   {:name "ContextTestTablePub"
-                                            :db_id db-id
-                                            :is_published true
-                                            :collection_id coll-id}
-       :model/Table      {unpub-table :id} {:name "ContextTestTableUnpub"
-                                            :db_id db-id
-                                            :is_published false}]
-      (let [results (mt/user-http-request :crowberto :get 200 "search"
-                                          :q "Context" :models "table")
-            our-result (->> (filter (comp #{pub-table unpub-table} :id) (:data results))
-                            (sort-by :id))]
-        (testing "each table appears once"
-          (is (=? [{:id pub-table
-                    :model "table"
-                    :name "ContextTestTablePub"
-                    :collection {:id coll-id}
-                    :database_name "Context Test DB"}
-                   {:id unpub-table
-                    :model "table"
-                    :name "ContextTestTableUnpub"
-                    :collection {:id nil}
-                    :database_name "Context Test DB"}]
-                  our-result)))))))
+(deftest published-table-not-in-collection-search-oss-test
+  (testing "In OSS, published tables should NOT appear in collection-filtered search"
+    (mt/with-premium-features #{}
+      (mt/with-temp
+        [:model/Collection {parent-coll :id} {:name "OSS Test Collection" :location "/"}
+         :model/Card       {card-id :id}     {:collection_id parent-coll :name "OSS Test Card"}
+         :model/Table      {table-id :id}    {:name "OSS Published Table" :is_published true :collection_id parent-coll}]
+        (testing "Collection-filtered search should NOT include published tables in OSS"
+          (let [result-ids (into #{} (map :id) (:data (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)))]
+            (is (contains? result-ids card-id)
+                "Card in collection should be included")
+            (is (not (contains? result-ids table-id))
+                "Published table should NOT be included in collection search in OSS")))))))
