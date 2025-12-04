@@ -59,9 +59,9 @@ yarn = "1.22.22"
 java = "temurin-21.0.9+10.0.LTS"
 
 # Clojure CLI - for backend development and REPL
-clojure = "1.12.3.1577"
+clojure = "1.12.3"
 
-# Babashka - for mage task automation and scripting
+# Babashka
 babashka = "1.12.212"
 
 # =============================================================================
@@ -97,6 +97,6 @@ gh = "latest"
 # https://aws.amazon.com/cli/
 awscli = "latest"
 
-# AWS CLI - for AWS operations
-# https://aws.amazon.com/cli/
+# One Password CLI - for password management
+# https://developer.1password.com/docs/cli/get-started/
 op = "latest"
