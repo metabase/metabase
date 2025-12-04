@@ -61,7 +61,7 @@ describe("scenarios > data studio > published tables", () => {
 
     cy.signIn("nodata");
     cy.visit("/");
-    H.newButton().click();
+    H.appBar().button("New").click();
     H.popover().within(() => {
       cy.findByText("Question").should("be.visible");
       cy.findByText("SQL query").should("not.exist");
@@ -346,18 +346,6 @@ describe("scenarios > data studio > published tables", () => {
     H.assertQueryBuilderRowCount(54);
   });
 
-  it("should not be able to access the table data when blocked", () => {
-    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-    H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
-    H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-    cy.signIn("nodata");
-    H.visitQuestionAdhoc(productsQuestionDetails);
-    H.main()
-      .findByText("Sorry, you don't have permission to run this query.")
-      .should("be.visible");
-  });
-
   it("should be able to x-ray a table", () => {
     H.publishTables({ table_ids: [PRODUCTS_ID] });
 
@@ -369,6 +357,34 @@ describe("scenarios > data studio > published tables", () => {
     H.main()
       .findByText(/A closer look at number of Products/)
       .should("be.visible");
+  });
+
+  it("should not be able to access a published table data when blocked", () => {
+    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+    H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+    H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+    cy.signIn("nodata");
+    H.visitQuestionAdhoc(productsQuestionDetails);
+    assertPermissionError();
+  });
+
+  it("should not be able to access a published table when it is unpublished", () => {
+    H.publishTables({ table_ids: [PRODUCTS_ID] });
+    H.unpublishTables({ table_ids: [PRODUCTS_ID] });
+
+    cy.signIn("nodata");
+    H.visitQuestionAdhoc(productsQuestionDetails);
+    assertPermissionError();
+  });
+
+  it("should not be able to access a published table when the token no longer has required features", () => {
+    H.publishTables({ table_ids: [PRODUCTS_ID] });
+    H.activateToken("starter");
+
+    cy.signIn("nodata");
+    H.visitQuestionAdhoc(productsQuestionDetails);
+    assertPermissionError();
   });
 });
 
@@ -383,4 +399,10 @@ function sandboxProductsOnCategory() {
       attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
     },
   });
+}
+
+function assertPermissionError() {
+  H.main()
+    .findByText("Sorry, you don't have permission to run this query.")
+    .should("be.visible");
 }
