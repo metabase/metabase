@@ -5,4 +5,5 @@
    [metabase-enterprise.workspaces.driver.clickhouse]
    [metabase-enterprise.workspaces.driver.h2]
    [metabase-enterprise.workspaces.driver.postgres]
-   [metabase-enterprise.workspaces.driver.redshift]))
+   [metabase-enterprise.workspaces.driver.redshift]
+   [metabase-enterprise.workspaces.driver.snowflake]))
