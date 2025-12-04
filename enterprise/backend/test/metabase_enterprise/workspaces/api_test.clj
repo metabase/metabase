@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
@@ -10,6 +11,9 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn ws-url [id path]
+  (str "ee/workspace/" id path))
 
 (deftest workspace-endpoints-require-superuser-test
   (mt/with-temp [:model/Workspace workspace {:name "Private Workspace"}]
@@ -423,7 +427,42 @@
                 workspace-id (:id (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                         {:name        "Empty Workspace"
                                                          :database_id (mt/id)}))
-                response     (mt/user-http-request :crowberto :post 400
-                                                   (str "ee/workspace/" workspace-id "/contents")
+                response     (mt/user-http-request :crowberto :post 400 (ws-url workspace-id "/contents")
                                                    {:add {:transforms [(:id tx)]}})]
             (is (re-find #"Cannot add transforms that depend on saved questions" response))))))))
+
+(deftest validate-target-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (let [table (t2/select-one :model/Table :active true)]
+        (mt/with-temp [:model/Workspace {ws-id :id}  {:name "test"}
+                       :model/Transform _x1          {:workspace_id ws-id
+                                                      :target       {:database (:db_id table)
+                                                                     :type     "table"
+                                                                     :schema   (:schema table)
+                                                                     :name     (str "q_" (:name table))}}]
+          (testing "Unique"
+            (is (= "OK"
+                   (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
+                     (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/validate-target")
+                                           {:db_id  (mt/id)
+                                            :target {:type   "table"
+                                                     :schema "public"
+                                                     :name   (str/replace (str (random-uuid)) "-" "_")}})))))
+          (testing "Conflict outside of workspace"
+            (is (= "A table with that name already exists."
+                   (mt/user-http-request :crowberto :post 403 (ws-url ws-id "/validate-target")
+                                         {:db_id  (:db_id table)
+                                          :target {:type   "table"
+                                                   :schema (:schema table)
+                                                   :name   (:name table)}}))))
+          (testing "Conflict inside of workspace"
+            (let [table (t2/select-one :model/Table :active true)
+                  tn    (str (random-uuid))]
+              (is (= "Another transform in this workspace already targets that table."
+                     (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
+                       (mt/user-http-request :crowberto :post 403 (ws-url ws-id "/validate-target")
+                                             {:db_id  (:db_id table)
+                                              :target {:type   "table"
+                                                       :schema (:schema table)
+                                                       :name   (str "q_" (:name table))}})))))))))))

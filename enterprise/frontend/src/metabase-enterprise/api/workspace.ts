@@ -137,9 +137,9 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       ValidateTableNameResponse,
       ValidateTableNameRequest
     >({
-      query: (body) => ({
+      query: ({ id, ...body }) => ({
         method: "POST",
-        url: "/api/ee/transform/validate-target",
+        url: `/api/ee/workspace/${id}/validate-target`,
         body,
       }),
     }),

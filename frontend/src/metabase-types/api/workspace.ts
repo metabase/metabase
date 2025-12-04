@@ -86,6 +86,7 @@ export type WorkspaceUpdateContentsRequest = {
 };
 
 export type ValidateTableNameRequest = {
+  id: WorkspaceId;
   db_id: DatabaseId;
   target: {
     type: "table";
