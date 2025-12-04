@@ -1,5 +1,7 @@
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+// eslint-disable-next-line no-external-references-for-sdk-package-code
+import { colors } from "metabase/lib/colors/colors";
 
 type Props = {
   message: string;
@@ -14,9 +16,9 @@ const DefaultErrorMessage = ({ message, theme }: Props) => {
         display: "flex",
         alignItems: "center",
         padding: "1.25rem 1rem",
-        background: theme?.colors?.background,
-        color: theme?.colors?.["text-primary"],
-        border: `1px solid ${theme?.colors?.error}`,
+        background: theme?.colors?.background ?? colors["bg-error"],
+        color: theme?.colors?.["text-primary"] ?? colors["text-dark"],
+        border: `1px solid ${theme?.colors?.error ?? colors.error}`,
         borderRadius: "0.5rem",
         textAlign: "center",
         lineHeight: "1.4rem",
