@@ -18,7 +18,13 @@ import {
   getInitialNativeSource,
   getInitialPythonSource,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/utils";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type {
+  CreateWorkspaceTransformRequest,
+  DatabaseId,
+  Transform,
+  TransformSource,
+  WorkspaceId,
+} from "metabase-types/api";
 
 type TransformType = "sql" | "python";
 
@@ -45,53 +51,57 @@ export const AddTransformMenu = ({
     [fetchedSchemas],
   );
 
-  const getSource = useCallback((type: TransformType): TransformSource => {
-    if (type === "sql") {
-      const source = getInitialNativeSource();
+  const getSource = useCallback(
+    (type: TransformType): TransformSource => {
+      if (type === "sql") {
+        const source = getInitialNativeSource();
+        return {
+          ...source,
+          query: { ...source.query, database: databaseId },
+        };
+      }
       return {
-        ...source,
-        query: { ...source.query, database: databaseId },
+        ...getInitialPythonSource(),
+        "source-database": databaseId,
       };
-    }
-    return {
-      ...getInitialPythonSource(),
-      "source-database": databaseId,
-    };
-  }, [databaseId]);
+    },
+    [databaseId],
+  );
 
   const handleClose = () => setModalType(null);
 
   const handleSubmit = useCallback(
     async (values: NewTransformValues): Promise<Transform> => {
       const source = getSource(modalType!);
-      const request = values.incremental
-        ? {
-            id: workspaceId,
-            name: values.name,
-            description: null,
-            source,
-            target: {
-              type: "table-incremental" as const,
-              name: values.targetName,
-              schema: values.targetSchema,
-              database: databaseId,
-              "target-incremental-strategy": {
-                type: "append" as const,
+      const request: CreateWorkspaceTransformRequest & { id: WorkspaceId } =
+        values.incremental
+          ? {
+              id: workspaceId,
+              name: values.name,
+              description: null,
+              source,
+              target: {
+                type: "table-incremental" as const,
+                name: values.targetName,
+                schema: values.targetSchema,
+                database: databaseId,
+                "target-incremental-strategy": {
+                  type: "append" as const,
+                },
               },
-            },
-          }
-        : {
-            id: workspaceId,
-            name: values.name,
-            description: null,
-            source,
-            target: {
-              type: "table" as const,
-              name: values.targetName,
-              schema: values.targetSchema,
-              database: databaseId,
-            },
-          };
+            }
+          : {
+              id: workspaceId,
+              name: values.name,
+              description: null,
+              source,
+              target: {
+                type: "table" as const,
+                name: values.targetName,
+                schema: values.targetSchema,
+                database: databaseId,
+              },
+            };
 
       const transform = await createWorkspaceTransform(request).unwrap();
       onCreate(transform);
@@ -108,7 +118,10 @@ export const AddTransformMenu = ({
     ],
   );
 
-  const validationSchemaExtension = useTransformValidation(databaseId);
+  const validationSchemaExtension = useTransformValidation({
+    databaseId,
+    workspaceId,
+  });
 
   return (
     <>
@@ -153,9 +166,13 @@ type DebouncedValidateFn = ((value: string, schema: string | null) => void) & {
   cancel: () => void;
 };
 
-export const useTransformValidation = (
-  databaseId: number,
-): ValidationSchemaExtension => {
+export const useTransformValidation = ({
+  databaseId,
+  workspaceId,
+}: {
+  databaseId: DatabaseId;
+  workspaceId: WorkspaceId;
+}): ValidationSchemaExtension => {
   /**
    * Async Yup validation for targetName field uniqueness with proper cancellation.
    */
@@ -185,6 +202,7 @@ export const useTransformValidation = (
 
           try {
             const result = await validateTableName({
+              id: workspaceId,
               db_id: databaseId,
               target: { type: "table", name: value, schema },
             }).unwrap();
@@ -220,7 +238,7 @@ export const useTransformValidation = (
       };
     }
     return debouncedValidateRef.current;
-  }, [databaseId, validateTableName]);
+  }, [databaseId, workspaceId, validateTableName]);
 
   return useMemo(
     () => ({

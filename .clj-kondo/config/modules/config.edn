@@ -2267,8 +2267,7 @@
            sync
            task
            task-history
-           util
-           enterprise/workspaces}}
+           util}}
 
   enterprise/transforms-python
   {:team "Querying"

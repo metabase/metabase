@@ -49,25 +49,6 @@
       :filter-fn     lib/=
       :filter-values [category]})))
 
-(deftest validate-target-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms}
-      (testing "Unique"
-        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/validate-target"
-                                             {:db_id  (mt/id)
-                                              :target {:type   "table"
-                                                       :schema "public"
-                                                       :name   (str/replace (str (random-uuid)) "-" "_")}})]
-          (is (= "OK" response))))
-      (testing "Conflict"
-        (let [table    (t2/select-one :model/Table :active true)
-              response (mt/user-http-request :crowberto :post 403 "ee/transform/validate-target"
-                                             {:db_id  (:db_id table)
-                                              :target {:type   "table"
-                                                       :schema (:schema table)
-                                                       :name   (:name table)}})]
-          (is (= "A table with that name already exists." response)))))))
-
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
@@ -378,6 +359,139 @@
                 ids (set (map :id transforms))]
             (is (contains? ids global1-id))
             (is (not (contains? ids global2-id)))))))))
+
+(deftest filter-transforms-by-type-test
+  (testing "should be able to filter transforms by source type"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/with-temp [:model/Transform {native-transform-id :id}
+                       {:name   "Native Transform"
+                        :source {:type  "query"
+                                 :query {:database (mt/id)
+                                         :type     "native"
+                                         :native   {:query         "SELECT 1"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_native_" (u/generate-nano-id))}}
+                       :model/Transform {python-transform-id :id}
+                       {:name   "Python Transform"
+                        :source {:type          "python"
+                                 :body          "print('hello')"
+                                 :source-tables {}}
+                        :target {:type     "table"
+                                 :name     (str "test_python_" (u/generate-nano-id))
+                                 :database (mt/id)}}]
+          (testing "filter by native type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native"])]
+              (is (some #(= native-transform-id (:id %)) results))
+              (is (not (some #(= python-transform-id (:id %)) results)))))
+          (testing "filter by python type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["python"])]
+              (is (some #(= python-transform-id (:id %)) results))
+              (is (not (some #(= native-transform-id (:id %)) results)))))
+          (testing "filter by both types returns all"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native" "python"])]
+              (is (some #(= native-transform-id (:id %)) results))
+              (is (some #(= python-transform-id (:id %)) results)))))))))
+
+(deftest filter-transforms-by-database-id-test
+  (testing "should be able to filter transforms by database_id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
+                       :model/Transform {transform1-id :id}
+                       {:name   "Transform for main DB"
+                        :source {:type  "query"
+                                 :query {:database (mt/id)
+                                         :type     "native"
+                                         :native   {:query         "SELECT 1"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_main_" (u/generate-nano-id))}}
+                       :model/Transform {transform2-id :id}
+                       {:name   "Transform for other DB"
+                        :source {:type  "query"
+                                 :query {:database other-db-id
+                                         :type     "native"
+                                         :native   {:query         "SELECT 2"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_other_" (u/generate-nano-id))}}]
+          (testing "filter by main database id"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id (mt/id))]
+              (is (some #(= transform1-id (:id %)) results))
+              (is (not (some #(= transform2-id (:id %)) results)))))
+          (testing "filter by other database id"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id other-db-id)]
+              (is (some #(= transform2-id (:id %)) results))
+              (is (not (some #(= transform1-id (:id %)) results)))))
+          (testing "filter by non-existent database returns empty for our transforms"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id 999999)]
+              (is (not (some #(= transform1-id (:id %)) results)))
+              (is (not (some #(= transform2-id (:id %)) results))))))))))
+
+(deftest filter-transforms-by-database-id-target-test
+  (testing "should match transforms where target database matches"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/with-temp [:model/Database {target-db-id :id} {:engine :h2 :details {}}
+                       :model/Transform {transform-id :id}
+                       {:name   "Python Transform with target DB"
+                        :source {:type          "python"
+                                 :body          "print('hello')"
+                                 :source-tables {}}
+                        :target {:type     "table"
+                                 :name     (str "test_target_" (u/generate-nano-id))
+                                 :database target-db-id}}]
+          (testing "filter by target database id"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id target-db-id)]
+              (is (some #(= transform-id (:id %)) results)))))))))
+
+(deftest filter-transforms-combined-test
+  (testing "should be able to combine database_id and type filters"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
+                       :model/Transform {query-main-id :id}
+                       {:name   "Query on main DB"
+                        :source {:type  "query"
+                                 :query {:database (mt/id)
+                                         :type     "native"
+                                         :native   {:query         "SELECT 1"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_qm_" (u/generate-nano-id))}}
+                       :model/Transform {python-main-id :id}
+                       {:name   "Python on main DB"
+                        :source {:type          "python"
+                                 :body          "print('hello')"
+                                 :source-tables {}}
+                        :target {:type     "table"
+                                 :name     (str "test_pm_" (u/generate-nano-id))
+                                 :database (mt/id)}}
+                       :model/Transform {query-other-id :id}
+                       {:name   "Query on other DB"
+                        :source {:type  "query"
+                                 :query {:database other-db-id
+                                         :type     "native"
+                                         :native   {:query         "SELECT 2"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_qo_" (u/generate-nano-id))}}]
+          (testing "filter by main database and query type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                :database_id (mt/id)
+                                                :type ["query"])]
+              (is (some #(= query-main-id (:id %)) results))
+              (is (not (some #(= python-main-id (:id %)) results)))
+              (is (not (some #(= query-other-id (:id %)) results)))))
+          (testing "filter by main database and python type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                :database_id (mt/id)
+                                                :type ["python"])]
+              (is (some #(= python-main-id (:id %)) results))
+              (is (not (some #(= query-main-id (:id %)) results)))
+              (is (not (some #(= query-other-id (:id %)) results))))))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

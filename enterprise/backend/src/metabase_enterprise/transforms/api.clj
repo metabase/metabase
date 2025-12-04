@@ -85,7 +85,7 @@
   When `exclude_workspace_id` is provided, additionally excludes global transforms
   that have been mirrored into the specified workspace (i.e., they have a
   workspace_mapping_transform entry pointing to a transform in that workspace)."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids exclude_workspace_id]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids exclude_workspace_id database_id type]}]
   (api/check-superuser)
   (let [transforms (if exclude_workspace_id
                      (t2/select :model/Transform
@@ -104,6 +104,8 @@
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (transforms.util/->database-id-filter-xf database_id)
+                (transforms.util/->type-filter-xf type)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
 
@@ -120,20 +122,10 @@
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:exclude_workspace_id {:optional true} [:maybe ms/PositiveInt]]]]
+    [:exclude_workspace_id {:optional true} [:maybe ms/PositiveInt]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]
+    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
-
-(api.macros/defendpoint :post "/validate-target"
-  "Validate the name of a transform target."
-  [_route-params
-   _query-params
-   {:keys [db_id target]} :- [:map
-                              [:db_id {:optional true} ms/PositiveInt]
-                              [:target ::transforms.schema/transform-target]]]
-  (if (transforms.util/target-table-exists? {:target (merge {:database db_id} target)
-                                             :source {:type :python}})
-    {:status 403, :body (deferred-tru "A table with that name already exists.")}
-    {:status 200, :body "OK"}))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."

@@ -1,11 +1,17 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import { Form, FormProvider, FormTextInput } from "metabase/forms";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import { useRunTransformMutation } from "metabase-enterprise/api";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
+import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
+import {
+  isSameSource,
+  isTransformRunning,
+} from "metabase-enterprise/transforms/utils";
 import type {
   DatabaseId,
   DraftTransformSource,
@@ -37,7 +43,12 @@ export const TransformTab = ({
   onChange,
   onOpenTransform,
 }: Props) => {
-  const { markTransformAsRun } = useWorkspace();
+  const { updateTransformState } = useWorkspace();
+  const { sendSuccessToast } = useMetadataToasts();
+  const [
+    isChangeTargetModalOpen,
+    { open: openChangeTargetModal, close: closeChangeTargetModal },
+  ] = useDisclosure();
 
   const hasSourceChanged = !isSameSource(
     editedTransform.source,
@@ -54,7 +65,6 @@ export const TransformTab = ({
   const handleRun = async () => {
     try {
       await runTransform(transform.id).unwrap();
-      markTransformAsRun(transform.id);
     } catch (error) {
       console.error("Failed to run transform", error);
     }
@@ -76,7 +86,10 @@ export const TransformTab = ({
     [onChange, editedTransform.target.type],
   );
 
-  const validationSchemaExtension = useTransformValidation(databaseId);
+  const validationSchemaExtension = useTransformValidation({
+    databaseId,
+    workspaceId,
+  });
 
   const validationSchema = useMemo(
     () =>
@@ -112,6 +125,43 @@ export const TransformTab = ({
     },
     [handleNameChange],
   );
+
+  const handleTargetUpdate = useCallback(
+    (updatedTransform: Transform) => {
+      const hasNameChanged = editedTransform.name !== transform.name;
+      const hasSourceChanged = !isSameSource(
+        editedTransform.source,
+        transform.source,
+      );
+
+      const editedTransformToKeep =
+        hasNameChanged || hasSourceChanged
+          ? {
+              name: editedTransform.name,
+              source: editedTransform.source,
+              target: {
+                type: updatedTransform.target.type,
+                name: updatedTransform.target.name,
+              },
+            }
+          : null;
+
+      updateTransformState(updatedTransform, editedTransformToKeep);
+      sendSuccessToast(t`Transform target updated`);
+      closeChangeTargetModal();
+    },
+    [
+      closeChangeTargetModal,
+      editedTransform.name,
+      editedTransform.source,
+      transform.name,
+      transform.source,
+      updateTransformState,
+      sendSuccessToast,
+    ],
+  );
+
+  const isRunning = isTransformRunning(transform);
 
   return (
     <Stack gap={0} h="100%">
@@ -161,6 +211,15 @@ export const TransformTab = ({
           )}
 
           {isSaved && (
+            <Button
+              leftSection={<Icon name="pencil_lines" />}
+              size="sm"
+              disabled={isRunning}
+              onClick={openChangeTargetModal}
+            >{t`Change target`}</Button>
+          )}
+
+          {isSaved && (
             <SaveTransformButton
               databaseId={databaseId}
               editedTransform={editedTransform}
@@ -186,6 +245,14 @@ export const TransformTab = ({
             onChange={handleSourceChange}
           />
         </Box>
+      )}
+
+      {isChangeTargetModalOpen && (
+        <UpdateTargetModal
+          transform={transform}
+          onUpdate={handleTargetUpdate}
+          onClose={closeChangeTargetModal}
+        />
       )}
     </Stack>
   );

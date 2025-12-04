@@ -378,6 +378,27 @@
 
     {:contents (:contents (t2/hydrate (t2/select-one :model/Workspace :id id) :contents))}))
 
+(api.macros/defendpoint :post "/:id/validate-target"
+  "Validate the name of a transform target."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [db_id target]} :- [:map
+                              [:db_id {:optional true} ms/PositiveInt]
+                              [:target [:map
+                                        [:type [:= "table"]]
+                                        [:schema {:optional true} [:or ms/NonBlankString :nil]]
+                                        [:name :string]]]]]
+  (cond
+    (transforms.util/target-table-exists? {:target (merge {:database db_id} target)
+                                           :source {:type :python}})
+    {:status 403 :body (deferred-tru "A table with that name already exists.")}
+
+    (some #(= (:name (:target %)) (-> target :name)) (t2/select :model/Transform :workspace_id id))
+    {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table.")}
+
+    :else
+    {:status 200 :body "OK"}))
+
 (api.macros/defendpoint :post "/:id/transform"
   "Create a new transform directly within a workspace.
 
