@@ -41,7 +41,7 @@ export function createTransform(
         cy.wrap(body.id).as(idAlias);
       }
       if (visitTransform) {
-        cy.visit(`/admin/transforms/${body.id}`);
+        cy.visit(`/data-studio/transforms/${body.id}`);
       }
     });
 }

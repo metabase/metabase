@@ -6,6 +6,7 @@ import {
   type DataPickerItem,
   DataPickerModal,
 } from "metabase/common/components/Pickers/DataPicker";
+import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import {
   ActionIcon,
   Box,
@@ -63,6 +64,9 @@ export function TableSelector({
     if (item.model === "database") {
       return item.id !== database;
     }
+    if (item.model === "collection" && item.id === "databases") {
+      return false;
+    }
     return true;
   }
 
@@ -94,6 +98,7 @@ export function TableSelector({
 
         <Tooltip label={t`Remove this table`}>
           <ActionIcon
+            disabled={disabled}
             onClick={onRemove}
             pr="sm"
             aria-label={t`Remove this table`}
@@ -105,11 +110,17 @@ export function TableSelector({
       {isOpened && (
         <DataPickerModal
           title={t`Pick a table`}
-          value={getDataPickerValue(table)}
+          value={getDataPickerValue(table) as TablePickerValue}
           databaseId={database}
           onChange={handleChange}
           onClose={close}
           shouldDisableItem={shouldDisableItem}
+          models={["table"]}
+          options={{
+            showLibrary: false,
+            showRootCollection: false,
+            showPersonalCollections: false,
+          }}
         />
       )}
     </>
@@ -118,7 +129,7 @@ export function TableSelector({
 
 function getDataPickerValue(table: Table | undefined) {
   if (!table) {
-    return undefined;
+    return { model: "table", id: null };
   }
   return {
     model: "table" as const,

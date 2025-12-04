@@ -11,11 +11,6 @@
   {:transforms "transform"
    #_#_:models "card"})
 
-(def ^:private type->db-type
-  "Mapping from our entity type keywords to the dependency table's type strings."
-  {:transform "transform"
-   #_#_:model "card"})
-
 (defn- rows->entity-set
   "Convert query result rows to a set of {:id :type} maps."
   [rows]
@@ -151,22 +146,32 @@
                              entity-set)]
     (toposort-dfs child->parents)))
 
+(defn- table? [entity] (= :table (:type entity)))
+
+(defn- transform? [entity] (= :transform (:type entity)))
+
 (defn- fetch-dependent-tables
-  "Fetch tables that depend on the given entities, i.e. the output tables of the transforms."
+  "Fetch tables that are the output targets of the given transforms.
+   Returns tables with their IDs if they exist in the database, or with :id nil if they don't exist yet.
+   This supports workspace checkout for transforms that haven't been executed yet."
   [entities]
   (when (seq entities)
-    (let [conditions (for [{:keys [id type]} entities]
-                       [:and
-                        [:= :to_entity_type (type->db-type type)]
-                        [:= :to_entity_id id]])
-          rows       (t2/query {:select-distinct [:from_entity_id]
-                                :from            [:dependency]
-                                :where           [:and
-                                                  [:= :from_entity_type "table"]
-                                                  (into [:or] conditions)]})]
-      (mapv (fn [row]
-              {:id (get row :from_entity_id) :type :table})
-            rows))))
+    (let [transform-ids (map :id (filter transform? entities))
+          transforms    (when (seq transform-ids)
+                          (t2/select [:model/Transform :source :target] :id [:in transform-ids]))]
+      (vec
+       (for [{:keys [target]} transforms, :when target]
+         (case (:type target)
+           "table"
+           ;; Note: id will be nil if the table has not been created yet
+           {:id     (t2/select-one-pk :model/Table
+                                      :db_id (:database target)
+                                      :schema (:schema target)
+                                      :name (:name target))
+            :schema (:schema target)
+            :name   (:name target)
+            :type   :table}
+           (throw (ex-info "Unsupported target type" {:target target}))))))))
 
 (defn- toposort-key-fn [ordering]
   (let [index-map (zipmap ordering (range))
@@ -174,9 +179,39 @@
     (fn [e]
       [(index-of e) (:type e) (:id e)])))
 
-(defn- table? [entity] (= :table (:type entity)))
+;;;; Card dependency detection
 
-(defn- transform? [entity] (= :transform (:type entity)))
+;; TODO this may be overkill:
+;;   1. We currently care only that there is at-least-one card being depended on.
+;;   2. We know for transforms that we can only have any card dependencies if there is a first-order card dependency.
+;;
+;;   ie. we could just do an existence check on direct ancestors.
+;;
+;;   If we only disallow MBQL cards however, we would still need to walk transitive dependencies in
+;;   case we hit one further up. We could still short-circuit however.
+(defn card-dependencies
+  "Find all card IDs that the given transforms transitively depend on.
+   Queries the dependency table for upstream cards.
+   Returns a set of card IDs, or empty set if no card dependencies."
+  [transform-ids]
+  (when (seq transform-ids)
+    (let [starting-tuples (mapv (fn [id] ["transform" id]) transform-ids)
+          rows (t2/query {:with-recursive
+                          [[:starting (tuples->starting-cte starting-tuples)]
+                           [:upstream {:union-all
+                                       [{:select [:entity_type :entity_id]
+                                         :from   [:starting]}
+                                        {:select [[:d.to_entity_type :entity_type]
+                                                  [:d.to_entity_id :entity_id]]
+                                         :from   [[:dependency :d]]
+                                         :join   [[:upstream :r]
+                                                  [:and
+                                                   [:= :d.from_entity_type :r.entity_type]
+                                                   [:= :d.from_entity_id :r.entity_id]]]}]}]]
+                          :select-distinct [:entity_id]
+                          :from   [:upstream]
+                          :where  [:= :entity_type "card"]})]
+      (into #{} (map :entity_id) rows))))
 
 ;;;; Public API
 
@@ -219,5 +254,8 @@
      :dependencies (into (ordered-map/ordered-map)
                          (keep (fn [entity]
                                  (when-not (table? entity)
-                                   [entity (vec (get deps-map entity []))])))
+                                   [entity (vec (map #(if (table? %)
+                                                        (first (get deps-map % []))
+                                                        %)
+                                                     (get deps-map entity [])))])))
                          sorted)}))

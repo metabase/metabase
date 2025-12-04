@@ -199,6 +199,9 @@ describe("ListViewItem - ColumnValue rendering", () => {
       display_name: "Score",
       semantic_type: "type/Quantity",
       base_type: "type/Number",
+      settings: {
+        show_mini_bar: true,
+      },
     });
     const cols = [qtyCol];
     const row = [75];
@@ -215,5 +218,35 @@ describe("ListViewItem - ColumnValue rendering", () => {
     expect(container).toBeInTheDocument();
     // Displayed value text (bold)
     expect(screen.getByText(/75/)).toBeInTheDocument();
+  });
+
+  it("doesn't render minibar Quantity if setting is disabled or not present", () => {
+    const qtyCol = createMockColumn({
+      name: "score",
+      display_name: "Score",
+      semantic_type: "type/Quantity",
+      base_type: "type/Number",
+      settings: {
+        show_mini_bar: false,
+      },
+    });
+    const qtyColNoSetting = createMockColumn({
+      name: "score2",
+      display_name: "Score2",
+      semantic_type: "type/Quantity",
+      base_type: "type/Number",
+    });
+    const cols = [qtyCol, qtyColNoSetting];
+    const row = [0, 0];
+    const rows = [row];
+
+    const settings = makeSettings({
+      column: () => ({ number_style: "decimal" }),
+    });
+
+    renderItem({ row, rows, cols, settings, rightColumns: [qtyCol] });
+
+    const container = screen.queryByTestId("mini-bar-container");
+    expect(container).not.toBeInTheDocument();
   });
 });

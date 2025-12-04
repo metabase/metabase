@@ -1,20 +1,31 @@
 import type {
   CreateWorkspaceRequest,
+  CreateWorkspaceTransformRequest,
+  CreateWorkspaceTransformResponse,
   TransformDownstreamMapping,
   TransformId,
   TransformUpstreamMapping,
+  ValidateTableNameRequest,
+  ValidateTableNameResponse,
   Workspace,
   WorkspaceContents,
   WorkspaceId,
+  WorkspaceListResponse,
   WorkspaceMergeResponse,
+  WorkspaceUpdateContentsRequest,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
-
-type WorkspaceListResponse = {
-  items: Workspace[];
-};
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideWorkspaceContentItemsTags,
+  provideWorkspaceContentsTags,
+  provideWorkspaceTags,
+  provideWorkspacesTags,
+  tag,
+} from "./tags";
 
 export const workspaceApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -23,15 +34,16 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/workspace",
       }),
-      providesTags: (_, error) => invalidateTags(error, [listTag("workspace")]),
+      providesTags: (response) =>
+        response ? provideWorkspacesTags(response.items) : [],
     }),
     getWorkspace: builder.query<Workspace, WorkspaceId>({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/workspace/${id}`,
       }),
-      providesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("workspace", id)]),
+      providesTags: (workspace) =>
+        workspace ? provideWorkspaceTags(workspace) : [],
     }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
       query: (body) => ({
@@ -40,19 +52,46 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [
-          listTag("workspace"),
-          listTag("transform"),
-          tag("transform"),
-        ]),
+        invalidateTags(error, [listTag("workspace"), listTag("transform")]),
     }),
     getWorkspaceContents: builder.query<WorkspaceContents, WorkspaceId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/workspace/${id}/contents`,
+        url: `/api/ee/workspace/${id}`,
       }),
-      providesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("workspace", id)]),
+      transformResponse: (workspace: any) => {
+        return {
+          contents: workspace?.contents ?? { transforms: [] },
+        } as WorkspaceContents;
+      },
+      providesTags: (workspaceContents) =>
+        workspaceContents
+          ? provideWorkspaceContentsTags(workspaceContents)
+          : [],
+    }),
+    updateWorkspaceContents: builder.mutation<
+      WorkspaceContents,
+      WorkspaceUpdateContentsRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/contents`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
+    }),
+    createWorkspaceTransform: builder.mutation<
+      CreateWorkspaceTransformResponse,
+      { id: WorkspaceId } & CreateWorkspaceTransformRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/transform`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id), tag("transform")]),
     }),
     getTransformUpstreamMapping: builder.query<
       TransformUpstreamMapping,
@@ -62,8 +101,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/mapping/transform/${id}/upstream`,
       }),
-      providesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id)]),
+      providesTags: (mapping) =>
+        mapping?.transform
+          ? provideWorkspaceContentItemsTags([mapping.transform])
+          : [],
     }),
     getTransformDownstreamMapping: builder.query<
       TransformDownstreamMapping,
@@ -73,8 +114,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/mapping/transform/${id}/downstream`,
       }),
-      providesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id)]),
+      providesTags: (mapping) =>
+        mapping ? provideWorkspaceContentItemsTags(mapping.transforms) : [],
     }),
     mergeWorkspace: builder.mutation<WorkspaceMergeResponse, WorkspaceId>({
       query: (id) => ({
@@ -82,11 +123,37 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace/${id}/merge`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [
-          listTag("workspace"),
-          listTag("transform"),
-          tag("transform"),
-        ]),
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    archiveWorkspace: builder.mutation<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/archive`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("workspace"), tag("transform")]),
+    }),
+    validateTableName: builder.mutation<
+      ValidateTableNameResponse,
+      ValidateTableNameRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/transform/validate-target",
+        body,
+      }),
+    }),
+    updateWorkspaceName: builder.mutation<
+      Workspace,
+      { id: WorkspaceId; name: string }
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace/${id}/name`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("workspace", id)]),
     }),
   }),
 });
@@ -96,7 +163,13 @@ export const {
   useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useGetWorkspaceContentsQuery,
+  useUpdateWorkspaceContentsMutation,
+  useLazyGetWorkspaceContentsQuery,
+  useCreateWorkspaceTransformMutation,
   useGetTransformUpstreamMappingQuery,
   useGetTransformDownstreamMappingQuery,
   useMergeWorkspaceMutation,
+  useArchiveWorkspaceMutation,
+  useValidateTableNameMutation,
+  useUpdateWorkspaceNameMutation,
 } = workspaceApi;

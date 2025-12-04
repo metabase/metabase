@@ -472,7 +472,7 @@
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type collection]}]
   (let [conditions (filter some?
                            [(when (some? archived?)
                               [:= :archived archived?])
@@ -486,6 +486,8 @@
                               [:in :last_editor_id last-edited-by])
                             (when table-db-id
                               [:= :database_id table-db-id])
+                            (when collection
+                              [:= :collection_id collection])
                             (when (seq ids)
                               [:in :model_id (map str ids)])
                             (when (seq display-type)
@@ -754,6 +756,22 @@
 
           docs)))))
 
+(defn- filter-by-collection-id
+  "Filter documents by collection and all descendant collections."
+  [docs collection-id]
+  (let [collection-ids (keep :collection_id docs)
+        collections-map (when (seq collection-ids)
+                          (->> (t2/select [:collection :id :location]
+                                          :id [:in collection-ids])
+                               (into {} (map (juxt :id identity)))))]
+    (filterv (fn [doc]
+               (let [doc-collection-id (:collection_id doc)]
+                 (or (= doc-collection-id collection-id)
+                     (when doc-collection-id
+                       (when-let [collection (get collections-map doc-collection-id)]
+                         (str/starts-with? (:location collection) (str "/" collection-id "/")))))))
+             docs)))
+
 (defn- apply-collection-filter
   "Apply personal collection filtering with logging."
   [search-context docs]
@@ -769,6 +787,23 @@
                                         :dropped (- (count docs) (count filtered-docs))
                                         :time_ms time-ms})
         (analytics/inc! :metabase-search/semantic-collection-filter-ms time-ms)
+        filtered-docs))))
+
+(defn- apply-collection-id-filter
+  "Apply collection ID filtering with logging."
+  [search-context docs]
+  (let [collection-id (:collection search-context)]
+    (if (nil? collection-id)
+      docs
+      (let [timer (u/start-timer)
+            filtered-docs (filter-by-collection-id docs collection-id)
+            time-ms (u/since-ms timer)]
+        (log/debug "Collection filter" {:collection-id collection-id
+                                        :before        (count docs)
+                                        :after         (count filtered-docs)
+                                        :dropped       (- (count docs) (count filtered-docs))
+                                        :time_ms       time-ms})
+        (analytics/inc! :metabase-search/semantic-collection-id-filter-ms time-ms)
         filtered-docs))))
 
 (defn- reducible-search-query
@@ -803,6 +838,7 @@
             filtered-results (->> raw-results
                                   filter-read-permitted
                                   (apply-collection-filter search-context)
+                                  (apply-collection-id-filter search-context)
                                   (mapv search/collapse-id))
             filter-time-ms (u/since-ms filter-timer)
 

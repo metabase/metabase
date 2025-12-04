@@ -14,15 +14,13 @@ import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
 import { PublicDocumentProvider } from "metabase-enterprise/public/contexts/PublicDocumentContext";
-import {
-  CardEmbed,
-  DROP_ZONE_COLOR,
-} from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import { CardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
+import { DROP_ZONE_COLOR } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/constants";
 import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";

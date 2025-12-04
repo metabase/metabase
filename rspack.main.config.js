@@ -32,10 +32,8 @@ const ENTERPRISE_SRC_PATH =
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_PACKAGE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-package";
-const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
-const SDK_SHARED_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-shared";
+const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
+const SDK_SHARED_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-shared";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
@@ -247,6 +245,9 @@ const config = {
       "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-plugins",
+      ),
+      "sdk-iframe-embedding-script-ee-plugins": resolveEnterprisePathOrNoop(
+        "/sdk-iframe-embedding-script-plugins",
       ),
       "sdk-ee-plugins":
         process.env.MB_EDITION === "ee"

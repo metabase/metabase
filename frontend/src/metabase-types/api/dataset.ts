@@ -8,7 +8,12 @@ import type {
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
-import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type {
+  Field,
+  FieldFingerprint,
+  FieldId,
+  FieldVisibilityType,
+} from "./field";
 import type { Insight } from "./insight";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
@@ -75,7 +80,7 @@ export interface DatasetColumn {
 }
 
 export interface ResultsMetadata {
-  columns: DatasetColumn[];
+  columns: Field[];
 }
 
 export interface DatasetData {

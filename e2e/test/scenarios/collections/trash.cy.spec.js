@@ -77,8 +77,12 @@ describe("scenarios > collections > trash", () => {
     });
 
     H.popover().findByText("Question").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").should("exist");
+      cy.findByText("Trash").should("not.exist");
+    });
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText("Our analytics").should("exist");
       cy.findByText("Trash").should("not.exist");
       cy.button("Close").click();
@@ -994,7 +998,7 @@ function assertTrashSelectedInNavigationSidebar() {
 }
 
 function ensureBookmarkVisible(bookmark) {
-  cy.findByRole("tab", { name: /bookmarks/i })
+  cy.findByRole("section", { name: "Bookmarks" })
     .findByText(bookmark)
     .should("be.visible");
 }

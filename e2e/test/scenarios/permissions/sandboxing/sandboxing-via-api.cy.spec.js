@@ -962,8 +962,8 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       createJoinedQuestion("14766_joined");
 
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

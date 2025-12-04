@@ -488,7 +488,11 @@
         (testing "new tool call with just query"
           (is (=? expected
                   (metabot-v3.tools.filters/filter-records
-                   (assoc input :data-source (select-keys query-details [:query]))))))))))
+                   (assoc input :data-source (select-keys query-details [:query]))))))
+        (testing "MBQL v5 query works"
+          (is (=? expected
+                  (metabot-v3.tools.filters/filter-records
+                   (assoc input :data-source {:query query})))))))))
 
 (deftest ^:parallel query-datasource-table-test
   (mt/with-current-user (mt/user->id :crowberto)

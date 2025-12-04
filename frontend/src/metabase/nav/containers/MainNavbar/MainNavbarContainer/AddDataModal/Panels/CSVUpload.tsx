@@ -300,6 +300,7 @@ export const CSVUpload = ({
             confirmButtonText: t`Select this collection`,
           }}
           models={["collection"]}
+          entityType="dataset"
           recentFilter={(items) =>
             items.filter((item) => {
               return item.model !== "table" && item.can_write;

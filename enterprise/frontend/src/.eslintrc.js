@@ -122,7 +122,10 @@ module.exports = {
           {
             allowedPaths: [
               path.join(__dirname, "embedding-sdk-package"),
-              path.join(__dirname, "embedding-sdk-shared"),
+              path.resolve(
+                __dirname,
+                "../../../frontend/src/embedding-sdk-shared",
+              ),
             ],
           },
         ],

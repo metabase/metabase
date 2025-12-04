@@ -4,18 +4,18 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
-import { Box, Stack, Title } from "metabase/ui";
+import { Box, Center, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
-
-import { POLLING_INTERVAL } from "../../constants";
 
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
+import S from "./RunListPage.module.css";
 import { PAGE_SIZE } from "./constants";
 import { getParsedParams } from "./utils";
 
@@ -27,11 +27,10 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <div>
-      <Title order={1} mb="sm">{t`Runs`}</Title>
-      <Box mb="xl">{t`A list of when each transform ran.`}</Box>
+    <Stack className={S.body} p="lg" h="100%" bg="bg-light">
+      <Box>{t`A list of when each transform ran.`}</Box>
       <RunListPageBody params={params} />
-    </div>
+    </Stack>
   );
 }
 
@@ -89,7 +88,11 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   if (!data || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return (

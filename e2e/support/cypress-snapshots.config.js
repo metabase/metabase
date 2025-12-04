@@ -1,5 +1,16 @@
 const { defineConfig } = require("cypress");
 
-const { snapshotsConfig } = require("./config");
+const { defaultConfig } = require("./config");
 
-module.exports = defineConfig({ e2e: snapshotsConfig });
+const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
+
+module.exports = defineConfig({
+  e2e: {
+    ...defaultConfig,
+    specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
+    excludeSpecPattern: !isQaDatabase
+      ? "e2e/snapshot-creators/qa-db.cy.snap.js"
+      : undefined,
+    video: false,
+  },
+});

@@ -2,8 +2,10 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -12,9 +14,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -45,20 +49,55 @@
 
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
-  (into [:enum] (map name table/writable-data-authority-types)))
+  (into [:enum {:decode/string keyword}] table/writable-data-authority-types))
 
 (mr/def ::data-authority-read
   "Schema for returning a table data authority type."
   (into [:enum] table/readable-data-authority-types))
 
+(mr/def ::data-layers
+  (into [:enum {:decode/string keyword}] table/data-layers))
+
+(mr/def ::data-sources
+  (into [:enum {:decode/string keyword}] table/data-sources))
+
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
-  []
-  (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
-    (t2/hydrate tables :db)
-    (into [] (comp (filter mi/can-read?)
-                   (map schema.table/present-table))
-          tables)))
+  [_
+   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only]}
+   :- [:map
+       [:term {:optional true} :string]
+       [:visibility-type {:optional true} :string]
+       [:data-layer {:optional true} ::data-layers]
+       [:data-source {:optional true} ::data-sources]
+       [:owner-user-id {:optional true} [:maybe :int]]
+       [:owner-email {:optional true} :string]
+       [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
+       [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [like       (case (app-db/db-type) (:h2 :postgres) :ilike :like)
+        pattern    (some-> term (str/replace "*" "%") (cond-> (not (str/ends-with? term "%")) (str "%")))
+        where      (cond-> [:and [:= :active true]]
+                     (not (str/blank? term)) (conj [like :name pattern])
+                     visibility-type         (conj [:= :visibility_type visibility-type])
+                     data-layer              (conj [:= :data_layer      (name data-layer)])
+                     data-source             (conj [:= :data_source     (name data-source)])
+                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
+                     owner-email             (conj [:= :owner_email     owner-email])
+                     orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
+                     (and unused-only (premium-features/has-feature? :dependencies))
+                     (conj [:not-exists {:select [:*]
+                                         :from   [[:dependency :d]]
+                                         :where  [:and
+                                                  [:= :d.to_entity_id :metabase_table.id]
+                                                  [:= :d.to_entity_type "table"]]}]))
+        query      {:where where, :order-by [[:name :asc]]}
+        hydrations (cond-> [:db :published_as_model]
+                     (premium-features/has-feature? :transforms) (conj :transform))]
+    (as-> (t2/select :model/Table query) tables
+      (apply t2/hydrate tables hydrations)
+      (into [] (comp (filter mi/can-read?)
+                     (map schema.table/present-table))
+            tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -113,9 +152,14 @@
   if field positions have changed."
   [{:keys [id] :as existing-table} :- [:map [:id ::lib.schema.id/table]]
    body]
-  (when-let [changes (not-empty (u/select-keys-when body
-                                                    :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority]))]
+  (when-let [changes (-> body
+                         (u/select-keys-when
+                          :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                          :present [:description :caveats :points_of_interest :visibility_type
+                                    :data_layer :data_authority :data_source :owner_email :owner_user_id])
+                         (u/update-some :data_layer keyword)
+                         (u/update-some :data_source keyword)
+                         not-empty)]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -125,23 +169,25 @@
         (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
-;; TODO -- this seems like it belongs in the `sync` module... right?
+;; TODO (Cam 2015/01/16) this seems like it belongs in the `sync` module... right?
 (defn- sync-unhidden-tables
-  "Function to call on newly unhidden tables. Starts a thread to sync all tables."
+  "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
+  efficiently sync tables from different databases."
   [newly-unhidden]
   (when (seq newly-unhidden)
     (quick-task/submit-task!
      (fn []
-       (let [database (table/database (first newly-unhidden))]
-         ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-         ;; purposes of creating a new H2 database.
-         (if (binding [driver.settings/*allow-testing-h2-connections* true]
-               (driver.u/can-connect-with-details? (:engine database) (:details database)))
-           (doseq [table newly-unhidden]
-             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-             (sync/sync-table! table))
-           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                     (:name database)))))))))
+       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
+         (let [database (t2/select-one :model/Database db-id)]
+           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+           ;; purposes of creating a new H2 database.
+           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
+             (doseq [table tables]
+               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+               (sync/sync-table! table))
+             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                       (:name database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -168,15 +214,21 @@
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
             [:field_order             {:optional true} [:maybe FieldOrder]]
-            [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+            [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+            [:data_source             {:optional true} [:maybe :string]]
+            [:data_layer              {:optional true} [:maybe :string]]
+            [:owner_email             {:optional true} [:maybe :string]]
+            [:owner_user_id           {:optional true} [:maybe :int]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
-  "Update all `Table` in `ids`."
+  "Update all `Table` in `ids`.
+
+  Deprecated, should use PUT /table/edit from now on."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- [:map
-                               [:ids                     [:sequential ms/PositiveInt]]
+                               [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
                                [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
                                [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -184,11 +236,13 @@
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
                                [:show_in_getting_started {:optional true} [:maybe :boolean]]
-                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
+                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+                               [:data_source             {:optional true} [:maybe :string]]
+                               [:data_layer              {:optional true} [:maybe :string]]
+                               [:owner_email             {:optional true} [:maybe :string]]
+                               [:owner_user_id           {:optional true} [:maybe :int]]]]
   (update-tables! ids body))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
@@ -353,6 +407,11 @@
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   :metabase.upload/replace}))
 
+(defn- sync-schema-async!
+  [table user-id]
+  (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
+  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :post "/:id/sync_schema"
@@ -361,7 +420,6 @@
                     [:id ms/PositiveInt]]]
   (let [table (api/write-check (t2/select-one :model/Table :id id))
         database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
-    (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try
@@ -374,5 +432,5 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table)))
+        (sync-schema-async! table api/*current-user-id*)
         {:status :ok}))))

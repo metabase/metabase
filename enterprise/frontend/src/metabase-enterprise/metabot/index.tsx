@@ -1,18 +1,19 @@
-import { IndexRoute } from "react-router";
+import { IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { Route } from "metabase/hoc/Title";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
+import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
-import { MetabotPurchasePage } from "./components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
-import { MetabotAdminAppBarButton } from "./components/MetabotAdminAppBarButton";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
+import { MetabotChat } from "./components/MetabotChat";
+import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
@@ -38,6 +39,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
     PLUGIN_METABOT.isEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
+    PLUGIN_METABOT.MetabotChat = MetabotChat;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
     PLUGIN_METABOT.getAdminPaths = () => [
@@ -64,7 +66,8 @@ export function initializePlugin() {
 
     PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
     PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
-    PLUGIN_METABOT.MetabotAdminAppBarButton = MetabotAdminAppBarButton;
+    PLUGIN_METABOT.MetabotDataStudioButton = MetabotDataStudioButton;
+    PLUGIN_METABOT.MetabotDataStudioSidebar = MetabotDataStudioSidebar;
   } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
     PLUGIN_METABOT.getAdminPaths = () => [
       {
@@ -75,7 +78,7 @@ export function initializePlugin() {
     ];
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-        <Route title={t`AI`} component={AdminSettingsLayout}>
+        <Route component={AdminSettingsLayout}>
           <IndexRoute component={MetabotPurchasePage} />
         </Route>
       </Route>
@@ -90,7 +93,7 @@ export function initializePlugin() {
     ];
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-        <Route title={t`AI`} component={AdminSettingsLayout}>
+        <Route component={AdminSettingsLayout}>
           <IndexRoute component={MetabotTrialPage} />
         </Route>
       </Route>

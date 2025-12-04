@@ -1,0 +1,34 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+  flex-wrap: nowrap;
+
+  &:hover .menu {
+    visibility: visible;
+  }
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+}
+
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--mb-color-warning);
+  flex-shrink: 0;
+}
+
+.menu {
+  visibility: hidden;
+}

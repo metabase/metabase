@@ -2317,7 +2317,7 @@
       (mt/with-model-cleanup [:model/Document]
         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                  :location "/"
-                                                                 :type "remote-synced"}
+                                                                 :is_remote_synced true}
                        :model/Collection {regular-id :id} {:name "Regular Collection"
                                                            :location "/"
                                                            :type nil}
@@ -2340,7 +2340,7 @@
       (mt/with-model-cleanup [:model/Document]
         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                  :location "/"
-                                                                 :type "remote-synced"}
+                                                                 :is_remote_synced true}
                        :model/Card {card-id :id} {:name "Remote-Synced Card"
                                                   :collection_id remote-synced-id
                                                   :dataset_query (mt/mbql-query venues)}]
@@ -2363,7 +2363,7 @@
                                                            :type nil}
                        :model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                  :location "/"
-                                                                 :type "remote-synced"}
+                                                                 :is_remote_synced true}
                        :model/Card {remote-card-id :id} {:name "Remote-Synced Card"
                                                          :collection_id remote-synced-id
                                                          :dataset_query (mt/mbql-query venues)}
@@ -2392,7 +2392,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
-                                                               :type "remote-synced"}
+                                                               :is_remote_synced true}
                      :model/Collection {regular-id :id} {:name "Regular Collection"
                                                          :location "/"
                                                          :type nil}
@@ -2414,7 +2414,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
-                                                               :type "remote-synced"}
+                                                               :is_remote_synced true}
                      :model/Document {doc-id :id} {:name "Test Document"
                                                    :collection_id remote-synced-id
                                                    :document (documents.test-util/text->prose-mirror-ast "Initial")}
@@ -2434,7 +2434,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
-                                                               :type "remote-synced"}
+                                                               :is_remote_synced true}
                      :model/Collection {regular-id :id} {:name "Regular Collection"
                                                          :location "/"
                                                          :type nil}
@@ -2457,7 +2457,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
-                                                               :type "remote-synced"}
+                                                               :is_remote_synced true}
                      :model/Card {card-id :id} {:name "Remote-Synced Card"
                                                 :collection_id remote-synced-id
                                                 :dataset_query (mt/mbql-query venues)}
@@ -2477,7 +2477,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
-                                                               :type "remote-synced"}
+                                                               :is_remote_synced true}
                      :model/Collection {regular-id :id} {:name "Regular Collection"
                                                          :location "/"
                                                          :type nil}
@@ -2497,7 +2497,7 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
-                                                               :type "remote-synced"}
+                                                               :is_remote_synced true}
                      :model/Collection {regular-id :id} {:name "Regular Collection"
                                                          :location "/"
                                                          :type nil}
@@ -2523,7 +2523,7 @@
     (testing "PUT /api/ee/document/:id - updating content and moving collection simultaneously"
       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
                                                                :location "/"
-                                                               :type "remote-synced"}
+                                                               :is_remote_synced true}
                      :model/Collection {regular-id :id} {:name "Regular Collection"
                                                          :location "/"
                                                          :type nil}

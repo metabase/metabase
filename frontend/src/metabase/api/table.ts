@@ -155,6 +155,7 @@ export const {
   useListTablesQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
   useGetTableDataQuery,
   useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,

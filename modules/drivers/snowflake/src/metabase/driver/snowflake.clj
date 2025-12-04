@@ -72,6 +72,7 @@
                               :expressions/date                       true
                               :identifiers-with-spaces                true
                               :split-part                             true
+                              :collate                                true
                               :now                                    true
                               :database-routing                       true
                               :metadata/table-existence-check         true
@@ -515,6 +516,10 @@
 (defmethod sql.qp/->honeysql [:snowflake :text]
   [driver [_ value]]
   [:to_char (sql.qp/->honeysql driver value)])
+
+(defmethod sql.qp/->honeysql [:snowflake :collate]
+  [driver [_ arg collation]]
+  [:collate (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver collation)])
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

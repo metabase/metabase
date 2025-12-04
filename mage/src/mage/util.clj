@@ -150,13 +150,15 @@
       (finally
         (reset! done? true)))))
 
-(defn- without-slash [s] (str/replace s #"/$" ""))
-
-(defn pp [& xs]
+(defn pp
+  "Pretty prints args in color using puget"
+  [& xs]
   (doseq [x xs] (puget/cprint x)))
 
-(defn pp-line [& xs]
-  (doseq [x xs] (puget/cprint x {:width 10e20})))
+(defn pp-line
+  "Prints args in color, on a single line using puget. Good for Returning 'read-string'-able values."
+  [& xs]
+  (doseq [x xs] (puget/cprint x {:width 10e30})))
 
 (defn print-tasks [& _]
   (let [task+descriptions (->> "bb.edn"
@@ -165,7 +167,7 @@
                                edn/read-string
                                :tasks
                                (filter (fn [[task _v]] (symbol? task)))
-                               (sort-by (fn [[task task-data]]
+                               (sort-by (fn [[task _task-data]]
                                           (let [task-name (name task)]
                                             (if (str/starts-with? task-name "-")
                                               (str "z" task-name)
@@ -178,3 +180,61 @@
     (println "For" (c/bold "more") "information on a task, run:")
     (println "  mage <task-name> -h")
     task+descriptions))
+
+(def ^:dynamic *skip-warning* false)
+
+(defn can-run? [cmd]
+  (try (boolean (sh (str "command -v " cmd)))
+       (catch Exception _
+         (when-not *skip-warning*
+           (println (c/red "MAGE checked if you can run " cmd ", but it is not installed. Consider installing it for a better experience.")))
+         false)))
+
+(defn- check-run!
+  [cmd]
+  (when-not (can-run? cmd)
+    (throw
+     (ex-info
+      nil
+      {:command cmd
+       :mage/error (str "You don't have " (c/yellow cmd) " installed. Please install it to use this task.")
+       :babashka/exit 1}))))
+
+(defn fzf-select
+  "Uses fzf to offer interactive selections.
+
+   If the user doesn't have fzf installed, explains instructions
+  
+   See fzf --help for more info.
+   Some useful fzf options:
+    --multi - select multiple options
+    --preview='cat {}'
+
+  Returns stdout of fzf, if you use --multi str/split-lines it."
+  [coll & [fzf-opts]]
+  (try (check-run! "fzf")
+       (catch Exception e
+         (println "You don't have fzf installed.")
+         (if (can-run? "brew")
+           (do
+             (println "Brew Detected: auto-installing it with brew...")
+             (println "Running: " (c/green "brew install fzf"))
+             (sh "brew install fzf"))
+           (throw e))))
+  (->> (shell
+        {:out :string :in (str/join "\n" coll)}
+        (str "fzf"
+             (when (seq fzf-opts) " ")
+             fzf-opts))
+       :out
+       str/trim))
+
+;; Timing functions, parallel to time function in metabase.util
+(defn start-timer
+  "Returns the current time in nanoseconds."
+  []
+  (System/nanoTime))
+
+(defn since-ms
+  "Called on the return value of start-timer, returns the elapsed time in milliseconds."
+  [timer] (/ (- (System/nanoTime) timer) 1e6))

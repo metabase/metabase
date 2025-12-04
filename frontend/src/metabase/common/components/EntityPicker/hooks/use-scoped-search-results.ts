@@ -7,6 +7,7 @@ import {
   useListDashboardItemsQuery,
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
+import { DATABASES_COLLECTION } from "metabase/entities/collections";
 import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
@@ -51,7 +52,9 @@ export const useScopedSearchResults = <
   const isScopedSearchEnabled = searchScope === "folder" && folder != null;
 
   const shouldUseCollectionItems =
-    isScopedSearchEnabled && folder.model === "collection";
+    isScopedSearchEnabled &&
+    folder.model === "collection" &&
+    folder.id !== DATABASES_COLLECTION.id;
   const shouldUseDashboardItems =
     isScopedSearchEnabled && folder.model === "dashboard";
 

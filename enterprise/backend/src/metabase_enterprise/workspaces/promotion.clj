@@ -21,30 +21,28 @@
 (defn- promote-single-transform!
   "Promote a single workspace transform to replace its original.
    Returns a map with :id, :name, and :status."
-  [downstream-xf upstream-xf new->old-s+n]
+  [{:keys [target] :as downstream-xf} upstream-xf new->old-s+n]
   (try
+    ;; TODO assert database is what we expect
+    (assert (= "table" (:type target)) "Only table targets are supported for promotion.")
     (let [upstream-id (:id upstream-xf)
+          actual      (or (new->old-s+n (select-keys target [:schema :name]))
+                          (select-keys (:target upstream-xf) [:schema :name]))
+          _           (assert (:name actual) "Unable to find the upstream table to sub for the isolated one.")
           remapped-xf (-> downstream-xf
                           ;; TODO: do query remapping here, if the transform is dependent on an isolated table.
                           ;;   ... with the current FE this is not possible! :-D
-                          (update :target (fn [target]
-                                            ;; TODO assert database is what we expect
-                                            (assert (= "table" (:type target)) "Only table targets are supported for promotion.")
-                                            (let [[old-schema old-name] (new->old-s+n [(:schema target) (:name target)])]
-                                              (assert old-name "Unable to find the upstream table to sub for the isolated one.")
-                                              (assoc target
-                                                     :schema old-schema
-                                                     :name old-name)))))
+                          (update :target merge actual))
           ;; TODO revisit whether there are any other fields we want
-          updates (select-keys remapped-xf [:name :description :source :target])]
+          updates     (select-keys remapped-xf [:name :description :source :target])]
       (log/infof "Promoting transform %d -> %d: %s" (:id downstream-xf) upstream-id (:name upstream-xf))
       (t2/update! :model/Transform upstream-id updates)
       (assoc updates :id upstream-id))
     (catch Throwable e
       (log/errorf e "Failed to promote transform %s" (:name downstream-xf))
-      {:id     (:id downstream-xf)
-       :name   (:name downstream-xf)
-       :error  (ex-message e)})))
+      {:id    (:id downstream-xf)
+       :name  (:name downstream-xf)
+       :error (ex-message e)})))
 
 (defn- transform-ids [graph]
   (->> (:transforms graph) (keep :mapping) (mapv :id)))
@@ -84,8 +82,8 @@
                                                         [:= :m.workspace_id (:id ws)]
                                                         [:= :t1.id :m.upstream_id]
                                                         [:= :t2.id :m.downstream_id]]})]
-                          [[new_schema new_name]
-                           [old_schema old_name]])
+                          [{:schema new_schema :name new_name}
+                           {:schema old_schema :name old_name}])
         results         (for [xf xs
                               :let [upstream-xf (find-upstream-xf xf (:id ws))]]
                           (promote-single-transform! xf upstream-xf new->old-s+n))
@@ -98,3 +96,19 @@
 
     {:promoted promoted
      :errors   errors}))
+
+(comment
+  (let [ws {:id 836}]
+    (t2/query {:select [[:t1.schema :old_schema]
+                        [:t1.name :old_name]
+                        [:t2.schema :new_schema]
+                        [:t2.name :new_name]]
+               :from   [[(t2/table-name :model/WorkspaceMappingTable) :m]
+                        [(t2/table-name :model/Table) :t1]
+                        [(t2/table-name :model/Table) :t2]]
+               :where  [:and
+                        [:= :m.workspace_id (:id ws)]
+                        [:= :t1.id :m.upstream_id]
+                        [:= :t2.id :m.downstream_id]]}))
+
+  (promote-transforms! (t2/select-one :model/Workspace :id 836)))

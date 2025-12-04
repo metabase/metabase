@@ -26,8 +26,10 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
 
       H.newButton("Question").click();
-      H.entityPickerModalTab("Collections").click();
-      H.entityPickerModal().findByText("Orders Model").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders Model").click();
+      });
       H.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
         .click();
@@ -375,8 +377,8 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       cy.findByTestId("qb-header").findByText("Save").click();
@@ -421,7 +423,8 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.startNewQuestion();
-      H.entityPickerModalTab("Collections").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalItem(0, "Our analytics").click();
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal()
         .findByText("Total Orders Dashboard Question")
@@ -684,11 +687,9 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(dashboardId);
         H.openDashboardMenu("Move to trash");
         H.modal().button("Move to trash").click();
-
         cy.findByText(/gone wrong/, { timeout: 0 }).should("not.exist");
-
         cy.findByTestId("archive-banner").findByText(/is in the trash/);
-        cy.findByTestId("sidebar-toggle").click();
+        H.openNavigationSidebar();
 
         // restore it
         H.navigationSidebar().findByText("Trash").click();
@@ -1056,8 +1057,8 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.newButton("Question").click();
-      H.entityPickerModalTab("Tables").click();
-      H.entityPickerModal().findByText("Products").click();
+      H.miniPicker().findByText("Sample Database").click();
+      H.miniPicker().findByText("Products").click();
       H.queryBuilderHeader().button("Save").click();
 
       // should not show dashboard you can't write to

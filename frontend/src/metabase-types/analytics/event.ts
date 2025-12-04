@@ -3,7 +3,7 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
-import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModel/types";
+import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModelV1/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
@@ -261,19 +261,16 @@ export type ConnectionStringParsedFailedEvent = ValidateEvent<{
 
 export type TransformTriggerManualRunEvent = ValidateEvent<{
   event: "transform_trigger_manual_run";
-  triggered_from: "transform-page";
   target_id: TransformId;
 }>;
 
 export type TransformJobTriggerManualRunEvent = ValidateEvent<{
   event: "transform_job_trigger_manual_run";
-  triggered_from: "job-page";
   target_id: TransformId;
 }>;
 
 export type TransformCreateEvent = ValidateEvent<{
   event: "transform_create";
-  triggered_from: "transform-page-create-menu";
   event_detail: "query" | "native" | "python" | "saved-question";
 }>;
 

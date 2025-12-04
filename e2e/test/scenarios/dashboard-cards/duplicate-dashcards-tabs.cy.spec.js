@@ -79,7 +79,10 @@ describe("scenarios > dashboard cards > duplicate", () => {
     H.visitDashboard("@dashboardId");
     cy.findByLabelText("Edit dashboard").click();
 
-    H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Duplicate")
+      .click();
     H.expectUnstructuredSnowplowEvent(EVENTS.duplicateDashcard);
 
     // check that the new card loads _before_ saving

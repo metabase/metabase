@@ -96,7 +96,7 @@ export const wrapSyncedCollection = (alias = "syncedCollection", n = 0) => {
 
   cy.request("/api/collection").then(({ body: collections }) => {
     const syncedCollection = collections.find(
-      (c: Collection) => c.type === "remote-synced" && c.location === "/",
+      (c: Collection) => c.is_remote_synced && c.location === "/",
     );
 
     if (syncedCollection) {

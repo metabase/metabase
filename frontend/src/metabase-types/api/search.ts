@@ -76,6 +76,7 @@ export interface SearchResult<
   archived: boolean | null;
   collection_position: number | null;
   collection: CollectionEssentials;
+  collection_type?: Collection["type"];
   table_id: TableId;
   bookmark: boolean | null;
   dashboard:

@@ -2,8 +2,6 @@ name: Check doc links
 
 on:
   pull_request:
-    paths:
-      - "docs/**"
   workflow_dispatch:
 
 jobs:
@@ -15,7 +13,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           sparse-checkout: |
             docs
@@ -29,7 +27,7 @@ jobs:
 
       - name: Run link checker
         id: link-check
-        uses: lycheeverse/lychee-action@v2
+        uses: lycheeverse/lychee-action@v2.3.0
         with:
           fail: true
           args: docs --config ./.lychee/config.toml --offline

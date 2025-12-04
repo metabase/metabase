@@ -164,7 +164,7 @@ function QuestionTableBadges({
               table={table}
               icon="info"
               size={16}
-              position="top"
+              position="bottom"
               className={HeaderS.HeaderBadgeIcon}
             />
           </span>

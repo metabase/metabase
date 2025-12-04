@@ -234,9 +234,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.signInAsAdmin();
       cy.viewport(1280, 720);
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        H.entityPickerModalItem(2, "Orders").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
       });
     });
 
@@ -467,8 +467,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.openNotebook();
 
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Products model").click();
     });
 
@@ -477,8 +477,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -580,12 +580,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.getNotebookStep("data")
       .as("dataStep")
       .within(() => {
-        cy.findByText("Pick your starting data").should("exist");
+        cy.findByPlaceholderText("Search for tables and more...").should(
+          "exist",
+        );
         cy.icon("play").should("not.be.visible");
       });
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -900,7 +902,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
     cy.visit("/");
     H.newButton("Question").click();
-    H.entityPickerModal().findByText("Products").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Products").click();
     H.addSummaryField({ metric: "Sum of ...", field: "Price" });
     H.addSummaryGroupingField({ field: "Created At" });
     H.addSummaryGroupingField({ field: "Category" });
@@ -976,7 +979,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .findByText("Use the notebook editor")
       .click();
 
-    H.entityPickerModal().should("be.visible");
+    H.miniPicker().should("be.visible");
 
     // Cypress can emulate the browser's back button with cy.go('back'), but
     // this does not trigger a confirmation modal, so we need to perform a
@@ -997,7 +1000,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
     cy.visit("/");
     H.newButton("Question").click();
-    H.entityPickerModal().findByText("Orders").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Orders").click();
     H.join();
     H.joinTable("Reviews", "Product ID", "Product ID");
     H.addSummaryField({ metric: "Count of rows" });
@@ -1047,7 +1051,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", () => {
     cy.visit("/");
     H.newButton("Question").click();
-    H.entityPickerModal().findByText("Orders").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Orders").click();
     H.addSummaryField({ metric: "Custom Expression" });
     H.enterCustomColumnDetails({
       formula: "case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))",

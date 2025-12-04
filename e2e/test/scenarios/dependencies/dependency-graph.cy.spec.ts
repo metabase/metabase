@@ -19,7 +19,7 @@ import type {
   TransformId,
 } from "metabase-types/api";
 
-const BASE_URL = "/admin/tools/dependencies";
+const BASE_URL = "/data-studio/dependencies";
 const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";
@@ -65,14 +65,14 @@ describe("scenarios > dependencies > dependency graph", () => {
       isRecentItem: boolean;
     }) {
       cy.log(`verify that "${itemName}" can be found via search`);
-      graphEntrySearchInput().clear().type(itemName);
+      H.DependencyGraph.entrySearchInput().clear().type(itemName);
       H.popover().findByText(itemName).click();
-      graphEntryButton().should("have.text", itemName);
-      graphEntryButton().icon(itemIcon).should("be.visible");
-      graphEntryButton().icon("close").click();
+      H.DependencyGraph.entryButton().should("have.text", itemName);
+      H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
+      H.DependencyGraph.entryButton().icon("close").click();
 
       if (isRecentItem) {
-        graphEntrySearchInput().click();
+        H.DependencyGraph.entrySearchInput().click();
         H.popover().findByText(itemName).should("be.visible");
       }
     }
@@ -89,17 +89,17 @@ describe("scenarios > dependencies > dependency graph", () => {
       itemIcon: IconName;
     }) {
       cy.log(`verify that "${itemName}" can be selected in the picker`);
-      graphEntrySearchInput().click();
+      H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab(tabName).click();
         H.entityPickerModalItem(itemLevel, itemName).click();
       });
-      graphEntryButton().should("have.text", itemName);
-      graphEntryButton().icon(itemIcon).should("be.visible");
+      H.DependencyGraph.entryButton().should("have.text", itemName);
+      H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
 
       cy.log(`verify that "${itemName}" is selected when the picker is opened`);
-      graphEntryButton().click();
+      H.DependencyGraph.entryButton().click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(itemLevel, itemName).should(
           "have.attr",
@@ -108,10 +108,10 @@ describe("scenarios > dependencies > dependency graph", () => {
         );
         cy.findByLabelText("Close").click();
       });
-      graphEntryButton().icon("close").click();
+      H.DependencyGraph.entryButton().icon("close").click();
 
       cy.log(`verify that "${itemName}" can be found via search"`);
-      graphEntrySearchInput().click();
+      H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab(tabName).click();
@@ -119,9 +119,9 @@ describe("scenarios > dependencies > dependency graph", () => {
         cy.findByText(/result for/).should("exist");
         cy.findByText(itemName).click();
       });
-      graphEntryButton().should("have.text", itemName);
-      graphEntryButton().icon(itemIcon).should("be.visible");
-      graphEntryButton().icon("close").click();
+      H.DependencyGraph.entryButton().should("have.text", itemName);
+      H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
+      H.DependencyGraph.entryButton().icon("close").click();
     }
 
     it("should be able to use inline search for all supported entity types", () => {
@@ -153,7 +153,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       testEntitySearch({
         itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemIcon: "refresh_downstream",
+        itemIcon: "transform",
         isRecentItem: false,
       });
     });
@@ -168,7 +168,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       testEntityPicker({
         tabName: "Tables",
         itemName: "Products",
-        itemLevel: 2,
+        itemLevel: 3,
         itemIcon: "table",
       });
       testEntityPicker({
@@ -193,7 +193,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         tabName: "Transforms",
         itemName: TABLE_BASED_TRANSFORM_NAME,
         itemLevel: 0,
-        itemIcon: "refresh_downstream",
+        itemIcon: "transform",
       });
     });
   });
@@ -206,9 +206,9 @@ describe("scenarios > dependencies > dependency graph", () => {
         });
       });
 
-      graphSelectionButton().click();
+      H.DependencyGraph.selectionButton().click();
       H.popover().findByText(TABLE_DISPLAY_NAME).click();
-      dependencyGraph().within(() => {
+      H.DependencyGraph.graph().within(() => {
         cy.findByLabelText(TABLE_DISPLAY_NAME).should("be.visible");
         cy.findByLabelText(TABLE_BASED_QUESTION_NAME).should("be.visible");
       });
@@ -225,17 +225,21 @@ describe("scenarios > dependencies > dependency graph", () => {
       groupTitle: string;
       dependentItemTitle: string;
     }) {
-      dependencyGraph()
+      H.DependencyGraph.graph()
         .findByLabelText(itemTitle)
         .findByText(groupTitle)
         .click();
-      graphDependencyPanel()
+      H.DependencyGraph.dependencyPanel()
         .findByLabelText(dependentItemTitle)
         .findByText(dependentItemTitle)
         .click();
-      graphEntryButton().findByText(dependentItemTitle).should("be.visible");
+      H.DependencyGraph.entryButton()
+        .findByText(dependentItemTitle)
+        .should("be.visible");
       cy.go("back");
-      graphEntryButton().findByText(itemTitle).should("be.visible");
+      H.DependencyGraph.entryButton()
+        .findByText(itemTitle)
+        .should("be.visible");
     }
 
     it("should display dependencies for a table and navigate to them", () => {
@@ -443,16 +447,16 @@ describe("scenarios > dependencies > dependency graph", () => {
       visibleItems: string[];
       hiddenItems: string[];
     }) {
-      graphDependencyPanel().icon("filter").click();
+      H.DependencyGraph.dependencyPanel().icon("filter").click();
       H.popover().findByText(filterName).click();
-      graphDependencyPanel().within(() => {
+      H.DependencyGraph.dependencyPanel().within(() => {
         visibleItems.forEach((item) =>
           cy.findByText(item).should("be.visible"),
         );
         hiddenItems.forEach((item) => cy.findByText(item).should("not.exist"));
       });
       H.popover().findByText(filterName).click();
-      graphDependencyPanel().icon("filter").click();
+      H.DependencyGraph.dependencyPanel().icon("filter").click();
     }
 
     it("should be able to filter questions", () => {
@@ -490,7 +494,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         });
         visitGraphForEntity(tableId, "table");
       });
-      dependencyGraph()
+      H.DependencyGraph.graph()
         .findByLabelText(TABLE_DISPLAY_NAME)
         .findByText("6 questions")
         .click();
@@ -532,26 +536,6 @@ function visitGraph() {
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
   return cy.visit(BASE_URL, { qs: { id, type } });
-}
-
-function dependencyGraph() {
-  return cy.findByTestId("dependency-graph");
-}
-
-function graphEntryButton() {
-  return cy.findByTestId("graph-entry-button");
-}
-
-function graphEntrySearchInput() {
-  return cy.findByTestId("graph-entry-search-input");
-}
-
-function graphSelectionButton() {
-  return cy.findByTestId("graph-selection-button");
-}
-
-function graphDependencyPanel() {
-  return cy.findByTestId("graph-dependency-panel");
 }
 
 function getScoreboardTableId() {

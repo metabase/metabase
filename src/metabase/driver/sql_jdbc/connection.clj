@@ -221,15 +221,16 @@
   (atom {}))
 
 (defonce ^:private ^Cache ^{:doc "A Guava cache of swapped connection pools with TTL-based expiration,
-  keyed by `[database-id details-hash]`. Pools are evicted after inactivity."}
+  keyed by database-id. Pools are evicted after inactivity. Since nested swaps for the same
+  database are not allowed, there can only be one swapped pool per database at a time."}
   swapped-connection-pools
   (.. (CacheBuilder/newBuilder)
       (expireAfterAccess swapped-pool-ttl-minutes TimeUnit/MINUTES)
       (removalListener
        (reify com.google.common.cache.RemovalListener
          (^void onRemoval [_ ^RemovalNotification rn]
-           (let [[database-id _details-hash] (.getKey rn)
-                 pool-spec (.getValue rn)]
+           (let [database-id (.getKey rn)
+                 pool-spec   (.getValue rn)]
              (log/debugf "Evicting swapped pool for database %d (cause: %s)"
                          database-id (.getCause rn))
              (destroy-pool! database-id pool-spec)
@@ -271,16 +272,17 @@
 (defn invalidate-pool-for-db!
   "Invalidates all connection pools for the given database (canonical and swapped) by closing them and removing from cache."
   [database]
-  (let [db-id (u/the-id database)]
+  (let [db-id (u/the-id database)
+        has-canonical? (contains? @database-id->connection-pool db-id)
+        has-swapped? (.getIfPresent ^Cache swapped-connection-pools db-id)]
+    (log/debugf "Invalidating connection pools for database %d (canonical: %s, swapped: %s)"
+                db-id has-canonical? (some? has-swapped?))
     ;; Clear canonical pool
     (when-let [pool-spec (get @database-id->connection-pool db-id)]
       (destroy-pool! db-id pool-spec)
       (swap! database-id->connection-pool dissoc db-id))
-    ;; Clear all swapped pools for this database
-    ;; The removal listener will call destroy-pool! for each invalidated entry
-    (doseq [[[pool-db-id _hash] _pool] (.asMap swapped-connection-pools)
-            :when (= pool-db-id db-id)]
-      (.invalidate swapped-connection-pools [pool-db-id _hash]))))
+    ;; Clear swapped pool (removal listener will call destroy-pool!)
+    (.invalidate ^Cache swapped-connection-pools db-id)))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
@@ -294,35 +296,84 @@
   (log/warn (u/format-color :yellow "Password of database %s expired; marking pool invalid to reopen it" db-id))
   nil)
 
-(defn- pool-spec-valid?
-  "Check if a pool spec is still valid (tunnel is open, password not expired, etc.)."
+(defn- pool-invalidation-reason
+  "Returns a keyword describing why a pool is invalid, or nil if valid.
+  Possible reasons: :password-expired, :tunnel-closed."
   [pool-spec]
   (let [{:keys [password-expiry-timestamp tunnel-session]} pool-spec]
     (cond
-      ;; password expired
       (and (int? password-expiry-timestamp)
            (<= password-expiry-timestamp (System/currentTimeMillis)))
-      false
-      ;; no tunnel in use; valid
+      :password-expired
+
       (nil? tunnel-session)
-      true
-      ;; tunnel in use, and open; valid
+      nil ;; no tunnel, valid
+
       (ssh/ssh-tunnel-open? pool-spec)
-      true
-      ;; tunnel in use, and not open; invalid
+      nil ;; tunnel open, valid
+
       :else
-      false)))
+      :tunnel-closed)))
+
+(defn- log-pool-invalidation!
+  "Log a warning about why a pool is being invalidated."
+  [database-id reason]
+  (case reason
+    :password-expired (log-password-expiry! database-id)
+    :tunnel-closed    (log-ssh-tunnel-reconnect-msg! database-id)
+    :hash-changed     (log-jdbc-spec-hash-change-msg! database-id)
+    nil))
+
+(defn- get-pool-if-valid
+  "Returns the pool-spec if it's valid, nil otherwise.
+  Optionally logs the invalidation reason."
+  [pool-spec database-id log-invalidation?]
+  (if-let [reason (pool-invalidation-reason pool-spec)]
+    (do
+      (when log-invalidation?
+        (log-pool-invalidation! database-id reason))
+      nil)
+    pool-spec))
 
 (defn- get-swapped-pool
-  "Get or create a swapped connection pool from the Guava cache."
-  [db database-id details-hash]
-  (let [composite-key [database-id details-hash]]
-    (.get ^Cache swapped-connection-pools
-          composite-key
-          (reify java.util.concurrent.Callable
-            (call [_]
-              (log/debug (u/format-color :cyan "Creating swapped connection pool for database %s" database-id))
-              (create-pool! db))))))
+  "Get or create a swapped connection pool from the Guava cache.
+  Validates that existing pools are still valid (password not expired, tunnel open)."
+  [db database-id]
+  (let [existing (.getIfPresent ^Cache swapped-connection-pools database-id)]
+    (cond
+      ;; No existing pool - create a new one
+      (nil? existing)
+      (.get ^Cache swapped-connection-pools
+            database-id
+            (reify java.util.concurrent.Callable
+              (call [_]
+                (log/debugf "Creating new swapped connection pool for database %d" database-id)
+                (create-pool! db))))
+
+      ;; Existing pool is invalid (password expired, tunnel closed) - invalidate and recreate
+      (nil? (get-pool-if-valid existing database-id true))
+      (do
+        (log/debugf "Swapped connection pool for database %d is invalid, recreating" database-id)
+        (.invalidate ^Cache swapped-connection-pools database-id)
+        (recur db database-id))
+
+      ;; Existing pool is valid - use it
+      :else
+      (do
+        (log/debugf "Using existing swapped connection pool for database %d" database-id)
+        existing))))
+
+(defn- canonical-pool-hash-changed?
+  "Check if the canonical pool's hash differs from the expected hash.
+  Handles stale DatabaseInstance by re-fetching from app DB."
+  [database-id expected-hash]
+  (let [curr-hash (get @database-id->jdbc-spec-hash database-id)]
+    (when (and (some? curr-hash) (not= curr-hash expected-hash))
+      ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
+      ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
+      ;; our app DB, and see if it STILL doesn't match
+      (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details] :id database-id)
+                          jdbc-spec-hash)))))
 
 (defn- get-canonical-pool
   "Get a canonical pool if it exists and is valid, otherwise return nil."
@@ -333,27 +384,15 @@
       nil
 
       ;; Check if the hash has changed (details were updated in DB)
-      (let [curr-hash (get @database-id->jdbc-spec-hash database-id)]
-        (when (and (some? curr-hash) (not= curr-hash details-hash))
-          ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
-          ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
-          ;; our app DB, and see if it STILL doesn't match
-          (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details] :id database-id)
-                              jdbc-spec-hash))))
-      (when log-invalidation?
-        (log-jdbc-spec-hash-change-msg! database-id))
+      (canonical-pool-hash-changed? database-id details-hash)
+      (do
+        (when log-invalidation?
+          (log-pool-invalidation! database-id :hash-changed))
+        nil)
 
       ;; Check pool validity (password expiry, tunnel status)
-      (not (pool-spec-valid? pool-spec))
-      (when log-invalidation?
-        (if (let [{:keys [password-expiry-timestamp]} pool-spec]
-              (and (int? password-expiry-timestamp)
-                   (<= password-expiry-timestamp (System/currentTimeMillis))))
-          (log-password-expiry! database-id)
-          (log-ssh-tunnel-reconnect-msg! database-id)))
-
       :else
-      pool-spec)))
+      (get-pool-if-valid pool-spec database-id log-invalidation?))))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
@@ -368,17 +407,17 @@
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
-    (let [database-id (u/the-id db-or-id-or-spec)
+    (let [database-id  (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to calculate details hash)
-          db-original (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
-                            (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
-                          (when (= (:lib/type db-or-id-or-spec) :metadata/database)
-                            db-or-id-or-spec)
-                          (driver-api/with-metadata-provider database-id
-                            (driver-api/database (driver-api/metadata-provider))))
+          db-original  (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
+                             (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
+                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
+                             db-or-id-or-spec)
+                           (driver-api/with-metadata-provider database-id
+                             (driver-api/database (driver-api/metadata-provider))))
           ;; Apply connection detail swaps if present
-          has-swap?   (driver/has-connection-swap? database-id)
-          db          (update db-original :details #(driver/maybe-swap-details database-id %))
+          has-swap?    (driver/has-connection-swap? database-id)
+          db           (update db-original :details #(driver/maybe-swap-details database-id %))
           ;; Calculate hash from final (possibly swapped) details
           details-hash (jdbc-spec-hash db)]
       (cond
@@ -390,7 +429,7 @@
 
         ;; Swapped pool: use Guava cache with TTL
         has-swap?
-        (get-swapped-pool db database-id details-hash)
+        (get-swapped-pool db database-id)
 
         ;; Canonical pool: use atom cache
         :else

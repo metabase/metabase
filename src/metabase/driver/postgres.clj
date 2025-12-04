@@ -34,9 +34,10 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]])
+   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]]
+   [taoensso.nippy :as nippy])
   (:import
-   (java.io StringReader)
+   (java.io DataInput DataOutput StringReader)
    (java.sql
     Connection
     ResultSet
@@ -45,7 +46,8 @@
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
-   (org.postgresql.jdbc PgConnection)))
+   (org.postgresql.jdbc PgConnection)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -1010,8 +1012,8 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [obj (.getObject rs i)]
-      (cond (instance? org.postgresql.util.PGobject obj)
-            (.getValue ^org.postgresql.util.PGobject obj)
+      (cond (instance? PGobject obj)
+            (.getValue ^PGobject obj)
 
             :else
             obj))))
@@ -1275,3 +1277,16 @@
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
                {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
+
+;; Custom nippy handling for PGobject to enable proper caching of postgres domains in arrays (#55301)
+
+(nippy/extend-freeze PGobject :postgres/PGobject
+  [^PGobject obj ^DataOutput data-output]
+  (nippy/freeze-to-out! data-output (.getType obj))
+  (nippy/freeze-to-out! data-output (.getValue obj)))
+
+(nippy/extend-thaw :postgres/PGobject
+  [^DataInput data-input]
+  (let [type  (nippy/thaw-from-in! data-input)
+        value (nippy/thaw-from-in! data-input)]
+    (doto (PGobject.) (.setType type) (.setValue value))))

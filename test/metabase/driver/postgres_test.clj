@@ -47,9 +47,11 @@
    [metabase.util.log :as log]
    [metabase.warehouses.provider-detection :as provider-detection]
    [next.jdbc :as next.jdbc]
+   [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -1960,3 +1962,20 @@
                       (lib/query mp)
                       (qp/process-query)
                       (mt/rows)))))))))
+
+(deftest pgobject-freeze-thaw-test
+  (letfn [(make-pgobject [type value]
+            (doto (PGobject.) (.setType type) (.setValue value)))
+          (test-pgobject-caching [obj]
+            (is (= obj (-> obj nippy/freeze nippy/thaw))))]
+    (testing "Simple PGobject instances can be frozen and thawed"
+      (test-pgobject-caching (make-pgobject "foo_type" "abc_val")))
+    (testing "PGobjects in an array can be frozen and thawed"
+      (let [pg-obj-1 (make-pgobject "foo_type" "abc_val")
+            pg-obj-2 (make-pgobject "foo_type" "xyz_val")
+            pg-obj-arr [pg-obj-1 pg-obj-2]]
+        (test-pgobject-caching pg-obj-arr)))
+    (testing "PGobjects in a map can be frozen and thawed"
+      (let [pg-obj (make-pgobject "foo_type" "abc_val")
+            pg-obj-map {:data [pg-obj] :metadata {:type "test"}}]
+        (test-pgobject-caching pg-obj-map)))))

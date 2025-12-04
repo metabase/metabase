@@ -5,12 +5,14 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.upload.impl-test :as upload-test]
@@ -57,7 +59,9 @@
    (table-defaults (or driver/*driver* :h2)))
   ([driver]
    (merge
-    (update (mt/object-defaults :model/Table) :data_authority name)
+    (-> (mt/object-defaults :model/Table)
+        (update :data_authority name)
+        (update :data_layer name))
     {:db          (db-details)
      :db_id       (mt/id)
      :entity_type "entity/GenericTable"
@@ -126,7 +130,7 @@
                   (map #(select-keys % [:name :display_name :id :entity_type]))
                   set))))))
 
-(deftest ^:parallel list-table-test-2
+(deftest list-table-test-2
   (testing "GET /api/table"
     (testing "Schema is \"\" rather than nil, if not set"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -405,9 +409,12 @@
   (testing "PUT /api/table/:id"
     (mt/with-temp [:model/Table table]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                            {:display_name    "Userz"
-                             :visibility_type "hidden"
-                             :description     "What a nice table!"})
+                            {:display_name     "Userz"
+                             :description      "What a nice table!"
+                             :data_source      "transform"
+                             :data_layer       "copper"
+                             :owner_email      "bob@org.com"
+                             :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
@@ -418,7 +425,12 @@
                :schema          ""
                :visibility_type "hidden"
                :display_name    "Userz"
-               :is_writable     nil})
+               :is_writable     nil
+               :data_source      "transform"
+               :data_layer       "copper"
+               ;; exclusive later (not now)
+               :owner_email      "bob@org.com"
+               :owner_user_id    (mt/user->id :crowberto)})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))))
 
@@ -1154,21 +1166,150 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "table/%d/sync_schema" (u/the-id table))))))))
 
-;; The following are commented out temporarily due to starburst failures
-#_(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
-    (fn [tbl]
-      (when (= (u/the-id tbl) (u/the-id expected-tbl))
-        (deliver promise-to-deliver true))))
+(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
+  (fn [tbl]
+    (when (= (u/the-id tbl) (u/the-id expected-tbl))
+      (deliver promise-to-deliver true))))
 
-#_(deftest trigger-metadata-sync-for-table-test
-    (testing "Can we trigger a metadata sync for a table?"
-      (let [sync-called? (promise)
-            timeout (* 10 60)]
-        (mt/with-premium-features #{:audit-app}
-          (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
-                         :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
-            (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
-              (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
-        (testing "sync called?"
-          (is (true?
-               (deref sync-called? timeout :sync-never-called)))))))
+(deftest trigger-metadata-sync-for-table-test
+  (testing "Can we trigger a metadata sync for a table?"
+    (let [sync-called? (promise)
+          timeout (* 10 60)]
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+          (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
+      (testing "sync called?"
+        (is (true?
+             (deref sync-called? timeout :sync-never-called)))))))
+
+;; DEMOWARE bulk-editing APIS
+(deftest ^:parallel list-table-filtering-test
+  (testing "term filtering"
+
+    (is (=? [{:display_name "Users"}]
+            (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "USE" "Use"))
+                 (filter #(= (:db_id %) (mt/id)))           ; prevent stray tables from affecting unit test results
+                 (map #(select-keys % [:display_name])))))
+
+    (testing "wildcard"
+      (is (=? [{:display_name "Users"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term (if (contains? #{:mysql :mariadb} (mdb/db-type)) "*S*RS" "*S*rs"))
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results1
+                   (map #(select-keys % [:display_name])))))))
+  (testing "filter composition"
+    (mt/with-temp [:model/Table {products2-id :id} {:name         "PrOdUcTs2"
+                                                    :display_name "Products2"
+                                                    :db_id        (mt/id)
+                                                    :active       true}]
+      (is (=? [{:display_name "People"}
+               {:display_name "Products"}
+               {:display_name "Products2"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))
+
+      (mt/user-http-request :crowberto :put 200 (format "table/%d" products2-id) {:data_layer "gold"})
+      (is (=? [{:display_name "Products2"}]
+              (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "gold")
+                   (filter #(= (:db_id %) (mt/id)))         ; prevent stray tables from affecting unit test results
+                   (map #(select-keys % [:display_name])))))
+
+      (testing "empty filter"
+        (is (=? [{:display_name "People"}
+                 {:display_name "Products"}]
+                (->> (mt/user-http-request :crowberto :get 200 "table" :term "P" :data-layer "bronze")
+                     (filter #(= (:db_id %) (mt/id)))       ; prevent stray tables from affecting unit test results
+                     (map #(select-keys % [:display_name])))))))))
+
+(deftest ^:parallel update-table-visibility-sync-test
+  (testing "PUT /api/table/:id visibility field synchronization"
+    (mt/with-temp [:model/Table table {}]
+      (testing "updating visibility_type syncs to data_layer"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:visibility_type "hidden"})
+        (is (= :copper (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+        (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+
+      (testing "updating data_layer syncs to visibility_type"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:data_layer "gold"})
+        (is (= :gold (t2/select-one-fn :data_layer :model/Table :id (u/the-id table))))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id (u/the-id table)))))
+
+      (testing "cannot update both visibility_type and data_layer at once"
+        (is (= "Cannot update both visibility_type and data_layer"
+               (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
+                                     {:visibility_type  "hidden"
+                                      :data_layer "copper"})))))))
+
+(deftest unused-only-filter-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "GET /api/table?unused-only=true"
+      (testing "filters tables that have no non-transform dependents"
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {table-1-id :id} {:db_id db-id, :name "table_1", :active true}
+                       :model/Table {table-2-id :id} {:db_id db-id, :name "table_2", :active true}]
+          (testing "both tables returned without filter"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table")
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (testing "both tables returned with unused_only=false"
+            (is (= #{table-1-id table-2-id}
+                   (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only false)
+                        (filter #(= (:db_id %) db-id))
+                        (map :id)
+                        set))))
+
+          (mt/with-temp [:model/Card card {:database_id   db-id
+                                           :table_id      table-1-id
+                                           :dataset_query {:database db-id
+                                                           :type     :query
+                                                           :query    {:source-table table-1-id}}}]
+            (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
+            (testing "after creating card that depends on table-1, only table-2 is unuseded"
+              (is (= #{table-2-id}
+                     (->> (mt/user-http-request :crowberto :get 200 "table" :unused-only true)
+                          (filter #(= (:db_id %) db-id))
+                          (map :id)
+                          set))))))))))
+
+(deftest orphan-only-filter-test
+  (testing "GET /api/table?orphan-only=true"
+    (testing "filters tables that have no owner"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/User {user-id :id} {:email "owner@example.com"}
+                     :model/Table {table-1-id :id} {:db_id db-id
+                                                    :name "table_1"
+                                                    :active true
+                                                    :owner_user_id user-id
+                                                    :owner_email "owner@example.com"}
+                     :model/Table {table-2-id :id} {:db_id db-id
+                                                    :name "table_2"
+                                                    :active true
+                                                    :owner_user_id nil
+                                                    :owner_email nil}]
+        (testing "both tables returned without filter"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table")
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+
+        (testing "both tables returned with orphan-only=false"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only false)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+
+        (testing "only table-2 is returned with orphan-only=true"
+          (is (= #{table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :orphan-only true)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))))))

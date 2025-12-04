@@ -1,7 +1,20 @@
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import type { CollectionItemModel } from "metabase-types/api";
 
 import { ItemList } from "../../../EntityPicker";
 import type { CollectionItemListProps, CollectionPickerItem } from "../types";
+
+const validModels: CollectionItemModel[] = [
+  "collection",
+  "dashboard",
+  "document",
+  "card",
+  "dataset",
+  "metric",
+];
+
+const getValidCollectionItemModels = (models?: CollectionItemModel[]) =>
+  models ? models.filter((model) => validModels.includes(model)) : undefined;
 
 export const CollectionItemList = ({
   query,
@@ -22,7 +35,14 @@ export const CollectionItemList = ({
     };
     error: any;
     isLoading: boolean;
-  }>(query ? query : skipToken);
+  }>(
+    query
+      ? {
+          ...query,
+          models: getValidCollectionItemModels(query.models),
+        }
+      : skipToken,
+  );
 
   return (
     <ItemList

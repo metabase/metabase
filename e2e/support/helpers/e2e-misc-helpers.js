@@ -32,6 +32,10 @@ export function runButtonOverlay() {
   return cy.findByTestId("run-button-overlay");
 }
 
+export function runButtonInOverlay() {
+  return runButtonOverlay().findByTestId("run-button");
+}
+
 /**
  * Intercepts a request and returns resolve function that allows
  * the request to continue

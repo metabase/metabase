@@ -130,10 +130,10 @@
 
    ;; "operator" parameter types.
    :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}
-   :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<=}}
+   :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<= :number/between}}
    :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category
                                                                                  :location/zip_code}}
-   :number/>=               {:type :numeric, :operator :unary, :allowed-for #{:number/>=}}
+   :number/>=               {:type :numeric, :operator :unary, :allowed-for #{:number/>= :number/between}}
    :number/between          {:type :numeric, :operator :binary, :allowed-for #{:number/between}}
    :string/!=               {:type :string, :operator :variadic, :allowed-for #{:string/!=}}
    :string/=                {:type :string, :operator :variadic, :allowed-for #{:string/= :text :id :category

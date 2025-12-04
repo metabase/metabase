@@ -86,6 +86,16 @@
                                            (api.embed.common/parse-query-params query-params)
                                            {:preview true}))
 
+(api.macros/defendpoint :get "/dashboard/:token/params/:param-key/search/:prefix"
+  "Embedded version of chain filter search endpoint."
+  [{:keys [token param-key prefix]}
+   query-params]
+  (api.embed.common/dashboard-param-values token
+                                           param-key
+                                           prefix
+                                           (api.embed.common/parse-query-params query-params)
+                                           {:preview true}))
+
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
   "Embedded version of the remapped dashboard param value endpoint."
   [{:keys [token param-key]}

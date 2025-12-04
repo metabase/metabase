@@ -63,6 +63,7 @@ export const DocumentCopyForm = ({
               <FormCollectionPicker
                 name="collection_id"
                 title={t`Folder this document should be copied to`}
+                entityType="document"
               />
             </div>
           </Stack>

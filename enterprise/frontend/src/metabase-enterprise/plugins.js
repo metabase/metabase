@@ -20,6 +20,7 @@ import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
+import { initializePlugin as initializeDataStudio } from "./data-studio";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
@@ -40,6 +41,7 @@ import { initializePlugin as initializeSemanticSearch } from "./semantic_search"
 import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeSmtpOverride } from "./smtp-override";
 import { initializePlugin as initializeSnippets } from "./snippets";
+import { initializePlugin as initializeSupport } from "./support";
 import { initializePlugin as initializeTableEditing } from "./table-editing";
 import { initializePlugin as initializeTools } from "./tools";
 import { initializePlugin as initializeTransforms } from "./transforms";
@@ -61,6 +63,7 @@ export function initializePlugins() {
   initializeContentTranslation?.();
   initializeContentVerification?.();
   initializeDatabaseRouting?.();
+  initializeDataStudio?.();
   initializeRemoteSync?.();
   initializeWhitelabel?.();
   initializeEmbedding?.();
@@ -91,4 +94,5 @@ export function initializePlugins() {
   initializeTransforms?.();
   initializeTransformsPython?.();
   initializePublicSharing?.();
+  initializeSupport?.();
 }

@@ -1,3 +1,4 @@
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import fetchMock from "fetch-mock";
@@ -205,5 +206,72 @@ describe("MentionSuggestion", () => {
     const urlObject = new URL(checkNotNull(call?.request?.url));
     const models = urlObject.searchParams.getAll("models").sort();
     expect(models).toEqual(["card", "dashboard", "table"]);
+  });
+
+  describe("cmd/ctrl+click behavior", () => {
+    beforeEach(() => {
+      jest.spyOn(window, "open").mockImplementation(() => null);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("regular click inserts mention", async () => {
+      const { command } = setup({
+        query: "ord",
+        searchItems: [
+          createMockSearchResult({
+            name: "Orders question",
+            model: "card",
+            id: 1,
+          }),
+        ],
+      });
+
+      await userEvent.click(
+        await screen.findByRole("option", { name: /Orders question/ }),
+      );
+
+      expect(command).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 1,
+          model: "card",
+          label: "Orders question",
+        }),
+      );
+      expect(window.open).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { modifier: "metaKey", label: "cmd+click (Mac)" },
+      { modifier: "ctrlKey", label: "ctrl+click (Windows/Linux)" },
+    ])(
+      "$label opens item in new tab instead of inserting mention",
+      async ({ modifier }) => {
+        const { command } = setup({
+          query: "ord",
+          searchItems: [
+            createMockSearchResult({
+              name: "Orders question",
+              model: "card",
+              id: 1,
+            }),
+          ],
+        });
+
+        const option = await screen.findByRole("option", {
+          name: /Orders question/,
+        });
+
+        fireEvent.click(option, { [modifier]: true });
+
+        expect(window.open).toHaveBeenCalledWith(
+          expect.stringContaining("/question/1"),
+          "_blank",
+        );
+        expect(command).not.toHaveBeenCalled();
+      },
+    );
   });
 });

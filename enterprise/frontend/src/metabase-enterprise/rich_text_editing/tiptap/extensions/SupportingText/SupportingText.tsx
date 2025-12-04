@@ -26,6 +26,8 @@ import {
   getCurrentDocument,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import { DropZone } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { useDndHelpers } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import { cleanupFlexContainerNodes } from "../HandleEditorDrop/utils";
@@ -67,7 +69,7 @@ export const SupportingText = Node.create<{
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
-        "data-type": "supportingText",
+        "data-type": this.name,
       }),
       0,
     ];
@@ -157,11 +159,41 @@ const SupportingTextComponent = ({
     : "";
   const dispatch = useDispatch();
 
+  const canWrite = editor.options.editable;
+
+  const { isBeingDragged, dragState, setDragState, handleDragOver, dragElRef } =
+    useDndHelpers({ editor, node, getPos });
+
+  // Disallow cut/copy on the drag-handle/comments-button since that'd cut/copy the block itself (cutting/copying supportingText *content* should be allowed though)
+  const onCutOrCopy = (e: ClipboardEvent) => {
+    if (window.document.activeElement !== editor.view.dom) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <NodeViewWrapper
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
+      onDragOver={handleDragOver}
+      onDrop={() => setDragState({ isDraggedOver: false, side: null })}
+      onCut={onCutOrCopy}
+      onCopy={onCutOrCopy}
     >
+      {canWrite && (
+        <>
+          <DropZone
+            isOver={dragState.isDraggedOver && dragState.side === "left"}
+            side="left"
+            disabled={isBeingDragged}
+          />
+          <DropZone
+            isOver={dragState.isDraggedOver && dragState.side === "right"}
+            side="right"
+            disabled={isBeingDragged}
+          />
+        </>
+      )}
       <div className={S.scrollContainer}>
         {isNodeEmpty(node) && (
           <div contentEditable={false} className={S.placeholder}>
@@ -170,7 +202,13 @@ const SupportingTextComponent = ({
         )}
         <NodeViewContent />
       </div>
-      <button
+
+      {/* Would be nice to use a real `button` here, but that prevents ProseMirror plugin dragstart events from firing */}
+      <div
+        role="button"
+        tabIndex={0}
+        data-drag-handle
+        ref={dragElRef}
         contentEditable={false}
         aria-label={t`Supporting text`}
         className={S.handle}

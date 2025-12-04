@@ -11,7 +11,7 @@ import { createTransform } from "./api";
 import { getTableId } from "./e2e-qa-databases-helpers";
 
 export function visitTransform(transformId: TransformId) {
-  cy.visit(`/admin/transforms/${transformId}`);
+  cy.visit(`/data-studio/transforms/${transformId}`);
 }
 
 const WAIT_TIMEOUT = 10000;
@@ -159,4 +159,45 @@ export function createPythonTransform({
     },
     { wrapId: true, visitTransform },
   );
+}
+
+/**
+ * Creates an MBQL transform and runs it to create a table.
+ * @return: information about the created transform
+ */
+export function createAndRunMbqlTransform({
+  sourceTable,
+  targetTable,
+  targetSchema,
+  tagIds,
+  databaseId,
+  name,
+}: {
+  sourceTable: string;
+  targetTable: string;
+  targetSchema: string | null;
+  tagIds?: TransformTagId[];
+  name?: string;
+  databaseId?: number;
+}): Cypress.Chainable<{
+  transformId: TransformId;
+}> {
+  return createMbqlTransform({
+    sourceTable,
+    targetTable,
+    targetSchema,
+    tagIds,
+    databaseId,
+    name: name ?? "Test transform",
+    visitTransform: false,
+  }).then(({ body: transform }) => {
+    // Run the transform
+    cy.request("POST", `/api/ee/transform/${transform.id}/run`);
+    // Wait for it to complete successfully
+    waitForSucceededTransformRuns();
+
+    return cy.wrap({
+      transformId: transform.id,
+    });
+  });
 }

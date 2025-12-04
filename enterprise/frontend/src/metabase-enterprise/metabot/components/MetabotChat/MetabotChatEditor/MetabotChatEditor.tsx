@@ -13,7 +13,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import type { MetabotChatInputRef } from "metabase/metabot";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 import { createMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
   MetabotMentionExtension,
@@ -33,9 +33,10 @@ interface Props {
   value: string;
   placeholder?: string;
   autoFocus?: boolean;
-  disabled?: boolean;
+  isResponding?: boolean;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  onStop: () => void;
   suggestionModels: SuggestionModel[];
 }
 
@@ -45,23 +46,16 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
       value,
       placeholder = t`Tell me to do something, or ask a question`,
       autoFocus = false,
-      disabled = false,
+      isResponding = false,
       suggestionModels,
       onChange,
       onSubmit,
+      onStop,
     },
     ref,
   ) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const serializedRef = useRef(value);
-
-    // Use refs to avoid recreating the editor when callbacks change - not doing so prepends all characters
-    const onChangeRef = useRef(onChange);
-    const onSubmitRef = useRef(onSubmit);
-    useEffect(() => {
-      onChangeRef.current = onChange;
-      onSubmitRef.current = onSubmit;
-    });
 
     const extensions = [
       Document,
@@ -93,7 +87,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
       onUpdate: ({ editor }) => {
         const jsonContent = editor.getJSON();
         serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);
-        onChangeRef.current(serializedRef.current);
+        onChange(serializedRef.current);
       },
       editorProps: {
         handleDOMEvents: {
@@ -142,9 +136,15 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
 
             if (!isModifiedKeyPress) {
               event.preventDefault();
-              onSubmitRef.current();
+              onSubmit();
               return true;
             }
+          }
+
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onStop();
+            return true;
           }
 
           return false;
@@ -192,10 +192,27 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
             data-testid="metabot-chat-input"
             editor={editor}
             className={cx(S.content, {
-              [S.disabled]: disabled,
+              [S.disabled]: isResponding,
             })}
           />
         </Box>
+        <UnstyledButton
+          className={cx(
+            S.button,
+            isResponding && S.buttonResponding,
+            value.length === 0 && !isResponding && S.buttonHidden,
+          )}
+          onClick={isResponding ? onStop : onSubmit}
+          data-testid={
+            isResponding ? "metabot-stop-response" : "metabot-send-message"
+          }
+        >
+          {isResponding ? (
+            <Icon className={S.stopIcon} name="stop" />
+          ) : (
+            <Icon className={S.sendIcon} name="arrow_up" />
+          )}
+        </UnstyledButton>
       </Box>
     );
   },

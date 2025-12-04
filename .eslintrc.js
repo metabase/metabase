@@ -180,6 +180,7 @@ module.exports = {
         "no-unconditional-metabase-links-render": "error",
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
+        "no-oss-reinitialize-import": "error",
         "depend/ban-dependencies": [
           "error",
           {
@@ -240,6 +241,7 @@ module.exports = {
       plugins: ["@typescript-eslint"],
       rules: {
         "prefer-rest-params": "off",
+        "react/prop-types": "off", // TypeScript handles prop validation
         "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
@@ -342,6 +344,12 @@ module.exports = {
       files: ["frontend/build/**/*.js"],
       rules: {
         "import/no-commonjs": "off",
+      },
+    },
+    {
+      files: ["**/*.stories.tsx", "**/preview.tsx"],
+      rules: {
+        "import/no-default-export": "off",
       },
     },
   ],

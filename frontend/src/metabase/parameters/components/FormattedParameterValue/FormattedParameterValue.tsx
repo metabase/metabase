@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
@@ -8,6 +10,7 @@ import {
   isFieldFilterUiParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
+  isBooleanParameter,
   isDateParameter,
   isStringParameter,
   isTemporalUnitParameter,
@@ -22,7 +25,7 @@ import type {
 
 export type FormattedParameterValueProps = {
   parameter: UiParameter;
-  value: string | number | number[];
+  value: string | number | number[] | ParameterValue;
   cardId?: CardId;
   dashboardId?: DashboardId;
   placeholder?: string;
@@ -47,7 +50,9 @@ function FormattedParameterValue({
     (value) => getValue(value)?.toString() === first?.toString(),
   );
 
-  const label = getLabel(displayValue);
+  const label = !isBooleanParameter(parameter)
+    ? getLabel(displayValue)
+    : getBooleanLabel(first as boolean);
 
   const renderContent = () => {
     if (
@@ -101,12 +106,16 @@ function getValue(
 }
 
 function getLabel(
-  value: string | ParameterValue | undefined,
+  value: boolean | string | ParameterValue | undefined,
 ): string | undefined {
   if (Array.isArray(value)) {
     return value[1];
   }
   return value?.toString();
+}
+
+function getBooleanLabel(value: boolean) {
+  return value ? t`True` : t`False`;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

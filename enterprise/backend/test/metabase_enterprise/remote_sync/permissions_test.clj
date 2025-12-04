@@ -19,7 +19,7 @@
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
 
           (testing "Cards in remote-synced collections have can_write=false"
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
@@ -46,7 +46,7 @@
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
 
           (testing "Cards in remote-synced collections have can_write=true"
             (mt/with-temp [:model/Card {card-id :id} {:name "Library Card"
@@ -102,10 +102,10 @@
   (testing "can_write for items in nested remote-synced collections should respect remote-sync-type"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {parent-library-id :id} {:name "Parent Library Collection"
-                                                                :type "remote-synced"}
+                                                                :is_remote_synced true}
                      :model/Collection {child-library-id :id} {:name "Child Library Collection"
                                                                :location (format "/%d/" parent-library-id)
-                                                               :type "remote-synced"}]
+                                                               :is_remote_synced true}]
 
         (testing "When remote-sync-type is read-only"
           (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
@@ -157,7 +157,7 @@
   (testing "can_write behavior should differ between library and regular collections in same test"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                              :type "remote-synced"}
+                                                              :is_remote_synced true}
                      :model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
 
@@ -201,7 +201,7 @@
   (testing "can_write behavior should differ between library and regular collections in same test when the user is a super user"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                              :type "remote-synced"}
+                                                              :is_remote_synced true}
                      :model/Collection {regular-coll-id :id} {:name "Regular Collection"
                                                               :type nil}]
 
@@ -247,7 +247,7 @@
     (testing "When remote-sync-type is read-only"
       (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
           (mt/with-current-user (mt/user->id :rasta))
           (is (false? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
               "Library collection itself should not be writable when remote-sync-type is read-only"))))
@@ -255,7 +255,7 @@
     (testing "When remote-sync-type is read-write"
       (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
         (mt/with-temp [:model/Collection {library-coll-id :id} {:name "Library Collection"
-                                                                :type "remote-synced"}]
+                                                                :is_remote_synced true}]
           (mt/with-current-user (mt/user->id :rasta)
             (is (true? (mi/can-write? (t2/select-one :model/Collection :id library-coll-id)))
                 "Library collection itself should be writable when remote-sync-type is read-write")))))

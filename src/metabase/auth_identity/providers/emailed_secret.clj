@@ -28,7 +28,7 @@
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :consumed_at nil})
 
-(mu/defn- create-reset-token-metadata
+(mu/defn create-reset-token-metadata
   "Creates a metadata map for a password reset token containing the user's email and optional request context.
 
   The `email` parameter is the user's email address. Optional keyword arguments `ip-address` and `user-agent` capture
@@ -64,7 +64,7 @@
     :else
     :invalid))
 
-(mu/defn- mark-token-consumed :- [:map [:credentials :map]]
+(mu/defn mark-token-consumed :- [:map [:credentials :map]]
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
 
   Takes an `auth-identity` map and returns an updated version with the current instant set as the `:consumed_at`
@@ -84,7 +84,7 @@
       (catch NumberFormatException _
         nil))))
 
-(mu/defn- generate-reset-token :- :string
+(mu/defn generate-reset-token :- :string
   "Generates a password reset token for a user.
 
   The token format is `USER-ID_RANDOM-UUID`, which allows efficient user lookup while maintaining uniqueness and
@@ -144,8 +144,7 @@
       (if-let [user-id (parse-token-user-id token)]
         (if-let [auth-identity (t2/select-one :model/AuthIdentity
                                               :user_id user-id
-                                              :provider (case provider
-                                                          :provider/emailed-secret-password-reset "emailed-secret-password-reset"))]
+                                              :provider (name provider))]
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid

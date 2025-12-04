@@ -134,7 +134,11 @@ export const isSearchFolder = <
   folder: Item,
   folderModels: Model[],
 ) => {
-  return folder.id !== "personal" && folderModels.includes(folder.model);
+  return (
+    folder.id !== "personal" &&
+    folder.id !== "databases" &&
+    folderModels.includes(folder.model)
+  );
 };
 
 const isSearchModel = (model: string): model is SearchModel => {

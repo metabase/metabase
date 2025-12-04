@@ -567,6 +567,19 @@
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
 
+(deftest dashboard-params-search-test
+  (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/search/:prefix"
+    (with-embedding-enabled-and-new-secret-key!
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                           :embedding_params {"static_category_label" "enabled"}})
+        (let [signed-token (dash-token dashboard)
+              search-url   (format "preview_embed/dashboard/%s/params/%s/search/%s" signed-token "_STATIC_CATEGORY_LABEL_" "AF")]
+          (testing "Should work if the param we're fetching values for is enabled"
+            (is (= {:values          [["African" "Af"]]
+                    :has_more_values false}
+                   (mt/user-http-request :crowberto :get 200 search-url)))))))))
+
 (deftest boolean-parameter-values-test
   (testing "embedding endpoint supports boolean parameter values (#27643)"
     (embed-test/with-embedding-enabled-and-new-secret-key!

@@ -62,6 +62,10 @@
     (.getCause e)
     (assoc :cause (summarize-exception (.getCause e)))))
 
+(def ^:private ex-message-label (c/red    (c/reverse-color "ex-message : ")))
+(def ^:private ex-data-label    (c/yellow (c/reverse-color "ex-data    : ")))
+(def ^:private mage-error-label (c/blue   (c/reverse-color "mage/error : ")))
+
 (defn -main [& _]
   (cond
     ;; help
@@ -73,7 +77,9 @@
 
     ;; errors
     (invalid-task?)
-    (do (print-help) (System/exit 1))
+    (do (print-help)
+        #_{:clj-kondo/ignore [:discouraged-java-method]}
+        (System/exit 1))
 
     :else
     ;; at this point, we always have a valid task, and we are running in bb, so
@@ -101,13 +107,13 @@
                               (cond-> e
                                 (not (u/env "MAGE_DEBUG" (constantly nil)))
                                 summarize-exception)))
-                   (when (and message (not (str/blank? message)))
-                     (println (c/red (c/reverse-color "ex-message : ")) message))
-                   (when data
-                     (println (c/yellow (c/reverse-color "ex-data    : ")) (pr-str
-                                                                            (dissoc data :mage/error))))
+                   (when (not (str/blank? message))
+                     (println ex-message-label message))
+                   (when (not-empty (dissoc data :mage/error))
+                     (println ex-data-label (u/pp (dissoc data :mage/error))))
                    (when (:mage/error data)
-                     (println (c/blue (c/reverse-color "mage/error : ")) (:mage/error data)))
+                     (println mage-error-label (:mage/error data)))
+                   #_{:clj-kondo/ignore [:discouraged-java-method]}
                    (System/exit (:babashka/exit data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))

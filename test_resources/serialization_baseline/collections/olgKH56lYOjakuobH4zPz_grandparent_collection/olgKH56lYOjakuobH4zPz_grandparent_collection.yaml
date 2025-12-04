@@ -16,3 +16,4 @@ serdes/meta:
 archive_operation_id: null
 archived_directly: null
 is_sample: false
+is_remote_synced: false

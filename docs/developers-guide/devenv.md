@@ -13,6 +13,12 @@ Both components are built and assembled together into a single JAR file. In the 
 
 ## Quick start
 
+First, make sure your local dev tooling matches the Metabase requirements. Run:
+
+```
+./bin/dev-requirements
+```
+
 To spin up a development environment, run:
 
 ```
@@ -152,10 +158,12 @@ use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-
 By default Rspack runs the development server on port `8088`. You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
 
 Frontend:
+
 - If you are running the frontend with `yarn build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
 - If you are building the frontend statically with `yarn build`, there is nothing different to do
 
 Backend:
+
 - Set the `MB_JETTY_PORT` environment variable and `MB_FRONTEND_DEV_PORT` to the same one as for the frontend.
 
 ### The application database

@@ -6,7 +6,7 @@ import {
 } from "../../ResizeNode/ResizeNode";
 import {
   type DroppedCardEmbedNodeData,
-  extractCardEmbed,
+  extractContainerSingleCardNode,
   getCardEmbedDropSide,
   getTargetCardEmbedNode,
 } from "../utils";
@@ -18,32 +18,31 @@ export const handleCardDropToFlexContainer = (
     cameFromFlexContainer,
     originalParent,
     dropToParent,
-    cardEmbedNode,
+    draggedNode,
     view,
     originalPos,
     event: e,
-    dropToParentPos,
   } = payload;
 
   // Handle dropping within the same FlexContainer - columns reordering
   if (cameFromFlexContainer && originalParent === dropToParent) {
-    const targetCardEmbedNode = getTargetCardEmbedNode(e, view);
+    const targetNode = getTargetCardEmbedNode(e, view);
 
-    if (!targetCardEmbedNode) {
+    if (!targetNode) {
       return;
     }
-    if (targetCardEmbedNode === cardEmbedNode) {
+    if (targetNode === draggedNode) {
       return true; // Prevent dropping on itself
     }
 
-    // Moving within the same FlexContainer - reorder cards
+    // Moving within the same FlexContainer - reorder items
     const tr = view.state.tr;
 
     // Find the source index
     const sourceIndex = view.state.doc.resolve(originalPos).index();
 
     // Calculate the intended insertion index based on drop position
-    let targetIndex = dropToParent.content.content.indexOf(targetCardEmbedNode);
+    let targetIndex = dropToParent.content.content.indexOf(targetNode);
     const dropSide = getCardEmbedDropSide(e);
 
     if (dropSide === "left" && targetIndex > 1) {
@@ -57,8 +56,8 @@ export const handleCardDropToFlexContainer = (
     for (let i = 0; i < dropToParent.childCount; i++) {
       if (i !== sourceIndex) {
         const child = dropToParent.child(i);
-        const childCardEmbed = extractCardEmbed(child);
-        allChildren.push(childCardEmbed ? childCardEmbed : child);
+        const extractedChild = extractContainerSingleCardNode(child);
+        allChildren.push(extractedChild ? extractedChild : child);
       }
     }
 
@@ -81,7 +80,7 @@ export const handleCardDropToFlexContainer = (
     }
 
     // Insert the dragged element at the correct position
-    allChildren.splice(adjustedTargetIndex, 0, cardEmbedNode);
+    allChildren.splice(adjustedTargetIndex, 0, draggedNode);
 
     // Preserve column widths by reordering them to match the new card positions
     const currentColumnWidths = dropToParent.attrs.columnWidths;
@@ -111,7 +110,18 @@ export const handleCardDropToFlexContainer = (
       allChildren,
     );
 
-    const containerPos = dropToParentPos.before();
+    // Find the actual position of the FlexContainer in the document
+    let containerPos: number | null = null;
+    view.state.doc.descendants((node, nodePos) => {
+      if (node === dropToParent) {
+        containerPos = nodePos;
+        return false;
+      }
+    });
+
+    if (containerPos === null) {
+      return true; // Safety check
+    }
 
     tr.replaceWith(
       containerPos,
@@ -126,20 +136,23 @@ export const handleCardDropToFlexContainer = (
 
   // Handle dropping from one FlexContainer to another FlexContainer
   if (cameFromFlexContainer && originalParent !== dropToParent) {
+    if (draggedNode.type.name === "supportingText") {
+      return true;
+    }
     const targetFlexContainer = dropToParent;
 
-    // Check if target flexContainer already has 3 or more cards
+    // Check if target flexContainer already has 3 or more items
     if (targetFlexContainer.content.childCount >= 3) {
-      return true; // Don't allow dropping if target already has 3 cards
+      return true; // Don't allow dropping if target already has 3 items
     }
 
-    const targetCardEmbedNode = getTargetCardEmbedNode(e, view);
-    if (!targetCardEmbedNode) {
+    const targetNode = getTargetCardEmbedNode(e, view);
+    if (!targetNode) {
       return;
     }
 
     // Calculate the intended insertion index based on drop position
-    let targetIndex = dropToParent.content.content.indexOf(targetCardEmbedNode);
+    let targetIndex = dropToParent.content.content.indexOf(targetNode);
     const dropSide = getCardEmbedDropSide(e);
 
     if (dropSide === "left" && targetIndex > 1) {
@@ -180,9 +193,12 @@ export const handleCardDropToFlexContainer = (
     if (sourceNewChildren.length === 1) {
       // Only one card left in source - unwrap it from flexContainer
       const remainingChild = sourceNewChildren[0];
-      const remainingCardEmbed = extractCardEmbed(remainingChild);
+      const remainingCardEmbed = extractContainerSingleCardNode(remainingChild);
 
-      if (remainingCardEmbed) {
+      if (
+        remainingCardEmbed &&
+        remainingCardEmbed.type.name !== "supportingText"
+      ) {
         const wrappedRemainingCard = view.state.schema.nodes.resizeNode.create(
           {
             height: RESIZE_NODE_DEFAULT_HEIGHT,
@@ -254,14 +270,14 @@ export const handleCardDropToFlexContainer = (
       }
     }
 
-    // Now add the card to the target flexContainer
+    // Now add the item to the target flexContainer
     const targetChildren: Node[] = [];
     for (let i = 0; i < targetFlexContainer.content.childCount; i++) {
       const child = targetFlexContainer.content.child(i);
       targetChildren.push(child);
     }
 
-    targetChildren.splice(targetIndex, 0, cardEmbedNode.copy());
+    targetChildren.splice(targetIndex, 0, draggedNode.copy());
 
     // Find target flexContainer position
     let targetFlexContainerPos: number | null = null;
@@ -304,21 +320,21 @@ export const handleCardDropToFlexContainer = (
     return true;
   }
 
-  // Handle dropping on a cardEmbed that is already in a flexContainer
+  // Handle dropping on an item that is already in a flexContainer
   if (!cameFromFlexContainer) {
     const flexContainer = dropToParent;
 
     if (flexContainer.content.childCount === 3) {
-      return true; // Don't allow more than 3 cards in flexContainer
+      return true; // Don't allow more than 3 items in flexContainer
     }
 
-    const targetCardEmbedNode = getTargetCardEmbedNode(e, view);
-    if (!targetCardEmbedNode) {
+    const targetNode = getTargetCardEmbedNode(e, view);
+    if (!targetNode) {
       return;
     }
 
     // Calculate the intended insertion index based on drop position
-    let targetIndex = dropToParent.content.content.indexOf(targetCardEmbedNode);
+    let targetIndex = dropToParent.content.content.indexOf(targetNode);
     const dropSide = getCardEmbedDropSide(e);
 
     if (dropSide === "left" && targetIndex > 1) {
@@ -327,14 +343,14 @@ export const handleCardDropToFlexContainer = (
       targetIndex++;
     }
 
-    // Get all current children as cardEmbeds
+    // Get all current children
     const newChildren: Node[] = [];
     for (let i = 0; i < flexContainer.content.childCount; i++) {
       const child = flexContainer.content.child(i);
       newChildren.push(child);
     }
 
-    newChildren.splice(targetIndex, 0, cardEmbedNode.copy());
+    newChildren.splice(targetIndex, 0, draggedNode.copy());
 
     // Find the position of the flexContainer (it should be wrapped in resizeNode)
     let flexContainerPos: number | null = null;
@@ -368,9 +384,7 @@ export const handleCardDropToFlexContainer = (
     // Now remove the dropped node from its original position
     // We need to find it again in the updated document
     const nodeToRemove =
-      originalParent.type.name === "resizeNode"
-        ? originalParent
-        : cardEmbedNode;
+      originalParent.type.name === "resizeNode" ? originalParent : draggedNode;
 
     const updatedDoc = tr.doc;
     let nodeFound = false;

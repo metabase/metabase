@@ -710,16 +710,18 @@
 
 (t2/define-before-insert :model/Card
   [card]
-  (-> card
-      (assoc :metabase_version config/mb-version-string
-             :card_schema current-schema-version)
-      queries.schema/normalize-card
+  (u/prog1
+    (-> card
+        (assoc :metabase_version config/mb-version-string
+               :card_schema current-schema-version)
+        queries.schema/normalize-card
       ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
       ;; since we're removing `:ident`s; we can probably remove this now.
-      (u/assoc-default :entity_id (u/generate-nano-id))
-      card.metadata/populate-result-metadata
-      pre-insert
-      populate-query-fields))
+        (u/assoc-default :entity_id (u/generate-nano-id))
+        card.metadata/populate-result-metadata
+        pre-insert
+        populate-query-fields)
+    (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
 (t2/define-after-insert :model/Card
   [card]
@@ -753,6 +755,7 @@
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes (some-> card t2/changes queries.schema/normalize-card)
         card    (queries.schema/normalize-card card)]
+    (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)
@@ -897,7 +900,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id :document_id]
+                                             :cache_ttl :type :dashboard_id :document_id :published_table_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
@@ -1213,6 +1216,7 @@
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)
     :workspace_id           (serdes/fk :model/Workspace)
+    :published_table_id     (serdes/fk :model/Table)
     :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}

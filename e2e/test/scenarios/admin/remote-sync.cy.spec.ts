@@ -512,6 +512,31 @@ describe("Remote Sync", () => {
       });
     });
 
+    it("should disable 'Set up Remote Sync' button if git url is not set (#65653)", () => {
+      cy.visit("/admin/settings/remote-sync");
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByRole("switch", { name: "Auto-sync with git" }).click({
+        force: true,
+      });
+
+      // Trivial dirty state should not be enough to enable the button
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByLabelText(/Access Token/i)
+        .clear()
+        .type("SecretToken");
+      // Still disabled - url is not set
+      cy.button("Set up Remote Sync").should("be.disabled");
+
+      cy.findByLabelText(/repository url/i)
+        .clear()
+        .type(LOCAL_GIT_URL);
+
+      // Enabled now - url is set
+      cy.button("Set up Remote Sync").should("be.enabled");
+    });
+
     it("shows an error if git settings are invalid", () => {
       cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       cy.visit("/admin/settings/remote-sync");
@@ -597,7 +622,7 @@ describe("Remote Sync", () => {
 
       cy.visit("/admin/settings/remote-sync");
       cy.findByLabelText("Sync branch").clear().type("test");
-      cy.button("Save changes").click();
+      cy.findByTestId("remote-sync-submit-button").click();
 
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
@@ -609,7 +634,7 @@ describe("Remote Sync", () => {
 
       H.waitForTask({ taskName: "import" });
 
-      cy.findByRole("button", { name: "Save changes" }).should("be.disabled");
+      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
 
       cy.visit("/");
 

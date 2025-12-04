@@ -356,8 +356,8 @@
 
   ([deps module-x module-y]
    (let [module-x-ns->module-y-ns (->> (external-usages deps module-y)
-                                         (filter #(= (:module %) module-x))
-                                         (map (juxt :namespace :depends-on-namespace)))]
+                                       (filter #(= (:module %) module-x))
+                                       (map (juxt :namespace :depends-on-namespace)))]
      (reduce
       (fn [m [module-x-ns module-y-ns]]
         (update m module-x-ns (fn [deps]

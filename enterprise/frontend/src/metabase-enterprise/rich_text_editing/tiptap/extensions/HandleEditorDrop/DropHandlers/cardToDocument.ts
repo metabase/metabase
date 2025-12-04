@@ -4,7 +4,10 @@ import {
   RESIZE_NODE_DEFAULT_HEIGHT,
   RESIZE_NODE_MIN_HEIGHT,
 } from "../../ResizeNode/ResizeNode";
-import { type DroppedCardEmbedNodeData, extractCardEmbed } from "../utils";
+import {
+  type DroppedCardEmbedNodeData,
+  extractContainerSingleCardNode,
+} from "../utils";
 
 export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
   const {
@@ -12,7 +15,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
     originalPos,
     view,
     cameFromFlexContainer,
-    cardEmbedNode,
+    draggedNode,
     dropPos,
   } = payload;
   let diffSize = 0;
@@ -54,9 +57,20 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
       if (newChildren.length === 1) {
         // If only one card left, unwrap it from FlexContainer and wrap in resizeNode
         const remainingChild = newChildren[0];
-        const remainingCardEmbed = extractCardEmbed(remainingChild);
+        const remainingCardEmbed =
+          extractContainerSingleCardNode(remainingChild);
 
-        if (remainingCardEmbed) {
+        if (remainingCardEmbed?.type.name === "supportingText") {
+          // Only a SupportingText is left, remove the entire FlexContainer and its wrapper
+          const containerResolvedPos = view.state.doc.resolve(flexContainerPos);
+          const containerParent = containerResolvedPos.parent;
+          const wrapperPos = containerResolvedPos.before();
+          replaceWith(
+            wrapperPos,
+            wrapperPos + containerParent.nodeSize,
+            Fragment.empty,
+          );
+        } else if (remainingCardEmbed) {
           const wrappedRemainingCard =
             view.state.schema.nodes.resizeNode.create(
               {
@@ -86,16 +100,6 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
               wrappedRemainingCard,
             );
           }
-        } else {
-          // Only a SupportingText is left, remove the entire FlexContainer and its wrapper
-          const containerResolvedPos = view.state.doc.resolve(flexContainerPos);
-          const containerParent = containerResolvedPos.parent;
-          const wrapperPos = containerResolvedPos.before();
-          replaceWith(
-            wrapperPos,
-            wrapperPos + containerParent.nodeSize,
-            Fragment.empty,
-          );
         }
       } else if (newChildren.length > 1) {
         // Multiple cards left, keep as FlexContainer
@@ -137,7 +141,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
           height: RESIZE_NODE_DEFAULT_HEIGHT,
           minHeight: RESIZE_NODE_MIN_HEIGHT,
         },
-        [cardEmbedNode],
+        [draggedNode],
       );
 
       // Calculate adjusted drop position if the FlexContainer operations affected positions
@@ -162,10 +166,10 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
         height: RESIZE_NODE_DEFAULT_HEIGHT,
         minHeight: RESIZE_NODE_MIN_HEIGHT,
       },
-      [cardEmbedNode],
+      [draggedNode],
     );
 
-    const nodeToRemove = originalParent || cardEmbedNode;
+    const nodeToRemove = originalParent || draggedNode;
 
     // Remove the original node from its position
     // Find the actual node to remove (could be the cardEmbed itself or its resizeNode wrapper)

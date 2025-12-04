@@ -139,8 +139,7 @@
   (println "File encoding:"   (System/getProperty "file.encoding")))
 
 (defn ^:command api-documentation
-  "Generate a markdown file containing documentation for all API endpoints. This is written to a file called
-  `docs/api-documentation.md`."
+  "Generate an HTML file and a JSON file for Scalar docs for the Metabase API."
   []
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))

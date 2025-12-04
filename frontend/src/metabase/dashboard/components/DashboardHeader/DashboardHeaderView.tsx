@@ -157,7 +157,7 @@ export function DashboardHeaderView({
                       top={2}
                     >
                       <PLUGIN_MODERATION.EntityModerationIcon
-                        dashboard={dashboard}
+                        moderationReviews={dashboard.moderation_reviews}
                       />
                       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
                         color="brand"

@@ -98,6 +98,7 @@ function MainNavbarContainer({
   const { data: collections = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,
     "exclude-archived": true,
+    "include-library": true,
   });
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {

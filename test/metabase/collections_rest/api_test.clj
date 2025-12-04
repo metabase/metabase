@@ -7,6 +7,7 @@
    [metabase.collections-rest.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
+   [metabase.collections.test-helpers :refer [without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -73,14 +74,15 @@
                  :name                "Our analytics"
                  :authority_level     nil
                  :is_personal         false
-                 :is_remote_synced    false
+                 :is_remote_synced    nil
                  :id                  "root"
                  :can_restore         false
                  :can_delete          false}
                 (assoc (into {:is_personal false} collection)
                        :can_write true
                        :can_delete false
-                       :is_remote_synced false)]
+                       :is_remote_synced false
+                       :parent_id nil)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -531,6 +533,32 @@
                               (ids-to-keep collection-id))
                       (select-keys collection [:name :children]))))
                 (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
+
+(defn- flatten-tree-types
+  "Extract all collection types from a tree structure, including nested children."
+  [collections]
+  (mapcat (fn [collection]
+            (cons (:type collection)
+                  (when-let [children (:children collection)]
+                    (flatten-tree-types children))))
+          collections))
+
+(deftest collection-tree-library-test
+  (testing "GET /api/collection/tree"
+    (without-library
+     (let [_ (collection/create-library-collection!)]
+       (testing "By default it does not include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/tree")
+               all-types (flatten-tree-types response)]
+           (is (not-any? #{collection/library-collection-type} all-types))
+           (is (not-any? #{collection/library-metrics-collection-type} all-types))
+           (is (not-any? #{collection/library-models-collection-type} all-types))))
+       (testing "Can choose to include include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/tree" :include-library true)
+               all-types (flatten-tree-types response)]
+           (is (some #{collection/library-collection-type} all-types))
+           (is (some #{collection/library-metrics-collection-type} all-types))
+           (is (some #{collection/library-models-collection-type} all-types))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
@@ -1542,6 +1570,19 @@
                           remove-non-personal-collections
                           mt/boolean-ids-and-timestamps)))))))
 
+(deftest collection-root-items-library-test
+  (testing "GET /api/collection/root/items"
+    (without-library
+     (let [_ (collection/create-library-collection!)]
+       (testing "By default it does not include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items")
+               all-types (map :type (:data response))]
+           (is (not-any? #{collection/library-collection-type} all-types))))
+       (testing "Can choose to include include library items"
+         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include_library true)
+               all-types (map :type (:data response))]
+           (is (some #{collection/library-collection-type} all-types))))))))
+
 (deftest dashboard-question-candidates-simple-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in single dashboard"
@@ -2266,9 +2307,9 @@
       (testing "collection_type=remote-synced returns only remote-synced collections"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection"}
                        :model/Collection _ {:name "Remote Synced Collection"
-                                            :type "remote-synced"}
+                                            :is_remote_synced true}
                        :model/Collection _ {:name "Another Remote Collection"
-                                            :type "remote-synced"}
+                                            :is_remote_synced true}
                        :model/Collection _ {:name "Second Normal Collection"}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                                :collection_type "remote-synced")
@@ -2281,15 +2322,14 @@
             (testing "should not include normal collections"
               (is (not (contains? collection-names "Normal Collection")))
               (is (not (contains? collection-names "Second Normal Collection"))))
-            (testing "should include type field in response"
+            (testing "should include is_remote_synced field in response"
               (doseq [coll collections]
-                (is (= "remote-synced" (:type coll))
-                    (str "Collection " (:name coll) " should have type=remote-synced")))))))
-
+                (is (true? (:is_remote_synced coll))
+                    (str "Collection " (:name coll) " should have is_remote_synced=true")))))))
       (testing "without collection_type parameter, all collections are returned"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection Test"}
                        :model/Collection _ {:name "Remote Synced Collection Test"
-                                            :type "remote-synced"}]
+                                            :is_remote_synced true}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items")
                 collection-names (->> (:data response)
                                       (filter #(= (:model %) "collection"))

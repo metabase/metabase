@@ -1,0 +1,58 @@
+import { t } from "ttag";
+
+import { Button } from "metabase/ui";
+import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { isSameSource } from "metabase-enterprise/transforms/utils";
+import type { DatabaseId, Transform } from "metabase-types/api";
+
+import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
+
+interface Props {
+  databaseId: DatabaseId;
+  editedTransform: EditedTransform;
+  transform: Transform;
+}
+
+export const SaveTransformButton = ({
+  databaseId,
+  editedTransform,
+  transform,
+}: Props) => {
+  const [updateTransform] = useUpdateTransformMutation();
+
+  const { setActiveTransform, removeEditedTransform } = useWorkspace();
+
+  const hasSourceChanged = !isSameSource(
+    editedTransform.source,
+    transform.source,
+  );
+  const hasTargetNameChanged =
+    transform.target.name !== editedTransform.target.name;
+  const hasChanges = hasSourceChanged || hasTargetNameChanged;
+
+  const handleClick = async () => {
+    const response = await updateTransform({
+      id: transform.id,
+      source: editedTransform.source,
+      name: editedTransform.name,
+      target: {
+        type: "table",
+        name: editedTransform.target.name,
+        schema: transform.target.schema,
+        database: databaseId,
+      },
+    });
+
+    removeEditedTransform(transform.id);
+    setActiveTransform(response.data);
+  };
+
+  return (
+    <Button
+      disabled={!hasChanges}
+      size="sm"
+      variant="filled"
+      onClick={handleClick}
+    >{t`Save`}</Button>
+  );
+};

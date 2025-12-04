@@ -259,6 +259,13 @@
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
 
+(mu/defn assert-optional-enum
+  "Assert that a value is one of the values in `enum` or `nil`."
+  [enum :- [:set :any]
+   value :- :any]
+  (when (some? value)
+    (assert-enum enum value)))
+
 (mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
   [qualified-ns :- string?

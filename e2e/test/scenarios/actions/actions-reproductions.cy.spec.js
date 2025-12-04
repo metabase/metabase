@@ -5,10 +5,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_MODEL_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createMockActionParameter,
   createMockParameter,
@@ -278,18 +275,52 @@ describe("issue 51020", () => {
   }
 
   describe("when primary key is called 'id'", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    function createTemporaryTable() {
+      H.queryWritableDB(
+        "CREATE TABLE IF NOT EXISTS foo (id INT PRIMARY KEY, name VARCHAR)",
+      );
+      H.queryWritableDB(
+        "INSERT INTO foo (id, name) VALUES (1, 'Foo'), (2, 'Bar')",
+      );
+    }
 
-      H.visitModel(ORDERS_MODEL_ID);
+    function dropTemporaryTable() {
+      H.queryWritableDB("ALTER TABLE IF EXISTS foo DROP CONSTRAINT foo_pkey");
+      H.queryWritableDB("DROP TABLE IF EXISTS foo");
+    }
+
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      dropTemporaryTable();
+      createTemporaryTable();
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "foo" });
+
+      H.getTableId({ name: "foo" }).then((tableId) => {
+        H.createQuestion(
+          {
+            name: "Model 51020",
+            type: "model",
+            database: WRITABLE_DB_ID,
+            query: {
+              "source-table": tableId,
+            },
+          },
+          {
+            visitQuestion: true,
+          },
+        );
+      });
       setupBasicActionsInModel();
       setupDashboard({
-        modelName: "Orders Model",
-        questionName: "Orders Model",
+        modelName: "Model 51020",
+        questionName: "Model 51020",
         columnName: "ID",
       });
+    });
+
+    afterEach(() => {
+      dropTemporaryTable();
     });
 
     it("should pass primary key attribute to execute action endpoint when it's populated with click behavior or URL (metabase#51020)", () => {
@@ -298,24 +329,22 @@ describe("issue 51020", () => {
       );
       H.getDashboardCard(0).findAllByText("1").eq(0).click();
       H.getDashboardCard(1).findByText("Click Me").click();
-      H.modal().findByLabelText("Discount").type("987");
+      H.modal().findByLabelText("Name").type(" Baz");
       H.modal().button("Update").click();
 
       H.modal().should("not.exist");
       H.undoToast().findByText("Successfully updated").should("be.visible");
-      H.getDashboardCard(0).should("contain.text", "987");
+      H.getDashboardCard(0).should("contain.text", "Foo Baz");
 
       cy.log("check when primary key parameter is populated with URL");
       cy.reload();
       H.getDashboardCard(1).findByText("Click Me").click();
-      H.modal()
-        .findByLabelText("Discount")
-        .type("{backspace}{backspace}{backspace}654");
+      H.modal().findByLabelText("Name").type(" Baz");
       H.modal().button("Update").click();
 
       H.modal().should("not.exist");
       H.undoToast().findByText("Successfully updated").should("be.visible");
-      H.getDashboardCard(0).should("contain.text", "654");
+      H.getDashboardCard(0).should("contain.text", "Foo Baz Baz");
     });
   });
 
@@ -350,12 +379,9 @@ describe("issue 51020", () => {
       cy.findByTestId("new-model-options")
         .findByText("Use the notebook editor")
         .click();
-      H.entityPickerModalTab("Collections").click();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "foo",
-        );
-        cy.findByText("Everywhere").click();
+        cy.findByPlaceholderText("Search…").type("foo");
         cy.findByText("Foo").click();
       });
       cy.findByTestId("run-button").click();
@@ -370,7 +396,8 @@ describe("issue 51020", () => {
       setupBasicActionsInModel();
 
       H.newButton("Question").click();
-      H.entityPickerModalTab("Collections").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalTab("Data").click();
       H.entityPickerModalItem(1, "Model 51020").click();
       H.saveQuestion("Question 51020", undefined, {
         tab: "Browse",

@@ -7,7 +7,9 @@ import { CheckDependenciesTitle } from "./components/CheckDependenciesTitle";
 import { useCheckCardDependencies } from "./hooks/use-check-card-dependencies";
 import { useCheckSnippetDependencies } from "./hooks/use-check-snippet-dependencies";
 import { useCheckTransformDependencies } from "./hooks/use-check-transform-dependencies";
+import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
+import { getDataStudioDependencyRoutes } from "./routes";
 
 /**
  * Initialize dependencies plugin features that depend on hasPremiumFeature.
@@ -15,6 +17,8 @@ import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 export function initializePlugin() {
   if (hasPremiumFeature("dependencies")) {
     PLUGIN_DEPENDENCIES.isEnabled = true;
+    PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
+      getDataStudioDependencyRoutes;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
     PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
     PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;
@@ -24,5 +28,6 @@ export function initializePlugin() {
       useCheckSnippetDependencies;
     PLUGIN_DEPENDENCIES.useCheckTransformDependencies =
       useCheckTransformDependencies;
+    PLUGIN_DEPENDENCIES.useGetDependenciesCount = useGetDependenciesCount;
   }
 }

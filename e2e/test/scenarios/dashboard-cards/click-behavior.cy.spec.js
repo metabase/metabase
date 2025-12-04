@@ -1060,8 +1060,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findByText(COUNT_COLUMN_ID).should("exist");
         cy.findByText(CREATED_AT_COLUMN_ID).should("exist");
         cy.findByText(DASHBOARD_FILTER_TEXT.name).should("exist");
-        cy.realPress("Escape");
       });
+      H.modal().findByText("Values you can reference").click();
       H.modal().within(() => {
         cy.findByRole("textbox").type(URL_WITH_PARAMS, {
           parseSpecialCharSequences: false,

@@ -1881,3 +1881,52 @@
             (is (not (some #{card-id}
                            (mapv :id (:data search-results))))
                 "Card should not be found in search results after database deletion")))))))
+
+(deftest collection-filter-test
+  (mt/with-temp
+    [:model/Collection {parent-coll :id}      {:name "Parent Collection"
+                                               :location "/"}
+     :model/Collection {child-coll :id}       {:name "Child Collection"
+                                               :location (collection/location-path parent-coll)}
+     :model/Collection {grandchild-coll :id}  {:name "Grandchild Collection"
+                                               :location (collection/location-path parent-coll child-coll)}
+     :model/Card       {parent-card :id}      {:collection_id parent-coll :name "Parent Card"}
+     :model/Card       {child-card :id}       {:collection_id child-coll :name "Child Card"}
+     :model/Card       {grandchild-card :id}  {:collection_id grandchild-coll :name "Grandchild Card"}
+     :model/Dashboard  {parent-dash :id}      {:collection_id parent-coll :name "Parent Dashboard"}
+     :model/Card       {other-card :id}       {:collection_id nil :name "No Collection Card"}]
+    (testing "Filter by parent collection returns parent and all descendants"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+        (is (= #{parent-card parent-dash child-card grandchild-card parent-coll child-coll grandchild-coll}
+               (set (map :id (:data results)))))))
+
+    (testing "Filter by child collection returns child and descendants only"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection child-coll)]
+        (is (= #{child-card grandchild-card child-coll grandchild-coll}
+               (set (map :id (:data results)))))))
+
+    (testing "Filter by leaf collection returns only that collection's items"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection grandchild-coll)]
+        (is (= #{grandchild-card grandchild-coll}
+               (set (map :id (:data results)))))))
+
+    (testing "Filter by non-existent collection returns no results"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection 99999)]
+        (is (empty? (:data results)))))
+
+    (testing "Items with no collection are not included when filtering by collection"
+      (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
+        (is (not (some #{other-card} (map :id (:data results)))))))))
+
+(deftest collection-filter-with-search-string-test
+  (mt/with-temp
+    [:model/Collection {coll-1 :id}  {:name "Collection 1"}
+     :model/Collection _             {:name "Collection 2"}
+     :model/Card       {card-1 :id}  {:collection_id coll-1 :name "Test Card"}
+     :model/Card       _             {:collection_id coll-1 :name "Other Card"}]
+    (testing "Search string filters results within the specified collection"
+      (let [results (mt/user-http-request :crowberto :get 200 "search"
+                                          :q "Test"
+                                          :collection coll-1)]
+        (is (= #{card-1}
+               (set (map :id (:data results)))))))))

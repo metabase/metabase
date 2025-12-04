@@ -27,13 +27,14 @@
     :else
     (try
       (let [token-info-response (http/post (format google-auth-token-info-url token))
-            {:keys [first_name last_name email]} (sso.google/google-auth-token-info token-info-response)]
-        (log/infof "Successfully authenticated Google Sign-In token for: %s %s" first_name last_name)
+            {first-name :given_name last-name  :family_name :keys [email]}
+            (sso.google/google-auth-token-info token-info-response)]
+        (log/infof "Successfully authenticated Google Sign-In token for: %s %s" first-name last-name)
         ;; Always return user data - let login! handle account creation policy
         {:success? true
          :user-data {:email email
-                     :first_name first_name
-                     :last_name last_name
+                     :first_name first-name
+                     :last_name last-name
                      :sso_source :google}
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e

@@ -208,8 +208,8 @@
 
   auth-identity
   {:team "UX West"
-   :api #{metabase.auth-identity.core
-          metabase.auth-identity.init}
+   :api  #{metabase.auth-identity.core
+           metabase.auth-identity.init}
    :uses #{channel
            events
            login-history
@@ -237,6 +237,7 @@
    :api  #{metabase.bookmarks.api}
    :uses #{api
            app-db
+           collections
            config
            premium-features
            queries
@@ -679,6 +680,7 @@
            metabase.lib.join.util
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
+           metabase.lib.metadata.column
            metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
            metabase.lib.metadata.result-metadata
@@ -989,7 +991,7 @@
            metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.schema}      ; TODO FIXME
+           metabase.queries.schema} ; TODO FIXME
    :uses #{analytics
            analyze
            api
@@ -1118,7 +1120,7 @@
    :uses #{api
            config
            embedding
-           permissions                  ; FIXME
+           permissions ; FIXME
            session
            settings
            users
@@ -1323,6 +1325,7 @@
            metabase.sync.core
            metabase.sync.init
            metabase.sync.schedules
+           metabase.sync.sync-metadata.tables
            metabase.sync.task.sync-databases
            metabase.sync.util}
    :uses #{analyze
@@ -1530,6 +1533,7 @@
            api
            app-db
            audit-app
+           config
            driver
            lib
            lib-be
@@ -1554,6 +1558,7 @@
            lib
            models
            parameters
+           premium-features
            query-processor
            request
            sync
@@ -1612,7 +1617,6 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
-
 
   xrays
   {:team "Querying"
@@ -1757,7 +1761,7 @@
 
   enterprise/auth-identity
   {:team "UX West"
-   :api #{}
+   :api  #{}
    :uses #{premium-features}}
 
   enterprise/auth-provider
@@ -1839,6 +1843,22 @@
   {:team "Querying"
    :api  #{}
    :uses #{premium-features}}
+
+  enterprise/data-studio
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-studio.api}
+   :uses #{api
+           collections
+           database-routing
+           driver
+           events
+           lib
+           lib-be
+           queries
+           request
+           sync
+           util
+           warehouse-schema}}
 
   enterprise/database-replication
   {:team "Cloud"
@@ -1974,6 +1994,13 @@
    :api  #{}
    :uses #{premium-features
            settings}}
+
+  enterprise/library
+  {:team "UX West"
+   :api  #{metabase-enterprise.library.api}
+   :uses #{api
+           collections
+           premium-features}}
 
   enterprise/llm
   {:team "Metabot"
@@ -2150,6 +2177,7 @@
            app-db
            appearance
            collections
+           config
            logger
            models
            plugins
@@ -2201,6 +2229,19 @@
            settings
            util}}
 
+  enterprise/support-access-grants
+  {:team "UX West"
+   :api  #{metabase-enterprise.support-access-grants.api
+           metabase-enterprise.support-access-grants.init}
+   :uses #{api
+           auth-identity
+           events
+           models
+           request
+           settings
+           system
+           util}}
+
   enterprise/transforms
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
@@ -2226,7 +2267,8 @@
            sync
            task
            task-history
-           util}}
+           util
+           enterprise/workspaces}}
 
   enterprise/transforms-python
   {:team "Querying"
@@ -2237,6 +2279,9 @@
            app-db
            config
            driver
+           events
+           lib
+           lib-be
            query-processor
            settings
            util
@@ -2254,12 +2299,17 @@
   enterprise/workspaces
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
            api-keys
            driver
+           enterprise/transforms
+           events
            models
+           queries
            request
+           sync
            system
            util}}}
 

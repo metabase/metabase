@@ -27,21 +27,6 @@ jobs:
           # Fetch the base branch to ensure its history is available for diffing
           git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
           # Only run this if it's a pull request and the base ref exists
-      - name: Get Date
-        id: get-date
-        shell: bash
-        run: |
-          echo "date=$(/bin/date -u "+%Y%m%d")" >> $GITHUB_OUTPUT
-      - name: Restore Babashka cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.m2
-            ~/.deps.clj
-          restore-keys: |
-            mage-drivers-
-          key: >-
-            mage-drivers-${{ steps.get-date.outputs.date }}
       - name: Check if driver tests should run
         id: check-branch-and-files-changed
         run: |
@@ -82,6 +67,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Athena driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
@@ -90,7 +76,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -144,7 +130,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -215,7 +201,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -250,6 +236,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
@@ -258,7 +245,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -287,6 +274,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid JDBC driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-jdbc-ee'
@@ -295,7 +283,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -324,6 +312,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
@@ -332,7 +321,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -362,6 +351,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver with multi-catalog
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
@@ -370,7 +360,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -399,7 +389,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -528,7 +518,7 @@ jobs:
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -597,7 +587,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -660,6 +650,7 @@ jobs:
           curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
           -o ./test_resources/ssl/mongo/metaca.crt
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
@@ -668,7 +659,7 @@ jobs:
             :only-tags [:mb/driver-tests]
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -695,6 +686,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test MongoDB driver (Sharded cluster)
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
@@ -702,7 +694,7 @@ jobs:
           :only metabase.driver.mongo.sharded-cluster-test
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -767,6 +759,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.version.name }}
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
@@ -775,7 +768,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -878,7 +871,7 @@ jobs:
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
         with:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
@@ -946,6 +939,7 @@ jobs:
         -file /tmp/presto-ssl-ca.der
         -trustcacerts
     - name: Test Presto JDBC driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
@@ -954,7 +948,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -978,12 +972,22 @@ jobs:
             test-args: >-
               :only-tags [:mb/upload-tests]
               :fail-fast? true
-          - name: Redshift (Excluding Upload Tests)
+          - name: Redshift (Excluding Upload Tests) Part 1
             skip: false
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Redshift (Excluding Upload Tests) Part 2
+            skip: false
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
           - name: Redshift Transforms Python Tests
             skip: false
             test-args: >-
@@ -1017,7 +1021,7 @@ jobs:
           ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: ${{ !matrix.job.skip && !cancelled() }}
+      if: ${{ !matrix.job.skip && !cancelled() && steps.test-driver.outputs.quarantine-skipped != 'true' }}
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1034,7 +1038,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-snowflake-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1086,7 +1091,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1119,6 +1124,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test Spark driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
@@ -1127,7 +1133,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1149,6 +1155,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test SQLite driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
@@ -1157,7 +1164,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1222,7 +1229,7 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}
@@ -1329,6 +1336,7 @@ jobs:
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver
+      id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
@@ -1337,7 +1345,7 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
-      if: always()
+      if: always() && steps.test-driver.outputs.quarantine-skipped != 'true'
       with:
         input-path: ./target/junit/
         output-name: ${{ github.job }}

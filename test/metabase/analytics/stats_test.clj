@@ -558,6 +558,7 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :development-mode
+    :data-studio
     :embedding
     :embedding-sdk
     :embedding-simple

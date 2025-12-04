@@ -106,6 +106,7 @@
    "Secret"
    "SemanticSearchTokenTracking"
    "Session"
+   "SupportAccessGrantLog"
    "TaskHistory"
    "TransformJobRun"
    "TransformRun"

@@ -1,49 +1,67 @@
-import type { TransformId } from "./transform";
+import type { CollectionId } from "./collection";
+import type { DatabaseId } from "./database";
+import type {
+  Transform,
+  TransformId,
+  TransformSource,
+  TransformTagId,
+  TransformTarget,
+} from "./transform";
 
 export type WorkspaceId = number;
 
 export type Workspace = {
   id: WorkspaceId;
   name: string;
-  collection_id: number;
-  database_id: number;
+  collection_id: CollectionId | null;
+  database_id: DatabaseId | null;
   created_at: string;
   updated_at: string;
+  archived_at?: string | null;
+  contents?: WorkspaceContents["contents"];
+};
+
+export type WorkspaceItem = {
+  id: WorkspaceId;
+  name: string;
 };
 
 export type CreateWorkspaceRequest = {
   name: string;
-  database_id?: number;
+  database_id?: DatabaseId;
   upstream: {
     transforms?: TransformId[];
   };
 };
 
-export type WorkspaceContentItem = {
+export type WorkspaceListResponse = {
+  items: Workspace[];
+};
+
+export type WorkspaceContentItem = WorkspaceTransformItem;
+
+export type WorkspaceTransformItem = {
+  type: "transform";
   id: TransformId;
   name: string;
+  upstream_id: TransformId;
+  workspace_id: WorkspaceId;
 };
 
 export type WorkspaceContents = {
   contents: {
-    transforms: WorkspaceContentItem[];
+    transforms: WorkspaceTransformItem[];
   };
 };
 
 export type TransformUpstreamMapping = {
-  transform: {
-    id: TransformId;
-    name: string;
-  } | null;
+  transform: WorkspaceTransformItem | null;
 };
 
 export type DownstreamTransformInfo = {
   id: TransformId;
   name: string;
-  workspace: {
-    id: WorkspaceId;
-    name: string;
-  };
+  workspace: WorkspaceItem;
 };
 
 export type TransformDownstreamMapping = {
@@ -51,8 +69,41 @@ export type TransformDownstreamMapping = {
 };
 
 export type WorkspaceMergeResponse = {
-  promoted: { id: TransformId; name: string }[];
-  errors?: { id: TransformId; name: string; error: string }[];
-  workspace: { id: WorkspaceId; name: string };
+  promoted: WorkspaceContentItem[];
+  errors?: (WorkspaceContentItem & { error: string })[];
+  workspace: WorkspaceItem;
   archived_at: string | null;
 };
+
+export type WorkspaceUpdateContentsRequest = {
+  id: WorkspaceId;
+  add?: {
+    transforms?: TransformId[];
+  };
+  remove?: {
+    transforms?: TransformId[];
+  };
+};
+
+export type ValidateTableNameRequest = {
+  db_id: DatabaseId;
+  target: {
+    type: "table";
+    name: string;
+    schema: string | null;
+  };
+};
+
+export type ValidateTableNameResponse =
+  | "OK"
+  | "A table with that name already exists";
+
+export type CreateWorkspaceTransformRequest = {
+  name: string;
+  description?: string | null;
+  source: TransformSource;
+  target: TransformTarget;
+  tag_ids?: TransformTagId[];
+};
+
+export type CreateWorkspaceTransformResponse = Transform;

@@ -893,7 +893,10 @@
     :enabled   (premium-features/enable-python-transforms?)}
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
-    :enabled   (premium-features/enable-dependencies?)}])
+    :enabled   (premium-features/enable-dependencies?)}
+   {:name      :support-users
+    :available (premium-features/enable-support-users?)
+    :enabled   (premium-features/enable-support-users?)}])
 
 (defn- snowplow-features
   []

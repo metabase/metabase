@@ -15,8 +15,9 @@
                 [:or
                  [:like [:lower :term] [:lower (str "%" search "%")]]
                  [:like [:lower :definition] [:lower (str "%" search "%")]]])]
-    {:data (t2/select :model/Glossary (cond-> {:order-by [[:term :asc]]}
-                                        where (assoc :where where)))}))
+    {:data (t2/hydrate (t2/select :model/Glossary (cond-> {:order-by [[:term :asc]]}
+                                                    where (assoc :where where)))
+                       :creator)}))
 
 (api.macros/defendpoint :post "/"
   "Create a new glossary entry."
@@ -25,11 +26,14 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (let [glossary (t2/insert-returning-instance! :model/Glossary {:term term :definition definition})]
+  (let [glossary (t2/insert-returning-instance! :model/Glossary
+                                                {:term       term
+                                                 :definition definition
+                                                 :creator_id api/*current-user-id*})]
     (events/publish-event! :event/glossary-create
                            {:object glossary
                             :user-id api/*current-user-id*})
-    glossary))
+    (t2/hydrate glossary :creator)))
 
 (api.macros/defendpoint :put "/:id"
   "Update an existing glossary entry."
@@ -45,7 +49,7 @@
                              {:object glossary
                               :previous-object previous-glossary
                               :user-id api/*current-user-id*})
-      glossary)))
+      (t2/hydrate glossary :creator))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."

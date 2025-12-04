@@ -676,7 +676,6 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           );
           cy.wait("@cardQuery");
 
-          H.filterWidget().contains("vrai");
           cy.findByTestId("table-body").within(() => {
             cy.findAllByText(/vrai/).should("have.length", 2);
             cy.findAllByText(/true/).should("have.length", 0);

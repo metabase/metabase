@@ -127,18 +127,20 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/jest/setup-env.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-env.js",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/jest/setup-after-env.js",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/jest/console-restrictions.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/setup-after-env.js",
+        "<rootDir>/frontend/src/embedding-sdk-shared/jest/console-restrictions.js",
       ],
     },
     {
@@ -146,9 +148,10 @@ const config = {
       displayName: "core",
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/",
+        "<rootDir>/frontend/src/embedding-sdk-bundle",
+        "<rootDir>/frontend/src/embedding-sdk-shared",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
       ],
     },
   ],

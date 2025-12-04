@@ -14,7 +14,7 @@ import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
-import type { UserId } from "./user";
+import type { UserId, UserInfo } from "./user";
 
 // Collection ID can be either a numeric or entity id
 export type RegularCollectionId = number | string;
@@ -26,7 +26,7 @@ export type CollectionId =
   | "users"
   | "trash";
 
-export type CollectionContentModel = "card" | "dataset";
+export type CollectionContentModel = "card" | "dataset" | "metric";
 
 export type CollectionAuthorityLevel = "official" | null;
 
@@ -34,13 +34,15 @@ export type CollectionType =
   | "instance-analytics"
   | "trash"
   | "remote-synced"
+  | "library"
+  | "library-models"
+  | "library-metrics"
   | null;
 
-export type LastEditInfo = {
-  email: string;
-  first_name: string;
-  last_name: string;
-  id: UserId;
+export type LastEditInfo = Pick<
+  UserInfo,
+  "id" | "email" | "first_name" | "last_name"
+> & {
   timestamp: string;
 };
 
@@ -74,6 +76,7 @@ export interface Collection {
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  is_remote_synced?: boolean;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -214,6 +217,7 @@ export interface ListCollectionsRequest {
 export interface ListCollectionsTreeRequest {
   "exclude-archived"?: boolean;
   "exclude-other-user-collections"?: boolean;
+  "include-library"?: boolean;
   namespace?: string;
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;

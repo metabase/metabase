@@ -2,6 +2,11 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  type EntityType,
+  canPlaceEntityInCollection,
+  canPlaceEntityInCollectionOrDescendants,
+} from "metabase/collections/utils";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
@@ -20,6 +25,7 @@ import type {
   CollectionPickerStatePath,
   CollectionPickerValueItem,
 } from "../types";
+import { getCollectionType } from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
@@ -31,6 +37,7 @@ export interface CollectionPickerModalProps {
   options?: CollectionPickerOptions;
   value?: Pick<CollectionPickerValueItem, "id" | "model" | "collection_id">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
+  entityType?: EntityType;
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
   models?: CollectionPickerModel[];
@@ -47,10 +54,37 @@ const baseCanSelectItem = (
   );
 };
 
-const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
-  return searchResults.filter(
-    (result) => result.can_write && result.collection.type !== "trash",
-  );
+const searchFilter = (
+  searchResults: SearchResult[],
+  entityType?: EntityType,
+): SearchResult[] => {
+  return searchResults.filter((result) => {
+    if (!result.can_write || result.collection.type === "trash") {
+      return false;
+    }
+
+    if (result.model === "collection" && entityType) {
+      return canPlaceEntityInCollection(entityType, result.collection_type);
+    }
+
+    return true;
+  });
+};
+
+const recentItemFilter = (
+  recentItems: RecentItem[],
+  entityType?: EntityType,
+): RecentItem[] => {
+  if (!entityType) {
+    return recentItems;
+  }
+
+  return recentItems.filter((item) => {
+    if (item.model === "collection") {
+      return canPlaceEntityInCollection(entityType, item.collection_type);
+    }
+    return true;
+  });
 };
 
 export const CollectionPickerModal = ({
@@ -59,7 +93,8 @@ export const CollectionPickerModal = ({
   onClose,
   value,
   options = defaultOptions,
-  shouldDisableItem,
+  shouldDisableItem: shouldDisableItemProp,
+  entityType,
   searchResultFilter,
   recentFilter,
   models: modelsProp,
@@ -68,6 +103,28 @@ export const CollectionPickerModal = ({
   options = { ...defaultOptions, ...options };
 
   const models = modelsProp || ["collection"];
+
+  const shouldDisableItem = useMemo(() => {
+    const entityTypeCheck = entityType
+      ? (item: CollectionPickerItem) => {
+          if (item.model === "collection") {
+            return !canPlaceEntityInCollectionOrDescendants(
+              entityType,
+              getCollectionType(item),
+            );
+          }
+          return false;
+        }
+      : undefined;
+
+    if (shouldDisableItemProp && entityTypeCheck) {
+      return (item: CollectionPickerItem) => {
+        return shouldDisableItemProp(item) || entityTypeCheck(item);
+      };
+    }
+
+    return shouldDisableItemProp || entityTypeCheck;
+  }, [shouldDisableItemProp, entityType]);
 
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
     null,
@@ -79,9 +136,24 @@ export const CollectionPickerModal = ({
         | null
         | undefined,
     ): item is CollectionPickerValueItem => {
-      return baseCanSelectItem(item) && (_canSelectItem?.(item) ?? true);
+      if (!baseCanSelectItem(item)) {
+        return false;
+      }
+
+      if (_canSelectItem && !_canSelectItem(item)) {
+        return false;
+      }
+
+      if (entityType && item.model === "collection") {
+        const collectionType = getCollectionType(item as CollectionPickerItem);
+        if (!canPlaceEntityInCollection(entityType, collectionType)) {
+          return false;
+        }
+      }
+
+      return true;
     },
-    [_canSelectItem],
+    [_canSelectItem, entityType],
   );
 
   const { tryLogRecentItem } = useLogRecentItem();
@@ -133,6 +205,11 @@ export const CollectionPickerModal = ({
     }
   };
 
+  const canCreateCollectionInSelected =
+    selectedItem?.can_write !== false &&
+    (selectedItem?.model !== "collection" ||
+      canPlaceEntityInCollection("collection", selectedItem.type));
+
   const modalActions = options.allowCreateNew
     ? _.compact([
         models.includes("dashboard") && (
@@ -151,7 +228,7 @@ export const CollectionPickerModal = ({
           miw="9.5rem"
           onClick={openCreateCollectionDialog}
           leftSection={<Icon name="collection" />}
-          disabled={selectedItem?.can_write === false}
+          disabled={!canCreateCollectionInSelected}
         >
           {t`New collection`}
         </Button>,
@@ -201,11 +278,22 @@ export const CollectionPickerModal = ({
   const composedSearchResultFilter = useCallback(
     (searchResults: SearchResult[]) => {
       if (searchResultFilter) {
-        return searchFilter(searchResultFilter(searchResults));
+        return searchFilter(searchResultFilter(searchResults), entityType);
       }
-      return searchFilter(searchResults);
+      return searchFilter(searchResults, entityType);
     },
-    [searchResultFilter],
+    [searchResultFilter, entityType],
+  );
+
+  const composedRecentFilter = useCallback(
+    (recentItems: RecentItem[]) => {
+      const filtered = recentItemFilter(recentItems, entityType);
+      if (recentFilter) {
+        return recentFilter(filtered);
+      }
+      return filtered;
+    },
+    [recentFilter, entityType],
   );
 
   const parentCollectionId = useMemo(() => {
@@ -236,7 +324,7 @@ export const CollectionPickerModal = ({
         tabs={tabs}
         options={options}
         searchResultFilter={composedSearchResultFilter}
-        recentFilter={recentFilter}
+        recentFilter={composedRecentFilter}
         actionButtons={modalActions}
         trapFocus={!isCreateCollectionDialogOpen}
         disableCloseOnEscape={

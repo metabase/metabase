@@ -245,6 +245,18 @@
         } ]
       },
       "mbql.clause.coalesce" : { },
+      "mbql.clause.collate" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "collate"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        }, {
+          "type" : "string"
+        } ]
+      },
       "mbql.clause.concat" : { },
       "mbql.clause.contains" : { },
       "mbql.clause.convert-timezone" : { },
@@ -3259,6 +3271,114 @@
         "description" : "value must be a valid attribute remappings map (attribute name -> remapped name)",
         "optional" : true
       },
+      "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
+        "description" : "Schema for POST /api/ee/support-access-grants request body.",
+        "type" : "object",
+        "properties" : {
+          "grant_duration_minutes" : {
+            "type" : "integer",
+            "minimum" : 1,
+            "maximum" : 10080
+          },
+          "notes" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 255
+          },
+          "ticket_number" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 100
+          }
+        },
+        "required" : [ "grant_duration_minutes" ]
+      },
+      "metabase-enterprise.support-access-grants.schema.current-grant-response" : {
+        "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response",
+        "description" : "Schema for GET /api/ee/support-access-grants/current response.",
+        "optional" : true
+      },
+      "metabase-enterprise.support-access-grants.schema.grant-response" : {
+        "description" : "Schema for a support access grant object in API responses.",
+        "type" : "object",
+        "properties" : {
+          "user_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "user_name" : {
+            "type" : "string"
+          },
+          "user_email" : {
+            "type" : "string"
+          },
+          "grant_end_timestamp" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "revoked_at" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "revoked_by_user_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "ticket_number" : {
+            "type" : "string"
+          },
+          "updated_at" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "created_at" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "grant_start_timestamp" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          }
+        },
+        "required" : [ "id", "user_id", "grant_start_timestamp", "grant_end_timestamp", "created_at", "updated_at" ]
+      },
+      "metabase-enterprise.support-access-grants.schema.list-grants-response" : {
+        "description" : "Schema for GET /api/ee/support-access-grants response (paginated list).",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response"
+            }
+          },
+          "limit" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "offset" : {
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "total" : {
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "data", "total", "limit", "offset" ]
+      },
+      "metabase-enterprise.support-access-grants.schema.timestamp" : {
+        "anyOf" : [ { }, { } ]
+      },
       "metabase-enterprise.transforms.api.run-trigger" : {
         "type" : "string",
         "enum" : [ "none", "global-schedule" ]
@@ -3853,7 +3973,7 @@
           "required" : [ "type", "subject", "body" ]
         } ]
       },
-      "metabase.collections.api.DashboardQuestionCandidate" : {
+      "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
         "properties" : {
           "description" : {
@@ -3885,13 +4005,13 @@
         },
         "required" : [ "id", "name", "sole_dashboard_info" ]
       },
-      "metabase.collections.api.DashboardQuestionCandidatesResponse" : {
+      "metabase.collections-rest.api.DashboardQuestionCandidatesResponse" : {
         "type" : "object",
         "properties" : {
           "data" : {
             "type" : "array",
             "items" : {
-              "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidate"
+              "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidate"
             }
           },
           "total" : {
@@ -3900,7 +4020,7 @@
         },
         "required" : [ "data", "total" ]
       },
-      "metabase.collections.api.MoveDashboardQuestionCandidatesResponse" : {
+      "metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse" : {
         "type" : "object",
         "properties" : {
           "moved" : {
@@ -5183,6 +5303,8 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.text"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.split-part"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.collate"
         } ]
       },
       "metabase.legacy-mbql.schema.StringExpressionArg" : {
@@ -5395,6 +5517,10 @@
       },
       "metabase.legacy-mbql.schema.coalesce" : {
         "description" : "schema for a valid MBQL 4 :coalesce clause",
+        "allOf" : [ ]
+      },
+      "metabase.legacy-mbql.schema.collate" : {
+        "description" : "schema for a valid MBQL 4 :collate clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.concat" : {
@@ -6830,6 +6956,8 @@
           "$ref" : "#/components/schemas/mbql.clause.ceil"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.collate"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.concat"
         }, {
@@ -9211,7 +9339,7 @@
         "type" : "string",
         "enum" : [ "events" ]
       },
-      "metabase.users.api.user-group-membership" : {
+      "metabase.users-rest.api.user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
         "properties" : {
@@ -9267,12 +9395,12 @@
         },
         "required" : [ "schedule_type" ]
       },
-      "metabase.warehouse-schema.api.table.data-authority-write" : {
+      "metabase.warehouse-schema-rest.api.table.data-authority-write" : {
         "description" : "Schema for writing a valid table data authority.",
         "type" : "string",
         "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
       },
-      "metabase.warehouses.api.available-settings" : {
+      "metabase.warehouses-rest.api.available-settings" : {
         "type" : "object",
         "additionalProperties" : {
           "type" : "object",
@@ -9704,6 +9832,7 @@
             "description" : "Server error response"
           }
         },
+        "deprecated" : true,
         "tags" : [ "/api/activity" ]
       }
     },
@@ -12394,10 +12523,6 @@
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
-                  },
-                  "type" : {
-                    "type" : "string",
-                    "enum" : [ "remote-synced" ]
                   }
                 },
                 "required" : [ "name" ]
@@ -12530,7 +12655,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -12656,7 +12781,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.MoveDashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -12914,7 +13039,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.DashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.DashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -13049,7 +13174,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase.collections.api.MoveDashboardQuestionCandidatesResponse"
+                  "$ref" : "#/components/schemas/metabase.collections-rest.api.MoveDashboardQuestionCandidatesResponse"
                 }
               }
             }
@@ -13109,6 +13234,7 @@
             "description" : "Server error response"
           }
         },
+        "deprecated" : true,
         "tags" : [ "/api/dashboard" ]
       },
       "post" : {
@@ -15119,7 +15245,7 @@
                   "type" : "object",
                   "properties" : {
                     "settings" : {
-                      "$ref" : "#/components/schemas/metabase.warehouses.api.available-settings"
+                      "$ref" : "#/components/schemas/metabase.warehouses-rest.api.available-settings"
                     }
                   },
                   "required" : [ "settings" ]
@@ -21087,6 +21213,149 @@
         "tags" : [ "/api/ee/stale" ]
       }
     },
+    "/api/ee/support-access-grant/" : {
+      "post" : {
+        "summary" : "POST /api/ee/support-access-grant/",
+        "description" : "Create a new support access grant.\n\n  Requires superuser permissions. Only one active grant can exist at a time.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for a support access grant object in API responses.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.create-grant-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      },
+      "get" : {
+        "summary" : "GET /api/ee/support-access-grant/",
+        "description" : "List support access grants with optional filtering and pagination.\n\n  Requires superuser permissions.\n\n  Query parameters:\n  - ticket-number: Filter by ticket number\n  - user-id: Filter by user who created the grant\n  - include-revoked: Include revoked grants (default false)",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "ticket-number",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "user-id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include-revoked",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for GET /api/ee/support-access-grants response (paginated list).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.list-grants-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      }
+    },
+    "/api/ee/support-access-grant/current" : {
+      "get" : {
+        "summary" : "GET /api/ee/support-access-grant/current",
+        "description" : "Get the currently active support access grant, if one exists.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for GET /api/ee/support-access-grants/current response.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.current-grant-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      }
+    },
+    "/api/ee/support-access-grant/{id}/revoke" : {
+      "put" : {
+        "summary" : "PUT /api/ee/support-access-grant/{id}/revoke",
+        "description" : "Revoke an existing support access grant.\n\n  Requires superuser permissions. Any admin can revoke any grant.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for a support access grant object in API responses.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      }
+    },
     "/api/ee/transform-job/" : {
       "post" : {
         "summary" : "POST /api/ee/transform-job/",
@@ -25813,6 +26082,25 @@
         "tags" : [ "/api/preview_embed" ]
       }
     },
+    "/api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}",
+        "description" : "Embedded version of chain filter search endpoint.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
     "/api/preview_embed/dashboard/{token}/params/{param-key}/values" : {
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/values",
@@ -28814,7 +29102,7 @@
                     "enum" : [ "technical", "hidden", "cruft" ]
                   },
                   "data_authority" : {
-                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -28977,7 +29265,7 @@
                     "enum" : [ "technical", "hidden", "cruft" ]
                   },
                   "data_authority" : {
-                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
                   "show_in_getting_started" : {
                     "type" : "boolean"
@@ -30473,7 +30761,7 @@
                   "user_group_memberships" : {
                     "type" : "array",
                     "items" : {
-                      "$ref" : "#/components/schemas/metabase.users.api.user-group-membership"
+                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                     }
                   }
                 },
@@ -30611,7 +30899,7 @@
                   "user_group_memberships" : {
                     "type" : "array",
                     "items" : {
-                      "$ref" : "#/components/schemas/metabase.users.api.user-group-membership"
+                      "$ref" : "#/components/schemas/metabase.users-rest.api.user-group-membership"
                     }
                   }
                 }

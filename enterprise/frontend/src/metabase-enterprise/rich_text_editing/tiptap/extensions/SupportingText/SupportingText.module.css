@@ -2,7 +2,6 @@
   height: 100%;
   position: relative;
   border-radius: var(--mantine-radius-md);
-  overflow: hidden;
   background-color: var(--mb-color-background-light);
   border: 1px solid transparent;
   transition:
@@ -43,15 +42,25 @@
   caret-color: auto;
 }
 
+/* Prevent dropCursor from displaying while dragging over SupportingText contents */
+:global(.dragging) .scrollContainer {
+  pointer-events: none;
+}
+
 .handle {
-  cursor: pointer;
+  cursor: grab;
   height: 1rem;
   position: absolute;
   top: 0;
   width: 100%;
+  user-select: none; /* Needed to make this handle draggable in FF */
 
   &:focus-visible {
     outline: none !important;
+  }
+
+  &:active {
+    cursor: grabbing;
   }
 }
 

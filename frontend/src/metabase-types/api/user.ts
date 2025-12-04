@@ -42,6 +42,7 @@ export interface BaseUser {
 }
 
 export interface User extends BaseUser {
+  attributes: UserAttributeMap | null;
   login_attributes: UserAttributeMap | null;
   structured_attributes?: StructuredUserAttributes;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
@@ -152,6 +153,11 @@ export type UserKeyValue =
         last_download_format: "csv" | "xlsx" | "json" | "png";
         last_table_download_format: "csv" | "xlsx" | "json";
       };
+    }
+  | {
+      namespace: "transforms";
+      key: string;
+      value: "tree" | "alphabetical" | "last-modified";
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

@@ -3019,7 +3019,7 @@
                                      :dataset_query (mbql-count-query)}]
       (is (=? {:display "table" :type "model"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                    (assoc card :type :model :type "model")))))))
+                                    (assoc card :type :model)))))))
 
 ;;; See also:
 ;;;

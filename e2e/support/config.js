@@ -4,6 +4,8 @@ import path from "node:path";
 import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
+import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
+
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
@@ -26,8 +28,6 @@ const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
-
-const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -123,14 +123,11 @@ const defaultConfig = {
      **                          CONFIG                                **
      ********************************************************************/
 
-    if (!isQaDatabase) {
-      config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
-    }
-
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
     config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
+    config.env.grepOmitFiltered = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
@@ -156,6 +153,8 @@ const defaultConfig = {
 
     return config;
   },
+  baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+  defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
@@ -203,19 +202,9 @@ const mainConfig = {
   },
 };
 
-const snapshotsConfig = {
-  ...defaultConfig,
-  specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
-  video: false,
-};
-
-const stressTestConfig = {
-  ...defaultConfig,
-  retries: 0,
-};
-
 const embeddingSdkComponentTestConfig = {
   ...defaultConfig,
+  baseUrl: undefined, // baseUrl should not be set for component tests,
   defaultCommandTimeout: 10000,
   requestTimeout: 10000,
   video: false,
@@ -235,8 +224,7 @@ const embeddingSdkComponentTestConfig = {
 };
 
 module.exports = {
+  defaultConfig,
   mainConfig,
-  snapshotsConfig,
-  stressTestConfig,
   embeddingSdkComponentTestConfig,
 };
