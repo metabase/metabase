@@ -100,6 +100,9 @@ export const MainNavSharedCollections = () => {
   }
 
   const userTenantCollectionId = currentUser?.tenant_collection_id;
+  const hasSharedTenantCollections = tenantCollectionsList.length > 0;
+  const shouldShowSharedCollectionsSection =
+    isAdmin || hasSharedTenantCollections;
 
   return (
     <>
@@ -115,35 +118,37 @@ export const MainNavSharedCollections = () => {
         </SidebarSection>
       )}
 
-      <SidebarSection>
-        <Flex align="center" justify="space-between">
-          <SidebarHeading>{t`Tenant collections`}</SidebarHeading>
+      {shouldShowSharedCollectionsSection && (
+        <SidebarSection>
+          <Flex align="center" justify="space-between">
+            <SidebarHeading>{t`Tenant collections`}</SidebarHeading>
+            {isAdmin && (
+              <Tooltip label={t`Create a new tenant collection`}>
+                <ActionIcon
+                  color="text-medium"
+                  onClick={() => setModalOpen(true)}
+                >
+                  <Icon name="add" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Flex>
+          <Tree
+            data={tenantCollectionTree}
+            TreeNode={SidebarCollectionLink}
+            role="tree"
+            aria-label="tenant-collection-tree"
+            rightSection={(item) =>
+              showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
+            }
+          />
           {isAdmin && (
-            <Tooltip label={t`Create a new tenant collection`}>
-              <ActionIcon
-                color="text-medium"
-                onClick={() => setModalOpen(true)}
-              >
-                <Icon name="add" />
-              </ActionIcon>
-            </Tooltip>
+            <PaddedSidebarLink icon="folder" url={tenantSpecificCollections()}>
+              {t`Tenant-Specific Collections`}
+            </PaddedSidebarLink>
           )}
-        </Flex>
-        <Tree
-          data={tenantCollectionTree}
-          TreeNode={SidebarCollectionLink}
-          role="tree"
-          aria-label="tenant-collection-tree"
-          rightSection={(item) =>
-            showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
-          }
-        />
-        {isAdmin && (
-          <PaddedSidebarLink icon="folder" url={tenantSpecificCollections()}>
-            {t`Tenant-Specific Collections`}
-          </PaddedSidebarLink>
-        )}
-      </SidebarSection>
+        </SidebarSection>
+      )}
       <Modal
         opened={modalOpen}
         title={t`New shared tenant collection`}
