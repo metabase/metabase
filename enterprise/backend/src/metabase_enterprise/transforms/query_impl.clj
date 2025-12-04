@@ -50,14 +50,14 @@
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
-           transform-details {:db-id db
-                              :database database
+           transform-details {:db-id          db
+                              :database       database
                               :transform-id   id
                               :transform-type (keyword (:type target))
-                              :conn-spec (driver/connection-spec driver database)
-                              :query (transforms.util/compile-source transform)
-                              :output-schema (:schema target)
-                              :output-table (transforms.util/qualified-table-name driver target)}
+                              :conn-spec      (driver/connection-spec driver database)
+                              :query          (transforms.util/compile-source transform)
+                              :output-schema  (:schema target)
+                              :output-table   (transforms.util/qualified-table-name driver target)}
            opts (transform-opts transform-details)
            features (transforms.util/required-database-features transform)]
        (when (transforms.util/db-routing-enabled? database)

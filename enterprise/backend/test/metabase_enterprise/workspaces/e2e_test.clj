@@ -2,14 +2,21 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.core :as workspaces]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- execute-workspace-transform!
+  "Execute a transform within workspace isolation context. For testing purposes."
+  [workspace transform opts]
+  (workspaces/with-workspace-isolation workspace
+    (transforms.i/execute! transform opts)))
+
 (deftest isolation-e2e-test
-  (mt/test-drivers #_(mt/normal-drivers-with-feature :workspace) #{:postgres}
+  (mt/test-drivers #_(mt/normal-drivers-with-feature :isolation) #{:postgres}
     (mt/with-model-cleanup [:model/Transform :model/Workspace]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform 1"
                                                           :source {:type  "query"
@@ -24,7 +31,7 @@
                                                                     :upstream    {:transforms [transform-id]}}))
               isolated-transform-id (t2/select-one-fn :downstream_id :model/WorkspaceMappingTransform :workspace_id (:id workspace))
               isolated-transform    (t2/select-one :model/Transform isolated-transform-id)
-              executed-transform    (transforms.execute/execute! isolated-transform {:run-method :manual})
+              executed-transform    (execute-workspace-transform! workspace isolated-transform {:run-method :manual})
               output-table          (-> executed-transform :object :output-table)]
           (testing "execute the transform with the original query is fine and the output is in an isolated schema"
             (transforms.tu/wait-for-table (name output-table) 1000)
@@ -38,4 +45,4 @@
             (is (thrown-with-msg?
                  Exception
                  #"ERROR: permission denied for table.*"
-                 (transforms.execute/execute! (t2/select-one :model/Transform isolated-transform-id) {:run-method :manual})))))))))
+                 (execute-workspace-transform! workspace (t2/select-one :model/Transform isolated-transform-id) {:run-method :manual})))))))))

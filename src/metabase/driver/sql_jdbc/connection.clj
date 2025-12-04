@@ -220,7 +220,7 @@
   database-id->connection-pool
   (atom {}))
 
-(def ^:private ^Cache ^{:doc "A Guava cache of swapped connection pools with TTL-based expiration,
+(defonce ^:private ^Cache ^{:doc "A Guava cache of swapped connection pools with TTL-based expiration,
   keyed by database-id. Pools are evicted after inactivity. Since nested swaps for the same
   database are not allowed, there can only be one swapped pool per database at a time."}
   swapped-connection-pools

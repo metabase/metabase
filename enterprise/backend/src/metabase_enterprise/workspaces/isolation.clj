@@ -26,8 +26,11 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti duplicate-output-table!
-  "Create an isolated copy of the given output tables, for a workspace transform to write to."
-  {:added "0.59.0" :arglists '([database transform])}
+  "Create an isolated copy of the given output tables, for a workspace transform to write to.
+
+  TODO: Consider removing this method once we have 'remap-on-execute' semantics, where
+  transforms write directly to the isolated location without needing to duplicate existing tables."
+  {:added "0.59.0" :arglists '([database workspace output])}
   #'dispatch-on-engine
   :hierarchy #'driver/hierarchy)
 
@@ -63,7 +66,7 @@
                                                :workspace_id  (:id workspace)})
                                   (assoc hydrated-output :mapping isolated-table))
                                 ;; Table doesn't exist yet, provide the intended isolated location
-                                (let [isolated-schema (driver.common/isolation-schema-name (:id workspace))
+                                (let [isolated-schema (driver.common/isolation-namespace-name workspace)
                                       isolated-name   (driver.common/isolated-table-name upstream-output)]
                                   (assoc upstream-output :mapping {:id     nil
                                                                    :schema isolated-schema

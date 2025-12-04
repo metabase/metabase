@@ -11,6 +11,6 @@
 (defmethod isolation/init-workspace-database-isolation! :h2
   [database workspace]
   (let [driver      (driver.u/database->driver database)
-        schema-name (driver.common/isolation-schema-name (:id workspace))
+        schema-name (driver.common/isolation-namespace-name workspace)
         jdbc-spec   (sql-jdbc.conn/connection-details->spec driver (:details database))]
     (jdbc/execute! jdbc-spec [(format "CREATE SCHEMA %s" schema-name)])))

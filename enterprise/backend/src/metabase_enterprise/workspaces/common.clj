@@ -95,7 +95,7 @@
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
                                                 :workspace_id (:id ws)})
-        schema  (driver.common/isolation-schema-name (:id ws))
+        schema  (driver.common/isolation-namespace-name ws)
         ws      (assoc ws
                        :collection_id (:id coll)
                        :schema schema)]

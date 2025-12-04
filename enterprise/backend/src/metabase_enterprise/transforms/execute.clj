@@ -1,17 +1,18 @@
 (ns metabase-enterprise.transforms.execute
   (:require
-   [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.workspaces.core :as workspaces]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.transforms.interface :as transforms.i]))
 
 (set! *warn-on-reflection* true)
 
 (defn execute!
-  "Execute a transform."
+  "Execute a transform.
+
+  For workspace transforms, execution must go through the workspace-specific endpoint.
+  Calling this function directly with a workspace transform will throw a 404 error."
   [transform opts]
-  (let [thunk (fn [] (transforms.i/execute! transform opts))]
-    (if-let [workspace (and (:workspace_id transform)
-                            (t2/select-one :model/Workspace (:workspace_id transform)))]
-      (workspaces/with-workspace-isolation workspace
-        (thunk))
-      (thunk))))
+  (when (:workspace_id transform)
+    (throw (ex-info "Workspace transforms must be executed through the workspace API"
+                    {:status-code 404
+                     :transform-id (:id transform)
+                     :workspace-id (:workspace_id transform)})))
+  (transforms.i/execute! transform opts))

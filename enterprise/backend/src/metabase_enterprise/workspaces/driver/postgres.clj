@@ -10,23 +10,19 @@
 
 (defmethod isolation/grant-read-access-to-tables! :postgres
   [database username tables]
-  (let [driver         (driver.u/database->driver database)
-        jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (:details database))
-        sqls           (->> (for [table tables]
-                              [(format "GRANT USAGE ON SCHEMA %s TO %s" (:schema table) username)
-                               (format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) username)])
-                            flatten
-                            ;; drop mutliple grant usage on the same schema
-                            distinct)]
-
-    (doseq [sql sqls]
-      (jdbc/execute! jdbc-spec [sql]))))
+  (let [driver    (driver.u/database->driver database)
+        jdbc-spec (sql-jdbc.conn/connection-details->spec driver (:details database))
+        schemas   (distinct (map :schema tables))]
+    (doseq [schema schemas]
+      (jdbc/execute! jdbc-spec [(format "GRANT USAGE ON SCHEMA %s TO %s" schema username)]))
+    (doseq [table tables]
+      (jdbc/execute! jdbc-spec [(format "GRANT SELECT ON TABLE %s.%s TO %s" (:schema table) (:name table) username)]))))
 
 (defmethod isolation/init-workspace-database-isolation! :postgres
   [database workspace]
   (let [driver        (driver.u/database->driver database)
-        schema-name   (driver.common/isolation-schema-name (:id workspace))
-        read-user     {:user     (driver.common/isolation-user-name (:id workspace))
+        schema-name   (driver.common/isolation-namespace-name workspace)
+        read-user     {:user     (driver.common/isolation-user-name workspace)
                        :password (str (random-uuid))}
         jdbc-spec     (sql-jdbc.conn/connection-details->spec driver (:details database))]
     (doseq [sql [(format "CREATE SCHEMA %s" schema-name)
