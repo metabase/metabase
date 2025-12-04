@@ -859,8 +859,8 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: result
-                  type: varchar(20)
-                  remarks: The result of the analysis - ok, broken, etc.
+                  type: ${boolean.type}
+                  remarks: The result of the analysis - true for passed, false for failed
                   constraints:
                     nullable: false
               - column:

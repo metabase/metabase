@@ -10,26 +10,24 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-;; Analyzing an entity in memroy ================================================================
+;; Analyzing an entity in memory ================================================================
 (mu/defn- check-query
   "Find any bad refs in a `query`."
   [driver :- :keyword
    query  :- ::lib.schema/query]
   (if (lib/any-native-stage? query)
-    (deps.native/validate-native-query driver query)
-    (lib/find-bad-refs query)))
+    (m/assoc-some {} :native-issues (seq (deps.native/validate-native-query driver query)))
+    (m/assoc-some {} :bad-refs (seq (lib/find-bad-refs query)))))
 
-#_(defmulti check-entity
-    "Given an entity type and an entity id, find any bad refs in that entity.
+(defmulti check-entity
+  "Given a metadata provider, an entity type and an entity id, find any bad refs in that entity."
+  {:arglists '([metadata-provider entity-type entity-id])}
+  (fn [_metadata-provider entity-type _entity-id]
+    entity-type))
 
-  To control the `MetadataProvider` used for the analysis, bind [[*analysis-metadata-provider*]]."
-    {:arglists '([entity-type entity-id])}
-    (fn [entity-type _entity-id]
-      entity-type))
-
-#_(defmethod check-entity :default
-    [_entity-type _entity-id]
-    nil)
+(defmethod check-entity :default
+  [_entity-type _entity-id]
+  nil)
 
 (mr/def ::query-findings
   [:map
@@ -39,10 +37,11 @@
 (mr/def ::card-findings
   [:ref ::query-findings])
 
-(mu/defn analyze-entity:card :- [:maybe ::card-findings]
+(mu/defmethod check-entity :card :- [:maybe ::card-findings]
   "Given a `MetadataProvider` and a card ID, analyses the card's query to find any bad refs or other issues.
   Returns any findings, and `nil` for a clean query."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
+   _entity-type
    card-id           :- pos-int?]
   (let [query  (lib/query metadata-provider (:dataset-query (lib.metadata/card metadata-provider card-id)))
         driver (:engine (lib.metadata/database query))]
@@ -54,11 +53,12 @@
    [:map
     [:duplicated-fields {:optional true} [:sequential ::lib.schema.metadata/metadata-provider]]]])
 
-(mu/defn analyze-entity:transform :- [:maybe ::transform-findings]
+(mu/defmethod check-entity :transform :- [:maybe ::transform-findings]
   "Given a `MetadataProvider` and a transform ID, analyses the transform's query to find any bad refs or other issues.
 
   Returns any findings, and `nil` for a clean transform."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
+   _entity-type
    transform-id      :- pos-int?]
   (let [{{target-schema :schema target-name :name} :target
          {query :query} :source
@@ -77,7 +77,3 @@
                                not-empty)]
     (cond-> (check-query driver query)
       duplicated-fields (assoc :duplicated-fields duplicated-fields))))
-
-(mu/defn check-entity :- :boolean
-  "Given a `MetadataProvider`, an `entity-type` and its `id`, check that entity."
-  [metadata-provider :- ::lib.schema.metadata/metadata-provider])
