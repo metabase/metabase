@@ -48,23 +48,12 @@ const ordersQuestionDetails: QuestionDetails = {
   },
 };
 
-describe("scenarios > data studio > table publishing", () => {
+describe("scenarios > data studio > table collection permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.createLibrary();
-  });
-
-  describe("unpublishing", () => {
-    it("should not be able to access a published table when it is unpublished", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.unpublishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      assertPermissionError();
-    });
   });
 
   describe("queries", () => {
@@ -73,7 +62,7 @@ describe("scenarios > data studio > table publishing", () => {
 
       cy.signIn("nodata");
       cy.visit("/");
-      H.appBar().button("New").click();
+      H.newButton().click();
       H.popover().within(() => {
         cy.findByText("Question").should("be.visible");
         cy.findByText("SQL query").should("not.exist");
@@ -405,14 +394,54 @@ describe("scenarios > data studio > table publishing", () => {
     });
   });
 
-  describe("token features", () => {
-    it("should not be able to access a published table when the token no longer has required features", () => {
+  describe("unpublishing", () => {
+    it("should not be able to access a previously published table when it is unpublished", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.activateToken("starter");
+      H.unpublishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
       assertPermissionError();
+    });
+
+    it("should not be able to create questions when all published tables are unpublished", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+      H.unpublishTables({ database_ids: [SAMPLE_DB_ID] });
+
+      cy.signIn("nodata");
+      H.newButton().click();
+      H.popover().within(() => {
+        cy.findByText("Dashboard").should("be.visible");
+        cy.findByText("Question").should("not.exist");
+      });
+    });
+  });
+
+  describe("losing token features", () => {
+    it("should be able to view a published table in the sidebar and the collection but not query it", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+      H.activateToken("starter");
+
+      cy.signIn("nodata");
+      cy.visit("/");
+      H.navigationSidebar()
+        .findByLabelText("Library")
+        .findByText("Data")
+        .click();
+      H.collectionTable().findByText("Products").click();
+      assertPermissionError();
+    });
+
+    it("should not be able to create questions even if there are published tables", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+      H.activateToken("starter");
+
+      cy.signIn("nodata");
+      H.newButton().click();
+      H.popover().within(() => {
+        cy.findByText("Dashboard").should("be.visible");
+        cy.findByText("Question").should("not.exist");
+      });
     });
   });
 });

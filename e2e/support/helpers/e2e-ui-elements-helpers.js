@@ -583,7 +583,7 @@ export function assertTableData({ columns, firstRows = [] }) {
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
  * @returns
  */
-export function newButton(menuItem) {
+export function newButton(menuItem = undefined) {
   if (menuItem) {
     cy.findByTestId("app-bar").button("New").click();
     return popover().findByText(menuItem);
