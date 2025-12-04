@@ -105,7 +105,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             />
             <ListItem
               title={t`Version control`}
-              description={t`Sync your library to Git for governance`}
+              description={t`Sync your Library to Git`}
             />
             <ListItem
               title={t`High trust`}
