@@ -11,7 +11,7 @@ describe("tenant collections", () => {
     await setup();
 
     await userEvent.click(
-      await screen.findByRole("link", { name: /Tenant Collections/ }),
+      await screen.findByRole("link", { name: /Shared collections/ }),
     );
 
     await userEvent.click(await screen.findByRole("link", { name: /tcoll/ }));
@@ -34,7 +34,7 @@ describe("tenant collections", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: /Tenant Collections/ }),
+      await screen.findByRole("link", { name: /Shared collections/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(await screen.findByRole("link", { name: /tcoll/ })).toHaveAttribute(
