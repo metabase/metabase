@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms.incremental-test
   "Tests for incremental transforms functionality."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -552,3 +553,130 @@
                           checkpoint (get-checkpoint-value (:id transform))]
                       (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                       (is (some? checkpoint) "Checkpoint should be updated"))))))))))))
+
+(deftest filter-column-indexed-test
+  (testing "Running an incremental transform twice processes only new data on second run"
+    (doseq [checkpoint-type [:integer]
+            transform-type  [:native :mbql #_:python]
+            :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
+      (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
+        (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
+          (mt/with-premium-features #{:transforms :transforms-python}
+            (mt/dataset transforms-dataset/transforms-test
+              (with-transform-cleanup! [target-table "incremental_index"]
+                (let [checkpoint-config (get checkpoint-configs checkpoint-type)
+                      transform-payload (make-incremental-transform-payload "Incremental Transform" target-table transform-type checkpoint-config)]
+                  (mt/with-temp [:model/Transform transform transform-payload]
+                    (testing "First run creates index on checkpoint column"
+                      (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
+                      (transforms.tu/wait-for-table target-table 10000)
+                      (let [table      (t2/select-one :model/Table :name target-table)
+                            indexes    (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})
+                            field-name (:field-name checkpoint-config)]
+                        (testing "Index was created"
+                          (is (seq indexes) "At least one index should exist"))
+                        (testing "Index covers the checkpoint filter column"
+                          (is (some #(= field-name (:value %)) indexes)
+                              (format "Should have an index on the checkpoint column '%s'" field-name)))
+                        (testing "Index name follows metabase convention"
+                          (is (some #(str/starts-with? (:index-name %) "mb_transform_idx_") indexes)
+                              "Index name should start with mb_transform_idx_ prefix"))))
+
+                    (testing "Second run succeeds with existing index"
+                      (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
+                      (let [table      (t2/select-one :model/Table :name target-table)
+                            indexes    (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})
+                            field-name (:field-name checkpoint-config)
+                            row-count  (get-table-row-count target-table)]
+                        (testing "Index still exists"
+                          (is (seq indexes) "Index should still exist after second run")
+                          (is (some #(= field-name (:value %)) indexes)
+                              "Index on checkpoint column should still exist"))
+                        (testing "Data was processed correctly"
+                          (is (= 16 row-count) "Second run should have processed remaining rows"))))))))))))))
+
+(deftest index-cleanup-on-switch-to-non-incremental-test
+  (testing "Switching to non-incremental removes metabase-owned indexes"
+    (doseq [checkpoint-type [:integer]
+            transform-type  [:native :mbql]
+            :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
+      (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
+        (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
+          (mt/with-premium-features #{:transforms}
+            (mt/dataset transforms-dataset/transforms-test
+              (with-transform-cleanup! [target-table "index_cleanup_non_incr"]
+                (let [checkpoint-config   (get checkpoint-configs checkpoint-type)
+                      {:keys [field-name]} checkpoint-config
+                      incremental-payload (make-incremental-transform-payload "Index Cleanup Transform" target-table transform-type checkpoint-config)]
+                  (mt/with-temp [:model/Transform transform incremental-payload]
+                    (testing "First incremental run creates index"
+                      (execute-transform-with-ordering! transform transform-type field-name {:run-method :manual})
+                      (transforms.tu/wait-for-table target-table 10000)
+                      (let [table   (t2/select-one :model/Table :name target-table)
+                            indexes (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})]
+                        (is (seq indexes) "Index should exist after first incremental run")
+                        (is (some #(= field-name (:value %)) indexes)
+                            "Index should cover checkpoint column")))
+
+                    (testing "Switch to non-incremental via API"
+                      (let [non-incremental-payload (-> incremental-payload
+                                                        (update :source dissoc :source-incremental-strategy)
+                                                        (update :target assoc :type "table"))
+                            updated                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
+                                                                          non-incremental-payload)]
+                        (is (= "table" (-> updated :target :type)))))
+
+                    (testing "Non-incremental run removes metabase-owned indexes"
+                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                        (execute-transform-with-ordering! transform transform-type field-name {:run-method :manual})
+                        (let [table      (t2/select-one :model/Table :name target-table)
+                              indexes    (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})
+                              mb-indexes (filter #(str/starts-with? (:index-name %) "mb_transform_idx_") indexes)]
+                          (testing "Metabase-owned indexes are dropped"
+                            (is (empty? mb-indexes) "No metabase-owned indexes should remain for non-incremental transform")))))))))))))))
+
+(deftest index-cleanup-on-checkpoint-column-change-test
+  (testing "Changing checkpoint column removes old index and creates new one"
+    (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target-table "icchange"]
+            (let [integer-config  (get checkpoint-configs :integer)
+                  float-config    (get checkpoint-configs :float)
+                  initial-field   (:field-name integer-config)
+                  new-field       (:field-name float-config)
+                  transform-type  :native
+                  initial-payload (make-incremental-transform-payload "Column Change Transform" target-table transform-type integer-config)]
+              (mt/with-temp [:model/Transform transform initial-payload]
+                (testing "First run with integer checkpoint creates index on id column"
+                  (execute-transform-with-ordering! transform transform-type initial-field {:run-method :manual})
+                  (transforms.tu/wait-for-table target-table 10000)
+                  (let [table      (t2/select-one :model/Table :name target-table)
+                        indexes    (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})
+                        mb-indexes (filter #(str/starts-with? (:index-name %) "mb_transform_idx_") indexes)]
+                    (is (seq mb-indexes) "Should have metabase-owned index")
+                    (is (some #(= initial-field (:value %)) indexes)
+                        (format "Should have index on %s column" initial-field))
+                    (is (nil? (some #(= new-field (:value %)) mb-indexes))
+                        (format "Should not have index on %s column yet" new-field))))
+
+                (testing "Switch checkpoint column via API"
+                  (let [new-payload (make-incremental-transform-payload "Column Change Transform" target-table transform-type float-config)
+                        updated     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" (:id transform))
+                                                          new-payload)]
+                    (is (= (:field-name float-config) (-> updated :source :source-incremental-strategy :checkpoint-filter)))))
+
+                (testing "Run with new checkpoint column updates indexes"
+                  (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (execute-transform-with-ordering! transform transform-type new-field {:run-method :manual})
+                    (let [table              (t2/select-one :model/Table :name target-table)
+                          indexes            (driver/describe-table-indexes driver/*driver* (mt/id) {:schema (:schema table) :name target-table})
+                          mb-indexes         (filter #(str/starts-with? (:index-name %) "mb_transform_idx_") indexes)
+                          old-column-indexes (filter #(= initial-field (:value %)) mb-indexes)
+                          new-column-indexes (filter #(= new-field (:value %)) mb-indexes)]
+                      (testing "Old checkpoint column index is removed"
+                        (is (empty? old-column-indexes)
+                            (format "Should not have metabase index on old column %s" initial-field)))
+                      (testing "New checkpoint column index is created"
+                        (is (seq new-column-indexes)
+                            (format "Should have metabase index on new column %s" new-field))))))))))))))

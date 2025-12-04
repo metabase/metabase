@@ -68,16 +68,11 @@
            (transforms.util/run-cancelable-transform!
             run-id driver transform-details
             (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
-         ;; create/replace/drop an incremental filter index (if needed)
-         (let [{:keys [desired current]} (transforms.util/incremental-filter-index-status transform target database)]
-           (when (not= desired current)
-             (transforms.instrumentation/with-stage-timing [run-id [:import :table-index]]
-               (some-> current (transforms.util/drop-incremental-filter-index!))
-               (some-> desired (transforms.util/create-incremental-filter-index!)))))
          (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
            (transforms.util/sync-target! target database)
            ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
-           (events/publish-event! :event/transform-run-complete {:object transform-details}))))
+           (events/publish-event! :event/transform-run-complete {:object transform-details}))
+         (transforms.util/execute-secondary-index-ddl-if-required! transform run-id database target)))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise
