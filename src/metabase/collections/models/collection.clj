@@ -770,12 +770,6 @@
                ;; the trash collection is included when viewing archived-only
                [:= :id [:inline (trash-collection-id)]]])
 
-            ;(when-not (perms/trause-transforms)
-            ;  [:not [:exists {:select [1]
-            ;                  :from [[:collection :sub_c]]
-            ;                  :where [:and [:= :c.id :sub_c.id]
-            ;                          [:= :sub_c.namespace [:inline transforms-ns]]]}]])
-
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
               [:or
@@ -1966,7 +1960,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics transforms-ns})
+  #{nil :analytics})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
