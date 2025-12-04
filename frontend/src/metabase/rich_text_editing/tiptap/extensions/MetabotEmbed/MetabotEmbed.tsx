@@ -299,18 +299,24 @@ export const MetabotComponent = memo(
             pos="absolute"
             top={0}
             right={0}
-            p="sm"
-            m="sm"
             opacity="0.5"
             className={S.closeButton}
           >
             {editor.options.editable ? (
-              <Button variant="subtle" size="sm" onClick={() => deleteNode()}>
+              <Button
+                variant="subtle"
+                p="sm"
+                m="sm"
+                size="sm"
+                onClick={() => deleteNode()}
+              >
                 <Icon name="close" data-hide-on-print />
                 <Icon name="metabot" data-show-on-print />
               </Button>
             ) : (
-              <Icon name="metabot" />
+              <Box p="md">
+                <Icon name="metabot" />
+              </Box>
             )}
           </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
