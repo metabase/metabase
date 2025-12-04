@@ -113,4 +113,47 @@ describe("PublishTablesModal", () => {
     await userEvent.click(screen.getByText("Publish these tables"));
     await waitFor(() => expect(onPublish).toHaveBeenCalled());
   });
+
+  it("should be able to publish multiple tables with remapped tables", async () => {
+    const { onPublish } = setup({
+      selectionInfo: createMockBulkTableSelectionInfo({
+        selected_table: null,
+        unpublished_upstream_tables: [
+          createMockBulkTableInfo({
+            id: 2,
+            display_name: "Products",
+          }),
+          createMockBulkTableInfo({
+            id: 3,
+            display_name: "People",
+          }),
+        ],
+      }),
+    });
+    expect(
+      await screen.findByText(
+        "Publish these tables and the tables they depend on?",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Products")).toBeInTheDocument();
+    expect(screen.getByText("People")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Publish these tables"));
+    await waitFor(() => expect(onPublish).toHaveBeenCalled());
+  });
+
+  it("should show a publish error", async () => {
+    const { onPublish } = setup({
+      selectionInfo: createMockBulkTableSelectionInfo({
+        selected_table: createMockBulkTableInfo({
+          id: 1,
+          display_name: "Orders",
+        }),
+      }),
+      hasPublishError: true,
+    });
+    expect(await screen.findByText("Publish Orders?")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Publish this table"));
+    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+    expect(onPublish).not.toHaveBeenCalled();
+  });
 });
