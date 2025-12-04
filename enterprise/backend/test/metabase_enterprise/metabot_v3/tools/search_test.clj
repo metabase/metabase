@@ -241,7 +241,7 @@
       (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest search-test
-  (mt/with-premium-features #{:content-verification :semantic-search}
+  (mt/with-premium-features #{:content-verification}
     (mt/with-test-user :rasta
       (let [order-table {:id 1
                          :model "table"
