@@ -22,3 +22,15 @@ export function setupPublishTablesEndpointError() {
     status: 500,
   });
 }
+
+export function setupUnpublishTablesEndpoint() {
+  fetchMock.post("path:/api/ee/data-studio/table/unpublish-tables", {
+    status: 204,
+  });
+}
+
+export function setupUnpublishTablesEndpointError() {
+  fetchMock.post("path:/api/ee/data-studio/table/unpublish-tables", {
+    status: 500,
+  });
+}
