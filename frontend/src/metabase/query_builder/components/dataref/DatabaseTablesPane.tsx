@@ -14,7 +14,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionId, SearchResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { CollectionTreeNode } from "./CollectionTreeNode";
 import {
   NodeListContainer,
   NodeListIcon,
@@ -24,6 +23,38 @@ import {
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
+import { ResourceTreeNode } from "./ResourceTreeNode";
+
+const groupModelsByCollection = (models: SearchResult[]) => {
+  const grouped = models.reduce(
+    (acc, curr) => {
+      const id = curr.collection.id as CollectionId;
+      const name = getCollectionName(curr.collection);
+
+      if (!(id in acc)) {
+        acc[id] = {
+          id,
+          name,
+          icon: "folder",
+          children: [],
+        };
+      }
+
+      // @ts-expect-error - children is explicitly defined in the previous step
+      acc[id].children.push({
+        id: curr.id,
+        name: curr.name,
+        icon: "model",
+        data: curr,
+      });
+
+      return acc;
+    },
+    {} as Record<CollectionId, ITreeNodeItem>,
+  );
+
+  return Object.values(grouped);
+};
 
 export interface DatabaseTablesPaneProps {
   onBack: () => void;
@@ -54,34 +85,12 @@ export const DatabaseTablesPane = ({
         .sort((a, b) => a.name.localeCompare(b.name)),
     [searchResults],
   );
+
   const modelsByCollection = useMemo(
     () =>
-      Object.values(
-        models.reduce(
-          (acc, curr) => {
-            const id = curr.collection?.id as CollectionId;
-            const name = getCollectionName(curr.collection);
-
-            if (!(id in acc)) {
-              acc[id] = {
-                id,
-                name,
-                icon: "folder",
-                children: [],
-              };
-            }
-
-            acc[id].children!.push({
-              id: curr.id,
-              name: curr.name,
-              icon: "model",
-            });
-
-            return acc;
-          },
-          {} as Record<CollectionId, ITreeNodeItem>,
-        ),
-      ).sort((a, b) => a.name.localeCompare(b.name)),
+      groupModelsByCollection(models).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     [models],
   );
 
@@ -126,7 +135,7 @@ export const DatabaseTablesPane = ({
           </ul>
           {modelsByCollection.length > 0 && (
             <>
-              <NodeListTitle>
+              <NodeListTitle mt={16}>
                 <NodeListIcon name="model" />
                 <NodeListTitleText>
                   {t`${models.length} ${ngettext(
@@ -143,7 +152,7 @@ export const DatabaseTablesPane = ({
               <Tree
                 data={modelsByCollection}
                 TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
-                  <CollectionTreeNode
+                  <ResourceTreeNode
                     {...props}
                     onItemClick={() => onItemClick("question", props.item.data)}
                   />

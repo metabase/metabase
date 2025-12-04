@@ -1,4 +1,4 @@
-.CollectionListItem {
+.ResourceListItem {
   &[data-is-root="false"] {
     margin-left: 32px;
 

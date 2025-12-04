@@ -13,7 +13,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { CollectionTreeNode } from "./CollectionTreeNode";
 import {
   NodeListContainer,
   NodeListIcon,
@@ -23,6 +22,7 @@ import {
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
+import { ResourceTreeNode } from "./ResourceTreeNode";
 
 interface DatabaseSchemasPaneProps {
   onBack: () => void;
@@ -102,8 +102,7 @@ const DatabaseSchemasPane = ({
           </ul>
           {modelsByCollection.length ? (
             <>
-              <br></br>
-              <NodeListTitle>
+              <NodeListTitle mt={16}>
                 <NodeListIcon name="model" />
                 <NodeListTitleText>
                   {t`${models.length} ${ngettext(
@@ -120,7 +119,7 @@ const DatabaseSchemasPane = ({
               <Tree
                 data={modelsByCollection}
                 TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
-                  <CollectionTreeNode
+                  <ResourceTreeNode
                     {...props}
                     onItemClick={() => onItemClick("question", props.item.data)}
                   />
