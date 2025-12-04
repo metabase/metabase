@@ -48,6 +48,7 @@
 
 (defn export!
   "Exports analytics content to resources/instance_analytics/"
+  ([] (export! "resources/instance_analytics"))
   ([target-dir]
    (println (c/bold "\n📤 Exporting analytics content...\n"))
 
@@ -79,7 +80,7 @@
      (println "\nExporting analytics content...")
      (let [result (be-dev/nrepl-eval
                    "metabase-enterprise.audit-app.analytics-dev"
-                   (format "(export-analytics-content! %s \"%s\" \"%s\")"
+                   (format "(export-analytics-content! %s %s \"%s\")"
                            collection-id
                            admin-email
                            target-dir))]

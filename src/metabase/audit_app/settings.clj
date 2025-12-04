@@ -75,7 +75,6 @@ If set to 0, Metabase will keep all rows.")
   :type       :boolean
   :default    false
   :visibility :internal
-  :setter     :none
   :audit      :never
   :export?    false
   :doc        (str "Setting this environment variable to true will  make the Usage analytics collection editable for"
