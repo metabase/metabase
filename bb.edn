@@ -27,10 +27,9 @@
                 ["./bin/mage alias print zsh" "Prints shell script to put into .zshrc for zsh users"]]
    :requires   [[mage.alias :as alias]]
    :arg-schema [:or
-                [:tuple]
-                [:tuple [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
                 [:tuple [:enum {:name "shell-type"} "bash" "zsh" "fish"]]
-                [:tuple [:enum {:name "mode"} "install" "print"] [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
+                [:tuple [:enum {:name "mode"} "install" "print"]
+                        [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
    :task       (task! (alias/instructions parsed))}
 
   cljfmt-staged
