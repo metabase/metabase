@@ -483,6 +483,17 @@ const ResultsItem = ({
     }
   };
 
+  // Dedicated toggle target: always toggles expansion without navigating
+  // regardless of whether the item is currently active.
+  const handleChevronClick = (e: React.MouseEvent) => {
+    if (disabled || !itemHasChildren) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    toggle?.(key);
+  };
+
   return (
     <Flex
       component={Link}
@@ -532,7 +543,14 @@ const ResultsItem = ({
       <Flex align="center" py="xs" w="100%" pl={indent} gap="sm">
         <Flex align="flex-start" gap="xs" className={S.content}>
           <Flex align="center" gap="xs">
-            <Box className={S.chevronSlot} w={INDENT_OFFSET}>
+            <Box
+              className={cx(S.chevronSlot, {
+                [S.hasChildren]: itemHasChildren,
+              })}
+              w={INDENT_OFFSET}
+              aria-label="toggle"
+              onClick={handleChevronClick}
+            >
               {itemHasChildren && (
                 <Icon
                   name="chevronright"
