@@ -4,7 +4,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { Form, FormProvider, FormTextInput } from "metabase/forms";
-<<<<<<< HEAD
+import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import { useRunTransformMutation, workspaceApi } from "metabase-enterprise/api";
@@ -13,13 +13,6 @@ import {
   isSameSource,
   isTransformRunning,
 } from "metabase-enterprise/transforms/utils";
-=======
-import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
-import { useRunTransformMutation } from "metabase-enterprise/api";
-import { workspaceApi } from "metabase-enterprise/api/workspace";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
->>>>>>> b495f64cbdf (Cleanup. Add tables refetching on transform run)
 import type {
   DatabaseId,
   DraftTransformSource,
@@ -33,7 +26,6 @@ import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
 import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
-import { useDispatch } from "metabase/lib/redux";
 
 interface Props {
   databaseId: DatabaseId;
