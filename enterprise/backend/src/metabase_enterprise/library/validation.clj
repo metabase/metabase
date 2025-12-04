@@ -11,7 +11,7 @@
   :feature :data-studio
   [content-type collection-id]
   (when collection-id
-    (when-let [collection-type (t2/select-one-fn :type [:model/Collection :type] :id collection-id)]
+    (when-let [{collection-type :type collection-ns :namespace} (t2/select-one [:model/Collection :type :namespace] :id collection-id)]
       (when (and (= collection-type collection/library-collection-type) (not (contains? #{collection/library-models-collection-type
                                                                                           collection/library-metrics-collection-type}
                                                                                         content-type)))
@@ -19,7 +19,9 @@
       (when (and (= collection-type collection/library-models-collection-type) (not (= :model content-type)))
         (throw (ex-info "Can only add models to the 'Models' collection" {})))
       (when (and (= collection-type collection/library-metrics-collection-type) (not (= :metric content-type)))
-        (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))))
+        (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))
+      (when (and (= collection-ns collection/transforms-ns) (not (= :model/Transform content-type)))
+        (throw (ex-info "Can only add transforms to the 'Transforms' collections" {})))))
   true)
 
 (defenterprise check-library-update

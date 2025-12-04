@@ -93,6 +93,16 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
+(def transforms-ns
+  "Namespace for transforms"
+  :transforms)
+
+(mu/defn transforms-collection?
+  "Whether or not a collection is a transforms collection."
+  [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
+  (= (some-> namespace name)
+     (name transforms-ns)))
+
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -759,6 +769,12 @@
                [:= :c.archived true]
                ;; the trash collection is included when viewing archived-only
                [:= :id [:inline (trash-collection-id)]]])
+
+            ;(when-not (perms/trause-transforms)
+            ;  [:not [:exists {:select [1]
+            ;                  :from [[:collection :sub_c]]
+            ;                  :where [:and [:= :c.id :sub_c.id]
+            ;                          [:= :sub_c.namespace [:inline transforms-ns]]]}]])
 
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
@@ -1950,7 +1966,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics})
+  #{nil :analytics transforms-ns})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see

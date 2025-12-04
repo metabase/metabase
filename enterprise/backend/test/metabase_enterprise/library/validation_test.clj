@@ -61,3 +61,10 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Cannot update properties on a Library collection"
                                 (t2/update! :model/Collection (:id col) {:name "New Name"}))))))))
+
+(deftest check-allowed-content-transforms
+  (mt/with-temp [:model/Collection transforms {:name "Test Transforms Library" :namespace collection/transforms-ns}]
+    (testing "Can only add allowed content types"
+      (is (some? (t2/insert! :model/Transform (mt/with-temp-defaults :model/Transform))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add transforms to the 'Transforms' collections"
+                            (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)})))))))

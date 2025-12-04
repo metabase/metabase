@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -49,11 +50,15 @@
    :run_trigger mi/transform-keyword})
 
 (t2/define-before-insert :model/Transform
-  [{:keys [source] :as transform}]
+  [{:keys [source collection_id] :as transform}]
+  (when collection_id
+    (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform :source_type (transforms.util/transform-source-type source)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
+  (when-let [new-collection (:collection_id (t2/changes transform))]
+    (collection/check-allowed-content :model/Transform new-collection))
   (if source
     (assoc transform :source_type (transforms.util/transform-source-type source))
     transform))

@@ -816,6 +816,24 @@ databaseChangeLog:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
 
 
+  - changeSet:
+      id: v58.2025-12-03T17:08:36
+      author: nvoxland
+      comment: Add collection_id to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection the transform is in
+                  constraints:
+                    nullable: true
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_collection_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
