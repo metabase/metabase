@@ -39,7 +39,12 @@
      :include-trash-collection? true
      :permission-level          (if archived :write :read)}
     {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})])
+     :is-superuser?   is-superuser?})
+   ;; This is to allow the set of namespaces indexed by the search spec for appdb-based search to also apply to
+   ;; legacy search so it performs the same on MySQL
+   ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
+   ;; to different namespaces via parameters.
+   (perms/audit-namespace-clause :collection.namespace nil) [:= :collection.namespace "shared-tenant-collection"]])
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause corresponding to which tables the given user has access to."
