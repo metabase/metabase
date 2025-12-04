@@ -913,6 +913,9 @@ importers:
       eslint-plugin-ttag:
         specifier: ^1.1.0
         version: 1.1.0(eslint@7.32.0)
+      events:
+        specifier: ^3.3.0
+        version: 3.3.0
       fetch-mock:
         specifier: ^12.0.0
         version: 12.5.3
@@ -1072,6 +1075,9 @@ importers:
       prosemirror-view:
         specifier: ^1.41.3
         version: 1.41.3
+      querystring-es3:
+        specifier: ^0.2.1
+        version: 0.2.1
       raf:
         specifier: ^3.4.0
         version: 3.4.1
@@ -1144,6 +1150,9 @@ importers:
       typescript-plugin-css-modules:
         specifier: ^5.1.0
         version: 5.1.0(ts-node@10.9.2(@swc/core@1.13.5)(@types/node@22.1.0)(typescript@5.9.2))(typescript@5.9.2)
+      url:
+        specifier: ^0.11.4
+        version: 0.11.4
       use-sync-external-store:
         specifier: ^1.6.0
         version: 1.6.0(react@18.3.1)
