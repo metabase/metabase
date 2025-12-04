@@ -107,7 +107,6 @@ export function DeleteSubscriptionAction({
                 <Checkbox
                   label={item}
                   checked={checked[index]}
-                  data-testid={`confirm-item-${index}`}
                   onChange={(e) =>
                     setChecked({
                       ...checked,
