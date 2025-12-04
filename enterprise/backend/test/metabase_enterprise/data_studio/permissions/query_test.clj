@@ -94,3 +94,49 @@
                   (is (= :blocked
                          (perms/table-permission-for-user user-id :perms/view-data (mt/id) (mt/id :venues)))
                       "Collection permissions should NOT grant view-data permission"))))))))))
+
+(deftest published-table-grants-database-access-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "POST /api/dataset in EE: published table access GRANTS database access"
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/User       {user-id :id} {:email "ee-db-access-test@example.com"}
+                       :model/Collection collection {}]
+          ;; Publish the venues table into this collection
+          (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+          (let [all-users (perms/all-users-group)]
+            ;; Grant collection read permission - this gives create-queries via published table mechanism
+            (perms/grant-collection-read-permissions! all-users (u/the-id collection))
+            ;; Grant view-data because published tables don't bypass sandboxing
+            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
+            ;; Explicitly remove create-queries so only published table can grant it
+            (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
+            ;; Remove create-queries on ALL tables to ensure user can't read database via normal permissions
+            (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+            ;; But keep view-data for the specific table we're testing
+            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
+            ;; With collection permission on published table, query should succeed
+            (testing "Query should succeed because EE grants create-queries via published table mechanism"
+              (is (=? {:status    "completed"
+                       :row_count pos-int?}
+                      (mt/with-current-user user-id
+                        (mt/user-http-request user-id :post 202 "dataset"
+                                              (mt/mbql-query venues {:limit 1}))))))))))
+    (testing "POST /api/dataset in EE: without collection permission, published table does NOT grant access"
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/User       {user-id :id} {:email "ee-db-access-test2@example.com"}
+                       :model/Collection collection {}]
+          ;; Publish the venues table into this collection
+          (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+          (let [all-users (perms/all-users-group)]
+            ;; DON'T grant collection read permission - revoke it explicitly
+            (perms/revoke-collection-permissions! all-users collection)
+            ;; Remove create-queries on ALL tables to ensure user can't read database
+            (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+            ;; Grant view-data for the specific table
+            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
+            ;; Without collection permission, query should fail at database check (403)
+            (testing "Query should fail because user has no collection permission on published table"
+              (is (= "You don't have permissions to do that."
+                     (mt/with-current-user user-id
+                       (mt/user-http-request user-id :post 403 "dataset"
+                                             (mt/mbql-query venues {:limit 1}))))))))))))

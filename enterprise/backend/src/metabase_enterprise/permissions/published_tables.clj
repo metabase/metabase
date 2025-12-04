@@ -27,3 +27,13 @@
               {:where [:and
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))
+
+(defenterprise user-has-published-table-permission-for-database?
+  "Returns true if user has access to any published table in the given database via collection permissions."
+  :feature :data-studio
+  [database-id]
+  (t2/exists? :model/Table
+              {:where [:and
+                       [:= :db_id database-id]
+                       [:= :is_published true]
+                       (collection/visible-collection-filter-clause :collection_id)]}))
