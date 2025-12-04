@@ -9,6 +9,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defmethod isolation/init-workspace-database-isolation! :clickhouse
+  [database workspace]
+  (let [db-name   (driver.common/isolation-schema-name (:id workspace))
+        read-user {:user     (driver.common/isolation-user-name (:id workspace))
+                   :password (driver.common/random-isolated-password)}]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql [(format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                     (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
+                             (:user read-user) (:password read-user))
+                     (format "GRANT ALL ON `%s`.* TO %s" db-name (:user read-user))]]
+          (.addBatch ^java.sql.Statement stmt ^String sql))
+        (.executeBatch ^java.sql.Statement stmt)))
+    {:schema           db-name
+     :database_details read-user}))
+
 (defmethod isolation/duplicate-output-table! :clickhouse
   [database workspace output]
   (let [source-schema   (:schema output)
@@ -28,3 +44,17 @@
                           source-table))))
     (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-db isolated-table)]
       (select-keys table-metadata [:id :schema :name]))))
+
+(defmethod isolation/grant-read-access-to-tables! :clickhouse
+  [database workspace tables]
+  (let [read-user-name (-> workspace :database_details :user)
+        sqls           (for [table tables]
+                         (format "GRANT SELECT ON `%s`.`%s` TO %s"
+                                 (:schema table)
+                                 (:name table)
+                                 read-user-name))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^java.sql.Statement stmt ^String sql))
+        (.executeBatch ^java.sql.Statement stmt)))))
