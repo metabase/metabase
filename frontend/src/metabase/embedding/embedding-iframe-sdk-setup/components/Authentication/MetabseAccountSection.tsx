@@ -1,13 +1,32 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
+import {
+  SETUP_SSO_CAMPAIGN,
+  UTM_LOCATION,
+} from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { Alert, Card, Icon, Radio, Stack, Text } from "metabase/ui";
+import { Alert, Anchor, Card, Icon, Radio, Stack, Text } from "metabase/ui";
+
+const utmTags = {
+  utm_source: "product",
+  utm_medium: "docs",
+  utm_campaign: SETUP_SSO_CAMPAIGN,
+  utm_content: UTM_LOCATION,
+};
 
 export const MetabaseAccountSection = () => {
   const { isSsoEnabledAndConfigured, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
+
+  const { url: setupSsoUrl, showMetabaseLinks } = useDocsUrl(
+    "embedding/sdk/authentication",
+    {
+      utm: utmTags,
+    },
+  );
 
   if (isGuestEmbed) {
     return null;
@@ -51,7 +70,23 @@ export const MetabaseAccountSection = () => {
 
       {!isSsoEnabledAndConfigured && !!settings.useExistingUserSession && (
         <Alert icon={<Icon name="warning" size={16} />} color="warning">
-          {t`The code below will only work for local testing. To get production ready code, configure JWT SSO or SAML.`}
+          <Text size="md" lh="lg">
+            {jt`The code below will only work for local testing. To get production ready code, configure ${
+              showMetabaseLinks ? (
+                <Anchor
+                  key="configure-sso"
+                  href={setupSsoUrl}
+                  target="_blank"
+                  size="md"
+                  lh="lg"
+                >
+                  {t`JWT SSO or SAML`}
+                </Anchor>
+              ) : (
+                t`JWT SSO or SAML`
+              )
+            }.`}
+          </Text>
         </Alert>
       )}
     </>
