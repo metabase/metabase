@@ -97,11 +97,9 @@
   "Namespace for transforms"
   :transforms)
 
-(mu/defn transforms-collection?
-  "Whether or not a collection is a transforms collection."
-  [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
-  (= (some-> namespace name)
-     (name transforms-ns)))
+(def snippets-ns
+  "Namespace for snippets"
+  :snippets)
 
 (defn trash-collection-id
   "The ID representing the Trash collection."

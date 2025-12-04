@@ -21,7 +21,13 @@
       (when (and (= collection-type collection/library-metrics-collection-type) (not (= :metric content-type)))
         (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))
       (when (and (= collection-ns collection/transforms-ns) (not (= :model/Transform content-type)))
-        (throw (ex-info "Can only add transforms to the 'Transforms' collections" {})))))
+        (throw (ex-info "Can only add transforms to the 'Transforms' collections" {})))
+      (when (and (= collection-ns collection/snippets-ns) (not (= :model/NativeQuerySnippet content-type)))
+        (throw (ex-info "Can only add snippets to the 'Snippets' collections" {})))
+      (when (and (= :model/Transform content-type) (not (= collection-ns collection/transforms-ns)))
+        (throw (ex-info "Cannot add transforms to non-'Transforms' collections" {})))
+      (when (and (= :model/NativeQuerySnippet content-type) (not (= collection-ns collection/snippets-ns)))
+        (throw (ex-info "Cannot add snippets to non-'Snippets' collections" {})))))
   true)
 
 (defenterprise check-library-update
