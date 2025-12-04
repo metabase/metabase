@@ -184,39 +184,53 @@
 
 ;;;; /tables start
 
-(defn- input-tables
-  [graph]
-  (let [table-ids (not-empty (set (map :id (:inputs graph))))]
-    (if (empty? table-ids)
-      []
-      (t2/select-fn-vec identity [:model/Table :id :schema [:name :table]]
-                        :id [:in table-ids]))))
-
-(defn- output-tables
+(defn- workspace-input-tables
   [workspace-id]
-  (let [src-table-id->dst-table-id
-        (t2/select-fn->fn :src-id :dst-id
-                          [:model/WorkspaceMappingTable [:upstream_id :src-id] [:downstream_id :dst-id]]
-                          :workspace_id workspace-id)]
-    (if (empty? src-table-id->dst-table-id)
-      []
-      (let [id->table-data (t2/select-fn->fn :id identity :model/Table
-                                             :id [:in (filter pos-int? (concat (keys src-table-id->dst-table-id)
-                                                                               (vals src-table-id->dst-table-id)))])
-            workspace-transforms-data (t2/select :model/Transform :workspace_id workspace-id)
-            s+t->workspace-transform (u/for-map
-                                      [{:keys [target] :as transform} workspace-transforms-data]
-                                       [[(:schema target) (:name target)] transform])]
-        (mapv (fn [[src-table-id dst-table-id]]
-                (let [src-schema (get-in id->table-data [src-table-id :schema])
-                      src-table (get-in id->table-data [src-table-id :name])
-                      dst-schema (get-in id->table-data [dst-table-id :schema])
-                      dst-table (get-in id->table-data [dst-table-id :name])]
-                  {:global {:schema src-schema
-                            :table src-table}
-                   :workspace {:transform-id (get-in s+t->workspace-transform [[dst-schema dst-table] :id])
-                               :table-id dst-table-id}}))
-              src-table-id->dst-table-id)))))
+  (reduce
+   (fn [acc {:keys [x_id t_id]}]
+     (update acc x_id (fnil conj #{}) t_id))
+   {}
+   (t2/query {:with [[:ws_xs {:select [:x.*]
+                              :from [[(t2/table-name :model/Transform) :x]]
+                              :where [:= [:inline workspace-id] :x.workspace_id]}]
+                     [:ws_xs_deps {:select [[:x.id :x_id]
+                                            [:d.to_entity_id :t_id]]
+                                   :from [[:ws_xs :x]]
+                                   :left-join [[(t2/table-name :model/Dependency) :d]
+                                               [:and
+                                                [:= :d.from_entity_type "transform"]
+                                                [:= :d.from_entity_id :x.id]
+                                                [:= :d.to_entity_type "table"]]]}]]
+              :select [:xd.x_id :xd.t_id]
+              :from [[:ws_xs_deps :xd]]
+              :where [:not [:in :xd.t_id
+                            [;; TODO: Revisit this with refactor next week.
+                             ;; set of upstream AND downstream so this works even after anticipated remapping changes.
+                             {:union-all [{:select [:wmt.upstream_id]
+                                           :from [[(t2/table-name :model/WorkspaceMappingTable) :wmt]]}
+                                          {:select [:wmt.downstream_id]
+                                           :from [[(t2/table-name :model/WorkspaceMappingTable) :wmt]]}]}]]]})))
+
+(defn- workspace-output-tables
+  [workspace-id]
+  (reduce
+   (fn [acc {:keys [x_id t_id]}]
+     (cond-> acc
+       (pos-int? t_id) (update x_id (fnil conj #{}) t_id)))
+   {}
+   (t2/query {:with [[:ws_xs {:select [:x.*]
+                              :from [[(t2/table-name :model/Transform) :x]]
+                              :where [:= [:inline workspace-id] :x.workspace_id]}]
+                     [:ws_xs_deps {:select [[:x.id :x_id]
+                                            [:d.from_entity_id :t_id]]
+                                   :from [[:ws_xs :x]]
+                                   :left-join [[(t2/table-name :model/Dependency) :d]
+                                               [:and
+                                                [:= :d.from_entity_type "table"]
+                                                [:= :d.to_entity_id :x.id]
+                                                [:= :d.to_entity_type "transform"]]]}]]
+              :select [:xd.x_id :xd.t_id]
+              :from [[:ws_xs_deps :xd]]})))
 
 (api.macros/defendpoint :get "/:id/tables" :- [:map
                                                [:inputs [:sequential
@@ -230,14 +244,38 @@
                                                                      [:table [:maybe :string]]]]
                                                            [:workspace [:map
                                                                         [:transform-id :int]
-                                                                        [:table-id :int]]]]]]]
+                                                                        [:table-id :int]
+                                                                        [:schema [:maybe :string]]
+                                                                        [:table [:maybe :string]]]]]]]]
   "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [workspace (-> (api/check-404 (t2/select-one :model/Workspace :id id))
                       (t2/hydrate :contents))]
-    {:inputs (input-tables (:graph workspace))
-     :outputs (output-tables (:id workspace))}))
+    {:inputs
+     (let [ids (into #{}
+                     (mapcat (fn [[_x-id t-ids]]
+                               t-ids))
+                     (workspace-input-tables (:id workspace)))]
+       (if-not (seq ids)
+         []
+         (t2/select-fn-vec identity [:model/Table :id :schema [:name :table]]
+                           :id [:in ids])))
+     :outputs
+     (let [ids (workspace-output-tables (:id workspace))]
+       (into []
+             (keep (fn [[x-id t-ids]]
+                     (when (seq t-ids)
+                       (let [ws-x (t2/select-one :model/Transform :id x-id)
+                             orig-x (when-some [orig-id (:upstream_id (t2/select-one :model/WorkspaceMappingTransform :downstream_id (:id ws-x)))]
+                                      (t2/select-one :model/Transform :id orig-id))]
+                         {:global {:schema (-> orig-x :target :schema)
+                                   :table (-> orig-x :target :name)}
+                          :workspace {:transform-id x-id
+                                      :table-id (first t-ids)
+                                      :schema (-> ws-x :target :schema)
+                                      :table (-> ws-x :target :name)}}))))
+             ids))}))
 
 ;;;; /tables end
 
