@@ -229,10 +229,11 @@ describe("DashboardApi parameter endpoints with IS_EMBED_PREVIEW", () => {
 
     await DashboardApi.parameterValues({ dashId: "123", paramId: "param1" });
 
-    const call = fetchMock.callHistory.lastCall(
-      "path:/api/embed/dashboard/test-token/params/param1/values",
-    );
-    expect(call).toBeTruthy();
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/embed/dashboard/test-token/params/param1/values",
+      ),
+    ).toBe(true);
   });
 
   it("should use /api/preview_embed prefix when IS_EMBED_PREVIEW is true", async () => {
@@ -247,9 +248,10 @@ describe("DashboardApi parameter endpoints with IS_EMBED_PREVIEW", () => {
 
     await DashboardApi.parameterValues({ dashId: "123", paramId: "param1" });
 
-    const call = fetchMock.callHistory.lastCall(
-      "path:/api/preview_embed/dashboard/test-token/params/param1/values",
-    );
-    expect(call).toBeTruthy();
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/preview_embed/dashboard/test-token/params/param1/values",
+      ),
+    ).toBe(true);
   });
 });
