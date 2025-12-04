@@ -16,15 +16,17 @@ import {
   toggleSchemaSelection,
 } from "../bulk-selection.utils";
 import { useExpandedState, useTableLoader } from "../hooks";
+import type {
+  ChangeOptions,
+  DatabaseNode,
+  ExpandedItem,
+  ExpandedSchemaItem,
+  FlatItem,
+  SchemaItem,
+  TreeNode,
+  TreePath,
+} from "../types";
 import {
-  type ChangeOptions,
-  type DatabaseNode,
-  type ExpandedItem,
-  type ExpandedSchemaItem,
-  type FlatItem,
-  type SchemaItem,
-  type TreeNode,
-  type TreePath,
   isDatabaseItem,
   isDatabaseNode,
   isSchemaItem,
