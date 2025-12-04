@@ -2083,10 +2083,10 @@
                  (for [doc (mt/user-http-request :crowberto :get 200 "document/public")]
                    (m/map-vals boolean doc)))))))))
 
-;;; ---------------------------------------- GET /api/ee/public/document/:uuid ----------------------------------------------
+;;; ---------------------------------------- GET /api/public/document/:uuid ----------------------------------------------
 
 (deftest fetch-public-document-test
-  (testing "GET /api/ee/public/document/:uuid"
+  (testing "GET /api/public/document/:uuid"
     (testing "Test that we can fetch a public Document"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
@@ -2097,7 +2097,7 @@
                         (mt/client :get 200 (str "public/document/" (:public_uuid document))))))))))
 
 (deftest public-document-returns-only-safe-fields-test
-  (testing "GET /api/ee/public/document/:uuid should only return safe fields"
+  (testing "GET /api/public/document/:uuid should only return safe fields"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {:name "Public Test Document"
                                                                           :document (documents.test-util/text->prose-mirror-ast "Public test content")})]
@@ -2115,7 +2115,7 @@
             (is (not (contains? result :description)))))))))
 
 (deftest get-public-document-errors-test
-  (testing "GET /api/ee/public/document/:uuid"
+  (testing "GET /api/public/document/:uuid"
     (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (mt/with-temp [:model/Document document (document-with-public-link {})]
@@ -2146,7 +2146,7 @@
                (mt/user-http-request :crowberto :delete 404 (format "document/%d/public-link" (:id document)))))))))
 
 (deftest public-document-not-accessible-when-archived-test
-  (testing "GET /api/ee/public/document/:uuid should not work for archived documents"
+  (testing "GET /api/public/document/:uuid should not work for archived documents"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (document-with-public-link {})]
         (let [uuid (:public_uuid document)]
@@ -2233,63 +2233,65 @@
 
 (deftest download-document-card-respects-download-permissions-test
   (testing "POST /api/document/:document-id/card/:card-id/query/:export-format respects database download permissions"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection {coll-id :id} {}
-                       :model/Card {card-id :id} {:name "Test Card"
-                                                  :dataset_query (mt/mbql-query venues {:limit 10})
-                                                  :display :table
-                                                  :collection_id coll-id}
-                       :model/Document {doc-id :id} {:name "Test Document"
-                                                     :collection_id coll-id
-                                                     :document {:type "doc"
-                                                                :content [{:type "cardEmbed"
-                                                                           :attrs {:id card-id}}]}}]
-          (t2/update! :model/Card card-id {:document_id doc-id})
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:advanced-permissions}
+       (mt/with-non-admin-groups-no-root-collection-perms
+         (mt/with-temp [:model/Collection {coll-id :id} {}
+                        :model/Card {card-id :id} {:name "Test Card"
+                                                   :dataset_query (mt/mbql-query venues {:limit 10})
+                                                   :display :table
+                                                   :collection_id coll-id}
+                        :model/Document {doc-id :id} {:name "Test Document"
+                                                      :collection_id coll-id
+                                                      :document {:type "doc"
+                                                                 :content [{:type "cardEmbed"
+                                                                            :attrs {:id card-id}}]}}]
+           (t2/update! :model/Card card-id {:document_id doc-id})
 
-          (let [all-users-group (perms/all-users-group)]
-            ;; Grant collection read permissions so user can access the document
-            (perms/grant-collection-read-permissions! all-users-group coll-id)
+           (let [all-users-group (perms/all-users-group)]
+              ;; Grant collection read permissions so user can access the document
+             (perms/grant-collection-read-permissions! all-users-group coll-id)
 
-            (testing "User without download permissions yields permissions error in body (streaming uses 200)"
-              ;; Set download permissions to :no (no downloads allowed) for All Users group
-              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
+             (testing "User without download permissions yields permissions error in body (streaming uses 200)"
+                ;; Set download permissions to :no (no downloads allowed) for All Users group
+               (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
 
-              (is (malli= [:map
-                           [:status [:= "failed"]]
-                           [:error_type [:= "missing-required-permissions"]]
-                           [:ex-data [:map
-                                      [:permissions-error? [:= true]]]]]
-                          (mt/user-http-request :rasta
-                                                :post 200
-                                                (format "document/%s/card/%s/query/csv" doc-id card-id)
-                                                {:parameters []
-                                                 :format_rows false
-                                                 :pivot_results false}))))
+               (is (malli= [:map
+                            [:status [:= "failed"]]
+                            [:error_type [:= "missing-required-permissions"]]
+                            [:ex-data [:map
+                                       [:permissions-error? [:= true]]]]]
+                           (mt/user-http-request :rasta
+                                                 :post 200
+                                                 (format "document/%s/card/%s/query/csv" doc-id card-id)
+                                                 {:parameters []
+                                                  :format_rows false
+                                                  :pivot_results false}))))
 
-            (testing "User with limited download permissions (10k rows) can download"
-              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :ten-thousand-rows)
+             (testing "User with limited download permissions (10k rows) can download"
+               (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :ten-thousand-rows)
 
-              (let [response (mt/user-http-request :rasta
-                                                   :post 200
-                                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
-                                                   {:parameters []
-                                                    :format_rows false
-                                                    :pivot_results false})]
-                (is (some? response))
-                (is (string? response))))
+               (let [response (mt/user-http-request :rasta
+                                                    :post 200
+                                                    (format "document/%s/card/%s/query/csv" doc-id card-id)
+                                                    {:parameters []
+                                                     :format_rows false
+                                                     :pivot_results false})]
+                 (is (some? response))
+                 (is (string? response))))
 
-            (testing "User with full download permissions can download"
-              (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :one-million-rows)
+             (testing "User with full download permissions can download"
+               (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :one-million-rows)
 
-              (let [response (mt/user-http-request :rasta
-                                                   :post 200
-                                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
-                                                   {:parameters []
-                                                    :format_rows false
-                                                    :pivot_results false})]
-                (is (some? response))
-                (is (string? response))))))))))
+               (let [response (mt/user-http-request :rasta
+                                                    :post 200
+                                                    (format "document/%s/card/%s/query/csv" doc-id card-id)
+                                                    {:parameters []
+                                                     :format_rows false
+                                                     :pivot_results false})]
+                 (is (some? response))
+                 (is (string? response)))))))))))
+
 (defn- prose-mirror-with-smartlink
   "Create a ProseMirror AST with a smartlink to a card."
   [text card-id]
@@ -2303,242 +2305,252 @@
 
 (deftest create-document-in-remote-synced-with-non-remote-synced-smartlink-test
   (testing "POST /api/document/ - creating document in remote-synced collection with smartlink to non-remote-synced item"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-model-cleanup [:model/Document]
-        (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                 :location "/"
-                                                                 :is_remote_synced true}
-                       :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                           :location "/"
-                                                           :type nil}
-                       :model/Card {card-id :id} {:name "Regular Card"
-                                                  :collection_id regular-id
-                                                  :dataset_query (mt/mbql-query venues)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-model-cleanup [:model/Document]
+         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                  :location "/"
+                                                                  :is_remote_synced true}
+                        :model/Collection {regular-id :id} {:name "Regular Collection"
+                                                            :location "/"
+                                                            :type nil}
+                        :model/Card {card-id :id} {:name "Regular Card"
+                                                   :collection_id regular-id
+                                                   :dataset_query (mt/mbql-query venues)}]
 
-          (testing "Throws exception when document references non-remote-synced item"
-            (let [response (mt/user-http-request :crowberto
-                                                 :post 400 "document/"
-                                                 {:name "Doc with bad reference"
-                                                  :collection_id remote-synced-id
-                                                  :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-              (is (= "Uses content that is not remote synced." (:message response))
-                  "Should report non-remote-synced dependencies"))))))))
+           (testing "Throws exception when document references non-remote-synced item"
+             (let [response (mt/user-http-request :crowberto
+                                                  :post 400 "document/"
+                                                  {:name "Doc with bad reference"
+                                                   :collection_id remote-synced-id
+                                                   :document (prose-mirror-with-smartlink "Link to card" card-id)})]
+               (is (= "Uses content that is not remote synced." (:message response))
+                   "Should report non-remote-synced dependencies")))))))))
 
 (deftest create-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "POST /api/document/ - creating document in remote-synced collection with smartlink to remote-synced item"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-model-cleanup [:model/Document]
-        (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                 :location "/"
-                                                                 :is_remote_synced true}
-                       :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                  :collection_id remote-synced-id
-                                                  :dataset_query (mt/mbql-query venues)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-model-cleanup [:model/Document]
+         (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                  :location "/"
+                                                                  :is_remote_synced true}
+                        :model/Card {card-id :id} {:name "Remote-Synced Card"
+                                                   :collection_id remote-synced-id
+                                                   :dataset_query (mt/mbql-query venues)}]
 
-          (testing "Successfully creates document when referencing remote-synced item"
-            (let [response (mt/user-http-request :crowberto
-                                                 :post 200 "document/"
-                                                 {:name "Doc with valid reference"
-                                                  :collection_id remote-synced-id
-                                                  :document (prose-mirror-with-smartlink "Link to card" card-id)})]
-              (is (= "Doc with valid reference" (:name response)))
-              (is (= remote-synced-id (:collection_id response))))))))))
+           (testing "Successfully creates document when referencing remote-synced item"
+             (let [response (mt/user-http-request :crowberto
+                                                  :post 200 "document/"
+                                                  {:name "Doc with valid reference"
+                                                   :collection_id remote-synced-id
+                                                   :document (prose-mirror-with-smartlink "Link to card" card-id)})]
+               (is (= "Doc with valid reference" (:name response)))
+               (is (= remote-synced-id (:collection_id response)))))))))))
 
 (deftest create-document-in-regular-collection-with-any-smartlink-test
   (testing "POST /api/document/ - creating document in regular collection can reference any item"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-model-cleanup [:model/Document]
-        (mt/with-temp [:model/Collection {regular-id :id} {:name "Regular Collection"
-                                                           :location "/"
-                                                           :type nil}
-                       :model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                                 :location "/"
-                                                                 :is_remote_synced true}
-                       :model/Card {remote-card-id :id} {:name "Remote-Synced Card"
-                                                         :collection_id remote-synced-id
-                                                         :dataset_query (mt/mbql-query venues)}
-                       :model/Card {regular-card-id :id} {:name "Regular Card"
-                                                          :collection_id regular-id
-                                                          :dataset_query (mt/mbql-query venues)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-model-cleanup [:model/Document]
+         (mt/with-temp [:model/Collection {regular-id :id} {:name "Regular Collection"
+                                                            :location "/"
+                                                            :type nil}
+                        :model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                  :location "/"
+                                                                  :is_remote_synced true}
+                        :model/Card {remote-card-id :id} {:name "Remote-Synced Card"
+                                                          :collection_id remote-synced-id
+                                                          :dataset_query (mt/mbql-query venues)}
+                        :model/Card {regular-card-id :id} {:name "Regular Card"
+                                                           :collection_id regular-id
+                                                           :dataset_query (mt/mbql-query venues)}]
 
-          (testing "Can reference remote-synced item"
-            (let [response (mt/user-http-request :crowberto
-                                                 :post 200 "document/"
-                                                 {:name "Doc with remote ref"
-                                                  :collection_id regular-id
-                                                  :document (prose-mirror-with-smartlink "Link" remote-card-id)})]
-              (is (= "Doc with remote ref" (:name response)))))
+           (testing "Can reference remote-synced item"
+             (let [response (mt/user-http-request :crowberto
+                                                  :post 200 "document/"
+                                                  {:name "Doc with remote ref"
+                                                   :collection_id regular-id
+                                                   :document (prose-mirror-with-smartlink "Link" remote-card-id)})]
+               (is (= "Doc with remote ref" (:name response)))))
 
-          (testing "Can reference regular item"
-            (let [response (mt/user-http-request :crowberto
-                                                 :post 200 "document/"
-                                                 {:name "Doc with regular ref"
-                                                  :collection_id regular-id
-                                                  :document (prose-mirror-with-smartlink "Link" regular-card-id)})]
-              (is (= "Doc with regular ref" (:name response))))))))))
+           (testing "Can reference regular item"
+             (let [response (mt/user-http-request :crowberto
+                                                  :post 200 "document/"
+                                                  {:name "Doc with regular ref"
+                                                   :collection_id regular-id
+                                                   :document (prose-mirror-with-smartlink "Link" regular-card-id)})]
+               (is (= "Doc with regular ref" (:name response)))))))))))
 
 (deftest update-document-in-remote-synced-with-non-remote-synced-smartlink-test
   (testing "PUT /api/document/:id - updating document in remote-synced collection to add non-remote-synced reference"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                               :location "/"
-                                                               :is_remote_synced true}
-                     :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                         :location "/"
-                                                         :type nil}
-                     :model/Document {doc-id :id} {:name "Test Document"
-                                                   :collection_id remote-synced-id
-                                                   :document (documents.test-util/text->prose-mirror-ast "Initial")}
-                     :model/Card {card-id :id} {:name "Regular Card"
-                                                :collection_id regular-id
-                                                :dataset_query (mt/mbql-query venues)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                :location "/"
+                                                                :is_remote_synced true}
+                      :model/Collection {regular-id :id} {:name "Regular Collection"
+                                                          :location "/"
+                                                          :type nil}
+                      :model/Document {doc-id :id} {:name "Test Document"
+                                                    :collection_id remote-synced-id
+                                                    :document (documents.test-util/text->prose-mirror-ast "Initial")}
+                      :model/Card {card-id :id} {:name "Regular Card"
+                                                 :collection_id regular-id
+                                                 :dataset_query (mt/mbql-query venues)}]
 
-        (testing "Throws exception when updating to reference non-remote-synced item"
-          (let [response (mt/user-http-request :crowberto
-                                               :put 400 (format "document/%s" doc-id)
-                                               {:document (prose-mirror-with-smartlink "Bad link" card-id)})]
-            (is (= "Uses content that is not remote synced." (:message response)))))))))
+         (testing "Throws exception when updating to reference non-remote-synced item"
+           (let [response (mt/user-http-request :crowberto
+                                                :put 400 (format "document/%s" doc-id)
+                                                {:document (prose-mirror-with-smartlink "Bad link" card-id)})]
+             (is (= "Uses content that is not remote synced." (:message response))))))))))
 
 (deftest update-document-in-remote-synced-with-remote-synced-smartlink-test
   (testing "PUT /api/document/:id - updating document in remote-synced collection to add remote-synced reference"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                               :location "/"
-                                                               :is_remote_synced true}
-                     :model/Document {doc-id :id} {:name "Test Document"
-                                                   :collection_id remote-synced-id
-                                                   :document (documents.test-util/text->prose-mirror-ast "Initial")}
-                     :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                :collection_id remote-synced-id
-                                                :dataset_query (mt/mbql-query venues)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                :location "/"
+                                                                :is_remote_synced true}
+                      :model/Document {doc-id :id} {:name "Test Document"
+                                                    :collection_id remote-synced-id
+                                                    :document (documents.test-util/text->prose-mirror-ast "Initial")}
+                      :model/Card {card-id :id} {:name "Remote-Synced Card"
+                                                 :collection_id remote-synced-id
+                                                 :dataset_query (mt/mbql-query venues)}]
 
-        (testing "Successfully updates when referencing remote-synced item"
-          (let [response (mt/user-http-request :crowberto
-                                               :put 200 (format "document/%s" doc-id)
-                                               {:document (prose-mirror-with-smartlink "Good link" card-id)})]
-            (is (= "Test Document" (:name response)))
-            (is (= remote-synced-id (:collection_id response)))))))))
+         (testing "Successfully updates when referencing remote-synced item"
+           (let [response (mt/user-http-request :crowberto
+                                                :put 200 (format "document/%s" doc-id)
+                                                {:document (prose-mirror-with-smartlink "Good link" card-id)})]
+             (is (= "Test Document" (:name response)))
+             (is (= remote-synced-id (:collection_id response))))))))))
 
 (deftest move-document-with-remote-synced-refs-out-of-remote-synced-collection-test
   (testing "PUT /api/document/:id - moving document with remote-synced references out of remote-synced collection"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                               :location "/"
-                                                               :is_remote_synced true}
-                     :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                         :location "/"
-                                                         :type nil}
-                     :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                :collection_id remote-synced-id
-                                                :dataset_query (mt/mbql-query venues)}
-                     :model/Document {doc-id :id} {:name "Doc with remote ref"
-                                                   :collection_id remote-synced-id
-                                                   :document (prose-mirror-with-smartlink "Link" card-id)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                :location "/"
+                                                                :is_remote_synced true}
+                      :model/Collection {regular-id :id} {:name "Regular Collection"
+                                                          :location "/"
+                                                          :type nil}
+                      :model/Card {card-id :id} {:name "Remote-Synced Card"
+                                                 :collection_id remote-synced-id
+                                                 :dataset_query (mt/mbql-query venues)}
+                      :model/Document {doc-id :id} {:name "Doc with remote ref"
+                                                    :collection_id remote-synced-id
+                                                    :document (prose-mirror-with-smartlink "Link" card-id)}]
 
-        (testing "Does not throw an exception"
-          (mt/user-http-request :crowberto
-                                :put 200 (format "document/%s" doc-id)
-                                {:collection_id regular-id})
+         (testing "Does not throw an exception"
+           (mt/user-http-request :crowberto
+                                 :put 200 (format "document/%s" doc-id)
+                                 {:collection_id regular-id})
 
-          (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))))))))
+           (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id))))))))))
 
 (deftest move-document-with-remote-synced-refs-to-root-collection-test
   (testing "PUT /api/document/:id - moving document with remote-synced references to root collection"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                               :location "/"
-                                                               :is_remote_synced true}
-                     :model/Card {card-id :id} {:name "Remote-Synced Card"
-                                                :collection_id remote-synced-id
-                                                :dataset_query (mt/mbql-query venues)}
-                     :model/Document {doc-id :id} {:name "Doc with remote ref"
-                                                   :collection_id remote-synced-id
-                                                   :document (prose-mirror-with-smartlink "Link" card-id)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                :location "/"
+                                                                :is_remote_synced true}
+                      :model/Card {card-id :id} {:name "Remote-Synced Card"
+                                                 :collection_id remote-synced-id
+                                                 :dataset_query (mt/mbql-query venues)}
+                      :model/Document {doc-id :id} {:name "Doc with remote ref"
+                                                    :collection_id remote-synced-id
+                                                    :document (prose-mirror-with-smartlink "Link" card-id)}]
 
-        (testing "Does not throw an exception"
-          (mt/user-http-request :crowberto
-                                :put 200 (format "document/%s" doc-id)
-                                {:collection_id nil})
+         (testing "Does not throw an exception"
+           (mt/user-http-request :crowberto
+                                 :put 200 (format "document/%s" doc-id)
+                                 {:collection_id nil})
 
-          (is (nil? (:collection_id (t2/select-one :model/Document :id doc-id)))))))))
+           (is (nil? (:collection_id (t2/select-one :model/Document :id doc-id))))))))))
 
 (deftest move-document-without-remote-synced-refs-out-of-remote-synced-collection-test
   (testing "PUT /api/document/:id - moving document without remote-synced references out of remote-synced collection"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                               :location "/"
-                                                               :is_remote_synced true}
-                     :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                         :location "/"
-                                                         :type nil}
-                     :model/Document {doc-id :id} {:name "Doc without refs"
-                                                   :collection_id remote-synced-id
-                                                   :document (documents.test-util/text->prose-mirror-ast "No references")}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                :location "/"
+                                                                :is_remote_synced true}
+                      :model/Collection {regular-id :id} {:name "Regular Collection"
+                                                          :location "/"
+                                                          :type nil}
+                      :model/Document {doc-id :id} {:name "Doc without refs"
+                                                    :collection_id remote-synced-id
+                                                    :document (documents.test-util/text->prose-mirror-ast "No references")}]
 
-        (testing "Successfully moves when document has no remote-synced references"
-          (let [response (mt/user-http-request :crowberto
-                                               :put 200 (format "document/%s" doc-id)
-                                               {:collection_id regular-id})]
-            (is (= regular-id (:collection_id response)))
-            (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id))))))))))
+         (testing "Successfully moves when document has no remote-synced references"
+           (let [response (mt/user-http-request :crowberto
+                                                :put 200 (format "document/%s" doc-id)
+                                                {:collection_id regular-id})]
+             (is (= regular-id (:collection_id response)))
+             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
 
 (deftest move-document-into-remote-synced-collection-with-non-remote-synced-refs-test
   (testing "PUT /api/document/:id - moving document into remote-synced collection when it has non-remote-synced references"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                               :location "/"
-                                                               :is_remote_synced true}
-                     :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                         :location "/"
-                                                         :type nil}
-                     :model/Card {card-id :id} {:name "Regular Card"
-                                                :collection_id regular-id
-                                                :dataset_query (mt/mbql-query venues)}
-                     :model/Document {doc-id :id} {:name "Doc with regular ref"
-                                                   :collection_id regular-id
-                                                   :document (prose-mirror-with-smartlink "Link" card-id)}]
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [remote-sync-type :read-write]
+       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                :location "/"
+                                                                :is_remote_synced true}
+                      :model/Collection {regular-id :id} {:name "Regular Collection"
+                                                          :location "/"
+                                                          :type nil}
+                      :model/Card {card-id :id} {:name "Regular Card"
+                                                 :collection_id regular-id
+                                                 :dataset_query (mt/mbql-query venues)}
+                      :model/Document {doc-id :id} {:name "Doc with regular ref"
+                                                    :collection_id regular-id
+                                                    :document (prose-mirror-with-smartlink "Link" card-id)}]
 
-        (testing "Throws exception when moving into remote-synced collection"
-          (let [response (mt/user-http-request :crowberto
-                                               :put 400 (format "document/%s" doc-id)
-                                               {:collection_id remote-synced-id})]
-            (is (= "Uses content that is not remote synced." (:message response)))
+         (testing "Throws exception when moving into remote-synced collection"
+           (let [response (mt/user-http-request :crowberto
+                                                :put 400 (format "document/%s" doc-id)
+                                                {:collection_id remote-synced-id})]
+             (is (= "Uses content that is not remote synced." (:message response)))
 
-            ;; Verify document was NOT moved
-            (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
-                "Document should remain in regular collection")))))))
+              ;; Verify document was NOT moved
+             (is (= regular-id (:collection_id (t2/select-one :model/Document :id doc-id)))
+                 "Document should remain in regular collection"))))))))
 
 (deftest update-and-move-document-simultaneously-test
-  (mt/with-temporary-setting-values [remote-sync-type :read-write]
-    (testing "PUT /api/document/:id - updating content and moving collection simultaneously"
-      (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
-                                                               :location "/"
-                                                               :is_remote_synced true}
-                     :model/Collection {regular-id :id} {:name "Regular Collection"
-                                                         :location "/"
-                                                         :type nil}
-                     :model/Card {remote-card-id :id} {:name "Remote-Synced Card"
-                                                       :collection_id remote-synced-id
-                                                       :dataset_query (mt/mbql-query venues)}
-                     :model/Card {regular-card-id :id} {:name "Regular Card"
-                                                        :collection_id regular-id
+  (mt/when-ee-evailable
+   (mt/with-temporary-setting-values [remote-sync-type :read-write]
+     (testing "PUT /api/document/:id - updating content and moving collection simultaneously"
+       (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced Collection"
+                                                                :location "/"
+                                                                :is_remote_synced true}
+                      :model/Collection {regular-id :id} {:name "Regular Collection"
+                                                          :location "/"
+                                                          :type nil}
+                      :model/Card {remote-card-id :id} {:name "Remote-Synced Card"
+                                                        :collection_id remote-synced-id
                                                         :dataset_query (mt/mbql-query venues)}
-                     :model/Document {doc-id :id} {:name "Test Doc"
-                                                   :collection_id remote-synced-id
-                                                   :document (documents.test-util/text->prose-mirror-ast "Initial")}]
+                      :model/Card {regular-card-id :id} {:name "Regular Card"
+                                                         :collection_id regular-id
+                                                         :dataset_query (mt/mbql-query venues)}
+                      :model/Document {doc-id :id} {:name "Test Doc"
+                                                    :collection_id remote-synced-id
+                                                    :document (documents.test-util/text->prose-mirror-ast "Initial")}]
 
-        (testing "Throws exception when adding non-remote-synced ref and staying in remote-synced collection"
-          (let [response (mt/user-http-request :crowberto
-                                               :put 400 (format "document/%s" doc-id)
-                                               {:document (prose-mirror-with-smartlink "Bad" regular-card-id)
-                                                :collection_id remote-synced-id})]
-            (is (= "Uses content that is not remote synced." (:message response)))))
+         (testing "Throws exception when adding non-remote-synced ref and staying in remote-synced collection"
+           (let [response (mt/user-http-request :crowberto
+                                                :put 400 (format "document/%s" doc-id)
+                                                {:document (prose-mirror-with-smartlink "Bad" regular-card-id)
+                                                 :collection_id remote-synced-id})]
+             (is (= "Uses content that is not remote synced." (:message response)))))
 
-        (testing "Does not throw when moving to a regular collection"
-          (mt/user-http-request :crowberto
-                                :put 200 (format "document/%s" doc-id)
-                                {:document (prose-mirror-with-smartlink "Good" remote-card-id)
-                                 :collection_id regular-id}))))))
+         (testing "Does not throw when moving to a regular collection"
+           (mt/user-http-request :crowberto
+                                 :put 200 (format "document/%s" doc-id)
+                                 {:document (prose-mirror-with-smartlink "Good" remote-card-id)
+                                  :collection_id regular-id})))))))
 
 (deftest post-document-to-personal-collection-test
   (testing "POST /api/document/ - creating a document in a personal collection"

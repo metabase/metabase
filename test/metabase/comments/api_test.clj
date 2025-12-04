@@ -54,128 +54,129 @@
 
 (deftest basic-comments-test
   (testing "GET /api/comment/"
-    (mt/with-temp [:model/Document {doc-id :id doc :document} {:name       "New Document"
-                                                               :creator_id (mt/user->id :lucky)}]
-      (mt/with-model-cleanup [:model/CommentReaction
-                              :model/Comment
-                              :model/Notification]
-        (mt/with-fake-inbox
-          (notification.seed/seed-notification!)
-          (is (set/subset? #{:event/comment-created}
-                           (t2/select-fn-set :event_name :model/NotificationSubscription)))
-          (testing "returns empty comments list for entity with no comments"
-            (is (= {:comments []}
-                   (mt/user-http-request :rasta :get 200 "comment/"
-                                         :target_type "document"
-                                         :target_id doc-id))))
-          (testing "creates and returns comments for entity"
-            (let [content   (tiptap [:p "New comment"])
-                  created   (mt/user-http-request :rasta :post 200 "comment/"
-                                                  {:target_type "document"
-                                                   :target_id   doc-id
-                                                   :content     content
-                                                   :html        "<p>New comment</p>"})
-                  expected1 {:id          int?
-                             :content     content
-                             :target_type "document"
-                             :target_id   doc-id
-                             :creator     {:id (mt/user->id :rasta)}
-                             :reactions   []}]
-              (is (=? expected1 created))
-              (is (=? {:comments [expected1]}
-                      (mt/user-http-request :rasta :get 200 "comment/"
-                                            :target_type "document"
-                                            :target_id doc-id)))
-              (testing "document creator receives notifications for top-level comments"
-                (is (=? {(:email (mt/fetch-user :lucky))
-                         [{:subject "Comment on New Document"
-                           :body    [{:content (relaxed-re
-                                                (str (:common_name (mt/fetch-user :rasta)) " left a comment")
-                                                (format "http://localhost:\\d+/document/%s#comment-%s"
-                                                        doc-id
-                                                        (:id created)))}]}]}
-                        (first (swap-vals! mt/inbox empty)))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temp [:model/Document {doc-id :id doc :document} {:name       "New Document"
+                                                                 :creator_id (mt/user->id :lucky)}]
+        (mt/with-model-cleanup [:model/CommentReaction
+                                :model/Comment
+                                :model/Notification]
+          (mt/with-fake-inbox
+            (notification.seed/seed-notification!)
+            (is (set/subset? #{:event/comment-created}
+                             (t2/select-fn-set :event_name :model/NotificationSubscription)))
+            (testing "returns empty comments list for entity with no comments"
+              (is (= {:comments []}
+                     (mt/user-http-request :rasta :get 200 "comment/"
+                                           :target_type "document"
+                                           :target_id doc-id))))
+            (testing "creates and returns comments for entity"
+              (let [content   (tiptap [:p "New comment"])
+                    created   (mt/user-http-request :rasta :post 200 "comment/"
+                                                    {:target_type "document"
+                                                     :target_id   doc-id
+                                                     :content     content
+                                                     :html        "<p>New comment</p>"})
+                    expected1 {:id          int?
+                               :content     content
+                               :target_type "document"
+                               :target_id   doc-id
+                               :creator     {:id (mt/user->id :rasta)}
+                               :reactions   []}]
+                (is (=? expected1 created))
+                (is (=? {:comments [expected1]}
+                        (mt/user-http-request :rasta :get 200 "comment/"
+                                              :target_type "document"
+                                              :target_id doc-id)))
+                (testing "document creator receives notifications for top-level comments"
+                  (is (=? {(:email (mt/fetch-user :lucky))
+                           [{:subject "Comment on New Document"
+                             :body    [{:content (relaxed-re
+                                                  (str (:common_name (mt/fetch-user :rasta)) " left a comment")
+                                                  (format "http://localhost:\\d+/document/%s#comment-%s"
+                                                          doc-id
+                                                          (:id created)))}]}]}
+                          (first (swap-vals! mt/inbox empty)))))
 
-              (testing "creates a reply to an existing comment"
-                (let [content2  (tiptap [:p "Other comment"])
-                      child     (mt/user-http-request :crowberto :post 200 "comment/"
-                                                      {:target_type       "document"
-                                                       :target_id         doc-id
-                                                       :parent_comment_id (:id created)
-                                                       :content           content2
-                                                       :html              "<p>Other comment</p>"})
-                      expected2 {:id                int?
-                                 :content           content2
-                                 :target_type       "document"
-                                 :target_id         doc-id
-                                 :creator           {:id (mt/user->id :crowberto)}
-                                 :parent_comment_id (:id created)
-                                 :reactions         []}]
-                  (is (=? expected2 child))
-                  (is (=? {:comments [expected1 expected2]}
-                          (mt/user-http-request :rasta :get 200 "comment/"
-                                                :target_type "document"
-                                                :target_id doc-id)))
-                  (testing "participants in the thread receive notifications for new replies"
+                (testing "creates a reply to an existing comment"
+                  (let [content2  (tiptap [:p "Other comment"])
+                        child     (mt/user-http-request :crowberto :post 200 "comment/"
+                                                        {:target_type       "document"
+                                                         :target_id         doc-id
+                                                         :parent_comment_id (:id created)
+                                                         :content           content2
+                                                         :html              "<p>Other comment</p>"})
+                        expected2 {:id                int?
+                                   :content           content2
+                                   :target_type       "document"
+                                   :target_id         doc-id
+                                   :creator           {:id (mt/user->id :crowberto)}
+                                   :parent_comment_id (:id created)
+                                   :reactions         []}]
+                    (is (=? expected2 child))
+                    (is (=? {:comments [expected1 expected2]}
+                            (mt/user-http-request :rasta :get 200 "comment/"
+                                                  :target_type "document"
+                                                  :target_id doc-id)))
+                    (testing "participants in the thread receive notifications for new replies"
+                      (is (=? {(:email (mt/fetch-user :rasta))
+                               [{:subject "Comment on New Document"
+                                 :body    [{:content (relaxed-re
+                                                      (str (:common_name (mt/fetch-user :crowberto)) " replied to a thread"))}]}]}
+                              (first (swap-vals! mt/inbox empty)))))))
+
+                (testing "comment in a thread should send emails to all participants of the thread"
+                  (let [_another (mt/user-http-request :lucky :post 200 "comment/"
+                                                       {:target_type       "document"
+                                                        :target_id         doc-id
+                                                        :parent_comment_id (:id created)
+                                                        :content           (tiptap [:p "Third comment in a thread"])
+                                                        :html              "<p>Third comment in a thread</p>"})]
                     (is (=? {(:email (mt/fetch-user :rasta))
                              [{:subject "Comment on New Document"
                                :body    [{:content (relaxed-re
-                                                    (str (:common_name (mt/fetch-user :crowberto)) " replied to a thread"))}]}]}
-                            (first (swap-vals! mt/inbox empty)))))))
+                                                    (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]
+                             (:email (mt/fetch-user :crowberto))
+                             [{:subject "Comment on New Document"
+                               :body    [{:content (relaxed-re
+                                                    (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]}
+                            (first (swap-vals! mt/inbox empty))))))))
 
-              (testing "comment in a thread should send emails to all participants of the thread"
-                (let [_another (mt/user-http-request :lucky :post 200 "comment/"
-                                                     {:target_type       "document"
-                                                      :target_id         doc-id
-                                                      :parent_comment_id (:id created)
-                                                      :content           (tiptap [:p "Third comment in a thread"])
-                                                      :html              "<p>Third comment in a thread</p>"})]
-                  (is (=? {(:email (mt/fetch-user :rasta))
+            (testing "creates a comment for part of an entity"
+              (let [part-id (-> doc :content first :attrs :_id)
+                    created (mt/user-http-request :rasta :post 200 "comment/"
+                                                  {:target_type     "document"
+                                                   :target_id       doc-id
+                                                   :child_target_id part-id
+                                                   :content         (tiptap [:p "Part comment"])
+                                                   :html            "<p>Part comment</p>"})]
+                (is (=? {:id              int?
+                         :content         {:type "doc"}
+                         :target_type     "document"
+                         :target_id       doc-id
+                         :child_target_id part-id
+                         :creator         {:id (mt/user->id :rasta)}
+                         :reactions       []}
+                        created))
+                (testing "Comments on concrete paragraphs are also sent as notifications"
+                  (is (=? {(:email (mt/fetch-user :lucky))
                            [{:subject "Comment on New Document"
-                             :body    [{:content (relaxed-re
-                                                  (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]
-                           (:email (mt/fetch-user :crowberto))
-                           [{:subject "Comment on New Document"
-                             :body    [{:content (relaxed-re
-                                                  (str (:common_name (mt/fetch-user :lucky)) " replied to a thread"))}]}]}
-                          (first (swap-vals! mt/inbox empty))))))))
+                             :body    [{:content (relaxed-re (format "http://localhost:\\d+/document/%s/comments/%s#comment-%s"
+                                                                     doc-id
+                                                                     part-id
+                                                                     (:id created)))}]}]}
+                          (first (swap-vals! mt/inbox empty)))))))
 
-          (testing "creates a comment for part of an entity"
-            (let [part-id (-> doc :content first :attrs :_id)
-                  created (mt/user-http-request :rasta :post 200 "comment/"
-                                                {:target_type     "document"
-                                                 :target_id       doc-id
-                                                 :child_target_id part-id
-                                                 :content         (tiptap [:p "Part comment"])
-                                                 :html            "<p>Part comment</p>"})]
-              (is (=? {:id              int?
-                       :content         {:type "doc"}
-                       :target_type     "document"
-                       :target_id       doc-id
-                       :child_target_id part-id
-                       :creator         {:id (mt/user->id :rasta)}
-                       :reactions       []}
-                      created))
-              (testing "Comments on concrete paragraphs are also sent as notifications"
-                (is (=? {(:email (mt/fetch-user :lucky))
-                         [{:subject "Comment on New Document"
-                           :body    [{:content (relaxed-re (format "http://localhost:\\d+/document/%s/comments/%s#comment-%s"
-                                                                   doc-id
-                                                                   part-id
-                                                                   (:id created)))}]}]}
-                        (first (swap-vals! mt/inbox empty)))))))
-
-          (testing "Comments with mentions send notification emails"
-            (let [_created (mt/user-http-request :rasta :post 200 "comment/"
-                                                 {:target_type "document"
-                                                  :target_id   doc-id
-                                                  :content     (tiptap
-                                                                [:smartLink {:model    "user"
-                                                                             :entityId (mt/user->id :crowberto)}])
-                                                  :html        "<p>Mention of @crowberto :)</p>"})]
-              (is (=? {(:email (mt/fetch-user :lucky))     [{:subject "Comment on New Document"}]
-                       (:email (mt/fetch-user :crowberto)) [{:subject "Comment on New Document"}]}
-                      (first (swap-vals! mt/inbox empty)))))))))))
+            (testing "Comments with mentions send notification emails"
+              (let [_created (mt/user-http-request :rasta :post 200 "comment/"
+                                                   {:target_type "document"
+                                                    :target_id   doc-id
+                                                    :content     (tiptap
+                                                                  [:smartLink {:model    "user"
+                                                                               :entityId (mt/user->id :crowberto)}])
+                                                    :html        "<p>Mention of @crowberto :)</p>"})]
+                (is (=? {(:email (mt/fetch-user :lucky))     [{:subject "Comment on New Document"}]
+                         (:email (mt/fetch-user :crowberto)) [{:subject "Comment on New Document"}]}
+                        (first (swap-vals! mt/inbox empty))))))))))))
 
 (deftest update-comment-test
   (testing "PUT /api/comment/:comment-id"

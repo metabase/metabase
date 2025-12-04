@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.activity-feed.core :as activity-feed]
-   [metabase.documents.recent-views :as recent-views]
+   [metabase.activity-feed.models.recent-views :as recent-views.model]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -39,8 +39,8 @@
 
 (deftest select-documents-for-recents-empty-input-test
   (testing "returns empty vector when given empty document-ids"
-    (is (= [] (recent-views/select-documents-for-recents [])))
-    (is (= [] (recent-views/select-documents-for-recents nil)))))
+    (is (= [] (#'recent-views.model/document-recents [])))
+    (is (= [] (#'recent-views.model/document-recents nil)))))
 
 (deftest select-documents-for-recents-with-collection-test
   (testing "returns documents with collection information"
@@ -53,7 +53,7 @@
                    :model/Document {doc2-id :id} {:name "Document 2"
                                                   :collection_id coll-id
                                                   :archived false}]
-      (let [results (recent-views/select-documents-for-recents [doc1-id doc2-id])]
+      (let [results (#'recent-views.model/document-recents [doc1-id doc2-id])]
         (is (= 2 (count results)))
 
         ;; Check first document
@@ -75,7 +75,7 @@
     (mt/with-temp [:model/Document {doc-id :id} {:name "Orphan Document"
                                                  :collection_id nil
                                                  :archived false}]
-      (let [results (recent-views/select-documents-for-recents [doc-id])]
+      (let [results (#'recent-views.model/document-recents [doc-id])]
         (is (= 1 (count results)))
         (let [doc (first results)]
           (is (= "Orphan Document" (:name doc)))
@@ -99,7 +99,7 @@
                    :model/Document {doc2-id :id} {:name "Document in Active Collection"
                                                   :collection_id active-coll-id
                                                   :archived false}]
-      (let [results (recent-views/select-documents-for-recents [doc1-id doc2-id])]
+      (let [results (#'recent-views.model/document-recents [doc1-id doc2-id])]
         (is (= 2 (count results)))
 
         ;; Document from archived collection should have nil collection info
@@ -125,7 +125,7 @@
                    :model/Document {doc-id :id} {:name "Archived Document"
                                                  :collection_id coll-id
                                                  :archived true}]
-      (let [results (recent-views/select-documents-for-recents [doc-id])]
+      (let [results (#'recent-views.model/document-recents [doc-id])]
         (is (= 1 (count results)))
         (let [doc (first results)]
           (is (= "Archived Document" (:name doc)))
@@ -133,14 +133,14 @@
 
 (deftest select-documents-for-recents-nonexistent-ids-test
   (testing "handles non-existent document IDs gracefully"
-    (let [results (recent-views/select-documents-for-recents [999999 888888])]
+    (let [results (#'recent-views.model/document-recents [999999 888888])]
       (is (= [] results)))))
 
 (deftest select-documents-for-recents-mixed-ids-test
   (testing "handles mixed existing and non-existing document IDs"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Existing Document"
                                                  :archived false}]
-      (let [results (recent-views/select-documents-for-recents [doc-id 999999])]
+      (let [results (#'recent-views.model/document-recents [doc-id 999999])]
         (is (= 1 (count results)))
         (is (= "Existing Document" (:name (first results))))))))
 
@@ -148,7 +148,7 @@
   (testing "preserves order and handles duplicates in document-ids"
     (mt/with-temp [:model/Document {doc1-id :id} {:name "Document 1" :archived false}
                    :model/Document {doc2-id :id} {:name "Document 2" :archived false}]
-      (let [results (recent-views/select-documents-for-recents [doc1-id doc2-id doc1-id])]
+      (let [results (#'recent-views.model/document-recents [doc1-id doc2-id doc1-id])]
         ;; Should return unique documents even if IDs are duplicated
         (is (= 2 (count results)))
         (is (= #{doc1-id doc2-id} (set (map :id results)))))))

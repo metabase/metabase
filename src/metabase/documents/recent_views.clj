@@ -3,30 +3,7 @@
   (:require
    [metabase.activity-feed.core :as activity-feed]
    [metabase.collections.models.collection.root :as root]
-   [metabase.models.interface :as mi]
-   [toucan2.core :as t2]))
-
-(defn select-documents-for-recents
-  "Query to select recent document data. Returns documents with their collection information
-  for use in recent views display."
-  [document-ids]
-  (if-not (seq document-ids)
-    []
-    (let [documents (t2/select :model/Document
-                               {:select [:d.id
-                                         :d.name
-                                         :d.archived
-                                         [:d.collection_id :entity-coll-id]
-                                         [:c.id :collection_id]
-                                         [:c.name :collection_name]
-                                         [:c.authority_level :collection_authority_level]]
-                                :from [[:document :d]]
-                                :where [:in :d.id document-ids]
-                                :left-join [[:collection :c]
-                                            [:and
-                                             [:= :c.id :d.collection_id]
-                                             [:= :c.archived false]]]})]
-      documents)))
+   [metabase.models.interface :as mi]))
 
 (defn- fill-parent-coll
   "Fill in parent collection information for a document, following the same pattern
