@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "5e283a3725371b81986cbca3b04d26a9ded109c7"
+  },
+  "upstream": {
+    "branch": "uxw-2450-fix-highlighting-of-my-tenant-collection-in-the-entity"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66549,
+        "gqlID": "PR_kwDOAczgH863GCxg"
+      }
+    }
   }
 }
