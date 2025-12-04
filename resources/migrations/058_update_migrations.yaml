@@ -1974,7 +1974,7 @@ databaseChangeLog:
             constraintName: uq_workspace_mapping_transform_downstream_id
 
   - changeSet:
-      id: v58.2025-11-27T11:00:00
+      id: v58.2025-11-26T14:50:02
       author: qnkhuat
       comment: Add workspace.database_details to keep db specifc details used for isolation
       changes:
