@@ -62,7 +62,8 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated           false
                               :describe-is-nullable            true
-                              :describe-default-expr           true}]
+                              :describe-default-expr           true
+                              :workspace                       true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:clickhouse :schemas]

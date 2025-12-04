@@ -88,7 +88,8 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
-                              :metadata/table-existence-check true}]
+                              :metadata/table-existence-check true
+                              :workspace                true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
