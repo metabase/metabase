@@ -171,12 +171,12 @@ git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
 
 Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable) repo that corresponds to your Metabase version.
 
-E.g., if you're running Metabase 1.53, make sure the sample app repo is on the `53-stable` branch. You can find your Metabase version in the Metabase UI by clicking on the gears icon in the upper right and selecting **About Metabase**.
+E.g., if you're running Metabase 1.57 make sure the sample app repo is on the `57-stable` branch. You can find your Metabase version in the Metabase UI by clicking on the gears icon in the upper right and selecting **About Metabase**.
 
 To switch to another branch, run `git checkout <branch-name>`, e.g.:
 
 ```
-git checkout 52-stable
+git checkout {{page.version}}-stable
 ```
 
 ## Set up the application environment
