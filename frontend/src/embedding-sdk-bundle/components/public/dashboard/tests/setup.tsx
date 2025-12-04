@@ -18,7 +18,6 @@ import {
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
-import { mockSettings } from "__support__/settings";
 import { screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
@@ -40,7 +39,6 @@ import {
   createMockParameter,
   createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -214,9 +212,7 @@ export const setupSdkDashboard = async ({
       },
       dashcards: indexBy(dashcards, "id"),
     }),
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    }),
+    tokenFeatures,
   });
 
   if (enterprisePlugins.length > 0) {

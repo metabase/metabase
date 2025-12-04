@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import type { SetupSdkDashboardOptions } from "../tests/setup";
@@ -22,6 +22,16 @@ export function addEnterpriseSubscriptionsTests(
           isEmailConfigured,
           isSlackConfigured,
         });
+
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
+
+        const dashboardHeader = within(screen.getByTestId("dashboard-header"));
+
+        expect(
+          dashboardHeader.queryByLabelText("Subscriptions"),
+        ).not.toBeInTheDocument();
       },
     );
   });
@@ -47,9 +57,9 @@ export function addPremiumSubscriptionsTests(
           isSlackConfigured,
         });
 
-        await waitFor(() => {
-          expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-        });
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
 
         const dashboardHeader = within(screen.getByTestId("dashboard-header"));
 
@@ -87,9 +97,9 @@ export function addPremiumSubscriptionsTests(
           isSlackConfigured,
         });
 
-        await waitFor(() => {
-          expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-        });
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
 
         const dashboardHeader = within(screen.getByTestId("dashboard-header"));
 
@@ -125,9 +135,9 @@ export function addPremiumSubscriptionsTests(
           isSlackConfigured,
         });
 
-        await waitFor(() => {
-          expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
-        });
+        expect(
+          await screen.findByTestId("dashboard-header"),
+        ).toBeInTheDocument();
 
         const dashboardHeader = within(screen.getByTestId("dashboard-header"));
 
