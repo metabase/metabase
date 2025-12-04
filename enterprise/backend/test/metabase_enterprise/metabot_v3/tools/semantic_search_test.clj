@@ -41,7 +41,7 @@
    "baseline"    [0.5 0.5 0.0 0.0]})
 
 (deftest split-keywords-only-test
-  (testing "search returns only exact matches for keyword terms when {:split-semantic-terms true}, regardless of whether semantic search is enabled\n"
+  (testing "search returns only exact matches for keyword terms, regardless of whether semantic search is enabled\n"
     (mt/with-test-user :rasta
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-and-without-semantic-search! test-mock-embeddings
@@ -56,24 +56,18 @@
                 (when semantic-support?
                   (semantic.tu/index-all!))
                 (let [test-entity? (comp #{id-1 id-2 id-3} :id)
-                      query        (fn [base-query unified-disjunct-querying]
-                                     (->> (search/search (assoc base-query
-                                                                :experimental-opts
-                                                                {:unified-disjunct-querying unified-disjunct-querying
-                                                                 :split-semantic-terms      true}))
+                      query        (fn [base-query]
+                                     (->> (search/search base-query)
                                           (filter test-entity?)
                                           (map :name)
                                           set))]
-                  (doseq [unified-disjunct-querying [false true]]
-                    (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
-                      (testing "Semantic results are not returned for keyword terms"
-                        (is (= #{"baseline"}
-                               (query {:term-queries     ["combative" "quarrelsome" "baseline"]
-                                       :semantic-queries []}
-                                      unified-disjunct-querying)))))))))))))))
+                  (testing "Semantic results are not returned for keyword terms"
+                    (is (= #{"baseline"}
+                           (query {:term-queries     ["combative" "quarrelsome" "baseline"]
+                                   :semantic-queries []})))))))))))))
 
 (deftest split-keyword-and-semantic-test
-  (testing "search returns only exact matches for keyword terms when {:split-semantic-terms true}\n"
+  (testing "search returns only exact matches for keyword terms\n"
     (mt/with-test-user :rasta
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-semantic-search-if-available! test-mock-embeddings
@@ -89,18 +83,12 @@
                            :model/Dashboard {id-6 :id} {:name "baseline"}]
               (semantic.tu/index-all!)
               (let [test-entity? (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id)
-                    query        (fn [base-query unified-disjunct-querying]
-                                   (->> (search/search (assoc base-query
-                                                              :experimental-opts
-                                                              {:unified-disjunct-querying unified-disjunct-querying
-                                                               :split-semantic-terms      true}))
+                    query        (fn [base-query]
+                                   (->> (search/search base-query)
                                         (filter test-entity?)
                                         (map :name)
                                         set))]
-                (doseq [unified-disjunct-querying [false true]]
-                  (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
-                    (testing "Semantic results are only returned for semantic terms"
-                      (is (= #{"baseline" "belligerent" "ancillary" "adjunct"}
-                             (query {:term-queries     ["baseline" "belligerent"]
-                                     :semantic-queries ["ancillary"]}
-                                    unified-disjunct-querying))))))))))))))))
+                (testing "Semantic results are only returned for semantic terms"
+                  (is (= #{"baseline" "belligerent" "ancillary" "adjunct"}
+                         (query {:term-queries     ["baseline" "belligerent"]
+                                 :semantic-queries ["ancillary"]}))))))))))))
