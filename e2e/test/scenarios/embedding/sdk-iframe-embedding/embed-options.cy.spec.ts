@@ -10,7 +10,7 @@ describe("OSS", { tags: "@OSS" }, () => {
   describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({
-        withTokenFeatures: false,
+        withToken: false,
         enabledAuthMethods: ["api-key"],
       });
       H.setupSMTP();
@@ -48,7 +48,7 @@ describe("EE without license", () => {
   describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({
-        withTokenFeatures: false,
+        withToken: "starter",
         enabledAuthMethods: ["api-key"],
       });
       H.setupSMTP();
@@ -85,7 +85,7 @@ describe("EE without license", () => {
 describe("EE", () => {
   describe("scenarios > embedding > Embedded Analytics JS (EAJS)", () => {
     beforeEach(() => {
-      H.prepareSdkIframeEmbedTest({ withTokenFeatures: true });
+      H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
       H.setupSMTP();
       cy.signOut();
     });
