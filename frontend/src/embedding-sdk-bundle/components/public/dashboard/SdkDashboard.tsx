@@ -36,6 +36,7 @@ import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
+  closeSidebarIfSubscriptionsSidebarOpen,
   setEditingDashboard,
   toggleSidebar,
   updateDashboardAndCards,
@@ -271,6 +272,12 @@ const SdkDashboardInner = ({
       dispatch(resetErrorPage());
     }
   }, [dispatch, dashboardId]);
+
+  useEffect(() => {
+    if (!withSubscriptions) {
+      dispatch(closeSidebarIfSubscriptionsSidebarOpen());
+    }
+  }, [dispatch, withSubscriptions]);
 
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
