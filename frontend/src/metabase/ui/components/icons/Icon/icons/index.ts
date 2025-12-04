@@ -184,6 +184,8 @@ import filter_plus_component from "./filter_plus.svg?component";
 import filter_plus_source from "./filter_plus.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_database_component from "./folder_database.svg?component";
+import folder_database_source from "./folder_database.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
 import folder_filled_source from "./folder_filled.svg?source";
 import format_code_component from "./format_code.svg?component";
@@ -892,6 +894,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     folder: {
       component: folder_component,
       source: folder_source,
+    },
+    folder_database: {
+      component: folder_database_component,
+      source: folder_database_source,
     },
     folder_filled: {
       component: folder_filled_component,
@@ -1684,6 +1690,7 @@ export type IconName =
   | "funnel"
   | "funnel_outline"
   | "folder"
+  | "folder_database"
   | "folder_filled"
   | "gauge"
   | "gear"

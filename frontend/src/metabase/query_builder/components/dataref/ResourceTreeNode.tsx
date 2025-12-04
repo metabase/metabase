@@ -16,9 +16,11 @@ export const ResourceTreeNode = ({
   item,
   depth,
   isExpanded,
+  displayId = false,
   onToggleExpand,
   onItemClick,
 }: TreeNodeProps<ITreeNodeItem> & {
+  displayId?: boolean;
   onItemClick: () => void;
 }) => {
   const isRoot = depth === 0;
@@ -34,7 +36,7 @@ export const ResourceTreeNode = ({
       {isRoot && <NodeListItemIcon name="chevronright" data-role="chevron" />}
       <NodeListItemIcon name={item.icon as IconName} />
       <NodeListItemName>{item.name}</NodeListItemName>
-      {!isRoot && <NodeListItemId>{`#${item.id}`}</NodeListItemId>}
+      {!isRoot && displayId && <NodeListItemId>{`#${item.id}`}</NodeListItemId>}
     </NodeListItemLink>
   );
 };

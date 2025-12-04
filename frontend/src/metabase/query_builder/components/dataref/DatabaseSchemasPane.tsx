@@ -10,26 +10,79 @@ import type {
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Card, CollectionId } from "metabase-types/api";
+import type {
+  CollectionId,
+  SchemaName,
+  SearchResult,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
   NodeListContainer,
   NodeListIcon,
-  NodeListItemIcon,
-  NodeListItemLink,
-  NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
 import { ResourceTreeNode } from "./ResourceTreeNode";
+
+const groupModelsByCollection = (models: SearchResult[]) =>
+  Object.values(
+    models.reduce(
+      (acc, curr) => {
+        const id = curr.collection.id as CollectionId;
+
+        acc[id] ??= {
+          id,
+          name: getCollectionName({ id, name: curr.name }),
+          icon: "folder",
+          children: [] as ITreeNodeItem[],
+        };
+
+        acc[id].children!.push({
+          id: curr.id,
+          name: curr.name,
+          icon: "model",
+          data: curr,
+        });
+
+        return acc;
+      },
+      {} as Record<CollectionId, ITreeNodeItem>,
+    ),
+  );
+
+const groupTablesBySchema = (tables: SearchResult[]) =>
+  Object.values(
+    tables.reduce(
+      (acc, curr) => {
+        const id = curr.table_schema as SchemaName;
+
+        acc[id] ??= {
+          id,
+          name: id,
+          icon: "folder_database",
+          children: [] as ITreeNodeItem[],
+        };
+
+        acc[id].children!.push({
+          id: curr.id,
+          name: curr.name,
+          icon: "model",
+          data: curr,
+        });
+
+        return acc;
+      },
+      {} as Record<SchemaName, ITreeNodeItem>,
+    ),
+  );
 
 interface DatabaseSchemasPaneProps {
   onBack: () => void;
   onClose: () => void;
   onItemClick: (type: string, item: unknown) => void;
   database: Database;
-  models: Card[];
+  models: SearchResult[];
 }
 
 const DatabaseSchemasPane = ({
@@ -37,40 +90,32 @@ const DatabaseSchemasPane = ({
   onClose,
   onItemClick,
   database,
-  models,
+  models: searchResults,
 }: DatabaseSchemasPaneProps) => {
+  const schemas = database.getSchemas();
+
+  const tables = useMemo(
+    () => searchResults.filter((model) => model.model === "table"),
+    [searchResults],
+  );
+  const tablesBySchema = useMemo(
+    () =>
+      groupTablesBySchema(tables).sort((a, b) => a.name.localeCompare(b.name)),
+    [tables],
+  );
+
+  const models = useMemo(
+    () => searchResults.filter((model) => model.model === "dataset"),
+    [searchResults],
+  );
   const modelsByCollection = useMemo(
     () =>
-      Object.values(
-        models.reduce(
-          (acc, curr) => {
-            const id = curr.collection_id as CollectionId;
-            const name = getCollectionName({ id, name: curr.name });
-
-            if (!(id in acc)) {
-              acc[id] = {
-                id,
-                name,
-                icon: "folder",
-                children: [],
-              };
-            }
-
-            acc[id].children!.push({
-              id: curr.id,
-              name: curr.name,
-              icon: "model",
-              data: curr,
-            });
-
-            return acc;
-          },
-          {} as Record<CollectionId, ITreeNodeItem>,
-        ),
-      ).sort((a, b) => a.name.localeCompare(b.name)),
+      groupModelsByCollection(models).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     [models],
   );
-  const schemas = database.getSchemas();
+
   return (
     <SidebarContent
       title={database.name}
@@ -90,16 +135,15 @@ const DatabaseSchemasPane = ({
               )}
             </NodeListTitleText>
           </NodeListTitle>
-          <ul>
-            {schemas.map((schema) => (
-              <li key={schema.id}>
-                <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
-                  <NodeListItemIcon name="folder" />
-                  <NodeListItemName>{schema.name}</NodeListItemName>
-                </NodeListItemLink>
-              </li>
-            ))}
-          </ul>
+          <Tree
+            data={tablesBySchema}
+            TreeNode={(props: TreeNodeProps<ITreeNodeItem>) => (
+              <ResourceTreeNode
+                {...props}
+                onItemClick={() => onItemClick("table", props.item.data)}
+              />
+            )}
+          />
           {modelsByCollection.length ? (
             <>
               <NodeListTitle mt={16}>
@@ -136,7 +180,7 @@ const DatabaseSchemasPane = ({
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Search.loadList({
   query: (_state: State, props: DatabaseSchemasPaneProps) => ({
-    models: ["dataset"],
+    models: ["dataset", "table"],
     table_db_id: props.database.id,
   }),
   listName: "models",

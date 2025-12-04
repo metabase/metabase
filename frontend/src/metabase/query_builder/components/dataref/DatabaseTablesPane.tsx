@@ -25,36 +25,31 @@ import {
 } from "./NodeList";
 import { ResourceTreeNode } from "./ResourceTreeNode";
 
-const groupModelsByCollection = (models: SearchResult[]) => {
-  const grouped = models.reduce(
-    (acc, curr) => {
-      const id = curr.collection.id as CollectionId;
-      const name = getCollectionName(curr.collection);
+const groupModelsByCollection = (models: SearchResult[]) =>
+  Object.values(
+    models.reduce(
+      (acc, curr) => {
+        const id = curr.collection.id as CollectionId;
 
-      if (!(id in acc)) {
-        acc[id] = {
+        acc[id] ??= {
           id,
-          name,
+          name: getCollectionName(curr.collection),
           icon: "folder",
-          children: [],
+          children: [] as ITreeNodeItem[],
         };
-      }
 
-      // @ts-expect-error - children is explicitly defined in the previous step
-      acc[id].children.push({
-        id: curr.id,
-        name: curr.name,
-        icon: "model",
-        data: curr,
-      });
+        acc[id].children!.push({
+          id: curr.id,
+          name: curr.name,
+          icon: "model",
+          data: curr,
+        });
 
-      return acc;
-    },
-    {} as Record<CollectionId, ITreeNodeItem>,
+        return acc;
+      },
+      {} as Record<CollectionId, ITreeNodeItem>,
+    ),
   );
-
-  return Object.values(grouped);
-};
 
 export interface DatabaseTablesPaneProps {
   onBack: () => void;
@@ -155,6 +150,7 @@ export const DatabaseTablesPane = ({
                   <ResourceTreeNode
                     {...props}
                     onItemClick={() => onItemClick("question", props.item.data)}
+                    displayId
                   />
                 )}
               />
