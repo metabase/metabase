@@ -75,8 +75,8 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
 
         cy.findByText("Subscriptions").should("be.visible");
 
-        // check that length is at least 1
-        cy.findAllByText("Emailed hourly").should("have.length.at.least", 1);
+        // check that there are 2 subscriptions
+        cy.findAllByText("Emailed hourly").should("have.length", 2);
       });
     });
 
@@ -104,8 +104,8 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
 
         cy.findByText("Subscriptions").should("be.visible");
 
-        // check that length is at least 1
-        cy.findAllByText("Emailed hourly").should("have.length.at.least", 1);
+        // check that there are 2 subscriptions
+        cy.findAllByText("Emailed hourly").should("have.length", 2);
       });
     });
 
@@ -133,8 +133,8 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
 
         cy.findByText("Subscriptions").should("be.visible");
 
-        // check that length is at least 1
-        cy.findAllByText("Emailed hourly").should("have.length.at.least", 1);
+        // check that there are 2 subscriptions
+        cy.findAllByText("Emailed hourly").should("have.length", 2);
       });
     });
   });
