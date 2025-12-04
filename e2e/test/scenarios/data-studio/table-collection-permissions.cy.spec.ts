@@ -418,7 +418,7 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("losing token features", () => {
-    it("should be able to view a published table in the sidebar and the collection but not query it", () => {
+    it("should be able to view published tables in the sidebar and the collection but not query them", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
       H.activateToken("starter");
 
