@@ -13,6 +13,7 @@ import type {
   Collection,
   CollectionPermissionsGraph,
   GroupInfo,
+  Settings,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -142,7 +143,7 @@ interface SetupOptions {
   permissionsGraph?: CollectionPermissionsGraph;
   permissionGroups?: GroupInfo[];
   tokenFeatures?: Partial<TokenFeatures>;
-  settings?: Record<string, unknown>;
+  settings?: Partial<Settings>;
 }
 
 export function setup({
