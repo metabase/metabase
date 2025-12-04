@@ -832,18 +832,6 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-03T17:08:37
       author: nvoxland
-      comment: Add fk_transform_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_transform_collection_id
-
-  - changeSet:
-      id: v58.2025-12-03T17:08:38
-      author: nvoxland
       comment: Add index on transform.collection_id
       changes:
         - createIndex:
@@ -852,6 +840,18 @@ databaseChangeLog:
             columns:
               - column:
                   name: collection_id
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:38
+      author: nvoxland
+      comment: Add fk_transform_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
