@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.ordering :as ordering]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
