@@ -369,6 +369,10 @@
       (log/debugf e "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
+;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/is-simple-query"
   "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
   [_route-params
@@ -377,6 +381,10 @@
   (api/check-superuser)
   (simple-native-query? query))
 
+;; TODO (Cam 2025-12-04) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/extract-columns"
   "Extract column names from an MBQL query without executing it.
 
