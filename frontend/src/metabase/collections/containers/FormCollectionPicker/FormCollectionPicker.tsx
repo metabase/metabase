@@ -35,7 +35,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
-  setNamespace?: (namespace: string) => void;
+  setNamespace?: (namespace: string | undefined) => void;
   /**
    * The type of item being saved. When set to a non-collection model,
    * namespace root collections (like tenant root) will be disabled.
@@ -140,7 +140,7 @@ function FormCollectionPicker({
         setNamespace?.(namespace);
         setCollectionNamespace(namespace);
       }
-
+      setCollectionNamespace(namespace ?? null);
       setValue(canonicalCollectionId(id));
       setIsPickerOpen(false);
     },
