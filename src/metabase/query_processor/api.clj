@@ -18,7 +18,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -38,13 +38,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
-
-(defenterprise user-has-published-table-permission-for-database?
-  "Returns true if user has access to any published table in the given database via collection permissions.
-  OSS implementation always returns false - published tables only grant access in EE."
-  metabase-enterprise.permissions.published-tables
-  [_database-id]
-  false)
 
 (defn- query->source-card-id
   "Return the ID of the Card used as the \"source\" query of this query, if applicable; otherwise return `nil`. Used so
@@ -71,7 +64,7 @@
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
       (when-not (or (mi/can-read? :model/Database database)
-                    (user-has-published-table-permission-for-database? database))
+                    (perms/user-has-published-table-permission-for-database? database))
         (api/throw-403)))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]

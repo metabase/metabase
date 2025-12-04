@@ -865,6 +865,7 @@
   {:team "UX West"
    :api  #{metabase.permissions.core
            metabase.permissions.init
+           metabase.permissions.published-tables
            metabase.permissions.schema}
    :uses #{api
            app-db

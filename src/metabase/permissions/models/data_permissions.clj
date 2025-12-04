@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -290,14 +291,6 @@
                            (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
 
-(defenterprise user-published-table-permission
-  "Returns the permission level for a published table if the user has collection access.
-  OSS returns nil (no published table permission support).
-  Enterprise returns :query-builder if table is published and user has collection access."
-  metabase-enterprise.permissions.published-tables
-  [_perm-type _table-id]
-  nil)
-
 (mu/defn table-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
@@ -317,7 +310,7 @@
       (or (when-not (= table-perm (least-permissive-value perm-type))
             table-perm)
           (when (pos-int? table-id)
-            (user-published-table-permission perm-type table-id))
+            (published-tables/user-published-table-permission perm-type table-id))
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-table? :- :boolean

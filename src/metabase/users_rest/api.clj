@@ -13,7 +13,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
@@ -293,14 +293,6 @@
         :group (within-group)
         :all (all)))))
 
-(defenterprise user-has-any-published-table-permission?
-  "Returns true if user has access to any published table via collection permissions.
-  OSS returns false (published tables don't grant access).
-  Enterprise checks if user has collection permissions on any published table."
-  metabase-enterprise.permissions.published-tables
-  []
-  false)
-
 (defn- add-query-permissions
   "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries
   permissions across non-sample databases."
@@ -315,7 +307,7 @@
         can-create-queries? (or (some #(perms/at-least-as-permissive?
                                         :perms/create-queries % :query-builder)
                                       create-query-perms)
-                                (user-has-any-published-table-permission?))
+                                (perms/user-has-any-published-table-permission?))
         can-create-native?  (contains? create-query-perms :query-builder-and-native)]
     (update user :permissions assoc
             :can_create_queries        (boolean can-create-queries?)
