@@ -15,6 +15,7 @@ const BASE_PARAMS = {
   resourceId: 123,
   isSimpleEmbedFeatureAvailable: true,
   isGuestEmbedsEnabled: false,
+  isSsoEnabledAndConfigured: true,
 } as const;
 
 describe("getDefaultSdkIframeEmbedSettings", () => {

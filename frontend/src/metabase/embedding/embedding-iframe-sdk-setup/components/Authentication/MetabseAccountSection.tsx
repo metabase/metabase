@@ -1,28 +1,19 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
 export const MetabaseAccountSection = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { isSsoEnabledAndConfigured, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
-
-  const isJwtEnabled = useSetting("jwt-enabled");
-  const isSamlEnabled = useSetting("saml-enabled");
-  const isJwtConfigured = useSetting("jwt-configured");
-  const isSamlConfigured = useSetting("saml-configured");
 
   if (isGuestEmbed) {
     return null;
   }
 
-  const isSsoEnabledAndConfigured =
-    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
-
-  const authType = getAuthTypeForSettings(settings);
+  const ssoTypeValue = settings.useExistingUserSession ? "user-session" : "sso";
 
   const handleAuthTypeChange = (value: string) => {
     const useExistingUserSession = value === "user-session";
@@ -40,7 +31,7 @@ export const MetabaseAccountSection = () => {
           }
         </Text>
 
-        <Radio.Group value={authType} onChange={handleAuthTypeChange}>
+        <Radio.Group value={ssoTypeValue} onChange={handleAuthTypeChange}>
           <Stack gap="sm">
             <Radio
               disabled={!isSsoEnabledAndConfigured}
@@ -49,7 +40,7 @@ export const MetabaseAccountSection = () => {
             />
 
             <Radio
-              value="sso"
+              value="user-session"
               label={t`Existing session (local testing only)`}
             />
           </Stack>

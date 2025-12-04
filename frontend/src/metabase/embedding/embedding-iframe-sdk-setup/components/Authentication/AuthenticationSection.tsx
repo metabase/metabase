@@ -5,7 +5,10 @@ import { UPSELL_CAMPAIGN_AUTH } from "metabase/embedding/embedding-iframe-sdk-se
 import { TooltipWarning } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/TooltipWarning";
 import { WithSimpleEmbeddingFeatureUpsellTooltip } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
+import {
+  DEFAULT_EXPERIENCE,
+  useHandleExperienceChange,
+} from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-handle-experience-change";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
 export const AuthenticationSection = () => {
@@ -15,20 +18,26 @@ export const AuthenticationSection = () => {
     settings,
     updateSettings,
   } = useSdkIframeEmbedSetupContext();
+  const handleEmbedExperienceChange = useHandleExperienceChange();
 
   if (!isFirstStep) {
     return null;
   }
 
-  const authType = getAuthTypeForSettings(settings);
+  const authType = settings.isGuest ? "guest-embed" : "sso";
 
   const handleAuthTypeChange = (value: string) => {
     const isGuest = value === "guest-embed";
-    const useExistingUserSession = value === "user-session";
+    const isSso = !isGuest;
+
+    if (isGuest) {
+      // Reset experience to default when switching to guest embeds
+      handleEmbedExperienceChange(DEFAULT_EXPERIENCE);
+    }
 
     updateSettings({
       isGuest,
-      useExistingUserSession,
+      isSso,
     });
   };
 

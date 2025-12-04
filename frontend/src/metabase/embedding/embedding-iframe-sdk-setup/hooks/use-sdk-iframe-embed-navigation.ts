@@ -14,6 +14,7 @@ import type { SdkIframeEmbedSetupContextType } from "../context";
 export function useSdkIframeEmbedNavigation({
   isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
   initialState,
   experience,
   resource,
@@ -27,6 +28,7 @@ export function useSdkIframeEmbedNavigation({
   SdkIframeEmbedSetupContextType,
   | "isSimpleEmbedFeatureAvailable"
   | "isGuestEmbedsEnabled"
+  | "isSsoEnabledAndConfigured"
   | "initialState"
   | "experience"
   | "resource"
@@ -72,6 +74,7 @@ export function useSdkIframeEmbedNavigation({
           settings,
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
+          isSsoEnabledAndConfigured,
           embeddingParameters,
         });
       });

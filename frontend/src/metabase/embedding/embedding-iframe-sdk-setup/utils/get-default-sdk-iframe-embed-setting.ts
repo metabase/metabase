@@ -24,12 +24,14 @@ export const getDefaultSdkIframeEmbedSettings = ({
   resourceId,
   isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;
   isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
 }): SdkIframeEmbedSetupSettings => {
   const baseSettingsDefaults: Partial<SdkIframeEmbedBaseSettings> = {
     useExistingUserSession: true,
@@ -93,6 +95,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
       state: initialState,
       experience,
       isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
     }),
   };
 };

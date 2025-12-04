@@ -96,6 +96,7 @@ export const trackEmbedWizardOptionsCompleted = ({
   settings,
   isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
   embeddingParameters,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
@@ -104,6 +105,7 @@ export const trackEmbedWizardOptionsCompleted = ({
   settings: Partial<SdkIframeEmbedSetupSettings>;
   isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
   embeddingParameters: EmbeddingParameters;
 }) => {
   // Get defaults for this experience type (with a dummy resource ID)
@@ -113,6 +115,7 @@ export const trackEmbedWizardOptionsCompleted = ({
     resourceId: 0,
     isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
   });
 
   // Does the embed settings diverge from the experience defaults?

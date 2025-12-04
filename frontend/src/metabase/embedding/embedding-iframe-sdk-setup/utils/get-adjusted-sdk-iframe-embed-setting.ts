@@ -11,11 +11,13 @@ export const getAdjustedSdkIframeEmbedSetting = ({
   prevSettings,
   settings,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
 }: {
   defaultSettings: SdkIframeEmbedSetupSettings;
   prevSettings: SdkIframeEmbedSetupSettings;
   settings: SdkIframeEmbedSetupSettings;
   isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
 }): SdkIframeEmbedSetupSettings => {
   const experience = getExperienceFromSettings(settings);
 
@@ -34,6 +36,7 @@ export const getAdjustedSdkIframeEmbedSetting = ({
           },
           experience,
           isGuestEmbedsEnabled,
+          isSsoEnabledAndConfigured,
         }),
       }),
     )
@@ -54,6 +57,7 @@ export const getAdjustedSdkIframeEmbedSetting = ({
           },
           experience,
           isGuestEmbedsEnabled,
+          isSsoEnabledAndConfigured,
         }),
         useExistingUserSession: settings.useExistingUserSession,
       }),

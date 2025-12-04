@@ -36,6 +36,7 @@ describe("getCommonEmbedSettings", () => {
           useExistingUserSession: false,
           expected: {
             isGuest: true,
+            isSso: false,
             useExistingUserSession: false,
             drills: false,
             hiddenParameters: [],
@@ -46,6 +47,7 @@ describe("getCommonEmbedSettings", () => {
           useExistingUserSession: false,
           expected: {
             isGuest: true,
+            isSso: false,
             useExistingUserSession: false,
             drills: false,
             hiddenParameters: [],
@@ -56,6 +58,7 @@ describe("getCommonEmbedSettings", () => {
           useExistingUserSession: true,
           expected: {
             isGuest: false,
+            isSso: true,
             useExistingUserSession: true,
             hiddenParameters: [],
           },
@@ -65,6 +68,7 @@ describe("getCommonEmbedSettings", () => {
           useExistingUserSession: true,
           expected: {
             isGuest: false,
+            isSso: true,
             useExistingUserSession: true,
             hiddenParameters: [],
           },
@@ -74,6 +78,7 @@ describe("getCommonEmbedSettings", () => {
           useExistingUserSession: true,
           expected: {
             isGuest: false,
+            isSso: true,
             useExistingUserSession: true,
             hiddenParameters: [],
           },
@@ -85,6 +90,7 @@ describe("getCommonEmbedSettings", () => {
             state: { isGuest: true, useExistingUserSession },
             experience,
             isGuestEmbedsEnabled: true,
+            isSsoEnabledAndConfigured: true,
           });
 
           expect(result).toEqual(expected);
@@ -96,13 +102,27 @@ describe("getCommonEmbedSettings", () => {
       it.each<{
         experience: SdkIframeEmbedSetupExperience;
         useExistingUserSession: boolean;
+        isSsoEnabledAndConfigured: boolean;
         expected: Record<string, unknown>;
       }>([
         {
           experience: "dashboard",
           useExistingUserSession: true,
+          isSsoEnabledAndConfigured: true,
           expected: {
             isGuest: false,
+            isSso: true,
+            useExistingUserSession: true,
+            drills: true,
+          },
+        },
+        {
+          experience: "dashboard",
+          useExistingUserSession: false,
+          isSsoEnabledAndConfigured: false,
+          expected: {
+            isGuest: false,
+            isSso: true,
             useExistingUserSession: true,
             drills: true,
           },
@@ -110,8 +130,10 @@ describe("getCommonEmbedSettings", () => {
         {
           experience: "chart",
           useExistingUserSession: false,
+          isSsoEnabledAndConfigured: true,
           expected: {
             isGuest: false,
+            isSso: true,
             useExistingUserSession: false,
             drills: true,
             hiddenParameters: [],
@@ -120,18 +142,26 @@ describe("getCommonEmbedSettings", () => {
         {
           experience: "exploration",
           useExistingUserSession: true,
+          isSsoEnabledAndConfigured: true,
           expected: {
             isGuest: false,
+            isSso: true,
             useExistingUserSession: true,
           },
         },
       ])(
-        "should return non-guest settings for $experience experience",
-        ({ experience, useExistingUserSession, expected }) => {
+        "should return non-guest settings for $experience experience (useExistingUserSession=$useExistingUserSession, isSsoEnabledAndConfigured=$isSsoEnabledAndConfigured)",
+        ({
+          experience,
+          useExistingUserSession,
+          isSsoEnabledAndConfigured,
+          expected,
+        }) => {
           const result = getCommonEmbedSettings({
             state: { isGuest: false, useExistingUserSession },
             experience,
             isGuestEmbedsEnabled: false,
+            isSsoEnabledAndConfigured,
           });
 
           expect(result).toEqual(expected);
@@ -143,12 +173,14 @@ describe("getCommonEmbedSettings", () => {
           state: { isGuest: false, useExistingUserSession: true },
           experience: "chart",
           isGuestEmbedsEnabled: false,
+          isSsoEnabledAndConfigured: true,
         });
 
         const dashboardResult = getCommonEmbedSettings({
           state: { isGuest: false, useExistingUserSession: true },
           experience: "dashboard",
           isGuestEmbedsEnabled: false,
+          isSsoEnabledAndConfigured: true,
         });
 
         expect(chartResult).toHaveProperty("hiddenParameters", []);
@@ -160,13 +192,26 @@ describe("getCommonEmbedSettings", () => {
           state: undefined,
           experience: "dashboard",
           isGuestEmbedsEnabled: false,
+          isSsoEnabledAndConfigured: true,
         });
 
         expect(result).toEqual({
           isGuest: false,
+          isSso: true,
           useExistingUserSession: undefined,
           drills: true,
         });
+      });
+
+      it("should set useExistingUserSession to true when isSsoEnabledAndConfigured is false", () => {
+        const result = getCommonEmbedSettings({
+          state: { isGuest: false, useExistingUserSession: false },
+          experience: "dashboard",
+          isGuestEmbedsEnabled: false,
+          isSsoEnabledAndConfigured: false,
+        });
+
+        expect(result).toHaveProperty("useExistingUserSession", true);
       });
     });
 
@@ -181,6 +226,7 @@ describe("getCommonEmbedSettings", () => {
           useExistingUserSession: true,
           expected: {
             isGuest: false,
+            isSso: true,
             useExistingUserSession: true,
             drills: true,
           },
@@ -190,6 +236,7 @@ describe("getCommonEmbedSettings", () => {
           useExistingUserSession: false,
           expected: {
             isGuest: false,
+            isSso: true,
             useExistingUserSession: false,
           },
         },
@@ -200,6 +247,7 @@ describe("getCommonEmbedSettings", () => {
             state: { isGuest: false, useExistingUserSession },
             experience,
             isGuestEmbedsEnabled: true,
+            isSsoEnabledAndConfigured: true,
           });
 
           expect(result).toEqual(expected);
@@ -221,6 +269,7 @@ describe("getCommonEmbedSettings", () => {
         experience: "dashboard",
         expected: {
           isGuest: true,
+          isSso: false,
           useExistingUserSession: false,
           drills: false,
           withDownloads: true,
@@ -231,6 +280,7 @@ describe("getCommonEmbedSettings", () => {
         experience: "chart",
         expected: {
           isGuest: true,
+          isSso: false,
           useExistingUserSession: false,
           drills: false,
           withDownloads: true,
@@ -241,6 +291,7 @@ describe("getCommonEmbedSettings", () => {
         experience: "exploration",
         expected: {
           isGuest: false,
+          isSso: true,
           useExistingUserSession: true,
           hiddenParameters: [],
         },
@@ -249,6 +300,7 @@ describe("getCommonEmbedSettings", () => {
         experience: "browser",
         expected: {
           isGuest: false,
+          isSso: true,
           useExistingUserSession: true,
           hiddenParameters: [],
         },
@@ -257,6 +309,7 @@ describe("getCommonEmbedSettings", () => {
         experience: "metabot",
         expected: {
           isGuest: false,
+          isSso: true,
           useExistingUserSession: true,
           hiddenParameters: [],
         },
@@ -268,6 +321,7 @@ describe("getCommonEmbedSettings", () => {
           state: { isGuest: false, useExistingUserSession: false },
           experience,
           isGuestEmbedsEnabled: false,
+          isSsoEnabledAndConfigured: false,
         });
 
         expect(result).toEqual(expected);
@@ -279,17 +333,20 @@ describe("getCommonEmbedSettings", () => {
         state: { isGuest: false, useExistingUserSession: false },
         experience: "dashboard",
         isGuestEmbedsEnabled: true,
+        isSsoEnabledAndConfigured: false,
       });
 
       const resultWithFalse = getCommonEmbedSettings({
         state: { isGuest: false, useExistingUserSession: false },
         experience: "dashboard",
         isGuestEmbedsEnabled: false,
+        isSsoEnabledAndConfigured: false,
       });
 
       expect(resultWithTrue).toEqual(resultWithFalse);
       expect(resultWithTrue).toEqual({
         isGuest: true,
+        isSso: false,
         useExistingUserSession: false,
         drills: false,
         withDownloads: true,
@@ -302,6 +359,7 @@ describe("getCommonEmbedSettings", () => {
         state: undefined,
         experience: "dashboard",
         isGuestEmbedsEnabled: true,
+        isSsoEnabledAndConfigured: false,
       });
 
       expect(result).toHaveProperty("withDownloads", true);
@@ -312,10 +370,12 @@ describe("getCommonEmbedSettings", () => {
         state: undefined,
         experience: "chart",
         isGuestEmbedsEnabled: false,
+        isSsoEnabledAndConfigured: false,
       });
 
       expect(result).toEqual({
         isGuest: true,
+        isSso: false,
         useExistingUserSession: false,
         drills: false,
         withDownloads: true,

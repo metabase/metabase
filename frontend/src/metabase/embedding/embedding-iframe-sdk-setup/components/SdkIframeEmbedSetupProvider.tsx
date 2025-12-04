@@ -6,6 +6,7 @@ import { useSetting } from "metabase/common/hooks";
 import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
+import { useIsSsoEnabledAndConfigured } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-is-sso-enabled-and-configured";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalInitialState,
@@ -45,6 +46,8 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
   const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
+
+  const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();
 
   useMount(() => {
     trackEmbedWizardOpened();
@@ -93,6 +96,7 @@ export const SdkIframeEmbedSetupProvider = ({
     modelCount,
     isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
   });
 
   // Which embed experience are we setting up?
@@ -146,6 +150,7 @@ export const SdkIframeEmbedSetupProvider = ({
     useSdkIframeEmbedNavigation({
       isSimpleEmbedFeatureAvailable,
       isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
       initialState,
       experience,
       resource,
@@ -163,6 +168,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isSimpleEmbeddingTermsAccepted,
     isGuestEmbedsEnabled,
     isGuestEmbedsTermsAccepted,
+    isSsoEnabledAndConfigured,
     currentStep,
     setCurrentStep,
     handleNext,
