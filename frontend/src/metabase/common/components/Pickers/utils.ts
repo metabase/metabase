@@ -77,6 +77,11 @@ export const getCollectionIdPath = (
   if (collection.type === "library") {
     return [collection.id];
   }
+
+  if (collection.type === "tenant-specific-root-collection") {
+    return [collection.id];
+  }
+
   if (collection.namespace === "tenant-specific") {
     return ["tenant"];
   }
