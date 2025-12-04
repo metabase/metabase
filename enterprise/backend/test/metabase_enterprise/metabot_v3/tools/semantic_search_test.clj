@@ -55,21 +55,22 @@
                              :model/Dashboard {id-3 :id} {:name "baseline"}]
                 (when semantic-support?
                   (semantic.tu/index-all!))
-                (doseq [unified-disjunct-querying [false true]]
-                  (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
-                    (let [base-query   {:term-queries     ["combative" "quarrelsome" "baseline"]
-                                        :semantic-queries []}
-                          test-entity? (comp #{id-1 id-2 id-3} :id)
-                          query        (fn [unified-disjunct-querying]
-                                         (->> (search/search (assoc base-query
-                                                                    :experimental-opts
-                                                                    {:unified-disjunct-querying unified-disjunct-querying
-                                                                     :split-semantic-terms      true}))
-                                              (filter test-entity?)
-                                              (map :name)))]
+                (let [test-entity? (comp #{id-1 id-2 id-3} :id)
+                      query        (fn [base-query unified-disjunct-querying]
+                                     (->> (search/search (assoc base-query
+                                                                :experimental-opts
+                                                                {:unified-disjunct-querying unified-disjunct-querying
+                                                                 :split-semantic-terms      true}))
+                                          (filter test-entity?)
+                                          (map :name)
+                                          set))]
+                  (doseq [unified-disjunct-querying [false true]]
+                    (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
                       (testing "Semantic results are not returned for keyword terms"
                         (is (= #{"baseline"}
-                               (set (query unified-disjunct-querying))))))))))))))))
+                               (query {:term-queries     ["combative" "quarrelsome" "baseline"]
+                                       :semantic-queries []}
+                                      unified-disjunct-querying)))))))))))))))
 
 (deftest split-keyword-and-semantic-test
   (testing "search returns only exact matches for keyword terms when {:split-semantic-terms true}\n"
@@ -87,18 +88,19 @@
                            :model/Dashboard {id-5 :id} {:name "quixotic"}
                            :model/Dashboard {id-6 :id} {:name "baseline"}]
               (semantic.tu/index-all!)
-              (doseq [unified-disjunct-querying [false true]]
-                (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
-                  (let [base-query   {:term-queries     ["baseline" "belligerent"]
-                                      :semantic-queries ["ancillary"]}
-                        test-entity? (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id)
-                        query        (fn [unified-disjunct-querying]
-                                       (->> (search/search (assoc base-query
-                                                                  :experimental-opts
-                                                                  {:unified-disjunct-querying unified-disjunct-querying
-                                                                   :split-semantic-terms      true}))
-                                            (filter test-entity?)
-                                            (map :name)))]
+              (let [test-entity? (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id)
+                    query        (fn [base-query unified-disjunct-querying]
+                                   (->> (search/search (assoc base-query
+                                                              :experimental-opts
+                                                              {:unified-disjunct-querying unified-disjunct-querying
+                                                               :split-semantic-terms      true}))
+                                        (filter test-entity?)
+                                        (map :name)
+                                        set))]
+                (doseq [unified-disjunct-querying [false true]]
+                  (testing (str "{unified-disjunct-querying " unified-disjunct-querying "}\n")
                     (testing "Semantic results are only returned for semantic terms"
                       (is (= #{"baseline" "belligerent" "ancillary" "adjunct"}
-                             (set (query unified-disjunct-querying)))))))))))))))
+                             (query {:term-queries     ["baseline" "belligerent"]
+                                     :semantic-queries ["ancillary"]}
+                                    unified-disjunct-querying))))))))))))))))
