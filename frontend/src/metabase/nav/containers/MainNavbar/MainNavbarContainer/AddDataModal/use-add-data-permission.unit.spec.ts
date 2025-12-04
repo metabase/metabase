@@ -34,6 +34,7 @@ function setup({
       can_access_setting: true,
       can_access_monitoring: false,
       can_access_subscription: false,
+      can_access_data_studio: false,
     };
   }
   setupTokenStatusEndpoint({ valid: true });

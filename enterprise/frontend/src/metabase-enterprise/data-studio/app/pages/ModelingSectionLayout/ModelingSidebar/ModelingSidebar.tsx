@@ -1,9 +1,6 @@
 import { useMemo } from "react";
 
-import {
-  useListCollectionsTreeQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import type { CollectionId, NativeQuerySnippetId } from "metabase-types/api";
 
@@ -22,12 +19,6 @@ export function ModelingSidebar({
 }: ModelingSidebarProps) {
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
-  const { data: collections = [], isLoading: isLoadingCollections } =
-    useListCollectionsTreeQuery({
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-      "include-library": true,
-    });
 
   const { hasDataAccess, hasNativeWrite } = useMemo(() => {
     const databases = databaseData?.data ?? [];
@@ -37,15 +28,12 @@ export function ModelingSidebar({
     };
   }, [databaseData]);
 
-  const isLoading = isLoadingDatabases || isLoadingCollections;
-
-  if (isLoading) {
+  if (isLoadingDatabases) {
     return null;
   }
 
   return (
     <ModelingSidebarView
-      collections={collections}
       selectedCollectionId={selectedCollectionId}
       selectedSnippetId={selectedSnippetId}
       isGlossaryActive={isGlossaryActive}

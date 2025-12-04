@@ -1229,6 +1229,73 @@ describe("scenarios > embedding > dashboard appearance", () => {
     );
   });
 
+  it("should apply theme hash parameter to static dashboard embed (metabase#66253)", () => {
+    const visit = (theme) => {
+      cy.clearLocalStorage();
+
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: ORDERS_DASHBOARD_ID },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            theme,
+          },
+          onBeforeLoad: (win) => {
+            // a bit gross but other stub techniques don't reliably work in Cypress
+            cy.stub(win, "matchMedia").callsFake((query) => {
+              return {
+                matches: query === "(prefers-color-scheme: dark)",
+                media: query,
+                addEventListener: cy.stub(),
+                removeEventListener: cy.stub(),
+                addListener: cy.stub(), // deprecated but sometimes needed
+                removeListener: cy.stub(),
+                dispatchEvent: cy.stub(),
+              };
+            });
+          },
+        },
+      );
+    };
+
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    cy.log("Test default light theme behavior");
+    visit();
+
+    // Test core functionality works with default theme
+    cy.get("[data-testid=embed-frame]").should("be.visible");
+    cy.get('html[data-mantine-color-scheme="light"]').should("exist");
+    cy.get('html[data-metabase-theme="light"]').should("exist");
+
+    cy.log("Test explicit light theme via hash parameter");
+    visit("light");
+
+    // Test functionality still works with theme parameter
+    cy.get("[data-testid=embed-frame]").should("be.visible");
+    cy.get('html[data-mantine-color-scheme="light"]').should("exist");
+    cy.get('html[data-metabase-theme="light"]').should("exist");
+
+    // Verify theme parameter is in URL hash
+    cy.location("hash").should("include", "theme=light");
+
+    cy.log("Test explicit dark theme via hash parameter");
+    visit("dark");
+
+    // Test functionality still works with theme parameter
+    cy.get("[data-testid=embed-frame]").should("be.visible");
+    cy.get('html[data-mantine-color-scheme="dark"]').should("exist");
+    cy.get('html[data-metabase-theme="dark"]').should("exist");
+
+    // Verify theme parameter is in URL hash
+    cy.location("hash").should("include", "theme=dark");
+  });
+
   it("should use transparent pivot table cells in static embedding's dark mode (metabase#61741)", () => {
     const testQuery = {
       type: "query",

@@ -4,6 +4,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -26,6 +28,7 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
+  (api/check-403 (or (mi/superuser?) (perms/current-user-has-application-permissions? :data-studio)))
   (let [glossary (t2/insert-returning-instance! :model/Glossary
                                                 {:term       term
                                                  :definition definition
@@ -42,6 +45,7 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
+  (api/check-403 (or (mi/superuser?) (perms/current-user-has-application-permissions? :data-studio)))
   (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/update! :model/Glossary id {:term term :definition definition})
     (let [glossary (t2/select-one :model/Glossary :id id)]
@@ -54,6 +58,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-403 (or (mi/superuser?) (perms/current-user-has-application-permissions? :data-studio)))
   (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/delete! :model/Glossary :id id)
     (events/publish-event! :event/glossary-delete

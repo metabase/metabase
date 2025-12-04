@@ -6,13 +6,17 @@ import { expandPath, toKey } from "../utils";
 /**
  * Returns a state object that indicates which nodes are expanded in the tree.
  */
-export function useExpandedState(path: TreePath) {
+export function useExpandedState(
+  path: TreePath,
+  options: { defaultClosed?: boolean } = {},
+) {
+  const defaultClosed = options.defaultClosed ?? true;
   const [state, setState] = useState(expandPath({}, path));
 
   const { databaseId, schemaName, tableId } = path;
 
   useEffect(() => {
-    // When the path changes, this means a user has navigated throught the browser back
+    // When the path changes, this means a user has navigated through the browser back
     // button, ensure the path is completely expanded.
     setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
   }, [databaseId, schemaName, tableId]);
@@ -20,9 +24,10 @@ export function useExpandedState(path: TreePath) {
   const isExpanded = useCallback(
     (path: string | TreePath) => {
       const key = typeof path === "string" ? path : toKey(path);
-      return Boolean(state[key]);
+      const isToggled = Boolean(state[key]);
+      return defaultClosed ? isToggled : !isToggled;
     },
-    [state],
+    [state, defaultClosed],
   );
 
   const toggle = useCallback((key: string, value?: boolean) => {

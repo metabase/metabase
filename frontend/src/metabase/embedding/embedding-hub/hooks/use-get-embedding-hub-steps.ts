@@ -102,14 +102,15 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         {
           title: t`Configure SSO`,
           description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
-          docsPath: "embedding/embedded-analytics-js#set-up-sso",
+          docsPath: "embedding/embedded-analytics-js",
+          anchor: "set-up-sso",
           variant: "outline",
           stepId: "secure-embeds",
         },
         {
           title: t`Configure data permissions`,
-          docsPath:
-            "permissions/embedding#one-database-for-all-customers-commingled-setups",
+          docsPath: "permissions/embedding",
+          anchor: "one-database-for-all-customers-commingled-setups",
           description: t`Manage permissions to limit what data your users can access.`,
           variant: "outline",
           stepId: "configure-row-column-security",

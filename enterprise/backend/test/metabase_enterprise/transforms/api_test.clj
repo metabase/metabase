@@ -994,3 +994,21 @@
                                              {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
           (is (false? (:is_simple response)))
           (is (= "Contains a CTE" (:reason response))))))))
+
+(deftest permissions-test
+  (testing "Transform endpoints require superuser"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform transform {}]
+        (testing "Regular users get 403"
+          (mt/user-http-request :rasta :get 403 "ee/transform")
+          (mt/user-http-request :rasta :get 403 (str "ee/transform/" (:id transform)))
+          (mt/user-http-request :rasta :post 403 "ee/transform"
+                                {:name   "Test"
+                                 :source {:type  "query"
+                                          :query {:database (mt/id)
+                                                  :type     "native"
+                                                  :native   {:query "SELECT 1"}}}
+                                 :target {:type "table" :name "test_table"}})
+          (mt/user-http-request :rasta :put 403 (str "ee/transform/" (:id transform))
+                                {:name "Updated"})
+          (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))))))
