@@ -49,6 +49,7 @@
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  (api/check-404 table)
   (if include-editable-data-model?
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
