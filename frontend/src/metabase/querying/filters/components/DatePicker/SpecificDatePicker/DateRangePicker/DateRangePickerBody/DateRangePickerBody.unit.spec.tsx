@@ -1,4 +1,6 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
+import "dayjs/locale/de";
 
 import { render, screen } from "__support__/ui";
 
@@ -82,6 +84,43 @@ describe("DateRangePickerBody", () => {
 
       expect(screen.getByText("January 2019")).toBeInTheDocument();
       expect(screen.queryByText("January 2020")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("date format localization (metabase#65480)", () => {
+    it("should display dates in German format (DD.MM.YYYY) when locale is 'de'", () => {
+      const originalLocale = dayjs.locale();
+      dayjs.locale("de");
+
+      setup({
+        value: [new Date(2020, 0, 15), new Date(2020, 1, 20)],
+      });
+
+      // In German locale, dates should be displayed as DD.MM.YYYY
+      const startDateInput = screen.getByLabelText("Start date");
+      const endDateInput = screen.getByLabelText("End date");
+
+      expect(startDateInput).toHaveValue("15.01.2020");
+      expect(endDateInput).toHaveValue("20.02.2020");
+
+      dayjs.locale(originalLocale);
+    });
+
+    it("should display dates in US format (MM/DD/YYYY) when locale is 'en'", () => {
+      const originalLocale = dayjs.locale();
+      dayjs.locale("en");
+
+      setup({
+        value: [new Date(2020, 0, 15), new Date(2020, 1, 20)], // Jan 15 - Feb 20
+      });
+
+      const startDateInput = screen.getByLabelText("Start date");
+      const endDateInput = screen.getByLabelText("End date");
+
+      expect(startDateInput).toHaveValue("01/15/2020");
+      expect(endDateInput).toHaveValue("02/20/2020");
+
+      dayjs.locale(originalLocale);
     });
   });
 });

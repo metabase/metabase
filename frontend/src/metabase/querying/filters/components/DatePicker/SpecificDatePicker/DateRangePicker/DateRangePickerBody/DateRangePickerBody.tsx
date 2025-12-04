@@ -14,6 +14,31 @@ import {
 
 import { setDatePart, setTimePart } from "../../utils";
 
+function getDateFormatForLocale(): string {
+  // Try to get locale from dayjs, fallback to browser language
+  let locale = dayjs.locale();
+
+  // If dayjs is using default 'en', check browser language
+  if (locale === "en" && navigator.language) {
+    locale = navigator.language.toLowerCase();
+  }
+
+  // Extract language code (e.g., "de-DE" -> "de")
+  const languageCode = locale.split("-")[0];
+
+  const localeFormats: Record<string, string> = {
+    de: "DD.MM.YYYY",
+    fr: "DD/MM/YYYY",
+    es: "DD/MM/YYYY",
+    it: "DD/MM/YYYY",
+    pt: "DD/MM/YYYY",
+    en: "MM/DD/YYYY",
+  };
+
+  // Try full locale first, then language code, then default
+  return localeFormats[locale] || localeFormats[languageCode] || "MM/DD/YYYY";
+}
+
 import S from "./DateRangePickerBody.module.css";
 
 interface DateRangePickerBodyProps {
@@ -79,12 +104,15 @@ export function DateRangePickerBody({
     }
   };
 
+  const dateFormat = getDateFormatForLocale();
+
   return (
     <Stack className={S.Root}>
       <Group align="center">
         <DateInput
           className={S.FlexDateInput}
           value={startDate}
+          valueFormat={dateFormat}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
@@ -93,6 +121,7 @@ export function DateRangePickerBody({
         <DateInput
           className={S.FlexDateInput}
           value={endDate}
+          valueFormat={dateFormat}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
           onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
