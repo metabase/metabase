@@ -1132,6 +1132,3 @@
                              (group-memberships (u/the-id user)))))
                     (testing "user is no longer in Group A"
                       (is (not (contains? (group-memberships (u/the-id user)) "Group A"))))))))))))))
-
-
-
