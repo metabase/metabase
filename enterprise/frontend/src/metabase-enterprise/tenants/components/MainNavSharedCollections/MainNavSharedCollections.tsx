@@ -118,11 +118,16 @@ export const MainNavSharedCollections = () => {
       <SidebarSection>
         <Flex align="center" justify="space-between">
           <SidebarHeading>{t`Tenant collections`}</SidebarHeading>
-          <Tooltip label={t`Create a new tenant collection`}>
-            <ActionIcon color="text-medium" onClick={() => setModalOpen(true)}>
-              <Icon name="add" />
-            </ActionIcon>
-          </Tooltip>
+          {isAdmin && (
+            <Tooltip label={t`Create a new tenant collection`}>
+              <ActionIcon
+                color="text-medium"
+                onClick={() => setModalOpen(true)}
+              >
+                <Icon name="add" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Flex>
         <Tree
           data={tenantCollectionTree}
