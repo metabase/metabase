@@ -88,6 +88,7 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
+                              :transforms/index-ddl     true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 

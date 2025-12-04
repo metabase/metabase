@@ -373,6 +373,7 @@
                                 (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
           (transforms.util/sync-target! target db))
+        (transforms.util/execute-secondary-index-ddl-if-required! transform run-id db target)
         {:run_id run-id
          :result result}))
     (catch Throwable t
