@@ -91,7 +91,7 @@ describe("EE", () => {
     });
 
     describe("dashboards", () => {
-      it("should render a subscription button even with `with-subscriptions=true`", () => {
+      it("should render a subscription button with `with-subscriptions=true`", () => {
         const frame = H.loadSdkIframeEmbedTestPage({
           elements: [
             {
