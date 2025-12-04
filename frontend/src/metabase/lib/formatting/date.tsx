@@ -60,6 +60,24 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
   },
 };
 
+const getDateStyleForUnit = ({
+  style,
+  unit,
+}: {
+  style: string;
+  unit: DatetimeUnit;
+}) => {
+  if (DATE_STYLE_TO_FORMAT?.[style]?.[unit]) {
+    return DATE_STYLE_TO_FORMAT[style][unit];
+  }
+
+  if (unit === "month") {
+    return style.replace(/d+([^a-zA-Z0-9]{0,1})(\s){0,1}/gi, "");
+  }
+
+  return style ?? DEFAULT_DATE_FORMATS[unit] ?? DEFAULT_DATE_STYLE;
+};
+
 const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
 
 type DateVal = string | number | Dayjs;
@@ -722,31 +740,13 @@ const getMonthFormat = (options: OptionsType) =>
 export function getDateFormatFromStyle(
   style: string,
   unit: DatetimeUnit,
-  separator?: string,
   includeWeekday?: boolean,
 ) {
-  const replaceSeparators = (format: string) =>
-    separator && format ? format.replace(/\//g, separator) : format;
-
   if (!unit) {
     unit = "default";
   }
 
-  let format = null;
-
-  if (DATE_STYLE_TO_FORMAT[style]) {
-    if (DATE_STYLE_TO_FORMAT[style][unit]) {
-      format = replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
-    }
-  } else if (style !== "") {
-    console.warn("Unknown date style", style);
-  }
-
-  if (format == null) {
-    format = DEFAULT_DATE_FORMATS[unit]
-      ? replaceSeparators(DEFAULT_DATE_FORMATS[unit])
-      : replaceSeparators(style);
-  }
+  let format = getDateStyleForUnit({ style, unit });
 
   if (includeWeekday && hasDay(unit)) {
     format = `ddd, ${format}`;
@@ -1138,7 +1138,6 @@ export function formatDateTimeWithUnit(
     dateFormat = getDateFormatFromStyle(
       options.date_style as string,
       unit,
-      options.date_separator as string,
       options.weekday_enabled,
     );
   }
@@ -1159,7 +1158,6 @@ const EXAMPLE_DATE = dayjs("2018-01-31 17:24");
 export function getDateStyleOptionsForUnit(
   unit: DatetimeUnit,
   abbreviate = false,
-  separator?: string,
 ) {
   // hour-of-day shouldn't have any date style. It's handled as a time instead.
   // Other date parts are handled as dates, but hour-of-day needs to use the
@@ -1169,12 +1167,12 @@ export function getDateStyleOptionsForUnit(
   }
 
   const options = [
-    dateStyleOption("MMMM D, YYYY", unit, abbreviate, separator),
-    dateStyleOption("D MMMM, YYYY", unit, abbreviate, separator),
-    dateStyleOption("dddd, MMMM D, YYYY", unit, abbreviate, separator),
-    dateStyleOption("M/D/YYYY", unit, abbreviate, separator),
-    dateStyleOption("D/M/YYYY", unit, abbreviate, separator),
-    dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
+    dateStyleOption("MMMM D, YYYY", unit, abbreviate),
+    dateStyleOption("D MMMM, YYYY", unit, abbreviate),
+    dateStyleOption("dddd, MMMM D, YYYY", unit, abbreviate),
+    dateStyleOption("M/D/YYYY", unit, abbreviate),
+    dateStyleOption("D/M/YYYY", unit, abbreviate),
+    dateStyleOption("YYYY/M/D", unit, abbreviate),
   ];
   const seen = new Set();
   return options.filter((option) => {
@@ -1188,19 +1186,18 @@ export function getDateStyleOptionsForUnit(
   });
 }
 
-function dateStyleOption(
+export function dateStyleOption(
   style: string,
   unit: DatetimeUnit,
   abbreviate = false,
-  separator?: string,
 ) {
-  let format = getDateFormatFromStyle(style, unit, separator);
+  let format = getDateFormatFromStyle(style, unit);
   if (abbreviate) {
-    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
+    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd"); // FIXME: make this not explode, format is null
   }
   return {
     name: EXAMPLE_DATE.format(format),
-    value: style,
+    value: format,
   };
 }
 
