@@ -13,7 +13,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
@@ -293,26 +293,13 @@
         :group (within-group)
         :all (all)))))
 
-(defn- user-has-any-published-table-permission?
-  "Returns true if the user has access to any published table via collection permissions.
-  Does not check tables published to the root collection."
-  [user-id]
-  (t2/exists? :model/Table
-              {:where [:and
-                       [:= :is_published true]
-                       [:in :collection_id
-                        {:select-distinct [:collection_id]
-                         :from            [:permissions]
-                         :where           [:and
-                                           [:in :group_id
-                                            {:select [:pg.id]
-                                             :from   [[:permissions_group :pg]]
-                                             :join   [[:permissions_group_membership :pgm]
-                                                      [:= :pgm.group_id :pg.id]]
-                                             :where  [:= :pgm.user_id user-id]}]
-                                           [:= :perm_type [:inline "perms/collection-access"]]
-                                           [:in :perm_value [[:inline "read"]
-                                                             [:inline "read-and-write"]]]]}]]}))
+(defenterprise user-has-any-published-table-permission?
+  "Returns true if user has access to any published table via collection permissions.
+  OSS returns false (published tables don't grant access).
+  Enterprise checks if user has collection permissions on any published table."
+  metabase-enterprise.permissions.published-tables
+  []
+  false)
 
 (defn- add-query-permissions
   "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries
@@ -328,7 +315,7 @@
         can-create-queries? (or (some #(perms/at-least-as-permissive?
                                         :perms/create-queries % :query-builder)
                                       create-query-perms)
-                                (user-has-any-published-table-permission? api/*current-user-id*))
+                                (user-has-any-published-table-permission?))
         can-create-native?  (contains? create-query-perms :query-builder-and-native)]
     (update user :permissions assoc
             :can_create_queries        (boolean can-create-queries?)

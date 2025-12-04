@@ -286,13 +286,17 @@
 
 (defmethod build-optional-filter-query [:collection "table"]
   [_filter model query collection-id]
-  (let [collection-col (search.config/column-with-model-alias model :collection_id)
-        published-col  (search.config/column-with-model-alias model :is_published)]
-    (sql.helpers/where query [:and
-                              [:= published-col true]
-                              [:or
-                               [:= collection-col collection-id]
-                               [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]])))
+  ;; Tables in collections are an EE feature (data-studio)
+  (if (premium-features/has-feature? :data-studio)
+    (let [collection-col (search.config/column-with-model-alias model :collection_id)
+          published-col  (search.config/column-with-model-alias model :is_published)]
+      (sql.helpers/where query [:and
+                                [:= published-col true]
+                                [:or
+                                 [:= collection-col collection-id]
+                                 [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]]))
+    ;; OSS: tables don't belong to collections
+    (sql.helpers/where query false-clause)))
 
 ;; Things that don't belong to collections
 (doseq [model ["database" "action" "indexed-entity"]]

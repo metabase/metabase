@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -32,11 +31,13 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
-(defn- can-access-via-collection?
-  "Returns true if the user can access this published table via collection read permissions."
-  [table]
-  (when (:is_published table)
-    (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection table :read))))
+(defenterprise can-access-via-collection?
+  "Returns true if the user can access this published table via collection read permissions.
+  OSS returns false (published tables don't grant access).
+  Enterprise checks collection permissions for published tables."
+  metabase-enterprise.warehouse-schema.table
+  [_table]
+  false)
 
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.

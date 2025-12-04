@@ -550,21 +550,23 @@
                              :can_create_native_queries true}
                             (user-permissions :rasta))))))))))
 
-(deftest get-current-user-query-permissions-published-table-test
-  (testing "GET /api/user/current can_create_queries respects published tables"
-    (letfn [(user-permissions [user]
-              (-> (mt/user-http-request user :get 200 "user/current")
-                  :permissions))]
-      (testing "user with collection permission on published table should have can_create_queries true"
-        (mt/with-temp [:model/Collection collection {}
-                       :model/Table      _table     {:db_id         (mt/id)
-                                                     :is_published  true
-                                                     :collection_id (:id collection)}]
-          (perms/grant-collection-read-permissions! (perms-group/all-users) (:id collection))
-          (mt/with-no-data-perms-for-all-users!
-            (is (partial= {:can_create_queries        true
-                           :can_create_native_queries false}
-                          (user-permissions :rasta)))))))))
+(deftest can-create-queries-ignores-published-tables-oss-test
+  (testing "In OSS, can_create_queries should NOT consider published tables"
+    (mt/with-premium-features #{}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "user with collection permission on published table should still have can_create_queries false"
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Table      _table              {:db_id         (mt/id)
+                                                                :is_published  true
+                                                                :collection_id collection-id}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+            (mt/with-no-data-perms-for-all-users!
+              (is (partial= {:can_create_queries        false
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))
+                  "Published tables should NOT grant can_create_queries in OSS"))))))))
 
 (deftest ^:parallel get-user-test
   (mt/with-premium-features #{}

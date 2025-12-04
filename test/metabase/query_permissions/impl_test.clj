@@ -323,46 +323,18 @@
                 :perms/view-data      {(mt/id :products) :unrestricted}}
                (query-perms/required-perms-for-query query :already-preprocessed? true)))))))
 
-(deftest published-table-test
-  (testing "Published tables can be queried via collection permissions"
-    (let [mbql-query   (mt/mbql-query venues)
-          native-query (mt/native-query {:query "SELECT * FROM venues;"})]
-      (binding [*current-user-id*              (mt/user->id :rasta)
-                *current-user-permissions-set* (atom #{})]
-        (t2/with-transaction [_conn nil {:rollback-only true}]
-          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
-          (testing "WITHOUT collection permission"
-            (is (not (query-perms/can-run-query? mbql-query)))
-            (is (not (query-perms/can-run-query? native-query))))
-          (mt/with-temp [:model/Collection collection {}]
-            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
-            (perms/grant-collection-read-permissions! (perms/all-users-group) (u/the-id collection))
-            (testing "WITH collection permission"
-              (is (query-perms/can-run-query? mbql-query))
-              (is (not (query-perms/can-run-query? native-query)) "Native queries should still be blocked"))
-            (testing "WITH collection permission, but perms/view-data is set to BLOCKED"
-              (mt/with-no-data-perms-for-all-users!
-                (perms/with-relevant-permissions-for-user (mt/user->id :rasta)
-                  (is (not (query-perms/can-run-query? mbql-query)) "Blocked view-data should override collection perms")
-                  (is (not (query-perms/can-run-query? native-query))))))))))))
+(deftest published-table-oss-no-access-test
+  (testing "In OSS, published tables do NOT grant query access via collection permissions"
+    (mt/with-premium-features #{}
+      (let [mbql-query (mt/mbql-query venues)]
+        (binding [*current-user-id*              (mt/user->id :rasta)
+                  *current-user-permissions-set* (atom #{})]
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+            (mt/with-temp [:model/Collection {collection-id :id} {}]
+              (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
+              (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
+              (testing "Even WITH collection permission, OSS should NOT allow query access to published tables"
+                (is (not (query-perms/can-run-query? mbql-query))
+                    "Published tables should NOT grant query access in OSS")))))))))
 
-(deftest published-table-does-not-grant-view-data-test
-  (testing "Published tables with collection permissions should NOT grant view-data permissions"
-    (t2/with-transaction [_conn nil {:rollback-only true}]
-      (mt/with-temp [:model/Collection collection {}]
-        (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
-        (perms/grant-collection-read-permissions! (perms/all-users-group) (u/the-id collection))
-
-        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
-        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
-
-        (let [user-id (mt/user->id :rasta)]
-          (testing "Should grant create-queries via collection permissions"
-            (is (= :query-builder
-                   (perms/table-permission-for-user user-id :perms/create-queries (mt/id) (mt/id :venues)))
-                "Collection permissions should grant query-builder permission"))
-
-          (testing "Should NOT grant view-data via collection permissions (view-data is blocked)"
-            (is (= :blocked
-                   (perms/table-permission-for-user user-id :perms/view-data (mt/id) (mt/id :venues)))
-                "view-data should remain blocked, collection perms don't grant view-data")))))))

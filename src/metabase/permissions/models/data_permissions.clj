@@ -290,35 +290,13 @@
                            (table-permission-for-groups group-ids perm-type database-id table-id)
                            perm-value))
 
-(defn- user-published-table-query
-  "Tables published into the root collection are not supported."
-  [user-id table-id]
-  {:pre [(pos-int? user-id) (pos-int? table-id)]}
-  {:with   [[:user_group_ids {:select    [:pg.id]
-                              :from      [[:permissions_group :pg]]
-                              :join      [[:permissions_group_membership :pgm]
-                                          [:= :pgm.group_id :pg.id]]
-                              :where     [:= :pgm.user_id [:inline user-id]]}]
-            [:user_collections {:select-distinct [:collection_id]
-                                :from            [:permissions]
-                                :where           [:and
-                                                  [:in :group_id {:select [:id]
-                                                                  :from   [:user_group_ids]}]
-                                                  [:= :perm_type [:inline "perms/collection-access"]]
-                                                  [:in :perm_value [[:inline "read"] [:inline "read-and-write"]]]]}]]
-   :select [[[:inline true] :has-published-table]]
-   :from   [:metabase_table]
-   :where  [:and
-            [:= :id [:inline table-id]]
-            [:= :is_published true]
-            [:in :collection_id {:select [:collection_id]
-                                 :from   [:user_collections]}]]
-   :limit  1})
-
-(defn- user-published-table-permission [perm-type user-id table-id]
-  (when (and (= perm-type :perms/create-queries)
-             (:has-published-table (t2/query-one (user-published-table-query user-id table-id))))
-    :query-builder))
+(defenterprise user-published-table-permission
+  "Returns the permission level for a published table if the user has collection access.
+  OSS returns nil (no published table permission support).
+  Enterprise returns :query-builder if table is published and user has collection access."
+  metabase-enterprise.permissions.published-tables
+  [_perm-type _table-id]
+  nil)
 
 (mu/defn table-permission-for-user :- ::permissions.schema/data-permission-value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
@@ -338,8 +316,8 @@
                                                                                              perm-type)))]
       (or (when-not (= table-perm (least-permissive-value perm-type))
             table-perm)
-          (when (and (pos-int? user-id) (pos-int? table-id))
-            (user-published-table-permission perm-type user-id table-id))
+          (when (pos-int? table-id)
+            (user-published-table-permission perm-type table-id))
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-table? :- :boolean
