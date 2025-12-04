@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-verification.api.modertaion-review-test
+(ns metabase-enterprise.content-verification.api.moderation-review-test
   (:require
    [clojure.test :refer :all]
    [metabase.content-verification.models.moderation-review :as moderation-review]

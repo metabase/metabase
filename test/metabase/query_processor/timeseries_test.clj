@@ -692,8 +692,7 @@
                ["2015-01-01" 267]]
               [iso8601-date-part int]]]
              ;; TODO: Find a way how to make those work with Druid JDBC.
-            :when (not (and (= driver/*driver* :druid-jdbc)
-                            (#{:week-of-year :day-of-week :week} unit)))]
+            :when (not (#{:week-of-year :day-of-week :week} unit))]
       (testing unit
         (testing "topN query"
           (let [{:keys [columns rows]} (mt/formatted-rows+column-names
