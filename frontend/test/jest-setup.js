@@ -1,4 +1,4 @@
-import { TextDecoder, TextEncoder } from "util";
+import { TextDecoder, TextEncoder } from "node:util";
 
 import { Crypto, CryptoKey } from "@peculiar/webcrypto";
 import { ReadableStream } from "web-streams-polyfill";

@@ -1,6 +1,6 @@
-import { exec as execCallback } from "child_process";
-import path from "path";
-import { promisify } from "util";
+import { exec as execCallback } from "node:child_process";
+import path from "node:path";
+import { promisify } from "node:util";
 
 import { detect } from "detect-package-manager";
 import ora from "ora";
