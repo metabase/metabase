@@ -88,6 +88,7 @@ export const TransformTab = ({
 
   const validationSchemaExtension = useTransformValidation({
     databaseId,
+    target: transform.target,
     workspaceId,
   });
 
