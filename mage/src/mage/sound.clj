@@ -19,7 +19,6 @@
   - success.ogg - Bright ascending tone with harmonics (C major, 0.2s)
   - error.ogg - Harsh descending buzz with dissonance (400→200 Hz, 0.15s)
   - warning.ogg - Double beep with overtones (800 Hz + harmonic, 0.28s)
-  - info.ogg - Gentle bell-like tone with harmonics (800/1600/2400 Hz, 0.2s)
   - ping.ogg - Crisp high tone with overtone (1200/2400 Hz, 0.12s)
 
   ## Usage
