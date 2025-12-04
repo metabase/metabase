@@ -3,11 +3,8 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/v1/Question";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { useTableQuestion } from "./useTableQuestion";
@@ -18,7 +15,6 @@ interface DataTabProps {
 }
 
 export function DataTab({ databaseId, tableId }: DataTabProps) {
-  const metadata = useSelector(getMetadata);
   const { question, result, isLoading, isRunning, error } = useTableQuestion({
     databaseId,
     tableId,
@@ -37,13 +33,6 @@ export function DataTab({ databaseId, tableId }: DataTabProps) {
       },
     ];
   }, [question, result]);
-
-  const questionWithMetadata = useMemo(() => {
-    if (!question) {
-      return null;
-    }
-    return new Question(question.card(), metadata);
-  }, [question, metadata]);
 
   if (!databaseId || !tableId) {
     return (
@@ -65,7 +54,7 @@ export function DataTab({ databaseId, tableId }: DataTabProps) {
     );
   }
 
-  if (!rawSeries || !questionWithMetadata) {
+  if (!rawSeries || !question) {
     return (
       <Stack h="100%" align="center" justify="center">
         <Text c="text-medium">{t`No data available`}</Text>
@@ -77,7 +66,7 @@ export function DataTab({ databaseId, tableId }: DataTabProps) {
     <Box h="100%" className={CS.relative}>
       <Visualization
         rawSeries={rawSeries}
-        metadata={questionWithMetadata.metadata()}
+        metadata={question.metadata()}
         className={CS.spread}
         showTitle={false}
         isDashboard={false}

@@ -20,7 +20,6 @@ interface UseTableQuestionResult {
   isLoading: boolean;
   isRunning: boolean;
   error: unknown;
-  runQuery: () => void;
 }
 
 export function useTableQuestion({
@@ -94,6 +93,5 @@ export function useTableQuestion({
     isLoading: isLoadingMetadata,
     isRunning,
     error,
-    runQuery,
   };
 }
