@@ -79,7 +79,7 @@ describe("Table editing", () => {
       H.modal().button("Create my Library").click();
       H.modal().button("Publish this table").click();
       cy.wait("@publishTables");
-      H.undoToast().within(() => {
+      H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
       });
