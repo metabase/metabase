@@ -103,17 +103,29 @@
                (:children node))))]
     (walk node)))
 
-(defn deftest-check-in-valid-module
-  "Check whether a `deftest` lives in a known module -- important so our system to only run a subset of tests based on
+(defn- test-namespace-lives-outside-of-module-system? [ns-symb]
+  (some (fn [prefix]
+          (str/starts-with? (name ns-symb) prefix))
+        ["metabase.driver."
+         "build."
+         "lint-migrations-file-test"]))
+
+;; only warn once per namespace
+(let [warned-namespaces (atom #{})]
+  (defn deftest-check-in-valid-module
+    "Check whether a `deftest` lives in a known module -- important so our system to only run a subset of tests based on
   which modules have changes picks them up correctly. (DEV-1125)"
-  [{:keys [node], :as input}]
-  (let [known-modules  (set (keys (modules/config input)))
-        current-module (modules/module (:ns input))]
-    (when (or (not current-module)
-              (not (contains? known-modules current-module)))
-      (hooks/reg-finding! (assoc (meta node)
-                                 :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
-                                 :type    :metabase/tests-must-live-in-known-modules)))))
+    [{:keys [node], :as input}]
+    (when-not (test-namespace-lives-outside-of-module-system? (:ns input))
+      (when-not (contains? @warned-namespaces (:ns input))
+        (swap! warned-namespaces conj (:ns input))
+        (let [known-modules  (set (keys (:metabase/modules (modules/config input))))
+              current-module (modules/module (:ns input))]
+          (when (or (not current-module)
+                    (not (contains? known-modules current-module)))
+            (hooks/reg-finding! (assoc (meta node)
+                                       :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
+                                       :type    :metabase/tests-must-live-in-known-modules))))))))
 
 (defn deftest [{:keys [node cljc lang config], :as input}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point

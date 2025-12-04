@@ -9,11 +9,11 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
