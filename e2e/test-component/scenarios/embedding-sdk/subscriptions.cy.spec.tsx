@@ -69,14 +69,10 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByRole("button", { name: "Done" }).click();
         cy.wait("@createPulse");
 
-        // Doing this twice, remove when EMB-1060 (https://github.com/metabase/metabase/pull/66372) is fixed
-        cy.findByRole("button", { name: "Done" }).click();
-        cy.wait("@createPulse");
-
         cy.findByText("Subscriptions").should("be.visible");
 
         // check that there are 2 subscriptions
-        cy.findAllByText("Emailed hourly").should("have.length", 2);
+        cy.findByText("Emailed hourly").should("be.visible");
       });
     });
 
@@ -98,14 +94,10 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByRole("button", { name: "Done" }).click();
         cy.wait("@createPulse");
 
-        // Doing this twice, remove when EMB-1060 (https://github.com/metabase/metabase/pull/66372) is fixed
-        cy.findByRole("button", { name: "Done" }).click();
-        cy.wait("@createPulse");
-
         cy.findByText("Subscriptions").should("be.visible");
 
         // check that there are 2 subscriptions
-        cy.findAllByText("Emailed hourly").should("have.length", 2);
+        cy.findByText("Emailed hourly").should("be.visible");
       });
     });
 
@@ -127,14 +119,10 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByRole("button", { name: "Done" }).click();
         cy.wait("@createPulse");
 
-        // Doing this twice, remove when EMB-1060 (https://github.com/metabase/metabase/pull/66372) is fixed
-        cy.findByRole("button", { name: "Done" }).click();
-        cy.wait("@createPulse");
-
         cy.findByText("Subscriptions").should("be.visible");
 
         // check that there are 2 subscriptions
-        cy.findAllByText("Emailed hourly").should("have.length", 2);
+        cy.findByText("Emailed hourly").should("be.visible");
       });
     });
   });
