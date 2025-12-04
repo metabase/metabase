@@ -472,9 +472,13 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("unpublishing", () => {
-    it("should not be able to access a previously published table when it was unpublished", () => {
+    it("should not be able to access a previously published table when it is unpublished", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.unpublishTables({ table_ids: [PRODUCTS_ID] });
+      H.DataModel.visitDataStudio();
+      H.DataModel.TablePicker.getTable("Products").click();
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().button("Unpublish this table").click();
+      H.undoToast().findByText("Unpublished").should("be.visible");
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
@@ -483,7 +487,11 @@ describe("scenarios > data studio > table collection permissions", () => {
 
     it("should not be able to create questions when all published tables are unpublished", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.unpublishTables({ database_ids: [SAMPLE_DB_ID] });
+      H.DataModel.visitDataStudio();
+      H.DataModel.TablePicker.getTable("Products").click();
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().button("Unpublish this table").click();
+      H.undoToast().findByText("Unpublished").should("be.visible");
 
       cy.signIn("nodata");
       cy.visit("/");
