@@ -8,11 +8,10 @@
 # across all development machines.
 #
 # Getting started:
-#   1. Install mise: https://mise.jdx.dev/getting-started.html
-#   2. Run: mise trust && mise install
-#   3. Run: ./bin/dev-bootstrap
+# 1. Run: ./bin/dev-install
 #
-# mise will automatically activate the correct versions when you cd into this directory.
+# That's it. No need to do anything else. 🎉
+# This will install mise, configure your shell, and set up all required tools.
 #
 # IDE/Editor users (not cd'd into the repo):
 # ------------------------------------------
@@ -53,12 +52,10 @@ node = "22.13.1"
 
 # Yarn Classic - for package management
 # IMPORTANT: Metabase requires Yarn 1.x (Classic), NOT Yarn 2+ (Berry)
-# Do not use corepack; mise manages yarn directly.
 yarn = "1.22.22"
 
 # Java - for Clojure backend
-# We require Eclipse Temurin (AdoptOpenJDK successor) for consistency.
-# The prefix ensures we get Temurin specifically, not just any OpenJDK.
+# We require Eclipse *Temurin* (AdoptOpenJDK successor) for consistency.
 java = "temurin-21.0.9+10.0.LTS"
 
 # Clojure CLI - for backend development and REPL
@@ -70,7 +67,11 @@ babashka = "1.12.212"
 # =============================================================================
 # Other Tools (quality of life)
 # =============================================================================
-# Uncomment any tools you'd like mise to manage for you.
+#
+# Project-required tools belong here.
+# Anything custom should go to your personal mise.local.toml file (gitignored 👻)
+#
+# See: https://mise.jdx.dev/registry.html#tools
 
 # bat - A cat clone with syntax highlighting
 # https://github.com/sharkdp/bat
