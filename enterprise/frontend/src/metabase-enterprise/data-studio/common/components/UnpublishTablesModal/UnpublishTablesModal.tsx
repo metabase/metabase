@@ -187,7 +187,7 @@ function getInfoMessage(
   selectedTable: BulkTableInfo | null,
   publishedRemappedTables: BulkTableInfo[],
 ) {
-  return selectedTables != null && publishedRemappedTables.length === 0
+  return selectedTable != null && publishedRemappedTables.length === 0
     ? t`This will remove this table from the Library.`
     : t`This will remove these tables from the Library.`;
 }
