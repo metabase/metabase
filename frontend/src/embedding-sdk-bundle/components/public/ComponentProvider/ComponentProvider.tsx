@@ -29,7 +29,7 @@ import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
 import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
-type ComponentProviderInternalProps = ComponentProviderProps & {
+export type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
   isLocalHost?: boolean;
 };
@@ -52,19 +52,23 @@ function useInitPlugins() {
   }, [tokenFeatures]);
 }
 
-export const ComponentProviderInternal = ({
-  children,
-  authConfig,
-  pluginsConfig,
-  eventHandlers,
-  theme,
-  reduxStore,
-  locale,
-  errorComponent,
-  loaderComponent,
-  allowConsoleLog,
-  isLocalHost,
-}: ComponentProviderInternalProps): JSX.Element => {
+export const ComponentProviderInternal = (
+  props: ComponentProviderInternalProps,
+): JSX.Element => {
+  const {
+    children,
+    authConfig,
+    pluginsConfig,
+    eventHandlers,
+    theme,
+    reduxStore,
+    locale,
+    errorComponent,
+    loaderComponent,
+    allowConsoleLog,
+    isLocalHost,
+  } = useNormalizeComponentProviderProps(props);
+
   const isGuestEmbed = !!authConfig.isGuest;
   const { fontFamily } = theme ?? {};
 
@@ -164,13 +168,11 @@ export const ComponentProvider = memo(function ComponentProvider({
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();
   }
 
-  const normalizedProps = useNormalizeComponentProviderProps(props);
-
   return (
     <MetabaseReduxProvider store={reduxStoreRef.current!}>
       <METABOT_SDK_EE_PLUGIN.MetabotProvider>
         <ComponentProviderInternal
-          {...normalizedProps}
+          {...props}
           reduxStore={reduxStoreRef.current!}
         >
           {children}

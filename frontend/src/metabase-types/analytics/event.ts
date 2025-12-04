@@ -505,6 +505,38 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
+export type DataStudioLibraryCreatedEvent = ValidateEvent<{
+  event: "data_studio_library_created";
+  target_id: number | null;
+}>;
+
+export type DataStudioTablePublishedEvent = ValidateEvent<{
+  event: "data_studio_table_published";
+  target_id: number | null;
+}>;
+
+export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
+  event: "data_studio_glossary_term_created";
+  target_id: number | null;
+}>;
+
+export type DataStudioGlossaryEditedEvent = ValidateEvent<{
+  event: "data_studio_glossary_term_updated";
+  target_id: number | null;
+}>;
+
+export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
+  event: "data_studio_glossary_term_deleted";
+  target_id: number | null;
+}>;
+
+export type DataStudioEvent =
+  | DataStudioLibraryCreatedEvent
+  | DataStudioTablePublishedEvent
+  | DataStudioGlossaryCreatedEvent
+  | DataStudioGlossaryEditedEvent
+  | DataStudioGlossaryDeletedEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -556,4 +588,5 @@ export type SimpleEvent =
   | MetadataEditEvent
   | BookmarkEvent
   | RemoteSyncEvent
-  | ClickActionPerformedEvent;
+  | ClickActionPerformedEvent
+  | DataStudioEvent;

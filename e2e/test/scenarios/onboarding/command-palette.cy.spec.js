@@ -440,13 +440,13 @@ describe("command palette", () => {
       H.activateToken("bleeding-edge");
     });
 
-    it("should show the 'Create a new embed' command palette item", () => {
+    it("should show the 'New embed' command palette item", () => {
       cy.visit("/");
       cy.findByRole("button", { name: /search/i }).click();
 
       H.commandPalette().within(() => {
         H.commandPaletteInput().should("exist").type("new embed");
-        cy.findByText("Create a new embed").should("be.visible");
+        cy.findByText("New embed").should("be.visible");
       });
     });
 

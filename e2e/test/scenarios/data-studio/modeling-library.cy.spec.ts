@@ -47,6 +47,11 @@ describe("scenarios > data studio > modeling > library", () => {
       cy.findByText("Metrics").should("be.visible");
     });
 
+    cy.log("Verify tracking event is triggered");
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_library_created",
+    });
+
     cy.log("Verify empty state shows on library root");
     H.DataStudio.Modeling.collectionPage().within(() => {
       cy.findByText("No models or metrics yet").should("be.visible");

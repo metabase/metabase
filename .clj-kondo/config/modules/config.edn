@@ -1260,6 +1260,7 @@
            session
            settings
            system
+           users
            util
            enterprise/sso}}
 

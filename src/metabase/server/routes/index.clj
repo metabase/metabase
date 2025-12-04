@@ -11,6 +11,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
+   [metabase.users.settings :as users-settings]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -89,6 +90,7 @@
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
      :nonceJSON              (escape-script (json/encode nonce))
      :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
+     :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
      :favicon                (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]
                                                         (if (and config/is-dev?
                                                                  (= custom-favicon "app/assets/img/favicon.ico"))

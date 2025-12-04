@@ -110,14 +110,12 @@
           (recur))))
     @final-value))
 
-(nrepl-eval "user" "#?(:bb :bb :clj :clj)")
-
 (defn nrepl-open?
   "Checks if an nREPL server is running on the given port (or the port in .nrepl-port if none given)."
   ([] (nrepl-open? nil))
   ([port]
    (try
-     (let [port (or port (nrepl-port port))
+     (let [port (nrepl-port port)
            o (binding [*quiet-nrepl-eval* true]
                (nrepl-eval "user" "(+ 1 1)" port))]
        (= "2" o))
@@ -128,7 +126,7 @@
   ([] (nrepl-type nil))
   ([port]
    (try
-     (let [port (or port (nrepl-port port))
+     (let [port (nrepl-port port)
            [repl-clj-ver cond-read] (edn/read-string
                                      (binding [*quiet-nrepl-eval* true]
                                        (nrepl-eval "user" "[*clojure-version* #?(:clj :clj :cljs :cljs)]" port)))]
