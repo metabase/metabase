@@ -1944,4 +1944,3 @@
                 "Card in collection should be included")
             (is (not (contains? result-ids table-id))
                 "Published table should NOT be included in collection search in OSS")))))))
-

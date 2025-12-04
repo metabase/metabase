@@ -337,4 +337,3 @@
               (testing "Even WITH collection permission, OSS should NOT allow query access to published tables"
                 (is (not (query-perms/can-run-query? mbql-query))
                     "Published tables should NOT grant query access in OSS")))))))))
-
