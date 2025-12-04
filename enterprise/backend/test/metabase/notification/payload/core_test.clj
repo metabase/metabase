@@ -1,10 +1,10 @@
-(ns metabase-enterprise.notification.payload.core-test
+(ns metabase.notification.payload.core-test
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.test :as mt]))
 
-(deftest default-context-test
+(deftest whitelabel-default-context-test
   (testing "you shouldn't delete or rename these fields without 100% sure that it's not referenced
            in any channel_template.details or notification_recipient.details"
     (mt/with-additional-premium-features #{:whitelabel}
