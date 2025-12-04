@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -55,37 +54,21 @@
    (:id table)))
 
 (defn with-advanced-permissions
-  "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
-  This function is meant to be used for GET /api/user/current "
+  "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
+  This function is meant to be used for GET /api/user/current.
+  Note: `:can_create_queries` and `:can_create_native_queries` are set by `add-query-permissions` before this
+  function is called, so we don't need to set them here."
   [user]
-  (let [permissions-set      @api/*current-user-permissions-set*
-        db-ids               (t2/select-pks-set :model/Database)
-        user-id              api/*current-user-id*
-        _                    (perms/prime-db-cache db-ids)
-        create-query-perms   (into #{}
-                                   (map (fn [db-id]
-                                          (perms/most-permissive-database-permission-for-user
-                                           user-id :perms/create-queries db-id)))
-                                   db-ids)
-        can-create-queries?  (or (-> (some #(perms/at-least-as-permissive?
-                                             :perms/create-queries % :query-builder)
-                                           create-query-perms)
-                                     boolean)
-                                 (t2/exists? :model/Table
-                                             {:where [:and
-                                                      (collection/visible-collection-filter-clause)
-                                                      [:= :is_published true]]}))
-        can-create-native?   (contains? create-query-perms :query-builder-and-native)]
+  (let [permissions-set @api/*current-user-permissions-set*
+        user-id         api/*current-user-id*]
     (update user :permissions assoc
-            :can_access_setting        (perms/set-has-application-permission-of-type? permissions-set :setting)
-            :can_access_subscription   (perms/set-has-application-permission-of-type? permissions-set :subscription)
-            :can_access_monitoring     (perms/set-has-application-permission-of-type? permissions-set :monitoring)
+            :can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
+            :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
+            :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_studio  (perms/set-has-application-permission-of-type? permissions-set :data-studio)
-            :can_access_data_model     (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
-            :can_access_db_details     (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
-            :is_group_manager          api/*is-group-manager?*
-            :can_create_queries        can-create-queries?
-            :can_create_native_queries can-create-native?)))
+            :can_access_data_model   (perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)
+            :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
+            :is_group_manager        api/*is-group-manager?*)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
