@@ -16,7 +16,11 @@ type Props = TreePath & {
   setOnUpdateCallback: (callback: (() => void) | null) => void;
 };
 
-export function RouterTablePicker({ params, ...props }: Props) {
+export function RouterTablePicker({
+  params,
+  setOnUpdateCallback,
+  ...props
+}: Props) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
   const location = useSelector(getLocation);
@@ -26,7 +30,6 @@ export function RouterTablePicker({ params, ...props }: Props) {
     databaseId: propDatabaseId,
     schemaName: propSchemaName,
     tableId: propTableId,
-    setOnUpdateCallback,
   } = props;
 
   const onChange = useCallback(
