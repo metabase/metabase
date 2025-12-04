@@ -1,10 +1,10 @@
 const { H } = cy;
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { QuestionDetails } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const productsQuestionDetails: QuestionDetails = {
   dataset_query: {
@@ -47,8 +47,8 @@ describe("scenarios > data studio > published tables", () => {
   describe("query builder", () => {
     it("should be able to create and save a new question", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      cy.signIn("nodata");
 
+      cy.signIn("nodata");
       cy.visit("/");
       H.newButton("Question").click();
       H.popover().within(() => {
@@ -67,8 +67,8 @@ describe("scenarios > data studio > published tables", () => {
 
     it("should be able to drill-thru", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      cy.signIn("nodata");
 
+      cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
       H.tableInteractive().findByText("82.75").click();
       H.popover().findByText("=").click();
@@ -77,8 +77,8 @@ describe("scenarios > data studio > published tables", () => {
 
     it("should be able to use explicit joins when not all FK tables are published", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-      cy.signIn("nodata");
 
+      cy.signIn("nodata");
       H.visitQuestionAdhoc(ordersQuestionDetails, { mode: "notebook" });
       H.getNotebookStep("data").button("Join data").click();
       H.popover().within(() => {
@@ -95,8 +95,8 @@ describe("scenarios > data studio > published tables", () => {
 
     it("should be able to use implicit joins when not all FK tables are published", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-      cy.signIn("nodata");
 
+      cy.signIn("nodata");
       H.visitQuestionAdhoc(ordersQuestionDetails, { mode: "notebook" });
       H.getNotebookStep("data").button("Filter").click();
       H.popover().within(() => {
@@ -115,8 +115,8 @@ describe("scenarios > data studio > published tables", () => {
 
     it("should be able to use list field values", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      cy.signIn("nodata");
 
+      cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
       H.tableHeaderClick("Category");
       H.popover().within(() => {
@@ -129,8 +129,8 @@ describe("scenarios > data studio > published tables", () => {
 
     it("should be able to use search field values", () => {
       H.publishTables({ table_ids: [PEOPLE_ID] });
-      cy.signIn("nodata");
 
+      cy.signIn("nodata");
       H.visitQuestionAdhoc(peopleQuestionDetails);
       H.tableHeaderClick("Name");
       H.popover().findByText("Filter by this column").click();
@@ -145,9 +145,48 @@ describe("scenarios > data studio > published tables", () => {
       });
       H.assertQueryBuilderRowCount(2);
     });
+
+    it("should be able to use list field values when sandboxed", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+      H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+      sandboxProductsOnCategory();
+
+      cy.signIn("sandboxed");
+      H.visitQuestionAdhoc(productsQuestionDetails);
+      H.tableHeaderClick("Category");
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Widget").should("be.visible");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").click();
+        cy.button("Add filter").click();
+      });
+      H.assertQueryBuilderRowCount(54);
+    });
+
+    it("should not be able to access the table data when blocked", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+      H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+      H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(productsQuestionDetails);
+      H.main()
+        .findByText("Sorry, you don't have permission to run this query.")
+        .should("be.visible");
+    });
   });
 });
 
 function popoverByIndex(index: number) {
   return H.popover().should("have.length", 2).eq(index);
+}
+
+function sandboxProductsOnCategory() {
+  cy.sandboxTable({
+    table_id: PRODUCTS_ID,
+    attribute_remappings: {
+      attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+    },
+  });
 }
