@@ -106,7 +106,17 @@ install_mise_official() {
         exit 1
     fi
 
-    if curl -fsSL https://mise.run | sh; then
+    # Use shell-specific installer that also configures activation
+    local shell_name=$(detect_shell)
+    local installer_url="https://mise.run"
+
+    case "$shell_name" in
+        bash|zsh|fish)
+            installer_url="https://mise.run/$shell_name"
+            ;;
+    esac
+
+    if curl -fsSL "$installer_url" | sh; then
         print_success "mise installed via official installer"
 
         # Add to PATH for this session
@@ -124,15 +134,72 @@ update_mise() {
     if mise self-update -y 2>/dev/null; then
         print_success "mise is up to date ($(mise --version))"
     else
-        # Likely installed via Homebrew or other package manager
-        print_info "mise is managed by your package manager"
-        echo "      Run 'brew upgrade mise' to update (if using Homebrew)"
+        print_info "mise update skipped (managed externally or already current)"
+    fi
+}
+
+is_homebrew_mise() {
+    local mise_path
+    mise_path=$(command -v mise 2>/dev/null) || return 1
+    [[ "$mise_path" == *homebrew* || "$mise_path" == /opt/homebrew/* ]]
+}
+
+migrate_from_homebrew() {
+    print_warning "mise is currently installed via Homebrew"
+    echo ""
+    echo "      We recommend using the official mise installer instead of Homebrew."
+    echo "      This provides faster updates and better self-update support."
+    echo ""
+    echo "      This will:"
+    echo "        1. Uninstall mise from Homebrew (your tools/configs are preserved)"
+    echo "        2. Install mise to ~/.local/bin via the official installer"
+    echo ""
+
+    if ask_yes_no "Switch to official mise install?" "y"; then
+        print_info "Uninstalling Homebrew mise..."
+        if brew uninstall mise 2>/dev/null; then
+            print_success "Homebrew mise uninstalled"
+        else
+            print_warning "Could not uninstall via Homebrew (may already be removed)"
+        fi
+
+        # Clean up cached files and orphaned dependencies
+        brew cleanup mise 2>/dev/null || true
+        brew autoremove 2>/dev/null || true
+
+        # Install official version
+        install_mise_official
+
+        # Check for stale Homebrew paths in shell config
+        local shell_name=$(detect_shell)
+        local rc_file=$(get_shell_rc_file "$shell_name")
+        if [ -n "$rc_file" ] && [ -f "$rc_file" ]; then
+            if grep -q "homebrew.*mise" "$rc_file" 2>/dev/null; then
+                echo ""
+                print_warning "Found Homebrew mise references in $rc_file"
+                echo "      You may want to remove any lines containing '/opt/homebrew' and 'mise'"
+                echo "      The official mise installer uses ~/.local/bin/mise instead."
+            fi
+        fi
+
+        return 0
+    else
+        print_info "Keeping Homebrew mise installation"
+        update_mise
+        return 0
     fi
 }
 
 install_mise() {
     if has_tool mise; then
         local version=$(mise --version 2>/dev/null || echo "unknown")
+
+        # Check if installed via Homebrew and offer migration
+        if is_homebrew_mise; then
+            migrate_from_homebrew
+            return 0
+        fi
+
         print_success "mise is already installed ($version)"
         update_mise
         return 0
@@ -319,7 +386,8 @@ main() {
         fi
     fi
 
-    # Setup shell integration
+    # Setup shell integration (only needed if mise was already installed,
+    # since the official installer handles this for new installs)
     print_step "3. Configure shell integration"
     setup_shell_integration
 
