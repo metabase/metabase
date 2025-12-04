@@ -52,7 +52,8 @@
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
-    (if (= 1 (count terms))
+    (if (or (= (mdb/db-type) :h2)
+            (= 1 (count terms)))
       terms
       [(str/join " OR " (map #(str "(" % ")") terms))])))
 
