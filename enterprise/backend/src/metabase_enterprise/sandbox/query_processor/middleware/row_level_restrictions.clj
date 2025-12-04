@@ -164,11 +164,11 @@
 
 (mu/defn- reconcile-metadata :- [:+ :map]
   "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed.
-  For native queries with long column names, we also try matching by truncated name since the native query
-  may return truncated column names that don't match the full field names in table metadata.
+  For native queries with long column names, we also try matching by truncated name since the native query may return
+  truncated column names that don't match the full field names in table metadata.
 
-  We preserve the source query's column :name since that's what the query actually returns, but merge in
-  the table metadata's other attributes (like :id, :field_ref, etc.) for proper field resolution."
+  We preserve the source query's column :name since that's what the query actually returns, but merge in the table
+  metadata's other attributes (like :id, :field_ref, etc.) for proper field resolution."
   [source-query-metadata :- [:+ :map] table-metadata]
   (let [col-name->table-metadata (m/index-by :name table-metadata)
         truncated-name->table-metadata (m/index-by (comp lib.util/truncate-alias :name) table-metadata)]
