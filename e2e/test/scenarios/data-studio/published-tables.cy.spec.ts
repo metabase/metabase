@@ -45,7 +45,7 @@ describe("scenarios > data studio > published tables", () => {
   });
 
   describe("query builder", () => {
-    it("should be able to create and save a new question", () => {
+    it("should be able to create a query based on a published table", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("nodata");
@@ -65,16 +65,6 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(200);
     });
 
-    it("should be able to drill-thru", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      H.tableInteractive().findByText("82.75").click();
-      H.popover().findByText("=").click();
-      H.assertQueryBuilderRowCount(1);
-    });
-
     it("should be able to use explicit joins when not all FK tables are published", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
 
@@ -90,6 +80,10 @@ describe("scenarios > data studio > published tables", () => {
       H.getNotebookStep("join").button("Summarize").click();
       H.popover().findByText("Count of rows").click();
       H.visualize();
+      H.assertQueryBuilderRowCount(1);
+
+      H.saveQuestion("Test question", { wrapId: true });
+      H.visitQuestion("@questionId");
       H.assertQueryBuilderRowCount(1);
     });
 
@@ -110,6 +104,10 @@ describe("scenarios > data studio > published tables", () => {
       H.getNotebookStep("filter").button("Summarize").click();
       H.popover().findByText("Count of rows").click();
       H.visualize();
+      H.assertQueryBuilderRowCount(1);
+
+      H.saveQuestion("Test question", { wrapId: true });
+      H.visitQuestion("@questionId");
       H.assertQueryBuilderRowCount(1);
     });
 
@@ -134,6 +132,10 @@ describe("scenarios > data studio > published tables", () => {
       H.popover().findByText("ID segment").click();
       H.visualize();
       H.assertQueryBuilderRowCount(1);
+
+      H.saveQuestion("Test question", { wrapId: true });
+      H.visitQuestion("@questionId");
+      H.assertQueryBuilderRowCount(1);
     });
 
     it("should be able to use table metrics", () => {
@@ -155,6 +157,20 @@ describe("scenarios > data studio > published tables", () => {
         cy.findByText("Count metric").click();
       });
       H.visualize();
+      H.assertQueryBuilderRowCount(1);
+
+      H.saveQuestion("Test question", { wrapId: true });
+      H.visitQuestion("@questionId");
+      H.assertQueryBuilderRowCount(1);
+    });
+
+    it("should be able to drill-thru", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(productsQuestionDetails);
+      H.tableInteractive().findByText("82.75").click();
+      H.popover().findByText("=").click();
       H.assertQueryBuilderRowCount(1);
     });
 
