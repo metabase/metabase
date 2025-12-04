@@ -7,7 +7,7 @@ import { toggleSharing } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 
 /**
- * @internal
+ * @internal Do not import this component directly, use either SDK or EAJS EE plugins instead.
  */
 export const DashboardSubscriptionsButton = (
   props: DashboardSubscriptionsButtonProps,
