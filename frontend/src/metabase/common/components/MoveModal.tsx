@@ -165,11 +165,15 @@ export const MoveModal = ({
     : ["collection"];
 
   // Determine namespace restriction for the picker:
+  // - Only apply when moving collections (movingCollectionId is set)
   // - If moving a tenant collection, only show tenant hierarchy
   // - If moving a regular collection, hide tenant collections
-  const restrictToNamespace = isMovingTenantCollection
-    ? SHARED_TENANT_NAMESPACE
-    : "default";
+  // - Non-collections (dashboards, cards, etc.) can be moved freely between namespaces
+  const restrictToNamespace = movingCollectionId
+    ? isMovingTenantCollection
+      ? SHARED_TENANT_NAMESPACE
+      : "default"
+    : undefined;
 
   return (
     <CollectionPickerModal

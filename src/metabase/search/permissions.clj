@@ -39,8 +39,7 @@
      :include-trash-collection? true
      :permission-level          (if archived :write :read)}
     {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})
-   (perms/audit-namespace-clause :collection.namespace nil)])
+     :is-superuser?   is-superuser?})])
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause corresponding to which tables the given user has access to."

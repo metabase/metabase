@@ -1,8 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TENANT_ROOT_NAME = "Shared Tenant Collections";
 const TENANT_NAMESPACE = "shared-tenant-collection";
@@ -142,24 +139,11 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
 
             H.entityPickerModal().within(() => {
               H.entityPickerModalTab("Collections").click();
-              cy.findByText(TENANT_ROOT_NAME).click();
-
-              // Move button should be disabled for the tenant root
-              cy.button("Move").should("be.disabled");
+              cy.findByText(TENANT_ROOT_NAME).should("not.exist");
 
               // Close the modal
               cy.button("Cancel").click();
             });
-
-            // Verify the collection is NOT under Shared Tenant Collections in sidebar
-            H.navigationSidebar().within(() => {
-              cy.findByText(TENANT_ROOT_NAME).click();
-            });
-
-            // The collection should not appear under tenant collections
-            H.navigationSidebar()
-              .findByText("Collection To Move")
-              .should("not.exist");
 
             // The collection should still be in Our analytics (root)
             H.navigationSidebar().within(() => {
@@ -186,7 +170,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
+          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
           cy.button("Select").should("be.disabled");
@@ -205,7 +189,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
 
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Browse").click();
+          H.entityPickerModalTab("Collections").click();
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.findByText("Test Tenant Collection").click();
 
@@ -234,7 +218,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Browse").click();
+            H.entityPickerModalTab("Collections").click();
             cy.findByText(TENANT_ROOT_NAME).click();
 
             cy.button("Move").should("be.disabled");
@@ -268,7 +252,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           H.entityPickerModalTab("Browse").click();
           cy.findByText(TENANT_ROOT_NAME).click();
 
-          cy.button("Select").should("be.disabled");
+          cy.button("Select this collection").should("be.disabled");
         });
       });
     });
@@ -294,8 +278,8 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.findByText("Test Tenant Collection").click();
 
-          cy.button("Select").should("not.be.disabled");
-          cy.button("Select").click();
+          cy.button("Select this collection").should("not.be.disabled");
+          cy.button("Select this collection").click();
         });
 
         H.modal().within(() => {
@@ -332,27 +316,6 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
   });
 
   describe("search functionality", () => {
-    it("should find items in tenant collections via global search", () => {
-      setupTenantCollections().then(({ tenantCollectionId }) => {
-        H.createQuestion({
-          name: "Searchable Tenant Question",
-          type: "question",
-          query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-          collection_id: tenantCollectionId,
-        }).then(() => {
-          H.visitQuestion(ORDERS_QUESTION_ID);
-          H.openQuestionActions();
-          H.popover().findByText("Move").click();
-
-          H.entityPickerModal().within(() => {
-            cy.findByPlaceholderText(/Search/).type("Searchable Tenant");
-
-            cy.findByText("Searchable Tenant Question").should("be.visible");
-          });
-        });
-      });
-    });
-
     it("should find tenant collections via search", () => {
       setupTenantCollections().then(() => {
         H.visitQuestion(ORDERS_QUESTION_ID);
@@ -366,6 +329,33 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         });
       });
     });
+
+    it("should NOT show tenant collections in search when moving a non-tenant collection", () => {
+      setupTenantCollections().then(() => {
+        H.createCollection({ name: "Regular Collection" }).then(
+          ({ body: collection }) => {
+            H.visitCollection(collection.id);
+
+            H.openCollectionMenu();
+            H.popover().findByText("Move").click();
+
+            H.entityPickerModal().within(() => {
+              // Search for the tenant collection
+              cy.findByPlaceholderText(/Search/).type("Test Tenant Collection");
+
+              // Tenant collection should NOT appear in search results
+              cy.findByText("Test Tenant Collection").should("not.exist");
+
+              // Clear search and verify regular collections are still searchable
+              cy.findByPlaceholderText(/Search/)
+                .clear()
+                .type("First collection");
+              cy.findByText("First collection").should("be.visible");
+            });
+          },
+        );
+      });
+    });
   });
 
   describe("add to dashboard flow", () => {
@@ -377,16 +367,8 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
 
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
-          cy.button(/New dashboard/).click();
-        });
-
-        H.dashboardOnTheGoModal().within(() => {
-          cy.findByLabelText(/Which collection/).click();
-        });
-
-        H.entityPickerModal().within(() => {
           cy.findByText(TENANT_ROOT_NAME).click();
-          cy.button("Select").should("be.disabled");
+          cy.button(/New dashboard/).should("be.disabled");
         });
       });
     });

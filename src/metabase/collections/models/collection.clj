@@ -2236,7 +2236,7 @@
            :database-id false
            :archived true
            :created-at true
-                  ;; intentionally not tracked
+           ;; intentionally not tracked
            :updated-at false}
    :search-terms [:name]
    :render-terms {:archived-directly true
