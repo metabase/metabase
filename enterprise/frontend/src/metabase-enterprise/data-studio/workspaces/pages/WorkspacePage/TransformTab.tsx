@@ -86,7 +86,10 @@ export const TransformTab = ({
     [onChange, editedTransform.target.type],
   );
 
-  const validationSchemaExtension = useTransformValidation(databaseId);
+  const validationSchemaExtension = useTransformValidation({
+    databaseId,
+    workspaceId,
+  });
 
   const validationSchema = useMemo(
     () =>
