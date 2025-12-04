@@ -212,6 +212,21 @@ describe("scenarios > data studio > table publishing", () => {
     });
   });
 
+  describe("x-rays", () => {
+    it("should be able to x-ray a table", () => {
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(productsByTimeQuestionDetails);
+      H.cartesianChartCircle().first().click();
+      H.popover().findByText("Automatic insights…").click();
+      H.popover().findByText("X-ray").click();
+      H.main()
+        .findByText(/A closer look at number of Products/)
+        .should("be.visible");
+    });
+  });
+
   describe("field values", () => {
     it("should be able to use list field values", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
@@ -300,6 +315,19 @@ describe("scenarios > data studio > table publishing", () => {
       });
       H.assertQueryBuilderRowCount(93);
     });
+
+    it("should show a permission error when accessing a published table when some columns are remapped to unpublished tables", () => {
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+        name: "Product ID",
+        type: "external",
+        human_readable_field_id: PRODUCTS.TITLE,
+      });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(ordersQuestionDetails);
+      assertPermissionError();
+    });
   });
 
   describe("sandboxing", () => {
@@ -354,7 +382,7 @@ describe("scenarios > data studio > table publishing", () => {
     });
   });
 
-  describe("block", () => {
+  describe("block permission", () => {
     it("should not be able to access a published table data when blocked", () => {
       H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
@@ -364,7 +392,9 @@ describe("scenarios > data studio > table publishing", () => {
       H.visitQuestionAdhoc(productsQuestionDetails);
       assertPermissionError();
     });
+  });
 
+  describe("unpublishing", () => {
     it("should not be able to access a published table when it is unpublished", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
       H.unpublishTables({ table_ids: [PRODUCTS_ID] });
@@ -373,7 +403,9 @@ describe("scenarios > data studio > table publishing", () => {
       H.visitQuestionAdhoc(productsQuestionDetails);
       assertPermissionError();
     });
+  });
 
+  describe("token features", () => {
     it("should not be able to access a published table when the token no longer has required features", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
       H.activateToken("starter");
@@ -381,21 +413,6 @@ describe("scenarios > data studio > table publishing", () => {
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
       assertPermissionError();
-    });
-  });
-
-  describe("x-rays", () => {
-    it("should be able to x-ray a table", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsByTimeQuestionDetails);
-      H.cartesianChartCircle().first().click();
-      H.popover().findByText("Automatic insights…").click();
-      H.popover().findByText("X-ray").click();
-      H.main()
-        .findByText(/A closer look at number of Products/)
-        .should("be.visible");
     });
   });
 });
