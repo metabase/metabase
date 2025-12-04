@@ -18,7 +18,8 @@
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
 (t2/deftransforms :model/Workspace
-  {:graph mi/transform-json})
+  {:graph            mi/transform-json
+   :database_details mi/transform-encrypted-json})
 
 (doto :model/Workspace
   (derive :metabase/model)

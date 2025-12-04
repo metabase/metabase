@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -287,8 +288,8 @@
         _         (check-feature-enabled! transform)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
-     (transforms.i/execute! transform {:start-promise start-promise
-                                       :run-method :manual}))
+     (transforms.execute/execute! transform {:start-promise start-promise
+                                             :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

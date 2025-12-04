@@ -1620,6 +1620,28 @@ databaseChangeLog:
             indexName: idx_collection_workspace_id
 
   - changeSet:
+      id: v58.2025-11-26T13:35:00
+      validCheckSum: ANY
+      author: qnkhuat
+      comment: Add foreign key constraint from collection.workspace_id to workspace (for proper rollback ordering)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_collection_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection
+            baseColumnNames: workspace_id
+            constraintName: fk_collection_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: collection
+            constraintName: fk_collection_workspace_id
+
+  - changeSet:
       id: v58.2025-11-26T13:35:02
       validCheckSum: ANY
       author: christruter
@@ -1952,6 +1974,23 @@ databaseChangeLog:
             constraintName: uq_workspace_mapping_transform_downstream_id
 
   - changeSet:
+      id: v58.2025-11-26T14:50:02
+      author: qnkhuat
+      comment: Add workspace.database_details to keep db specifc details used for isolation
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: database_details
+                  type: ${text.type}
+                  remarks: Database details used for isolation of this workspace
+                  constraints:
+                    nullable: true
+      rollback:
+        # will be deleted with the table
+
+  - changeSet:
       id: v58.2025-11-27T10:00:00
       author: christruter
       comment: Add collection_id column to transform table
@@ -2018,6 +2057,7 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: transform
             constraintName: fk_transform_collection_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
