@@ -13,6 +13,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
   DashboardCard,
+  Pulse,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -88,6 +89,8 @@ type SetupOpts = {
   dashcards?: DashboardCard[];
   parameters?: UiParameter[];
   isEmbeddingSdk?: boolean;
+  setSharing?: (sharing: boolean) => void;
+  pulses?: (Partial<Pulse> & { id: number })[];
 };
 
 export function setup(
@@ -100,6 +103,8 @@ export function setup(
     dashcards = defaultDashcards,
     parameters = defaultParameters,
     isEmbeddingSdk = false,
+    setSharing,
+    pulses = [],
   }: SetupOpts = {
     email: true,
     slack: true,
@@ -161,7 +166,7 @@ export function setup(
   fetchMock.get({
     url: `path:/api/pulse`,
     query: { dashboard_id: dashboard.id },
-    response: [],
+    response: () => pulses,
   });
 
   fetchMock.post("path:/api/pulse/test", 200);
@@ -174,7 +179,7 @@ export function setup(
   }
 
   renderWithProviders(
-    <MockDashboardContext dashboard={dashboard}>
+    <MockDashboardContext dashboard={dashboard} setSharing={setSharing}>
       <DashboardSubscriptionsSidebar />
     </MockDashboardContext>,
     {

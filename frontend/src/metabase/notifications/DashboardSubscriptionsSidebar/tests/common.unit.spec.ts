@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
+import type { Pulse } from "metabase-types/api";
 
 import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
 
@@ -86,6 +87,96 @@ describe("DashboardSubscriptionsSidebar", () => {
           "Recipients will see this data just as you see it, regardless of their permissions.",
         ),
       ).not.toBeInTheDocument();
+    });
+
+    it(`should close the sidebar when the last pulse is archived and ${testScenarioCondition}`, async () => {
+      const pulses = [
+        {
+          channels: [
+            {
+              schedule_type: "daily",
+              schedule_hour: 0,
+              channel_type: "email",
+              enabled: true,
+            },
+          ],
+          name: "E-commerce Insights",
+          id: 10,
+          cards: [],
+        },
+        {
+          channels: [
+            {
+              schedule_type: "hourly",
+              channel_type: "email",
+              enabled: true,
+            },
+          ],
+          name: "E-commerce Insights",
+          id: 11,
+          cards: [],
+        },
+      ] satisfies (Pulse & { id: number })[];
+
+      // Dynamically modify `pulses` so that we get the new updated list of pulses after archiving
+      fetchMock.put({
+        url: "express:/api/pulse/:id",
+        response: ({ expressParams = {} }) => {
+          const pulseId = parseInt(expressParams?.id);
+          pulses.splice(
+            pulses.findIndex((pulse) => pulse.id === pulseId),
+            1,
+          );
+          return {};
+        },
+      });
+
+      const setSharing = jest.fn();
+
+      setup({
+        isEmbeddingSdk: true,
+        email: true,
+        slack,
+        setSharing,
+        pulses,
+      });
+
+      // Delete the first subscription
+      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByText("Emailed daily at 12:00 AM"),
+      );
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByText("Delete this subscription"),
+      );
+
+      let modal = screen.getByRole("dialog");
+      await userEvent.click(await within(modal).findByRole("checkbox"));
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Delete" }),
+      );
+
+      expect(setSharing).not.toHaveBeenCalled();
+
+      // Delete the last subscription
+      await userEvent.click(await screen.findByText("Emailed hourly"));
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByText("Delete this subscription"),
+      );
+
+      modal = screen.getByRole("dialog");
+      await userEvent.click(await within(modal).findByRole("checkbox"));
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Delete" }),
+      );
+
+      expect(setSharing).toHaveBeenCalledWith(false);
     });
   });
 

@@ -323,11 +323,18 @@ class DashboardSubscriptionsSidebarInner extends Component {
   };
 
   handleArchive = async () => {
-    await this.props.setPulseArchived(this.props.pulse, true);
-    this.setState({
-      editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
-      returnMode: [],
-    });
+    const { pulse, pulses, setPulseArchived, onCancel } = this.props;
+
+    await setPulseArchived(pulse, true);
+
+    if (isEmbeddingSdk() && pulses.length === 1) {
+      onCancel();
+    } else {
+      this.setState({
+        editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
+        returnMode: [],
+      });
+    }
   };
 
   // Because you can navigate down the sidebar, we need to wrap
