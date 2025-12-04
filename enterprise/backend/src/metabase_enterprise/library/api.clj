@@ -5,8 +5,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.core :as perms]
-   [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -14,16 +12,13 @@
 (api.macros/defendpoint :post "/"
   "Creates the Library if it doesn't exist. Returns the created collection.
 
-  Requires data-studio application permission."
+  Requires superuser permissions."
   [_route
    _query
    _body]
-  (perms/check-has-application-permission :data-studio)
+  (api/check-superuser)
   (api/check-400 (not (collections/library-collection)) "Library already exists")
-  ;; Library creation requires admin-level collection permissions which the user may not have,
-  ;; but we've verified they have data-studio permission above, so we run as admin
-  (request/as-admin
-    (collections/create-library-collection!)))
+  (collections/create-library-collection!))
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
@@ -47,8 +42,9 @@
         (t2/hydrate
          :can_write
          :effective_children)
-        (add-here-and-below))
-    {:message "Library does not exist"}))
+        (add-here-and-below)
+        (assoc :model "collection"))
+    {:data nil}))
 
 (defn- select-collections
   []

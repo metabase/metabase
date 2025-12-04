@@ -17,6 +17,7 @@ interface PublishModelResponse {
 
 describe("Table editing", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
@@ -106,6 +107,10 @@ describe("Table editing", () => {
           cy.findByText("Our analytics").should("be.visible");
           cy.findByText("Model based on ORDERS").should("be.visible");
         });
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_published",
       });
 
       // Should not show info modal again

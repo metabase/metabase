@@ -198,11 +198,25 @@ describe(
           .find("input")
           .type("Foo Bar Baz");
 
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("embedding-footer")
+          .should("be.visible");
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("question-download-widget-button")
+          .should("have.css", "background-color", "rgb(255, 255, 255)");
+
         getEmbedSidebar().within(() => {
           cy.findByTestId("appearance-section").within(() => {
             cy.findByTestId("upsell-gem").should("be.visible");
+
+            cy.findByText("Dark").click();
           });
         });
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("question-download-widget-button")
+          .should("have.css", "background-color", "rgb(7, 23, 34)");
 
         H.publishChanges("card");
         cy.button("Unpublish").should("be.visible");
@@ -223,6 +237,10 @@ describe(
 
         // Get code step
         getEmbedSidebar().within(() => {
+          codeBlock()
+            .invoke("text")
+            .should("match", /"theme":\s*\{\s*"preset":\s*"dark"\s*},/);
+
           cy.findAllByText(/Copy code/)
             .first()
             .click();
@@ -261,6 +279,8 @@ describe(
 
           frame.within(() => {
             cy.findByText("Foo Bar Baz").should("be.visible");
+
+            cy.findByTestId("embedding-footer").should("be.visible");
           });
         });
       });
