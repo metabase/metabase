@@ -170,10 +170,12 @@ export const WorkspaceProvider = ({
     (transformId: number, patch: Partial<EditedTransform>) => {
       updateWorkspaceState((state) => {
         const activeTransform = checkNotNull(state.activeTransform);
+        const currentTransform =
+          state.editedTransforms.get(transformId) ?? activeTransform;
         const newEditedTransform = {
-          name: patch.name ? patch.name : activeTransform.name,
-          source: patch.source ? patch.source : activeTransform.source,
-          target: patch.target ? patch.target : activeTransform.target,
+          name: patch.name ? patch.name : currentTransform.name,
+          source: patch.source ? patch.source : currentTransform.source,
+          target: patch.target ? patch.target : currentTransform.target,
         };
 
         const hasChanges =
