@@ -258,5 +258,5 @@ export interface BulkTableSelectionInfo {
 }
 
 export interface PublishTablesResponse {
-  target_collection: Collection;
+  target_collection: Collection | null;
 }

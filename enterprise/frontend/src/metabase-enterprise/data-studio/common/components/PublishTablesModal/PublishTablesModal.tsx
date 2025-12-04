@@ -124,16 +124,22 @@ function ModalBody({
   const { selected_table, unpublished_upstream_tables } = data;
 
   const handleSubmit = async () => {
-    const { target_collection } = await publishTables({
+    const { target_collection: collection } = await publishTables({
       database_ids: databaseIds,
       schema_ids: schemaIds,
       table_ids: tableIds,
     }).unwrap();
-    sendSuccessToast(
-      t`Published`,
-      () => dispatch(push(Urls.dataStudioCollection(target_collection.id))),
-      t`Go to ${target_collection.name}`,
-    );
+
+    if (collection != null) {
+      sendSuccessToast(
+        t`Published`,
+        () => dispatch(push(Urls.dataStudioCollection(collection.id))),
+        t`Go to ${collection.name}`,
+      );
+    } else {
+      sendSuccessToast(t`Published`);
+    }
+
     onPublish();
   };
 
