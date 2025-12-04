@@ -120,20 +120,11 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       // Dynamically modify `pulses` so that we get the new updated list of pulses after archiving
       fetchMock.put({
-        url: "path:/api/pulse/10",
-        response: () => {
+        url: "express:/api/pulse/:id",
+        response: ({ expressParams = {} }) => {
+          const pulseId = parseInt(expressParams?.id);
           pulses.splice(
-            pulses.findIndex((pulse) => pulse.id === 10),
-            1,
-          );
-          return {};
-        },
-      });
-      fetchMock.put({
-        url: "path:/api/pulse/11",
-        response: () => {
-          pulses.splice(
-            pulses.findIndex((pulse) => pulse.id === 11),
+            pulses.findIndex((pulse) => pulse.id === pulseId),
             1,
           );
           return {};
