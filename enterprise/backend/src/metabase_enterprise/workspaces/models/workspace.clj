@@ -1,18 +1,12 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase.models.interface :as mi]
+   [metabase.util.json :as json]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def ^:private type->t2-selector "Models supported by workspaces"
-  {:transform :model/Transform})
-(def ^:private type->t2-fields "Fields that are returned as part of the workspace contents"
-  {:transform [:id :name :description :source :target :source_type
-               :creator_id :collection_id
-               :created_at :updated_at]})
-(def ^:private type->mapping "Mapping models for supported models"
-  {:transform :model/WorkspaceMappingTransform})
 (def ^:private type->grouping "How models are grouped in lists"
+  ;; do not forget to update `entities` if you add stuff here
   {:transform :transforms})
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
@@ -25,18 +19,19 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defn- field [table field-name]
-  (keyword (name table) (name field-name)))
-
 (defn- entities [entity-type ids]
-  (let [t2-model (type->t2-selector entity-type)
-        t2-table (t2/table-name t2-model)
-        mapping  (t2/table-name (type->mapping entity-type))]
-    (->> (t2/select (concat [t2-model] (type->t2-fields entity-type)
-                            [(field t2-table :workspace_id) (field mapping :upstream_id)])
-                    (field t2-table :workspace_id) [:in ids]
-                    {:left-join [mapping [:= (field mapping :downstream_id) (field t2-table :id)]]})
-         (mapv (fn [e] (assoc e :type entity-type))))))
+  (->> (case entity-type
+         :transform
+         (t2/select [:model/Transform
+                     :id :name :description :source :target :source_type :creator_id :collection_id
+                     :created_at :updated_at :wmt.workspace_id :wmt.upstream_id
+                     [:upstream.target :upstream]]
+                    :transform.workspace_id [:in ids]
+                    {:left-join [[:workspace_mapping_transform :wmt] [:= :wmt.downstream_id :transform.id]
+                                 [:transform :upstream]              [:= :upstream.id :wmt.upstream_id]]}))
+       (mapv #(-> %
+                  (update :upstream json/decode+kw)
+                  (assoc :type entity-type)))))
 
 (defn- ws-contents [ids]
   (fn []

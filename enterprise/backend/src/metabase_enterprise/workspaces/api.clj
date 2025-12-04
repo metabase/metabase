@@ -33,6 +33,7 @@
   [:map
    [:id ms/PositiveInt]
    [:upstream_id [:maybe ms/PositiveInt]]
+   [:upstream [:maybe ::ws-transform-target]]
    [:type ::entity-type]
    [:name :string]])
 
