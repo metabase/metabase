@@ -188,7 +188,8 @@
   [workspace-id]
   (reduce
    (fn [acc {:keys [x_id t_id]}]
-     (update acc x_id (fnil conj #{}) t_id))
+     (cond-> acc
+       (pos-int? t_id) (update x_id (fnil conj #{}) t_id)))
    {}
    (t2/query {:with [[:ws_xs {:select [:x.*]
                               :from [[(t2/table-name :model/Transform) :x]]
