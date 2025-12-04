@@ -30,7 +30,6 @@ import {
 } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
-import { useDataModelApi } from "../../pages/DataModel/contexts/DataModelApiContext";
 import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal";
 
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
@@ -62,7 +61,6 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
-  const { invokeAction } = useDataModelApi();
 
   const getFieldHref = (fieldId: FieldId) => {
     return getUrl(baseUrl, {
@@ -154,11 +152,6 @@ const TableSectionBase = ({
       });
     }
   };
-
-  const handlePublishSuccess = () => {
-    invokeAction("refetchSelectedTables");
-  };
-
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box className={S.header} bg="accent-gray-light" px="lg" mt="lg">
@@ -321,7 +314,6 @@ const TableSectionBase = ({
         tables={new Set([table.id])}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
-        onSuccess={handlePublishSuccess}
       />
     </Stack>
   );
