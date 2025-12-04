@@ -49,10 +49,12 @@ const init = async () => {
   const { isBackendRunning } = CypressBackend;
   const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
 
+  const runningFromJar = !!options.JAR_PATH;
+
   printBold("⏳ Starting containers");
   shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
 
-  if (options.JAR_PATH) {
+  if (runningFromJar) {
     if (isBackendRunning || isFrontendRunning) {
       printBold("⚠️ Your backend and/or frontend are already running");
       console.log(`You wanted to test against a pre-built Metabase JAR:
@@ -101,7 +103,11 @@ const init = async () => {
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
   }
 
-  if (!isFrontendRunning && options.CYPRESS_TESTING_TYPE === "e2e") {
+  if (
+    !isFrontendRunning &&
+    options.CYPRESS_TESTING_TYPE === "e2e" &&
+    !runningFromJar
+  ) {
     printBold(
       "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
     );
