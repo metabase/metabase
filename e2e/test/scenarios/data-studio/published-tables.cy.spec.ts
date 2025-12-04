@@ -113,6 +113,51 @@ describe("scenarios > data studio > published tables", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
+    it("should be able to use table segments", () => {
+      H.createSegment({
+        name: "ID segment",
+        table_id: PRODUCTS_ID,
+        definition: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            filter: ["=", ["field", PRODUCTS.ID, null], 1],
+          },
+        },
+      });
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(productsQuestionDetails, { mode: "notebook" });
+      H.getNotebookStep("data").button("Filter").click();
+      H.popover().findByText("ID segment").click();
+      H.visualize();
+      H.assertQueryBuilderRowCount(1);
+    });
+
+    it("should be able to use table metrics", () => {
+      H.createQuestion({
+        name: "Count metric",
+        type: "metric",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+        },
+      });
+      H.publishTables({ table_ids: [PRODUCTS_ID] });
+
+      cy.signIn("nodata");
+      H.visitQuestionAdhoc(productsQuestionDetails, { mode: "notebook" });
+      H.getNotebookStep("data").button("Summarize").click();
+      H.popover().within(() => {
+        cy.findByText("Metrics").click();
+        cy.findByText("Count metric").click();
+      });
+      H.visualize();
+      H.assertQueryBuilderRowCount(1);
+    });
+
     it("should be able to use list field values", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
 
