@@ -76,8 +76,7 @@
                               :describe-is-generated     true
                               :describe-is-nullable      true
                               :describe-default-expr     true
-                              :metadata/table-existence-check true
-                              :isolation                 true}]
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
