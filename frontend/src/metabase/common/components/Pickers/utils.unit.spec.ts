@@ -229,6 +229,21 @@ describe("getCollectionIdPath", () => {
 
     expect(path).toEqual(["tenant", 6, 7, 8, 9]);
   });
+
+  it("should treat dedicated tenant collection root as a root-level item", () => {
+    const path = getCollectionIdPath(
+      {
+        id: 1234,
+        location: "/",
+        effective_location: "/",
+        model: "collection",
+        type: "tenant-specific-root-collection",
+      },
+      1337,
+    );
+
+    expect(path).toEqual([1234]);
+  });
 });
 
 describe("getStateFromIdPath", () => {
