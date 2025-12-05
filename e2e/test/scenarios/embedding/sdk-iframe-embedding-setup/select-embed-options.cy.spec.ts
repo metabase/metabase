@@ -702,6 +702,13 @@ describe(suiteTitle, () => {
     cy.log("click on brand color picker");
     cy.findByTestId("brand-color-picker").findByRole("button").click();
 
+    /**
+     * There's a problem on CI where the hovercard on allow subscriptions are open
+     * and that is counted in H.popover() making H.popover().within() failed.
+     *
+     * waiting for the hovercard to close should fix the problem.
+     */
+    H.popover().should("have.length", 1);
     H.popover().within(() => {
       cy.findByDisplayValue("#509EE2").clear().type("#BD51FD");
     });
