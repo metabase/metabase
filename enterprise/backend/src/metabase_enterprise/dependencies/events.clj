@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -223,3 +224,30 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))))
+
+(def ^:private type->model
+  {:card :model/Card
+   :transform :model/Transform})
+
+(defn- reset-dependent-analyses! [type instance]
+  (models.analysis-finding/reset-analysis! type [(:id instance)])
+  (doseq [[dep-type dep-ids] (models.dependency/transitive-dependents {type [instance]})]
+    (models.analysis-finding/reset-analysis! dep-type dep-ids)))
+
+(derive ::check-card-dependents :metabase/event)
+(derive :event/card-update ::check-card-dependents)
+(derive :event/card-delete ::check-card-dependents)
+
+(methodical/defmethod events/publish-event! ::check-card-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (reset-dependent-analyses! :card object)))
+
+(derive ::check-transform-dependents :metabase/event)
+(derive :event/update-transform ::check-transform-dependents)
+(derive :event/delete-transform ::check-transform-dependents)
+
+(methodical/defmethod events/publish-event! ::check-transform-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (reset-dependent-analyses! :transform object)))

@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -376,3 +378,64 @@
                   (is (= models.dependency/current-dependency-analysis-version
                          (t2/select-one-fn :dependency_analysis_version :model/Sandbox :id sandbox-id)))
                   (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))))))
+
+(deftest card-update-works-with-no-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          orders-id (mt/id :orders)
+          products (lib.metadata/table mp products-id)
+          orders (lib.metadata/table mp orders-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                       :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                       :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id child-card-id
+                                            :to_entity_type :card
+                                            :to_entity_id parent-card-id}]
+          (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*})
+          (is (= nil
+                 (t2/select-fn-set :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
+                                   :analyzed_entity_type :card
+                                   :analyzed_entity_id [:in [parent-card-id child-card-id]]))))))))
+
+(deftest card-update-clears-analyses-test
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          products-id (mt/id :products)
+          orders-id (mt/id :orders)
+          products (lib.metadata/table mp products-id)
+          orders (lib.metadata/table mp orders-id)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                       :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                       :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                       :model/Dependency _ {:from_entity_type :card
+                                            :from_entity_id child-card-id
+                                            :to_entity_type :card
+                                            :to_entity_id parent-card-id}]
+          (deps.findings/upsert-analysis! parent-card)
+          (deps.findings/upsert-analysis! child-card)
+          (deps.findings/upsert-analysis! other-card)
+          (is (= #{{:analyzed_entity_id parent-card-id
+                    :analysis_version models.analysis-finding/current-analysis-version}
+                   {:analyzed_entity_id child-card-id
+                    :analysis_version models.analysis-finding/current-analysis-version}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/current-analysis-version}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]]))))
+          (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*})
+          (is (= #{{:analyzed_entity_id parent-card-id
+                    :analysis_version -1}
+                   {:analyzed_entity_id child-card-id
+                    :analysis_version -1}
+                   {:analyzed_entity_id other-card-id
+                    :analysis_version models.analysis-finding/current-analysis-version}}
+                 (into #{}
+                       (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
+                                  :analyzed_entity_type :card
+                                  :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]])))))))))

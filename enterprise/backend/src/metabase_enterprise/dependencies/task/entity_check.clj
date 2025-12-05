@@ -24,18 +24,17 @@
   (t/to-millis-from-epoch (t/instant)))
 
 (def ^:private entities
-  [:model/Card
-   :model/Transform])
+  [:card :transform])
 
 (defn- check-entities!
   []
   (when (premium-features/has-feature? :dependencies)
-    (-> (reduce (fn [batch-size model-kw]
+    (-> (reduce (fn [batch-size entity-type]
                   (if (< batch-size 1)
                     (reduced 0)
-                    (let [processed (deps.findings/analyze-entities model-kw batch-size)]
+                    (let [processed (deps.findings/analyze-entities entity-type batch-size)]
                       (when (pos? processed)
-                        (log/info "Updated" processed "entities of type" model-kw))
+                        (log/info "Updated" processed "entities of type" entity-type))
                       (- batch-size processed))))
                 (deps.settings/dependency-entity-check-batch-size)
                 entities)

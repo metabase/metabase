@@ -25,10 +25,10 @@
                      (catch Exception e
                        {:exception (.getMessage e)}))
         success (empty? results)]
-    (deps.analysis-finding/upsert-analysis! model (:id toucan-instance) success results)))
+    (deps.analysis-finding/upsert-analysis! (model->dependency-type model) (:id toucan-instance) success results)))
 
 (mu/defn analyze-entities :- :int
-  [model :- [:enum :model/Card :model/Transform]
+  [model :- [:enum :card :transform]
    batch-size :- :int]
   (lib-be/with-metadata-provider-cache
     (let [instances (deps.analysis-finding/instances-for-analysis model batch-size)]
