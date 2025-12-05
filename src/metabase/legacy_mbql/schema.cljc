@@ -425,10 +425,6 @@
 ;; Currently aggregate Field references can only be used inside order-by clauses. In the future once we support SQL
 ;; `HAVING` we can allow them in filter clauses too
 ;;
-;; TODO - shouldn't we allow composing aggregations in expressions? e.g.
-;;
-;;    {:order-by [[:asc [:+ [:aggregation 0] [:aggregation 1]]]]}
-;;
 ;; TODO - it would be nice if we could check that there's actually an aggregation with the corresponding index,
 ;; wouldn't it
 ;;
@@ -897,6 +893,7 @@
            :string
            [:ref ::TemporalLiteral]
            [:ref ::ExpressionArg]
+           [:ref ::aggregation]
            [:ref ::FieldOrExpressionRefOrRelativeDatetime]]]])
 
 ;; For all of the non-compound Filter clauses below the first arg is an implicit Field ID
