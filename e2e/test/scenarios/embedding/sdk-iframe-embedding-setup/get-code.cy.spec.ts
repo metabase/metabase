@@ -57,13 +57,14 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase session").click();
-
       cy.findByText("Get code").click();
 
+      codeBlock().should("not.contain", '"useExistingUserSession": true');
+      cy.findByLabelText("Existing session (local testing only)").click();
       codeBlock().should("contain", '"useExistingUserSession": true');
 
       cy.findByText(/Copy code/).click();
@@ -80,14 +81,16 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase session").click();
-
       cy.findByText("Get code").click();
 
+      codeBlock().should("not.contain", '"useExistingUserSession": true');
+      cy.findByLabelText("Existing session (local testing only)").click();
       codeBlock().should("contain", '"useExistingUserSession": true');
+
       codeBlock().trigger("copy");
 
       H.expectUnstructuredSnowplowEvent({
@@ -104,11 +107,10 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").click();
-
       cy.findByText("Get code").click();
 
       codeBlock().should("not.contain", "useExistingUserSession");
