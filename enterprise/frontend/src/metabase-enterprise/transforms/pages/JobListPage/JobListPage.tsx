@@ -14,9 +14,8 @@ import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pag
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { TransformJob } from "metabase-types/api";
-
-import { SidebarLoadingState } from "../TransformSidebarLayout/SidebarLoadingState";
 
 export const JobListPage = () => {
   const dispatch = useDispatch();
@@ -70,7 +69,7 @@ export const JobListPage = () => {
 
         <Flex direction="column" flex={1} mih={0}>
           {isLoading ? (
-            <SidebarLoadingState />
+            <ListLoadingState />
           ) : filteredJobs.length === 0 ? (
             <ListEmptyState
               label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}

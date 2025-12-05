@@ -14,9 +14,8 @@ import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/co
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { Transform } from "metabase-types/api";
-
-import { SidebarLoadingState } from "../TransformSidebarLayout/SidebarLoadingState";
 
 export const TransformListPageSidebar = () => {
   const dispatch = useDispatch();
@@ -72,18 +71,18 @@ export const TransformListPageSidebar = () => {
           <CreateTransformMenu />
         </Flex>
 
-        {isLoading ? (
-          <SidebarLoadingState />
-        ) : filteredTransforms.length === 0 ? (
-          <ListEmptyState
-            label={
-              debouncedSearchQuery
-                ? t`No transforms found`
-                : t`No transforms yet`
-            }
-          />
-        ) : (
-          <Card withBorder p={0}>
+        <Card withBorder p={0}>
+          {isLoading ? (
+            <ListLoadingState />
+          ) : filteredTransforms.length === 0 ? (
+            <ListEmptyState
+              label={
+                debouncedSearchQuery
+                  ? t`No transforms found`
+                  : t`No transforms yet`
+              }
+            />
+          ) : (
             <Table
               data={filteredTransforms.map((t) => ({
                 ...t,
@@ -113,8 +112,8 @@ export const TransformListPageSidebar = () => {
               ]}
               onSelect={handleSelect}
             />
-          </Card>
-        )}
+          )}
+        </Card>
       </Stack>
     </>
   );
