@@ -17,27 +17,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- on-response!
-  "Wrap response body to execute callback after streaming completes."
-  [data callback]
-  (reify
-    ring.protocols/StreamableResponseBody
-    (write-body-to-stream [_ response out]
-      (ring.protocols/write-body-to-stream data response out)
-      (future (callback)))
-
-    clojure.java.io.IOFactory
-    (make-input-stream [_ _]
-      (let [res (io/input-stream data)]
-        (callback)
-        res))))
-
 (defn- export-and-pack
   "Export analytics content and pack into a tarball.
 
   Returns map with:
   - :archive - File pointing to .tar.gz
-  - :callback - Function to clean up temp files
+  - :cleanup! - Function to clean up temp files
   - :error-message - Error message if export failed"
   []
   (let [collection (analytics-dev/find-analytics-collection)]
@@ -49,32 +34,25 @@
           export-dir (doto (io/file parent-dir "instance_analytics") .mkdirs)
           dst        (io/file (str (.getPath parent-dir) ".tar.gz"))
           user-email (:email @api/*current-user*)
-          err        (atom nil)]
+          cleanup!   (fn []
+                       (when (.exists parent-dir)
+                         (run! io/delete-file (reverse (file-seq parent-dir))))
+                       (when (.exists dst)
+                         (io/delete-file dst)))]
 
       (try
-        ;; Export analytics content
         (log/info "Exporting analytics collection" (:id collection))
         (analytics-dev/export-analytics-content! (:id collection) user-email (.getPath export-dir))
 
-        ;; Create tarball
         (log/info "Creating tarball" (.getPath dst))
         (u.compress/tgz parent-dir dst)
 
         {:archive  (when (.exists dst) dst)
-         :callback (fn []
-                     (when (.exists parent-dir)
-                       (run! io/delete-file (reverse (file-seq parent-dir))))
-                     (when (.exists dst)
-                       (io/delete-file dst)))}
+         :cleanup! cleanup!}
 
         (catch Exception e
-          (reset! err e)
           (log/error e "Error during analytics export")
-          ;; Clean up on error
-          (when (.exists parent-dir)
-            (run! io/delete-file (reverse (file-seq parent-dir))))
-          (when (.exists dst)
-            (io/delete-file dst))
+          (try (cleanup!) (catch Error _))
           {:error-message (.getMessage e)})))))
 
 ;;; API Endpoints
@@ -94,9 +72,7 @@
    "Analytics dev mode is not enabled")
 
   (let [timer (u/start-timer)
-        {:keys [archive
-                error-message
-                callback]} (export-and-pack)
+        {:keys [archive error-message cleanup!]} (export-and-pack)
         duration (u/since-ms timer)]
 
     (log/infof "Analytics export completed in %.0fms" duration)
@@ -105,7 +81,11 @@
       {:status  200
        :headers {"Content-Type"        "application/gzip"
                  "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
-       :body    (on-response! archive callback)}
+       :body    (reify
+                  ring.protocols/StreamableResponseBody
+                  (write-body-to-stream [_ response out]
+                    (ring.protocols/write-body-to-stream archive response out)
+                    (future (cleanup!))))}
       {:status  500
        :headers {"Content-Type" "text/plain"}
        :body    (or error-message "Unknown error during export")})))
