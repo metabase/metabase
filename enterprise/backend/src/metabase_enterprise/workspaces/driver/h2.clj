@@ -11,7 +11,6 @@
    [clojure.java.jdbc :as jdbc]
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
-   [metabase-enterprise.workspaces.sync :as ws.sync]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
@@ -63,28 +62,6 @@
         (.executeBatch ^java.sql.Statement stmt)))
     {:schema           schema-name
      :database_details {:db new-db}}))
-
-(defmethod isolation/duplicate-output-table! :h2
-  [database workspace output]
-  (let [source-schema   (:schema output)
-        source-table    (:name output)
-        isolated-schema (:schema workspace)
-        isolated-table  (driver.common/isolated-table-name output)]
-    (assert (every? some? [source-schema source-table isolated-schema isolated-table])
-            "All table identifiers must be present")
-    ;; H2 supports CREATE TABLE AS SELECT syntax
-    ;; Using WHERE 1=0 instead of WITH NO DATA (which is Postgres-specific)
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
-        (.addBatch ^java.sql.Statement stmt
-                   ^String (format "CREATE TABLE \"%s\".\"%s\" AS SELECT * FROM \"%s\".\"%s\" WHERE 1=0"
-                                   isolated-schema
-                                   isolated-table
-                                   source-schema
-                                   source-table))
-        (.executeBatch ^java.sql.Statement stmt)))
-    (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]
-      (select-keys table-metadata [:id :schema :name]))))
 
 (defmethod isolation/drop-isolated-tables! :h2
   [database s+t-tuples]

@@ -2152,6 +2152,276 @@ databaseChangeLog:
             baseTableName: workspace_log
             constraintName: fk_workspace_log_workspace_id
 
+  - changeSet:
+      id: v58.2025-12-09T10:00:00
+      author: christruter
+      comment: Create workspace_transform table for holding transform changesets in workspaces
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: workspace_transform
+      changes:
+        - createTable:
+            tableName: workspace_transform
+            remarks: Holds the changeset of transforms being created and edited within a workspace
+            columns:
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  remarks: Unique UUID identifier for the workspace transform
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace containing this transform
+                  constraints:
+                    nullable: false
+              - column:
+                  name: global_id
+                  type: int
+                  remarks: FK to transform table if checked out from global
+                  constraints:
+                    nullable: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: FK to collection containing this transform
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Name of the transform
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Description of the transform
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source
+                  type: ${text.type}
+                  remarks: JSON of source configuration
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  type: ${text.type}
+                  remarks: JSON of target configuration
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity of this changeset entry only, not used when merging to global
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: checked_out_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the transform was checked out
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived_at
+                  type: ${timestamp_type}
+                  remarks: If set, marks that the global transform should be archived when merging
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the workspace transform was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the workspace transform was last updated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_transform
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:01
+      author: christruter
+      comment: Add index on workspace_transform.workspace_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_transform_workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:02
+      author: christruter
+      comment: Add index on workspace_transform.global_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_transform_global_id
+      changes:
+        - createIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_global_id
+            columns:
+              - column:
+                  name: global_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_global_id
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:03
+      author: christruter
+      comment: Add index on workspace_transform.collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_transform_collection_id
+      changes:
+        - createIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_collection_id
+            columns:
+              - column:
+                  name: collection_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_collection_id
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:04
+      author: christruter
+      comment: Add foreign key constraint from workspace_transform.workspace_id to workspace
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_transform_workspace_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_transform
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_transform_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_transform
+            constraintName: fk_workspace_transform_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:05
+      author: christruter
+      comment: Add foreign key constraint from workspace_transform.global_id to transform with SET NULL on delete
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_transform_global_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_transform
+            baseColumnNames: global_id
+            constraintName: fk_workspace_transform_global_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_transform
+            constraintName: fk_workspace_transform_global_id
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:06
+      author: christruter
+      comment: Add foreign key constraint from workspace_transform.collection_id to collection with SET NULL on delete
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_transform_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_transform
+            baseColumnNames: collection_id
+            constraintName: fk_workspace_transform_collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_transform
+            constraintName: fk_workspace_transform_collection_id
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:07
+      author: christruter
+      comment: Add partial unique index on workspace_transform (workspace_id, global_id) where global_id is not null
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_transform_workspace_global_unique
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id) WHERE global_id IS NOT NULL
+        - sql:
+            dbms: h2
+            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, global_id) WHERE global_id IS NOT NULL
+        - sql:
+            dbms: mysql,mariadb
+            sql: CREATE UNIQUE INDEX idx_workspace_transform_workspace_global_unique ON workspace_transform (workspace_id, (IFNULL(global_id, ref_id)))
+      rollback:
+        - dropIndex:
+            tableName: workspace_transform
+            indexName: idx_workspace_transform_workspace_global_unique
+
+  - changeSet:
+      id: v58.2025-12-09T10:00:08
+      author: christruter
+      comment: Add unique constraint on workspace.name
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_workspace_name_unique
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace
+            columnNames: name
+            constraintName: idx_workspace_name_unique
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace
+            constraintName: idx_workspace_name_unique
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
