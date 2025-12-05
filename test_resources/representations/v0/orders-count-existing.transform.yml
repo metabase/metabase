@@ -1,0 +1,13 @@
+tags: [monthly, daily]
+name: transform-4
+display_name: Orders count by month (transform)
+target_table: {schema: PUBLIC, table: ORDERS_COUNT}
+type: transform
+version: v0
+query:
+  source-table: {database: 'ref:database-53', schema: PUBLIC, table: ORDERS}
+  aggregation:
+  - [count]
+  breakout:
+  - {database: 'ref:database-53', schema: PUBLIC, table: ORDERS, field: CREATED_AT}
+database: ref:database-53

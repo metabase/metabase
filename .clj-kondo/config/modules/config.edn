@@ -2099,6 +2099,21 @@
            util
            enterprise/serialization}}
 
+  enterprise/representations
+  {:team "Querying"
+   :api #{metabase-enterprise.representations.core
+          metabase-enterprise.representations.api
+          metabase-enterprise.representations.init}
+   :uses #{api
+           collections
+           collections-rest
+           config
+           driver
+           lib
+           lib-be
+           models
+           util}}
+
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes

@@ -1,0 +1,91 @@
+type: database
+name: sample-db
+display_name: Sample Database
+engine: postgres
+description: Main application database with orders and customer data
+connection_details:
+  host: localhost
+  port: 5432
+  dbname: sample_data
+  user: metabase_user
+  ssl: true
+  # Note: password should be provided via environment variable or secrets management
+schemas:
+  - name: PUBLIC
+    tables:
+      - name: ORDERS
+        description: Customer order transactions
+        columns:
+          - name: ID
+            type: BIGINT
+            pk: true
+            description: Order unique identifier
+          - name: USER_ID
+            type: BIGINT
+            fk: PEOPLE.ID
+            description: Reference to customer
+          - name: PRODUCT_ID
+            type: INTEGER
+            fk: PRODUCTS.ID
+            description: Reference to product
+          - name: SUBTOTAL
+            type: DECIMAL(10,2)
+            description: Order amount before tax
+          - name: TAX
+            type: DECIMAL(10,2)
+            description: Tax amount
+          - name: TOTAL
+            type: DECIMAL(10,2)
+            description: Total order amount
+          - name: DISCOUNT
+            type: DECIMAL(10,2)
+            nullable: true
+            description: Discount applied
+          - name: CREATED_AT
+            type: TIMESTAMP
+            description: Order creation timestamp
+          - name: QUANTITY
+            type: INTEGER
+            description: Number of items ordered
+      - name: PEOPLE
+        description: Customer information
+        columns:
+          - name: ID
+            type: BIGINT
+            pk: true
+            description: Customer unique identifier
+          - name: EMAIL
+            type: VARCHAR(255)
+            description: Customer email address
+          - name: NAME
+            type: VARCHAR(255)
+            description: Customer full name
+          - name: CREATED_AT
+            type: TIMESTAMP
+            description: Account creation date
+      - name: PRODUCTS
+        description: Product catalog
+        columns:
+          - name: ID
+            type: INTEGER
+            pk: true
+            description: Product unique identifier
+          - name: TITLE
+            type: VARCHAR(255)
+            description: Product name
+          - name: CATEGORY
+            type: VARCHAR(100)
+            description: Product category
+          - name: VENDOR
+            type: VARCHAR(100)
+            description: Product vendor/manufacturer
+          - name: PRICE
+            type: DECIMAL(10,2)
+            description: Product unit price
+          - name: RATING
+            type: DECIMAL(3,2)
+            nullable: true
+            description: Average product rating
+          - name: CREATED_AT
+            type: TIMESTAMP
+            description: Product listing date

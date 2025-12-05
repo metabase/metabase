@@ -293,8 +293,7 @@
                (apply readability/check arguments))}
 
   ;; Uncomment this if you want to play with the example calculator task:
-  #_#_
-  -example-calculator
+  #_#_-example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
    ;; Keep these short, they need to fit on one line in the output from `./bin/mage -h`.
    :doc        "The example calculator's task docstring"
@@ -354,4 +353,4 @@
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
    :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
-   :task     (task! (fix-whitespace/run-clean parsed))}}}
+   :task (task! (fix-whitespace/run-clean parsed))}}}

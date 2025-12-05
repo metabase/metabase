@@ -100,6 +100,23 @@
                                  tag-associations)]
       (for [transform transforms] (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
 
+(mi/define-batched-hydration-method transform-tag-names
+  :transform_tag_names
+  "Add tag_ids to a transform, preserving the order defined by position"
+  [transforms]
+  (if-not (seq transforms)
+    transforms
+    (let [transforms (t2/hydrate transforms :transform_tag_ids)
+          tag-ids (set (mapcat :tag_ids transforms))
+          tags (when (seq tag-ids)
+                 (t2/select [:model/TransformTag :id :name]
+                            :id [:in tag-ids]))
+          tag-index (into {} (for [{:keys [id name]} tags] [id (str name)]))]
+      (for [transform transforms]
+        (cond-> (dissoc transform :tag_ids)
+          (seq (:tag_ids transform))
+          (assoc :tags (mapv tag-index (:tag_ids transform))))))))
+
 (methodical/defmethod t2/batched-hydrate [:model/Transform :creator]
   "Add creator (user) to a transform"
   [_model _k transforms]
