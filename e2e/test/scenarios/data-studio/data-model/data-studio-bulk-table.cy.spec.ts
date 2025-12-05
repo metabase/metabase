@@ -165,12 +165,12 @@ describe("bulk table operations", () => {
   });
 
   describe(
-    "allows to edit attributes for tables or publish them when there are several databases with several schemas at once",
+    "several databases with several schemas at once",
     { tags: ["@external"] },
     () => {
       [{ withFilter: false }, { withFilter: true }].forEach(
         ({ withFilter }) => {
-          it(`withFilter=${withFilter}`, () => {
+          beforeEach(() => {
             H.restore("postgres-writable");
             H.activateToken("bleeding-edge");
             cy.signInAsAdmin();
@@ -189,19 +189,26 @@ describe("bulk table operations", () => {
             TablePicker.getTable("Animals")
               .find('input[type="checkbox"]')
               .check();
+          });
 
+          it(`should show actual owner in the table after the change withFilter=${withFilter}`, () => {
             H.selectHasValue("Owner", "").click();
             H.selectDropdown().contains("Bobby Tables").click();
 
+            ["Accounts", "Animals"].forEach((tableName) => {
+              TablePicker.getTable(tableName)
+                .findByTestId("table-owner")
+                .should("have.text", "Bobby Tables");
+            });
+          });
+
+          it(`should show actual published stated in the table after it's published withFilter=${withFilter}`, () => {
             cy.findByRole("button", { name: /Publish/ }).click();
             cy.findByRole("button", { name: /Got it/ }).click();
             H.pickEntity({ tab: "Collections", path: ["Our analytics"] });
             cy.findByRole("button", { name: /Publish here/ }).click();
 
             ["Accounts", "Animals"].forEach((tableName) => {
-              TablePicker.getTable(tableName)
-                .findByTestId("table-owner")
-                .should("have.text", "Bobby Tables");
               TablePicker.getTable(tableName)
                 .findByTestId("table-published")
                 .findByLabelText("Published")

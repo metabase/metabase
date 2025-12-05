@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import type { TableId } from "metabase-types/api";
@@ -243,13 +244,19 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     setSelectedSchemas,
   ]);
 
+  /**
+   * onUpdateCallback depends on the items, and they are changing very often.
+   * We don't want to re-register it each time items changed.
+   * Otherwise, it causes an infinity loop.
+   */
+  const itemsRef = useLatest(items);
   const refetchSelectedTables = useCallback(() => {
-    const selectedTableNodes = items
+    const selectedTableNodes = itemsRef.current
       .filter((item) => isTableNode(item))
       .filter((tableNode) => selectedTables.has(tableNode.value.tableId));
 
     selectedTableNodes.forEach((tableNode) => reload(tableNode.value));
-  }, [items, reload, selectedTables]);
+  }, [itemsRef, reload, selectedTables]);
 
   useEffect(() => {
     setOnUpdateCallback(() => refetchSelectedTables);
