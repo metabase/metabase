@@ -100,3 +100,7 @@ awscli = "latest"
 # One Password CLI - for password management
 # https://developer.1password.com/docs/cli/get-started/
 op = "latest"
+
+# jq - Command-line JSON processor
+# https://github.com/jqlang/jq
+jq = "latest"
