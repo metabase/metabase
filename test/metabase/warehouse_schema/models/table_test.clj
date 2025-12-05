@@ -418,4 +418,4 @@
                    :model/Card  {_c5 :id} {:type :metric :published_table_id t2}]
       (is (= {t1 [c1 c3], t2 []}
              (->> (t2/hydrate [table1 table2] :published_models)
-                  (u/index-by :id (comp (partial mapv :id) :published_models))))))))
+                  (u/index-by :id (comp sort (partial mapv :id) :published_models))))))))
