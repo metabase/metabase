@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot-v3.dummy-tools
+(ns metabase-enterprise.metabot-v3.tools.entity-details
   (:require
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
@@ -18,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- verified-review?
+(defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
   (let [review (t2/select-one [:model/ModerationReview :status]
