@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "2bd7b6eda90326afc02721d032a90383a63b2d1d"
+  },
+  "upstream": {
+    "branch": "uxw-2472-hide-tenant-collections-section-when-there-are-no-visible"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66597,
+        "gqlID": "PR_kwDOAczgH863UhWu"
+      }
+    }
   }
 }
