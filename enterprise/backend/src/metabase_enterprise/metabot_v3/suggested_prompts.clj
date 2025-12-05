@@ -2,7 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.lib-be.core :as lib-be]
    [toucan2.core :as t2]))
@@ -44,7 +44,7 @@
             {metrics :metric, models :model}
             (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) limited-cards)
                        detail (map (fn [detail card] (assoc detail ::origin card))
-                                   (metabot-v3.dummy-tools/cards-details card-type database-id group-cards nil)
+                                   (metabot-v3.tools.entity-details/cards-details card-type database-id group-cards nil)
                                    group-cards)]
                    detail)
                  (group-by :type))
