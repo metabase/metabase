@@ -38,7 +38,7 @@ type SegmentEditorPageProps = {
   isSaving: boolean;
   isRemoving?: boolean;
   onSave: (data: SegmentFormData) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   onRemove?: () => void;
   testId?: string;
 };
@@ -137,7 +137,7 @@ export function SegmentEditorPage({
       setDescription(segment.description ?? "");
       setDatasetQuery(segment.definition);
     }
-    onCancel();
+    onCancel?.();
   };
 
   const backUrl = Urls.dataStudioData({

@@ -70,10 +70,6 @@ export function EditSegmentPage({ params, route }: EditSegmentPageProps) {
     [segment, updateSegment, sendSuccessToast, sendErrorToast],
   );
 
-  const handleCancel = useCallback(() => {
-    // Edit mode cancel is handled by SegmentEditorPage resetting to initial values
-  }, []);
-
   const handleRemove = useCallback(async () => {
     if (!segment || !table) {
       return;
@@ -126,7 +122,6 @@ export function EditSegmentPage({ params, route }: EditSegmentPageProps) {
       isSaving={isSaving}
       isRemoving={isRemoving}
       onSave={handleSave}
-      onCancel={handleCancel}
       onRemove={handleRemove}
       testId="edit-segment-page"
     />
