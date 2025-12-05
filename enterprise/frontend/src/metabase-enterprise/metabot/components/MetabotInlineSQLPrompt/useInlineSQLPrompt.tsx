@@ -1,8 +1,10 @@
+import type { EditorView } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
@@ -14,6 +16,26 @@ import {
   hideEffect,
   toggleEffect,
 } from "./MetabotInlineSQLPromptWidget";
+import { extractMetabotBufferContext } from "./utils";
+
+function useRegisterCodeEditorMetabotContext(
+  buffer: EditorView | undefined,
+): void {
+  useRegisterMetabotContextProvider(
+    async () =>
+      buffer
+        ? {
+            user_is_viewing: [
+              {
+                type: "code_editor",
+                buffers: [extractMetabotBufferContext(buffer)],
+              },
+            ],
+          }
+        : {},
+    [buffer],
+  );
+}
 
 export interface UseInlineSqlEditResult {
   portalElement: React.ReactPortal | null;
@@ -25,6 +47,8 @@ export interface UseInlineSqlEditResult {
 
 export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
+
+  useRegisterCodeEditorMetabotContext(portalTarget?.view);
 
   /* TODO: temp hack - communicate sql via global notifier used in navigate to handler */
   const [generatedSql, setGeneratedSql] = useState<string | undefined>();

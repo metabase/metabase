@@ -115,6 +115,7 @@ export interface MetabotState {
   state: any;
   reactions: MetabotReactionsState;
   activeToolCalls: MetabotToolCall[];
+  profile?: string;
   experimental: {
     debugMode: boolean;
     metabotReqIdOverride: string | undefined;
