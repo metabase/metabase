@@ -34,7 +34,7 @@ const groupModelsByCollection = (models: SearchResult[]) =>
   Object.values(
     models.reduce(
       (acc, curr) => {
-        const id = curr.collection.id as CollectionId;
+        const id = curr.collection?.id ?? ("root" as CollectionId);
 
         acc[id] ??= {
           id,
