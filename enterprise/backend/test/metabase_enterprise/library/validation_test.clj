@@ -63,7 +63,7 @@
                                 (t2/update! :model/Collection (:id col) {:name "New Name"}))))))))
 
 (deftest check-allowed-content-transforms
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:data-studio}
     (mt/with-temp [:model/Collection transforms {:name "Test Transforms" :namespace collection/transforms-ns}
                    :model/Collection regular-col {:name "Test Regular"}]
       (mt/with-model-cleanup [:model/Transform :model/Card]
