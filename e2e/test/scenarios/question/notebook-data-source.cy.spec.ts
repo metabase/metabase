@@ -208,10 +208,8 @@ describe("scenarios > notebook > data source", () => {
       H.startNewQuestion();
 
       cy.log("verify the picker when nothing is selected");
-      H.popover().findByText("Data").click();
       H.popover().findByText("Orders").click();
       H.join();
-      H.popover().findByText("Data").click();
       H.popover().findByText("Products").click();
       H.visualize();
       H.tableHeaderColumn("User ID").should("be.visible");
