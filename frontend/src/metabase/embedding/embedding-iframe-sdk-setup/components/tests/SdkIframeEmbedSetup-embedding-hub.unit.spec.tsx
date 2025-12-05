@@ -7,11 +7,11 @@ import { setup, waitForUpdateSetting } from "./test-setup";
 
 describe("Embed flow > embedding hub step completion tracking", () => {
   beforeEach(() => {
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled = jest.fn(() => true);
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
   });
 
   afterEach(() => {
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled = () => false;
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 
   afterEach(() => {

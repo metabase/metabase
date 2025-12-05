@@ -12,6 +12,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Checkbox, Group, Modal, Text, rem } from "metabase/ui";
 import { usePublishModelsMutation } from "metabase-enterprise/api";
+import { trackDataStudioTablePublished } from "metabase-enterprise/data-studio/analytics";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import { getPublishSeeItLink } from "../utils";
@@ -66,6 +67,7 @@ export function PublishModelsModal({
     if (error) {
       sendErrorToast(t`Failed to publish models`);
     } else if (data) {
+      trackDataStudioTablePublished(collectionId);
       sendSuccessToast(
         t`Published`,
         () => {

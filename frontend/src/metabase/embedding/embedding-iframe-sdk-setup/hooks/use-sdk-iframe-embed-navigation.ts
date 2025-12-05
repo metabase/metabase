@@ -11,6 +11,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
   const {
+    isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
     initialState,
     experience,
@@ -54,6 +55,7 @@ export function useSdkIframeEmbedNavigation() {
           experience,
           resource,
           settings,
+          isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           embeddingParameters,
         });

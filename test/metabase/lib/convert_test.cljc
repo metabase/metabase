@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
@@ -1634,3 +1635,14 @@
                           :expressions  {"TestColumn" [:+ 1 1]}}}]
     (is (= query
            (lib.convert/->legacy-MBQL query)))))
+
+(deftest ^:parallel case-schema-aggregation-test
+  (is (= [:aggregation-options
+          [:case
+           [[[:< [:aggregation 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
+          {:name "A", :display-name "B"}]
+         (mbql.normalize/normalize :metabase.legacy-mbql.schema/aggregation-options
+                                   ["aggregation-options"
+                                    ["case"
+                                     [[["<" ["aggregation" 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
+                                    {"name" "A", "display-name" "B"}]))))

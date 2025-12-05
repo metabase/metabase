@@ -62,7 +62,6 @@
            {:can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
-            :can_access_data_studio  (perms/set-has-application-permission-of-type? permissions-set :data-studio)
             :can_access_data_model   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
             :can_access_db_details   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
             :is_group_manager        api/*is-group-manager?*})))
