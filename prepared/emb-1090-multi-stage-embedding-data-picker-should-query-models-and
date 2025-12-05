@@ -1,4 +1,0 @@
-{
-  "subject": "Multi-stage embedding data picker should query models and questions from tenant collections",
-  "body": "Closes EMB-1090\n"
-}
