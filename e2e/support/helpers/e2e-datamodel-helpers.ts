@@ -200,7 +200,7 @@ function getTablePickerDatabase(name: string) {
 }
 
 function getTablePickerDatabaseToggle(name: string) {
-  return getTablePickerDatabase(name).findByLabelText("toggle");
+  return getTablePickerDatabase(name).find("[aria-expanded]");
 }
 
 function getTablePickerDatabases() {
@@ -215,7 +215,7 @@ function getTablePickerSchema(name: string) {
 }
 
 function getTablePickerSchemaToggle(name: string) {
-  return getTablePickerSchema(name).findByLabelText("toggle");
+  return getTablePickerSchema(name).find("[aria-expanded]");
 }
 
 function getTablePickerSchemas() {

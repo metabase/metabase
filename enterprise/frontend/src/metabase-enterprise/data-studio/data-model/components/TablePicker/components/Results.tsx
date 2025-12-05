@@ -548,7 +548,7 @@ const ResultsItem = ({
                 [S.hasChildren]: itemHasChildren,
               })}
               w={INDENT_OFFSET}
-              aria-label="toggle"
+              aria-expanded={Boolean(isExpanded)}
               onClick={handleChevronClick}
             >
               {itemHasChildren && (
