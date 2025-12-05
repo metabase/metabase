@@ -485,7 +485,7 @@ const ResultsItem = ({
 
   // Dedicated toggle target: always toggles expansion without navigating
   // regardless of whether the item is currently active.
-  const handleChevronClick = (e: React.MouseEvent) => {
+  const handleChevronClick = (e: MouseEvent) => {
     if (disabled || !itemHasChildren) {
       return;
     }
