@@ -2,6 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import {
   type KeyboardEvent,
+  type MouseEvent,
   useContext,
   useEffect,
   useMemo,
@@ -485,7 +486,7 @@ const ResultsItem = ({
 
   // Dedicated toggle target: always toggles expansion without navigating
   // regardless of whether the item is currently active.
-  const handleChevronClick = (e: MouseEvent) => {
+  const handleChevronClick = (e: MouseEvent<HTMLDivElement>) => {
     if (disabled || !itemHasChildren) {
       return;
     }
