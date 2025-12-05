@@ -1399,8 +1399,8 @@
                                                  []]]]
         (testing msg
           (let [result (qp/process-query (filter-query filter))]
-            (is (str/includes? (-> result :data :native_form :query) exp-filter))
-            (is (= exp-rows (mt/rows result)))))))))
+            (is (= exp-rows (mt/rows result)))
+            (is (str/includes? (-> result :data :native_form :query) exp-filter))))))))
 
 (deftest snowflake-with-dbname-in-details-gets-synced-test
   (testing "db with a valid db and an invalid dbname in details should be synced with db correctly"
