@@ -25,12 +25,12 @@
 
 (t2/define-before-insert :model/Tenant
   [tenant]
-  ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
-  ;; of defense.
   (let [tenant-collection-id (t2/insert-returning-pk! :model/Collection {:type "tenant-specific-root-collection"
                                                                          :name (format "Tenant Collection: %s" (:name tenant))
                                                                          :namespace "tenant-specific"})]
     (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
+      ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
+      ;; of defense.
       (mu/validate-throw Slug (:slug tenant)))))
 
 (defn tenant-exists?
