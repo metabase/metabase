@@ -110,6 +110,9 @@
   (let [table-ids-to-update (t2/query {:select [:table.id]
                                        :from [[(t2/table-name :model/Table) :table]]
                                        :where [:and [:= :table.db_id audit-db-id]
+                                               ;; Exclude DATABASECHANGELOG and QRTZ_* tables, they are not metabase managed
+                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
+                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Table) :self_table]]
                                                                :where [:and
@@ -128,6 +131,8 @@
                                        :inner-join [[(t2/table-name :model/Table) :table]
                                                     [:= :table.id :field.table_id]]
                                        :where [:and [:= :table.db_id audit-db-id]
+                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
+                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Field) :self_field]]
                                                                :inner-join [[(t2/table-name :model/Table) :self_table]
