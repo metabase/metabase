@@ -110,7 +110,8 @@ function DataModelContent({ params }: Props) {
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
   const error = databasesError ?? tableError ?? libraryError;
-  const hasLibrary = libraryCollection?.id != null;
+  // TODO Alex P 12/05/2025 Fix the endpoint to return sensible data
+  const hasLibrary = libraryCollection != null && "name" in libraryCollection;
 
   useWindowEvent(
     "keydown",

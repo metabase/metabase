@@ -1,15 +1,20 @@
 import { type ReactNode, useCallback, useMemo } from "react";
+import { Link } from "react-router";
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useHasEmailSetup, useSetting } from "metabase/common/hooks";
 import {
   UPSELL_CAMPAIGN_AUTH,
   UPSELL_CAMPAIGN_BEHAVIOR,
 } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
+import { SimpleThemeSwitcherSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
-import type { MetabaseColors } from "metabase/embedding-sdk/theme";
+import type {
+  MetabaseColors,
+  MetabaseThemePreset,
+} from "metabase/embedding-sdk/theme";
 import {
   Card,
   Checkbox,
@@ -24,7 +29,7 @@ import {
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
-import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
@@ -166,6 +171,7 @@ const AuthenticationSection = () => {
 
 const BehaviorSection = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const hasEmailSetup = useHasEmailSetup();
 
   const behaviorSection = useMemo(() => {
     return match(settings)
@@ -262,6 +268,54 @@ const BehaviorSection = () => {
                 />
               )}
             </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
+
+            <WithNotAvailableForGuestEmbedsWarning
+              campaign={UPSELL_CAMPAIGN_BEHAVIOR}
+            >
+              {({ disabled: disabledInGuestEmbedding }) => {
+                return (
+                  <Flex align="center" gap="xs">
+                    <Checkbox
+                      disabled={!hasEmailSetup || disabledInGuestEmbedding}
+                      label={t`Allow subscriptions`}
+                      checked={settings.withSubscriptions}
+                      onChange={(e) =>
+                        updateSettings({ withSubscriptions: e.target.checked })
+                      }
+                    />
+                    {!hasEmailSetup && !disabledInGuestEmbedding && (
+                      <HoverCard>
+                        <HoverCard.Target>
+                          <Icon
+                            name="info"
+                            size={14}
+                            c="var(--mb-color-text-secondary)"
+                          />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown p="sm">
+                          <Text>{c(
+                            "{0} is a link to email settings page with text 'admin settings'",
+                          ).jt`To allow subscriptions, set up email in ${(
+                            <Link
+                              key="admin-settings-link"
+                              to="/admin/settings/email"
+                            >
+                              <Text
+                                display="inline"
+                                c="var(--mb-color-text-brand)"
+                                fw="bold"
+                              >{c(
+                                "is a link in a sentence 'To allow subscriptions, set up email in admin settings'",
+                              ).t`admin settings`}</Text>
+                            </Link>
+                          )}`}</Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
+                    )}
+                  </Flex>
+                );
+              }}
+            </WithNotAvailableForGuestEmbedsWarning>
           </Stack>
         ),
       )
@@ -277,7 +331,7 @@ const BehaviorSection = () => {
         ),
       )
       .otherwise(() => null);
-  }, [settings, updateSettings]);
+  }, [hasEmailSetup, settings, updateSettings]);
 
   if (behaviorSection === null) {
     return null;
@@ -323,6 +377,13 @@ const AppearanceSection = () => {
 
   const { theme } = settings;
 
+  const updateThemePreset = useCallback(
+    (preset: MetabaseThemePreset) => {
+      updateSettings({ theme: { preset } });
+    },
+    [updateSettings],
+  );
+
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
       updateSettings({
@@ -361,13 +422,21 @@ const AppearanceSection = () => {
         campaign={UPSELL_CAMPAIGN_BEHAVIOR}
       >
         {({ disabled, hoverCard }) => (
-          <ColorCustomizationSection
-            theme={theme}
-            disabled={disabled}
-            hoverCard={hoverCard}
-            onColorChange={updateColors}
-            onColorReset={() => updateSettings({ theme: undefined })}
-          />
+          <>
+            {disabled ? (
+              <SimpleThemeSwitcherSection
+                preset={theme?.preset}
+                upsellIcon={hoverCard}
+                onPresetChange={updateThemePreset}
+              />
+            ) : (
+              <ColorCustomizationSection
+                theme={theme}
+                onColorChange={updateColors}
+                onColorReset={() => updateSettings({ theme: undefined })}
+              />
+            )}
+          </>
         )}
       </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
 
@@ -388,11 +457,7 @@ const WithGuestEmbedsDisabledWarning = ({
 
   return (
     <TooltipWarning
-      warning={
-        <Text lh="md" p="md">
-          {t`Disabled in the admin settings`}
-        </Text>
-      }
+      tooltip={t`Disabled in the admin settings`}
       disabled={disabled}
     >
       {children}
@@ -441,11 +506,7 @@ const WithNotAvailableForGuestEmbedsWarning = ({
       {({ disabled: disabledForOss, hoverCard: disabledForOssHoverCard }) => (
         <TooltipWarning
           enableTooltip={!disabledForOss}
-          warning={
-            <Text lh="md" p="md">
-              {t`Not available if Guest Mode is selected`}
-            </Text>
-          }
+          tooltip={t`Not available if Guest Mode is selected`}
           disabled={!!settings.isGuest}
         >
           {({

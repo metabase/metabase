@@ -1315,3 +1315,43 @@
                   first
                   :filters
                   first))))))
+
+(deftest ^:parallel fallback-resolve-in-later-stage-with-join-alias-test
+  (testing "when generating fallback metadata from an earlier stage, include its :join-alias (#66464)"
+    (let [mp    (-> (lib.tu/metadata-provider-with-mock-card
+                     {:id            1
+                      :name          "Orders Model"
+                      :type          :model
+                      :dataset-query (lib/query meta/metadata-provider (meta/table-metadata :orders))})
+                    (lib.tu/metadata-provider-with-mock-card
+                     {:id            2
+                      :name          "Products Model"
+                      :type          :model
+                      :dataset-query (lib/query meta/metadata-provider (meta/table-metadata :products))}))
+          query (-> (lib/query mp (lib.metadata/card mp 1))
+                    (lib/join (lib/join-clause (lib.metadata/card mp 2)))
+                    ;; Deliberately using field IDs rather than names here, and to tables that are not otherwise part
+                    ;; of this query. Some Metrics v2 queries in the wild look like this and we're trying not to break
+                    ;; them; see #66464.
+                    (lib/aggregate (lib// (lib/distinct-where (meta/field-metadata :orders :user-id)
+                                                              (-> (meta/field-metadata :people :name)
+                                                                  lib/ref
+                                                                  (lib/with-join-alias "Products Model - Product")
+                                                                  lib/not-null))
+                                          (lib/distinct (meta/field-metadata :orders :user-id)))))]
+      (is (=? [:/ {}
+               ;; numerator
+               [:distinct-where {}
+                vector?
+                [:!= {}
+                 [:field {:join-alias         "Products Model - Product"
+                          ::add/source-table  "Products Model - Product"
+                          ::add/source-alias  "NAME"
+                          ::add/desired-alias nil}
+                  (meta/id :people :name)]
+                 [:value {} nil]]]
+               ;; denominator
+               [:distinct {} vector?]]
+              (-> (add-alias-info query)
+                  lib/aggregations
+                  first))))))

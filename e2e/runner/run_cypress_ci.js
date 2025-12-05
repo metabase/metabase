@@ -32,7 +32,7 @@ if (!permittedCommands.includes(command)) {
 
 const startServer = async () => {
   printBold("Starting backend");
-  await CypressBackend.start();
+  await CypressBackend.runFromJar();
 };
 
 const runTests = async (config, cliArguments = []) => {

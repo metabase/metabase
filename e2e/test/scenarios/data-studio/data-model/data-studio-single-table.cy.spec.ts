@@ -11,6 +11,7 @@ interface MetadataResponse {
 
 describe("Table editing", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
@@ -82,6 +83,9 @@ describe("Table editing", () => {
       H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_published",
       });
       H.DataStudio.Modeling.tableItem("Orders").should("be.visible");
       cy.go("back");
