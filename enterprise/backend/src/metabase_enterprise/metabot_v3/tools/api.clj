@@ -409,8 +409,7 @@
   {:args-schema    ::search-arguments
    :args-optional? true
    :result-schema  ::search-result
-   :handler        metabot-v3.tools.search/search-tool
-   :skip-decode?   true})
+   :handler        metabot-v3.tools.search/search-tool})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
@@ -421,8 +420,7 @@
   {:args-schema    ::search-arguments
    :args-optional? true
    :result-schema  ::search-result
-   :handler        metabot-v3.tools.search/search-tool
-   :skip-decode?   true})
+   :handler        metabot-v3.tools.search/search-tool})
 
 ;;; ----------------------------------------------------- Actions -----------------------------------------------------
 
@@ -461,8 +459,7 @@
   "Create a dashboard subscription."
   {:args-schema   ::create-dashboard-subscription-arguments
    :result-schema [:map [:output :string]]
-   :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription
-   :skip-decode?  true})
+   :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription})
 
 ;;; ---------------------------------------------------- Analytics ----------------------------------------------------
 
@@ -544,8 +541,7 @@
    :result-schema [:map
                    [:output :string]
                    [:reactions [:sequential :metabot.reaction/redirect]]]
-   :handler       metabot-v3.tools.generate-insights/generate-insights
-   :skip-decode?  true})
+   :handler       metabot-v3.tools.generate-insights/generate-insights})
 
 ;;; -------------------------------------------------- Entity Details -------------------------------------------------
 
