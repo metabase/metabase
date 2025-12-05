@@ -4,7 +4,6 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clojure.set :as set]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
@@ -12,6 +11,7 @@
     :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.deftool :refer [deftool]]
    [metabase-enterprise.metabot-v3.tools.dependencies :as metabot-v3.tools.dependencies]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
@@ -360,7 +360,7 @@
   {:args-schema    ::answer-sources-arguments
    :args-optional? true
    :result-schema  ::answer-sources-result
-   :handler        metabot-v3.dummy-tools/answer-sources})
+   :handler        metabot-v3.tools.entity-details/answer-sources})
 
 (mr/def ::search-arguments
   [:and
@@ -559,7 +559,7 @@
 (deftool "/get-current-user"
   "Get information about user that started the conversation."
   {:result-schema ::get-current-user-result
-   :handler       metabot-v3.dummy-tools/get-current-user})
+   :handler       metabot-v3.tools.entity-details/get-current-user})
 
 (mr/def ::get-dashboard-details-arguments
   [:and
@@ -582,7 +582,7 @@
   "Get information about a given dashboard."
   {:args-schema   ::get-dashboard-details-arguments
    :result-schema ::get-dashboard-details-result
-   :handler       metabot-v3.dummy-tools/get-dashboard-details})
+   :handler       metabot-v3.tools.entity-details/get-dashboard-details})
 
 (mr/def ::get-metric-details-arguments
   [:and
@@ -607,7 +607,7 @@
   "Get information about a given metric."
   {:args-schema   ::get-metric-details-arguments
    :result-schema ::get-metric-details-result
-   :handler       metabot-v3.dummy-tools/get-metric-details})
+   :handler       metabot-v3.tools.entity-details/get-metric-details})
 
 (mr/def ::get-query-details-arguments
   [:map [:query :map]])
@@ -628,7 +628,7 @@
   "Get information about a given query."
   {:args-schema   ::get-query-details-arguments
    :result-schema ::get-query-details-result
-   :handler       metabot-v3.dummy-tools/get-query-details})
+   :handler       metabot-v3.tools.entity-details/get-query-details})
 
 (mr/def ::get-report-details-arguments
   [:and
@@ -659,7 +659,7 @@
   "Get information about a given report."
   {:args-schema   ::get-report-details-arguments
    :result-schema ::get-report-details-result
-   :handler       metabot-v3.dummy-tools/get-report-details})
+   :handler       metabot-v3.tools.entity-details/get-report-details})
 
 (mr/def ::get-document-details-arguments
   [:and
@@ -683,7 +683,7 @@
   "Get information about a given document."
   {:args-schema   ::get-document-details-arguments
    :result-schema ::get-document-details-result
-   :handler       metabot-v3.dummy-tools/get-document-details})
+   :handler       metabot-v3.tools.entity-details/get-document-details})
 
 (mr/def ::get-table-details-arguments
   [:and
@@ -716,7 +716,7 @@
   "Get information about a given table or model."
   {:args-schema   ::get-table-details-arguments
    :result-schema ::get-table-details-result
-   :handler       metabot-v3.dummy-tools/get-table-details})
+   :handler       metabot-v3.tools.entity-details/get-table-details})
 
 (mr/def ::get-tables-arguments
   [:and

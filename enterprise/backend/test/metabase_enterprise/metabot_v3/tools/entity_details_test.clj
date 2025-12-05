@@ -1,7 +1,7 @@
-(ns metabase-enterprise.metabot-v3.dummy-tools-test
+(ns metabase-enterprise.metabot-v3.tools.entity-details-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.dummy-tools :as dummy-tools]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -10,9 +10,9 @@
 
 (deftest get-document-details-invalid-document-id-test
   (testing "returns error for invalid document-id"
-    (is (= {:output "invalid document_id"} (dummy-tools/get-document-details {:document-id "invalid"})))
-    (is (= {:output "invalid document_id"} (dummy-tools/get-document-details {:document-id nil})))
-    (is (= {:output "invalid document_id"} (dummy-tools/get-document-details {:document-id 1.5})))))
+    (is (= {:output "invalid document_id"} (entity-details/get-document-details {:document-id "invalid"})))
+    (is (= {:output "invalid document_id"} (entity-details/get-document-details {:document-id nil})))
+    (is (= {:output "invalid document_id"} (entity-details/get-document-details {:document-id 1.5})))))
 
 (deftest get-document-details-valid-document-test
   (testing "returns document details for valid document-id"
@@ -22,7 +22,7 @@
                                                  :collection_id coll-id
                                                  :creator_id (mt/user->id :crowberto)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (dummy-tools/get-document-details {:document-id doc-id})]
+        (let [result (entity-details/get-document-details {:document-id doc-id})]
           (is (contains? result :structured-output))
           (let [doc-info (:structured-output result)]
             (is (= doc-id (:id doc-info)))
@@ -32,7 +32,7 @@
 
 (deftest get-document-details-nonexistent-document-test
   (testing "returns 'document not found' for non-existent document"
-    (let [result (dummy-tools/get-document-details {:document-id 99999})]
+    (let [result (entity-details/get-document-details {:document-id 99999})]
       (is (= {:output "error fetching document: Not found."} result)))))
 
 (deftest get-document-details-archived-document-test
@@ -44,7 +44,7 @@
                                                  :creator_id (mt/user->id :crowberto)
                                                  :archived true}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (dummy-tools/get-document-details {:document-id doc-id})]
+        (let [result (entity-details/get-document-details {:document-id doc-id})]
           (is (contains? result :structured-output))
           (let [doc-info (:structured-output result)]
             (is (= doc-id (:id doc-info)))
@@ -57,7 +57,7 @@
                                                  :document "{\"type\":\"doc\"}"
                                                  :creator_id (mt/user->id :crowberto)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (dummy-tools/get-document-details {:document-id doc-id})]
+        (let [result (entity-details/get-document-details {:document-id doc-id})]
           (is (contains? result :structured-output))
           (let [doc-info (:structured-output result)]
             (is (= doc-id (:id doc-info)))
@@ -70,7 +70,7 @@
                                                  :document ""
                                                  :creator_id (mt/user->id :crowberto)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (dummy-tools/get-document-details {:document-id doc-id})]
+        (let [result (entity-details/get-document-details {:document-id doc-id})]
           (is (contains? result :structured-output))
           (let [doc-info (:structured-output result)]
             (is (= doc-id (:id doc-info)))
@@ -85,7 +85,7 @@
                                                    :creator_id (mt/user->id :crowberto)}]
         (mt/with-current-user (mt/user->id :rasta)
           (is (= {:output "error fetching document: You don't have permissions to do that."}
-                 (dummy-tools/get-document-details {:document-id doc-id}))))))))
+                 (entity-details/get-document-details {:document-id doc-id}))))))))
 
 (deftest get-query-details-mbql-v4-test
   (testing "get-query-details works with MBQL v4 (legacy) queries"
@@ -95,7 +95,7 @@
                             :type :query
                             :query {:source-table (mt/id :venues)
                                     :limit 10}}
-              result (dummy-tools/get-query-details {:query legacy-query})]
+              result (entity-details/get-query-details {:query legacy-query})]
           (is (contains? result :structured-output))
           (let [output (:structured-output result)]
             (is (= :query (:type output)))
@@ -110,7 +110,7 @@
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mbql-v5-query (lib/query (mt/metadata-provider) (mt/mbql-query venues {:limit 10}))
-              result (dummy-tools/get-query-details {:query mbql-v5-query})]
+              result (entity-details/get-query-details {:query mbql-v5-query})]
           (is (contains? result :structured-output))
           (let [output (:structured-output result)]
             (is (= :query (:type output)))
@@ -125,7 +125,7 @@
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [native-query (lib/native-query (mt/metadata-provider) "SELECT * FROM VENUES LIMIT 10")
-              result (dummy-tools/get-query-details {:query native-query})]
+              result (entity-details/get-query-details {:query native-query})]
           (is (contains? result :structured-output))
           (let [output (:structured-output result)]
             (is (= :query (:type output)))
@@ -144,7 +144,7 @@
               products-query (lib/query (mt/metadata-provider) (mt/mbql-query products))
               expected-products-field-count (count (lib/visible-columns products-query -1 {:include-implicitly-joinable? false}))
               ;; Get Orders table details with related tables
-              result (dummy-tools/get-table-details {:table-id orders-id})
+              result (entity-details/get-table-details {:table-id orders-id})
               output (:structured-output result)
               related-tables (:related_tables output)
               products-related (first (filter #(= products-id (:id %)) related-tables))]
