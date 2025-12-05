@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "93199a4009854986856472b474c37bd6a6b676d0"
+  },
+  "upstream": {
+    "branch": "emb-1090-multi-stage-embedding-data-picker-should-query-models-and"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66598,
+        "gqlID": "PR_kwDOAczgH863Umyr"
+      }
+    }
   }
 }
