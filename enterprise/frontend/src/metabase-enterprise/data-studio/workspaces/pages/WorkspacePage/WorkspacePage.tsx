@@ -39,7 +39,10 @@ import {
   useUpdateWorkspaceNameMutation,
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
+import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
@@ -80,6 +83,11 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     useGetWorkspaceQuery(id);
   const { data: workspaceTables = { inputs: [], outputs: [] } } =
     useGetWorkspaceTablesQuery(id);
+  const { navigateToPath, setNavigateToPath } = useMetabotReactions();
+  const {
+    resetConversation: resetMetabotConversation,
+    visible: isMetabotVisible,
+  } = useMetabotAgent();
 
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
@@ -116,6 +124,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     activeTransform,
     activeEditedTransform,
     activeTable,
+    setActiveTransform,
     setActiveTab,
     addOpenedTab,
     removeOpenedTab,
@@ -124,6 +133,12 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     patchEditedTransform,
     hasUnsavedChanges,
   } = useWorkspace();
+  const [metabotContextTransform, setMetabotContextTransform] = useState<
+    Transform | undefined
+  >();
+  const [metabotContextSource, setMetabotContextSource] = useState<
+    DraftTransformSource | undefined
+  >();
 
   const workspaceTransforms = useMemo(
     () => workspace?.contents?.transforms ?? [],
@@ -152,6 +167,73 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
       }
     }
   }, [tab]);
+
+  useEffect(() => {
+    if (
+      metabotContextTransform &&
+      !openedTabs.some(
+        (tab) =>
+          tab.type === "transform" &&
+          tab.transform.id === metabotContextTransform.id,
+      )
+    ) {
+      setMetabotContextTransform(undefined);
+      setMetabotContextSource(undefined);
+    }
+  }, [openedTabs, metabotContextTransform]);
+
+  useEffect(() => {
+    // Keep workspace chat context isolated from other Metabot surfaces
+    // resetMetabotConversation();
+    return () => {
+      resetMetabotConversation();
+    };
+  }, [resetMetabotConversation, id]);
+
+  useEffect(() => {
+    if (isMetabotAvailable && isMetabotVisible) {
+      setTab("metabot");
+      setActiveTab(undefined);
+    }
+  }, [isMetabotAvailable, isMetabotVisible, setActiveTab]);
+
+  useEffect(() => {
+    if (!navigateToPath) {
+      return;
+    }
+
+    const transformIdFromPath = (() => {
+      const match = navigateToPath.match(/\/transform\/(\d+)/);
+      const extracted = Urls.extractEntityId(navigateToPath);
+      const idString = match?.[1] ?? (extracted ? String(extracted) : null);
+      const parsed = idString ? Number(idString) : NaN;
+      return Number.isFinite(parsed) ? parsed : undefined;
+    })();
+
+    if (transformIdFromPath != null) {
+      const targetTransform =
+        workspaceTransforms.find((t) => t.id === transformIdFromPath) ||
+        allTransforms.find((t) => t.id === transformIdFromPath);
+
+      if (targetTransform) {
+        addOpenedTransform(targetTransform);
+        setActiveTransform(targetTransform);
+        setNavigateToPath(null);
+        return;
+      }
+    }
+
+    dispatch(push(navigateToPath));
+    setNavigateToPath(null);
+  }, [
+    navigateToPath,
+    workspaceTransforms,
+    allTransforms,
+    addOpenedTransform,
+    setActiveTransform,
+    setNavigateToPath,
+    dispatch,
+  ]);
 
   const handleTransformChange = useCallback(
     (patch: Partial<EditedTransform>) => {
@@ -327,6 +409,18 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             style={{ flexDirection: "column" }}
             value={tab}
             onChange={(tab) => {
+              if (tab === "metabot") {
+                if (activeTransform) {
+                  setMetabotContextTransform(activeTransform);
+                  setMetabotContextSource(
+                    activeEditedTransform?.source ?? activeTransform.source,
+                  );
+                } else {
+                  setMetabotContextTransform(undefined);
+                  setMetabotContextSource(undefined);
+                }
+              }
+
               if (tab) {
                 setTab(tab);
               }
@@ -432,7 +526,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                   pos="relative"
                   style={{ overflow: "auto" }}
                 >
-                  <MetabotTab />
+                  <MetabotTab
+                    transform={metabotContextTransform}
+                    source={metabotContextSource}
+                  />
                 </Tabs.Panel>
               )}
 

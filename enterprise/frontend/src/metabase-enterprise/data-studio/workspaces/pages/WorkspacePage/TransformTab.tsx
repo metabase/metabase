@@ -2,15 +2,22 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Group, Icon, Stack, rem } from "metabase/ui";
 import { useRunTransformMutation, workspaceApi } from "metabase-enterprise/api";
+import {
+  deactivateSuggestedTransform,
+  getMetabotSuggestedTransform,
+} from "metabase-enterprise/metabot/state";
 import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
 import {
   isSameSource,
   isTransformRunning,
 } from "metabase-enterprise/transforms/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type {
   DatabaseId,
   DraftTransformSource,
@@ -44,12 +51,46 @@ export const TransformTab = ({
   onOpenTransform,
 }: Props) => {
   const { updateTransformState } = useWorkspace();
-  const { sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
     isChangeTargetModalOpen,
     { open: openChangeTargetModal, close: closeChangeTargetModal },
   ] = useDisclosure();
   const dispatch = useDispatch();
+  const suggestedTransform = useSelector((state) =>
+    getMetabotSuggestedTransform(state, transform.id),
+  );
+  const metadata = useSelector(getMetadata);
+
+  const normalizeSource = useCallback(
+    (source: DraftTransformSource) => {
+      if (source.type !== "query") {
+        return source;
+      }
+
+      const question = Question.create({
+        dataset_query: source.query,
+        metadata,
+      });
+      const query = question.query();
+      const { isNative } = Lib.queryDisplayInfo(query);
+      const normalizedQuery = isNative
+        ? Lib.withNativeQuery(query, Lib.rawNativeQuery(query))
+        : query;
+
+      return {
+        type: "query",
+        query: question.setQuery(normalizedQuery).datasetQuery(),
+      };
+    },
+    [metadata],
+  );
+
+  const proposedSource =
+    suggestedTransform?.source &&
+    !isSameSource(suggestedTransform.source, editedTransform.source)
+      ? normalizeSource(suggestedTransform.source)
+      : undefined;
 
   const hasSourceChanged = !isSameSource(
     editedTransform.source,
@@ -82,6 +123,35 @@ export const TransformTab = ({
   const handleSourceChange = (source: DraftTransformSource) => {
     onChange({ source });
   };
+
+  const handleAcceptProposed = useCallback(() => {
+    if (proposedSource == null) {
+      return;
+    }
+
+    if (!isSaved) {
+      sendErrorToast(
+        t`Add this transform to the workspace before applying Metabot changes.`,
+      );
+      return;
+    }
+
+    onChange({ source: proposedSource });
+    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
+  }, [
+    proposedSource,
+    onChange,
+    dispatch,
+    suggestedTransform?.id,
+    isSaved,
+    sendErrorToast,
+  ]);
+
+  const handleRejectProposed = useCallback(() => {
+    if (suggestedTransform) {
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
+  }, [dispatch, suggestedTransform]);
 
   const handleTargetUpdate = useCallback(
     (updatedTransform: Transform) => {
@@ -155,6 +225,7 @@ export const TransformTab = ({
               databaseId={databaseId}
               editedTransform={editedTransform}
               transform={transform}
+              workspaceId={workspaceId}
             />
           )}
 
@@ -173,6 +244,9 @@ export const TransformTab = ({
           <TransformEditor
             disabled={!isSaved}
             source={editedTransform.source}
+            proposedSource={proposedSource}
+            onAcceptProposed={handleAcceptProposed}
+            onRejectProposed={handleRejectProposed}
             onChange={handleSourceChange}
           />
         </Box>

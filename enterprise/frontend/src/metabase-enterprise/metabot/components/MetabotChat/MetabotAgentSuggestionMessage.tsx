@@ -2,16 +2,19 @@ import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
+import { slugify } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -24,17 +27,24 @@ import {
   Paper,
   Text,
 } from "metabase/ui";
-import { useLazyGetTransformQuery } from "metabase-enterprise/api";
+import {
+  useCreateTransformMutation,
+  useLazyGetTransformQuery,
+} from "metabase-enterprise/api";
+import { useOptionalWorkspace } from "metabase-enterprise/data-studio/workspaces/pages/WorkspacePage/WorkspaceProvider";
 import {
   type MetabotAgentEditSuggestionChatMessage,
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  DraftTransformSource,
   MetabotTransformInfo,
   SuggestedTransform,
+  Transform,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
@@ -104,8 +114,17 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const workspace = useOptionalWorkspace();
+  const [createTransform] = useCreateTransformMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const [isApplying, setIsApplying] = useState(false);
+  const [hasAppliedInWorkspace, setHasAppliedInWorkspace] = useState(false);
 
   const { suggestedTransform, editorTransform } = message.payload;
+  const existingTransformId =
+    typeof suggestedTransform.id === "number"
+      ? suggestedTransform.id
+      : undefined;
   const isActive = useSelector((state) =>
     getIsSuggestedTransformActive(state, suggestedTransform.suggestionId),
   );
@@ -117,8 +136,10 @@ export const AgentSuggestionMessage = ({
     getTransformUrl(suggestedTransform),
   );
 
-  const canApply = !isViewing || !isActive;
-  const isNew = !isViewing && !editorTransform && suggestedTransform.id == null;
+  const canApply = workspace
+    ? !hasAppliedInWorkspace && !isApplying
+    : !isViewing || !isActive;
+  const isNew = !isViewing && !editorTransform && existingTransformId == null;
 
   const {
     data: originalTransform,
@@ -131,8 +152,133 @@ export const AgentSuggestionMessage = ({
     : "";
   const newSource = getSourceCode(suggestedTransform, metadata);
 
-  const handleApply = () => {
+  const handleApply = async () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
+
+    if (workspace) {
+      const targetTransform: Transform | undefined =
+        (editorTransform as Transform | undefined) ??
+        (originalTransform as Transform | undefined) ??
+        (existingTransformId ? (suggestedTransform as Transform) : undefined);
+
+      if (existingTransformId != null && targetTransform) {
+        workspace.addOpenedTransform(targetTransform);
+        workspace.setActiveTransform(targetTransform);
+        setHasAppliedInWorkspace(true);
+        return;
+      }
+
+      if (existingTransformId == null && suggestedTransform.target) {
+        setIsApplying(true);
+        try {
+          const normalizeSource = (
+            source: DraftTransformSource,
+          ): DraftTransformSource => {
+            if (source.type !== "query") {
+              return source;
+            }
+
+            const question = Question.create({
+              dataset_query: source.query,
+              metadata,
+            });
+            const query = question.query();
+            const { isNative } = Lib.queryDisplayInfo(query);
+            const normalizedQuery = isNative
+              ? Lib.withNativeQuery(query, Lib.rawNativeQuery(query))
+              : query;
+
+            return {
+              type: "query",
+              query: question.setQuery(normalizedQuery).datasetQuery(),
+            };
+          };
+
+          const normalizedSource = normalizeSource(suggestedTransform.source);
+          const targetWithDatabase =
+            suggestedTransform.target &&
+            suggestedTransform.target.type === "table"
+              ? {
+                  ...suggestedTransform.target,
+                  database:
+                    suggestedTransform.target.database ??
+                    (normalizedSource.type === "query"
+                      ? normalizedSource.query.database
+                      : normalizedSource.type === "python"
+                        ? normalizedSource["source-database"]
+                        : undefined),
+                }
+              : suggestedTransform.target;
+
+          const sanitizedTarget =
+            targetWithDatabase?.type === "table"
+              ? (() => {
+                  const fallbackName = slugify(suggestedTransform.name);
+                  const trimmedName =
+                    targetWithDatabase.name?.trim() || fallbackName;
+
+                  if (!trimmedName) {
+                    sendErrorToast(
+                      t`Suggestion is missing a target table name to create the transform.`,
+                    );
+                    setIsApplying(false);
+                    return null;
+                  }
+
+                  return {
+                    ...targetWithDatabase,
+                    name: trimmedName,
+                    schema:
+                      targetWithDatabase.schema &&
+                      targetWithDatabase.schema.trim() !== ""
+                        ? targetWithDatabase.schema.trim()
+                        : null,
+                  };
+                })()
+              : targetWithDatabase;
+
+          if (sanitizedTarget === null) {
+            return;
+          }
+
+          if (
+            targetWithDatabase?.type === "table" &&
+            targetWithDatabase.database == null
+          ) {
+            sendErrorToast(
+              t`Suggestion is missing a target database to create the transform.`,
+            );
+            setIsApplying(false);
+            return;
+          }
+
+          const transform = await createTransform({
+            name: suggestedTransform.name,
+            description: suggestedTransform.description ?? null,
+            source: normalizedSource,
+            target: sanitizedTarget,
+          }).unwrap();
+
+          workspace.addOpenedTransform(transform);
+          workspace.setActiveTransform(transform);
+          setHasAppliedInWorkspace(true);
+          sendSuccessToast(t`Transform created`);
+          return;
+        } catch (error) {
+          sendErrorToast(
+            getErrorMessage(error) ??
+              t`Failed to create transform from suggestion`,
+          );
+        } finally {
+          setIsApplying(false);
+        }
+      } else if (existingTransformId == null) {
+        sendErrorToast(t`Suggestion is missing a target table`);
+      }
+
+      return;
+    }
+
     dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
   };
 
@@ -215,11 +361,13 @@ export const AgentSuggestionMessage = ({
               disabled={!canApply}
               onClick={handleApply}
             >
-              {match({ isNew, canApply })
-                .with({ canApply: false }, () => t`Applied`)
-                .with({ isNew: true }, () => t`Create`)
-                .with({ canApply: true }, () => t`Apply`)
-                .exhaustive()}
+              {isApplying
+                ? t`Applying...`
+                : match({ isNew, canApply })
+                    .with({ canApply: false }, () => t`Applied`)
+                    .with({ isNew: true }, () => t`Create`)
+                    .with({ canApply: true }, () => t`Apply`)
+                    .exhaustive()}
             </Button>
           </Flex>
         </Group>

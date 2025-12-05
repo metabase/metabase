@@ -1,10 +1,15 @@
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button } from "metabase/ui";
 import {
   useLazyGetTransformQuery,
   useUpdateWorkspaceContentsMutation,
 } from "metabase-enterprise/api";
+import {
+  addSuggestedTransform,
+  getMetabotSuggestedTransform,
+} from "metabase-enterprise/metabot/state";
 import type { Transform, TransformId, WorkspaceId } from "metabase-types/api";
 
 import { useWorkspace } from "./WorkspaceProvider";
@@ -20,6 +25,10 @@ export const CheckOutTransformButton = ({
   workspaceId,
   onOpenTransform,
 }: Props) => {
+  const dispatch = useDispatch();
+  const suggestedTransform = useSelector((state) =>
+    getMetabotSuggestedTransform(state, transform.id),
+  );
   const [getTransform] = useLazyGetTransformQuery();
   const [updateWorkspaceContents] = useUpdateWorkspaceContentsMutation();
 
@@ -48,6 +57,16 @@ export const CheckOutTransformButton = ({
       const newTransform = await getTransform(newTransformId).unwrap();
 
       if (newTransform) {
+        if (suggestedTransform) {
+          dispatch(
+            addSuggestedTransform({
+              ...suggestedTransform,
+              id: newTransform.id,
+              active: true,
+            }),
+          );
+        }
+
         removeEditedTransform(transform.id);
         addOpenedTransform(newTransform);
         removeOpenedTransform(transform.id);

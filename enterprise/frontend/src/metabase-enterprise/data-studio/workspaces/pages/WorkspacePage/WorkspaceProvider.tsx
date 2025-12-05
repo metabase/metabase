@@ -50,6 +50,7 @@ export interface TableTab extends Tab {
 export type WorkspaceTab = TransformTab | TableTab;
 
 export interface WorkspaceContextValue {
+  workspaceId: number;
   openedTabs: WorkspaceTab[];
   activeTransform?: Transform;
   activeEditedTransform?: EditedTransform;
@@ -492,6 +493,7 @@ export const WorkspaceProvider = ({
 
   const value = useMemo(
     () => ({
+      workspaceId,
       openedTabs,
       activeTransform,
       activeTable,
@@ -514,6 +516,7 @@ export const WorkspaceProvider = ({
       hasTransformEdits,
     }),
     [
+      workspaceId,
       openedTabs,
       activeTransform,
       activeTable,
@@ -552,4 +555,8 @@ export const useWorkspace = (): WorkspaceContextValue => {
   }
 
   return context;
+};
+
+export const useOptionalWorkspace = (): WorkspaceContextValue | undefined => {
+  return useContext(WorkspaceContext);
 };
