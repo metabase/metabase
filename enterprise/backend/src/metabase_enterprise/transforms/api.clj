@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -79,14 +80,32 @@
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
 (defn get-transforms
-  "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
+  "Get a list of transforms.
+  By default, only returns global transforms (workspace_id=null).
+  When `exclude_workspace_id` is provided, additionally excludes global transforms
+  that have been mirrored into the specified workspace (i.e., they have a
+  workspace_mapping_transform entry pointing to a transform in that workspace)."
+  [& {:keys [last_run_start_time last_run_statuses tag_ids exclude_workspace_id database_id type]}]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
+  (let [transforms (if exclude_workspace_id
+                     (t2/select :model/Transform
+                                {:left-join [[:workspace_mapping_transform :wmt]
+                                             [:and
+                                              [:= :transform.id :wmt.upstream_id]
+                                              [:= :wmt.workspace_id exclude_workspace_id]]]
+                                 :where [:and
+                                         [:= :transform.workspace_id nil]
+                                         [:= :wmt.upstream_id nil]]
+                                 :order-by [[:id :asc]]})
+                     (t2/select :model/Transform
+                                {:where [:= :workspace_id nil]
+                                 :order-by [[:id :asc]]}))]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (transforms.util/->database-id-filter-xf database_id)
+                (transforms.util/->type-filter-xf type)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
 
@@ -94,13 +113,18 @@
 ;; of the REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
-  "Get a list of transforms."
+  "Get a list of global transforms (workspace_id=null).
+  When `exclude_workspace_id` is provided, additionally excludes global transforms
+  that have been mirrored into the specified workspace."
   [_route-params
    query-params :-
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:exclude_workspace_id {:optional true} [:maybe ms/PositiveInt]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]
+    [:type {:optional true} [:maybe (ms/QueryVectorOf [:enum "query" "native" "python"])]]]]
   (get-transforms query-params))
 
 (api.macros/defendpoint :post "/"
@@ -264,8 +288,8 @@
         _         (check-feature-enabled! transform)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
-     (transforms.i/execute! transform {:start-promise start-promise
-                                       :run-method :manual}))
+     (transforms.execute/execute! transform {:start-promise start-promise
+                                             :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

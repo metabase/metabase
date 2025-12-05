@@ -89,6 +89,7 @@ export function QueryEditor({
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
             readOnly={uiOptions?.readOnly}
+            canChangeDatabase={uiOptions?.canChangeDatabase}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}

@@ -54,6 +54,9 @@ type PluginMetabotType = {
     hide?: boolean;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
+  MetabotChat: (props: {
+    config?: PluginMetabotConfig;
+  }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
   MetabotContext: React.Context<MetabotContext>;
   getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
@@ -99,6 +102,8 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis =
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
   isEnabled: () => false,
   Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
+    null as React.ReactElement | null,
+  MetabotChat: (_props: { config?: PluginMetabotConfig }) =>
     null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),

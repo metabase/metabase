@@ -36,9 +36,15 @@ export type TransformsPlugin = {
   TransformPicker: ComponentType<TransformPickerProps>;
 };
 
+export type PythonTransformEditorUiOptions = {
+  canChangeDatabase?: boolean;
+  readOnly?: boolean;
+};
+
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
+  uiOptions?: PythonTransformEditorUiOptions;
   isDirty: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;

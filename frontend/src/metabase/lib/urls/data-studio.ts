@@ -106,3 +106,11 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 export function newDataStudioSnippet() {
   return `${dataStudioModeling()}/snippets/new`;
 }
+
+export function dataStudioWorkspaceList() {
+  return `${ROOT_URL}/workspaces`;
+}
+
+export function dataStudioWorkspace(workspaceId: number) {
+  return `${dataStudioWorkspaceList()}/${workspaceId}`;
+}

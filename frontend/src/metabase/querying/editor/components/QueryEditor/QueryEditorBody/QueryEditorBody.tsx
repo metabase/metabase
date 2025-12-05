@@ -45,6 +45,7 @@ type QueryEditorBodyProps = {
     | null;
   nativeEditorSelectedText?: string | null;
   readOnly?: boolean;
+  canChangeDatabase?: boolean;
   isNative: boolean;
   isRunnable: boolean;
   isRunning: boolean;
@@ -74,6 +75,7 @@ export function QueryEditorBody({
   modalSnippet,
   nativeEditorSelectedText,
   readOnly,
+  canChangeDatabase,
   isNative,
   isRunnable,
   isRunning,
@@ -136,6 +138,7 @@ export function QueryEditorBody({
       isInitiallyOpen
       isNativeEditorOpen
       readOnly={readOnly}
+      canChangeDatabase={canChangeDatabase}
       hasParametersList={false}
       isRunnable={isRunnable}
       isRunning={isRunning}

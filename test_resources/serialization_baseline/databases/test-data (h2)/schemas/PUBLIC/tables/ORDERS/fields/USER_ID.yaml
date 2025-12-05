@@ -47,3 +47,4 @@ database_is_generated: null
 database_is_nullable: null
 database_is_pk: null
 database_partitioned: null
+workspace_id: null

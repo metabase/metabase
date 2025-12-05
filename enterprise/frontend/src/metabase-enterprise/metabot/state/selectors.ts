@@ -144,7 +144,8 @@ export const getProfile = createSelector(
       return profileOverride;
     }
 
-    return location.pathname.startsWith(Urls.transformList())
+    return location.pathname.startsWith(Urls.transformList()) ||
+      location.pathname.startsWith(Urls.dataStudioWorkspaceList())
       ? "transforms_codegen"
       : undefined;
   },

@@ -273,7 +273,7 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
-    setNavigateToPath: (state, action: PayloadAction<string>) => {
+    setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {

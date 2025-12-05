@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
@@ -268,6 +269,229 @@
                     (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag1-id])))
             (is (=? [{:id t2-id}]
                     (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag2-id])))))))))
+
+(deftest filter-transforms-by-workspace-test
+  (testing "GET /api/ee/transform filters out workspace transforms by default"
+    (mt/with-premium-features #{:transforms :workspaces}
+      (mt/with-temp [:model/Transform {global-id :id}    {}
+                     :model/Workspace {ws-id :id}        {:name "Test Workspace"}
+                     :model/Transform {ws-transform-id :id} {:workspace_id ws-id}]
+        (testing "by default, only global transforms (workspace_id=null) are returned"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform")
+                ids (set (map :id transforms))]
+            (is (contains? ids global-id))
+            (is (not (contains? ids ws-transform-id)))))))))
+
+(deftest exclude-workspace-id-filter-test
+  (testing "GET /api/ee/transform with exclude_workspace_id excludes mirrored transforms"
+    (mt/with-premium-features #{:transforms :workspaces}
+      (mt/with-temp [;; Global transforms (workspace_id = null)
+                     :model/Transform                 {global1-id :id} {:name "Global Transform 1"}
+                     :model/Transform                 {global2-id :id} {:name "Global Transform 2"}
+                     :model/Transform                 {global3-id :id} {:name "Global Transform 3"}
+                     ;; Workspace
+                     :model/Workspace                 {ws-id :id}      {:name "Test Workspace"}
+                     ;; Workspace transforms (mirrored from global1 and global2)
+                     :model/Transform                 {ws-xf1-id :id}  {:name         "Workspace Transform 1"
+                                                                        :workspace_id ws-id}
+                     :model/Transform                 {ws-xf2-id :id}  {:name         "Workspace Transform 2"
+                                                                        :workspace_id ws-id}
+                     ;; Mappings: global1 -> ws-xf1, global2 -> ws-xf2
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global1-id
+                                                                        :downstream_id ws-xf1-id
+                                                                        :workspace_id  ws-id}
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global2-id
+                                                                        :downstream_id ws-xf2-id
+                                                                        :workspace_id  ws-id}]
+        (testing "without exclude_workspace_id, returns all global transforms"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform")
+                ids (set (map :id transforms))]
+            (is (contains? ids global1-id))
+            (is (contains? ids global2-id))
+            (is (contains? ids global3-id))
+            ;; workspace transforms should NOT be returned (they have workspace_id set)
+            (is (not (contains? ids ws-xf1-id)))
+            (is (not (contains? ids ws-xf2-id)))))
+
+        (testing "with exclude_workspace_id, excludes global transforms mirrored into that workspace"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                 :exclude_workspace_id ws-id)
+                ids (set (map :id transforms))]
+            ;; global1 and global2 are mirrored into the workspace, so they should be excluded
+            (is (not (contains? ids global1-id)))
+            (is (not (contains? ids global2-id)))
+            ;; global3 is NOT mirrored, so it should be returned
+            (is (contains? ids global3-id))
+            ;; workspace transforms should still NOT be returned
+            (is (not (contains? ids ws-xf1-id)))
+            (is (not (contains? ids ws-xf2-id))))))))
+
+  (testing "exclude_workspace_id only excludes transforms mirrored into that specific workspace"
+    (mt/with-premium-features #{:transforms :workspaces}
+      (mt/with-temp [;; Global transforms
+                     :model/Transform                 {global1-id :id} {:name "Global Transform 1"}
+                     :model/Transform                 {global2-id :id} {:name "Global Transform 2"}
+                     ;; Two workspaces
+                     :model/Workspace                 {ws1-id :id}     {:name "Workspace 1"}
+                     :model/Workspace                 {ws2-id :id}     {:name "Workspace 2"}
+                     ;; global1 mirrored only into ws1
+                     :model/Transform                 {ws1-xf-id :id}  {:name         "WS1 Transform"
+                                                                        :workspace_id ws1-id}
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global1-id
+                                                                        :downstream_id ws1-xf-id
+                                                                        :workspace_id  ws1-id}
+                     ;; global2 mirrored only into ws2
+                     :model/Transform                 {ws2-xf-id :id}  {:name         "WS2 Transform"
+                                                                        :workspace_id ws2-id}
+                     :model/WorkspaceMappingTransform _                {:upstream_id   global2-id
+                                                                        :downstream_id ws2-xf-id
+                                                                        :workspace_id  ws2-id}]
+        (testing "exclude_workspace_id=ws1 excludes only global1"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                 :exclude_workspace_id ws1-id)
+                ids (set (map :id transforms))]
+            (is (not (contains? ids global1-id)))
+            (is (contains? ids global2-id))))
+
+        (testing "exclude_workspace_id=ws2 excludes only global2"
+          (let [transforms (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                 :exclude_workspace_id ws2-id)
+                ids (set (map :id transforms))]
+            (is (contains? ids global1-id))
+            (is (not (contains? ids global2-id)))))))))
+
+(deftest filter-transforms-by-type-test
+  (testing "should be able to filter transforms by source type"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/with-temp [:model/Transform {native-transform-id :id}
+                       {:name   "Native Transform"
+                        :source {:type  "query"
+                                 :query {:database (mt/id)
+                                         :type     "native"
+                                         :native   {:query         "SELECT 1"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_native_" (u/generate-nano-id))}}
+                       :model/Transform {python-transform-id :id}
+                       {:name   "Python Transform"
+                        :source {:type          "python"
+                                 :body          "print('hello')"
+                                 :source-tables {}}
+                        :target {:type     "table"
+                                 :name     (str "test_python_" (u/generate-nano-id))
+                                 :database (mt/id)}}]
+          (testing "filter by native type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native"])]
+              (is (some #(= native-transform-id (:id %)) results))
+              (is (not (some #(= python-transform-id (:id %)) results)))))
+          (testing "filter by python type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["python"])]
+              (is (some #(= python-transform-id (:id %)) results))
+              (is (not (some #(= native-transform-id (:id %)) results)))))
+          (testing "filter by both types returns all"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :type ["native" "python"])]
+              (is (some #(= native-transform-id (:id %)) results))
+              (is (some #(= python-transform-id (:id %)) results)))))))))
+
+(deftest filter-transforms-by-database-id-test
+  (testing "should be able to filter transforms by database_id"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
+                       :model/Transform {transform1-id :id}
+                       {:name   "Transform for main DB"
+                        :source {:type  "query"
+                                 :query {:database (mt/id)
+                                         :type     "native"
+                                         :native   {:query         "SELECT 1"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_main_" (u/generate-nano-id))}}
+                       :model/Transform {transform2-id :id}
+                       {:name   "Transform for other DB"
+                        :source {:type  "query"
+                                 :query {:database other-db-id
+                                         :type     "native"
+                                         :native   {:query         "SELECT 2"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_other_" (u/generate-nano-id))}}]
+          (testing "filter by main database id"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id (mt/id))]
+              (is (some #(= transform1-id (:id %)) results))
+              (is (not (some #(= transform2-id (:id %)) results)))))
+          (testing "filter by other database id"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id other-db-id)]
+              (is (some #(= transform2-id (:id %)) results))
+              (is (not (some #(= transform1-id (:id %)) results)))))
+          (testing "filter by non-existent database returns empty for our transforms"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id 999999)]
+              (is (not (some #(= transform1-id (:id %)) results)))
+              (is (not (some #(= transform2-id (:id %)) results))))))))))
+
+(deftest filter-transforms-by-database-id-target-test
+  (testing "should match transforms where target database matches"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/with-temp [:model/Database {target-db-id :id} {:engine :h2 :details {}}
+                       :model/Transform {transform-id :id}
+                       {:name   "Python Transform with target DB"
+                        :source {:type          "python"
+                                 :body          "print('hello')"
+                                 :source-tables {}}
+                        :target {:type     "table"
+                                 :name     (str "test_target_" (u/generate-nano-id))
+                                 :database target-db-id}}]
+          (testing "filter by target database id"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform" :database_id target-db-id)]
+              (is (some #(= transform-id (:id %)) results)))))))))
+
+(deftest filter-transforms-combined-test
+  (testing "should be able to combine database_id and type filters"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/with-temp [:model/Database {other-db-id :id} {:engine :h2 :details {}}
+                       :model/Transform {query-main-id :id}
+                       {:name   "Query on main DB"
+                        :source {:type  "query"
+                                 :query {:database (mt/id)
+                                         :type     "native"
+                                         :native   {:query         "SELECT 1"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_qm_" (u/generate-nano-id))}}
+                       :model/Transform {python-main-id :id}
+                       {:name   "Python on main DB"
+                        :source {:type          "python"
+                                 :body          "print('hello')"
+                                 :source-tables {}}
+                        :target {:type     "table"
+                                 :name     (str "test_pm_" (u/generate-nano-id))
+                                 :database (mt/id)}}
+                       :model/Transform {query-other-id :id}
+                       {:name   "Query on other DB"
+                        :source {:type  "query"
+                                 :query {:database other-db-id
+                                         :type     "native"
+                                         :native   {:query         "SELECT 2"
+                                                    :template-tags {}}}}
+                        :target {:type "table"
+                                 :name (str "test_qo_" (u/generate-nano-id))}}]
+          (testing "filter by main database and query type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                :database_id (mt/id)
+                                                :type ["query"])]
+              (is (some #(= query-main-id (:id %)) results))
+              (is (not (some #(= python-main-id (:id %)) results)))
+              (is (not (some #(= query-other-id (:id %)) results)))))
+          (testing "filter by main database and python type"
+            (let [results (mt/user-http-request :crowberto :get 200 "ee/transform"
+                                                :database_id (mt/id)
+                                                :type ["python"])]
+              (is (some #(= python-main-id (:id %)) results))
+              (is (not (some #(= query-main-id (:id %)) results)))
+              (is (not (some #(= query-other-id (:id %)) results))))))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

@@ -490,9 +490,10 @@
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :owner_email :owner_user_id]
    :skip      [:estimated_row_count :view_count]
-   :transform {:created_at (serdes/date)
-               :archived_at (serdes/date)
+   :transform {:created_at     (serdes/date)
+               :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
+               :workspace_id   (serdes/fk :model/Workspace)
                :data_layer  (serdes/optional-kw)
                :db_id      (serdes/fk :model/Database :name)}})
 

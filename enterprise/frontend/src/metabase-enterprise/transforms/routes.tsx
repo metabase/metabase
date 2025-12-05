@@ -29,6 +29,7 @@ export function getDataStudioTransformRoutes() {
       <Route path="runs" component={TransformTopNavLayout}>
         <IndexRoute component={RunListPage} />
       </Route>
+
       <Route component={TransformSidebarLayout}>
         <IndexRoute component={TransformEmptyPage} />
         <Route path="jobs" component={JobEmptyPage} />
