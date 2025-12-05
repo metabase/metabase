@@ -244,6 +244,33 @@ describe("getCollectionIdPath", () => {
 
     expect(path).toEqual([1234]);
   });
+
+  it("should nest dedicated tenant collection under tenant-specific for admins", () => {
+    const rootPath = getCollectionIdPath(
+      {
+        id: "tenant-specific",
+        location: "/",
+        model: "collection",
+      },
+      1337,
+    );
+
+    expect(rootPath).toEqual(["tenant-specific"]);
+
+    const childPath = getCollectionIdPath(
+      {
+        id: 1234,
+        location: "/",
+        effective_location: "/",
+        model: "collection",
+        type: "tenant-specific-root-collection",
+        collection_id: "tenant-specific",
+      },
+      1337,
+    );
+
+    expect(childPath).toEqual(["tenant-specific", 1234]);
+  });
 });
 
 describe("getStateFromIdPath", () => {

@@ -19,31 +19,35 @@ describe("CollectionPicker > utils", () => {
         location: "/",
         namespace: "shared-tenant-collection",
         type: null,
-        desc: "shared",
+        desc: "shared tenant",
+        expected: "tenant",
       },
       {
         location: null,
         namespace: "shared-tenant-collection",
         type: null,
-        desc: "shared",
+        desc: "shared tenant",
+        expected: "tenant",
       },
       {
         location: "/",
         namespace: null,
         type: "tenant-specific-root-collection",
-        desc: "dedicated",
+        desc: "dedicated tenant",
+        expected: "tenant-specific",
       },
       {
         location: null,
         namespace: null,
         type: "tenant-specific-root-collection",
-        desc: "dedicated",
+        desc: "dedicated tenant",
+        expected: "tenant-specific",
       },
     ])(
-      "should return 'tenant' for top-level $desc collection at $location",
-      ({ location, namespace, type }) => {
+      "should return $expected for top-level $desc collection at $location",
+      ({ location, namespace, type, expected }) => {
         expect(getParentCollectionId(location, namespace, type)).toEqual(
-          "tenant",
+          expected,
         );
       },
     );
