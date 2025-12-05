@@ -87,7 +87,7 @@
       (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-simple)))
       (throw-simple-embedding-disabled)
 
-      (and is-modular-embedding? (token-utils/has-token request))
+      (and is-modular-embedding? jwt (token-utils/has-token request))
       (generate-response-token (:session result) (:jwt-data result))
 
       ;; JWT provided - use auth-identity/login!
@@ -99,8 +99,8 @@
 
       ;; No JWT - return IdP URL for modular embedding or redirect
       is-modular-embedding?
-      (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri)
-                                                  :method "jwt"}))
+      (response/response {:url (sso-settings/jwt-identity-provider-uri)
+                          :method "jwt"})
 
       :else
       (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect))))
