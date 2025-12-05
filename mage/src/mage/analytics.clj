@@ -131,6 +131,10 @@
 
     (println "\nResetting up normal analytics database...")
     (be-dev/nrepl-eval
+     "metabase.audit-app.settings"
+     "(last-analytics-checksum! nil)")
+
+    (be-dev/nrepl-eval
      "metabase-enterprise.audit-app.audit"
      "(ensure-audit-db-installed!)")
     (println (c/green "  ✓ Normal analytics database reset"))
