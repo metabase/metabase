@@ -44,7 +44,10 @@
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
    ;; to different namespaces via parameters.
-   (perms/audit-namespace-clause :collection.namespace nil) [:= :collection.namespace "shared-tenant-collection"]])
+   (let [default-ns-clause (perms/audit-namespace-clause :collection.namespace nil)]
+     (if (= :or (first default-ns-clause))
+       (into default-ns-clause [[:= :collection.namespace "shared-tenant-collection"]])
+       [:or default-ns-clause [:= :collection.namespace "shared-tenant-collection"]]))])
 
 (mu/defn permitted-tables-clause
   "Build the WHERE clause corresponding to which tables the given user has access to."

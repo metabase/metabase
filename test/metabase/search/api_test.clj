@@ -1845,7 +1845,7 @@
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
-(deftest ^:synchronized multiple-limits
+(deftest ^:synchronized multiple-limits-test
   (when (search/supports-index?)
     ;; This test is failing with "no index" for some reason, forcing the reindex
     (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
