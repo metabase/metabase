@@ -70,7 +70,6 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Question").click();
       });
       H.popover().within(() => {
-        cy.findByText("Data").click();
         cy.findByText("Products").should("be.visible");
         cy.findByText("Orders").should("not.exist");
         cy.findByText("Products").click();
@@ -90,7 +89,6 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.visitQuestionAdhoc(ordersQuestionDetails, { mode: "notebook" });
       H.getNotebookStep("data").button("Join data").click();
       H.popover().within(() => {
-        cy.findByText("Data").click();
         cy.findByText("Products").should("be.visible");
         cy.findByText("People").should("not.exist");
         cy.findByText("Products").click();
@@ -403,7 +401,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(ordersQuestionDetails);
-      assertPermissionError();
+      assertQueryPermissionError();
     });
   });
 
@@ -467,7 +465,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
-      assertPermissionError();
+      assertQueryPermissionError();
     });
   });
 
@@ -504,20 +502,18 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("losing token features", () => {
-    it("should be able to view published tables in the sidebar and the collection but not query them", () => {
+    it("should not be able to query previously published tables", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.activateToken("starter");
+      H.deleteToken();
 
       cy.signIn("nodata");
-      cy.visit("/");
-      librarySidebarSection().findByText("Data").click();
-      H.collectionTable().findByText("Products").click();
+      H.visitQuestionAdhoc(productsQuestionDetails);
       assertPermissionError();
     });
 
     it("should not be able to create questions even if there are published tables", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.activateToken("starter");
+      H.deleteToken();
 
       cy.signIn("nodata");
       cy.visit("/");
@@ -548,6 +544,12 @@ function librarySidebarSection() {
 }
 
 function assertPermissionError() {
+  H.main()
+    .findByText("Sorry, you don’t have permission to see that.")
+    .should("be.visible");
+}
+
+function assertQueryPermissionError() {
   H.main()
     .findByText("Sorry, you don't have permission to run this query.")
     .should("be.visible");
