@@ -129,7 +129,16 @@ export const TransformTab = ({
         p="md"
         style={{ borderBottom: "1px solid var(--mb-color-border)" }}
       >
-        <Group />
+        <Group>
+          {isSaved && (
+            <Button
+              leftSection={<Icon name="pencil_lines" />}
+              size="sm"
+              disabled={isRunning || hasChanges}
+              onClick={openChangeTargetModal}
+            >{t`Change target`}</Button>
+          )}
+        </Group>
 
         <Group>
           {isSaved && (
@@ -139,15 +148,6 @@ export const TransformTab = ({
               size="sm"
               onClick={handleRun}
             >{t`Run`}</Button>
-          )}
-
-          {isSaved && (
-            <Button
-              leftSection={<Icon name="pencil_lines" />}
-              size="sm"
-              disabled={isRunning}
-              onClick={openChangeTargetModal}
-            >{t`Change target`}</Button>
           )}
 
           {isSaved && (
