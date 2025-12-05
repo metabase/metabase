@@ -11,8 +11,10 @@ export type ChatContextProviderFn = (
 export type DeregisterChatContextProviderFn = () => void;
 
 // internal type so we can support tiptap editor and textarea as inputs
-export type MetabotChatInputRef = {
+export type MetabotPromptInputRef = {
   focus: () => void;
+  clear: () => void;
+  getValue: () => string;
   scrollHeight: number;
   scrollTop: number;
 };
@@ -20,7 +22,7 @@ export type MetabotChatInputRef = {
 export interface MetabotContext {
   prompt: string;
   setPrompt: (prompt: string) => void;
-  promptInputRef: RefObject<MetabotChatInputRef> | undefined;
+  promptInputRef: RefObject<MetabotPromptInputRef> | undefined;
 
   getChatContext: () => Promise<MetabotChatContext>;
   registerChatContextProvider: (

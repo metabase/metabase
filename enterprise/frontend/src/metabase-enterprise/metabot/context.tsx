@@ -6,7 +6,7 @@ import _ from "underscore";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
-  MetabotChatInputRef,
+  MetabotPromptInputRef,
   MetabotContext as MetabotCtx,
 } from "metabase/metabot";
 import {
@@ -39,7 +39,7 @@ export const MetabotProvider = ({
 }) => {
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<MetabotChatInputRef>(null);
+  const promptInputRef = useRef<MetabotPromptInputRef>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());

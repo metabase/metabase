@@ -1,8 +1,7 @@
 import type { ResizableBoxProps } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
-import { useInlinePrompt } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/inline-prompt";
-import { useInlineSqlEdit } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/use-inline-sql-edit";
+import { useInlineSqlEdit } from "metabase-enterprise/metabot/components/MetabotInlineSQLPrompt/use-inline-sql-edit";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import type {
   SelectionRange,
@@ -88,15 +87,8 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
     getHighlightedNativeQueryLineNumbers,
   );
 
-  // Inline SQL generation with AI
-  const {
-    inlinePromptOptions,
-    proposedQuestion,
-    handleAcceptProposed,
-    handleRejectProposed,
-  } = useInlineSqlEdit({ question });
-
-  const inlinePromptExtension = useInlinePrompt(inlinePromptOptions);
+  // TODO: think of a better name
+  const inlinePrompt = useInlineSqlEdit({ question });
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
@@ -120,11 +112,12 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}
         onSetDatabaseId={onSetDatabaseId}
-        extensions={inlinePromptExtension}
-        proposedQuestion={proposedQuestion}
-        onAcceptProposed={handleAcceptProposed}
-        onRejectProposed={handleRejectProposed}
+        extensions={inlinePrompt.extensions}
+        proposedQuestion={inlinePrompt.proposedQuestion}
+        onAcceptProposed={inlinePrompt.handleAcceptProposed}
+        onRejectProposed={inlinePrompt.handleRejectProposed}
       />
+      {inlinePrompt.portalElement}
     </Box>
   );
 };
