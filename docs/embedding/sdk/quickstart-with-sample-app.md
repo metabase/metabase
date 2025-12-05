@@ -56,7 +56,7 @@ cp .env.docker.example .env.docker
 3. In the top-level directory, run:
 
 ```bash
-yarn start
+pnpm start
 ```
 
 This script will:

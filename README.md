@@ -47,19 +47,19 @@ In order to spin up a development environment, you need to start the front end a
 The following command will install the JavaScript dependencies:
 
 ```bash
-yarn install
+pnpm install
 ```
 
 To build and run without watching changes:
 
 ```bash
-yarn build
+pnpm build
 ```
 
 To build and run with hot-reload:
 
 ```bash
-yarn build-hot
+pnpm build-hot
 ```
 
 ### Backend  quick setup

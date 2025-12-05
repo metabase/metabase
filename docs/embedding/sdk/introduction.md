@@ -50,10 +50,10 @@ You can install the modular embedding SDK for React via npm. Make sure to use th
 npm install @metabase/embedding-sdk-react@56-stable
 ```
 
-or with Yarn:
+or with pnpm:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@56-stable
+pnpm add @metabase/embedding-sdk-react@56-stable
 ```
 
 ### Resolving `@types/react` version mismatches
@@ -72,12 +72,14 @@ To enforce a single `@types/react` version across all dependencies, add an `over
 }
 ```
 
-#### Yarn set @types/react version
+#### pnpm set @types/react version
 
 ```json
 {
-  "resolutions": {
-    "@types/react": "..."
+  "pnpm": {
+    "overrides": {
+      "@types/react": "..."
+    }
   }
 }
 ```
