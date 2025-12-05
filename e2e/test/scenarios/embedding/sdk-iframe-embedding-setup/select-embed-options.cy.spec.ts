@@ -6,6 +6,7 @@ import {
   codeBlock,
   getEmbedSidebar,
   navigateToEmbedOptionsStep,
+  navigateToGetCodeStep,
 } from "./helpers";
 
 const { H } = cy;
@@ -167,12 +168,11 @@ describe(suiteTitle, () => {
   });
 
   it("toggles drill-throughs for dashboards when non-authorized auth method is selected", () => {
-    navigateToEmbedOptionsStep({
+    navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
-
-    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
@@ -530,11 +530,13 @@ describe(suiteTitle, () => {
     it(`toggles save button for ${experience}`, () => {
       navigateToEmbedOptionsStep(
         experience === "chart"
-          ? { experience: "chart", resourceName: QUESTION_NAME }
-          : { experience: "exploration" },
+          ? {
+              experience: "chart",
+              resourceName: QUESTION_NAME,
+              toggleSso: true,
+            }
+          : { experience: "exploration", toggleSso: true },
       );
-
-      cy.findByLabelText("Existing Metabase session").click();
 
       if (experience === "exploration") {
         cy.log("visualize a question to enable the save button");
