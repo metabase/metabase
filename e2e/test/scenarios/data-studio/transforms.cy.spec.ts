@@ -1105,9 +1105,44 @@ LIMIT
   });
 
   describe("queries", () => {
+    it("should show SQL query transforms in view-only mode", () => {
+      cy.log("create a new transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+      H.NativeEditor.get().should("have.attr", "contenteditable", "false");
+      H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
+      cy.findByRole("link", { name: "Edit definition" }).should("be.visible");
+      cy.findByRole("link", { name: "Edit definition" }).should(
+        "have.attr",
+        "href",
+        "/data-studio/transforms/1/edit",
+      );
+    });
+
+    it("should show MBQL transforms in view-only mode", () => {
+      cy.log("create a new transform");
+      createMbqlTransform({ visitTransform: true });
+      H.getNotebookStep("data")
+        .findByText("Animals")
+        .closest("button")
+        .should("be.disabled");
+      cy.findByRole("link", { name: "Edit definition" }).should("be.visible");
+      cy.findByRole("link", { name: "Edit definition" }).should(
+        "have.attr",
+        "href",
+        "/data-studio/transforms/1/edit",
+      );
+    });
+
     it("should be able to update a MBQL query", () => {
       cy.log("create a new transform");
       createMbqlTransform({ visitTransform: true });
+
+      cy.log("visit edit mode");
+      cy.findByRole("link", { name: "Edit definition" }).click();
+      cy.url().should("include", "/edit");
 
       cy.log("update the query");
       H.getNotebookStep("data").button("Filter").click();
@@ -1136,6 +1171,10 @@ LIMIT
         sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
         visitTransform: true,
       });
+
+      cy.log("visit edit mode");
+      cy.findByRole("link", { name: "Edit definition" }).click();
+      cy.url().should("include", "/edit");
 
       cy.log("update the query");
       H.NativeEditor.type(" WHERE name = 'Duck'");
