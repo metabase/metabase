@@ -56,6 +56,7 @@ const getTenantCollections = (
         location: "/",
         can_write: true,
         type: "tenant-specific-root-collection",
+        collection_id: "tenant-specific",
       }),
     )
     .sort((a, b) => a.name.localeCompare(b.name)) ?? null;
