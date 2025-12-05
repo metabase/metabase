@@ -126,11 +126,10 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase session").click();
-
       cy.findByText("Get code").click();
 
       codeBlock().should("contain", `dashboard-id="${ORDERS_DASHBOARD_ID}"`);
@@ -141,6 +140,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      toggleSso: true,
     });
 
     getEmbedSidebar().within(() => {
