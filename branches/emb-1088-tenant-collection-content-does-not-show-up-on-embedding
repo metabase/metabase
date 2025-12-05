@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "9b16e83e42574f08799906749fe329d8f66d9ef6"
+  },
+  "upstream": {
+    "branch": "emb-1088-tenant-collection-content-does-not-show-up-on-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66586,
+        "gqlID": "PR_kwDOAczgH863T3NQ"
+      }
+    }
   }
 }
