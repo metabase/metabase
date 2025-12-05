@@ -30,8 +30,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- decode-ai-service-token
   [token]
@@ -284,19 +283,6 @@
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:queryable_dimensions {:optional true} ::columns]
     [:verified {:optional true} :boolean]]])
-
-(mr/def ::find-metric-result
-  [:or
-   [:map
-    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:map
-                         [:id :int]
-                         [:type [:= :metric]]
-                         [:name :string]
-                         [:description [:maybe :string]]
-                         [:default_time_dimension_field_id [:maybe ::column]]
-                         [:queryable_dimensions [:sequential ::column]]]]]
-   [:map [:output :string]]])
 
 (mr/def ::table-result
   [:map
