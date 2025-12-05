@@ -591,6 +591,11 @@
                          [:email_address :string]
                          [:glossary [:maybe [:map-of :string :string]]]]]]
    [:map [:output :string]]])
+(mr/def ::get-dashboard-details-arguments
+  [:and
+   [:map [:dashboard_id :int]]
+   [:map {:encode/tool-api-request #(set/rename-keys % {:dashboard_id :dashboard-id})}]])
+
 (mr/def ::get-dashboard-details-result
   [:or
    [:map
@@ -621,6 +626,9 @@
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output ::full-metric]]
    [:map [:output :string]]])
+
+(mr/def ::get-query-details-arguments
+  [:map [:query :map]])
 
 (mr/def ::get-query-details-result
   [:or
@@ -864,21 +872,12 @@
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
-(api.macros/defendpoint :post "/create-dashboard-subscription" :- [:merge
-                                                                   [:map [:output :string]]
-                                                                   ::tool-request]
+(deftool "/create-dashboard-subscription"
   "Create a dashboard subscription."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::create-dashboard-subscription-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :create-dashboard-subscription) :llm.log/llm->be)
-  (let [arguments (mc/encode ::create-dashboard-subscription-arguments
-                             arguments (mtx/transformer {:name :tool-api-request}))]
-    (doto (-> (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription arguments)
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::create-dashboard-subscription-arguments
+   :result-schema [:map [:output :string]]
+   :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription
+   :skip-decode?  true})
 
 (deftool "/field-values"
   "Return statistics and/or values for a given field of a given entity."
@@ -912,21 +911,11 @@
   {:result-schema ::get-current-user-result
    :handler       metabot-v3.dummy-tools/get-current-user})
 
-(api.macros/defendpoint :post "/get-dashboard-details" :- [:merge ::get-dashboard-details-result ::tool-request]
+(deftool "/get-dashboard-details"
   "Get information about a given dashboard."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments [:map [:dashboard_id :int]]]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :get-dashboard-details) :llm.log/llm->be)
-  (doto (-> (mc/decode ::get-dashboard-details-result
-                       (-> arguments
-                           (update-keys metabot-v3.u/safe->kebab-case-en)
-                           metabot-v3.dummy-tools/get-dashboard-details)
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
+  {:args-schema   ::get-dashboard-details-arguments
+   :result-schema ::get-dashboard-details-result
+   :handler       metabot-v3.dummy-tools/get-dashboard-details})
 
 (deftool "/get-metric-details"
   "Get information about a given metric."
@@ -934,19 +923,11 @@
    :result-schema ::get-metric-details-result
    :handler       metabot-v3.dummy-tools/get-metric-details})
 
-(api.macros/defendpoint :post "/get-query-details" :- [:merge ::get-query-details-result ::tool-request]
+(deftool "/get-query-details"
   "Get information about a given query."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments [:map [:query :map]]]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :get-query-details) :llm.log/llm->be)
-  (doto (-> (mc/decode ::get-query-details-result
-                       (metabot-v3.dummy-tools/get-query-details arguments)
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
+  {:args-schema   ::get-query-details-arguments
+   :result-schema ::get-query-details-result
+   :handler       metabot-v3.dummy-tools/get-query-details})
 
 (deftool "/get-report-details"
   "Get information about a given report."
@@ -966,112 +947,48 @@
    :result-schema ::get-table-details-result
    :handler       metabot-v3.dummy-tools/get-table-details})
 
-(api.macros/defendpoint :post "/get-tables" :- [:merge ::get-tables-result ::tool-request]
+(deftool "/get-tables"
   "Get information about the tables in a given database."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::get-tables-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :get-tables) :llm.log/llm->be)
-  (let [arguments (mc/encode ::get-tables-arguments arguments (mtx/transformer {:name :tool-api-request}))
-        database-id (:database-id arguments)]
-    (doto (-> (mc/decode ::get-tables-result
-                         {:structured-output {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
-                                              :tables   (table-utils/database-tables database-id)}}
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::get-tables-arguments
+   :result-schema ::get-tables-result
+   :handler       table-utils/get-tables})
 
 (deftool "/get-transforms"
   "Get a list of all known transforms."
   {:result-schema ::get-transforms-result
    :handler       metabot-v3.tools.transforms/get-transforms})
 
-(api.macros/defendpoint :post "/get-transform-details" :- [:merge ::get-transform-details-result ::tool-request]
+(deftool "/get-transform-details"
   "Get information about a transform."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::get-transform-details-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :get-transform-details) :llm.log/llm->be)
-  (let [arguments (mc/encode ::get-transform-details-arguments arguments (mtx/transformer {:name :tool-api-request}))
-        transform-id (:transform-id arguments)]
-    (doto (-> (mc/decode ::get-transform-details-result
-                         (metabot-v3.tools.transforms/get-transform-details transform-id)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::get-transform-details-arguments
+   :result-schema ::get-transform-details-result
+   :handler       metabot-v3.tools.transforms/get-transform-details})
 
-(api.macros/defendpoint :post "/get-transform-python-library-details" :- [:merge
-                                                                          ::get-transform-python-library-details-result
-                                                                          ::tool-request]
+(deftool "/get-transform-python-library-details"
   "Get information about a Python library by path."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments
-                                                           ::get-transform-python-library-details-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :get-transform-python-library-details) :llm.log/llm->be)
-  (let [arguments (mc/encode ::get-transform-python-library-details-arguments
-                             arguments (mtx/transformer {:name :tool-api-request}))
-        path (:path arguments)]
-    (doto (-> (mc/decode ::get-transform-python-library-details-result
-                         (metabot-v3.tools.transforms/get-transform-python-library-details path)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::get-transform-python-library-details-arguments
+   :result-schema ::get-transform-python-library-details-result
+   :handler       metabot-v3.tools.transforms/get-transform-python-library-details})
 
-(api.macros/defendpoint :post "/query-metric" :- [:merge ::filtering-result ::tool-request]
+(deftool "/query-metric"
   "Construct a query from a metric."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::query-metric-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :query-metric) :llm.log/llm->be)
-  (let [arguments (mc/encode ::query-metric-arguments
-                             arguments (mtx/transformer {:name :tool-api-request}))]
-    (doto (-> (mc/decode ::filtering-result
-                         (metabot-v3.tools.filters/query-metric arguments)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
-
-(api.macros/defendpoint :post "/query-model" :- [:merge ::filtering-result ::tool-request]
-  "Construct a query from a model."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::query-model-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :query-model) :llm.log/llm->be)
-  (let [arguments (mc/encode ::query-model-arguments
-                             arguments (mtx/transformer {:name :tool-api-request}))]
-    (doto (-> (mc/decode ::filtering-result
-                         (metabot-v3.tools.filters/query-model arguments)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::query-metric-arguments
+   :result-schema ::filtering-result
+   :handler       metabot-v3.tools.filters/query-metric})
 
 ;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
-(api.macros/defendpoint :post "/query-datasource" :- [:merge ::filtering-result ::tool-request]
+(deftool "/query-model"
+  "Construct a query from a model."
+  {:args-schema   ::query-model-arguments
+   :result-schema ::filtering-result
+   :handler       metabot-v3.tools.filters/query-model})
+
+;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
+(deftool "/query-datasource"
   "Construct a query from a model or table data source."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::query-datasource-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :query-datasource) :llm.log/llm->be)
-  (let [arguments (mc/encode ::query-datasource-arguments
-                             arguments (mtx/transformer {:name :tool-api-request}))]
-    (doto (-> (mc/decode ::filtering-result
-                         (metabot-v3.tools.filters/query-datasource arguments)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::query-datasource-arguments
+   :result-schema ::filtering-result
+   :handler       metabot-v3.tools.filters/query-datasource})
 
 (mr/def ::search-arguments
   [:and
@@ -1168,22 +1085,11 @@
   {:result-schema ::get-snippets-result
    :handler       metabot-v3.tools.snippets/get-snippets})
 
-(api.macros/defendpoint :post "/get-snippet-details" :- [:merge ::get-snippet-details-result ::tool-request]
+(deftool "/get-snippet-details"
   "Get the content of a single SQL snippet."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::get-snippet-details-arguments]]
-                                                    ::tool-request]]
-
-  (metabot-v3.context/log (assoc body :api :get-snippet-details) :llm.log/llm->be)
-  (let [arguments (mc/encode ::get-snippet-details-arguments arguments (mtx/transformer {:name :tool-api-request}))
-        snippet-id (:snippet-id arguments)]
-    (doto (-> (mc/decode ::get-snippet-details-result
-                         (metabot-v3.tools.snippets/get-snippet-details snippet-id)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::get-snippet-details-arguments
+   :result-schema ::get-snippet-details-result
+   :handler       metabot-v3.tools.snippets/get-snippet-details})
 
 (mr/def ::check-transform-dependencies-arguments
   [:and
@@ -1214,20 +1120,11 @@
                          [:bad_questions [:sequential ::broken-question]]]]]
    [:map [:output :string]]])
 
-(api.macros/defendpoint :post "/check-transform-dependencies" :- [:merge ::check-transform-dependencies-result ::tool-request]
+(deftool "/check-transform-dependencies"
   "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments ::check-transform-dependencies-arguments]]
-                                                    ::tool-request]]
-  (metabot-v3.context/log (assoc body :api :check-transform-dependencies) :llm.log/llm->be)
-  (let [arguments (mc/encode ::check-transform-dependencies-arguments arguments (mtx/transformer {:name :tool-api-request}))]
-    (doto (-> (mc/decode ::check-transform-dependencies-result
-                         (metabot-v3.tools.dependencies/check-transform-dependencies arguments)
-                         (mtx/transformer {:name :tool-api-response}))
-              (assoc :conversation_id conversation_id))
-      (metabot-v3.context/log :llm.log/be->llm))))
+  {:args-schema   ::check-transform-dependencies-arguments
+   :result-schema ::check-transform-dependencies-result
+   :handler       metabot-v3.tools.dependencies/check-transform-dependencies})
 
 (defn- enforce-authentication
   "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
