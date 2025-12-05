@@ -98,7 +98,7 @@ export const useRootCollectionPickerItems = (
     if (options?.restrictToNamespace === SHARED_TENANT_NAMESPACE) {
       if (tenantsEnabled && currentUser) {
         collectionItems.push({
-          name: t`Shared Tenant Collections`,
+          name: t`Shared collections`,
           id: "tenant",
           namespace: SHARED_TENANT_NAMESPACE,
           here: ["collection", "card", "dashboard"],
@@ -183,7 +183,7 @@ export const useRootCollectionPickerItems = (
 
     if (shouldShowTenantCollections) {
       collectionItems.push({
-        name: t`Shared Tenant Collections`,
+        name: t`Shared collections`,
         id: "tenant",
         namespace: SHARED_TENANT_NAMESPACE,
         here: ["collection", "card", "dashboard"],

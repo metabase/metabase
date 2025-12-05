@@ -114,7 +114,7 @@
                                                                       {:id tenant-group-id}]}))))))))))
 
 (deftest external-user-group-manager-restrictions-test
-  (testing "External users cannot be made group managers"
+  (testing "Tenant users cannot be made group managers"
     (mt/with-premium-features #{:tenants :advanced-permissions}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test"}
@@ -123,7 +123,7 @@
 
           (testing "cannot create external user as group manager via POST"
             (mt/with-model-cleanup [:model/User]
-              (is (=? {:message "External users cannot be made group managers"}
+              (is (=? {:message "Tenant users cannot be made group managers"}
                       (mt/user-http-request :crowberto :post 400 "user"
                                             {:first_name "External"
                                              :last_name "Manager"
@@ -136,7 +136,7 @@
           (testing "cannot make external user group manager via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
               ;; This test is expected to fail until group manager restrictions are implemented
-              (is (=? {:message "External users cannot be made group managers"}
+              (is (=? {:message "Tenant users cannot be made group managers"}
                       (mt/user-http-request :crowberto :put 400 (str "user/" external-user-id)
                                             {:user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id tenant-group-id

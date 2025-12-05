@@ -497,7 +497,7 @@ describe("Tenants - management", () => {
     });
   });
 
-  it("should allow creating a shared tenant collection from tenants page", () => {
+  it("should allow creating a shared collection from tenants page", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
     createTenants();
 
@@ -508,7 +508,7 @@ describe("Tenants - management", () => {
 
     H.modal().within(() => {
       cy.findByRole("heading", {
-        name: /New shared tenant collection/,
+        name: /New shared collection/,
       }).should("be.visible");
 
       cy.findByLabelText(/name/i).type("Acme Shared");

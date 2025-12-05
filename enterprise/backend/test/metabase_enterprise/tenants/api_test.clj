@@ -397,7 +397,7 @@
                                                                                      :parent_id parent-id}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                    Dedicated Tenant Collection Protection Tests                                |
+;;; |                                    Tenant Collection Protection Tests                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest cannot-archive-tenant-root-collection-test

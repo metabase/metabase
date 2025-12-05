@@ -71,7 +71,9 @@ export function PeopleListingApp({
 
   const buttonText =
     isAdmin && status === ACTIVE_STATUS.active && showInviteButton
-      ? t`Invite someone`
+      ? external
+        ? t`Create external user`
+        : t`Invite someone`
       : undefined;
 
   const handleTabChange = (tab: string | null) => {

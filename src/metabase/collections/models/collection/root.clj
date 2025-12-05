@@ -55,7 +55,7 @@
   [collection-namespace]
   (m/assoc-some root-collection
                 :name (case (keyword collection-namespace)
-                        :shared-tenant-collections (tru "Shared Tenant Collections")
+                        :shared-tenant-collections (tru "Shared collections")
                         :snippets (tru "Top folder")
                         (tru "Our analytics"))
                 :namespace collection-namespace

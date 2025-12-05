@@ -184,7 +184,7 @@
               (check-not-all-external-users-group group-id))
           _ (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
               (when (and is-group-manager? (user-id->tenant? user-id))
-                (throw (ex-info (tru "External users cannot be made group managers")
+                (throw (ex-info (tru "Tenant users cannot be made group managers")
                                 {:bad-user-group-pair [user-id group-id]
                                  :status-code 400}))))
           _ (when (seq bad-user-group-pairs)

@@ -57,7 +57,7 @@ function ItemName({
   }
 
   if (id === null && namespace === "shared-tenant-collection") {
-    return <span>{t`Shared Tenant Collections`}</span>;
+    return <span>{t`Shared collections`}</span>;
   }
 
   return <CollectionName id={id} />;
