@@ -94,6 +94,8 @@ describe(suiteTitle, () => {
       visitNewEmbedPage();
 
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Exploration").click();
         cy.findByText("Next").click();
       });
@@ -115,6 +117,8 @@ describe(suiteTitle, () => {
       visitNewEmbedPage();
 
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
       });
@@ -209,6 +213,8 @@ describe(suiteTitle, () => {
     visitNewEmbedPage();
 
     getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
     });
