@@ -609,7 +609,7 @@
                                                           :jwt
                                                           (jwt/sign
                                                            {:email "newuser@metabase.com"
-                                                            :tenant "tenant-mctenantson"
+                                                            "@tenant" "tenant-mctenantson"
                                                             :first_name "New"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
@@ -623,7 +623,7 @@
                                                             :jwt
                                                             (jwt/sign
                                                              {:email "newuser@metabase.com"
-                                                              :tenant "tenant-mctenantson"
+                                                              "@tenant" "tenant-mctenantson"
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
@@ -643,7 +643,7 @@
                                                         :jwt
                                                         (jwt/sign
                                                          {:email "newuser@metabase.com"
-                                                          :tenant "tenant-mctenantson"
+                                                          "@tenant" "tenant-mctenantson"
                                                           :first_name "New"
                                                           :last_name "User"}
                                                          default-jwt-secret))]
@@ -657,7 +657,7 @@
                                                           :jwt
                                                           (jwt/sign
                                                            {:email "newuser@metabase.com"
-                                                            :tenant "tenant-mctenantson"
+                                                            "@tenant" "tenant-mctenantson"
                                                             :first_name "New"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
@@ -679,7 +679,7 @@
                                                         :jwt
                                                         (jwt/sign
                                                          {:email "newuser@metabase.com"
-                                                          :tenant "tenant-mctenantson"
+                                                          "@tenant" "tenant-mctenantson"
                                                           :first_name "New"
                                                           :last_name "User"}
                                                          default-jwt-secret))]
@@ -720,7 +720,7 @@
                                                           :jwt
                                                           (jwt/sign
                                                            {:email email
-                                                            :tenant "tenant-mctenantson"}
+                                                            "@tenant" "tenant-mctenantson"}
                                                            default-jwt-secret))]
                 (is (saml-test/successful-login? response))
                 (testing "their name is unchanged"
@@ -744,7 +744,7 @@
                                                             :jwt
                                                             (jwt/sign
                                                              {:email "newuser@metabase.com"
-                                                              :tenant "tenant-mctenantson"
+                                                              "@tenant" "tenant-mctenantson"
                                                               :first_name "New"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
@@ -757,7 +757,7 @@
                                                           :jwt
                                                           (jwt/sign
                                                            {:email existing-email
-                                                            :tenant "tenant-mctenantson"
+                                                            "@tenant" "tenant-mctenantson"
                                                             :first_name "Existing"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
@@ -790,7 +790,7 @@
                                                           :jwt
                                                           (jwt/sign
                                                            {:email "newuser@metabase.com"
-                                                            :tenant "tenant-mctenantson"
+                                                            "@tenant" "tenant-mctenantson"
                                                             :first_name "New"
                                                             :last_name "User"}
                                                            default-jwt-secret))]
@@ -812,7 +812,7 @@
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
                                                         :jwt
-                                                        (jwt/sign {:email email-with-tenant :tenant "other"}
+                                                        (jwt/sign {:email email-with-tenant "@tenant" "other"}
                                                                   default-jwt-secret))]
               (is (not (saml-test/successful-login? response)))
               (is (str/includes? (:body response) "Tenant ID mismatch with existing user")))))))))
@@ -849,10 +849,32 @@
                                                         :jwt
                                                         (jwt/sign
                                                          {:email email-without-tenant
-                                                          :tenant "tenant-mctenantson"}
+                                                          "@tenant" "tenant-mctenantson"}
                                                          default-jwt-secret))]
               (is (not (saml-test/successful-login? response)))
-              (is (str/includes? (:body response) "Cannot add tenant claim to internal user")))))))))
+              (is (str/includes? #p (:body response) "Cannot add tenant claim to internal user")))))))))
+
+(deftest internal-user-can-login-with-tenant-claim-even-if-tenants-disabled
+  (testing "Internal user cannot log in with tenant claim in JWT"
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants false]
+          (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
+                                          :name "Tenant McTenantson"}
+                         :model/User {email-without-tenant :email} {}]
+            (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email email-without-tenant
+                                                          "@tenant" "tenant-mctenantson"
+                                                          :foo "bar"}
+                                                         default-jwt-secret))]
+              (is (saml-test/successful-login? response))
+              ;; the `@tenant` key is special, does not become a user attribute
+              (is (= {"foo" "bar"}
+                     (t2/select-one-fn :jwt_attributes :model/User :email email-without-tenant))))))))))
 
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
@@ -887,7 +909,8 @@
                                                       :boolean_attr false
                                                       :array_attr ["item1" "item2"]
                                                       :object_attr {:nested "value"}
-                                                      :null_attr nil}
+                                                      :null_attr nil
+                                                      "@attribute" "foo"}
                                                      default-jwt-secret))]
           (is (saml-test/successful-login? response))
 
@@ -898,9 +921,11 @@
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
 
           (testing "warning messages are logged for non-stringable values"
-            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message #p (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
+          (testing "warning messages are logged for `@`-prefixed keys"
+            (is (some #(re-find #"Dropping attribute '@attribute', keys beginning with `@` are reserved" %) (map :message (jwt-log-messages)))))
 
           (testing "no warning for valid string attribute"
             (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))
@@ -1029,7 +1054,7 @@
                                                              {:email "tenant-user@metabase.com"
                                                               :first_name "Tenant"
                                                               :last_name "User"
-                                                              :tenant "test-tenant"
+                                                              "@tenant" "test-tenant"
                                                               :groups ["engineers"]}
                                                              default-jwt-secret))]
                   (is (saml-test/successful-login? response))
@@ -1067,7 +1092,7 @@
                                                              {:email "tenant-user@metabase.com"
                                                               :first_name "Tenant"
                                                               :last_name "User"
-                                                              :tenant "test-tenant"
+                                                              "@tenant" "test-tenant"
                                                               :groups ["tenant-developers" "tenant-analysts"]}
                                                              default-jwt-secret))]
                   (is (saml-test/successful-login? response))
@@ -1104,7 +1129,7 @@
                                                              {:email "tenant-user@metabase.com"
                                                               :first_name "Tenant"
                                                               :last_name "User"
-                                                              :tenant "test-tenant"
+                                                              "@tenant" "test-tenant"
                                                               :groups ["Group A"]}
                                                              default-jwt-secret))]
                   (is (saml-test/successful-login? response))
@@ -1120,7 +1145,7 @@
                                                              {:email "tenant-user@metabase.com"
                                                               :first_name "Tenant"
                                                               :last_name "User"
-                                                              :tenant "test-tenant"
+                                                              "@tenant" "test-tenant"
                                                               :groups ["Group B"]}
                                                              default-jwt-secret))]
                   (is (saml-test/successful-login? response))

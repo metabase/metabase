@@ -248,7 +248,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru "Key to retrieve the JWT user''s tenant")
   :export?    false
   :encryption :when-encryption-key-set
-  :default    "tenant"
+  :default    "@tenant"
   :feature    :sso-jwt
   :audit      :getter)
 
