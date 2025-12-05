@@ -31,7 +31,7 @@ export function SharedCombinedEmbeddingSettings({
   showContentTranslationSettings,
 }: Props) {
   const isSimpleEmbedFeatureAvailable =
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
   const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
 
   const upgradeUrl = useSelector((state) =>

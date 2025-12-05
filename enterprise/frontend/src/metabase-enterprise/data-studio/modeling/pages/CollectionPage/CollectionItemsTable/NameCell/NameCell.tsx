@@ -5,11 +5,11 @@ import {
   ItemNameCell,
   MaybeItemLink,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
-import { entityForObject } from "metabase/lib/schema";
+import { getIcon } from "metabase/lib/icon";
 import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, type IconName, Skeleton } from "metabase/ui";
 
-import type { ItemIcon, ModelingItem } from "../types";
+import type { ModelingItem } from "../types";
 
 import S from "./NameCell.module.css";
 
@@ -27,18 +27,10 @@ function preventDefault(event: MouseEvent) {
   event.preventDefault();
 }
 
-function getItemIcon(item: ModelingItem): ItemIcon {
-  const entityIcon = entityForObject(item)?.objectSelectors?.getIcon?.(item) as
-    | ItemIcon
-    | undefined;
-
-  return entityIcon ?? { name: "folder" as IconName };
-}
-
 export function NameCell({ item }: NameCellProps) {
   const headingId = item ? `${item.model}-${item.id}-heading` : "dummy-heading";
 
-  const icon = item ? getItemIcon(item) : { name: "folder" as IconName };
+  const icon = item ? getIcon(item) : { name: "folder" as IconName };
 
   const itemUrl = item
     ? item.model === "metric"
