@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase.util.malli.registry :as mr]))
 
@@ -18,11 +17,11 @@
           request       {:metabot-v3/metabot-id "bot-456"}
           opts          {:api-name      :test-tool
                          :handler       handler
-                         :result-schema nil}]
-      (let [result (deftool/invoke-tool body request opts)]
-        (is (= {:metabot-id "bot-456"} @received-args) "Handler should receive metabot-id in args")
-        (is (= "conv-123" (:conversation_id result)))
-        (is (= {:message "hello"} (:structured_output result))))))
+                         :result-schema nil}
+          result (deftool/invoke-tool body request opts)]
+      (is (= {:metabot-id "bot-456"} @received-args) "Handler should receive metabot-id in args")
+      (is (= "conv-123" (:conversation_id result)))
+      (is (= {:message "hello"} (:structured_output result)))))
 
   (testing "invoke-tool with no arguments schema and no metabot-id"
     (let [received-args (atom nil)
@@ -33,10 +32,10 @@
           request       {}
           opts          {:api-name      :test-tool
                          :handler       handler
-                         :result-schema nil}]
-      (let [result (deftool/invoke-tool body request opts)]
-        (is (= {} @received-args) "Handler should receive empty args when no metabot-id")
-        (is (= "conv-123" (:conversation_id result)))))))
+                         :result-schema nil}
+          result (deftool/invoke-tool body request opts)]
+      (is (= {} @received-args) "Handler should receive empty args when no metabot-id")
+      (is (= "conv-123" (:conversation_id result))))))
 
 (deftest ^:parallel invoke-tool-with-args-test
   (testing "invoke-tool with arguments schema that encodes keys"
@@ -54,11 +53,11 @@
           opts          {:api-name      :test-tool
                          :args-schema   ::test-args
                          :handler       handler
-                         :result-schema nil}]
-      (let [result (deftool/invoke-tool body request opts)]
-        (is (= {:user-id 42, :metabot-id "bot-789"} @received-args)
-            "Arguments should be encoded with schema transformer and include metabot-id")
-        (is (= "conv-456" (:conversation_id result)))))))
+                         :result-schema nil}
+          result (deftool/invoke-tool body request opts)]
+      (is (= {:user-id 42, :metabot-id "bot-789"} @received-args)
+          "Arguments should be encoded with schema transformer and include metabot-id")
+      (is (= "conv-456" (:conversation_id result))))))
 
 (deftest ^:parallel invoke-tool-with-result-decoding-test
   (testing "invoke-tool decodes results using result-schema"
@@ -71,10 +70,10 @@
           request {}
           opts    {:api-name      :test-tool
                    :handler       handler
-                   :result-schema ::test-result}]
-      (let [result (deftool/invoke-tool body request opts)]
-        (is (= "Alice" (:user_name result)) "Result should be decoded with schema transformer")
-        (is (= "conv-789" (:conversation_id result)))))))
+                   :result-schema ::test-result}
+          result (deftool/invoke-tool body request opts)]
+      (is (= "Alice" (:user_name result)) "Result should be decoded with schema transformer")
+      (is (= "conv-789" (:conversation_id result))))))
 
 (deftest ^:parallel invoke-tool-skip-decode-test
   (testing "invoke-tool with skip-decode? true"
@@ -89,11 +88,11 @@
           opts    {:api-name      :test-tool
                    :handler       handler
                    :result-schema ::test-result-skip
-                   :skip-decode?  true}]
-      (let [result (deftool/invoke-tool body request opts)]
-        (is (= "raw" (:data result)))
-        (is (nil? (:should-not-appear result)) "Decoding should be skipped")
-        (is (= "conv-skip" (:conversation_id result)))))))
+                   :skip-decode?  true}
+          result (deftool/invoke-tool body request opts)]
+      (is (= "raw" (:data result)))
+      (is (nil? (:should-not-appear result)) "Decoding should be skipped")
+      (is (= "conv-skip" (:conversation_id result))))))
 
 ;;; ---------------------------------------------------- deftool macro tests ----------------------------------------------------
 
