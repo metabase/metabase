@@ -37,7 +37,7 @@ export const SdkIframeEmbedSetupProvider = ({
   onClose,
 }: SdkIframeEmbedSetupProviderProps) => {
   const isSimpleEmbedFeatureAvailable =
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");

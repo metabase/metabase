@@ -78,15 +78,26 @@ export function canPlaceEntityInCollectionOrDescendants(
   return false;
 }
 
+const isLibrary = (
+  collection: CollectionItem | { data: null } | undefined,
+): collection is CollectionItem => !!collection && "name" in collection;
+
 export const useGetLibraryCollection = ({
   skip = false,
 }: { skip?: boolean } = {}) => {
-  const { data: libraryCollection, isLoading: isLoadingCollection } =
-    useGetLibraryCollectionQuery(undefined, { skip });
+  const { data, isLoading: isLoadingCollection } = useGetLibraryCollectionQuery(
+    undefined,
+    { skip },
+  );
+
+  const maybeLibrary = useMemo(
+    () => (isLibrary(data) ? data : undefined),
+    [data],
+  );
 
   return {
     isLoading: isLoadingCollection,
-    data: libraryCollection,
+    data: maybeLibrary,
   };
 };
 
@@ -97,10 +108,7 @@ export const useGetLibraryChildCollectionByType = ({
   skip?: boolean;
   type: CollectionType;
 }) => {
-  const { data: rootLibraryCollection } = useGetLibraryCollectionQuery(
-    undefined,
-    { skip },
-  );
+  const { data: rootLibraryCollection } = useGetLibraryCollection({ skip });
   const { data: libraryCollections } = useListCollectionItemsQuery(
     rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
   );
@@ -120,7 +128,7 @@ export const useGetResolvedLibraryCollection = ({
   skip = false,
 }: { skip?: boolean } = {}) => {
   const { data: libraryCollection, isLoading: isLoadingCollection } =
-    useGetLibraryCollectionQuery(undefined, { skip });
+    useGetLibraryCollection({ skip });
 
   const hasStuff = Boolean(
     libraryCollection &&

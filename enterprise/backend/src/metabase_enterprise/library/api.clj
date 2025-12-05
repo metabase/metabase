@@ -9,6 +9,10 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Creates the Library if it doesn't exist. Returns the created collection.
 
@@ -32,6 +36,10 @@
 
                     true sort))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get the Library. If no library exists, it doesn't fail but returns an empty response."
   [_route
@@ -42,8 +50,9 @@
         (t2/hydrate
          :can_write
          :effective_children)
-        (add-here-and-below))
-    {:message "Library does not exist"}))
+        (add-here-and-below)
+        (assoc :model "collection"))
+    {:data nil}))
 
 (defn- select-collections
   []
@@ -60,6 +69,10 @@
                            :archive-operation-id      nil})]
               :order-by [[:%lower.name :asc]]}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tree"
   "This matches /api/collection/tree but only returns the library collection."
   [_route-params

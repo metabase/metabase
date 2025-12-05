@@ -214,12 +214,6 @@
     (not (zero? v))
     v))
 
-(defn default-engine
-  "In the absence of an explicit engine argument in a request, which engine should be used?"
-  []
-  ;; TODO (Chris 2025-11-07) It would be good to have a warning on start up whenever this is *not* what's configured.
-  (first (search.engine/supported-engines)))
-
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]
@@ -232,12 +226,12 @@
 
             :else
             engine)))
-      (default-engine)))
+      (search.engine/default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (let [default (default-engine)]
+  (let [default (search.engine/default-engine)]
     (when (= default search-engine)
       (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
     (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
