@@ -244,12 +244,11 @@ describe("scenarios > documents > public", () => {
     visitPublicDocument();
 
     cy.log("Click the metabot block and enter text");
-    const char = "a";
     H.documentContent().findByText(text).click();
-    cy.realType(char);
+    cy.realType("a");
 
     cy.log("Verify the text wasn't updated");
-    H.documentContent().findByText(`${text}${char}`).should("not.exist");
+    H.documentContent().findByText(text).should("exist");
 
     cy.log("Verify that run/close buttons don't exist but a metabot icon does");
     H.documentContent().find("button").should("not.exist");
