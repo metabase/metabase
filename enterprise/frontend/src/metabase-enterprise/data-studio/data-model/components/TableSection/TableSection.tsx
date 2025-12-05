@@ -1,4 +1,5 @@
-import { memo, useState } from "react";
+import { memo, useCallback, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -7,7 +8,9 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
 import {
   FieldOrderPicker,
@@ -25,7 +28,7 @@ import {
   Icon,
   Loader,
   Stack,
-  Text,
+  Tabs,
   Tooltip,
 } from "metabase/ui";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
@@ -33,6 +36,7 @@ import { PublishTablesModal } from "metabase-enterprise/data-studio/common/compo
 import { UnpublishTablesModal } from "metabase-enterprise/data-studio/common/components/UnpublishTablesModal";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
+import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
 import { TableMetadata } from "./TableMetadata";
@@ -42,6 +46,7 @@ import { TableSectionGroup } from "./TableSectionGroup";
 interface Props {
   table: Table;
   activeFieldId?: FieldId;
+  activeTab: DataStudioTableMetadataTab;
   hasLibrary: boolean;
   onSyncOptionsClick: () => void;
 }
@@ -51,6 +56,7 @@ type TableModalType = "library" | "publish" | "unpublish";
 const TableSectionBase = ({
   table,
   activeFieldId,
+  activeTab,
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
@@ -69,9 +75,32 @@ const TableSectionBase = ({
       databaseId: table.db_id,
       schemaName: table.schema,
       tableId: table.id,
+      tab: "field",
       fieldId,
     });
   };
+
+  const dispatch = useDispatch();
+
+  const handleTabChange = useCallback(
+    (tab: string | null) => {
+      if (!Urls.isDataStudioTableMetadataTab(tab)) {
+        return;
+      }
+
+      dispatch(
+        push(
+          Urls.dataStudioData({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+            tableId: table.id,
+            tab,
+          }),
+        ),
+      );
+    },
+    [dispatch, table.db_id, table.schema, table.id],
+  );
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -239,87 +268,89 @@ const TableSectionBase = ({
       )}
 
       <Box px="lg">
-        <Stack gap={12}>
-          <Group
-            align="center"
-            gap="md"
-            justify="space-between"
-            miw={0}
-            wrap="nowrap"
-            h={36}
-          >
-            <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+        <Tabs value={activeTab} onChange={handleTabChange}>
+          <Tabs.List mb="md">
+            <Tabs.Tab
+              value="field"
+              leftSection={<Icon name="list" />}
+            >{t`Fields`}</Tabs.Tab>
+            <Tabs.Tab
+              value="segments"
+              leftSection={<Icon name="segment2" />}
+            >{t`Segments`}</Tabs.Tab>
+          </Tabs.List>
 
-            <Group
-              flex="1"
-              gap="md"
-              justify="flex-end"
-              miw={0}
-              wrap="nowrap"
-              h="100%"
-            >
-              {isUpdatingSorting && (
-                <Loader data-testid="loading-indicator" size="xs" />
+          <Tabs.Panel value="field">
+            <Stack gap="md">
+              <Group gap="md" justify="flex-start" wrap="nowrap">
+                {isUpdatingSorting && (
+                  <Loader data-testid="loading-indicator" size="xs" />
+                )}
+
+                {!isSorting && hasFields && (
+                  <ResponsiveButton
+                    icon="sort_arrows"
+                    showLabel
+                    onClick={() => setIsSorting(true)}
+                  >{t`Sorting`}</ResponsiveButton>
+                )}
+
+                {isSorting && (
+                  <FieldOrderPicker
+                    value={table.field_order}
+                    onChange={handleFieldOrderTypeChange}
+                  />
+                )}
+
+                {isSorting && (
+                  <ResponsiveButton
+                    icon="check"
+                    showLabel
+                    onClick={() => setIsSorting(false)}
+                  >{t`Done`}</ResponsiveButton>
+                )}
+              </Group>
+
+              {!hasFields && (
+                <EmptyState message={t`This table has no fields`} />
               )}
 
-              {!isSorting && hasFields && (
-                <ResponsiveButton
-                  icon="sort_arrows"
-                  showLabel
-                  onClick={() => setIsSorting(true)}
-                >{t`Sorting`}</ResponsiveButton>
+              {hasFields && (
+                <>
+                  <Box
+                    style={{
+                      display: isSorting ? "block" : "none",
+                    }}
+                    aria-hidden={!isSorting}
+                  >
+                    <TableSortableFieldList
+                      activeFieldId={activeFieldId}
+                      table={table}
+                      onChange={handleCustomFieldOrderChange}
+                    />
+                  </Box>
+
+                  <Box
+                    style={{
+                      display: isSorting ? "none" : "block",
+                    }}
+                    aria-hidden={isSorting}
+                  >
+                    <TableFieldList
+                      table={table}
+                      activeFieldId={activeFieldId}
+                      getFieldHref={getFieldHref}
+                    />
+                  </Box>
+                </>
               )}
+            </Stack>
+          </Tabs.Panel>
 
-              {isSorting && (
-                <FieldOrderPicker
-                  value={table.field_order}
-                  onChange={handleFieldOrderTypeChange}
-                />
-              )}
-
-              {isSorting && (
-                <ResponsiveButton
-                  icon="check"
-                  showLabel
-                  onClick={() => setIsSorting(false)}
-                >{t`Done`}</ResponsiveButton>
-              )}
-            </Group>
-          </Group>
-
-          {!hasFields && <EmptyState message={t`This table has no fields`} />}
-
-          {/* NOTE: We're using here CSS display property to avoid scroll jump when toggling sorting mode. */}
-          {hasFields && (
-            <>
-              <Box
-                style={{
-                  display: isSorting ? "block" : "none",
-                }}
-                aria-hidden={!isSorting}
-              >
-                <TableSortableFieldList
-                  activeFieldId={activeFieldId}
-                  table={table}
-                  onChange={handleCustomFieldOrderChange}
-                />
-              </Box>
-
-              <Box
-                style={{
-                  display: isSorting ? "none" : "block",
-                }}
-                aria-hidden={isSorting}
-              >
-                <TableFieldList
-                  table={table}
-                  activeFieldId={activeFieldId}
-                  getFieldHref={getFieldHref}
-                />
-              </Box>
-            </>
-          )}
-        </Stack>
+          <Tabs.Panel value="segments">
+            <SegmentList segments={table.segments ?? []} tableId={table.id} />
+          </Tabs.Panel>
+        </Tabs>
       </Box>
       <CreateLibraryModal
         title={t`First, let's create your Library`}

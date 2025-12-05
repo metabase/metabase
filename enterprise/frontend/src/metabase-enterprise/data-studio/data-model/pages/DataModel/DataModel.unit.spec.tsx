@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Route } from "react-router";
+import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -38,6 +38,7 @@ import {
   createMockField,
   createMockFieldDimension,
   createMockFieldValues,
+  createMockSegment,
   createMockTable,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
@@ -65,6 +66,7 @@ const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
   schemaName: undefined,
   tableId: undefined,
+  tab: "field",
   fieldId: undefined,
 };
 
@@ -167,6 +169,37 @@ const JSON_DB = createMockDatabase({
   features: ["nested-field-columns"],
 });
 
+const TEST_SEGMENT_1 = createMockSegment({
+  id: 1,
+  name: "High Value Orders",
+  description: "Orders with total over 100",
+  table_id: ORDERS_TABLE.id,
+  definition_description: "Filtered by Total is greater than 100",
+});
+
+const TEST_SEGMENT_2 = createMockSegment({
+  id: 2,
+  name: "Recent Orders",
+  description: "Orders from the last 30 days",
+  table_id: ORDERS_TABLE.id,
+  definition_description: "Filtered by Created At is in the previous 30 days",
+});
+
+const ORDERS_TABLE_WITH_SEGMENTS = createOrdersTable({
+  fields: [
+    ORDERS_ID_FIELD,
+    ORDERS_PRODUCT_ID_FIELD,
+    ORDERS_USER_ID_FIELD,
+    ORDERS_DISCOUNT_FIELD,
+    ORDERS_QUANTITY_FIELD,
+  ],
+  segments: [TEST_SEGMENT_1, TEST_SEGMENT_2],
+});
+
+const SAMPLE_DB_WITH_SEGMENTS = createSampleDatabase({
+  tables: [ORDERS_TABLE_WITH_SEGMENTS, PRODUCTS_TABLE],
+});
+
 interface SetupOpts {
   databases?: Database[];
   fieldValues?: GetFieldValuesResponse[];
@@ -229,15 +262,20 @@ async function setup({
           path="database/:databaseId/schema/:schemaId"
           component={DataModel}
         />
+        <Redirect
+          from="database/:databaseId/schema/:schemaId/table/:tableId"
+          to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+        />
         <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId"
+          path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
           component={DataModel}
         />
         <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+          path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
           component={DataModel}
         />
       </Route>
+      <Route path="data-studio/modeling/segments/new" />
     </>,
     {
       withRouter: true,
@@ -744,6 +782,7 @@ describe("DataModel", () => {
           databaseId: JSON_DB.id,
           schemaName: JSON_TABLE.schema,
           tableId: JSON_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(JSON_FIELD_ROOT),
         },
       });
@@ -757,6 +796,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
         },
       });
@@ -770,6 +810,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
         },
       });
@@ -789,6 +830,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
         },
       });
@@ -817,6 +859,7 @@ describe("DataModel", () => {
           databaseId: database.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_PRODUCT_ID_FIELD),
         },
         unauthorizedField: PRODUCTS_ID_FIELD,
@@ -843,6 +886,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
         },
       });
@@ -869,6 +913,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
         },
         hasFieldValuesAccess: false,
@@ -892,6 +937,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
         },
       });
@@ -917,6 +963,7 @@ describe("DataModel", () => {
           databaseId: SAMPLE_DB.id,
           schemaName: ORDERS_TABLE.schema,
           tableId: ORDERS_TABLE.id,
+          tab: "field",
           fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
         },
       });
@@ -934,6 +981,70 @@ describe("DataModel", () => {
           fetchMock.callHistory.called(path, { method: "POST" }),
         ).toBeTruthy();
       });
+    });
+  });
+
+  describe("segments tab", () => {
+    it("should show empty state when no segments exist", async () => {
+      await setup();
+
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
+
+      expect(screen.getByText("No segments yet")).toBeInTheDocument();
+      expect(
+        screen.getByText("Create a segment to filter rows in this table."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /New segment/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("should display segments when they exist", async () => {
+      await setup({ databases: [SAMPLE_DB_WITH_SEGMENTS] });
+
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE_WITH_SEGMENTS.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
+
+      expect(
+        screen.getByRole("listitem", { name: TEST_SEGMENT_1.name }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("listitem", { name: TEST_SEGMENT_2.name }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(TEST_SEGMENT_1.definition_description),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(TEST_SEGMENT_2.definition_description),
+      ).toBeInTheDocument();
+    });
+
+    it("should navigate to new segment page when clicking New segment", async () => {
+      const { history } = await setup();
+
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
+      await userEvent.click(screen.getByRole("link", { name: /New segment/i }));
+
+      expect(history?.getCurrentLocation().pathname).toBe(
+        "/data-studio/modeling/segments/new",
+      );
+      expect(history?.getCurrentLocation().search).toContain(
+        `tableId=${ORDERS_TABLE.id}`,
+      );
     });
   });
 });
