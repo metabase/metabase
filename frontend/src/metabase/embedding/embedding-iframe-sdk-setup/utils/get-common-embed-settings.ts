@@ -86,7 +86,7 @@ export const getCommonEmbedSettings = ({
   isGuestEmbedsEnabled: boolean;
 }) => {
   const isSimpleEmbedFeatureAvailable =
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
   if (isSimpleEmbedFeatureAvailable) {
     return isGuestEmbedsEnabled && state?.isGuest

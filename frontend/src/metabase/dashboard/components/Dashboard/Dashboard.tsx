@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK } from "embedding-sdk-bundle/components/public/subscriptions";
 import { DashboardArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/DashboardArchivedEntityBanner";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
@@ -145,6 +146,7 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   ParametersList: typeof ParametersList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
+  SubscriptionsButton: typeof PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton;
   InfoButton: typeof DashboardInfoButton;
   RefreshPeriod: typeof RefreshWidget;
 };
@@ -157,6 +159,8 @@ DashboardComponent.Tabs = DashboardTabs;
 DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
+DashboardComponent.SubscriptionsButton =
+  PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
 DashboardComponent.RefreshPeriod = RefreshWidget;
 

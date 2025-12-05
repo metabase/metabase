@@ -208,7 +208,7 @@
                 [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
    :requires   [[mage.quick-test-runner :as qtr]] 
    :task       (task! (qtr/go parsed))}
-  
+
   affected-modules
   {:doc      "Which backend modules have changes?"
    :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]
@@ -261,6 +261,20 @@
                 [:string {:name "file-path" :description "file path"}]]
    :requires [[mage.merge-yaml-migrations]]
    :task (task! (mage.merge-yaml-migrations/-main parsed))}
+  
+  -play
+  {:doc        "Play sounds from mage.sound"
+   :examples   [["./bin/mage -play success" "play success sound"] ["./bin/mage -play s" "play success sound"]
+                ["./bin/mage -play error" "play error sound"]     ["./bin/mage -play e" "play error sound"]
+                ["./bin/mage -play ping" "play ping sound"]       ["./bin/mage -play p" "play ping sound"]
+                ["./bin/mage -play warning" "play warning sound"] ["./bin/mage -play w" "play warning sound"]]
+   :requires   [[mage.sound :as sound]]
+   :arg-schema [:tuple [:enum "s" "success" "e" "error" "p" "ping" "w" "warning"]]
+   :task       (task! (case (first (:arguments parsed))
+                        ("s" "success") (sound/success)
+                        ("e" "error")   (sound/error)
+                        ("p" "ping")    (sound/ping)
+                        ("w" "warning") (sound/warning)))}
   
   -token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
