@@ -11,59 +11,46 @@
    [toucan2.core :as t2]))
 
 (deftest published-table-test
-  (mt/with-premium-features #{:data-studio}
-    (testing "Published tables grant create-queries via collection permissions"
-      (t2/with-transaction [_conn nil {:rollback-only true}]
-        ;; Create a test user that only belongs to all-users group (no extra permissions)
-        (mt/with-temp [:model/User       {user-id :id} {:email "published-table-test@example.com"}
-                       :model/Collection collection {}]
-          ;; Publish the venues table into this collection
-          (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
-          (let [mbql-query (mt/mbql-query venues)
-                all-users  (perms/all-users-group)]
-            ;; Grant collection read permission
-            (perms/grant-collection-read-permissions! all-users (u/the-id collection))
-            ;; Remove data permissions - set create-queries to :no so only published table grants it
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
-            ;; Explicitly set view-data to unrestricted for the table
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
-            (testing "WITH collection permission and view-data, query should be allowed"
-              (perms/disable-perms-cache
-                (binding [*current-user-id*              user-id
-                          *current-user-permissions-set* (delay (perms/user-permissions-set user-id))
-                          *is-superuser?*                false]
-                  (is (query-perms/can-run-query? mbql-query)))))
-            ;; Block view-data - query should fail because published tables don't grant view-data
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :blocked)
-            (testing "WITH collection permission but view-data blocked, query should be blocked"
-              (perms/disable-perms-cache
-                (binding [*current-user-id*              user-id
-                          *current-user-permissions-set* (delay (perms/user-permissions-set user-id))
-                          *is-superuser?*                false]
-                  (is (not (query-perms/can-run-query? mbql-query))
-                      "Published tables do not bypass view-data restrictions (sandboxing)"))))))))
-    (testing "Published tables require collection permissions for create-queries"
-      (t2/with-transaction [_conn nil {:rollback-only true}]
-        ;; Create a test user that only belongs to all-users group (no extra permissions)
-        (mt/with-temp [:model/User       {user-id :id} {:email "published-table-test2@example.com"}
-                       :model/Collection collection {}]
-          ;; Publish the venues table into this collection but DON'T grant collection permission
-          (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
-          (let [mbql-query (mt/mbql-query venues)
-                all-users  (perms/all-users-group)]
-            ;; Explicitly REVOKE collection permission (new collections inherit from parent)
-            (perms/revoke-collection-permissions! all-users collection)
-            ;; Remove data permissions - set create-queries to :no
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
-            ;; Set view-data to unrestricted but don't grant collection permission
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
-            ;; Don't grant collection permission - user should not get create-queries
-            (perms/disable-perms-cache
+  (testing "Published tables grant query access via collection permissions only with data-studio enabled"
+    (doseq [features             [#{} #{:data-studio}]
+            collection-readable? [false true]
+            view-data            [:unrestricted :blocked]]
+      (mt/with-premium-features features
+        (let [mbql-query (mt/mbql-query venues)]
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                           :model/User {user-id :id} {}
+                           :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
+                           :model/Collection {collection-id :id} {}]
+              ;; Ensure All Users group has no create-queries permission and matching view-data
+              ;; (user is automatically in this group)
+              (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/view-data      view-data)
+              (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/create-queries :no)
+              (perms/set-table-permission!    (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+              ;; Set up permissions on custom group: user cannot create queries, view-data varies
+              (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
+              (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+              ;; Publish the table and grant/revoke collection read permissions
+              (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
+              (if collection-readable?
+                (perms/grant-collection-read-permissions! group-id collection-id)
+                (do
+                  ;; Revoke from both groups since user is in All Users automatically
+                  (perms/revoke-collection-permissions! group-id collection-id)
+                  (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
               (binding [*current-user-id*              user-id
-                        *current-user-permissions-set* (delay (perms/user-permissions-set user-id))
-                        *is-superuser?*                false]
-                (is (not (query-perms/can-run-query? mbql-query))
-                    "Without collection permission, published table should not be queryable")))))))))
+                        *current-user-permissions-set* (atom (if collection-readable?
+                                                               #{(perms/collection-read-path collection-id)}
+                                                               #{}))]
+                (testing (str "with features " (pr-str features)
+                              ", collection-readable? " collection-readable?
+                              ", view-data " view-data)
+                  (perms/disable-perms-cache
+                    ;; Query is only runnable when: data-studio enabled AND collection readable AND view-data unrestricted
+                    (is (= (and (contains? features :data-studio)
+                                collection-readable?
+                                (= view-data :unrestricted))
+                           (query-perms/can-run-query? mbql-query)))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
   (mt/with-premium-features #{:data-studio}
