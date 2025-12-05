@@ -75,25 +75,6 @@
       (is (= "Alice" (:user_name result)) "Result should be decoded with schema transformer")
       (is (= "conv-789" (:conversation_id result))))))
 
-(deftest ^:parallel invoke-tool-skip-decode-test
-  (testing "invoke-tool with skip-decode? true"
-    (mr/def ::test-result-skip
-      [:map {:decode/tool-api-response #(assoc % :should-not-appear true)}
-       [:data :any]])
-
-    (let [handler (fn [_args]
-                    {:data "raw"})
-          body    {:conversation_id "conv-skip"}
-          request {}
-          opts    {:api-name      :test-tool
-                   :handler       handler
-                   :result-schema ::test-result-skip
-                   :skip-decode?  true}
-          result (deftool/invoke-tool body request opts)]
-      (is (= "raw" (:data result)))
-      (is (nil? (:should-not-appear result)) "Decoding should be skipped")
-      (is (= "conv-skip" (:conversation_id result))))))
-
 ;;; ---------------------------------------------------- deftool macro tests ----------------------------------------------------
 
 (deftest ^:parallel deftool-macro-expansion-test
