@@ -69,13 +69,29 @@ get_shell_rc_file() {
     local shell_name=$1
     case "$shell_name" in
         bash)
-            # Prefer .bashrc, but use .bash_profile on macOS if .bashrc doesn't exist
-            if [ -f "$HOME/.bashrc" ]; then
-                echo "$HOME/.bashrc"
-            elif [ -f "$HOME/.bash_profile" ]; then
-                echo "$HOME/.bash_profile"
+            # macOS Terminal.app opens login shells, which source .bash_profile (not .bashrc).
+            # Linux terminals typically open non-login shells, which source .bashrc.
+            # We need to pick the right file based on OS and what already exists.
+            if [ "$(uname -s)" = "Darwin" ]; then
+                # macOS: prefer .bash_profile for login shells
+                if [ -f "$HOME/.bash_profile" ]; then
+                    echo "$HOME/.bash_profile"
+                elif [ -f "$HOME/.bashrc" ]; then
+                    # User has .bashrc but no .bash_profile - they likely source it manually
+                    echo "$HOME/.bashrc"
+                else
+                    # Fresh setup: use .bash_profile since that's what macOS sources
+                    echo "$HOME/.bash_profile"
+                fi
             else
-                echo "$HOME/.bashrc"
+                # Linux: prefer .bashrc for interactive non-login shells
+                if [ -f "$HOME/.bashrc" ]; then
+                    echo "$HOME/.bashrc"
+                elif [ -f "$HOME/.bash_profile" ]; then
+                    echo "$HOME/.bash_profile"
+                else
+                    echo "$HOME/.bashrc"
+                fi
             fi
             ;;
         zsh)  echo "$HOME/.zshrc" ;;
@@ -141,7 +157,8 @@ update_mise() {
 is_homebrew_mise() {
     local mise_path
     mise_path=$(command -v mise 2>/dev/null) || return 1
-    [[ "$mise_path" == *homebrew* || "$mise_path" == /opt/homebrew/* ]]
+    # Check for Homebrew paths on both Apple Silicon (/opt/homebrew) and Intel Macs (/usr/local)
+    [[ "$mise_path" == *homebrew* || "$mise_path" == *Cellar* || "$mise_path" == /opt/homebrew/* || "$mise_path" == /usr/local/bin/mise ]]
 }
 
 migrate_from_homebrew() {
