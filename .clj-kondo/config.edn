@@ -229,9 +229,6 @@
   {:exclude
    [(build.uberjar/with-duration-ms)
     (cljs.test/is [=? malli=])
-    (clojure.core.logic/fresh)
-    (clojure.core.logic/matcha)
-    (clojure.core.logic/run)
     (clojure.test/is [=? malli= qv=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
@@ -410,7 +407,6 @@
  :lint-as
  {cljs.cache/defcache                                                                   clojure.core/deftype
   clojure.core.cache/defcache                                                           clojure.core/deftype
-  clojure.core.logic/defne                                                              clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
