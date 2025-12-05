@@ -594,16 +594,33 @@
                     :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
 
+(defn- wrapped-semantic-search-query
+  "Wraps semantic-only search to match hybrid-search-query's output structure.
+  Returns semantic search results with keyword_rank set to NULL so the same
+  scorers can be used regardless of search mode."
+  [index embedding search-context]
+  {:with   [[:semantic_results (semantic-search-query index embedding search-context)]]
+   :select (into common-search-columns
+                 [[:semantic_rank :semantic_rank]
+                  [[:inline 0] :keyword_rank]])
+   :from   [[:semantic_results]]
+   :limit  (semantic-settings/semantic-search-results-limit)})
+
 (defn- scored-search-query
-  "Build a hybrid search query with additional `scorers`"
+  "Build a search query with additional `scorers`.
+   When hybrid? is true, uses hybrid search (vector + keyword with RRF fusion).
+   When hybrid? is false, uses semantic-only search (vector search only)."
   [index embedding search-context scorers]
   ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
   ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]). Likewise, the :search_index alias
   ;; allows us to re-use scoring expressions between the appdb and semantic backends without adjusting column names.
-  (let [hybrid-query (hybrid-search-query index embedding search-context)
-        full-query {:with [[:hybrid_results hybrid-query]]
+  (let [hybrid? (:semantic-hybrid-mode? search-context true)
+        base-query (if hybrid?
+                     (hybrid-search-query index embedding search-context)
+                     (wrapped-semantic-search-query index embedding search-context))
+        full-query {:with [[:base_results base-query]]
                     :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
-                    :from [[:hybrid_results :search_index]]
+                    :from [[:base_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
