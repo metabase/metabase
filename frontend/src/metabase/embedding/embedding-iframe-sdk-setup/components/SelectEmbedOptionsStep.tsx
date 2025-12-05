@@ -284,7 +284,7 @@ const BehaviorSection = () => {
                       }
                     />
                     {!hasEmailSetup && !disabledInGuestEmbedding && (
-                      <HoverCard closeDelay={99999999}>
+                      <HoverCard>
                         <HoverCard.Target>
                           <Icon
                             name="info"
