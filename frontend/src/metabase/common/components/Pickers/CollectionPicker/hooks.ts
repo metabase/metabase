@@ -8,7 +8,10 @@ import {
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
+import {
+  PERSONAL_COLLECTIONS,
+  TENANT_SPECIFIC_COLLECTIONS,
+} from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -24,6 +27,16 @@ import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
 const personalCollectionsRoot: CollectionPickerItem = {
   ...PERSONAL_COLLECTIONS,
+  can_write: false,
+  model: "collection",
+  location: "/",
+  description: "",
+  here: ["collection"],
+  below: ["collection"],
+};
+
+const tenantSpecificCollectionsRoot: CollectionPickerItem = {
+  ...TENANT_SPECIFIC_COLLECTIONS,
   can_write: false,
   model: "collection",
   location: "/",
@@ -192,6 +205,11 @@ export const useRootCollectionPickerItems = (
         location: "/",
         type: "tenant-specific-root-collection",
       });
+    }
+
+    // Show all tenant-specific collections for admins
+    if (shouldShowTenantCollections && isAdmin) {
+      collectionItems.push(tenantSpecificCollectionsRoot);
     }
 
     return collectionItems;
