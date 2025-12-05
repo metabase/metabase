@@ -4811,33 +4811,6 @@
                                        (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
 
-(deftest dashboard-query-metadata-published-table-collection-perms-test
-  (testing "GET /api/dashboard/:id/query_metadata should include published tables accessible via collection permissions"
-    (mt/with-temp [:model/Collection table-coll {}
-                   :model/Database db {}
-                   :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
-                   :model/Field _field {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
-                   :model/Collection card-coll {}
-                   :model/Card card {:collection_id (u/the-id card-coll)
-                                     :dataset_query {:database (u/the-id db)
-                                                     :type :query
-                                                     :query {:source-table (u/the-id table)}}}
-                   :model/Dashboard dash {:collection_id (u/the-id card-coll)}
-                   :model/DashboardCard _ {:dashboard_id (u/the-id dash) :card_id (u/the-id card)}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! group-id db :perms/view-data :blocked)
-        (data-perms/set-database-permission! group-id db :perms/create-queries :no)
-        (perms/grant-collection-read-permissions! group-id (u/the-id table-coll))
-        (perms/grant-collection-read-permissions! group-id (u/the-id card-coll))
-        (testing "User with collection read (no data perms) can access dashboard query_metadata with published table"
-          (let [metadata (mt/user-http-request :rasta :get 200 (str "dashboard/" (u/the-id dash) "/query_metadata"))]
-            (is (map? metadata))
-            (is (seq (:tables metadata)) "Should include tables")
-            (is (some #(= (u/the-id table) (:id %)) (:tables metadata))
-                "Should include the published table")))))))
-
 (deftest dashboard-field-params-field-names-test
   (mt/with-temp
     [:model/Dashboard     dash      {:parameters [{:name "Category Name"

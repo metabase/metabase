@@ -12,7 +12,7 @@ export type SdkIframeEmbedSetupModalInitialState = {
 };
 
 const getDefaultPluginEmbeddingIframeSdkSetup = () => ({
-  isFeatureEnabled: () => false,
+  isEnabled: () => false,
 });
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP =

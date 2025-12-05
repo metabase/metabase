@@ -668,6 +668,14 @@ export const getColors = (settings?: ColorSettings) =>
     ...settings,
   }) as Record<keyof typeof colorConfig, string>;
 
+export const getDarkColors = (settings?: ColorSettings) =>
+  ({
+    ...Object.fromEntries(
+      Object.entries(getColorConfig(settings)).map(([k, v]) => [k, v.dark]),
+    ),
+    ...settings,
+  }) as Record<keyof typeof colorConfig, string>;
+
 export const colors = getColors(whitelabelColors);
 
 export const mutateColors = (settings: ColorSettings) => {

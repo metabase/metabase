@@ -6,14 +6,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -322,18 +320,3 @@
                 :perms/create-queries {(mt/id :products) :query-builder}
                 :perms/view-data      {(mt/id :products) :unrestricted}}
                (query-perms/required-perms-for-query query :already-preprocessed? true)))))))
-
-(deftest published-table-oss-no-access-test
-  (testing "In OSS, published tables do NOT grant query access via collection permissions"
-    (mt/with-premium-features #{}
-      (let [mbql-query (mt/mbql-query venues)]
-        (binding [*current-user-id*              (mt/user->id :rasta)
-                  *current-user-permissions-set* (atom #{})]
-          (t2/with-transaction [_conn nil {:rollback-only true}]
-            (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
-            (mt/with-temp [:model/Collection {collection-id :id} {}]
-              (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id})
-              (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
-              (testing "Even WITH collection permission, OSS should NOT allow query access to published tables"
-                (is (not (query-perms/can-run-query? mbql-query))
-                    "Published tables should NOT grant query access in OSS")))))))))

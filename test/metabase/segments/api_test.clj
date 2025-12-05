@@ -20,11 +20,12 @@
 
 (defn- segment-response [segment]
   (-> (into {} segment)
-      (dissoc :id :table_id)
+      (dissoc :id :table_id :dependency_analysis_version)
       (update :creator #(into {} %))
       (update :entity_id some?)
       (update :created_at some?)
-      (update :updated_at some?)))
+      (update :updated_at some?)
+      (update :definition map?)))
 
 (defn- mbql4-segment-definition
   "Create a legacy MBQL4 segment definition"
@@ -108,7 +109,7 @@
                                         :table_id                (mt/id :users)
                                         :definition              (definition-fn (mt/id :users :id) 20)})
                  segment-response
-                 (update :definition map?)))))))
+                 ))))))
 
 ;; ## PUT /api/segment
 
@@ -169,8 +170,7 @@
                        :table_id                (mt/id :users)
                        :revision_message        "I got me some revisions"
                        :definition              (eq-fn (mt/id :users :name) "cans")})
-                     segment-response
-                     (update :definition map?)))))))))
+                     segment-response))))))))
 
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
@@ -239,8 +239,7 @@
                  :archived                true
                  :definition true}
                 (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
-                    segment-response
-                    (update :definition map?))))))))
+                    segment-response)))))))
 
 ;; ## GET /api/segment/:id
 
@@ -277,7 +276,7 @@
                    (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
                        segment-response
                        (dissoc :query_description)
-                       (update :definition map?))))))))))
+                       )))))))))
 
 (deftest list-test
   (testing "GET /api/segment/"

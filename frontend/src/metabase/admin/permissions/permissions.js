@@ -1,6 +1,7 @@
-import { assocIn, merge } from "icepick";
+import { assocIn, getIn, merge } from "icepick";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import { isBoolean } from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
@@ -437,19 +438,36 @@ const collectionPermissions = handleActions(
     },
     [UPDATE_COLLECTION_PERMISSION]: {
       next: (state, { payload }) => {
-        const { groupId, collection, value, shouldPropagate } = payload;
-        let newPermissions = assocIn(state, [groupId, collection.id], value);
+        const {
+          collection,
+          groupId,
+          originalPermissionsState,
+          shouldPropagate,
+          value,
+        } = payload;
+        let newPermissionsState = assocIn(
+          state,
+          [groupId, collection.id],
+          value,
+        );
 
-        if (shouldPropagate) {
+        /**
+         * Check if shouldPropagate is explicitly set (true or false) vs unset (null or undefined).
+         * If it's a boolean, we either propagate the new value or restore the original. When not a boolean, we do nothing.
+         */
+        if (isBoolean(shouldPropagate)) {
           for (const descendent of getDecendentCollections(collection)) {
-            newPermissions = assocIn(
-              newPermissions,
+            newPermissionsState = assocIn(
+              newPermissionsState,
               [groupId, descendent.id],
-              value,
+              shouldPropagate
+                ? value
+                : getIn(originalPermissionsState, [groupId, descendent.id]),
             );
           }
         }
-        return newPermissions;
+
+        return newPermissionsState;
       },
     },
     [SAVE_COLLECTION_PERMISSIONS]: {

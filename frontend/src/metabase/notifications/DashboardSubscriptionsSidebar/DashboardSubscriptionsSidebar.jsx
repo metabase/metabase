@@ -1,12 +1,13 @@
 /* eslint "react/prop-types": "error" */
 
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, useMemo } from "react";
 import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Pulses from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
@@ -45,7 +46,7 @@ const EDITING_MODES = {
   ADD_EMAIL: "add-edit-email",
   ADD_SLACK: "add-edit-slack",
   NEW_PULSE: "new-pulse",
-  LIST_PULSES: "list-pulses",
+  LIST_PULSES_OR_NEW_PULSE: "list-pulses-or-new-pulse",
 };
 
 const CHANNEL_TYPES = {
@@ -106,7 +107,7 @@ const mapDispatchToProps = {
 
 class DashboardSubscriptionsSidebarInner extends Component {
   state = {
-    editingMode: EDITING_MODES.LIST_PULSES,
+    editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
     // use this to know where to go "back" to
     returnMode: [],
     isSaving: false,
@@ -128,6 +129,8 @@ class DashboardSubscriptionsSidebarInner extends Component {
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
     params: PropTypes.object,
+    // From Pulses.loadList HOC
+    loading: PropTypes.bool,
   };
 
   componentDidMount() {
@@ -136,7 +139,31 @@ class DashboardSubscriptionsSidebarInner extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { isAdmin } = this.props;
+    const { editingMode } = this.state;
+    const { isAdmin, pulses, loading: isSubscriptionListLoading } = this.props;
+
+    /**
+     * (EMB-976): In SDK/EAJS context we need to avoid showing the NEW_PULSE view (the view that lets users select
+     * between Email and Slack options) because we only allow email subscriptions there.
+     *
+     * And it's guaranteed that email would already be set up in SDK/EAJS context.
+     * Otherwise, we won't show the subscription button to open this sidebar
+     * in the first place.
+     */
+    if (
+      isEmbeddingSdk() &&
+      shouldDisplayNewPulse(editingMode, pulses) &&
+      /**
+       * Ensure we don't prematurely switch to ADD_EMAIL while the pulse list is loading.
+       * When loading completes, shouldDisplayNewPulse() will correctly return false if the list is empty.
+       */
+      !isSubscriptionListLoading
+    ) {
+      this.setState({
+        editingMode: EDITING_MODES.ADD_EMAIL,
+      });
+      this.setPulseWithChannel(CHANNEL_TYPES.EMAIL);
+    }
 
     if (!isAdmin) {
       this.forwardNonAdmins({ prevProps });
@@ -144,7 +171,12 @@ class DashboardSubscriptionsSidebarInner extends Component {
   }
 
   fetchUsers = async () => {
-    this.setState({ users: (await UserApi.list()).data });
+    if (isEmbeddingSdk()) {
+      // We don't need the the list of users in SDK/EAJS context because we will hard code the recipient to the logged in user.
+      this.setState({ users: [] });
+    } else {
+      this.setState({ users: (await UserApi.list()).data });
+    }
   };
 
   forwardNonAdmins = ({ prevProps }) => {
@@ -157,7 +189,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
     if (newPulses?.length > 0 && prevPulses?.length === 0) {
       this.setState(() => {
         return {
-          editingMode: EDITING_MODES.LIST_PULSES,
+          editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
           returnMode: [],
         };
       });
@@ -165,9 +197,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
       return;
     }
 
-    const isEditingModeForwardable =
-      editingMode === EDITING_MODES.NEW_PULSE ||
-      (editingMode === EDITING_MODES.LIST_PULSES && newPulses?.length === 0);
+    const isEditingModeForwardable = shouldDisplayNewPulse(
+      editingMode,
+      newPulses,
+    );
 
     if (isEditingModeForwardable) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
@@ -270,7 +303,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
       this.setState({ isSaving: true });
       await this.props.updateEditingPulse(cleanedPulse);
       await this.props.saveEditingPulse();
-      this.setState({ editingMode: EDITING_MODES.LIST_PULSES, returnMode: [] });
+      this.setState({
+        editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
+        returnMode: [],
+      });
     } finally {
       this.setState({ isSaving: false });
     }
@@ -288,18 +324,32 @@ class DashboardSubscriptionsSidebarInner extends Component {
   editPulse = (pulse, channelType) => {
     this.setPulse(pulse);
     this.setState(({ editingMode, returnMode }) => {
+      const editingModeMap = {
+        [CHANNEL_TYPES.EMAIL]: EDITING_MODES.ADD_EMAIL,
+        [CHANNEL_TYPES.SLACK]: EDITING_MODES.ADD_SLACK,
+      };
       return {
-        editingMode: "add-edit-" + channelType,
+        editingMode: editingModeMap[channelType],
         returnMode: returnMode.concat([
-          editingMode || EDITING_MODES.LIST_PULSES,
+          editingMode || EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
         ]),
       };
     });
   };
 
   handleArchive = async () => {
-    await this.props.setPulseArchived(this.props.pulse, true);
-    this.setState({ editingMode: EDITING_MODES.LIST_PULSES, returnMode: [] });
+    const { pulse, pulses, setPulseArchived, onCancel } = this.props;
+
+    await setPulseArchived(pulse, true);
+
+    if (isEmbeddingSdk() && pulses.length === 1) {
+      onCancel();
+    } else {
+      this.setState({
+        editingMode: EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
+        returnMode: [],
+      });
+    }
   };
 
   // Because you can navigate down the sidebar, we need to wrap
@@ -333,7 +383,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (editingMode === EDITING_MODES.LIST_PULSES && pulses.length > 0) {
+    if (
+      editingMode === EDITING_MODES.LIST_PULSES_OR_NEW_PULSE &&
+      pulses.length > 0
+    ) {
       return (
         <PulsesListSidebar
           pulses={pulses}
@@ -364,21 +417,16 @@ class DashboardSubscriptionsSidebarInner extends Component {
       const channelSpec = formInput.channels.email;
 
       return (
-        <AddEditEmailSidebar
+        <AddEditEmailSidebarWithHooks
+          index={index}
           pulse={pulse}
           formInput={formInput}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
           onCancel={this.onCancel}
-          onChannelPropertyChange={_.partial(
-            this.onChannelPropertyChange,
-            index,
-          )}
-          onChannelScheduleChange={_.partial(
-            this.onChannelScheduleChange,
-            index,
-          )}
+          onChannelPropertyChange={this.onChannelPropertyChange}
+          onChannelScheduleChange={this.onChannelScheduleChange}
           testPulse={testPulse}
           toggleSkipIfEmpty={this.toggleSkipIfEmpty}
           setPulse={this.setPulse}
@@ -433,7 +481,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (editingMode === EDITING_MODES.NEW_PULSE || pulses.length === 0) {
+    if (shouldDisplayNewPulse(editingMode, pulses)) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
       const slackConfigured = formInput?.channels?.slack?.configured || false;
 
@@ -470,6 +518,72 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
     return <Sidebar />;
   }
+}
+
+function AddEditEmailSidebarWithHooks({
+  /* eslint-disable react/prop-types */
+  index,
+  pulse,
+  formInput,
+  channel,
+  channelSpec,
+  handleSave,
+  onCancel,
+  onChannelPropertyChange,
+  onChannelScheduleChange,
+  testPulse,
+  toggleSkipIfEmpty,
+  setPulse,
+  users,
+  handleArchive,
+  dashboard,
+  setPulseParameters,
+  /* eslint-enable react/prop-types */
+}) {
+  /**
+   * Memoized because it's used in `AddEditEmailSidebar.tsx` as a dependency
+   */
+  const handleChannelPropertyChange = useMemo(
+    () => _.partial(onChannelPropertyChange, index),
+    [index, onChannelPropertyChange],
+  );
+
+  const handleChannelScheduleChange = _.partial(onChannelScheduleChange, index);
+
+  return (
+    <AddEditEmailSidebar
+      pulse={pulse}
+      formInput={formInput}
+      channel={channel}
+      channelSpec={channelSpec}
+      handleSave={handleSave}
+      onCancel={onCancel}
+      onChannelPropertyChange={handleChannelPropertyChange}
+      onChannelScheduleChange={handleChannelScheduleChange}
+      testPulse={testPulse}
+      toggleSkipIfEmpty={toggleSkipIfEmpty}
+      setPulse={setPulse}
+      users={users}
+      handleArchive={handleArchive}
+      dashboard={dashboard}
+      setPulseParameters={setPulseParameters}
+    />
+  );
+}
+
+function shouldDisplayNewPulse(editingMode, pulses) {
+  if (editingMode === EDITING_MODES.NEW_PULSE) {
+    return true;
+  }
+
+  if (
+    editingMode === EDITING_MODES.LIST_PULSES_OR_NEW_PULSE &&
+    pulses?.length === 0
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 const DashboardSubscriptionsSidebarConnected = _.compose(

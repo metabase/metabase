@@ -2,40 +2,29 @@
 
 set -euo pipefail
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
+# Load shared utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/utils/all.sh"
 
-# Print functions
-print_header() {
-    echo -e "\n${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BOLD}${BLUE}  $1${NC}"
-    echo -e "${BOLD}${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
-}
-
-print_section() {
-    echo -e "\n${BOLD}$1${NC}"
-    echo -e "${BOLD}$(printf '─%.0s' {1..63})${NC}"
-}
-
+# Script-specific print functions
 print_found() {
-    echo -e "  ${GREEN}✓${NC} $1"
+    print_success "$1"
 }
 
 print_not_found() {
-    echo -e "  ${RED}✗${NC} $1"
+    print_error "$1"
 }
 
-print_warning() {
-    echo -e "  ${YELLOW}⚠️${NC} $1"
-}
-
-print_info() {
-    echo -e "  ${BLUE}ℹ${NC} $1"
+print_optional_tool() {
+    local cmd=$1
+    local name=$2
+    local url=$3
+    if command -v "$cmd" &> /dev/null; then
+        echo -e "    ${GREEN}✓${NC} $name"
+    else
+        echo -e "    ${RED}✗${NC} $name"
+    fi
+    echo -e "      ${DIM}$url${NC}"
 }
 
 # Detection functions
@@ -224,9 +213,9 @@ main() {
             print_warning "Multiple version managers detected!"
             echo "     Having multiple version managers can cause conflicts where different"
             echo "     tools compete to manage the same runtime versions. This may lead to:"
-            echo "       • Unexpected version switches"
-            echo "       • PATH conflicts"
-            echo "       • Shell initialization slowdowns"
+            echo "       - Unexpected version switches"
+            echo "       - PATH conflicts"
+            echo "       - Shell initialization slowdowns"
             echo ""
             echo -e "  💡 ${BOLD}Recommendation:${NC} Use only one version manager (we recommend mise)."
         fi
@@ -241,13 +230,13 @@ main() {
     if [ -n "$node_version" ]; then
         node_major=$(echo "$node_version" | sed 's/v//' | cut -d. -f1)
         if [ "$node_major" -ge 22 ]; then
-            print_found "Node.js $node_version (meets requirement: ≥22)"
+            print_found "Node.js $node_version (meets requirement: >= 22)"
         else
-            print_warning "Node.js $node_version (required: ≥22)"
+            print_warning "Node.js $node_version (required: >= 22)"
             requirements_met=false
         fi
     else
-        print_not_found "Node.js (required: ≥22)"
+        print_not_found "Node.js (required: >= 22)"
         requirements_met=false
     fi
 
@@ -334,44 +323,32 @@ main() {
     required_clojure_version=$(get_required_clojure_version)
 
     echo -e "  ${BOLD}Required Tools:${NC}"
-    echo "    • Node.js ≥22 (currently specified in .nvmrc)"
-    echo "    • Yarn Classic 1.x (NOT Yarn 2+, NO Corepack)"
-    echo "    • Java 21 with Eclipse Temurin distribution (for Clojure backend)"
+    echo "    - Node.js >= 22 (currently specified in .nvmrc)"
+    echo "    - Yarn Classic 1.x (NOT Yarn 2+, NO Corepack)"
+    echo "    - Java 21 with Eclipse Temurin distribution (for Clojure backend)"
     if [ -n "$required_clojure_version" ]; then
-        echo "    • Clojure CLI (for Clojure $required_clojure_version specified in deps.edn)"
+        echo "    - Clojure CLI (for Clojure $required_clojure_version specified in deps.edn)"
     else
-        echo "    • Clojure CLI"
+        echo "    - Clojure CLI"
     fi
-    echo "    • Babashka (for mage task automation)"
+    echo "    - Babashka (for mage task automation)"
     echo ""
     echo -e "  ${BOLD}Optional Tools (quality of life):${NC}"
-    if command -v bat &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
-    else
-        echo -e "    ${RED}✗${NC} bat - A cat clone with syntax highlighting (https://github.com/sharkdp/bat)"
-    fi
-    if command -v fzf &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
-    else
-        echo -e "    ${RED}✗${NC} fzf - A fuzzy finder for the terminal (https://github.com/junegunn/fzf)"
-    fi
-    if command -v fd &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} fd - A fast alternative to find (https://github.com/sharkdp/fd)"
-    else
-        echo -e "    ${RED}✗${NC} fd - A fast alternative to find (https://github.com/sharkdp/fd)"
-    fi
-    if command -v rg &> /dev/null; then
-        echo -e "    ${GREEN}✓${NC} ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
-    else
-        echo -e "    ${RED}✗${NC} ripgrep - A fast alternative to grep (https://github.com/BurntSushi/ripgrep)"
-    fi
+    print_optional_tool bat "bat - A cat clone with syntax highlighting" "https://github.com/sharkdp/bat"
+    print_optional_tool fzf "fzf - A fuzzy finder for the terminal" "https://github.com/junegunn/fzf"
+    print_optional_tool fd "fd - A fast alternative to find" "https://github.com/sharkdp/fd"
+    print_optional_tool rg "ripgrep - A fast alternative to grep" "https://github.com/BurntSushi/ripgrep"
+    print_optional_tool gh "gh - GitHub CLI" "https://cli.github.com/"
+    print_optional_tool op "op - 1Password CLI" "https://1password.com/downloads/command-line/"
+    print_optional_tool aws "aws - AWS CLI" "https://aws.amazon.com/cli/"
+    print_optional_tool orb "OrbStack - Fast Docker & Linux on macOS" "https://orbstack.dev/"
 
     print_section "Recommended Setup"
 
     echo -e "  ${BOLD}${GREEN}We recommend using 'mise'${NC} for version management because:"
-    echo "    • Manages Node.js, Java, and other tools in one place"
-    echo "    • Automatically switches versions per-project"
-    echo "    • Cross-platform and actively maintained"
+    echo "    - Manages Node.js, Java, and other tools in one place"
+    echo "    - Automatically switches versions per-project"
+    echo "    - Cross-platform and actively maintained"
     echo ""
     echo "    Learn more: https://mise.jdx.dev/getting-started.html"
 

@@ -149,6 +149,8 @@ export type {
 } from "./types";
 
 // Export a single reinitialize function that calls all individual reinitialize functions
+import { reinitialize as reinitializeDashboardSubscriptionsSdk } from "../../embedding-sdk-bundle/components/public/subscriptions";
+
 import { reinitialize as reinitializeAi } from "./oss/ai";
 import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
@@ -188,6 +190,8 @@ import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
  * so reinitializing them all ensures that dependencies are correctly set up.
  */
 export function reinitialize() {
+  reinitializeDashboardSubscriptionsSdk();
+
   reinitializeAi();
   reinitializeApi();
   reinitializeAudit();

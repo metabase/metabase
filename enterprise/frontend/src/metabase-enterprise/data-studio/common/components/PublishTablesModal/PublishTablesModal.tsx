@@ -25,6 +25,7 @@ import {
   useGetTableSelectionInfoQuery,
   usePublishTablesMutation,
 } from "metabase-enterprise/api";
+import { trackDataStudioTablePublished } from "metabase-enterprise/data-studio/analytics";
 import type {
   BulkTableInfo,
   DatabaseId,
@@ -139,6 +140,10 @@ function ModalBody({
     } else {
       sendSuccessToast(t`Published`);
     }
+
+    trackDataStudioTablePublished(
+      selected_table != null ? selected_table.id : null,
+    );
 
     onPublish();
   };
