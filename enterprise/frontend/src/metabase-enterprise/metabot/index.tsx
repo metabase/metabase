@@ -68,6 +68,9 @@ export function initializePlugin() {
     PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
     PLUGIN_METABOT.MetabotDataStudioButton = MetabotDataStudioButton;
     PLUGIN_METABOT.MetabotDataStudioSidebar = MetabotDataStudioSidebar;
+    PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
+      useLazyMetabotGenerateContentQuery;
+    PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
     PLUGIN_METABOT.getAdminPaths = () => [
       {
