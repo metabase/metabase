@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -40,8 +41,8 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
-  "Get the Library. If no library exists, it doesn't fail but returns an empty response."
+(api.macros/defendpoint :get "/" :- [:or ::collections.schema/CollectionItem [:map [:message :string]]]
+  "Get the Library. If no library exists, it doesn't fail but returns an empty response"
   [_route
    _query
    _body]

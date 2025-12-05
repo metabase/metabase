@@ -352,6 +352,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.core
+           metabase.collections.schema
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
    :uses #{api
