@@ -816,7 +816,7 @@ databaseChangeLog:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
 
   - changeSet:
-      id: v58.2025-11-19T00:00:02
+      id: v58.2025-12-05T00:00:00
       author: nmezzopera
       comment: Usage analytics; Add entity_type, visibility_type, estimated_row_count, view_count, owner_email, owner_user_id to tables
       changes:
