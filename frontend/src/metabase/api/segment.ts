@@ -3,6 +3,7 @@ import { SegmentSchema } from "metabase/schema";
 import type {
   CreateSegmentRequest,
   DeleteSegmentRequest,
+  ListSegmentsRequest,
   Segment,
   SegmentId,
   UpdateSegmentRequest,
@@ -21,7 +22,7 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listSegments: builder.query<Segment[], void>({
+    listSegments: builder.query<Segment[], ListSegmentsRequest>({
       query: () => ({
         method: "GET",
         url: "/api/segment",

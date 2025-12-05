@@ -16,6 +16,10 @@ export interface Segment {
   revision_message?: string;
 }
 
+export interface ListSegmentsRequest {
+  table_id?: TableId;
+}
+
 export interface CreateSegmentRequest {
   name: string;
   table_id: TableId;

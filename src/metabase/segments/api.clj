@@ -48,8 +48,12 @@
 
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
-  []
-  (as-> (t2/select :model/Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
+  [_route-params
+   {:keys [table_id]} :- [:map [:table_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (as-> (t2/select :model/Segment
+                   {:where (cond-> [:and [:= :archived false]]
+                             table_id (conj [:= :table_id table_id]))
+                    :order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))
 
