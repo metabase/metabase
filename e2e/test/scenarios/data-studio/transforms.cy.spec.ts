@@ -4,6 +4,7 @@ import dedent from "ts-dedent";
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createLibraryWithItems } from "e2e/support/test-library-data";
 import type {
   CardType,
   PythonTransformTableAliases,
@@ -83,6 +84,31 @@ describe("scenarios > admin > transforms", () => {
       H.assertQueryBuilderRowCount(3);
       H.expectUnstructuredSnowplowEvent({
         event: "transform_created",
+      });
+    });
+
+    it("should not show you the library in the mini picker when building transforms (uxw-2403)", () => {
+      createLibraryWithItems();
+
+      visitTransformListPage();
+      getTransformsSidebar().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+      H.miniPicker().within(() => {
+        cy.findByText(DB_NAME).should("exist");
+        cy.findByText("Our analytics").should("exist");
+        cy.findByText("Browse all").should("exist");
+        cy.findByText("Data").should("not.exist");
+      });
+
+      cy.findByRole("link", { name: "Exit data studio" }).click();
+      H.modal().button("Discard changes").click();
+      H.newButton("Question").click();
+
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").should("not.exist");
+        cy.findByText("Browse all").should("exist");
+        cy.findByText("Data").click();
+        cy.findByText("Trusted Orders Model").should("exist");
       });
     });
 
@@ -420,10 +446,10 @@ LIMIT
         cy.findByLabelText("Table name").type(SOURCE_TABLE);
         cy.button("Save").click();
         cy.wait("@createTransform");
-        cy.findByText("A table with that name already exists.").should(
-          "be.visible",
-        );
       });
+      H.undoToast()
+        .findByText("A table with that name already exists.")
+        .should("be.visible");
     });
 
     it("should be able to create a new schema when saving a transform", () => {
@@ -1012,14 +1038,14 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.targetTab().click();
       getTransformsContent()
-        .findByText("Edit this table’s metadata")
+        .findByText("Edit this table's metadata")
         .should("not.exist");
 
       cy.log("after table creation");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       H.DataStudio.Transforms.targetTab().click();
-      getTransformsContent().findByText("Edit this table’s metadata").click();
+      getTransformsContent().findByText("Edit this table's metadata").click();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
       cy.wait("@updateField");

@@ -378,25 +378,8 @@ export class Api extends EventEmitter {
   }
 
   /**
-   /**
-   * @typedef {{
-   *    method: "GET" | "POST";
-   *    url: string;
-   *    options: {
-   *      headers?: Record<string, string>;
-   *      hasBody: boolean;
-   *    } & Record<string, unknown>;
-   * }} OnBeforeRequestHandlerData
-   *
-   * @typedef {(data: OnBeforeRequestHandlerData) => (Promise<void | OnBeforeRequestHandlerData>)} OnBeforeRequestHandler
-   *
-   * @typedef {{
-   *   key: string;
-   *   handler: OnBeforeRequestHandler
-   * }} OnBeforeRequestHandlerDescriptor
-   *
-   * @param data {OnBeforeRequestHandlerData}
-   * @return data {Promise<OnBeforeRequestHandlerData>}
+   * @param data {import('metabase/plugins').OnBeforeRequestHandlerData}
+   * @return data {Promise<import('metabase/plugins').OnBeforeRequestHandlerData>}
    */
   async apiRequestManipulationMiddleware(data) {
     let { method, url, options } = data;
@@ -404,20 +387,19 @@ export class Api extends EventEmitter {
     /**
      * Handlers order is important.
      * Handlers are executed in order and each handler uses the data returned by a previous handler.
-     * @type {OnBeforeRequestHandler[]}
+     * @type {import('metabase/plugins').OnBeforeRequestHandler[]}
      */
     const handlers = [];
 
     if (isEmbeddingSdk()) {
-      if (
-        PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler
-      ) {
-        // A handler that set's `getOrRefreshSession` logic for SDK
-        handlers.push(
+      handlers.push(
+        ...[
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .getOrRefreshSessionHandler,
-        );
-      }
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .overrideRequestsForGuestEmbeds,
+        ],
+      );
     }
 
     if (handlers.length) {

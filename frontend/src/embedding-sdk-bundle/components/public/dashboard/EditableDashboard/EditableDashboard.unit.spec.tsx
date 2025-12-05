@@ -98,7 +98,7 @@ describe("EditableDashboard", () => {
   });
 
   it("should allow to create a new question in addition to adding existing questions", async () => {
-    await setup();
+    await setup({ hasEmbeddingEnterprisePlugin: true });
     setupSimpleDataPickerEndpoints();
 
     expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
@@ -130,9 +130,7 @@ describe("EditableDashboard", () => {
   });
 
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
-    await setup({
-      dashboardName: "Test dashboard",
-    });
+    await setup({ dashboardName: "Test dashboard" });
     setupSimpleDataPickerEndpoints();
 
     expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();

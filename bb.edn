@@ -3,10 +3,11 @@
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
  :deps           {dev.weavejester/cljfmt {:mvn/version "0.15.3"}
-                  org.babashka/json {:mvn/version "0.1.6"}
+                  io.github.paintparty/bling {:mvn/version "0.8.8"}
                   metosin/malli     {:mvn/version "0.17.0"}
-                  table/table       {:mvn/version "0.5.0"}
-                  mvxcvi/puget      {:mvn/version "1.3.4"}}
+                  mvxcvi/puget      {:mvn/version "1.3.4"}
+                  org.babashka/json {:mvn/version "0.1.6"}
+                  table/table       {:mvn/version "0.5.0"}}
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -178,6 +179,8 @@
    :requires [[mage.be-dev :refer [nrepl-eval]]]
    :options  [["-c" "--comment-id ID" "Notify about this comment id"]
               ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :examples [["./bin/mage notify -c 1234" "Notify about comment with id 1234"]
+              ["./bin/mage notify --comment-id 5678 --port 59498" "Notify about comment with id 5678 on nrepl port 59498"]]
    :task     (let [opts (:options (cli/parse! (current-task)))
                    ;; note: no quoting -> expect it to be int
                    code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
@@ -186,24 +189,21 @@
                  (nrepl-eval "metabase-enterprise.comments.core" code)))}
 
   run-tests
-  {:doc        "Run a tests (or a single test) against nrepl server"
-   :requires   [[clojure.string :as str]
-                [mage.be-dev :refer [nrepl-eval]]]
-   :arg-schema [:tuple [:string {:name "NS/TEST" :desc "or just NS"}]]
-   :options    [["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
-   :task       (let [{:keys  [options]
-                      [test] :arguments} (cli/parse! (current-task))
-                     test                (if (or (str/starts-with? test "test/")
-                                                 (str/starts-with? test "enterprise/"))
-                                           ;; paths should come in as strings
-                                           (format "\"%s\"" test)
-                                           ;; ns or var should be a symbol
-                                           (str "'" test))
-                     code (format
-                           "(do ((requiring-resolve 'dev.reload/reload!)) (find-and-run-tests-repl {:only %s}))"
-                           test)]
-                 (nrepl-eval "mb.hawk.core" (str code) (:port options)))}
-
+  {:doc        "Quickly run tests locally. Pass dirs/files as arguments to run them."
+   :examples   [["./bin/mage run-tests" "launch interactive test picker"]
+                ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
+                ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
+                ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
+   ;; TODO: add option to select files as well as dirs from fzf with styles
+   :options    [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
+                ;; all, file, dir
+                ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :arg-schema [:sequential
+                {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
+                [:string {:description "Files or directories (recursive) to test"}]]
+   :requires   [[mage.quick-test-runner :as qtr]] 
+   :task       (task! (qtr/go parsed))}
+  
   affected-modules
   {:doc      "Prints information about which backend modules have changes compared to a Git ref e.g. `master`"
    :examples [["./bin/mage affected-modules master"]
@@ -218,10 +218,11 @@
    :requires [[mage.modules]]
    :task     (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
-  ls {:doc      "List all mage public and private tasks"
-      :examples [["./bin/mage ls" "List all tasks"]]
-      :requires [[mage.util :as u]]
-      :task     (task! (u/print-tasks parsed))}
+  ls
+  {:doc      "List all mage public and private tasks"
+   :examples [["./bin/mage ls" "List all tasks"]]
+   :requires [[mage.util :as u]]
+   :task     (task! (u/print-tasks parsed))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
@@ -310,14 +311,15 @@
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
-         :requires [[mage.core-test]
-                    [clojure.test :refer [run-tests]]]
-         :task     (run-tests 'mage.core-test)}
-
-  -test-examples
-  {:doc      "Runs every example and checks that it exits with 0"
-   :requires [[mage.examples-test :as examples-test]]
-   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
+         :requires [[mage.core-test] ;; loads the actual tests
+                    [mage.util :as u]
+                    [clojure.test]]
+         :task     (let [results (clojure.test/run-all-tests (re-pattern "^mage\\..*"))]
+                     (if (zero? (+ (:fail results) (:error results)))
+                       (println (c/green "All mage tests passed!"))
+                       (do
+                         (println (c/red "Some mage tests failed."))
+                         (u/exit 1))))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
@@ -334,6 +336,6 @@
   -escherize-fix-whitespace
   {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
-   :examples [["mage -escherize-fix-whitespace '**/*.clj'" "Removes all lines like '  ' from all clj files"]]
+   :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
    :task     (task! (fix-whitespace/run-clean parsed))}}}

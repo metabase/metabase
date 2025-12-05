@@ -353,9 +353,6 @@ const Tables = createEntity({
   objectSelectors: {
     getUrl: (table) =>
       Urls.tableRowsQuery(table.database_id, table.table_id, null),
-    getIcon: (table, { variant = "primary" } = {}) => ({
-      name: variant === "primary" ? "table" : "database",
-    }),
     getColor: (table) => color("accent2"),
   },
 

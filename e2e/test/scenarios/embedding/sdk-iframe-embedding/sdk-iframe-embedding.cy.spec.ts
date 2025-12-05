@@ -414,6 +414,7 @@ describe("scenarios > embedding > embedded analytics JS", () => {
     cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
     H.openEmbedJsModal();
+    H.embedModalEnableEmbedding();
 
     H.waitForSimpleEmbedIframesToLoad();
     H.getSimpleEmbedIframeContent().within(() => {

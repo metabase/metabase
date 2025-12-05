@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
@@ -1291,7 +1292,7 @@
                        (vec (for [entity ser]
                               (merge entity (get changes (:entity_id entity))))))
         logs-extract (fn [re logs]
-                       (keep #(rest (re-find re %))
+                       (keep #(not-empty (rest (re-find re %)))
                              (map :message logs)))]
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Collection coll {:name "coll"}
@@ -1480,3 +1481,22 @@
       (testing "absent :entity_id also works"
         (serdes.load/load-metabase! (ingestion-in-memory [(dissoc coll-ser :entity_id)]))
         (is (= 4 (coll-count)))))))
+
+(deftest warn-if-version-mismatch-test
+  (ts/with-dbs [source-db dest-db dest-db2]
+    (ts/with-db source-db
+      (mt/with-temp [:model/Collection _ {:name "col-1"}]
+        (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
+          (ts/with-db dest-db
+            (testing "logs a warning when version in serdes/meta differs from current version"
+              (let [old-version-extract (map #(assoc % :metabase_version "v1.0.0 (oldcommit)") extract)]
+                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
+                  (serdes.load/load-metabase! (ingestion-in-memory old-version-extract))
+                  (is (some #(str/includes? % "Version mismatch loading") (messages)))
+                  (is (= 1 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
+                      "Should log a version mismatch warning only once per load")))))
+          (ts/with-db dest-db2
+            (testing "No warnings when version in serdes/meta matches current version"
+              (log.capture/with-log-messages-for-level [messages :warn]
+                (serdes.load/load-metabase! (ingestion-in-memory extract))
+                (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages)))))))))))))

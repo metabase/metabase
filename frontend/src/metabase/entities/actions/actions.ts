@@ -229,7 +229,6 @@ const Actions = createEntity({
   objectSelectors: {
     getUrl: (action: WritebackAction) =>
       Urls.action({ id: action.model_id }, action.id),
-    getIcon: () => ({ name: "bolt" }),
   },
 });
 

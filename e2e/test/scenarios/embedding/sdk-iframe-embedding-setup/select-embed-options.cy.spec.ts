@@ -1,4 +1,6 @@
 import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
 import {
   codeBlock,
@@ -33,11 +35,68 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("toggles drill-throughs for dashboards", () => {
+  it("should select user session auth method by default", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Authentication").should("be.visible");
+
+      cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+      cy.findByLabelText("Existing Metabase session")
+        .should("be.visible")
+        .should("not.be.checked");
+
+      cy.findByLabelText("Single sign-on (SSO)")
+        .should("be.visible")
+        .should("not.be.checked");
+    });
+  });
+
+  it("should disable SSO radio button when JWT and SAML are not configured", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
+    });
+  });
+
+  it("should enable SSO radio button when JWT is configured", () => {
+    enableJwtAuth();
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+    });
+  });
+
+  it("should enable SSO radio button when SAML is configured", () => {
+    enableSamlAuth();
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
+    });
+  });
+
+  it("toggles drill-throughs for dashboards when non-authorized auth method is selected", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
@@ -67,7 +126,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=false,withDownloads=false,withTitle=true",
+        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -103,7 +162,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true",
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -139,17 +198,18 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=false",
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-title="false"');
   });
 
-  it("toggles drill-through for charts", () => {
+  it("toggles drill-through for charts for non-authorized auth mode", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
@@ -211,7 +271,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true,isSaveEnabled=false",
+        'settings=custom,experience=chart,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -222,6 +282,7 @@ describe(suiteTitle, () => {
       experience: "chart",
       resourceName: QUESTION_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
@@ -285,6 +346,8 @@ describe(suiteTitle, () => {
           : { experience: "exploration" },
       );
 
+      cy.findByLabelText("Existing Metabase session").click();
+
       if (experience === "exploration") {
         cy.log("visualize a question to enable the save button");
         H.getSimpleEmbedIframeContent().within(() => {
@@ -325,8 +388,8 @@ describe(suiteTitle, () => {
         event: "embed_wizard_options_completed",
         event_detail:
           experience === "chart"
-            ? "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true"
-            : "settings=custom,theme=default,auth=user_session,isSaveEnabled=true",
+            ? "settings=custom,experience=chart,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
+            : "settings=custom,experience=exploration,auth=user-session,isSaveEnabled=true,theme=default",
       });
 
       codeBlock().should("contain", 'is-save-enabled="true"');
@@ -363,7 +426,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,readOnly=false",
+        "settings=custom,experience=browser,auth=user-session,readOnly=false,theme=default",
     });
 
     codeBlock().should("contain", 'read-only="false"');
@@ -409,7 +472,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
     });
 
     codeBlock().should("contain", '"theme": {');
@@ -446,6 +509,7 @@ describe(suiteTitle, () => {
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     cy.log("click on brand color picker");
     cy.findByTestId("brand-color-picker").findByRole("button").click();
@@ -477,7 +541,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=custom",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
@@ -503,7 +567,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,layout=stacked",
+        "settings=custom,experience=metabot,auth=user-session,layout=stacked,theme=default",
     });
 
     getEmbedSidebar().findByText("Back").click();
@@ -519,7 +583,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,theme=default,auth=user_session,layout=sidebar",
+        "settings=custom,experience=metabot,auth=user-session,layout=sidebar,theme=default",
     });
   });
 });

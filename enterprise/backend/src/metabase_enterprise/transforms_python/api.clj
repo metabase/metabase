@@ -64,7 +64,7 @@
   (with-open [shared-storage-ref (s3/open-shared-storage! source_tables)]
     (let [server-url  (transforms-python.settings/python-runner-url)
           _           (python-runner/copy-tables-to-s3! {:shared-storage @shared-storage-ref
-                                                         :table-name->id source_tables
+                                                         :source         {:source-tables source_tables}
                                                          :limit          per_input_row_limit})
           {runner-status :status
            runner-body   :body}

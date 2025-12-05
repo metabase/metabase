@@ -4,10 +4,12 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
+import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
+  setIsGuestEmbed,
   setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
@@ -63,15 +65,25 @@ export const ComponentProviderInternal = ({
   allowConsoleLog,
   isLocalHost,
 }: ComponentProviderInternalProps): JSX.Element => {
+  const isGuestEmbed = !!authConfig.isGuest;
   const { fontFamily } = theme ?? {};
 
   // The main call of useInitData happens in the MetabaseProvider
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, authConfig, isLocalHost });
+  useInitDataInternal({
+    reduxStore,
+    isGuestEmbed,
+    authConfig,
+    isLocalHost,
+  });
 
   useInitPlugins();
+
+  useEffect(() => {
+    reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
+  }, [reduxStore, isGuestEmbed]);
 
   useEffect(() => {
     if (fontFamily) {
@@ -152,11 +164,13 @@ export const ComponentProvider = memo(function ComponentProvider({
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();
   }
 
+  const normalizedProps = useNormalizeComponentProviderProps(props);
+
   return (
     <MetabaseReduxProvider store={reduxStoreRef.current!}>
       <METABOT_SDK_EE_PLUGIN.MetabotProvider>
         <ComponentProviderInternal
-          {...props}
+          {...normalizedProps}
           reduxStore={reduxStoreRef.current!}
         >
           {children}

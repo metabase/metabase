@@ -19,7 +19,7 @@
                                                            org.bouncycastle/bcprov-jdk18on]}
   buddy/buddy-sign                          {:mvn/version "3.6.1-359"}          ; JSON Web Tokens; High-Level message signing library
   camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.3"}              ; util functions for converting between camel, snake, and kebob case
-  cheshire/cheshire                         {:mvn/version "6.0.0"}             ; fast JSON encoding (used by Ring JSON middleware)
+  cheshire/cheshire                         {:mvn/version "6.1.0"}             ; fast JSON encoding (used by Ring JSON middleware)
   clj-bom/clj-bom                           {:mvn/version "0.1.2"}              ; handle BOMs in imported CSVs
   clj-commons/clj-yaml                      {:mvn/version "1.0.29"}             ; Clojure wrapper for YAML library SnakeYAML
   clj-commons/iapetos                       {:mvn/version "0.1.14"}             ; prometheus metrics
@@ -53,7 +53,7 @@
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1070"}           ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.8"}              ; Telemetry library
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
-  com.google.guava/guava                    {:mvn/version "33.4.8-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
+  com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
@@ -120,7 +120,7 @@
                                                            junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.28.0"}             ; compression utils
-  org.apache.commons/commons-lang3          {:mvn/version "3.18.0"}             ; helper methods for working with java.lang stuff
+  org.apache.commons/commons-lang3          {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.2"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.2"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.2"}             ; apache logging framework
@@ -160,7 +160,7 @@
   org.clojure/java.jmx                      {:mvn/version "1.1.0"}              ; JMX bean library, for exporting diagnostic info
   org.clojure/math.combinatorics            {:mvn/version "0.3.0"}              ; combinatorics functions
   org.clojure/math.numeric-tower            {:mvn/version "0.1.0"}              ; math functions like `ceil`
-  org.clojure/tools.cli                     {:mvn/version "1.1.230"}            ; command-line argument parsing
+  org.clojure/tools.cli                     {:mvn/version "1.2.245"}            ; command-line argument parsing
   org.clojure/tools.logging                 {:mvn/version "1.3.0"}              ; logging framework
   org.clojure/tools.macro                   {:mvn/version "0.2.1"}              ; local macros
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
@@ -174,7 +174,7 @@
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
-  org.jsoup/jsoup                           {:mvn/version "1.21.1"}             ; required by hickory
+  org.jsoup/jsoup                           {:mvn/version "1.21.2"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
@@ -859,6 +859,13 @@
   :test/notification
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"]}}
+
+  ;; test the transforms feature
+  ;;    clj -X:dev:ee:ee-dev:test:test/transforms
+  :test/transforms
+  {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
+                      "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
+
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;

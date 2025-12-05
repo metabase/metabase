@@ -62,7 +62,10 @@ jobs:
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        # Component tests only need the default snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       # Has to be run after the app db snapshot is made, as it is not compatible with React 19
       - name: Change React version to ${{ matrix.react-version }}
@@ -201,7 +204,10 @@ jobs:
       - name: Make app db snapshot
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        # Component tests only need the default snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
 
       - name: Run component tests for Embedding SDK
         env:

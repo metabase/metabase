@@ -126,7 +126,6 @@ const Documents = createEntity({
   objectSelectors: {
     getName: (document: Document) => document && document.name,
     getUrl: (document: Document) => document && Urls.document(document),
-    getIcon: () => ({ name: "document" }),
     getColor: () => color("brand"),
   },
 });

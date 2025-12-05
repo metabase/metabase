@@ -1,6 +1,7 @@
+import type { ComponentType } from "react";
 import { indexBy } from "underscore";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
@@ -110,13 +111,14 @@ export const DEFAULT_DASHCARDS: DashboardCard[] = [
 ];
 
 export interface SetupSdkDashboardOptions {
-  props?: Partial<SdkDashboardProps>;
+  props?: Omit<Partial<SdkDashboardProps>, "token">;
   providerProps?: Partial<MetabaseProviderProps>;
   isLocaleLoading?: boolean;
-  component: React.ComponentType<SdkDashboardProps>;
+  component: ComponentType<SdkDashboardProps>;
   dashboardName?: string;
   dataPickerProps?: EditableDashboardProps["dataPickerProps"];
   dashcards?: DashboardCard[];
+  hasEmbeddingEnterprisePlugin?: boolean;
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -131,6 +133,7 @@ export const setupSdkDashboard = async ({
   dashboardName = "Dashboard",
   dataPickerProps,
   dashcards = DEFAULT_DASHCARDS,
+  hasEmbeddingEnterprisePlugin = false,
 }: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
@@ -198,8 +201,9 @@ export const setupSdkDashboard = async ({
     }),
   });
 
-  // Used in simple data picker
-  setupEnterprisePlugins();
+  if (hasEmbeddingEnterprisePlugin) {
+    setupEnterpriseOnlyPlugin("embedding");
+  }
 
   renderWithSDKProviders(
     <Box h="500px">

@@ -207,6 +207,7 @@
         ;; otherwise update if appropriate
         (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.8))
+  (ensure-audit-db-installed!)
   (notification/seed-notification!)
 
   (init-status/set-progress! 0.85)
@@ -216,7 +217,6 @@
   (database/check-health!)
   (startup/run-startup-logic!)
   (init-status/set-progress! 0.95)
-  (ensure-audit-db-installed!)
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)

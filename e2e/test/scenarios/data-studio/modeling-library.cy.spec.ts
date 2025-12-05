@@ -1,3 +1,14 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ALL_USERS_GROUP_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  createLibraryWithItems,
+  createLibraryWithModel,
+} from "e2e/support/test-library-data";
+
 const { H } = cy;
 
 describe("scenarios > data studio > modeling > library", () => {
@@ -50,6 +61,105 @@ describe("scenarios > data studio > modeling > library", () => {
     cy.log("Verify no models yet message");
     H.DataStudio.Modeling.collectionPage().within(() => {
       cy.findByText("No models yet").should("be.visible");
+    });
+  });
+
+  it("should be available in the data picker", () => {
+    createLibraryWithItems();
+
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+
+    H.entityPickerModalItem(0, "Library").click();
+    H.entityPickerModalItem(1, "Data").click();
+    H.entityPickerModalItem(2, "Trusted Orders Model").click();
+
+    cy.log("Ensure that the we can build the path from a value");
+
+    cy.button(/Trusted Orders Model/).click();
+    H.miniPickerHeader().click();
+    H.miniPickerBrowseAll().click();
+
+    H.entityPickerModalItem(0, "Library").should(
+      "have.attr",
+      "data-active",
+      "true",
+    );
+    H.entityPickerModalItem(1, "Data").should(
+      "have.attr",
+      "data-active",
+      "true",
+    );
+    H.entityPickerModalItem(2, "Trusted Orders Model").should(
+      "have.attr",
+      "data-active",
+      "true",
+    );
+  });
+
+  it("should let you move models and metrics into the library, even when empty", () => {
+    H.createLibrary();
+
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Duplicate");
+    H.modal().findByTestId("dashboard-and-collection-picker-button").click();
+
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(0, "Library").click();
+    H.entityPickerModalItem(1, "Metrics").should(
+      "have.attr",
+      "data-disabled",
+      "true",
+    );
+    H.entityPickerModalItem(1, "Data").click();
+    H.entityPickerModal().button("Select this collection").click();
+    H.modal().button("Duplicate").click();
+  });
+
+  it("should show the library collection even if only 1 child collection has items", () => {
+    createLibraryWithModel();
+
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+
+    H.entityPickerModalItem(0, "Library").click();
+    H.entityPickerModalItem(1, "Data").click();
+    H.entityPickerModalItem(2, "Trusted Orders Model").should("exist");
+  });
+
+  it("should be available in the question picker modal", () => {
+    createLibraryWithItems();
+
+    const library = () => H.entityPickerModalLevel(0).findByText("Library");
+
+    cy.visit(
+      `/admin/permissions/data/group/${ALL_USERS_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${SAMPLE_DATABASE.ACCOUNTS_ID}/segmented`,
+    );
+
+    H.modal()
+      .findByText(/Use a saved question/)
+      .click();
+    H.modal()
+      .button(/Select a question/)
+      .click();
+
+    H.entityPickerModal().within(() => {
+      // Questions tab should not show the library, because the library can only contain models and metrics
+      H.entityPickerModalTab("Questions").click();
+      library().should("not.exist");
+      H.entityPickerModalItem(0, "Our analytics").should("exist");
+
+      // Question picker should show library in models tab
+      H.entityPickerModalTab("Models").click();
+      H.entityPickerModalItem(0, "Our analytics").should("exist");
+      library().click();
+      H.entityPickerModalItem(1, "Metrics").should(
+        "have.attr",
+        "data-disabled",
+        "true",
+      );
+      H.entityPickerModalItem(1, "Data").click();
+      H.entityPickerModalItem(2, "Trusted Orders Model").should("exist");
     });
   });
 });

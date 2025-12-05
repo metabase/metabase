@@ -752,7 +752,10 @@
   ;; `metabase-enterprise.sandbox.query-processor*-test`
   ;;
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
-   :name    general-qp-and-driver-test-namespaces}]
+   :name    general-qp-and-driver-test-namespaces}
+
+  {:pattern "(?:^mage.*)"
+   :name    mage-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -947,4 +950,11 @@
      toucan2.tools.with-temp/with-temp         {:message "Use lib.tu/mock-metadata-provider in QP tests. Exceptions: tests for code that doesn't use MPs or models not supported by MPs"}}
 
     :metabase/disallow-hardcoded-driver-names-in-tests
-    {:level :warning}}}}}
+    {:level :warning}}}
+
+  mage-namespaces
+  {:linters
+   {:discouraged-java-method
+    {java.lang.System {exit
+                       {:level :error
+                        :message "Don't use System/exit directly. Instead throw an ex-info with {:babashka/exit <exit-code>} (and optionally :mage/error) let the mage runner handle exiting the process"}}}}}}}

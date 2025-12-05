@@ -53,4 +53,5 @@ export type QueryEditorUiOptions = {
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,
   ) => boolean;
+  shouldShowLibrary?: false;
 };
