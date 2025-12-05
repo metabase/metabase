@@ -815,6 +815,37 @@ databaseChangeLog:
         - sql:
             sql: UPDATE collection SET type = 'remote-synced' WHERE is_remote_synced = true
 
+  - changeSet:
+      id: v58.2025-11-19T00:00:02
+      author: nmezzopera
+      comment: Usage analytics; Add eentity_type,visibility_type, estimated_row_count, view_count, owner_email, owner_user_id to tables
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tables/v3/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tables/v3/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tables/v3/h2-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v1/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tables/v2/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tables/v1/h2-tables.sql
+            relativeToChangelogFile: true
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
