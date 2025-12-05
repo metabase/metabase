@@ -306,11 +306,20 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
           {t`Merge`}
         </Button>
       </Group>
-      <Group align="flex-start" gap={0} flex="1 1 auto" wrap="nowrap">
+
+      <Group
+        align="flex-start"
+        gap={0}
+        flex="1 1 auto"
+        wrap="nowrap"
+        style={{ overflow: "hidden" }}
+      >
         <Box
           w="70%"
           h="100%"
-          style={{ borderRight: "1px solid var(--mb-color-border)" }}
+          style={{
+            borderRight: "1px solid var(--mb-color-border)",
+          }}
           pos="relative"
         >
           <Tabs
@@ -406,12 +415,25 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               </DndContext>
             </Flex>
 
-            <Box flex={1} mih={0}>
+            <Box
+              flex={1}
+              mih={0}
+              style={{
+                overflow: tab === "metabot" ? "auto" : undefined,
+              }}
+            >
               <Tabs.Panel value="setup" h="100%" p="md">
                 <SetupTab databaseName={sourceDb?.name} />
               </Tabs.Panel>
+
               {isMetabotAvailable && (
-                <Tabs.Panel value="metabot" h="100%">
+                <Tabs.Panel
+                  value="metabot"
+                  h="100%"
+                  mah="100%"
+                  pos="relative"
+                  style={{ overflow: "auto" }}
+                >
                   <MetabotTab />
                 </Tabs.Panel>
               )}
@@ -449,6 +471,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
             </Box>
           </Tabs>
         </Box>
+
         <Box style={{ flex: "1 0 auto", width: "30%" }}>
           <Tabs defaultValue="code">
             <Flex
