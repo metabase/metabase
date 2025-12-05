@@ -16,3 +16,8 @@
                      :transform-id (:id transform)
                      :workspace-id (:workspace_id transform)})))
   (transforms.i/execute! transform opts))
+
+#_(metabase-enterprise.workspaces.isolation/with-workspace-isolation (toucan2.core/select-one :model/Workspace 3)
+    (transforms.i/execute! (toucan2.core/select-one :model/Transform 5) {:run-method :manual}))
+
+#_(toucan2.core/select :model/Transform 5)

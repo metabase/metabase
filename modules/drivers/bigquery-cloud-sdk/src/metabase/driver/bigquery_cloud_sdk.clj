@@ -30,6 +30,7 @@
   (:import
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
+   (com.google.auth.oauth2 ImpersonatedCredentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
@@ -76,15 +77,26 @@
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
-  (let [creds   (bigquery.common/database-details->service-account-credential details)
-        mb-version (:tag driver-api/mb-version-info)
-        run-mode   (name driver-api/run-mode)
-        user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
+  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
+        ;; Check if we should impersonate a different service account
+        final-creds  (if-let [target-sa (:impersonate-service-account details)]
+                       (do
+                         (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
+                         (ImpersonatedCredentials/create
+                          (.createScoped base-creds bigquery-scopes)
+                          target-sa
+                          nil  ;; delegates (not needed)
+                          (java.util.ArrayList. bigquery-scopes)
+                          3600))  ;; 1 hour token lifetime
+                       (.createScoped base-creds bigquery-scopes))
+        mb-version   (:tag driver-api/mb-version-info)
+        run-mode     (name driver-api/run-mode)
+        user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
-        bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds bigquery-scopes))
-                  (.setHeaderProvider header-provider))]
+        bq-bldr      (doto (BigQueryOptions/newBuilder)
+                       (.setCredentials final-creds)
+                       (.setHeaderProvider header-provider))]
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
@@ -745,13 +757,15 @@
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
-  (let [thunk (fn []
-                (execute-bigquery
-                 respond
-                 (:details database)
-                 sql
-                 parameters
-                 cancel-chan))]
+  ;; Apply any swapped connection details (e.g., for workspace isolation)
+  (let [details (driver/maybe-swap-details (:id database) (:details database))
+        thunk   (fn []
+                  (execute-bigquery
+                   respond
+                   details
+                   sql
+                   parameters
+                   cancel-chan))]
     (try
       (thunk)
       (catch Throwable e
@@ -801,8 +815,8 @@
                               :metadata/table-existence-check   true
                               :transforms/python                true
                               :transforms/table                 true
-                              ;; should support, will implement later
-                              :workspace                        false}]
+                              ;; Workspace isolation using service account impersonation
+                              :workspace                        true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
@@ -980,6 +994,7 @@
   [_driver connection-details queries]
   ;; connection-details is either database details directly (from transforms)
   ;; or a database map with :details key (from other contexts)
+  ;; JUST need to get the connection right
   (let [details (get connection-details :details connection-details)
         client (database-details->client details)]
     (try

@@ -54,6 +54,13 @@
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.8"}              ; Telemetry library
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
+  ;; TODO: remove these BigQuery deps when we move workspace driver code to driver module files
+  com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}      ; Required for BigQuery workspace isolation (service account impersonation)
+  com.google.cloud/google-cloud-bigquery    {:mvn/version "2.55.3"              ; BigQuery SDK for workspace isolation
+                                             :exclusions  [javax.annotation/javax.annotation-api
+                                                           io.netty/netty-common
+                                                           io.netty/netty-buffer]}
+  com.google.cloud/google-iam-admin         {:mvn/version "3.54.0"}            ; IAM Admin API for creating service accounts
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
