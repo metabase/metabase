@@ -85,9 +85,10 @@ const CypressBackend = {
   },
 };
 
-const isBackendRunning = shell(
-  `lsof -ti:${process.env.MB_JETTY_PORT} || echo ""`,
-  { quiet: true },
-);
+function getBackendPid() {
+  return shell(`lsof -ti:${process.env.MB_JETTY_PORT} || echo ""`, {
+    quiet: true,
+  });
+}
 
-module.exports = { ...CypressBackend, isBackendRunning };
+module.exports = { ...CypressBackend, getBackendPid };
