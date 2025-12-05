@@ -25,7 +25,7 @@ import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
 type Props = {
-  onUpdate?: () => void;
+  onUpdate: () => void;
 };
 
 export function TableAttributesEditBulk({ onUpdate }: Props) {
@@ -101,7 +101,7 @@ export function TableAttributesEditBulk({ onUpdate }: Props) {
     if (entityType) {
       setEntityType(entityType);
     }
-    onUpdate?.();
+    onUpdate();
   };
 
   useEffect(() => {

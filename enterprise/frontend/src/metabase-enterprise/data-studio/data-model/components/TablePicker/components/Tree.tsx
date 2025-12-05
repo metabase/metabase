@@ -252,7 +252,7 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   }, [items, reload, selectedTables]);
 
   useEffect(() => {
-    setOnUpdateCallback(refetchSelectedTables);
+    setOnUpdateCallback(() => refetchSelectedTables);
     return () => setOnUpdateCallback(null);
   }, [refetchSelectedTables, setOnUpdateCallback]);
 

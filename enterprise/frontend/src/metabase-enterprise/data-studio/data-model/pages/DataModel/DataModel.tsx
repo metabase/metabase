@@ -158,6 +158,7 @@ function DataModelContent({ params }: Props) {
           tableId={navigationTableId}
           params={params}
           setOnUpdateCallback={setOnUpdateCallback}
+          onUpdate={() => onUpdateCallback?.()}
         />
       </Stack>
 
@@ -185,7 +186,11 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <TableAttributesEditBulk onUpdate={() => onUpdateCallback?.()} />
+            <TableAttributesEditBulk
+              onUpdate={() => {
+                onUpdateCallback?.();
+              }}
+            />
           </Stack>
         )}
 

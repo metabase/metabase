@@ -164,6 +164,55 @@ describe("bulk table operations", () => {
       .should("have.text", "Bobby Tables");
   });
 
+  describe(
+    "allows to edit attributes for tables or publish them when there are several databases with several schemas at once",
+    { tags: ["@external"] },
+    () => {
+      [{ withFilter: false }, { withFilter: true }].forEach(
+        ({ withFilter }) => {
+          it(`withFilter=${withFilter}`, () => {
+            H.restore("postgres-writable");
+            H.activateToken("bleeding-edge");
+            cy.signInAsAdmin();
+            H.resetTestTable({ type: "postgres", table: "multi_schema" });
+            H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+            H.DataModel.visitDataStudio();
+            if (withFilter) {
+              TablePicker.getSearchInput().type("a");
+            }
+            TablePicker.getDatabase("Writable Postgres12").click();
+            TablePicker.getDatabase("Sample Database").click();
+            TablePicker.getTable("Accounts")
+              .find('input[type="checkbox"]')
+              .check();
+            TablePicker.getSchema("Domestic").click();
+            TablePicker.getTable("Animals")
+              .find('input[type="checkbox"]')
+              .check();
+
+            H.selectHasValue("Owner", "").click();
+            H.selectDropdown().contains("Bobby Tables").click();
+
+            cy.findByRole("button", { name: /Publish/ }).click();
+            cy.findByRole("button", { name: /Got it/ }).click();
+            H.pickEntity({ tab: "Collections", path: ["Our analytics"] });
+            cy.findByRole("button", { name: /Publish here/ }).click();
+
+            ["Accounts", "Animals"].forEach((tableName) => {
+              TablePicker.getTable(tableName)
+                .findByTestId("table-owner")
+                .should("have.text", "Bobby Tables");
+              TablePicker.getTable(tableName)
+                .findByTestId("table-published")
+                .findByLabelText("Published")
+                .should("be.visible");
+            });
+          });
+        },
+      );
+    },
+  );
+
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");

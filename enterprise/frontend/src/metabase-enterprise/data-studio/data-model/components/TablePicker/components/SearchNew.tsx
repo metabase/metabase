@@ -153,7 +153,7 @@ export function SearchNew({
   const isLoading = isLoadingTables || isLoadingDatabases;
 
   useEffect(() => {
-    setOnUpdateCallback(refetch);
+    setOnUpdateCallback(() => refetch);
     return () => setOnUpdateCallback(null);
   }, [refetch, setOnUpdateCallback]);
 

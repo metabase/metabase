@@ -31,7 +31,8 @@ interface TablePickerProps {
   path: TreePath;
   className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
-  setOnUpdateCallback?: (callback: (() => void) | null) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
+  onUpdate: () => void;
 }
 
 export function TablePicker({
@@ -39,7 +40,8 @@ export function TablePicker({
   path,
   className,
   onChange,
-  setOnUpdateCallback: setOnUpdateCallbackOuter,
+  onUpdate,
+  setOnUpdateCallback,
 }: TablePickerProps) {
   const { selectedTables, selectedSchemas, selectedDatabases, resetSelection } =
     useSelection();
@@ -58,17 +60,9 @@ export function TablePicker({
   const filtersCount = getFiltersCount(filters);
 
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
-  const [onUpdateCallbackInner, setOnUpdateCallbackInner] = useState<
-    (() => void) | null
-  >(null);
-
-  useEffect(() => {
-    setOnUpdateCallbackOuter?.(onUpdateCallbackInner);
-    return () => setOnUpdateCallbackOuter?.(null);
-  }, [onUpdateCallbackInner, setOnUpdateCallbackOuter]);
 
   const handlePublishSuccess = () => {
-    onUpdateCallbackInner?.();
+    onUpdate();
     resetSelection();
   };
 
@@ -153,14 +147,14 @@ export function TablePicker({
           <Tree
             path={path}
             onChange={onChange}
-            setOnUpdateCallback={setOnUpdateCallbackInner}
+            setOnUpdateCallback={setOnUpdateCallback}
           />
         ) : (
           <SearchNew
             query={deferredQuery}
             params={params}
             filters={filters}
-            setOnUpdateCallback={setOnUpdateCallbackInner}
+            setOnUpdateCallback={setOnUpdateCallback}
           />
         )}
       </Box>
