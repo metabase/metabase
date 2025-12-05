@@ -15,6 +15,7 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -39,6 +40,7 @@ export type SAMLFormSettings = Pick<
   | "saml-attribute-email"
   | "saml-attribute-firstname"
   | "saml-attribute-lastname"
+  | "saml-attribute-tenant"
   | "saml-identity-provider-uri"
   | "saml-identity-provider-issuer"
   | "saml-identity-provider-certificate"
@@ -60,6 +62,7 @@ export function SettingsSAMLForm() {
   const { data: settingValues, isLoading: isLoadingValues } =
     useGetSettingsQuery();
   const [updateSamlSettings] = useUpdateSamlMutation();
+  const { value: tenantEnabled } = useAdminSetting("use-tenants");
 
   const isEnabled = Boolean(settingValues?.["saml-enabled"]);
 
@@ -151,6 +154,16 @@ export function SettingsSAMLForm() {
                       settingDetails?.["saml-attribute-lastname"],
                     )}
                   />
+                  {tenantEnabled && (
+                    <FormTextInput
+                      name="saml-attribute-tenant"
+                      label={t`Tenant assignment attribute`}
+                      hasCopyButton
+                      {...getExtraFormFieldProps(
+                        settingDetails?.["saml-attribute-tenant"],
+                      )}
+                    />
+                  )}
                 </Stack>
               </FormSection>
 
@@ -284,6 +297,7 @@ const getFormValues = (
     "saml-attribute-email",
     "saml-attribute-firstname",
     "saml-attribute-lastname",
+    "saml-attribute-tenant",
     "saml-identity-provider-uri",
     "saml-identity-provider-issuer",
     "saml-identity-provider-certificate",
