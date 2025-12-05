@@ -67,7 +67,7 @@ export function EmbeddingDataPicker({
   const shouldUseSimpleDataPicker =
     !forceMultiStagedDataPicker &&
     dataSourceCountData != null &&
-    dataSourceCountData.total < 100;
+    dataSourceCountData.total < 1;
   if (shouldUseSimpleDataPicker) {
     const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
       "model",
