@@ -147,7 +147,6 @@
 (defn ^:command generate-openapi-spec
   "Generate OpenAPI specification file from Malli schema definitions. This is written to `resources/openapi/openapi.json`."
   []
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (classloader/require 'metabase.api-routes.cmd)
   ((resolve 'metabase.api-routes.cmd/generate-openapi-spec!)))
 

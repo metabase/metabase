@@ -16,7 +16,7 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.i18n  :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
