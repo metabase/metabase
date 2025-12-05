@@ -250,6 +250,14 @@
    :requires [[mage.analytics :as analytics]]
    :task (task! (analytics/teardown!))}
 
+  analytics:finalize
+  {:doc "Export usage analytics content and tear down development mode"
+   :examples [["./bin/mage analytics:finalize" "Export to default location and tear down"]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (do
+                  (analytics/export!)
+                  (analytics/teardown!)))}
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
