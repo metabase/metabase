@@ -464,14 +464,11 @@
 
 (defn ->type-filter-xf
   "Returns an xform for a transform source type filter."
+  ;; TODO: Ngoc - 2025-12-05 We have transform.source_type column so we can just use it to query
   [types]
   (if-let [types (->> types (map keyword) set not-empty)]
     (filter (fn [transform]
-              (let [source-type (-> transform :source :type keyword)
-                    query-type  (some-> transform :source :query :type keyword)]
-                (if (= source-type :python)
-                  (contains? types :python)
-                  (contains? types query-type)))))
+              (contains? types (:source_type transform))))
     identity))
 
 (defn ->database-id-filter-xf
@@ -480,8 +477,8 @@
   [database-id]
   (if database-id
     (filter (fn [transform]
-              (let [python-source-db-id (get-in transform [:source :source-database])
-                    target-db-id        (get-in transform [:target :database])]
+              (let [python-source-db-id (transforms.i/source-db-id transform)
+                    target-db-id        (transforms.i/target-db-id transform)]
                 (or (= database-id python-source-db-id)
                     (= database-id target-db-id)))))
     identity))

@@ -390,15 +390,16 @@
   (search.tu/with-index-disabled
     (testing "POST /api/ee/workspace/:id/name updates the workspace name"
       (mt/with-model-cleanup [:model/Collection :model/Workspace]
-        (let [workspace (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                              {:name        "Original Name"
-                                               :database_id (mt/id)})
-              response  (mt/user-http-request :crowberto :post 200
-                                              (str "ee/workspace/" (:id workspace) "/name")
-                                              {:name "Updated Name"})]
-          (is (= "Updated Name"
-                 (:name response)
-                 (t2/select-one-fn :name :model/Workspace :id (:id workspace))))))))
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Workspace  workspace {:name          "Original Name"
+                                                    :database_id   (mt/id)
+                                                    :collection_id coll-id}]
+          (let [response (mt/user-http-request :crowberto :post 200
+                                               (str "ee/workspace/" (:id workspace) "/name")
+                                               {:name "Updated Name"})]
+            (is (= "Updated Name"
+                   (:name response)
+                   (t2/select-one-fn :name :model/Workspace :id (:id workspace)))))))))
 
   (testing "Requires superuser"
     (mt/with-temp [:model/Workspace workspace {:name "Permission Test"}]

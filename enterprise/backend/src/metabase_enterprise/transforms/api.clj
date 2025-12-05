@@ -119,6 +119,7 @@
   [_route-params
    query-params :-
    [:map
+    [:database_id {:optional true} [:maybe pos-int?]]
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
