@@ -5,8 +5,9 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { Box, Icon, UnstyledButton } from "metabase/ui";
 import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
-import S from "./MetabotChatEditor.module.css";
 import { MetabotPromptInput } from "../../MetabotPromptInput";
+
+import S from "./MetabotChatEditor.module.css";
 
 interface Props {
   value: string;
@@ -29,7 +30,12 @@ export const MetabotChatEditor = forwardRef<
         <Icon name="metabot" c="brand" />
       </Box>
       <Box className={S.contentWrapper}>
-        <MetabotPromptInput {...props} ref={ref} disabled={isResponding} />
+        <MetabotPromptInput
+          {...props}
+          ref={ref}
+          disabled={isResponding}
+          data-testid="metabot-chat-input"
+        />
       </Box>
       <UnstyledButton
         className={cx(

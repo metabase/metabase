@@ -6,16 +6,7 @@ import {
   WidgetType,
 } from "@codemirror/view";
 
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
-
 import S from "./MetabotInlineSQLPrompt.module.css";
-
-export type MetabotInlineSQLPromptOptions = {
-  placeholder?: string;
-  suggestionModels: readonly SuggestionModel[];
-  onSubmit: (value: string) => Promise<void>;
-  onCancel: () => void;
-};
 
 export type PortalTarget = {
   container: HTMLElement;
@@ -23,7 +14,6 @@ export type PortalTarget = {
 };
 
 type TogglePromptPayload = {
-  options: MetabotInlineSQLPromptOptions;
   view: EditorView;
 };
 
