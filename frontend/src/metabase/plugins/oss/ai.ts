@@ -73,8 +73,8 @@ type PluginMetabotType = {
     portalElement: React.ReactPortal | null;
     extensions: Extension[];
     proposedQuestion: Question | undefined;
-    handleAcceptProposed: (datasetQuery: DatasetQuery) => void;
-    handleRejectProposed: () => void;
+    handleAcceptProposed?: (datasetQuery: DatasetQuery) => void;
+    handleRejectProposed?: () => void;
   } | void;
 };
 
