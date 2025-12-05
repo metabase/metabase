@@ -149,7 +149,7 @@
   {:pre [(string? connection-string)]}
   (let [[file & options] (str/split connection-string #";+")
         options          (into {} (for [option options]
-                                    (str/split option #"=")))]
+                                    (str/split option #"=" 2)))]
     [file options]))
 
 (defn- db-details->user [{:keys [db], :as details}]
