@@ -27,6 +27,7 @@
     color: var(--mb-color-text-light);
   }
 }
+
 .container {
   display: flex;
   flex-direction: column;

@@ -1,3 +1,4 @@
+import type { Extension } from "@uiw/react-codemirror";
 import type { ComponentType } from "react";
 import React from "react";
 
@@ -6,6 +7,7 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
+  DatasetQuery,
   SearchModel,
   Timeline,
   TimelineEvent,
@@ -67,6 +69,13 @@ type PluginMetabotType = {
   MetabotAdminAppBarButton: ComponentType;
   MetabotDataStudioButton: ComponentType;
   MetabotDataStudioSidebar: ComponentType;
+  useInlineSQLPrompt: (question: Question) => {
+    portalElement: React.ReactPortal | null;
+    extensions: Extension[];
+    proposedQuestion: Question | undefined;
+    handleAcceptProposed: (datasetQuery: DatasetQuery) => void;
+    handleRejectProposed: () => void;
+  } | void;
 };
 
 const getDefaultMetabotContextValue = (): MetabotContext => ({
@@ -120,6 +129,7 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   MetabotAdminAppBarButton: PluginPlaceholder,
   MetabotDataStudioButton: PluginPlaceholder,
   MetabotDataStudioSidebar: PluginPlaceholder,
+  useInlineSQLPrompt: () => {},
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 

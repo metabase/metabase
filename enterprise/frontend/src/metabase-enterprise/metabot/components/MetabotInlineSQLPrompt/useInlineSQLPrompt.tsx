@@ -1,18 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { keymap } from "@codemirror/view";
+import type { Extension } from "@uiw/react-codemirror";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { t } from "ttag";
 
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-
-import { useInlinePrompt } from "./inline-prompt";
-import { Extension } from "@uiw/react-codemirror";
-
-export interface UseInlineSqlEditOptions {
-  question: Question;
-}
+import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
+import {
+  type PortalTarget,
+  createPromptInputExtension,
+  hideEffect,
+  toggleEffect,
+} from "./MetabotInlineSQLPromptWidget";
 
 export interface UseInlineSqlEditResult {
   portalElement: React.ReactPortal | null;
@@ -22,23 +25,15 @@ export interface UseInlineSqlEditResult {
   handleRejectProposed: () => void;
 }
 
-// TODO: finish refactor / merge this with useInlinePrompt
-export function useInlineSqlEdit({
-  question,
-}: UseInlineSqlEditOptions): UseInlineSqlEditResult {
+export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   const { submitInput, setVisible, cancelRequest } = useMetabotAgent();
 
   /* TODO: temp hack - communicate sql via global notifier used in navigate to handler */
   const [generatedSql, setGeneratedSql] = useState<string | undefined>();
   useEffect(() => {
     (window as any).notifyCodeEdit = (sql: string) => setGeneratedSql(sql);
-    return () => {
-      delete (window as any).notifyCodeEdit;
-    };
   }, []);
-  const clearGeneratedSql = useCallback(() => {
-    setGeneratedSql(undefined);
-  }, []);
+  const clearGeneratedSql = () => setGeneratedSql(undefined);
   /* TODO: temp hack end */
 
   const proposedQuestion = useMemo(
@@ -49,7 +44,7 @@ export function useInlineSqlEdit({
     [generatedSql, question],
   );
 
-  const inlinePromptOptions = useMemo(
+  const options = useMemo(
     () => ({
       placeholder: t`Describe what SQL you want...`,
       suggestionModels: [
@@ -73,7 +68,45 @@ export function useInlineSqlEdit({
     [submitInput, setVisible, cancelRequest],
   );
 
-  const { extensions, portalElement } = useInlinePrompt(inlinePromptOptions);
+  const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
+
+  const extensions = useMemo(
+    () => [
+      createPromptInputExtension(setPortalTarget),
+      keymap.of([
+        {
+          key: "Mod-e",
+          run: (view) => {
+            view.dispatch({ effects: toggleEffect.of({ options, view }) });
+            return true;
+          },
+        },
+      ]),
+    ],
+    [options],
+  );
+
+  const hidePrompt = () => {
+    portalTarget?.view.dispatch({ effects: hideEffect.of() });
+    portalTarget?.view.focus();
+  };
+
+  const handleCancel = () => {
+    options.onCancel();
+    hidePrompt();
+  };
+
+  const portalElement = portalTarget
+    ? createPortal(
+        <MetabotInlineSQLPrompt
+          placeholder={options.placeholder}
+          suggestionModels={options.suggestionModels}
+          onSubmit={options.onSubmit}
+          onCancel={handleCancel}
+        />,
+        portalTarget.container,
+      )
+    : null;
 
   return {
     extensions,

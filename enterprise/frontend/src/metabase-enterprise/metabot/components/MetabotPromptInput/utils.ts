@@ -1,11 +1,12 @@
 import type { JSONContent } from "@tiptap/core";
 import { match } from "ts-pattern";
 
+import { mbProtocolModelToSuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
+
 import {
   METABSE_PROTOCOL_MD_LINK,
   createMetabaseProtocolLink,
-} from "metabase-enterprise/metabot/utils/links";
-import { mbProtocolModelToSuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
+} from "../../utils/links";
 
 function serializeNodes(nodes: JSONContent[]): string {
   return nodes.map((node) => serializeNode(node)).join("");

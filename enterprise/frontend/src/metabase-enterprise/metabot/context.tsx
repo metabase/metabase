@@ -6,8 +6,8 @@ import _ from "underscore";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
-  MetabotPromptInputRef,
   MetabotContext as MetabotCtx,
+  MetabotPromptInputRef,
 } from "metabase/metabot";
 import {
   canUserCreateNativeQueries,
@@ -29,8 +29,6 @@ export const defaultContext = {
 };
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
-
-export type MetabotPromptInputRef = { focus: () => void };
 
 export const MetabotProvider = ({
   children,

@@ -13,6 +13,7 @@ import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
+import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt/useInlineSQLPrompt";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
@@ -97,4 +98,5 @@ export function initializePlugin() {
       </Route>
     );
   }
+  PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
 }
