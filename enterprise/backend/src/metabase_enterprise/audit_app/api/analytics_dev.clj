@@ -79,7 +79,7 @@
 
 ;;; API Endpoints
 
-(api.macros/defendpoint :post "/export"
+(api.macros/defendpoint :post "/export" :- [:map [:body :any]]
   "Export analytics content as a .tar.gz file for local development.
 
   Only available when MB_ANALYTICS_DEV_MODE=true. Returns a tarball containing
