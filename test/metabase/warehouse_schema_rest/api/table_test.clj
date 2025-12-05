@@ -713,6 +713,14 @@
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
+(deftest ^:parallel table-segment-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata"
+    (testing "segments include :definition_description"
+      (mt/with-temp [:model/Segment _ {:table_id (mt/id :venues)
+                                       :definition (:query (mt/mbql-query venues {:filter [:= $price 4]}))}]
+        (is (=? {:segments [{:definition_description "Filtered by Price is equal to 4"}]}
+                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
+
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
 
