@@ -26,7 +26,7 @@ type TransformEditorProps = {
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
   readOnly?: boolean;
-  transformId: TransformId;
+  transformId?: TransformId;
 };
 
 export function TransformEditor({
@@ -79,7 +79,8 @@ export function TransformEditor({
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
       topBarInnerContent={
-        readOnly && (
+        readOnly &&
+        !!transformId && (
           <EditDefinitionButton
             bg="transparent"
             h="1.5rem"

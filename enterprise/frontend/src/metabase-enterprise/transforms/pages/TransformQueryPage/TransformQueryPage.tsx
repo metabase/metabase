@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
@@ -129,6 +129,12 @@ function TransformQueryPageBody({
   useLayoutEffect(() => {
     handleResetRef.current();
   }, [transform.id, handleResetRef]);
+
+  useEffect(() => {
+    if (source.type !== "python" && !isEditMode) {
+      setSourceAndRejectProposed(transform.source);
+    }
+  }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
   const handleSave = async () => {
     if (isNotDraftSource(source)) {

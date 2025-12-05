@@ -404,6 +404,9 @@ LIMIT
   5`;
 
       createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
+
       getQueryEditor().findByLabelText("View SQL").click();
       H.sidebar().should("be.visible");
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
@@ -1113,8 +1116,8 @@ LIMIT
       });
       H.NativeEditor.get().should("have.attr", "contenteditable", "false");
       H.NativeEditor.get().should("have.attr", "aria-readonly", "true");
-      cy.findByRole("link", { name: "Edit definition" }).should("be.visible");
-      cy.findByRole("link", { name: "Edit definition" }).should(
+      H.DataStudio.Transforms.editDefinition().should("be.visible");
+      H.DataStudio.Transforms.editDefinition().should(
         "have.attr",
         "href",
         "/data-studio/transforms/1/edit",
@@ -1128,8 +1131,8 @@ LIMIT
         .findByText("Animals")
         .closest("button")
         .should("be.disabled");
-      cy.findByRole("link", { name: "Edit definition" }).should("be.visible");
-      cy.findByRole("link", { name: "Edit definition" }).should(
+      H.DataStudio.Transforms.editDefinition().should("be.visible");
+      H.DataStudio.Transforms.editDefinition().should(
         "have.attr",
         "href",
         "/data-studio/transforms/1/edit",
@@ -1141,7 +1144,7 @@ LIMIT
       createMbqlTransform({ visitTransform: true });
 
       cy.log("visit edit mode");
-      cy.findByRole("link", { name: "Edit definition" }).click();
+      H.DataStudio.Transforms.editDefinition().click();
       cy.url().should("include", "/edit");
 
       cy.log("update the query");
@@ -1173,7 +1176,7 @@ LIMIT
       });
 
       cy.log("visit edit mode");
-      cy.findByRole("link", { name: "Edit definition" }).click();
+      H.DataStudio.Transforms.editDefinition().click();
       cy.url().should("include", "/edit");
 
       cy.log("update the query");
@@ -1427,6 +1430,9 @@ LIMIT
 
     it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
       createSlowTransform(500);
+
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
 
       getQueryEditor().within(() => {
         cy.findAllByTestId("run-button").eq(0).click();
