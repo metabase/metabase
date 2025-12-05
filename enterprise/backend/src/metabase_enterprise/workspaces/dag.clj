@@ -1,261 +1,281 @@
+;; TODO consider renaming this to dataflow
 (ns metabase-enterprise.workspaces.dag
+  "Used to do graph computations with respect to dataflow within a workspace.
+
+   This workspace should encapsulate all coupling to the [[metabase-enterprise.dependencies]] module, including through
+   database artifacts.
+
+   It is purely concerned with calculation, any side effects wanted as a result of the analysis should happen outside."
   (:require
-   [clojure.set :as set]
-   [flatland.ordered.map :as ordered-map]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.util :as u]))
 
-;;;; Internal helpers
+(def ^:private RefId :string)
 
-(def ^:private group->db-type
-  "Mapping from our entity type grouping keywords to the dependency table's type strings."
-  {:transforms "transform"
-   #_#_:models "card"})
+(def ^:private GraphMembers
+  [:map
+   [:working-set [:sequential RefId]]
+   [:inputs [:sequential InputTable]]
+   [:outputs [:sequential OutputTable]]
+   [:entities [:sequential Entity]]])
 
-(defn- rows->entity-set
-  "Convert query result rows to a set of {:id :type} maps."
-  [rows]
-  (into #{}
-        (map (fn [{:keys [entity_type entity_id]}]
-               {:id entity_id :type (keyword entity_type)}))
-        rows))
+(def ^:private Graph
+  [:and GraphMembers [:dependencies [:map-of RefId [:sequential RefId]]]])
 
-(defn- entities-map->tuples
-  "Convert a map of {type ids} to a sequence of [db-type id] tuples.
-   `entities-by-type` is a map like {:transform [1 2 3]}."
-  [entities-by-type]
-  (assert (every? group->db-type (keys entities-by-type)) "Not all entity types are supported")
-  (into []
-        (mapcat (fn [[entity-type ids]]
-                  (let [dep-type (group->db-type entity-type)]
-                    (map (fn [id] [dep-type id]) ids))))
-        entities-by-type))
+(def ^:private GraphUpdate [:map [:added GraphMembers] [:removed GraphMembers] [:subgraph Graph]])
 
-(defn- tuples->entity-set
-  "Convert a sequence of [type id] tuples to a set of {:id :type} maps."
-  [tuples]
-  (into #{}
-        (map (fn [[entity-type entity-id]]
-               {:id entity-id :type (keyword entity-type)}))
-        tuples))
+;; goals for graph:
+;; - enough to power all the apis without reading the appdb again
+;; -
 
-(defn- tuples->starting-cte
-  "Build a UNION ALL of SELECT statements for the starting tuples."
-  [tuples]
-  {:union-all (mapv (fn [[t id]]
-                      {:select [[[:inline t] :entity_type]
-                                [[:inline id] :entity_id]]})
-                    tuples)})
-
-;;;; Toposort
-
-(defn- toposort-visit [node child->parents visited result]
-  (cond
-    (visited node) [visited result]
-    :else (let [parents (child->parents node [])
-                [visited' result'] (reduce (fn [[v r] p]
-                                             (toposort-visit p child->parents v r))
-                                           [(conj visited node) result]
-                                           parents)]
-            [visited' (conj result' node)])))
-
-(defn- toposort-dfs [child->parents]
-  ;; TODO (Chris 2025-11-20): Detect cycles and throw an error. (In practice inputs will never be cyclic, but still.)
-  (let [all-nodes (set (keys child->parents))]
-    (loop [visited   #{}
-           result    []
-           remaining all-nodes]
-      (if (empty? remaining)
-        result
-        (let [node (first remaining)
-              [visited' result'] (toposort-visit node child->parents visited result)]
-          (recur visited' result' (disj remaining node)))))))
-
-;;;; Transitive closure queries
-
-(defn- transitive-closure
-  "Compute transitive closure in the given direction.
-   `direction` is :upstream (follow dependencies) or :downstream (follow dependents)."
-  [entities-by-type direction]
-  (let [starting-tuples (entities-map->tuples entities-by-type)
-        [cte-name match-type match-id result-type result-id]
-        (case direction
-          :upstream   [:upstream,   :d.from_entity_type, :d.from_entity_id, :d.to_entity_type,   :d.to_entity_id]
-          :downstream [:downstream, :d.to_entity_type,   :d.to_entity_id,   :d.from_entity_type, :d.from_entity_id])]
-    (when (seq starting-tuples)
-      (rows->entity-set
-       (t2/query {:with-recursive
-                  [[[:starting {:columns [:entity_type :entity_id]}] (tuples->starting-cte starting-tuples)]
-                   [[cte-name {:columns [:entity_type :entity_id]}] {:union-all
-                                                                     [{:select [:entity_type :entity_id]
-                                                                       :from   [:starting]}
-                                                                      {:select [[result-type :entity_type]
-                                                                                [result-id :entity_id]]
-                                                                       :from   [[:dependency :d]]
-                                                                       :join   [[cte-name :r]
-                                                                                [:and
-                                                                                 [:= match-type :r.entity_type]
-                                                                                 [:= match-id :r.entity_id]]]}]}]]
-                  :select [:entity_type :entity_id]
-                  :from   [cte-name]})))))
-
-(defn- upstream-entities
-  "Given a map of entity types to IDs, find all upstream entities (dependencies).
-   Returns a set of {:id :type} maps."
-  [entities-by-type]
-  (transitive-closure entities-by-type :upstream))
-
-(defn- downstream-entities
-  "Given a map of entity types to IDs, find all downstream entities (dependents).
-   Returns a set of {:id :type} maps."
-  [entities-by-type]
-  (transitive-closure entities-by-type :downstream))
-
-;;;; Dependency fetching
-
-(defn- entity-dependencies
-  "Fetch all dependencies between the given entities within the dependency table.
-   Returns a map from {:id :type} to a vector of {:id :type} dependencies."
-  [entities]
-  (if (empty? entities)
-    {}
-    (let [conditions (mapv (fn [{:keys [id type]}]
-                             [:and
-                              [:= :from_entity_type (name type)]
-                              [:= :from_entity_id id]])
-                           entities)
-          rows       (t2/query {:select [:from_entity_type :from_entity_id
-                                         :to_entity_type :to_entity_id]
-                                :from   [:dependency]
-                                :where  (into [:or] conditions)})]
-      (reduce (fn [acc {:keys [from_entity_type from_entity_id to_entity_type to_entity_id]}]
-                (let [from-entity {:id from_entity_id, :type (keyword from_entity_type)}
-                      to-entity   {:id to_entity_id,   :type (keyword to_entity_type)}]
-                  (if (contains? entities to-entity)
-                    (update acc from-entity (fnil conj []) to-entity)
-                    acc)))
-              {}
-              rows))))
-
-(defn- toposort-entities
-  "Toposort entities based on their dependencies.
-   Returns entities in topological order (dependencies before dependents)."
-  [entity-set dependencies-map]
-  (let [child->parents (into {}
-                             (map (fn [entity]
-                                    [entity (vec (get dependencies-map entity []))]))
-                             entity-set)]
-    (toposort-dfs child->parents)))
-
-(defn- table? [entity] (= :table (:type entity)))
-
-(defn- transform? [entity] (= :transform (:type entity)))
-
-(defn- fetch-dependent-tables
-  "Fetch tables that are the output targets of the given transforms.
-   Returns tables with their IDs if they exist in the database, or with :id nil if they don't exist yet.
-   This supports workspace checkout for transforms that haven't been executed yet."
-  [entities]
-  (when (seq entities)
-    (let [transform-ids (map :id (filter transform? entities))
-          transforms    (when (seq transform-ids)
-                          (t2/select [:model/Transform :source :target] :id [:in transform-ids]))]
-      (vec
-       (for [{:keys [target]} transforms, :when target]
-         (case (:type target)
-           "table"
-           ;; Note: id will be nil if the table has not been created yet
-           {:id     (t2/select-one-pk :model/Table
-                                      :db_id (:database target)
-                                      :schema (:schema target)
-                                      :name (:name target))
-            :schema (:schema target)
-            :name   (:name target)
-            :type   :table}
-           (throw (ex-info "Unsupported target type" {:target target}))))))))
-
-(defn- toposort-key-fn [ordering]
-  (let [index-map (zipmap ordering (range))
-        index-of  #(get index-map % Integer/MAX_VALUE)]
-    (fn [e]
-      [(index-of e) (:type e) (:id e)])))
-
-;;;; Card dependency detection
-
-;; TODO this may be overkill:
-;;   1. We currently care only that there is at-least-one card being depended on.
-;;   2. We know for transforms that we can only have any card dependencies if there is a first-order card dependency.
+;; pros and cons of putting tables in the entities and / or dependencies data structures:
+;; pro
+;; - implicitly encodes sources and targets
 ;;
-;;   ie. we could just do an existence check on direct ancestors.
+;; con
+;; - mixed ref-ids with app-ids
+;; - larger graph - more steps to walk, less human-readable
+;; - can't get target for a particular transform without walking (but does guarantee uniqueness)
 ;;
-;;   If we only disallow MBQL cards however, we would still need to walk transitive dependencies in
-;;   case we hit one further up. We could still short-circuit however.
-(defn card-dependencies
-  "Find all card IDs that the given transforms transitively depend on.
-   Queries the dependency table for upstream cards.
-   Returns a set of card IDs, or empty set if no card dependencies."
-  [transform-ids]
+;; what about putting it in
+;;
+;; app-id -> ref-id, or the reverse?
+
+#_(def ^:private empty-subgraph
+    {:working-set  []
+     :inputs       []
+     :outputs      []
+     :entities     []
+     :dependencies {}})
+
+(defn unsupported-dependency?
+  "Return "
+  [{transform-ids :transform :as _entity-map}]
   (when (seq transform-ids)
-    (let [starting-tuples (mapv (fn [id] ["transform" id]) transform-ids)
-          rows (t2/query {:with-recursive
-                          [[[:starting {:columns [:entity_type :entity_id]}] (tuples->starting-cte starting-tuples)]
-                           [[:upstream {:columns [:entity_type :entity_id]}] {:union-all
-                                                                              [{:select [:entity_type :entity_id]
-                                                                                :from   [:starting]}
-                                                                               {:select [[:d.to_entity_type :entity_type]
-                                                                                         [:d.to_entity_id :entity_id]]
-                                                                                :from   [[:dependency :d]]
-                                                                                :join   [[:upstream :r]
-                                                                                         [:and
-                                                                                          [:= :d.from_entity_type :r.entity_type]
-                                                                                          [:= :d.from_entity_id :r.entity_id]]]}]}]]
-                          :select-distinct [:entity_id]
-                          :from   [:upstream]
-                          :where  [:= :entity_type "card"]})]
-      (into #{} (map :entity_id) rows))))
+    ;; return the set of transform ids for which there is a direct card dependency, or nil if there are none.
+    ;; this can be done with a simple DISTINCT(downstream_id) WHERE down.transform & up.table (don't care about up.id)
+    (not-empty #{(first transform-ids)})))
 
 ;;;; Public API
 
-(defn path-induced-subgraph
+(defn- path-induced-subgraph
   "Given a map of entity types to IDs, compute the path-induced subgraph.
    `entities-by-type` is a map like {:transform [1 2 3]}.
 
    Returns a map with:
-   - :check-outs   - the entities we want to make editable within the workspace, in topological order
-   - :inputs       - external tables that entities in the subgraph depend on, ordered by id
-   - :outputs      - output tables generated by entities in the subgraph, in topological order
-   - :transforms   - transforms in the subgraph, in topological order
-   - :dependencies - map from each subgraph entity to its dependencies within subgraph, in topological order"
-  [entities-by-type]
-  (let [starting-set  (tuples->entity-set (entities-map->tuples entities-by-type))
-        upstream      (or (upstream-entities entities-by-type) #{})
-        downstream    (or (downstream-entities entities-by-type) #{})
-        subgraph      (set/intersection upstream downstream)
-        transforms    (filterv transform? subgraph)
-        output-tables (or (fetch-dependent-tables transforms) [])
-        inputs        (->> upstream
-                           (filter table?)
-                           (remove subgraph)
-                           (sort-by :id)
-                           vec)
-        deps-map      (entity-dependencies subgraph)
-        sorted        (toposort-entities subgraph deps-map)
-        ;; Right now, this doesn't quite yield the comparator we want, since we have a partial ordering, and the
-        ;; toposort is rather arbitrary in this regard. It also excludes the upstream and downstream dependencies.
-        ;; What we'd prefer is to have the following:
-        ;; 1. Dependencies come before their dependents.
-        ;; 2. For independent nodes, order by type (tables before transforms), then by ID.
-        sort-key-fn   (toposort-key-fn sorted)]
-    {:check-outs   (vec (sort-by sort-key-fn starting-set))
-     ;; By definition, these are all tables, and all external to the subgraph, so ID is the only thing to sort by.
-     ;; Ideally, they'd be ordered by their own dependency relationships too, but for now this is good enough.
-     :inputs       (vec (sort-by :id inputs))
-     :outputs      (vec (sort-by sort-key-fn output-tables))
-     :transforms   (vec (sort-by sort-key-fn transforms))
-     :dependencies (into (ordered-map/ordered-map)
-                         (keep (fn [entity]
-                                 (when-not (table? entity)
-                                   [entity (vec (map #(if (table? %)
-                                                        (first (get deps-map % []))
-                                                        %)
-                                                     (get deps-map entity [])))])))
-                         sorted)}))
+   - :working-set  - the entities being edited within the workspace, in topological order
+                     {type, ref-id, parent-id}
+   - :inputs       - tables that the subgraph directly depends on, that are not themselves produced by the subgraph.
+                     ordered by id
+   - :outputs      - isolated tables generated by entities in the subgraph, in topological order
+                     {global, workspace}
+
+   - :entities     - the path induced subgraph generated by the working set, in topological order
+   - :dependencies - association list for the subgraph, with keys and values both in topological order"
+  [working-set]
+  {:working-set  (or working-set [{:type "transform", :ref-id "2", :parent-id 1}])
+   :inputs       [{:database-id 1, :table-id 1, :schema "public", :table "orders"}]
+   :outputs      [{:global    {:database-id 1
+                               :table-id    [:maybe 2]
+                               :schema      "public"
+                               :table       "augmented_orders"}
+                   :workspace {:transform-id "2"
+                               :database-id  1
+                               :table-id     [:maybe 3]
+                               ;; These can be generated by pure functions, but let's not assume that.
+                               :schema       "isolated__blah"
+                               ;; TODO note that we can still get conflicts on these table names - how to handle that?
+                               ;; Maybe we just detect there will be a conflict with this naming scheme, and throw.
+                               ;; That's better than unexpected behavior...
+                               :table        "public__augmented_orders"}}]
+   ;; TODO do we need to put the tables in here? maybe we can just get sources from dependencies, and put outputs
+   ;;      inside the transforms? or maybe it's enough that the outputs point back to them (hydrate will reverse this)
+   :entities     [{:type   "transform", :ref-id "2"}
+                  {:type   "table"}]
+   ;; TODO note that in JSON this key will get turned into a string - not safe
+   ;;      i guess we should serialize it as an ordered association list then.
+   ;;      or, is there something better we can use as keys? e.g. "transform:2"
+   :dependencies {{:type "transform", :ref-id "2"} []}})
+
+(defn- validate-graph!
+  [subgraph]
+  ;; note: these are all things that are trivial to enforce though, maybe belong in normalization instead.
+  ;; keys and values are topo sorted?
+  ;; inputs and targets are disjoint
+  )
+
+(defn- from-appdb-entity
+  "Return the trivial subgraph generated by a single entity"
+  [type id]
+  (ws.u/assert-transform! type)
+  (let [ref-id         (str type ":" (inc id))
+        source-table-1 {:id (+ id 2), :schema "upload", :table ref-id}
+        target-table   {:id (+ id 3), :schema "output", :table ref-id, :source-ref-id ref-id}]
+    {:working-set  [ref-id]
+     :inputs       [source-table-1]
+     :outputs      [target-table]
+     :entities     [{:type type, :ref-id ref-id :source-id id}]
+     :sources      {ref-id [source-table-1]}
+     :dependencies {ref-id []}}))
+
+(def ^:private db+schema+table (juxt :db_id :schema :table))
+
+(defn- seek-by-key [entities k v]
+  (u/seek (comp #{v} k) entities))
+
+(defn- change-target
+  [subgraph ref-id target]
+  ;; check this is a valid output? (we need the graph for this)
+  ;; find the old output, and remove it
+  ;; add the new output
+  ;; add it as dependency to all entities with this table as a source
+  )
+
+(defn add-entity
+  "Update the subgraph when a new entity is added to the working set.
+   No-op if the entity is already in the working set."
+  [subgraph type id]
+  (ws.u/assert-transform! type)
+  (if-not subgraph
+    (from-appdb-entity type id)
+    (let [ref-id          (str type ":" (inc id))
+          {:keys [working-set inputs outputs entities dependencies]} subgraph
+          in-working-set? (when-let [ref-id (:ref-id (seek-by-key entities :source-id id))]
+                            (boolean (some #{ref-id} working-set)))]
+      (if in-working-set?
+        ;; no-op
+        {:added nil, :removed nil, :subgraph subgraph}
+        ;; determine whether this entity is connected in either direction to anything in the working set.
+        ;; if so, also add all connecting paths to the graph as well (both the entities and their corresponding edges)
+        ;; to demonstrate everything that can change in a non-trivial example, we find both types of path here.
+        (let [predecessor       (first (:working-set subgraph))
+              descendant        (u/seek #(not= predecessor %) (:working-set subgraph))
+              in-between        (when predecessor (str "transform:" (+ id 2)))
+              source-table-1    {:db_id (if predecessor 2 1) :id (+ id 3), :schema "public", :table (str \t (+ id 3)), :tx-ref-id predecessor}
+              target-table      {:db_id 2,                   :id (+ id 4), :schema "output", :table (str \t (+ id 4)), :tx-ref-id ref-id}
+              in-between-source (when in-between {:db_id 2,  :id (+ id 5), :schema "output", :table (str \t (+ id 5)), :tx-ref-id in-between})
+              in-between-target (when in-between {:db_id 2,  :id (+ id 6), :schema "output", :table (str \t (+ id 6)), :tx-ref-id in-between})
+              outputs           (cond-> outputs in-between-target (conj in-between-target) true (conj target-table))
+              ;; Using db.schema.table, since table might not exist yet.
+              inputs'           (let [output? (into #{} (map db+schema+table) outputs)]
+                                  (not-empty (vec (remove (comp output? db+schema+table)
+                                                          (conj inputs in-between-source source-table-1)))))]
+          {:added
+           {:working-set [ref-id]
+            :inputs      (seq (remove (set inputs) inputs'))
+            :outputs     [target-table]
+            :entities    (cond-> (list ref-id) predecessor (conj in-between) true vec)}
+
+           :removed
+           {:working-set nil
+            :inputs      (seq (remove (set inputs') inputs))
+            :outputs     nil
+            :entities    nil}
+
+           :subgraph
+           ;; Append the adjacency lists and walk the graph to recompute these properly.
+           {:working-set  (conj working-set ref-id)
+            :inputs       inputs'
+            :outputs      outputs
+            :entities     (cond-> (seq entities)
+                            true        (conj {:type type,        :ref-id ref-id, :source-id id})
+                            ;; These should all have source-ids, since they must have come from the global graph.
+                            predecessor (conj {:type "transform", :ref-id in-between}
+                                              {:type "transform", :ref-id predecessor})
+                            descendant  (conj {:type "transform", :ref-id descendant})
+                            true distinct
+                            true vec)
+            :dependencies (cond-> dependencies
+                            predecessor (assoc ref-id [in-between]
+                                               in-between [predecessor])
+                            descendant (update descendant u/conjv ref-id))}})))))
+
+;; tests:
+;; - add transform to a nil / empty subgraph (both?)
+;; - add transform that is already in working set
+;; - add transform that is already in subgraph (through the closure only)
+;; - add transform that will add an input, and remove another (by masking it with an output), and add another tx to closure
+;; (probably one non-trivial case like the above is enough coverage of edge cases?)
+
+;; TODO what should we do if deleting this entity would cause the graph to break?
+;;      just yolo, let the dependency checker show warnings to the user / execution won't run, or runs only partially?
+(defn remove-entity
+  "Update the subgraph when a new entity is added to the working set.
+   No-op if the entity is not already in the working set."
+  [subgraph ref-id]
+  ;; no-op if not in the working set
+  ;; remove from working set
+  ;; optimization: if we have reference counting, could more cheaply knock out stale nodes from the graph.
+  ;; for now, we can just recompute using :working-set and :dependencies, then filter :dependencies based on :entities
+  ;; note: it might still be in the subgraph afterward, by being in a path.
+  (update subgraph :working-set #(filterv (comp #{ref-id} :ref-id) %)))
+
+;; tests:
+;; - remove entity from nil / empty subgraph (just special cases of the next one)
+;; - remove entity that is not in the non-trivial subgraph
+;; - remove entity that is in the working set of just itself
+;; - remove entity that will remove another tx, remove an input, and restore another input (masked by an output)
+;; - remove entity that is in the subgraph, but not in the working set (no-op)
+
+;; TODO should we return just the subgraph from add and remove, and let caller diff from previous graph?
+;;      we could provide helper methods that do the diffing.
+;;      the alternative: return the diffs in addition to the whole value
+;;      the latter may be more expensive when we don't need a bit of the diff, but should typically be cheaper than
+;;      computing the. it would also shrinks the surface area of the api - so let's go for it.
+
+(defn- diff-graphs [before after]
+  {:input-tables-to-grant-access-to  (remove (set (:inputs before)) (:inputs after))
+   :input-tables-to-revoke-access-to (remove (set (:inputs after)) (:inputs before))
+   ;; TODO probably we can move to not doing any of this? without mbql we won't need table ids yet
+   :output-tables-to-copy            (remove (set (:outputs before)) (:outputs after))
+   :output-tables-to-delete          (remove (set (:outputs after)) (:outputs before))
+   ;; Well, we definitely already know this (at most a singleton, taken directly from args)
+   :copies-to-make                   (remove (set (:working-set before)) (:working-set after))
+   :copies-to-delete                 (remove (set (:working-set after)) (:working-set before))
+   ;; ... I think that's all, if we're using the graph as the source of truth?
+   ;; ... but more realistically, there are probably some appdb tables generated by the representation that we want
+   ;; ... e.g. joins between the appdb and workspace stuff
+   })
+
+;; TODO do we actually need this? if we only add transforms one at a time when they're edited, this is overkill.
+#_(defn- appdb->path-induced-subgraph
+    "Given some global entities in the app-db, return the generated subgraph where we've turne"
+    [entities-map]
+    (#_not-quite path-induced-subgraph (or entities-map {:transforms [1]})))
+
+;; TODO not sure we need this - everything is incremental right now.
+;;      this kind of batch thing is perhaps an optimization?
+#_(defn- update-working-set
+    [entities-map-to-add entity-refs-to-remove subgraph]
+    (or entities-map-to-add [{:transforms [1]}])
+    (or entity-refs-to-remove ["transform:2"])
+
+    ;; deletes obsolete entities from the working set
+    ;; validates that no added entities are already in graph, or just filters them out.
+    ;; fetches relevant dependency graph related to new entities
+    ;; merges the appdb and workspace graphs (shadowing overwritten nodes and edges)
+
+    ;; recomputes or amends the subgraph
+
+    subgraph)
+
+(defn hydrate-graph
+  "Given the return shape of path-induced-subgraph (TODO make this a malli type), wrap it in a larger structure with
+   computed indexes, corresponding toucan models, etc."
+  [subgraph]
+  {:subgraph                subgraph
+   ;; TODO lock down this shape, just some ideas here.
+   ;; Used to remap source references on execution
+   :global->isolated-tables {}
+   ;; Used to show
+   :isolated->global-tables {}})
+
+;; TODO: which of these flows is best?
+;;
+;; validation (e.g. sorry this pulls in an mbql transform, or a transform->card dep)
+;;
+;; 1. after computing graph (least efficient on compute, most efficient on database if OK, slowest overall)
+;; 2. while computing graph (most efficient if OK, makes graph code less pure)
+;; 3. before computing graph (most wasteful if OK, fastest if not OK)
+;;
+;; I think (1) is the most straight forward to do first, and we can consider 2 or 3 as optimizations?

@@ -65,8 +65,6 @@
         val-remapper (fn [id] (get remaps id id))]
     (update source :source-tables update-vals val-remapper)))
 
-;;;; Public
-
 (defn- source-for-mirrored-transform
   [transform-node ctx]
   (let [transform-data (ws.ctx/transform-node->data ctx transform-node)
@@ -74,6 +72,8 @@
     (if-not (ws.ctx/has-dependencies? ctx transform-node)
       source
       (remapped-transform-source transform-node ctx))))
+
+;;;; Public
 
 (defn target-for-mirrored-transform
   "This should happen to every transform"

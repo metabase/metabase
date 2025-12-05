@@ -3,45 +3,23 @@
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
-;; TODO (lbrdnk 2025-11-26): Following should have its own module
-;;;; Fetching the graph data
-
-(defn- fetch-graph-transforms
-  [transform-ids]
-  (if (empty? transform-ids)
+(defn- fetch-entities [type model-select ids]
+  (if (empty? ids)
     {}
-    (let [id->transform (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids])]
-      (when (not= (count transform-ids) (count id->transform))
-        (throw (ex-info (tru "Unable to fetch all transforms within the graph")
-                        {:status-code           500
-                         :transform-ids         transform-ids
-                         :missing-transform-ids (remove id->transform transform-ids)})))
-      id->transform)))
+    (let [id->entity (t2/select-fn->fn :id identity model-select :id [:in ids])]
+      (when (not= (count ids) (count id->entity))
+        (throw (ex-info (tru "Unable to find all graph entities in the appdb")
+                        {:status-code   500
+                         :type          type
+                         :ids           ids
+                         :transform-ids (remove id->entity ids)})))
+      id->entity)))
 
-(defn- fetch-graph-tables
-  [table-ids]
-  (when (seq table-ids)
-    (let [id->table (into {}
-                          (t2/select-fn->fn :id identity [:model/Table :id :schema :name]
-                                            :id [:in table-ids]))]
-      (assert (= (count table-ids) (count id->table)))
-      id->table)))
+(defn- fetch-transforms [transform-ids]
+  (fetch-entities "transform" :model/Transform transform-ids))
 
-(defn- fetch-graph-resources
-  [graph]
-  ;; TODO: keep -> map when we have guards ensuring outputs have id?
-  ;;       figure out the details
-  {:id->output-table (fetch-graph-tables (keep :id (:outputs graph)))
-   :id->input-table (fetch-graph-tables (keep :id (:inputs graph)))
-   :id->transform (fetch-graph-transforms (map :id (:transforms graph)))})
-
-;;;; Public
-
-(defn ->context-with-resources
-  "TODO (lbrdnk): Add docstring."
-  [graph]
-  {:data (fetch-graph-resources graph)
-   :graph graph})
+(defn- fetch-tables [table-ids]
+  (fetch-entities "table" [:model/Table :id :db_id :schema :name] table-ids))
 
 ;;;; Misc
 

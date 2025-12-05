@@ -10,6 +10,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(use-fixtures :all (fn [f] (mt/with-premium-features [:dependencies :transforms :workspaces] (f))))
+
 ;;;; Example graphs for testing
 
 (def ^:private example
@@ -257,81 +259,32 @@
 
 ;;;; Card dependency detection tests
 
-(defn- query-with-source-card
-  "Create a pMBQL query that uses a card as its source."
-  [card-id]
-  {:lib/type :mbql/query
-   :database (mt/id)
-   :stages   [{:lib/type    :mbql.stage/mbql
-               :source-card card-id}]})
+(deftest unsupported-dependency-no-transforms-test
+  (testing "empty input returns false"
+    (is (nil? (ws.dag/unsupported-dependency? [])))))
 
-(defn- create-transform-with-card-source!
-  "Create a transform whose source query depends on a card.
-   The after-insert hook triggers dependency calculation automatically."
-  [card]
-  (t2/insert-returning-instance! :model/Transform
-                                 {:name   "Transform depending on card"
-                                  :source {:type  :query
-                                           :query (query-with-source-card (:id card))}
-                                  :target {:type     "table"
-                                           :database (mt/id)
-                                           :schema   "public"
-                                           :name     "card_dep_output"}}))
+(deftest unsupported-dependency-no-cards-test
+  (testing "transform with no card dependencies returns false"
+    (is (= #{1} (ws.dag/unsupported-dependency? #{1})))))
 
-(deftest transforms-depend-on-cards-no-deps-test
-  (mt/with-premium-features #{:workspaces :dependencies}
-    (testing "transform with no card dependencies returns empty set"
-      (mt/with-temp [:model/Transform tx {:name   "Transform without card deps"
-                                          :source {:type  :query
-                                                   :query {:database (mt/id)
-                                                           :type     :query
-                                                           :query    {:source-table (mt/id :orders)}}}
-                                          :target {:type     "table"
-                                                   :database (mt/id)
-                                                   :schema   "public"
-                                                   :name     "no_card_output"}}]
-        ;; after-insert hook triggers dependency calculation automatically
-        (is (empty? (ws.dag/card-dependencies [(:id tx)])))))))
+(deftest unsupported-dependency-mbql-card-test
+  ;; We don't allow MBQL card dependencies, as we do not support re-mapping their references on execution.
+  ;; This is only a problem if the card depends on a table that is shadowed in the isolated schema, but we want to
+  ;; keep the semantics simple.
+  (testing "transform with direct MBQL card dependency returns true"
+    (is (true? (ws.dag/unsupported-dependency? #{#_tx})))))
 
-(deftest transforms-depend-on-cards-direct-dep-test
-  (mt/with-premium-features #{:workspaces :dependencies}
-    (testing "transform with direct card dependency returns card IDs"
-      (mt/with-model-cleanup [:model/Dependency :model/Transform]
-        (mt/with-temp [:model/Card card {:name          "Test Card"
-                                         :database_id   (mt/id)
-                                         :dataset_query (mt/mbql-query venues)}]
-          (let [tx     (create-transform-with-card-source! card)
-                result (ws.dag/card-dependencies [(:id tx)])]
-            (is (seq result))
-            (is (contains? result (:id card)))))))))
+(deftest unsupported-dependency-transitive-card-test
+  ;; Even a transitive dependency would need to be remapped.
+  (testing "transform with transitive MBQL card dependency (via another transform) returns true"
+    (mt/with-model-cleanup [:model/Dependency :model/Transform]
+      (is (true? (ws.dag/unsupported-dependency? #{#_tx}))))))
 
-(deftest transforms-depend-on-cards-transitive-dep-test
-  (mt/with-premium-features #{:workspaces :dependencies}
-    (testing "transform with transitive card dependency (via another transform) returns card IDs"
-      (mt/with-model-cleanup [:model/Dependency :model/Transform]
-        (mt/with-temp [:model/Card card {:name          "Base Card"
-                                         :database_id   (mt/id)
-                                         :dataset_query (mt/mbql-query venues)}]
-          ;; tx1 depends on card
-          (let [tx1 (create-transform-with-card-source! card)
-                ;; tx2 depends on tx1
-                tx2 (t2/insert-returning-instance! :model/Transform
-                                                   {:name   "Transform 2 - depends on tx1"
-                                                    :source {:type  :query
-                                                             :query {:database (mt/id)
-                                                                     :type     :native
-                                                                     :native   {:query "SELECT 1"}}}
-                                                    :target {:type     "table"
-                                                             :database (mt/id)
-                                                             :schema   "public"
-                                                             :name     "tx2_output"}})]
-            ;; Create dependency: tx2 depends on tx1
-            (deps/replace-dependencies! "transform" (:id tx2) {"transform" #{(:id tx1)}})
-            (let [result (ws.dag/card-dependencies [(:id tx2)])]
-              (is (seq result))
-              (is (contains? result (:id card))))))))))
+(deftest unsupported-dependency-sql-card-test
+  ;; We don't allow *any* card dependency for two reasons:
+  ;; 1. We don't yet support reference re-mapping across entity references.
+  ;; 2. It's an anti-pattern to build transforms on models, the relationship is intended to be the other way around.
+  (testing "transform with a direct SQL card dependency returns true"
+    (is (true? (ws.dag/unsupported-dependency? #{#_tx})))))
 
-(deftest transforms-depend-on-cards-empty-input-test
-  (mt/with-premium-features #{:workspaces :dependencies}
-    (testing "empty input returns nil/empty"
-      (is (empty? (ws.dag/card-dependencies []))))))
+
