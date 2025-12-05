@@ -15,6 +15,7 @@ export { default as schemas } from "./schemas";
 export { default as tables } from "./tables";
 export { default as fields } from "./fields";
 export { default as segments } from "./segments";
+export { default as measures } from "./measures";
 
 export { default as groups } from "./groups";
 

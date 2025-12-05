@@ -3,6 +3,7 @@ import type { Collection, CollectionId } from "./collection";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
+import type { Measure } from "./measure";
 import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
 import type { UserId } from "./user";
@@ -49,6 +50,7 @@ export type Table = {
   fks?: ForeignKey[];
   fields?: Field[];
   segments?: Segment[];
+  measures?: Measure[];
   metrics?: Card[];
   field_order: TableFieldOrder;
 
