@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
 
@@ -78,6 +78,10 @@ export function getDependentGroupLabel({
         count,
       );
     case "segment":
-      return ngettext(msgid`${count} segment`, `${count} segments`, count);
+      return c("{0} is the number of segments").ngettext(
+        msgid`${count} segment`,
+        `${count} segments`,
+        count,
+      );
   }
 }
