@@ -9,20 +9,36 @@
 ;;; ---------------------------------------------------- invoke-tool tests ----------------------------------------------------
 
 (deftest invoke-tool-no-args-test
-  (testing "invoke-tool with no arguments schema"
-    (let [handler-called? (atom false)
-          handler         (fn []
-                            (reset! handler-called? true)
-                            {:structured_output {:message "hello"}})
-          body            {:conversation_id "conv-123"}
-          opts            {:api-name      :test-tool
-                           :handler       handler
-                           :result-schema nil}]
+  (testing "invoke-tool with no arguments schema passes metabot-id in args"
+    (let [received-args (atom nil)
+          handler       (fn [args]
+                          (reset! received-args args)
+                          {:structured_output {:message "hello"}})
+          body          {:conversation_id "conv-123"}
+          request       {:metabot-v3/metabot-id "bot-456"}
+          opts          {:api-name      :test-tool
+                         :handler       handler
+                         :result-schema nil}]
       (with-redefs [context/log (fn [& _] nil)]
-        (let [result (deftool/invoke-tool body opts)]
-          (is @handler-called? "Handler should have been called")
+        (let [result (deftool/invoke-tool body request opts)]
+          (is (= {:metabot-id "bot-456"} @received-args) "Handler should receive metabot-id in args")
           (is (= "conv-123" (:conversation_id result)))
-          (is (= {:message "hello"} (:structured_output result))))))))
+          (is (= {:message "hello"} (:structured_output result)))))))
+
+  (testing "invoke-tool with no arguments schema and no metabot-id"
+    (let [received-args (atom nil)
+          handler       (fn [args]
+                          (reset! received-args args)
+                          {:structured_output {:message "hello"}})
+          body          {:conversation_id "conv-123"}
+          request       {}
+          opts          {:api-name      :test-tool
+                         :handler       handler
+                         :result-schema nil}]
+      (with-redefs [context/log (fn [& _] nil)]
+        (let [result (deftool/invoke-tool body request opts)]
+          (is (= {} @received-args) "Handler should receive empty args when no metabot-id")
+          (is (= "conv-123" (:conversation_id result))))))))
 
 (deftest invoke-tool-with-args-test
   (testing "invoke-tool with arguments schema that encodes keys"
@@ -38,13 +54,15 @@
                           {:structured_output {:processed true}})
           body          {:arguments       {:user_id 42}
                          :conversation_id "conv-456"}
+          request       {:metabot-v3/metabot-id "bot-789"}
           opts          {:api-name      :test-tool
                          :args-schema   ::test-args
                          :handler       handler
                          :result-schema nil}]
       (with-redefs [context/log (fn [& _] nil)]
-        (let [result (deftool/invoke-tool body opts)]
-          (is (= {:user-id 42} @received-args) "Arguments should be encoded with schema transformer")
+        (let [result (deftool/invoke-tool body request opts)]
+          (is (= {:user-id 42, :metabot-id "bot-789"} @received-args)
+              "Arguments should be encoded with schema transformer and include metabot-id")
           (is (= "conv-456" (:conversation_id result))))))))
 
 (deftest invoke-tool-with-result-decoding-test
@@ -54,14 +72,15 @@
       [:map {:decode/tool-api-response #(set/rename-keys % {:user-name :user_name})}
        [:user_name :string]])
 
-    (let [handler (fn []
+    (let [handler (fn [_args]
                     {:user-name "Alice"})
           body    {:conversation_id "conv-789"}
+          request {}
           opts    {:api-name      :test-tool
                    :handler       handler
                    :result-schema ::test-result}]
       (with-redefs [context/log (fn [& _] nil)]
-        (let [result (deftool/invoke-tool body opts)]
+        (let [result (deftool/invoke-tool body request opts)]
           (is (= "Alice" (:user_name result)) "Result should be decoded with schema transformer")
           (is (= "conv-789" (:conversation_id result))))))))
 
@@ -71,40 +90,19 @@
       [:map {:decode/tool-api-response #(assoc % :should-not-appear true)}
        [:data :any]])
 
-    (let [handler (fn []
+    (let [handler (fn [_args]
                     {:data "raw"})
           body    {:conversation_id "conv-skip"}
+          request {}
           opts    {:api-name      :test-tool
                    :handler       handler
                    :result-schema ::test-result-skip
                    :skip-decode?  true}]
       (with-redefs [context/log (fn [& _] nil)]
-        (let [result (deftool/invoke-tool body opts)]
+        (let [result (deftool/invoke-tool body request opts)]
           (is (= "raw" (:data result)))
           (is (nil? (:should-not-appear result)) "Decoding should be skipped")
           (is (= "conv-skip" (:conversation_id result))))))))
-
-;;; ---------------------------------------------------- invoke-tool-with-request tests ----------------------------------------------------
-
-(deftest invoke-tool-with-request-test
-  (testing "invoke-tool-with-request passes request to handler"
-    (let [received-args (atom nil)
-          handler       (fn [args conv-id request]
-                          (reset! received-args {:args args :conv-id conv-id :request request})
-                          {:output "done"})
-          body          {:arguments       {:query "test"}
-                         :conversation_id "conv-req"}
-          request       {:metabot-v3/metabot-id "bot-123"}
-          opts          {:api-name      :test-tool
-                         :args-schema   [:map [:query :string]]
-                         :handler       handler
-                         :result-schema nil}]
-      (with-redefs [context/log (fn [& _] nil)]
-        (let [result (deftool/invoke-tool-with-request body request opts)]
-          (is (= {:query "test"} (:args @received-args)))
-          (is (= "conv-req" (:conv-id @received-args)))
-          (is (= "bot-123" (get-in @received-args [:request :metabot-v3/metabot-id])))
-          (is (= "conv-req" (:conversation_id result))))))))
 
 ;;; ---------------------------------------------------- deftool macro tests ----------------------------------------------------
 
@@ -128,13 +126,11 @@
       (is (seq? expansion))
       (is (= 'metabase.api.macros/defendpoint (first expansion)))))
 
-  (testing "deftool macro expands correctly for needs-request tool"
-    (let [expansion (macroexpand-1 '(metabase-enterprise.metabot-v3.tools.deftool/deftool "/with-request"
-                                      "Needs request"
-                                      {:args-schema    ::my-args
-                                       :result-schema  ::my-result
-                                       :handler        identity
-                                       :needs-request? true}))]
+  (testing "deftool macro always includes request in binding vector"
+    (let [expansion (macroexpand-1 '(metabase-enterprise.metabot-v3.tools.deftool/deftool "/test"
+                                      "Test"
+                                      {:result-schema ::my-result
+                                       :handler       identity}))]
       (is (seq? expansion))
       ;; The expansion should include 'request' in the binding vector
       (let [binding-vec (nth expansion 6)]

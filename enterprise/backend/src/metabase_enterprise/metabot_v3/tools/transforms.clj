@@ -11,7 +11,7 @@
 
 (defn get-transforms
   "Get a list of all known transforms."
-  []
+  [_args]
   (try
     {:structured_output
      (->> (api.transforms/get-transforms)
