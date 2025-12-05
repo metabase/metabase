@@ -48,7 +48,12 @@ import {
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
-import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type {
+  IconName,
+  IconProps,
+  ModalOverlayProps,
+  StackProps,
+} from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -442,7 +447,11 @@ export type SidebarCacheSectionProps = {
 export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
+  isOpen: boolean;
+  withOverlay?: boolean;
+  overlayProps?: ModalOverlayProps;
   onClose: () => void;
+  onBack: () => void;
 } & StackProps;
 
 export type PreemptiveCachingSwitchProps = {
@@ -455,9 +464,7 @@ export const PLUGIN_CACHING = {
   GranularControlsExplanation: PluginPlaceholder as any,
   SidebarCacheSection:
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
-  SidebarCacheForm: PluginPlaceholder as ComponentType<
-    SidebarCacheFormProps & { onBack: () => void }
-  >,
+  SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
