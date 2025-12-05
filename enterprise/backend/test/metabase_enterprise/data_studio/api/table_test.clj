@@ -122,7 +122,7 @@
                                            (swap! tables conj table)
                                            (.countDown latch)
                                            nil)]
-            (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/sync-schema" {:database_ids [d1],
+            (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/sync-schema" {:database_ids [d1],
                                                                                            :schema_ids   [(format "%d:FOO" d2)]
                                                                                            :table_ids    [t4]}))
           (testing "sync called?"
@@ -152,7 +152,7 @@
                                                               (swap! tables conj table)
                                                               (.countDown latch)
                                                               nil)]
-            (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/rescan-values" {:database_ids [d1],
+            (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/rescan-values" {:database_ids [d1],
                                                                                              :schema_ids   [(format "%d:FOO" d2)]
                                                                                              :table_ids    [t4]}))
           (testing "rescanned?"
@@ -203,9 +203,9 @@
             (testing "FieldValues should still exist"
               (is (= [v1 v2 v3 v4 v5 v6 v7] (get-field-values)))))
           (testing "Admins should be able to successfully delete them"
-            (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 url {:database_ids [d1],
-                                                                                  :schema_ids   [(format "%d:FOO" d2)]
-                                                                                  :table_ids    [t4]})))
+            (is (nil? (mt/user-http-request :crowberto :post 204 url {:database_ids [d1],
+                                                                      :schema_ids   [(format "%d:FOO" d2)]
+                                                                      :table_ids    [t4]})))
             (testing "Selected FieldValues should be gone"
               (is (= [v3] (get-field-values))))))))))
 

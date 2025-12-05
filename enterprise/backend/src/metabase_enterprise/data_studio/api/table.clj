@@ -125,6 +125,30 @@
 (mr/def ::data-authorities
   (into [:enum {:decode/string keyword}] table/writable-data-authority-types))
 
+;;; ------------------------------------------------ Response Schemas ------------------------------------------------
+
+(mr/def ::bulk-table-info
+  "Schema for table info in bulk operations. Matches frontend BulkTableInfo type."
+  [:map
+   [:id ms/PositiveInt]
+   [:db_id ms/PositiveInt]
+   [:name :string]
+   [:display_name :string]
+   [:schema [:maybe :string]]
+   [:is_published :boolean]])
+
+(mr/def ::bulk-table-selection-info
+  "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type."
+  [:map
+   [:selected_table [:maybe ::bulk-table-info]]
+   [:published_downstream_tables [:sequential ::bulk-table-info]]
+   [:unpublished_upstream_tables [:sequential ::bulk-table-info]]])
+
+(mr/def ::publish-tables-response
+  "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type."
+  [:map
+   [:target_collection [:maybe (ms/InstanceOf :model/Collection)]]])
+
 (defn- sync-unhidden-tables
   "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
   efficiently sync tables from different databases."
@@ -150,11 +174,7 @@
   (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :copper data_layer))
                           (filter #(= :copper (:data_layer %)) existing-tables))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/edit"
+(api.macros/defendpoint :post "/edit" :- [:map {:closed true}]
   "Bulk updating tables."
   [_route-params
    _query-params
@@ -184,7 +204,7 @@
       (maybe-sync-unhidden-tables! existing-tables set-map))
     {}))
 
-(api.macros/defendpoint :post "/selection"
+(api.macros/defendpoint :post "/selection" :- ::bulk-table-selection-info
   "Gets information about selected tables"
   [_route-params
    _query-params
@@ -205,7 +225,7 @@
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
 
-(api.macros/defendpoint :post "/publish-tables"
+(api.macros/defendpoint :post "/publish-tables" :- ::publish-tables-response
   "Set collection for each of selected tables and all upstream dependencies recursively."
   [_route-params
    _query-params
@@ -229,7 +249,7 @@
                :where  update-where})
     {:target_collection target-collection}))
 
-(api.macros/defendpoint :post "/unpublish-tables"
+(api.macros/defendpoint :post "/unpublish-tables" :- :nil
   "Unset collection for each of selected tables and all downstream dependents recursively."
   [_route-params
    _query-params
@@ -244,18 +264,14 @@
                :set    {:collection_id nil
                         :is_published  false}
                :where  update-where})
-    api/generic-204-no-content))
+    nil))
 
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
   (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/sync-schema"
+(api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
   - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
   - The sync itself is however, asyncronous. This call may return before all tables synced."
@@ -274,14 +290,9 @@
           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync tables" (:name database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
     (doseq [table tables]
-      (sync-schema-async! table api/*current-user-id*))
-    {:status :ok}))
+      (sync-schema-async! table api/*current-user-id*))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/rescan-values"
+(api.macros/defendpoint :post "/rescan-values" :- :nil
   "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
   [_
    _
@@ -292,14 +303,9 @@
     (doseq [table tables]
       (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
       (request/as-admin
-        (quick-task/submit-task! #(sync/update-field-values-for-table! table))))
-    {:status :ok}))
+        (quick-task/submit-task! #(sync/update-field-values-for-table! table))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/discard-values"
+(api.macros/defendpoint :post "/discard-values" :- :nil
   "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."
   [_
    _
@@ -310,7 +316,7 @@
                                  :from   [(t2/table-name :model/Field)]
                                  :where  [:in :table_id (map :id tables)]}]
       (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
-    {:status :ok}))
+    nil))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-studio/table` routes."
