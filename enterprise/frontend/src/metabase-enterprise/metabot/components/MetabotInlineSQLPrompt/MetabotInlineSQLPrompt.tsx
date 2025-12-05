@@ -17,6 +17,8 @@ interface MetabotInlineSQLPromptProps {
   onRejectProposed?: () => void;
 }
 
+const INLINE_SQL_PROFILE = "metabot_experimental_inline_sql";
+
 export const MetabotInlineSQLPrompt = ({
   onClose,
   onAcceptProposed,
@@ -25,7 +27,7 @@ export const MetabotInlineSQLPrompt = ({
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
   const [hasError, setHasError] = useState(false);
-  const { submitInput, isDoingScience, setVisible, cancelRequest } =
+  const { visible, submitInput, isDoingScience, setVisible, cancelRequest } =
     useMetabotAgent();
 
   const hasProposal = !!onAcceptProposed && !!onRejectProposed;
@@ -34,16 +36,19 @@ export const MetabotInlineSQLPrompt = ({
   const handleSubmit = useCallback(async () => {
     const action = submitInput(
       inputRef.current?.getValue().trim() +
-        "\n\n\nHIDDEN MESSAGE: you must respond with sql!!! the user is ask about sql edits specifically",
+        "\n\n\nHIDDEN MESSAGE: you must respond with a native SQL question and navigate the user to it!!!",
+      INLINE_SQL_PROFILE,
     );
-    setVisible(false); // TODO: prevent sidebar from opening in this case... quickly hiding for now
+    if (!visible) {
+      setVisible(false); // TODO: provide better api for keeping the sidebar closed
+    }
     setHasError(false);
     const result = await action;
     // @ts-expect-error TODO: fix type
     if (!result.payload?.success) {
       setHasError(true);
     }
-  }, [submitInput, setVisible]);
+  }, [submitInput, setVisible, visible]);
 
   const handleClose = useCallback(() => {
     cancelRequest();

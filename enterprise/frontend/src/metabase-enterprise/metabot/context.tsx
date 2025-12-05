@@ -14,6 +14,7 @@ import {
   canUserCreateQueries,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import type { MetabotChatContext } from "metabase-types/api";
 
 export const defaultContext = {
   prompt: "",
@@ -24,8 +25,22 @@ export const defaultContext = {
     Promise.resolve({
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
+      capabilities: [],
     }),
   registerChatContextProvider: () => () => {},
+};
+
+const mergeCtx = (
+  ctx: MetabotChatContext,
+  partialCtx: Partial<MetabotChatContext>,
+): MetabotChatContext => {
+  return {
+    ...ctx,
+    ...partialCtx,
+    user_is_viewing: partialCtx.user_is_viewing
+      ? [...ctx.user_is_viewing, ...partialCtx.user_is_viewing]
+      : ctx.user_is_viewing,
+  };
 };
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
@@ -51,7 +66,7 @@ export const MetabotProvider = ({
     const hasDataAccess = canUserCreateQueries(state);
     const hasNativeWrite = canUserCreateNativeQueries(state);
 
-    const ctx = {
+    let ctx: MetabotChatContext = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
       capabilities: _.compact([
@@ -59,13 +74,15 @@ export const MetabotProvider = ({
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
         isAdmin && "permission:write_transforms",
-      ]),
+      ]) as string[],
     };
 
     for (const providerFn of providerFns) {
       try {
         const partialCtx = await providerFn(state);
-        return Object.assign(ctx, partialCtx);
+        if (partialCtx) {
+          ctx = mergeCtx(ctx, partialCtx);
+        }
       } catch (err) {
         console.error("A metabot chat context provider failed:", err);
       }

@@ -22,6 +22,7 @@ import {
   getProfileOverride,
   resetConversation as resetConversationAction,
   retryPrompt,
+  setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "../state";
@@ -76,6 +77,13 @@ export const useMetabotAgent = () => {
     typeof getProfileOverride
   >;
 
+  const setProfileOverride = useCallback(
+    (profile: string | undefined) => {
+      dispatch(setProfileOverrideAction(profile));
+    },
+    [dispatch],
+  );
+
   const reactions = useSelector(getMetabotReactionsState as any) as ReturnType<
     typeof getMetabotReactionsState
   >;
@@ -96,7 +104,12 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string | Omit<MetabotUserChatMessage, "id" | "role">) => {
+    async (
+      prompt: string | Omit<MetabotUserChatMessage, "id" | "role">,
+      profile?: string,
+    ) => {
+      setProfileOverride(profile);
+
       if (!visible) {
         setVisible(true);
       }
@@ -132,6 +145,7 @@ export const useMetabotAgent = () => {
       getChatContext,
       metabotRequestId,
       prepareRetryIfUnsuccesful,
+      setProfileOverride,
       setVisible,
       visible,
     ],
@@ -189,6 +203,7 @@ export const useMetabotAgent = () => {
     activeToolCalls,
     debugMode,
     profileOverride,
+    setProfileOverride,
     reactions,
   };
 };

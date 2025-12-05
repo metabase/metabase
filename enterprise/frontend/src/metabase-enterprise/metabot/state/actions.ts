@@ -1,9 +1,11 @@
-import { isRejected, nanoid } from "@reduxjs/toolkit";
+import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
+import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { createAsyncThunk } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { EnterpriseApi } from "metabase-enterprise/api";
 import {
@@ -36,11 +38,11 @@ import {
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
+  getProfile,
   getUserPromptForMessageId,
 } from "./selectors";
 import type { MetabotStoreState, SlashCommand } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
-import { b64url_to_utf8 } from "metabase/lib/encoding";
 
 export const {
   addAgentTextDelta,
@@ -52,7 +54,6 @@ export const {
   setNavigateToPath,
   toolCallStart,
   toolCallEnd,
-  setProfileOverride,
   setMetabotReqIdOverride,
   setDebugMode,
   addSuggestedTransform,
@@ -102,6 +103,16 @@ export const setVisible =
     }
 
     dispatch(metabot.actions.setVisible(isVisible));
+  };
+
+export const setProfileOverride =
+  (profile: string | undefined) => (dispatch: Dispatch, getState: any) => {
+    const currentProfile = getProfile(getState() as any);
+    if (profile && currentProfile !== profile) {
+      dispatch(resetConversation());
+      const nextProfile = profile === "unset" ? undefined : profile;
+      dispatch(metabot.actions.setProfileOverride(nextProfile));
+    }
   };
 
 export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
@@ -234,7 +245,7 @@ export const sendAgentRequest = createAsyncThunk<
     req,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    // const isEmbedding = getIsEmbedding(getState() as any);
+    const isEmbedding = getIsEmbedding(getState() as any);
 
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
@@ -277,21 +288,16 @@ export const sendAgentRequest = createAsyncThunk<
 
                 dispatch(addAgentMessage(message));
               })
+              .with({ type: "code_edit" }, (part) => {
+                // TODO: notify the editor w/o using a global notifier fn...
+                (window as any).notifyCodeEdit(part.value.value);
+              })
               .with({ type: "navigate_to" }, (part) => {
-                // TODO: revert... hacking for now
-                // if (!!false) {
-                //   dispatch(setNavigateToPath(part.value));
+                dispatch(setNavigateToPath(part.value));
 
-                //   if (!isEmbedding) {
-                //     dispatch(push(part.value) as UnknownAction);
-                //   }
-                // }
-                const hash = part.value.slice("/question#".length);
-                const query = JSON.parse(b64url_to_utf8(hash));
-                const nativeQuery = query?.dataset_query?.native?.query || "";
-                // NOTE: this is super duper hacky wacky - in the future we'll just get the value from the response directly
-                // for now, let's call a global callback to make my life easier
-                (window as any).notifyCodeEdit(nativeQuery);
+                if (!isEmbedding) {
+                  dispatch(push(part.value) as UnknownAction);
+                }
               })
               .with({ type: "transform_suggestion" }, ({ value }) => {
                 const suggestedTransform = {
