@@ -818,7 +818,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-11-19T00:00:02
       author: nmezzopera
-      comment: Usage analytics; Add eentity_type,visibility_type, estimated_row_count, view_count, owner_email, owner_user_id to tables
+      comment: Usage analytics; Add entity_type, visibility_type, estimated_row_count, view_count, owner_email, owner_user_id to tables
       changes:
         - sqlFile:
             dbms: postgresql
