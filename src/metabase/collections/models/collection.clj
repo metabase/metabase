@@ -2245,7 +2245,10 @@
                   :collection_name :name
                   :collection_type :type
                   :location true}
-   :where [:or [:= :namespace nil] [:= :namespace "analytics"] [:= :namespace "shared-tenant-collection"]]
+   :where [:or [:= :namespace nil]
+           [:= :namespace "analytics"]
+           [:= :namespace "shared-tenant-collection"]
+           [:= :namespace "tenant-specific"]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark [:model/CollectionBookmark [:and
