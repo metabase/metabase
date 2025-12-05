@@ -31,7 +31,7 @@ const setup = ({
   setupMockJwtEndpoints();
 
   const getFirstSsoDiscoveryCall = () => {
-    // This is `/auth/sso`/`auth/sso?preferred_method=...`
+    // This is `/auth/sso` or `auth/sso?preferred_method=...`
     // that returns the method (jwt/saml) and the url of the sso provider
     // `auth/sso?jwt=...` is the second call and should be excluded from this
     return fetchMock.callHistory
