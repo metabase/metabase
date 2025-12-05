@@ -754,6 +754,17 @@
            settings
            util}}
 
+  measures
+  {:team "Querying"
+   :api  #{metabase.measures.core}
+   :uses #{api
+           lib
+           lib-be
+           models
+           permissions
+           search
+           util}}
+
   model-persistence
   {:team "Querying"
    :api  #{metabase.model-persistence.api
