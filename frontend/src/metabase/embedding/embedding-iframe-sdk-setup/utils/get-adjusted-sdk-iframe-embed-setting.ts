@@ -30,13 +30,11 @@ export const getAdjustedSdkIframeEmbedSetting = ({
       ({ settings }) => ({
         ...settings,
         ...getCommonEmbedSettings({
-          state: {
-            isGuest: settings.isGuest,
-            useExistingUserSession: settings.useExistingUserSession,
-          },
           experience,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
+          isGuest: settings.isGuest,
+          useExistingUserSession: !!settings.useExistingUserSession,
         }),
       }),
     )
@@ -51,13 +49,11 @@ export const getAdjustedSdkIframeEmbedSetting = ({
         isSaveEnabled:
           "isSaveEnabled" in defaultSettings && defaultSettings.isSaveEnabled,
         ...getCommonEmbedSettings({
-          state: {
-            isGuest: settings.isGuest,
-            useExistingUserSession: settings.useExistingUserSession,
-          },
           experience,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
+          isGuest: settings.isGuest,
+          useExistingUserSession: !!settings.useExistingUserSession,
         }),
       }),
     )

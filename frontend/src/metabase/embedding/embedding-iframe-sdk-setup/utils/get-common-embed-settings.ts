@@ -44,17 +44,15 @@ const GET_ENABLE_GUEST_EMBED_SETTINGS: (data: {
 };
 
 const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
-  state:
-    | Pick<SdkIframeEmbedSetupSettings, "isGuest" | "useExistingUserSession">
-    | undefined;
   experience: SdkIframeEmbedSetupExperience;
   isSsoEnabledAndConfigured: boolean;
+  useExistingUserSession: boolean;
 }) => SdkIframeEmbedSetupGuestEmbedSettings &
   Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> &
   Pick<
     SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings,
     "lockedParameters"
-  > = ({ state, experience, isSsoEnabledAndConfigured }) => {
+  > = ({ experience, isSsoEnabledAndConfigured, useExistingUserSession }) => {
   const isQuestionOrDashboardEmbed =
     isQuestionOrDashboardExperience(experience);
   const isQuestionEmbed = experience === "chart";
@@ -65,14 +63,14 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
           isGuest: false,
           isSso: true,
           useExistingUserSession:
-            !isSsoEnabledAndConfigured || state?.useExistingUserSession,
+            !isSsoEnabledAndConfigured || useExistingUserSession,
           drills: true,
         }
       : {
           isGuest: false,
           isSso: true,
           useExistingUserSession:
-            !isSsoEnabledAndConfigured || state?.useExistingUserSession,
+            !isSsoEnabledAndConfigured || useExistingUserSession,
         }),
     ...(isQuestionEmbed && {
       // Currently, a chart should not have hidden parameters in non-guest embed mode
@@ -82,31 +80,31 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
 };
 
 export const getCommonEmbedSettings = ({
-  state,
   experience,
   isGuestEmbedsEnabled,
   isSsoEnabledAndConfigured,
+  isGuest,
+  useExistingUserSession,
 }: {
-  state:
-    | Pick<SdkIframeEmbedSetupSettings, "isGuest" | "useExistingUserSession">
-    | undefined;
   experience: SdkIframeEmbedSetupExperience;
   isGuestEmbedsEnabled: boolean;
   isSsoEnabledAndConfigured: boolean;
+  isGuest: boolean;
+  useExistingUserSession: boolean;
 }) => {
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
   if (isSimpleEmbedFeatureAvailable) {
-    return isGuestEmbedsEnabled && state?.isGuest
+    return isGuestEmbedsEnabled && isGuest
       ? GET_ENABLE_GUEST_EMBED_SETTINGS({
           experience,
           isSimpleEmbedFeatureAvailable,
         })
       : GET_DISABLE_GUEST_EMBED_SETTINGS({
-          state,
           experience,
           isSsoEnabledAndConfigured,
+          useExistingUserSession,
         });
   } else {
     return GET_ENABLE_GUEST_EMBED_SETTINGS({

@@ -94,7 +94,6 @@ const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
   _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
 
 export const trackEmbedWizardOptionsCompleted = ({
-  initialState,
   experience,
   resource,
   settings,
@@ -114,12 +113,13 @@ export const trackEmbedWizardOptionsCompleted = ({
 }) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
-    initialState,
     experience,
     resourceId: 0,
     isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
     isSsoEnabledAndConfigured,
+    isGuest: !!settings.isGuest,
+    useExistingUserSession: !!settings.useExistingUserSession,
   });
 
   // Does the embed settings diverge from the experience defaults?

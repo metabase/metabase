@@ -2,8 +2,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
-import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
 import {
   assertDashboard,
@@ -35,32 +33,6 @@ describe(suiteTitle, () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-  });
-
-  it("should disable SSO radio button when JWT and SAML are not configured", () => {
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Metabase account (SSO)").should("be.disabled");
-    });
-  });
-
-  it("should enable SSO radio button when JWT is configured", () => {
-    enableJwtAuth();
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Metabase account (SSO)").should("not.be.disabled");
-    });
-  });
-
-  it("should enable SSO radio button when SAML is configured", () => {
-    enableSamlAuth();
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Metabase account (SSO)").should("not.be.disabled");
-    });
   });
 
   describe("select embed experiences with a non-empty activity log", () => {

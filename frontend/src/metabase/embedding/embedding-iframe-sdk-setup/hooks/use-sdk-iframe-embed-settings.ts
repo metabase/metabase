@@ -96,34 +96,37 @@ export const useSdkIframeEmbedSettings = ({
         { resourceType: "dashboard", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
-            initialState,
             experience: "dashboard",
             resourceId: initialState.resourceId,
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
+            isGuest: !!initialState.isGuest,
+            useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
       .with(
         { resourceType: "question", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
-            initialState,
             experience: "chart",
             resourceId: initialState.resourceId,
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,
             isSsoEnabledAndConfigured,
+            isGuest: !!initialState.isGuest,
+            useExistingUserSession: !!initialState.useExistingUserSession,
           }),
       )
       .otherwise((initialState) =>
         getDefaultSdkIframeEmbedSettings({
-          initialState,
           experience: "dashboard",
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
+          isGuest: !!initialState?.isGuest,
+          useExistingUserSession: !!initialState?.useExistingUserSession,
         }),
       );
   }, [

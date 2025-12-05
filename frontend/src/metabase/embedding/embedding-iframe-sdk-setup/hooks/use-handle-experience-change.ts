@@ -18,7 +18,6 @@ export const useHandleExperienceChange = () => {
     isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
     isSsoEnabledAndConfigured,
-    initialState,
     settings,
     replaceSettings,
     recentDashboards,
@@ -52,17 +51,17 @@ export const useHandleExperienceChange = () => {
 
         // these settings are overridden when the embed type changes
         ...getDefaultSdkIframeEmbedSettings({
-          initialState,
           experience,
           resourceId: defaultResourceId,
           isSimpleEmbedFeatureAvailable,
           isGuestEmbedsEnabled,
           isSsoEnabledAndConfigured,
+          isGuest: !!settings.isGuest,
+          useExistingUserSession: !!settings.useExistingUserSession,
         }),
       });
     },
     [
-      initialState,
       isGuestEmbedsEnabled,
       isSsoEnabledAndConfigured,
       isSimpleEmbedFeatureAvailable,
