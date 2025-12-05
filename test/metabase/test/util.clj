@@ -354,6 +354,11 @@
      (default-timestamped
       {:name (str "test-tag-" (u/generate-nano-id))}))
 
+   :model/Tenant
+   (fn [_]
+     {:slug (str/lower-case (u.random/random-name))
+      :name (u.random/random-name)})
+
    :model/User
    (fn [_] {:first_name (u.random/random-name)
             :last_name (u.random/random-name)
