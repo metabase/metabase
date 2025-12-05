@@ -35,8 +35,6 @@ describe("OSS", { tags: "@OSS" }, () => {
         resourceName: DASHBOARD_NAME,
       });
 
-      assertUpsellForOption("Existing Metabase session");
-      assertUpsellForOption("Single sign-on (SSO)");
       assertUpsellForOption("Allow people to drill through on data points");
       assertUpsellForOption("Allow downloads");
       assertUpsellForOption("Allow subscriptions");
@@ -64,7 +62,6 @@ describe("EE without license", () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: DASHBOARD_NAME,
-        toggleSso: true,
       });
 
       assertUpsellForOption("Allow people to drill through on data points");
@@ -143,7 +140,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=sso,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
     codeBlock().should("contain", 'drills="false"');
