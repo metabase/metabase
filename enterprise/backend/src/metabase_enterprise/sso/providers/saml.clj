@@ -5,6 +5,7 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.settings.core :as settings]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -116,7 +117,8 @@
             first-name (get attrs (sso-settings/saml-attribute-firstname))
             last-name (get attrs (sso-settings/saml-attribute-lastname))
             groups (get attrs (sso-settings/saml-attribute-group))
-            tenant-slug (get attrs (sso-settings/saml-attribute-tenant))
+            tenant-slug (when (settings/get :use-tenants)
+                          (get attrs (sso-settings/saml-attribute-tenant)))
             user-attributes (sso-utils/remove-invalid-attributes attrs)]
         (when-not email
           (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email. We tried looking for {0}, but couldn''t find the attribute. Please make sure your SAML IdP is properly configured."
