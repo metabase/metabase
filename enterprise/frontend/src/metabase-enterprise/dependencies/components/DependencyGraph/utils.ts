@@ -212,7 +212,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "segment":
       return {
         label: t`View this segment`,
-        url: Urls.dataStudioSegment(node.id),
+        url: Urls.dataModelSegment(node.id),
       };
     case "snippet":
       return null;
