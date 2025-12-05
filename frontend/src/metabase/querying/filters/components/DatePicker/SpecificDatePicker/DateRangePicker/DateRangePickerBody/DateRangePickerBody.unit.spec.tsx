@@ -87,6 +87,8 @@ describe("DateRangePickerBody", () => {
   });
 
   describe("locale-dependent formatting", () => {
+    afterAll(() => jest.resetModules());
+
     it.each([
       {
         locale: "en",

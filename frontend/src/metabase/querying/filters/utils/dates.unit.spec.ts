@@ -328,6 +328,8 @@ describe("getDateFilterDisplayName", () => {
 });
 
 describe("formatDate", () => {
+  afterAll(() => jest.resetModules());
+
   describe.each([{ hasTime: false }, { hasTime: true }])(
     "with hasTime=$hasTime",
     ({ hasTime }) => {
