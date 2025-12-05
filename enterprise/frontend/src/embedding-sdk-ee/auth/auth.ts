@@ -40,14 +40,16 @@ let refreshTokenPromise: ReturnType<
 
 // Side effect happening here.
 PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
-  {
-    metabaseInstanceUrl,
-    preferredAuthMethod,
-    apiKey,
-    isLocalHost,
-  }: MetabaseAuthConfig & { isLocalHost?: boolean },
+  authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
+  const { metabaseInstanceUrl, preferredAuthMethod, apiKey, isLocalHost } =
+    authConfig;
+
+  // This is needed because of how MetabaseAuthConfig is typed
+  const jwtProviderUri =
+    "jwtProviderUri" in authConfig ? authConfig.jwtProviderUri : undefined;
+
   // remove any stale tokens that might be there from a previous session=
   samlTokenStorage.remove();
 
@@ -69,6 +71,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           getOrRefreshSession({
             metabaseInstanceUrl,
             preferredAuthMethod,
+            jwtProviderUri,
           }),
         ).unwrap();
         if (session?.id) {
@@ -81,6 +84,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         getOrRefreshSession({
           metabaseInstanceUrl,
           preferredAuthMethod,
+          jwtProviderUri,
         }),
       ).unwrap();
     } catch (e) {
@@ -116,7 +120,12 @@ const refreshTokenImpl = async (
   {
     metabaseInstanceUrl,
     preferredAuthMethod,
-  }: Pick<MetabaseAuthConfig, "metabaseInstanceUrl" | "preferredAuthMethod">,
+    jwtProviderUri,
+  }: {
+    metabaseInstanceUrl: string;
+    preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+    jwtProviderUri?: string;
+  },
   { getState }: { getState: () => unknown },
 ): Promise<MetabaseEmbeddingSessionToken | null> => {
   const state = getState() as SdkStoreState;
@@ -130,6 +139,7 @@ const refreshTokenImpl = async (
   const session = await getRefreshToken({
     metabaseInstanceUrl,
     preferredAuthMethod,
+    jwtProviderUri,
     fetchRequestToken: customGetRefreshToken,
   });
   validateSession(session);
@@ -149,10 +159,11 @@ PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = refreshTokenImpl;
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
-    authConfig: Pick<
-      MetabaseAuthConfig,
-      "metabaseInstanceUrl" | "preferredAuthMethod"
-    >,
+    authConfig: {
+      metabaseInstanceUrl: string;
+      preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+      jwtProviderUri?: string;
+    },
     { dispatch, getState },
   ) => {
     // necessary to ensure that we don't use a popup every time the user
@@ -189,15 +200,23 @@ export const getOrRefreshSession = createAsyncThunk(
 const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,
+  jwtProviderUri,
   fetchRequestToken: customGetRequestToken,
-}: Pick<
-  MetabaseAuthConfig,
-  "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
->) => {
-  const urlResponseJson = await connectToInstanceAuthSso(metabaseInstanceUrl, {
-    preferredAuthMethod,
-    headers: getSdkRequestHeaders(),
-  });
+}: {
+  metabaseInstanceUrl: string;
+  preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
+  jwtProviderUri?: string;
+  fetchRequestToken?: MetabaseAuthConfig["fetchRequestToken"];
+}) => {
+  const shouldSkipSsoDiscovery = Boolean(jwtProviderUri);
+
+  const urlResponseJson = shouldSkipSsoDiscovery
+    ? { method: "jwt", url: jwtProviderUri }
+    : await connectToInstanceAuthSso(metabaseInstanceUrl, {
+        preferredAuthMethod,
+        headers: getSdkRequestHeaders(),
+      });
+
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
     const token = await openSamlLoginPopup(responseUrl);
@@ -205,7 +224,7 @@ const getRefreshToken = async ({
 
     return token;
   }
-  if (method === "jwt") {
+  if (method === "jwt" && responseUrl) {
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
       metabaseInstanceUrl,
