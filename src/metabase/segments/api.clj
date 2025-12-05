@@ -38,7 +38,7 @@
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/Segment :id id))
-      (t2/hydrate :creator)))
+      (t2/hydrate :creator :definition_description)))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."

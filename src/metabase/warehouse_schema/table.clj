@@ -55,7 +55,7 @@
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                [:segments :definition_description] :metrics :collection]
+                                :segments :metrics :collection]
                          (premium-features/has-feature? :transforms) (conj :transform)
                          api/*is-superuser?*                         (conj :published_models))]
     (-> table
@@ -78,7 +78,7 @@
                       (filter can-access-table-for-query-metadata?))
           tables (t2/hydrate tables
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                             [:segments :definition_description]
+                             :segments
                              :metrics)]
       (for [table tables]
         (-> table
