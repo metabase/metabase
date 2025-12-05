@@ -849,10 +849,6 @@ databaseChangeLog:
                   remarks: The collection this table is published to (null if not published or published to root)
                   constraints:
                     nullable: true
-      rollback:
-        - dropColumn:
-            tableName: metabase_table
-            columnName: collection_id
 
   - changeSet:
       id: v58.2025-11-25T17:41:51
@@ -865,10 +861,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: collection_id
-      rollback:
-        - dropIndex:
-            tableName: metabase_table
-            indexName: idx_metabase_table_collection_id
 
   - changeSet:
       id: v58.2025-11-25T17:41:52
@@ -881,10 +873,6 @@ databaseChangeLog:
             constraintName: fk_metabase_table_collection_id
             referencedTableName: collection
             referencedColumnNames: id
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabase_table
-            constraintName: fk_metabase_table_collection_id
 
   - changeSet:
       id: v58.2025-11-25T17:41:53
@@ -901,10 +889,6 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: metabase_table
-            columnName: is_published
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
