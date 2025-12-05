@@ -116,4 +116,6 @@
    "UserKeyValue"
    "UserParameterValue"
    "ViewLog"
-   "Workspace"])
+   "Workspace"
+   "WorkspaceMappingTable"
+   "WorkspaceMappingTransform"])

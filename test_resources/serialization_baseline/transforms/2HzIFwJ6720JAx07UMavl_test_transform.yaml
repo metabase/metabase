@@ -1,3 +1,4 @@
+collection_id: null
 created_at: '2025-10-06T20:41:45.536727Z'
 creator_id: internal@metabase.com
 description: A test transform for serialization
@@ -37,6 +38,7 @@ target:
   name: target_table
   schema: public
   type: table
+workspace_id: null
 serdes/meta:
 - id: 2HzIFwJ6720JAx07UMavl
   label: test_transform
