@@ -10,7 +10,7 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/ee/library",
       }),
-      invalidatesTags: [listTag("collection")],
+      invalidatesTags: [listTag("collection"), tag("library-collection")],
     }),
     getLibraryCollection: builder.query<CollectionItem | { data: null }, void>({
       query: () => ({
