@@ -693,6 +693,14 @@ describe(suiteTitle, () => {
   });
 
   it("derives colors for dark theme palette", () => {
+    /**
+     * There's a problem on CI where the hovercard on allow subscriptions is open
+     * when email is not set up and that is counted in H.popover() making H.popover().within() failed.
+     *
+     * Setting up the email should prevent such a hovercard from showing up.
+     */
+    H.setupSMTP();
+
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -702,13 +710,6 @@ describe(suiteTitle, () => {
     cy.log("click on brand color picker");
     cy.findByTestId("brand-color-picker").findByRole("button").click();
 
-    /**
-     * There's a problem on CI where the hovercard on allow subscriptions is open
-     * and that is counted in H.popover() making H.popover().within() failed.
-     *
-     * waiting for the hovercard to close should fix the problem.
-     */
-    H.popover().should("have.length", 1);
     H.popover().within(() => {
       cy.findByDisplayValue("#509EE2").clear().type("#BD51FD");
     });
@@ -716,13 +717,6 @@ describe(suiteTitle, () => {
     cy.log("change primary text color");
     cy.findByTestId("text-primary-color-picker").findByRole("button").click();
 
-    /**
-     * There's a problem on CI where the hovercard on allow subscriptions is open
-     * and that is counted in H.popover() making H.popover().within() failed.
-     *
-     * waiting for the hovercard to close should fix the problem.
-     */
-    H.popover().should("have.length", 1);
     H.popover().within(() => {
       cy.findByDisplayValue("#303D46").clear().type("#F1F1F1");
     });
@@ -730,13 +724,6 @@ describe(suiteTitle, () => {
     cy.log("change background color");
     cy.findByTestId("background-color-picker").findByRole("button").click();
 
-    /**
-     * There's a problem on CI where the hovercard on allow subscriptions is open
-     * and that is counted in H.popover() making H.popover().within() failed.
-     *
-     * waiting for the hovercard to close should fix the problem.
-     */
-    H.popover().should("have.length", 1);
     H.popover().within(() => {
       cy.findByDisplayValue("#FFFFFF").clear().type("#121212");
     });
