@@ -63,12 +63,13 @@
                                 (t2/update! :model/Collection (:id col) {:name "New Name"}))))))))
 
 (deftest check-allowed-content-transforms
-  (mt/with-temp [:model/Collection transforms {:name "Test Transforms" :namespace collection/transforms-ns}
-                 :model/Collection regular-col {:name "Test Regular"}]
-    (mt/with-model-cleanup [:model/Transform :model/Card]
-      (testing "Can only add allowed content types"
-        (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the \"default\" or :analytics namespace."
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add transforms to non-'Transforms' collections"
-                              (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col)))))))))
+  (mt/with-premium-features #{:transforms}
+    (mt/with-temp [:model/Collection transforms {:name "Test Transforms" :namespace collection/transforms-ns}
+                   :model/Collection regular-col {:name "Test Regular"}]
+      (mt/with-model-cleanup [:model/Transform :model/Card]
+        (testing "Can only add allowed content types"
+          (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the \"default\" or :analytics namespace."
+                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add transforms to non-'Transforms' collections"
+                                (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))
