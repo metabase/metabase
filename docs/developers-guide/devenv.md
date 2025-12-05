@@ -13,7 +13,15 @@ Both components are built and assembled together into a single JAR file. In the 
 
 ## Quick start
 
-First, make sure your local dev tooling matches the Metabase requirements. Run:
+**New to the project?** Run the automated setup:
+
+```
+./bin/dev-install
+```
+
+This installs [mise](https://mise.jdx.dev) (a tool version manager), sets up your shell, and installs all required tools (Node.js, Java, Clojure, Yarn, Babashka) at the correct versions. Follow the prompts, then open a new terminal.
+
+**Already have your own setup?** Check that it meets the requirements:
 
 ```
 ./bin/dev-requirements
