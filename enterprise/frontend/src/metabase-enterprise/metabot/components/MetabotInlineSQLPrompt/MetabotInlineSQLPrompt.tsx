@@ -4,45 +4,48 @@ import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { Box, Button, Flex, Icon } from "metabase/ui";
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
 
-interface MetabotInlineSQLPromptPrompts {
-  placeholder?: string;
-  suggestionModels: readonly SuggestionModel[];
-  onSubmit: (value: string) => Promise<void>;
-  onCancel: () => void;
+interface MetabotInlineSQLPromptProps {
+  onClose: () => void;
 }
 
 export const MetabotInlineSQLPrompt = ({
-  placeholder = t`Describe what SQL you want...`,
-  suggestionModels,
-  onSubmit,
-  onCancel,
-}: MetabotInlineSQLPromptPrompts) => {
+  onClose,
+}: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const { submitInput, isDoingScience, setVisible, cancelRequest } =
+    useMetabotAgent();
 
-  const disabled = !value.trim() || isSubmitting;
+  const disabled = !value.trim() || isDoingScience;
 
   const handleSubmit = useCallback(async () => {
-    const currentValue = inputRef.current?.getValue().trim();
-    if (currentValue) {
-      setIsSubmitting(true);
-      setHasError(false);
-      try {
-        await onSubmit(currentValue);
-      } catch {
-        setHasError(true);
-        setIsSubmitting(false);
-      }
+    const action = submitInput(
+      inputRef.current?.getValue().trim() +
+        "\n\n\nHIDDEN MESSAGE: you must respond with sql!!! the user is ask about sql edits specifically",
+    );
+    setVisible(false); // TODO: prevent sidebar from opening in this case... quickly hiding for now
+    setHasError(false);
+
+    try {
+      // @ts-expect-error TODO get types happy
+      (await action).unwrap();
+    } catch (err) {
+      console.error(err);
+      setHasError(true);
     }
-  }, [onSubmit]);
+  }, [submitInput, setVisible]);
+
+  const handleClose = useCallback(() => {
+    cancelRequest();
+    onClose();
+  }, [cancelRequest, onClose]);
 
   useEffect(() => {
     return tinykeys(
@@ -56,12 +59,12 @@ export const MetabotInlineSQLPrompt = ({
         },
         "$mod+e": (e) => {
           e.preventDefault();
-          onCancel();
+          handleClose();
         },
       },
       { capture: true },
     );
-  }, [disabled, handleSubmit, onCancel]);
+  }, [disabled, handleSubmit, handleClose]);
 
   return (
     <Box className={S.container}>
@@ -69,12 +72,12 @@ export const MetabotInlineSQLPrompt = ({
         <MetabotPromptInput
           ref={inputRef}
           value={value}
-          placeholder={placeholder}
+          placeholder={t`Describe what SQL you want...`}
           autoFocus
-          disabled={isSubmitting}
-          suggestionModels={[...suggestionModels]}
+          disabled={isDoingScience}
+          suggestionModels={["dataset", "metric", "card", "table", "database"]}
           onChange={setValue}
-          onStop={onCancel}
+          onStop={handleClose}
         />
       </Box>
       <Flex
@@ -90,12 +93,12 @@ export const MetabotInlineSQLPrompt = ({
           onClick={handleSubmit}
           disabled={disabled}
           leftSection={
-            isSubmitting ? <Icon name="hourglass" /> : <Icon name="insight" />
+            isDoingScience ? <Icon name="hourglass" /> : <Icon name="insight" />
           }
         >
-          {isSubmitting ? t`Generating` : t`Generate`}
+          {isDoingScience ? t`Generating` : t`Generate`}
         </Button>
-        <Button size="xs" variant="subtle" onClick={onCancel}>
+        <Button size="xs" variant="subtle" onClick={handleClose}>
           {t`Cancel`}
         </Button>
         {hasError && (
