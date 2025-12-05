@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -17,6 +17,7 @@ import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createTracker } from "metabase/lib/analytics-untyped";
@@ -50,15 +51,20 @@ export const SdkIframeEmbedRoute = () => {
     onSettingsChanged,
   });
 
+  const adjustedTheme = useMemo(
+    () => applyThemePreset(embedSettings?.theme),
+    [embedSettings?.theme],
+  );
+
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
   if (!embedSettings || !embedSettings.instanceUrl) {
     return null;
   }
 
-  const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
+  const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled();
 
-  const { isGuest, theme, locale } = embedSettings;
+  const { isGuest, locale } = embedSettings;
   const isProduction = !embedSettings._isLocalhost;
 
   // If the parent page is not running on localhost, it's not the unauthenticated embedding, and
@@ -86,14 +92,14 @@ export const SdkIframeEmbedRoute = () => {
   return (
     <ComponentProvider
       authConfig={authConfig}
-      theme={theme}
+      theme={adjustedTheme}
       locale={locale}
       reduxStore={store}
       isLocalHost={embedSettings._isLocalhost}
     >
       <Stack
         mih="100vh"
-        bg={theme?.colors?.background}
+        bg={adjustedTheme?.colors?.background}
         style={{
           display: "grid",
           width: "100%",
@@ -188,6 +194,7 @@ const SdkIframeEmbedView = ({
             token={settings.token}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
+            withSubscriptions={settings.withSubscriptions}
             initialParameters={settings.initialParameters}
             hiddenParameters={settings.hiddenParameters}
             drillThroughQuestionHeight="100%"

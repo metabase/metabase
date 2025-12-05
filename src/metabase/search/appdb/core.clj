@@ -52,7 +52,10 @@
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
-    [(str/join " OR " (map #(str "(" % ")") terms))]))
+    (if (or (= (mdb/db-type) :h2)
+            (= 1 (count terms)))
+      terms
+      [(str/join " OR " (map #(str "(" % ")") terms))])))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))

@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Load shared utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/utils/all.sh"
+
+# Lock directory to prevent concurrent runs
+LOCK_DIR="$PROJECT_ROOT/logs/dev-bootstrap.lock"
+
+acquire_lock() {
+    mkdir -p "$(dirname "$LOCK_DIR")"
+    # Use mkdir for atomic lock acquisition
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        print_error "Bootstrap is already running"
+        echo "      If this is a mistake, run: rm -rf $LOCK_DIR"
+        exit 1
+    fi
+}
+
+release_lock() {
+    rm -rf "$LOCK_DIR"
+}
+
+trap release_lock EXIT
+
+check_required_tools() {
+    local missing=()
+
+    # If any of these tools are an incorrect version, the build
+    # step will fail later on, so we just check for their presence here.
+    if ! command -v node &> /dev/null; then
+        missing+=("node")
+    fi
+
+    if ! command -v yarn &> /dev/null; then
+        missing+=("yarn")
+    fi
+
+    if ! command -v java &> /dev/null; then
+        missing+=("java")
+    fi
+
+    if ! command -v clojure &> /dev/null; then
+        missing+=("clojure")
+    fi
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo -e "${RED}${BOLD}Missing required tools:${NC} ${missing[*]}"
+        echo ""
+        echo "Run ./bin/dev-requirements to check your development environment."
+        echo ""
+        echo "If you'd like an automated setup, run ./bin/dev-install which uses mise (coming soon)."
+        exit 1
+    fi
+}
+
+install_frontend_deps() {
+    print_step "Installing frontend dependencies"
+
+    if yarn install --frozen-lockfile --prefer-offline; then
+        print_success "Frontend dependencies installed"
+    else
+        print_error "Failed to install frontend dependencies"
+        exit 1
+    fi
+}
+
+install_backend_deps() {
+    print_step "Downloading backend dependencies"
+
+    if clojure -A:build:dev:ee:ee-dev:drivers:drivers-dev:cljs -P; then
+        print_success "Backend dependencies downloaded"
+    else
+        print_error "Failed to download backend dependencies"
+        exit 1
+    fi
+}
+
+build_jar() {
+    print_step "Building Metabase JAR (this may take a while)"
+
+    if ./bin/build.sh; then
+        print_success "Metabase JAR built successfully"
+    else
+        print_error "Failed to build Metabase JAR"
+        exit 1
+    fi
+}
+
+main() {
+    acquire_lock
+
+    print_header "Metabase Development Bootstrap"
+
+    echo "This script will:"
+    echo "  1. Verify required tools are installed"
+    echo "  2. Install frontend dependencies (yarn)"
+    echo "  3. Download backend dependencies (Clojure)"
+    echo "  4. Build the Metabase JAR"
+    echo ""
+
+    print_step "Checking required tools"
+    check_required_tools
+    print_success "All required tools found"
+
+    install_frontend_deps
+    install_backend_deps
+
+    # Check for existing JAR and show its age
+    local jar_file="target/uberjar/metabase.jar"
+    local jar_age=$(get_file_age "$jar_file")
+
+    echo ""
+    if [ "$jar_age" = "not found" ]; then
+        if ask_yes_no "Build the Metabase JAR? (takes several minutes)" "n"; then
+            build_jar
+        else
+            print_warning "Skipping JAR build"
+            echo "      You can build it later with: ./bin/build.sh"
+        fi
+    else
+        print_success "Existing JAR found (built ${jar_age})"
+        if ask_yes_no "Rebuild it?" "n"; then
+            build_jar
+        else
+            print_warning "Keeping existing JAR"
+        fi
+    fi
+
+    print_header "Bootstrap Complete!"
+
+    echo "Your development environment is ready."
+    echo ""
+    echo "To start the backend (from source):"
+    echo "  clj -M:dev:drivers:drivers-dev:ee:ee-dev:dev-start --hot"
+    echo ""
+    echo "To start the backend (from JAR):"
+    echo "  java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar"
+    echo ""
+    echo "To start the frontend:"
+    echo "  yarn build-hot"
+    echo ""
+    echo "For more information, see docs/developers-guide/devenv.md"
+    echo ""
+}
+
+main "$@"

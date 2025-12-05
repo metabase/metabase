@@ -4,11 +4,13 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
@@ -21,6 +23,10 @@
                                                     where (assoc :where where)))
                        :creator)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new glossary entry."
   [_route-params
@@ -28,7 +34,6 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (api/check-403 (or (mi/superuser?) (perms/current-user-has-application-permissions? :data-studio)))
   (let [glossary (t2/insert-returning-instance! :model/Glossary
                                                 {:term       term
                                                  :definition definition
@@ -38,6 +43,10 @@
                             :user-id api/*current-user-id*})
     (t2/hydrate glossary :creator)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -45,7 +54,6 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
-  (api/check-403 (or (mi/superuser?) (perms/current-user-has-application-permissions? :data-studio)))
   (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/update! :model/Glossary id {:term term :definition definition})
     (let [glossary (t2/select-one :model/Glossary :id id)]
@@ -55,10 +63,13 @@
                               :user-id api/*current-user-id*})
       (t2/hydrate glossary :creator))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-403 (or (mi/superuser?) (perms/current-user-has-application-permissions? :data-studio)))
   (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/delete! :model/Glossary :id id)
     (events/publish-event! :event/glossary-delete

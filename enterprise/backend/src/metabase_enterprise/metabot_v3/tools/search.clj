@@ -138,9 +138,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id search-native-query weights]
-    ;; Temporary parameters we're experimenting with (missing unless explicitly sent to API)
-    {:keys [unified-disjunct-querying split-semantic-terms]} :experimental-opts}]
+           entity-types limit metabot-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries        term-queries
               :semantic-queries    semantic-queries
@@ -196,14 +194,14 @@
                             (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
                             data))
         search-fn*      (fn [search-engine queries]
-                          (let [queries (if unified-disjunct-querying (search.engine/disjunction search-engine queries) queries)]
+                          (let [queries (search.engine/disjunction search-engine queries)]
                             (join-results-by-rrf search-fn search-engine queries)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
                           (u/seek (comp not semantic?) (search.engine/supported-engines)))
-        fused-results   (if (and split-semantic-terms semantic-engine)
+        fused-results   (if semantic-engine
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           (reciprocal-rank-fusion
                            (map (fn [[engine queries]] (when (seq queries) (search-fn* engine queries)))
