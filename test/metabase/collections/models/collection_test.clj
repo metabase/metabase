@@ -1526,7 +1526,7 @@
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" or :analytics namespace."
+             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collection or :tenant-specific or :analytics namespace."
              (collection/check-collection-namespace :model/Card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
@@ -1821,61 +1821,6 @@
         (is (set? result)
             "Should return a set of card IDs")))))
 
-(deftest non-remote-synced-dependencies-different-remote-synced-roots-test
-  (testing "non-remote-synced-dependencies function behavior with different remote-synced roots"
-    ;; This test documents the expected behavior when Cards have dependencies
-    ;; across different remote-synced collection roots. The function should:
-    ;; 1. NOT flag dependencies within the same remote-synced root hierarchy
-    ;; 2. FLAG dependencies that cross between different remote-synced roots
-
-    (testing "Setup: Creating remote-synced collection hierarchies"
-      (mt/with-temp [:model/Collection {root-1 :id} {:name "Remote-Synced Root 1" :is_remote_synced true}
-                     :model/Collection {child-1 :id} {:name "Child of Root 1"
-                                                      :location (format "/%d/" root-1)
-                                                      :is_remote_synced true}
-                     :model/Collection {root-2 :id} {:name "Remote-Synced Root 2" :is_remote_synced true}
-                     :model/Collection {child-2 :id} {:name "Child of Root 2"
-                                                      :location (format "/%d/" root-2)
-                                                      :is_remote_synced true}]
-
-        ;; Verify the collections are correctly created
-        (is (true? (:is_remote_synced (t2/select-one :model/Collection :id root-1)))
-            "Root 1 should be remote-synced type")
-        (is (true? (:is_remote_synced (t2/select-one :model/Collection :id root-2)))
-            "Root 2 should be remote-synced type")
-        (is (= (format "/%d/" root-1) (:location (t2/select-one :model/Collection :id child-1)))
-            "Child 1 should be nested under Root 1")
-        (is (= (format "/%d/" root-2) (:location (t2/select-one :model/Collection :id child-2)))
-            "Child 2 should be nested under Root 2")))
-
-    (testing "Expected behavior documentation (actual dependency tracking requires serdes setup)"
-      ;; Note: The actual implementation relies on serdes/descendants to track dependencies.
-      ;; In a real scenario with properly set up dependencies:
-      ;;
-      ;; Scenario 1: Card in child-1 depends on Card in root-1 (same hierarchy)
-      ;; - Both are under remote-synced root-1
-      ;; - Result: Should return empty set (no non-remote-synced dependencies)
-      ;;
-      ;; Scenario 2: Card in root-2 depends on Card in root-1 (different roots)
-      ;; - They are in different remote-synced roots
-      ;; - Result: Should return #{card-in-root-1} as non-remote-synced dependency
-      ;;
-      ;; Scenario 3: Card in child-2 depends on Card in child-1 (different root hierarchies)
-      ;; - They are in children of different remote-synced roots
-      ;; - Result: Should return #{card-in-child-1} as non-remote-synced dependency
-
-      (is (fn? collection/non-remote-synced-dependencies)
-          "non-remote-synced-dependencies function should exist")
-
-      ;; The function implementation checks:
-      ;; 1. Gets the collection of the model
-      ;; 2. Determines the root collection ID (either the collection itself or its root from location)
-      ;; 3. Traverses dependencies using serdes/descendants
-      ;; 4. Filters out Cards that are in the same remote-synced root hierarchy
-      ;; 5. Returns Card IDs that are NOT in the same remote-synced root
-
-      (is true "See implementation in src/metabase/collections/models/collection.clj:1521-1544"))))
-
 (deftest non-remote-synced-dependencies-mixed-locations-test
   (testing "when model has mixed card dependencies (some in remote-synced, some outside)"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
@@ -2053,7 +1998,7 @@
             "Should return true when moving from regular to remote-synced collection"))
 
       (testing "when moving from remote-synced collection to remote-synced collection"
-        (is (true? (collection/moving-into-remote-synced? remote-synced-id other-remote-synced-id))
+        (is (false? (collection/moving-into-remote-synced? remote-synced-id other-remote-synced-id))
             "Should return false when moving from remote-synced collection to remote-synced collection"))
 
       (testing "when moving from remote-synced collection to non-remote-synced collection"
@@ -2312,7 +2257,7 @@
             "Should return true when moving from remote-synced collection to regular collection"))
 
       (testing "when moving from remote-synced collection to remote-synced collection"
-        (is (true? (collection/moving-from-remote-synced? remote-synced-id other-remote-synced-id))
+        (is (false? (collection/moving-from-remote-synced? remote-synced-id other-remote-synced-id))
             "Should return false when moving from remote-synced collection to remote-synced collection"))
 
       (testing "when moving from non-remote-synced to remote-synced collection"
@@ -2836,8 +2781,11 @@
         (is (= (format "/%d/" remote-synced-parent2-id)
                (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
 
-(deftest move-collection!-from-remote-synced-to-remote-synced-disallows-move-test
-  (testing "move-collection! disallows moving a collection from one remote-synced collection to another remote-synced collection"
+(deftest move-collection!-from-remote-synced-to-remote-synced-allows-move-with-dependents-in-source-test
+  (testing "move-collection! allows moving a collection between remote-synced roots even when dependents exist in source root"
+    ;; With unified remote-sync checking, all remote-synced collections are treated as a single pool,
+    ;; so moves between different remote-synced roots no longer trigger dependency/dependent checking.
+    ;; This test verifies that a dependent card in the source remote-synced root does NOT block the move.
     (mt/with-temp [:model/Collection {remote-synced-parent1-id :id} {:name "Remote-Synced Parent 1"
                                                                      :location "/"
                                                                      :is_remote_synced true}
@@ -2853,8 +2801,10 @@
                    :model/Card _ {:name "Dependent Card"
                                   :collection_id remote-synced-parent1-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
-      (testing "Errors on moves collection from one remote-synced collection to another"
-        (is (thrown? Exception (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))))))))
+      (testing "Allows moving collection from one remote-synced collection to another"
+        (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
+        (is (= (format "/%d/" remote-synced-parent2-id)
+               (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
 
 (deftest move-collection!-from-remote-synced-with-nested-dependents-prevents-move-test
   (testing "move-collection! prevents moving a collection from remote-synced collection when nested collections have dependents"
@@ -2972,11 +2922,11 @@
             "Should return true when moving from regular to remote-synced collection"))
 
       (testing "when moving between different remote-synced root collections"
-        (is (true? (collection/moving-into-remote-synced? remote-synced-root-a remote-synced-root-b))
+        (is (false? (collection/moving-into-remote-synced? remote-synced-root-a remote-synced-root-b))
             "Should return false when moving between different remote-synced root collections"))
 
       (testing "when moving from remote-synced child to different remote-synced root"
-        (is (true? (collection/moving-into-remote-synced? child-of-a remote-synced-root-b))
+        (is (false? (collection/moving-into-remote-synced? child-of-a remote-synced-root-b))
             "Should return false when moving from remote-synced child to different remote-synced root"))
 
       (testing "when moving within same remote-synced hierarchy"
@@ -3001,12 +2951,12 @@
             "Should return true when moving from remote-synced collection to regular collection"))
 
       (testing "when moving between different remote-synced root collections"
-        (is (true? (collection/moving-from-remote-synced? remote-synced-root-a remote-synced-root-b))
-            "Should return true when moving between different remote-synced root collections"))
+        (is (false? (collection/moving-from-remote-synced? remote-synced-root-a remote-synced-root-b))
+            "Should return false when moving between different remote-synced root collections"))
 
       (testing "when moving from remote-synced child to different remote-synced root"
-        (is (true? (collection/moving-from-remote-synced? child-of-a remote-synced-root-b))
-            "Should return true when moving from remote-synced child to different remote-synced root"))
+        (is (false? (collection/moving-from-remote-synced? child-of-a remote-synced-root-b))
+            "Should return false when moving from remote-synced child to different remote-synced root"))
 
       (testing "when moving from remote-synced collection to root"
         (is (true? (collection/moving-from-remote-synced? remote-synced-root-a nil))

@@ -24,6 +24,7 @@ export type CollectionId =
   | "root"
   | "personal"
   | "users"
+  | "tenant"
   | "trash";
 
 export type CollectionContentModel = "card" | "dataset" | "metric";
@@ -37,6 +38,8 @@ export type CollectionType =
   | "library"
   | "library-models"
   | "library-metrics"
+  | "shared-tenant-collection"
+  | "tenant-specific-root-collection"
   | null;
 
 export type LastEditInfo = Pick<
@@ -77,6 +80,7 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  namespace?: string;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -125,6 +129,7 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
+  collection_namespace?: string; // namespace of the parent collection
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
@@ -151,6 +156,8 @@ export interface CollectionItem {
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
+  is_shared_tenant_collection?: boolean;
+  is_tenant_dashboard?: boolean;
 }
 
 export interface CollectionListQuery {
@@ -164,7 +171,7 @@ export interface CollectionListQuery {
 
 export type getCollectionRequest = {
   id: CollectionId;
-  namespace?: "snippets";
+  namespace?: "snippets" | "tenant-specific";
   ignore_error?: boolean;
 };
 
@@ -179,7 +186,7 @@ export type ListCollectionItemsRequest = {
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  namespace?: "snippets";
+  namespace?: string;
   collection_type?: CollectionType;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
@@ -197,14 +204,16 @@ export interface UpdateCollectionRequest {
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  is_remote_synced?: boolean;
 }
 
 export interface CreateCollectionRequest {
   name: string;
-  description?: string;
+  description?: string | null;
   parent_id?: CollectionId | null;
   namespace?: string;
   authority_level?: CollectionAuthorityLevel;
+  is_shared_tenant_collection?: boolean;
 }
 
 export interface ListCollectionsRequest {
@@ -222,6 +231,7 @@ export interface ListCollectionsTreeRequest {
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
+  "include-tenant-collections"?: boolean;
 }
 
 export interface DeleteCollectionRequest {

@@ -7,7 +7,11 @@ import {
   useListCollectionItemsQuery,
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
+import { useSetting } from "metabase/common/hooks";
+import {
+  PERSONAL_COLLECTIONS,
+  TENANT_SPECIFIC_COLLECTIONS,
+} from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -17,10 +21,22 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
+import { SHARED_TENANT_NAMESPACE } from "../utils";
+
 import type { CollectionItemListProps, CollectionPickerItem } from "./types";
 
 const personalCollectionsRoot: CollectionPickerItem = {
   ...PERSONAL_COLLECTIONS,
+  can_write: false,
+  model: "collection",
+  location: "/",
+  description: "",
+  here: ["collection"],
+  below: ["collection"],
+};
+
+const tenantSpecificCollectionsRoot: CollectionPickerItem = {
+  ...TENANT_SPECIFIC_COLLECTIONS,
   can_write: false,
   model: "collection",
   location: "/",
@@ -40,6 +56,7 @@ export const useRootCollectionPickerItems = (
 ) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
+  const tenantsEnabled = useSetting("use-tenants");
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
     useGetCollectionQuery(
@@ -76,7 +93,24 @@ export const useRootCollectionPickerItems = (
   const items = useMemo(() => {
     const collectionItems: CollectionPickerItem[] = [];
 
-    if (options.showLibrary && libraryCollection) {
+    // If restricted to shared-tenant namespace, only show tenant root
+    if (options?.restrictToNamespace === SHARED_TENANT_NAMESPACE) {
+      if (tenantsEnabled && currentUser) {
+        collectionItems.push({
+          name: t`Shared collections`,
+          id: "tenant",
+          namespace: SHARED_TENANT_NAMESPACE,
+          here: ["collection", "card", "dashboard"],
+          description: null,
+          can_write: true,
+          model: "collection",
+          location: "/",
+        });
+      }
+      return collectionItems;
+    }
+
+    if (options?.showLibrary && libraryCollection) {
       collectionItems.push({
         ...libraryCollection,
         model: "collection",
@@ -84,7 +118,7 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showDatabases) {
+    if (options?.showDatabases) {
       collectionItems.push({
         id: "databases",
         name: t`Databases`,
@@ -96,7 +130,7 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showRootCollection || options.namespace === "snippets") {
+    if (options?.showRootCollection || options?.namespace === "snippets") {
       if (rootCollection && !rootCollectionError) {
         collectionItems.push({
           ...rootCollection,
@@ -104,7 +138,7 @@ export const useRootCollectionPickerItems = (
           here: ["collection"],
           location: "/",
           name:
-            options.namespace === "snippets"
+            options?.namespace === "snippets"
               ? t`Top folder`
               : rootCollection.name,
         });
@@ -122,8 +156,8 @@ export const useRootCollectionPickerItems = (
     }
 
     if (
-      options.showPersonalCollections &&
-      options.namespace !== "snippets" &&
+      options?.showPersonalCollections &&
+      options?.namespace !== "snippets" &&
       currentUser &&
       !!personalCollection
     ) {
@@ -139,6 +173,45 @@ export const useRootCollectionPickerItems = (
       }
     }
 
+    // Only show tenant collections if NOT restricted to a different namespace
+    // When restrictToNamespace is "default", we exclude tenant collections
+    const shouldShowTenantCollections =
+      tenantsEnabled &&
+      currentUser &&
+      options?.restrictToNamespace !== "default";
+
+    if (shouldShowTenantCollections) {
+      collectionItems.push({
+        name: t`Shared collections`,
+        id: "tenant",
+        namespace: SHARED_TENANT_NAMESPACE,
+        here: ["collection", "card", "dashboard"],
+        description: null,
+        can_write: true,
+        model: "collection",
+        location: "/",
+      });
+    }
+
+    const userTenantCollectionId = currentUser?.tenant_collection_id;
+    if (shouldShowTenantCollections && userTenantCollectionId) {
+      collectionItems.push({
+        name: t`My Tenant Collection`,
+        id: userTenantCollectionId,
+        here: ["collection", "card", "dashboard"],
+        description: null,
+        can_write: true,
+        model: "collection",
+        location: "/",
+        type: "tenant-specific-root-collection",
+      });
+    }
+
+    // Show all tenant-specific collections for admins
+    if (shouldShowTenantCollections && isAdmin) {
+      collectionItems.push(tenantSpecificCollectionsRoot);
+    }
+
     return collectionItems;
   }, [
     currentUser,
@@ -149,6 +222,7 @@ export const useRootCollectionPickerItems = (
     rootCollectionError,
     totalPersonalCollectionItems,
     libraryCollection,
+    tenantsEnabled,
   ]);
 
   const isLoading =

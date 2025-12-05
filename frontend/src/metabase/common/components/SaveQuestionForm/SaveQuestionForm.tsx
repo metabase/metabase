@@ -58,6 +58,9 @@ export const SaveQuestionForm = ({
       ? ["collection", "dashboard"]
       : ["collection"];
 
+  // Determine the savingModel based on question type
+  const savingModel = question.type() === "model" ? "model" : "question";
+
   const showPickerInput =
     values.saveType === "create" && !targetCollection && !saveToDashboard;
 
@@ -125,6 +128,7 @@ export const SaveQuestionForm = ({
                 dashboardIdFieldName="dashboard_id"
                 title={t`Where do you want to save this?`}
                 entityType={getEntityTypeFromCardType(question.type())}
+                savingModel={savingModel}
                 collectionPickerModalProps={{
                   models,
                   recentFilter: (items) =>

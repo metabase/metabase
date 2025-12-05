@@ -41,10 +41,12 @@ const MoveCollectionModalView = ({
       title={t`Move "${collection.name}"?`}
       initialCollectionId={collection.parent_id ?? "root"}
       movingCollectionId={collection.id}
+      movingCollectionNamespace={collection.namespace ?? undefined}
       entityType="collection"
       onMove={handleMove}
       onClose={onClose}
       recentAndSearchFilter={recentsAndSearchFilter}
+      savingModel="collection"
     />
   );
 };

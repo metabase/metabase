@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -40,7 +40,11 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab = "data" | "collections" | "application";
+type PermissionsPageTab =
+  | "data"
+  | "collections"
+  | "application"
+  | "tenant-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
@@ -86,8 +90,29 @@ export function PermissionsPageLayout({
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
-  const navigateToTab = (tab: PermissionsPageTab) =>
-    dispatch(push(`/admin/permissions/${tab}`));
+  const [pendingTabNavigation, setPendingTabNavigation] = useState<
+    string | null
+  >(null);
+
+  const navigateToTab = (newTab: string) => {
+    if (isDirty) {
+      setPendingTabNavigation(newTab);
+    } else {
+      dispatch(push(`/admin/permissions/${newTab}`));
+    }
+  };
+
+  const handleConfirmTabChange = () => {
+    if (pendingTabNavigation) {
+      dispatch(push(`/admin/permissions/${pendingTabNavigation}`));
+      setPendingTabNavigation(null);
+    }
+  };
+
+  const handleCancelTabChange = () => {
+    setPendingTabNavigation(null);
+  };
+
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
   };
@@ -115,6 +140,12 @@ export function PermissionsPageLayout({
           />
         )}
 
+        <LeaveRouteConfirmModal
+          isEnabled={Boolean(isDirty)}
+          route={route}
+          onConfirm={() => onLoad?.()}
+        />
+
         <ConfirmModal
           opened={saveError != null}
           onClose={clearSaveError}
@@ -126,7 +157,15 @@ export function PermissionsPageLayout({
           closeButtonText={null}
         />
 
-        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
+        <ConfirmModal
+          opened={pendingTabNavigation != null}
+          onClose={handleCancelTabChange}
+          onConfirm={handleConfirmTabChange}
+          title={t`Discard unsaved changes?`}
+          message={t`You have unsaved permission changes. Switching tabs will discard these changes.`}
+          confirmButtonText={t`Discard`}
+          closeButtonText={t`Cancel`}
+        />
 
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />

@@ -28,6 +28,8 @@ export const createMockPermissionsState = (
     originalDataPermissions: {},
     collectionPermissions: {},
     originalCollectionPermissions: {},
+    tenantCollectionPermissions: {},
+    originalTenantCollectionPermissions: {},
     isHelpReferenceOpen: false,
     hasRevisionChanged: {
       revision: null,

@@ -80,10 +80,6 @@ export const PermissionsTableRow = styled.tr`
   border-bottom: ${({ theme }) => getTableBorder(theme)};
 `;
 
-export const EntityName = styled.span`
-  font-weight: 700;
-`;
-
 export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;

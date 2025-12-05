@@ -14,6 +14,7 @@
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.tenants.core :as tenants]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -237,10 +238,12 @@
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
+                                (when (:tenant_id user) (perms/all-external-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
-        (perms/without-is-superuser-sync-on-add-to-admin-group
-         (perms/add-user-to-groups! user-id (map u/the-id groups)))))
+        (perms/allow-changing-all-external-users-group-members
+         (perms/without-is-superuser-sync-on-add-to-admin-group
+          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
     (sync-password-to-auth-identity! user-id)))
 
 (t2/define-before-update :model/User
@@ -411,6 +414,23 @@
     (for [user users]
       (assoc user :is_installer (= (:id user) 1)))))
 
+(mi/define-batched-hydration-method add-tenant-collection-id
+  :tenant_collection_id
+  "Efficiently hydrate the `:tenant_collection_id` property of a sequence of Users. (This is the ID of their Tenant's
+  Collection, if they belong to a tenant.)"
+  [users]
+  (when (seq users)
+    ;; efficiently create a map of tenant ID -> tenant collection ID
+    (let [users-with-tenant-ids (filter :tenant_id users)
+          tenant-ids            (set (map :tenant_id users-with-tenant-ids))
+          tenant-id->collection-id (when (seq tenant-ids)
+                                     (t2/select-pk->fn :tenant_collection_id :model/Tenant
+                                                       :id [:in tenant-ids]))]
+      ;; now for each User, try to find the corresponding tenant collection ID
+      (for [user users]
+        (assoc user :tenant_collection_id (when-let [tenant-id (:tenant_id user)]
+                                            (get tenant-id->collection-id tenant-id)))))))
+
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (declare form-password-reset-url)
@@ -477,7 +497,7 @@
 (defn add-attributes
   "Adds the `:attributes` key to a user."
   [{:keys [login_attributes jwt_attributes] :as user}]
-  (assoc user :attributes (merge jwt_attributes login_attributes)))
+  (assoc user :attributes (merge {} (tenants/login-attributes user) jwt_attributes login_attributes)))
 
 ;;; Filtering users
 

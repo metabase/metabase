@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]))
 
@@ -10,10 +11,10 @@
         other-token "other_token_value"
         obfuscated-token (setting/obfuscate-value full-token)
         default-settings
-        {:remote-sync-url     "file://my/url.git"
-         :remote-sync-type    :read-only
-         :remote-sync-branch  "test-branch"
-         :remote-sync-token   nil}]
+        {:remote-sync-url "file://my/url.git"
+         :remote-sync-type :read-only
+         :remote-sync-branch "test-branch"
+         :remote-sync-token nil}]
     (with-redefs [settings/check-git-settings! (fn [{:keys [remote-sync-token]}]
                                                  ;; git should always be checked with a nil or full token
                                                  (is (or (nil? remote-sync-token) (#{full-token other-token} remote-sync-token)))
@@ -52,3 +53,16 @@
     (is (false? (settings/remote-sync-enabled))))
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"]
     (is (true? (settings/remote-sync-enabled)))))
+
+;;; ------------------------------------------------- Root Collection Remote Sync -------------------------------------------------
+
+(deftest root-collection-is-not-remote-synced-test
+  (testing "Root collection for shared-tenant-collection namespace is never remote-synced (individual children can be toggled)"
+    (let [root-coll (collection.root/root-collection-with-ui-details :shared-tenant-collection)]
+      (is (false? (:is_remote_synced root-coll)))))
+  (testing "Root collection for default namespace is not remote-synced"
+    (let [root-coll (collection.root/root-collection-with-ui-details nil)]
+      (is (false? (:is_remote_synced root-coll)))))
+  (testing "Root collection for snippets namespace is not remote-synced"
+    (let [root-coll (collection.root/root-collection-with-ui-details :snippets)]
+      (is (false? (:is_remote_synced root-coll))))))

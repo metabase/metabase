@@ -24,7 +24,12 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_DATA_STUDIO, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import {
+  PLUGIN_DATA_STUDIO,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Bookmark } from "metabase-types/api";
 
@@ -86,6 +91,7 @@ export function MainNavbarView({
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const showSyncGroup = useSetting("remote-sync-type") === "read-write";
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const [
     addDataModalOpened,
@@ -233,6 +239,8 @@ export function MainNavbarView({
             />
           )}
 
+          <PLUGIN_TENANTS.MainNavSharedCollections />
+
           {PLUGIN_DATA_STUDIO.isEnabled && (
             <PLUGIN_DATA_STUDIO.NavbarLibrarySection
               collections={collections}
@@ -250,18 +258,20 @@ export function MainNavbarView({
                 iconSize={8}
                 onToggle={setExpandCollections}
                 rightAction={
-                  <Tooltip label={t`Create a new collection`}>
-                    <ActionIcon
-                      aria-label={t`Create a new collection`}
-                      color="var(--mb-color-text-medium)"
-                      onClick={() => {
-                        trackNewCollectionFromNavInitiated();
-                        handleCreateNewCollection();
-                      }}
-                    >
-                      <Icon name="add" />
-                    </ActionIcon>
-                  </Tooltip>
+                  canWriteToCollections ? (
+                    <Tooltip label={t`Create a new collection`}>
+                      <ActionIcon
+                        aria-label={t`Create a new collection`}
+                        color="var(--mb-color-text-medium)"
+                        onClick={() => {
+                          trackNewCollectionFromNavInitiated();
+                          handleCreateNewCollection();
+                        }}
+                      >
+                        <Icon name="add" />
+                      </ActionIcon>
+                    </Tooltip>
+                  ) : null
                 }
                 role="section"
                 aria-label={t`Collections`}
@@ -310,9 +320,9 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-        </div>
-        <div>
-          <WhatsNewNotification />
+          <div>
+            <WhatsNewNotification />
+          </div>
         </div>
       </SidebarContentRoot>
 

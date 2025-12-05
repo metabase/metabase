@@ -55,6 +55,8 @@ export const SyncedCollectionsSidebarSection = ({
       refetchOnFocus: true,
     });
 
+  const changedCollections = dirtyData?.changedCollections ?? {};
+
   const isSwitchingBranch = !!nextBranch;
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
   const hasEntityRemoved = dirtyData?.dirty?.some(
@@ -111,11 +113,11 @@ export const SyncedCollectionsSidebarSection = ({
     [currentBranch, changeBranch, refetchDirty, sendToast],
   );
   const showChangesBadge = (itemId?: number | string) => {
-    if (!dirtyData?.changedCollections || typeof itemId !== "number") {
+    if (!changedCollections || typeof itemId !== "number") {
       return false;
     }
 
-    const collectionIsUpdated = !!dirtyData?.changedCollections[itemId];
+    const collectionIsUpdated = !!changedCollections[itemId];
     const hasSingleRootCollection = syncedCollections.length === 1;
 
     return (

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 
 export interface RelatedSettingItem {
@@ -8,8 +9,14 @@ export interface RelatedSettingItem {
   to: string;
 }
 
-export const getModularEmbeddingRelatedSettingItems =
-  (): RelatedSettingItem[] => [
+export const getModularEmbeddingRelatedSettingItems = ({
+  isUsingTenants,
+}: {
+  isUsingTenants?: boolean;
+}): RelatedSettingItem[] => {
+  const isTenantsFeatureAvailable = PLUGIN_TENANTS.isEnabled;
+
+  const items: RelatedSettingItem[] = [
     // TODO: enable this once we've added the "Security" tab to Embedding Settings.
     // {
     //   icon: "shield_outline",
@@ -41,7 +48,21 @@ export const getModularEmbeddingRelatedSettingItems =
       name: t`Appearance`,
       to: "/admin/settings/appearance",
     },
+    ...(isTenantsFeatureAvailable
+      ? [
+          {
+            icon: "globe" as const,
+            name: t`Tenants`,
+            to: isUsingTenants
+              ? "/admin/tenants"
+              : "/admin/people/user-strategy",
+          },
+        ]
+      : []),
   ];
+
+  return items;
+};
 
 export const getStaticEmbeddingRelatedSettingItems =
   (): RelatedSettingItem[] => [

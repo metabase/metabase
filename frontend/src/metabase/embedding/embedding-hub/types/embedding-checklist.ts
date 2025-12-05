@@ -8,7 +8,8 @@ export type EmbeddingHubStepId =
   | "configure-row-column-security"
   | "secure-embeds"
   | "embed-production"
-  | "create-models";
+  | "create-models"
+  | "setup-tenants";
 
 export interface EmbeddingHubStep {
   id: EmbeddingHubStepId;

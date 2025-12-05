@@ -12,6 +12,7 @@ import {
   defaultOptions as defaultEntityPickerOptions,
 } from "../../../EntityPicker";
 import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
+import { isNamespaceRoot } from "../../utils";
 import type {
   DashboardPickerInitialValueItem,
   DashboardPickerItem,
@@ -24,7 +25,7 @@ import { getCollectionId } from "../utils";
 import {
   DashboardPicker,
   defaultOptions as defaultDashboardPickerOptions,
-} from "./DashboardPicker";
+} from "./DashboardPicker/DashboardPicker";
 import { NewDashboardDialog } from "./NewDashboardDialog";
 
 export interface DashboardPickerModalProps {
@@ -150,7 +151,10 @@ export const DashboardPickerModal = ({
       miw="9.5rem"
       onClick={openCreateDialog}
       leftSection={<Icon name="add_to_dash" />}
-      disabled={selectedItem?.can_write === false}
+      disabled={Boolean(
+        selectedItem?.can_write === false ||
+          (selectedItem && isNamespaceRoot(selectedItem)),
+      )}
     >
       {t`New dashboard`}
     </Button>,

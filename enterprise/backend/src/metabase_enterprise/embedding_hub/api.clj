@@ -6,6 +6,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.audit-app.core :as audit]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
@@ -59,7 +60,8 @@
    "configure-row-column-security" (has-configured-sandboxes?)
    "create-test-embed"             (embedding.settings/embedding-hub-test-embed-snippet-created)
    "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)
-   "secure-embeds"                 (has-configured-sso?)})
+   "secure-embeds"                 (has-configured-sso?)
+   "setup-tenants"                 (perms/use-tenants)})
 
 (api.macros/defendpoint :get "/checklist"
   "Get the embedding hub checklist status, indicating which setup steps have been completed."

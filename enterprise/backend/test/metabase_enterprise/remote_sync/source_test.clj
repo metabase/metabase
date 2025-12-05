@@ -63,7 +63,7 @@
             test-entities [(create-test-entity "test-id-1" "entity-one" "Collection")
                            (create-test-entity "test-id-2" "entity-two" "Card")]]
 
-        (is (= "mock-written-version" (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit message")))
+        (is (= "mock-written-version" (source/store! test-entities [] (source.p/snapshot mock-source) task-id "Test commit message")))
 
         (testing "write-files! was called with correct message"
           (is (= "Test commit message" (:message @written-files))))
@@ -108,7 +108,7 @@
         (let [initial-task (t2/select-one :model/RemoteSyncTask :id task-id)]
           (is (nil? (:progress initial-task)) "Progress should be nil initially"))
 
-        (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit")
+        (source/store! test-entities [] (source.p/snapshot mock-source) task-id "Test commit")
 
         (let [final-task (t2/select-one :model/RemoteSyncTask :id task-id)]
           (is (some? (:progress final-task)) "Progress should be updated after store!")
@@ -128,7 +128,7 @@
       (let [written-files (atom nil)
             mock-source (->MockSource written-files)]
 
-        (source/store! [] (source.p/snapshot mock-source) task-id "Empty commit")
+        (source/store! [] [] (source.p/snapshot mock-source) task-id "Empty commit")
 
         (testing "write-files! was called even with empty stream"
           (is (some? @written-files)))

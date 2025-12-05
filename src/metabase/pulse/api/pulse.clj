@@ -48,17 +48,30 @@
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
-  themselves. Recipients that are plain email addresses are preserved."
+  themselves. Recipients that are plain email addresses are preserved.
+
+  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
   [pulses]
-  (if (perms/sandboxed-or-impersonated-user?)
-    (for [pulse pulses]
-      (assoc pulse :channels
-             (for [channel (:channels pulse)]
-               (assoc channel :recipients
-                      (filter (fn [recipient] (or (not (:id recipient))
-                                                  (= (:id recipient) api/*current-user-id*)))
-                              (:recipients channel))))))
-    pulses))
+  (cond->> pulses
+    (perms/sandboxed-or-impersonated-user?)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:id recipient) api/*current-user-id*)))
+                                   (:recipients channel)))))))
+
+    (not api/*is-superuser?*)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
+                                   (:recipients channel)))))))))
 
 (defn- maybe-filter-pulse-recipients
   [pulse]

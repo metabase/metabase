@@ -31,4 +31,13 @@ describe("EmbeddingSdkSettings (EE)", () => {
       alertInfo.getByText("implement JWT or SAML SSO"),
     ).toBeInTheDocument();
   });
+
+  it("should show Tenants in related settings when tenants feature is available", async () => {
+    await setup({
+      hasEnterprisePlugins: true,
+      tokenFeatures: { tenants: true },
+    });
+
+    expect(screen.getByText("Tenants")).toBeInTheDocument();
+  });
 });
