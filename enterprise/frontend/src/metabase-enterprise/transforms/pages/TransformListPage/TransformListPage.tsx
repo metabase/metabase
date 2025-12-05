@@ -1,48 +1,24 @@
 import { useDebouncedValue } from "@mantine/hooks";
+import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { VirtualizedTree } from "metabase/common/components/tree/VirtualizedTree";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Flex, Icon, Stack, TextInput } from "metabase/ui";
+import { Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
-import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
-import { TransformListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/TransformListItem";
-import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
-
-import { CreateTransformMenu } from "../TransformSidebarLayout/CreateTransformMenu";
-import { SidebarList } from "../TransformSidebarLayout/SidebarList";
-import { SidebarLoadingState } from "../TransformSidebarLayout/SidebarLoadingState";
-import { SidebarSearchAndControls } from "../TransformSidebarLayout/SidebarSearchAndControls";
-import { TRANSFORM_SORT_OPTIONS } from "../TransformSidebarLayout/SidebarSortControl";
-import S from "../TransformSidebarLayout/TransformsSidebar/TransformsSidebar.module.css";
-import { TransformsTreeNode } from "../TransformSidebarLayout/TransformsSidebar/TransformsTreeNode";
-import { buildTreeData } from "../TransformSidebarLayout/TransformsSidebar/utils";
-import {
-  lastModifiedSorter,
-  nameSorter,
-} from "../TransformSidebarLayout/utils";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table";
+import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import type { Transform } from "metabase-types/api";
 
-const DEFAULT_SORT_TYPE = "tree";
+import { SidebarLoadingState } from "../TransformSidebarLayout/SidebarLoadingState";
 
-interface TransformsSidebarProps {
-  selectedTransformId?: number;
-}
-
-export const TransformListPageSidebar = ({
-  selectedTransformId,
-}: TransformsSidebarProps) => {
+export const TransformListPageSidebar = () => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
@@ -70,7 +46,7 @@ export const TransformListPageSidebar = ({
     return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
-  const handleSelect = (item) => {
+  const handleSelect = (item: Transform) => {
     if (typeof item.id === "number") {
       dispatch(push(Urls.transform(item.id)));
     }
@@ -96,35 +72,9 @@ export const TransformListPageSidebar = ({
           <CreateTransformMenu />
         </Flex>
 
-        <Table
-          data={filteredTransforms.map((t) => ({
-            ...t,
-            out_table: t.target.name,
-            last_modified: new Date(t.updated_at).toDateString(),
-          }))}
-          columns={[
-            {
-              id: "name",
-              grow: true,
-              name: "Name",
-            },
-            {
-              id: "last_modified",
-              width: "150px",
-              name: "Last Modified",
-            },
-            {
-              id: "out_table",
-              width: "150px",
-              name: "Output table",
-            },
-          ]}
-          onSelect={handleSelect}
-        />
-        {/* <Flex direction="column" flex={1} mih={0}>
         {isLoading ? (
           <SidebarLoadingState />
-        ) : transformsSorted.length === 0 ? (
+        ) : filteredTransforms.length === 0 ? (
           <ListEmptyState
             label={
               debouncedSearchQuery
@@ -132,40 +82,39 @@ export const TransformListPageSidebar = ({
                 : t`No transforms yet`
             }
           />
-        ) : sortType === "tree" ? (
-          <VirtualizedTree
-            initiallyExpanded
-            data={treeData}
-            selectedId={selectedTransformId}
-            onSelect={(node) => {
-              if (typeof node.id === "number") {
-                dispatch(push(Urls.transform(node.id)));
-              }
-            }}
-            TreeNode={TransformsTreeNode}
-          />
         ) : (
-          <SidebarList>
-            {transformsSorted.map((transform) => (
-              <TransformListItem
-                key={transform.id}
-                transform={transform}
-                selectedId={selectedTransformId}
-              />
-            ))}
-          </SidebarList>
+          <Card withBorder p={0}>
+            <Table
+              data={filteredTransforms.map((t) => ({
+                ...t,
+                out_table: t.target.name,
+                last_modified: new Date(t.updated_at).toDateString(),
+              }))}
+              columns={[
+                {
+                  accessorKey: "name",
+                  meta: {
+                    width: "auto",
+                  },
+                  header: "Name",
+                },
+                {
+                  accessorKey: "updated_at",
+                  cell: ({ getValue }) => {
+                    const value = getValue() as string;
+                    return value && dayjs(value).format("MMM D, h:mm: A");
+                  },
+                  header: "Last Modified",
+                },
+                {
+                  accessorFn: (transform) => transform.target.name,
+                  header: "Output table",
+                },
+              ]}
+              onSelect={handleSelect}
+            />
+          </Card>
         )}
-      </Flex>
-      {isAdmin && PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-        <Box p="sm" className={S.footer}>
-          <SidebarListItem
-            icon="code_block"
-            href={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
-            label={t`Python library`}
-            subtitle={t`Shared helper functions`}
-          />
-        </Box>
-      )} */}
       </Stack>
     </>
   );

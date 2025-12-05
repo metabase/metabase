@@ -1,7 +1,7 @@
 import type { QuestionPickerItem } from "metabase/common/components/Pickers/QuestionPicker";
 import type { Database } from "metabase-types/api";
 
-import { doesDatabaseSupportTransforms } from "../../../utils";
+import { doesDatabaseSupportTransforms } from "../../utils";
 
 export function shouldDisableItem(
   item: QuestionPickerItem,

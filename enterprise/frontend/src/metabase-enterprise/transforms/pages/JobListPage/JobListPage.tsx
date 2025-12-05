@@ -1,48 +1,27 @@
 import { useDebouncedValue } from "@mantine/hooks";
+import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Flex, Icon, Stack, TextInput, Tooltip } from "metabase/ui";
+import { Button, Card, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
 import { TransformsSectionHeader } from "metabase-enterprise/data-studio/app/pages/TransformsSectionLayout/TransformsSectionHeader";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs/DataStudioBreadcrumbs";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { SidebarListItem } from "metabase-enterprise/transforms/pages/TransformSidebarLayout/SidebarListItem/SidebarListItem";
+import type { TransformJob } from "metabase-types/api";
 
-import S from "../TransformSidebarLayout/JobsSidebar/JobsSidebar.module.css";
-import { SidebarList } from "../TransformSidebarLayout/SidebarList";
 import { SidebarLoadingState } from "../TransformSidebarLayout/SidebarLoadingState";
-import { SidebarSearchAndControls } from "../TransformSidebarLayout/SidebarSearchAndControls";
-import { JOB_SORT_OPTIONS } from "../TransformSidebarLayout/SidebarSortControl";
-import {
-  lastModifiedSorter,
-  nameSorter,
-} from "../TransformSidebarLayout/utils";
-import { ForwardRefLink } from "metabase/common/components/Link";
 
-const DEFAULT_SORT_TYPE = "alphabetical";
-
-interface JobListPagerProps {
-  selectedJobId?: number;
-}
-
-export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
+export const JobListPage = () => {
   const dispatch = useDispatch();
-  const systemTimezone = useSetting("system-timezone");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebouncedValue(searchQuery, 300);
-  const { value: sortType, setValue: setSortType } = useUserKeyValue({
-    namespace: "transforms",
-    key: "jobs-sort-type",
-    defaultValue: DEFAULT_SORT_TYPE,
-  });
 
   const { data: jobs, error, isLoading } = useListTransformJobsQuery({});
 
@@ -59,18 +38,7 @@ export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
     return jobs.filter((job) => job.name.toLowerCase().includes(query));
   }, [jobs, debouncedSearchQuery]);
 
-  const sortFn = sortType === "last-modified" ? lastModifiedSorter : nameSorter;
-
-  const jobsSorted = useMemo(
-    () => [...filteredJobs].sort(sortFn),
-    [filteredJobs, sortFn],
-  );
-
-  const handleAdd = () => {
-    dispatch(push(Urls.newTransformJob()));
-  };
-
-  const handleSelect = (item) => {
+  const handleSelect = (item: TransformJob) => {
     dispatch(push(Urls.transformJob(item.id)));
   };
 
@@ -103,51 +71,39 @@ export const JobListPage = ({ selectedJobId }: JobListPagerProps) => {
         <Flex direction="column" flex={1} mih={0}>
           {isLoading ? (
             <SidebarLoadingState />
-          ) : jobsSorted.length === 0 ? (
+          ) : filteredJobs.length === 0 ? (
             <ListEmptyState
               label={debouncedSearchQuery ? t`No jobs found` : t`No jobs yet`}
             />
           ) : (
-            // <SidebarList>
-            //   {jobsSorted.map((job) => {
-            //     const subtitle =
-            //       job.last_run?.start_time &&
-            //       `${job.last_run?.status === "failed" ? t`Failed` : t`Last run`}: ${new Date(
-            //         job.last_run.start_time,
-            //       ).toLocaleString("en-US", {
-            //         timeZone: systemTimezone ?? undefined,
-            //       })}`;
-
-            //     return (
-            //       <SidebarListItem
-            //         key={job.id}
-            //         icon="play_outlined"
-            //         href={Urls.transformJob(job.id)}
-            //         label={job.name}
-            //         subtitle={subtitle}
-            //         isActive={job.id === selectedJobId}
-            //       />
-            //     );
-            //   })}
-            // </SidebarList>
-
-            <Table
-              data={jobsSorted.map((j) => ({
-                ...j,
-                last_run_time: j.last_run
-                  ? new Date(j.last_run.start_time).toDateString()
-                  : "Never",
-              }))}
-              columns={[
-                {
-                  id: "name",
-                  name: "Name",
-                  grow: true,
-                },
-                { id: "last_run_time", name: "Last Run", width: "150px" },
-              ]}
-              onSelect={handleSelect}
-            />
+            <Card withBorder p={0}>
+              <Table
+                data={filteredJobs}
+                columns={[
+                  {
+                    accessorKey: "name",
+                    header: "Name",
+                    meta: {
+                      width: "auto",
+                    },
+                  },
+                  {
+                    accessorFn: (job) => job.last_run?.start_time,
+                    header: "Last Run",
+                    size: 200,
+                    cell: ({ row: { original: job } }) => {
+                      if (job.last_run) {
+                        const formattedDate = dayjs(
+                          job.last_run.start_time,
+                        ).format("MMM D, h:mm: A");
+                        return `${job.last_run.status === "failed" ? t`Failed` : t`Last run`} ${formattedDate}`;
+                      }
+                    },
+                  },
+                ]}
+                onSelect={handleSelect}
+              />
+            </Card>
           )}
         </Flex>
       </Stack>

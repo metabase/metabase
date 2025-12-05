@@ -9,7 +9,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
-import { trackTransformCreate } from "../../../analytics";
+import { trackTransformCreate } from "../../analytics";
 
 import { shouldDisableItem } from "./utils";
 

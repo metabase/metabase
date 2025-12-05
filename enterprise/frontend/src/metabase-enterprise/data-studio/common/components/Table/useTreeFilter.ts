@@ -1,15 +1,16 @@
-type Item = Record<string, any> & { children?: Item[] };
-
-export const useTreeFilter = ({
+export const useTreeFilter = <
+  T extends Record<string, any> & { children?: T[] },
+  K extends keyof T,
+>({
   data,
   searchQuery,
   searchProps,
 }: {
-  data: Item[];
+  data: T[];
   searchQuery: string | undefined;
-  searchProps: string[];
-}) => {
-  const filterLevel = (nodes: Item[]): Item[] => {
+  searchProps: K[];
+}): T[] => {
+  const filterLevel = (nodes: T[]): T[] => {
     return nodes
       .map((node) => {
         if (node.children) {

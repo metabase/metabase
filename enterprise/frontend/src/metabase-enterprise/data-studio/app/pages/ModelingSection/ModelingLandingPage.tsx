@@ -1,55 +1,50 @@
-import { useCallback, useMemo, useState } from "react";
+import dayjs from "dayjs";
+import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useListCollectionItemsQuery,
-  useListCollectionsQuery,
-  useListCollectionsTreeQuery,
-  useListSnippetsQuery,
-} from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
-import { Tree } from "metabase/common/components/tree";
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
-  ActionIcon,
   Button,
   Card,
   FixedSizeIcon,
   Flex,
   Icon,
   Menu,
-  Popover,
   Stack,
   TextInput,
 } from "metabase/ui";
+import { Table } from "metabase-enterprise/data-studio/common/components/Table";
+import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
-import { getWritableCollection } from "./ModelingSidebar/LibrarySection/LibraryCollectionTree/utils";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table/Table";
-import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
-import { buildCollectionTree } from "metabase/entities/collections";
-import { buildSnippetTree } from "./ModelingSidebar/ModelingSidebarView/SnippetsSection/utils";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { CreateMenu } from "./CreateMenu";
+import { getWritableCollection } from "./ModelingSidebar/LibrarySection/LibraryCollectionTree/utils";
+import { useBuildSnippetTree, useBuildTreeForCollection } from "./hooks";
+import { type TreeItem, isCollection } from "./types";
 
 export function ModelingLandingPage() {
   usePageTitle(t`Modeling`);
   const dispatch = useDispatch();
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(
+    null,
+  );
+  const [permissionsCollectionId, setPermissionsCollectionId] =
+    useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>();
 
-  const { data: collections = [], isLoading: loadingCollections } =
-    useListCollectionsTreeQuery({
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-      "include-library": true,
-    });
+  const { data: collections = [] } = useListCollectionsTreeQuery({
+    "exclude-other-user-collections": true,
+    "exclude-archived": true,
+    "include-library": true,
+  });
 
   const libraryCollection = collections.find(isLibraryCollection);
 
@@ -61,103 +56,161 @@ export function ModelingLandingPage() {
     libraryCollection &&
     getWritableCollection(libraryCollection, "library-metrics");
 
-  const { data: libraryModels, isLoading: loadingModels } =
-    useListCollectionItemsQuery(
-      modelCollection ? { id: modelCollection.id } : skipToken,
-    );
-  const { data: libraryMetrics, isLoading: loadingMetrics } =
-    useListCollectionItemsQuery(
-      metricCollection ? { id: metricCollection.id } : skipToken,
-    );
-
   const handleItemSelect = useCallback(
-    (item: ITreeNodeItem) => {
-      console.log({ item });
+    (item: TreeItem) => {
+      // Casting because these should not be collections, but collection items with
+      // numbers for IDs
       if (item.model === "dataset") {
-        dispatch(push(Urls.dataStudioModel(item.id)));
+        dispatch(push(Urls.dataStudioModel(item.id as number)));
       } else if (item.model === "metric") {
-        dispatch(push(Urls.dataStudioMetric(item.id)));
-      } else if (item.data?.model === "snippet") {
-        dispatch(push(Urls.dataStudioSnippet(item.id)));
+        dispatch(push(Urls.dataStudioMetric(item.id as number)));
+      } else if (item.model === "snippet") {
+        dispatch(push(Urls.dataStudioSnippet(item.id as number)));
       }
     },
     [dispatch],
   );
-
-  // if (loadingModels || loadingMetrics || loadingCollections) {
-  //   return null;
-  // }
-
-  const modelsTree = {
-    ...modelCollection,
-    icon: "model",
-    children:
-      libraryModels?.data.map((x) => ({
-        ...x,
-        icon: "model",
-        updated_at:
-          x["last-edit-info"] &&
-          new Date(x["last-edit-info"]?.timestamp).toDateString(),
-      })) || [],
-  };
-
-  const metricsTree = {
-    ...metricCollection,
-    icon: "metric",
-    children:
-      libraryMetrics?.data.map((x) => ({
-        ...x,
-        icon: "metric",
-        updated_at:
-          x["last-edit-info"] &&
-          new Date(x["last-edit-info"]?.timestamp).toDateString(),
-      })) || [],
-  };
-
-  const { data: snippets = [] } = useListSnippetsQuery();
-  const { data: snippetCollections = [] } = useListCollectionsQuery({
-    namespace: "snippets",
-  });
-
-  const snippetTree = useMemo(
-    () => buildSnippetTree(snippetCollections, snippets),
-    [snippetCollections, snippets],
-  );
+  const { tree: modelsTree } = useBuildTreeForCollection(modelCollection);
+  const { tree: metricsTree } = useBuildTreeForCollection(metricCollection);
+  const { tree: snippetTree } = useBuildSnippetTree();
 
   const filteredTree = useTreeFilter({
-    data: [modelsTree, metricsTree, ...snippetTree],
+    data: [...modelsTree, ...metricsTree, ...snippetTree],
     searchQuery,
     searchProps: ["name"],
   });
 
   return (
-    <SectionLayout>
-      {/* FIXME: Either make the table or page scrollable. Currently, scrolling the page scrolls the side nav. */}
-      <Stack px="3.5rem" pt="4rem" bg="background-light" mih="100%">
-        <Flex gap="0.5rem">
-          <TextInput
-            placeholder="Search..."
-            leftSection={<Icon name="search" />}
-            bdrs="md"
-            flex="1"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <CreateMenu
-            metricCollectionId={metricCollection?.id}
-            modelCollectionId={modelCollection?.id}
-          />
-        </Flex>
+    <>
+      <SectionLayout>
+        <Stack px="3.5rem" pt="4rem" bg="background-light" mih="100%">
+          <Flex gap="0.5rem">
+            <TextInput
+              placeholder="Search..."
+              leftSection={<Icon name="search" />}
+              bdrs="md"
+              flex="1"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <CreateMenu
+              metricCollectionId={metricCollection?.id}
+              modelCollectionId={modelCollection?.id}
+            />
+          </Flex>
+          <Card withBorder p={0}>
+            <Table
+              data={filteredTree}
+              columns={[
+                {
+                  accessorKey: "name",
+                  header: "Name",
+                  meta: { width: "auto" },
+                  cell: ({ getValue, row }) => {
+                    const data = row.original;
+                    return (
+                      <>
+                        {data.icon && <Icon name={data.icon} c="brand" />}
+                        {getValue()}
+                      </>
+                    );
+                  },
+                },
+                {
+                  accessorKey: "updatedAt",
+                  header: "Updated At",
+                  cell: ({ getValue }) => {
+                    const value = getValue() as string;
 
-        <Table
-          data={filteredTree}
-          columns={[
-            { id: "name", grow: true, name: "Name" },
-            { id: "updated_at", width: "150px", name: "Updated At" },
-          ]}
-          onSelect={handleItemSelect}
+                    return value && dayjs(value).format("MMM D, h:mm: A");
+                  },
+                },
+                {
+                  id: "actions",
+                  header: "",
+                  size: 24,
+                  cell: ({ row: { original } }) => {
+                    const { data } = original;
+                    if (
+                      isCollection(data) &&
+                      data.model === "collection" &&
+                      data.namespace === "snippets"
+                    ) {
+                      if (data.id === "root") {
+                        return (
+                          <RootSnippetsCollectionMenu
+                            setPermissionsCollectionId={
+                              setPermissionsCollectionId
+                            }
+                          />
+                        );
+                      } else {
+                        return (
+                          <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
+                            collection={data}
+                            onEditDetails={setEditingCollection}
+                            onChangePermissions={setPermissionsCollectionId}
+                          />
+                        );
+                      }
+                    }
+
+                    return null;
+                  },
+                },
+              ]}
+              onSelect={handleItemSelect}
+            />
+          </Card>
+        </Stack>
+      </SectionLayout>
+      {editingCollection && (
+        <PLUGIN_SNIPPET_FOLDERS.CollectionFormModal
+          collection={editingCollection}
+          onClose={() => setEditingCollection(null)}
+          onSaved={() => setEditingCollection(null)}
         />
-      </Stack>
-    </SectionLayout>
+      )}
+      {permissionsCollectionId !== null && (
+        <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
+          collectionId={permissionsCollectionId}
+          onClose={() => setPermissionsCollectionId(null)}
+        />
+      )}
+    </>
   );
 }
+
+const RootSnippetsCollectionMenu = ({
+  setPermissionsCollectionId,
+}: {
+  setPermissionsCollectionId: (id: CollectionId) => void;
+}) => {
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <Button
+          w={24}
+          h={24}
+          c="text-medium"
+          size="compact-xs"
+          variant="subtle"
+          leftSection={<FixedSizeIcon name="ellipsis" size={16} />}
+          aria-label={t`Snippet collection options`}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<FixedSizeIcon name="lock" />}
+          onClick={(e) => {
+            e.stopPropagation();
+            setPermissionsCollectionId("root");
+          }}
+        >
+          {t`Change permissions`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+};

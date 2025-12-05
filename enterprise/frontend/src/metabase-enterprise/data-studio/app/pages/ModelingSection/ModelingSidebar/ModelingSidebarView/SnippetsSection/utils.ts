@@ -1,29 +1,18 @@
 import { t } from "ttag";
 
 import { isRootCollection } from "metabase/collections/utils";
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
-type SnippetTreeItem = NativeQuerySnippet & { model: "snippet" };
-type CollectionTreeItem = Collection & { model: "collection" };
+import type { TreeItem } from "../../../types";
 
-export type TreeItem = SnippetTreeItem | CollectionTreeItem;
-
-export const isSnippetTreeItem = (item: TreeItem): item is SnippetTreeItem =>
-  item.model === "snippet";
-
-export const isCollectionTreeItem = (
-  item: TreeItem,
-): item is CollectionTreeItem => item.model === "collection";
-
-function createSnippetNode(
-  snippet: NativeQuerySnippet,
-): ITreeNodeItem<TreeItem> {
+function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   return {
     id: snippet.id,
     name: snippet.name,
     icon: "snippet",
+    model: "snippet",
     data: { ...snippet, model: "snippet" },
+    updatedAt: snippet.updated_at,
   };
 }
 
@@ -31,7 +20,7 @@ function buildCollectionNode(
   collection: Collection,
   allCollections: Collection[],
   allSnippets: NativeQuerySnippet[],
-): ITreeNodeItem<TreeItem> {
+): TreeItem {
   const isRoot = isRootCollection(collection);
   const parentIdToMatch = isRoot ? null : collection.id;
 
@@ -52,6 +41,7 @@ function buildCollectionNode(
   return {
     id: collection.id,
     name: collection.name,
+    model: "collection",
     icon: isRoot ? "snippet" : "folder",
     data: { ...collection, model: "collection" },
     children: children.length > 0 ? children : undefined,
@@ -61,7 +51,7 @@ function buildCollectionNode(
 export function buildSnippetTree(
   snippetCollections: Collection[],
   snippets: NativeQuerySnippet[],
-): ITreeNodeItem<TreeItem>[] {
+): TreeItem[] {
   const collections = snippetCollections.filter((c) => !c.archived);
   const activeSnippets = snippets.filter((s) => !s.archived);
 
