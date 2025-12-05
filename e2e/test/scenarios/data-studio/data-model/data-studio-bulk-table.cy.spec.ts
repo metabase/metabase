@@ -69,7 +69,7 @@ describe("bulk table operations", () => {
       cy.wait<TablesActionRequest, TablesActionsResponse>("@syncSchema").then(
         ({ request, response }) => {
           expect(request.body.table_ids).to.deep.eq(tableIds);
-          expect(response?.body.status).to.eq("ok");
+          expect(response?.statusCode).to.eq(204);
         },
       );
     });
@@ -81,7 +81,7 @@ describe("bulk table operations", () => {
       cy.wait<TablesActionRequest, TablesActionsResponse>("@rescanValues").then(
         ({ request, response }) => {
           expect(request.body.table_ids).to.deep.eq(tableIds);
-          expect(response?.body.status).to.eq("ok");
+          expect(response?.statusCode).to.eq(204);
         },
       );
     });
@@ -95,7 +95,7 @@ describe("bulk table operations", () => {
         "@discardValues",
       ).then(({ request, response }) => {
         expect(request.body.table_ids).to.deep.eq(tableIds);
-        expect(response?.body.status).to.eq("ok");
+        expect(response?.statusCode).to.eq(204);
       });
     });
   });
