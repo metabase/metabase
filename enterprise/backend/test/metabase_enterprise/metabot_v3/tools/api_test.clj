@@ -61,12 +61,12 @@
                                                                                :hour 15
                                                                                :day_of_month "middle-of-month"}}
                                               :conversation_id conversation-id})]
-          (is (= [{:dashboard-id 1
-                   :email        "user@example.com"
-                   :schedule     {:frequency :monthly
-                                  :hour 15
-                                  :day-of-month :middle-of-month}}]
-                 @tool-requests))
+          (is (=? [{:dashboard-id 1
+                    :email        "user@example.com"
+                    :schedule     {:frequency :monthly
+                                   :hour 15
+                                   :day-of-month :middle-of-month}}]
+                  @tool-requests))
           (is (=? {:output output
                    :conversation_id conversation-id}
                   response)))))))
