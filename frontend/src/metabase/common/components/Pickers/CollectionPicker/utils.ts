@@ -28,11 +28,12 @@ export const getParentCollectionId = (
     return Number(parentCollectionId);
   }
 
-  if (
-    namespace === "shared-tenant-collection" ||
-    type === "tenant-specific-root-collection"
-  ) {
+  if (namespace === "shared-tenant-collection") {
     return "tenant";
+  }
+
+  if (type === "tenant-specific-root-collection") {
+    return "tenant-specific";
   }
 
   return "root";

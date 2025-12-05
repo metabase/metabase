@@ -57,6 +57,7 @@ export const getCollectionIdPath = (
     | "type"
     | "namespace"
     | "collection_namespace"
+    | "collection_id"
   > & {
     type?: Collection["type"];
   },
@@ -74,11 +75,21 @@ export const getCollectionIdPath = (
     return ["tenant"];
   }
 
+  if (collection.id === "tenant-specific") {
+    return ["tenant-specific"];
+  }
+
   if (collection.type === "library") {
     return [collection.id];
   }
 
   if (collection.type === "tenant-specific-root-collection") {
+    // Child of "Tenant-Specific Collections" for admins
+    if (collection.collection_id === "tenant-specific") {
+      return ["tenant-specific", collection.id];
+    }
+
+    // "My Tenant Collection" root for tenant users
     return [collection.id];
   }
 
