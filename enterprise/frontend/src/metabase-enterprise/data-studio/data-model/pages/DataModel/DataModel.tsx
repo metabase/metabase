@@ -1,5 +1,4 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
 import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -17,10 +16,7 @@ import {
   PreviewSection,
   type PreviewType,
 } from "metabase/metadata/components";
-import {
-  getTableMetadataQuery,
-  parseRouteParams,
-} from "metabase/metadata/pages/shared/utils";
+import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
@@ -37,19 +33,17 @@ import S from "./DataModel.module.css";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
+import { parseRouteParams } from "./utils";
 
 interface Props {
   children?: ReactNode;
-  location: Location;
   params: RouteParams;
 }
 
-export const DataModel = ({ children, location, params }: Props) => {
+export const DataModel = ({ children, params }: Props) => {
   return (
     <SelectionProvider>
-      <DataModelContent location={location} params={params}>
-        {children}
-      </DataModelContent>
+      <DataModelContent params={params}>{children}</DataModelContent>
     </SelectionProvider>
   );
 };
@@ -66,6 +60,7 @@ function DataModelContent({ params }: Props) {
     databaseId,
     fieldId,
     schemaName,
+    tab: activeTab,
     tableId: queryTableId,
   } = parsedParams;
   const {
@@ -221,6 +216,7 @@ function DataModelContent({ params }: Props) {
                   key={table.id}
                   table={table}
                   activeFieldId={fieldId}
+                  activeTab={activeTab}
                   hasLibrary={hasLibrary}
                   onSyncOptionsClick={openSyncModal}
                 />

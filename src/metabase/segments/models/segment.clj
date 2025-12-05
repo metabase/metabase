@@ -18,8 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
@@ -131,8 +130,10 @@
         (log/error e "Error calculating Segment description:" (ex-message e))
         nil))))
 
-(methodical/defmethod t2.hydrate/batched-hydrate [:model/Segment :definition_description]
-  [_model _key segments]
+(mi/define-batched-hydration-method with-definition-description
+  :definition_description
+  "Calculate a nice description of a Segment's definition."
+  [segments]
   (for [segment segments]
     (assoc segment :definition_description (definition-description segment))))
 

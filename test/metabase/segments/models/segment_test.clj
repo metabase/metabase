@@ -136,3 +136,15 @@
       (is (nil? (-> (t2/select-one :model/Segment id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
+
+(deftest ^:parallel nested-definition-description-hydration-test
+  (testing "definition_description should work with nested hydration on tables"
+    (mt/with-temp [:model/Segment _segment {:name       "Expensive Spots"
+                                            :table_id   (mt/id :venues)
+                                            :definition (:query (mt/mbql-query venues
+                                                                  {:filter [:= $price 4]}))}]
+      (let [table (-> (t2/select-one :model/Table (mt/id :venues))
+                      (t2/hydrate [:segments :definition_description]))]
+        (is (seq (:segments table)))
+        (is (= "Filtered by Price is equal to 4"
+               (-> table :segments first :definition_description)))))))

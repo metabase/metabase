@@ -5,6 +5,7 @@ import type {
   FieldId,
   NativeQuerySnippetId,
   SchemaName,
+  SegmentId,
   TableId,
 } from "metabase-types/api";
 
@@ -23,21 +24,35 @@ function getQueryString({ collectionId }: OptionalParams) {
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function dataStudio() {
-  return ROOT_URL;
+export const DATA_STUDIO_TABLE_METADATA_TABS = ["field", "segments"] as const;
+export type DataStudioTableMetadataTab =
+  (typeof DATA_STUDIO_TABLE_METADATA_TABS)[number];
+
+export function isDataStudioTableMetadataTab(
+  tab: unknown,
+): tab is DataStudioTableMetadataTab {
+  return DATA_STUDIO_TABLE_METADATA_TABS.includes(
+    tab as DataStudioTableMetadataTab,
+  );
 }
 
 type DataStudioDataParams = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName | null;
   tableId?: TableId;
+  tab?: DataStudioTableMetadataTab;
   fieldId?: FieldId;
 };
+
+export function dataStudio() {
+  return ROOT_URL;
+}
 
 export function dataStudioData({
   databaseId,
   schemaName,
   tableId,
+  tab,
   fieldId,
 }: DataStudioDataParams = {}) {
   const parts = [ROOT_URL, "data"];
@@ -52,8 +67,12 @@ export function dataStudioData({
       if (tableId != null) {
         parts.push("table", String(tableId));
 
-        if (fieldId != null) {
-          parts.push("field", String(fieldId));
+        if (tab != null) {
+          parts.push(tab);
+
+          if (fieldId != null && tab === "field") {
+            parts.push(String(fieldId));
+          }
         }
       }
     }
@@ -77,6 +96,18 @@ export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
 
 export function dataStudioTableDependencies(tableId: TableId) {
   return `${dataStudioTable(tableId)}/dependencies`;
+}
+
+export function dataStudioTableSegments(tableId: TableId) {
+  return `${dataStudioTable(tableId)}/segments`;
+}
+
+export function dataStudioSegment(segmentId: SegmentId) {
+  return `${dataStudioModeling()}/segments/${segmentId}`;
+}
+
+export function newDataStudioSegment(tableId: TableId) {
+  return `${dataStudioModeling()}/segments/new?tableId=${tableId}`;
 }
 
 export type NewDataStudioQueryModelParams = {
