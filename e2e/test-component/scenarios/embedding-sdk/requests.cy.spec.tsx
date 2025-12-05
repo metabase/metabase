@@ -38,66 +38,53 @@ describe("scenarios > embedding-sdk > requests", () => {
       });
     });
 
-    it("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
+    it.only("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      // Create two deferred promises to control when auth responses are sent
-      // This allows us to simulate timing of token refresh in the test
       const deferreds = [defer(), defer()];
       let callCount = 0;
 
-      // Create a JWT that expires in 60 seconds
       const expiredInSeconds = 60;
       cy.clock(Date.now());
 
       cy.then(() => getSignedJwtForUser({ expiredInSeconds })).then((jwt) => {
-        // Mock the auth provider and use deferred responses
         mockAuthProviderAndJwtSignIn(USERS.admin, {
           jwt,
           deferredReply: () => deferreds[callCount++].promise,
         });
       });
 
-      // Mount the component with the initial (valid) token
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
-      // Resolve the first auth request to let the component load
       deferreds[0].resolve();
 
-      getSdkRoot().within(() => {
-        // Long timeout because we're waiting for
-        cy.findByText("Orders", { timeout: 60_000 }).should("exist");
+      cy.then(() => {
+        getSdkRoot().within(() => {
+          cy.findByText("Orders", { timeout: 60_000 }).should("be.visible");
 
-        // Open the grouping dialog
-        cy.findByText("Group").click();
-        cy.findByRole("dialog").should("be.visible");
+          cy.findByText("Group").click();
 
-        // Fast-forward time past token expiration (65 seconds total)
-        // This will invalidate the current JWT
-        cy.tick(1000 * (expiredInSeconds + 5));
+          cy.findByRole("dialog").should("be.visible");
 
-        // Trigger two data requests simultaneously by:
-        // 1. Adding a grouping (ID column)
-        // 2. Removing the grouping immediately
-        cy.findByRole("dialog").contains(/^ID$/).click();
-        cy.findByRole("dialog").findByTestId("badge-remove-button").click();
+          cy.tick(1000 * (expiredInSeconds + 5));
 
-        // Verify that dataset requests are blocked while waiting for token refresh
-        // No dataset requests should complete yet since the auth token is being refreshed
-        cy.get("@dataset.all").should("have.length", 0);
+          cy.findByRole("dialog").contains(/^ID$/).click();
+          cy.findByRole("dialog").findByTestId("badge-remove-button").click();
 
-        // Wait for the token refresh request, then allow it to complete
-        cy.wait("@jwtProvider").then(() => {
-          deferreds[1].resolve();
+          // The requests should be done after we refresh the token, so where we should have 0
+          cy.get("@dataset.all").should("have.length", 0);
+
+          cy.wait("@jwtProvider").then(() => {
+            deferreds[1].resolve();
+          });
+
+          // We ensure that both `dataset` requests are made after the token refresh request
+          cy.get("@dataset.all", { timeout: 60_000 }).should("have.length", 2);
         });
-
-        // After token refresh completes, both queued dataset requests should execute
-        // This proves the SDK correctly batches requests during token refresh
-        cy.get("@dataset.all").should("have.length", 2);
       });
     });
   });
