@@ -1847,8 +1847,7 @@
 
   enterprise/data-studio
   {:team "Gadget"
-   :api  #{metabase-enterprise.data-studio.api
-           metabase-enterprise.data-studio.permissions.published-tables}
+   :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            collections
            database-routing
