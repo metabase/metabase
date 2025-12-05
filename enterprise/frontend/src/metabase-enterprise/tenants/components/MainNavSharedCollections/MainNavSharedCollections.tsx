@@ -100,9 +100,9 @@ export const MainNavSharedCollections = () => {
   }
 
   const userTenantCollectionId = currentUser?.tenant_collection_id;
-  const hasSharedTenantCollections = tenantCollectionsList.length > 0;
+  const hasVisibleTenantCollections = tenantCollectionTree.length > 0;
   const shouldShowSharedCollectionsSection =
-    isAdmin || hasSharedTenantCollections;
+    isAdmin || hasVisibleTenantCollections;
 
   return (
     <>
