@@ -5,7 +5,7 @@
 
 (defn get-snippets
   "Lists SQL snippets available to the current user."
-  []
+  [_args]
   (try
     {:structured_output
      (->> (snippets/list-native-query-snippets)

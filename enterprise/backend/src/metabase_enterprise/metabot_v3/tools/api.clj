@@ -4,10 +4,6 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clojure.set :as set]
-   [malli.core :as mc]
-   [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
-   [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
@@ -32,7 +28,6 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -731,25 +726,12 @@
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:structured_output ::full-snippet]])
 
-(api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::deftool/tool-request]
+(deftool "/answer-sources"
   "Return top level meta information about available information sources."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments {:optional true} ::answer-sources-arguments]]
-                                                    ::deftool/tool-request]
-   {:keys [metabot-v3/metabot-id]}]
-  (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
-  (if-let [normalized-metabot-id (metabot-v3.config/normalize-metabot-id metabot-id)]
-    (let [options (mc/encode ::answer-sources-arguments
-                             arguments (mtx/transformer {:name :tool-api-request}))]
-      (doto (-> (mc/decode ::answer-sources-result
-                           (metabot-v3.dummy-tools/answer-sources normalized-metabot-id options)
-                           (mtx/transformer {:name :tool-api-response}))
-                (assoc :conversation_id conversation_id))
-        (metabot-v3.context/log :llm.log/be->llm)))
-    (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
-                    {:metabot_id metabot-id, :status-code 400}))))
+  {:args-schema    ::answer-sources-arguments
+   :args-optional? true
+   :result-schema  ::answer-sources-result
+   :handler        metabot-v3.dummy-tools/answer-sources})
 
 (deftool "/create-dashboard-subscription"
   "Create a dashboard subscription."
@@ -911,53 +893,25 @@
                          [:total_count :int]]]]
    [:map [:output :string]]])
 
-(defn- search
-  "Shared handler for the /search and /search_v2 endpoints."
-  [arguments conversation_id request]
-  (try
-    (let [options (mc/encode ::search-arguments
-                             arguments (mtx/transformer {:name :tool-api-request}))
-          metabot-id (:metabot-v3/metabot-id request)
-          results (metabot-v3.tools.search/search
-                   (assoc options :metabot-id metabot-id))
-          response-data {:data results
-                         :total_count (count results)}]
-      (doto (-> (mc/decode ::search-result
-                           {:structured_output response-data}
-                           (mtx/transformer {:name :tool-api-response}))
-                (assoc :conversation_id conversation_id))
-        (metabot-v3.context/log :llm.log/be->llm)))
-    (catch Exception e
-      (log/error e "Error in search")
-      (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
-                (assoc :conversation_id conversation_id))
-        (metabot-v3.context/log :llm.log/be->llm)))))
-
-(api.macros/defendpoint :post "/search" :- [:merge ::search-result ::deftool/tool-request]
+(deftool "/search"
   "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments {:optional true} ::search-arguments]]
-                                                    ::deftool/tool-request]
-   request]
-  (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
-  (search arguments conversation_id request))
+  {:args-schema    ::search-arguments
+   :args-optional? true
+   :result-schema  ::search-result
+   :handler        metabot-v3.tools.search/search-tool
+   :skip-decode?   true})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
-(api.macros/defendpoint :post "/search_v2" :- [:merge ::search-result ::deftool/tool-request]
+(deftool "/search_v2"
   "Enhanced search with term and semantic queries using Reciprocal Rank Fusion. This is identical to /search, but
   duplicated in order to add a new capability to AI service that indicates that Metabot can search transforms. The
   /search endpoint is kept around for backward compatibility."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments {:optional true} ::search-arguments]]
-                                                    ::deftool/tool-request]
-   request]
-  (metabot-v3.context/log (assoc body :api :search_v2) :llm.log/llm->be)
-  (search arguments conversation_id request))
+  {:args-schema    ::search-arguments
+   :args-optional? true
+   :result-schema  ::search-result
+   :handler        metabot-v3.tools.search/search-tool
+   :skip-decode?   true})
 
 (deftool "/get-snippets"
   "Get a list of all known SQL snippets."

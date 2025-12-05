@@ -6,7 +6,8 @@
   - Logging incoming requests and outgoing responses
   - Encoding arguments from snake_case to kebab-case
   - Decoding results from kebab-case to snake_case
-  - Attaching `conversation_id` to responses"
+  - Attaching `conversation_id` to responses
+  - Extracting `:metabot-id` from the request and including it in arguments"
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -36,42 +37,26 @@
 
   Arguments:
   - `body` - The request body containing `:arguments` and `:conversation_id`
+  - `request` - The Ring request map (used to extract `:metabot-v3/metabot-id`)
   - `opts` - A map with:
     - `:api-name` - Keyword name for logging (e.g., `:field-values`)
     - `:args-schema` - Malli schema for encoding arguments (optional)
     - `:result-schema` - Malli schema for decoding results (optional)
-    - `:handler` - Function to call with encoded arguments
-    - `:skip-decode?` - If true, skip decoding the result"
-  [{:keys [arguments conversation_id] :as body}
-   {:keys [api-name args-schema result-schema handler skip-decode?]}]
-  (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
-  (let [encoded-args (when args-schema
-                       (mc/encode args-schema arguments request-transformer))
-        raw-result   (if encoded-args
-                       (handler encoded-args)
-                       (handler))
-        result       (if (or skip-decode? (nil? result-schema))
-                       raw-result
-                       (mc/decode result-schema raw-result response-transformer))]
-    (doto (assoc result :conversation_id conversation_id)
-      (metabot-v3.context/log :llm.log/be->llm))))
+    - `:handler` - Function to call with encoded arguments (receives args map with :metabot-id)
+    - `:skip-decode?` - If true, skip decoding the result
 
-(defn invoke-tool-with-request
-  "Tool invocation that passes the request to the handler (for metabot-id access, etc.).
-
-  The handler receives `(handler encoded-args conversation_id request)`.
-
-  Arguments:
-  - `body` - The request body containing `:arguments` and `:conversation_id`
-  - `request` - The Ring request map
-  - `opts` - Same as `invoke-tool`"
+  The handler receives a single map argument containing the encoded args plus `:metabot-id`
+  (extracted from the request). For no-args tools, the handler receives just `{:metabot-id ...}`."
   [{:keys [arguments conversation_id] :as body}
    request
    {:keys [api-name args-schema result-schema handler skip-decode?]}]
   (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
-  (let [encoded-args (when args-schema
-                       (mc/encode args-schema arguments request-transformer))
-        raw-result   (handler encoded-args conversation_id request)
+  (let [metabot-id   (:metabot-v3/metabot-id request)
+        encoded-args (cond-> (if args-schema
+                               (mc/encode args-schema arguments request-transformer)
+                               {})
+                       metabot-id (assoc :metabot-id metabot-id))
+        raw-result   (handler encoded-args)
         result       (if (or skip-decode? (nil? result-schema))
                        raw-result
                        (mc/decode result-schema raw-result response-transformer))]
@@ -86,14 +71,15 @@
   - Encoding arguments from snake_case to kebab-case (via `:tool-api-request` transformer)
   - Decoding results from kebab-case to snake_case (via `:tool-api-response` transformer)
   - Attaching `conversation_id` to responses
+  - Extracting `:metabot-id` from the request and including it in the args map
 
   Options:
     :args-schema    - Malli schema for arguments (optional - omit for no-args tools)
     :args-optional? - If true, arguments are marked as optional in the request body schema
     :result-schema  - Malli schema for result (required for response schema generation)
-    :handler        - Function to call. Receives encoded args, or no args if `:args-schema` is nil
+    :handler        - Function to call. Always receives an args map (may be empty for no-args tools)
+                      with `:metabot-id` included when available from the request.
     :skip-decode?   - If true, return handler result without decoding through `:result-schema`
-    :needs-request? - If true, handler receives `(args conversation_id request)` instead of just `(args)`
 
   Examples:
 
@@ -104,7 +90,7 @@
        :result-schema ::field-values-result
        :handler       metabot-v3.tools.field-stats/field-values})
 
-    ;; No-args tool
+    ;; No-args tool (handler still receives {:metabot-id ...})
     (deftool \"/get-current-user\"
       \"Get information about the current user.\"
       {:result-schema ::get-current-user-result
@@ -118,15 +104,15 @@
        :handler       create-dashboard-subscription
        :skip-decode?  true})
 
-    ;; Tool that needs access to the request (e.g., for metabot-id)
+    ;; Tool that uses metabot-id from the request
     (deftool \"/search\"
       \"Search for entities.\"
       {:args-schema    ::search-arguments
        :args-optional? true
        :result-schema  ::search-result
-       :handler        search-handler
-       :needs-request? true})"
-  [route docstring {:keys [args-schema args-optional? result-schema handler skip-decode? needs-request?]}]
+       :handler        (fn [{:keys [metabot-id] :as args}]
+                         (search-impl metabot-id args))})"
+  [route docstring {:keys [args-schema args-optional? result-schema handler skip-decode?]}]
   (let [api-name        (keyword (subs route 1)) ; "/field-values" -> :field-values
         body-schema     (if args-schema
                           (if args-optional?
@@ -139,12 +125,7 @@
                          :result-schema result-schema
                          :handler       handler
                          :skip-decode?  skip-decode?}]
-    (if needs-request?
-      `(api.macros/defendpoint :post ~route :- ~response-schema
-         ~docstring
-         [~'_route-params ~'_query-params ~'body :- ~body-schema ~'request]
-         (invoke-tool-with-request ~'body ~'request ~tool-opts))
-      `(api.macros/defendpoint :post ~route :- ~response-schema
-         ~docstring
-         [~'_route-params ~'_query-params ~'body :- ~body-schema]
-         (invoke-tool ~'body ~tool-opts)))))
+    `(api.macros/defendpoint :post ~route :- ~response-schema
+       ~docstring
+       [~'_route-params ~'_query-params ~'body :- ~body-schema ~'request]
+       (invoke-tool ~'body ~'request ~tool-opts))))
