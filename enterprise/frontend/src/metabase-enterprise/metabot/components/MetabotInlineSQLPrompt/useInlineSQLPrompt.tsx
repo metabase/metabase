@@ -19,17 +19,29 @@ export interface UseInlineSqlEditResult {
   portalElement: React.ReactPortal | null;
   extensions: Extension[];
   proposedQuestion: Question | undefined;
-  handleAcceptProposed: (datasetQuery: DatasetQuery) => void;
-  handleRejectProposed: () => void;
+  handleAcceptProposed?: (datasetQuery: DatasetQuery) => void;
+  handleRejectProposed?: () => void;
 }
 
 export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
+  const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
+
   /* TODO: temp hack - communicate sql via global notifier used in navigate to handler */
   const [generatedSql, setGeneratedSql] = useState<string | undefined>();
   useEffect(() => {
     (window as any).notifyCodeEdit = (sql: string) => setGeneratedSql(sql);
   }, []);
   /* TODO: temp hack end */
+
+  const hideInput = () => {
+    portalTarget?.view.dispatch({ effects: hideEffect.of() });
+    portalTarget?.view.focus();
+  };
+
+  const resetInput = () => {
+    setGeneratedSql(undefined);
+    hideInput();
+  };
 
   const proposedQuestion = useMemo(
     () =>
@@ -39,7 +51,22 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     [generatedSql, question],
   );
 
-  const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
+  const handleRejectProposed = generatedSql ? resetInput : undefined;
+  const handleAcceptProposed = generatedSql
+    ? () => {
+        if (portalTarget?.view) {
+          const { view } = portalTarget;
+          view.dispatch({
+            changes: {
+              from: 0,
+              to: view.state.doc.length,
+              insert: generatedSql,
+            },
+          });
+        }
+        resetInput();
+      }
+    : undefined;
 
   const extensions = useMemo(
     () => [
@@ -57,28 +84,18 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     [],
   );
 
-  const hideInput = () => {
-    portalTarget?.view.dispatch({ effects: hideEffect.of() });
-    portalTarget?.view.focus();
-  };
-
-  const portalElement = portalTarget
-    ? createPortal(
-        <MetabotInlineSQLPrompt onClose={hideInput} />,
-        portalTarget.container,
-      )
-    : null;
-
-  const resetInput = () => {
-    setGeneratedSql(undefined);
-    hideInput();
-  };
-
   return {
     extensions,
-    portalElement,
+    portalElement: portalTarget
+      ? createPortal(
+          <MetabotInlineSQLPrompt
+            onClose={hideInput}
+            onAcceptProposed={handleAcceptProposed}
+            onRejectProposed={handleRejectProposed}
+          />,
+          portalTarget.container,
+        )
+      : null,
     proposedQuestion,
-    handleAcceptProposed: resetInput,
-    handleRejectProposed: resetInput,
   };
 }
