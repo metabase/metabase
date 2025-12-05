@@ -38,7 +38,9 @@ const baseConfig = {
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Updated pattern to handle pnpm's nested node_modules structure
+    // pnpm paths look like: node_modules/.pnpm/fetch-mock@12.5.3/node_modules/fetch-mock/
+    `/node_modules/(?!(.pnpm/.+/node_modules/)?(${esmPackages.join("|")})/)`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
