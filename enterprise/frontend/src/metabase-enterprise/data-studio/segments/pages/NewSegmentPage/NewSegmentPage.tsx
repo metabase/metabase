@@ -40,18 +40,18 @@ export function NewSegmentPage({ route, location }: NewSegmentPageProps) {
       if (!table) {
         return;
       }
-      const result = await createSegment({
+      const { data: segment, error } = await createSegment({
         name: data.name,
         table_id: table.id,
         definition: data.definition,
         description: data.description || undefined,
       });
 
-      if ("error" in result) {
+      if (error) {
         sendErrorToast(t`Failed to create segment`);
-      } else {
+      } else if (segment) {
         sendSuccessToast(t`Segment created`);
-        dispatch(push(Urls.dataStudioSegment(result.data.id)));
+        dispatch(push(Urls.dataStudioSegment(segment.id)));
       }
     },
     [table, createSegment, dispatch, sendSuccessToast, sendErrorToast],
