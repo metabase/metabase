@@ -15,8 +15,6 @@ jobs:
     env:
       MB_EDITION: ee
       DISPLAY: ""
-      MB_RUN_MODE: "e2e"
-      METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
@@ -45,12 +43,8 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -171,6 +165,8 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
       - name: Attempt to retrieve the ee uberjar artifact from the previous commit
         id: download-uberjar

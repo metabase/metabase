@@ -347,6 +347,41 @@
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
+  ;; Cypress end-to-end tests require a highly specific setup, which includes both the environment and the H2 database
+  ;; initialized with the correct set of settings. This alias orchestrates those pieces.
+  ;; Prefer using it when running local backend for Cypress end-to-end tests.
+  ;; Two things you can still control via env vars: MB_JETTY_PORT and MB_DB_FILE
+  ;;
+  ;; clojure -M:dev:drivers:(oss|ee):run:e2e
+  :e2e
+  {:jvm-opts  ["-Dmb.run.mode=e2e"
+               "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
+               ;; prevent Java icon from randomly popping up in macOS dock
+               "-Djava.awt.headless=true"
+               ;; ignore options that aren't recognized by older versions of Java
+               "-XX:+IgnoreUnrecognizedVMOptions"
+               ;; test self-signed certificates for testing
+               "-Dmail.smtps.ssl.trust=*"
+               ;; Writes all logs to a file logs/test.log
+               "-Dlog4j.configurationFile=file:frontend/test/__runner__/log4j2.xml"
+               "-Duser.timezone=US/Pacific"
+               "-Dmb.db.type=h2"
+               "-Dmb.enable.test.endpoints=true"
+               "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
+               ;; Ignore connection URI in favor of the MB_DB_FILE
+               "-Dmb.db.connection.uri="
+               ;; Ignore config.yml
+               "-Dmb.config.file.path=__cypress__"
+               ;; We use Snowplow micro in e2e tests
+               "-Dmb.snowplow.available=true"
+               "-Dmb.snowplow.url=http://localhost:9090"
+               ;; See: https://github.com/metabase/metabase/pull/38280
+               "-Dmb.last.analytics.checksum=-1"
+               "-Dmb.experimental.search.block.on.queue=true"
+               "-Dmb.search.engine=appdb"
+               ;; We use a local webhook service for testing
+               "-Dmb.http.channel.host.strategy=allow-all"]}
+
   ;; run the prod server when generating docs
   ;; as some default values differ between dev and prod
   ;;
