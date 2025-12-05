@@ -25,7 +25,6 @@ jobs:
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      CYPRESS_CI: true
 
     steps:
       - uses: actions/checkout@v4
@@ -159,7 +158,6 @@ jobs:
       CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      CYPRESS_CI: true
 
     steps:
       - name: Check out the code from the previous commit
