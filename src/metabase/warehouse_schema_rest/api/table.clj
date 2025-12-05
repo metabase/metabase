@@ -180,8 +180,8 @@
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
          (let [database (t2/select-one :model/Database db-id)]
-            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-            ;; purposes of creating a new H2 database.
+           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+           ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true]
                  (driver.u/can-connect-with-details? (:engine database) (:details database)))
              (doseq [table tables]
