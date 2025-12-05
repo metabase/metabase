@@ -45,10 +45,11 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 ) => {
   const { metabaseInstanceUrl, preferredAuthMethod, apiKey, isLocalHost } =
     authConfig;
+
+  // This is needed because of how MetabaseAuthConfig is typed
   const jwtProviderUri =
-    preferredAuthMethod === "jwt" && "jwtProviderUri" in authConfig
-      ? authConfig.jwtProviderUri
-      : undefined;
+    "jwtProviderUri" in authConfig ? authConfig.jwtProviderUri : undefined;
+
   // remove any stale tokens that might be there from a previous session=
   samlTokenStorage.remove();
 
@@ -199,16 +200,15 @@ export const getOrRefreshSession = createAsyncThunk(
 const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,
-  fetchRequestToken: customGetRequestToken,
   jwtProviderUri,
+  fetchRequestToken: customGetRequestToken,
 }: {
   metabaseInstanceUrl: string;
   preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
-  fetchRequestToken?: MetabaseAuthConfig["fetchRequestToken"];
   jwtProviderUri?: string;
+  fetchRequestToken?: MetabaseAuthConfig["fetchRequestToken"];
 }) => {
-  const shouldSkipSsoDiscovery =
-    preferredAuthMethod === "jwt" && Boolean(jwtProviderUri);
+  const shouldSkipSsoDiscovery = Boolean(jwtProviderUri);
 
   const urlResponseJson = shouldSkipSsoDiscovery
     ? { method: "jwt", url: jwtProviderUri }
@@ -231,12 +231,6 @@ const getRefreshToken = async ({
       getSdkRequestHeaders(hash),
       customGetRequestToken,
     );
-  }
-  if (method === "jwt") {
-    throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
-      instanceUrl: metabaseInstanceUrl,
-      message: "Missing JWT provider URI",
-    });
   }
   throw MetabaseError.INVALID_AUTH_METHOD({ method });
 };

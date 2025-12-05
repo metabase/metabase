@@ -124,7 +124,6 @@ describe("Auth Flow - JWT", () => {
   it("should skip the initial /auth/sso request when jwtProviderUri is provided", async () => {
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      preferredAuthMethod: "jwt",
       jwtProviderUri: MOCK_JWT_PROVIDER_URI,
     });
 
