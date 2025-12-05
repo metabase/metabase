@@ -33,11 +33,11 @@ describe("Embed flow > initial setup", () => {
 
 describe("Embed flow > forward and backward navigation", () => {
   beforeEach(() => {
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled = jest.fn(() => true);
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
   });
 
   afterEach(() => {
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled = () => false;
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 
   it("navigates forward through the embed flow", async () => {

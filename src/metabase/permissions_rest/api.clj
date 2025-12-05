@@ -20,12 +20,20 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph"
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
   (data-perms.graph/api-graph))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
   [{:keys [db-id]} :- [:map
@@ -33,6 +41,10 @@
   (api/check-superuser)
   (data-perms.graph/api-graph {:db-id db-id}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
   [{:keys [group-id]} :- [:map
@@ -52,6 +64,10 @@
   [_impersonations]
   (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
@@ -119,6 +135,10 @@
                (some? offset) (sql.helpers/offset offset)
                (some? query)  (sql.helpers/where query))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
@@ -140,6 +160,10 @@
     (-> (ordered-groups (request/limit) (request/offset) query)
         (t2/hydrate :member_count))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/group/:id"
   "Fetch the details for a certain permissions group."
   [{:keys [id]} :- [:map
@@ -149,6 +173,10 @@
    (-> (t2/select-one :model/PermissionsGroup :id id)
        (t2/hydrate :members))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/group"
   "Create a new `PermissionsGroup`."
   [_route-params
@@ -161,6 +189,10 @@
     (events/publish-event! :event/group-create {:object <>
                                                 :user-id api/*current-user-id*})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [{:keys [group-id]} :- [:map
@@ -180,6 +212,10 @@
                               :object <>
                               :previous-object group}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map
@@ -193,6 +229,10 @@
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/membership"
   "Fetch a map describing the group memberships of various users.
    This map's format is:
@@ -213,6 +253,10 @@
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]]}])))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [_route-params
@@ -235,6 +279,10 @@
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id})
                           :members))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [{:keys [id]} :- [:map
@@ -256,6 +304,10 @@
                 {:is_group_manager is_group_manager})
     (t2/select-one :model/PermissionsGroupMembership :id (:id old))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [{:keys [group-id]} :- [:map
@@ -266,6 +318,10 @@
   (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map

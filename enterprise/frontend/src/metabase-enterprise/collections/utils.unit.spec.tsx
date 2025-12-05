@@ -91,6 +91,18 @@ describe("Collections plugin utils", () => {
         ).toEqual({ name: "official_collection", color: "saturated-yellow" });
       });
 
+      it("should return the correct icon for a remote synced collection", () => {
+        expect(
+          getIcon({ model: "collection", is_remote_synced: true }),
+        ).toEqual({ name: "synced_collection" });
+      });
+
+      it("should return the correct icon for a remote synced entity", () => {
+        expect(getIcon({ model: "dashboard", is_remote_synced: true })).toEqual(
+          { name: "dashboard" },
+        );
+      });
+
       it("official collection in search", () => {
         const collection = {
           id: 101,

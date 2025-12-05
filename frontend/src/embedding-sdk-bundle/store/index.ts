@@ -6,6 +6,7 @@ import {
   useDispatch,
   useStore,
 } from "metabase/lib/redux";
+import * as pulse from "metabase/notifications/pulse/reducers";
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
@@ -18,6 +19,7 @@ import type { SdkDispatch, SdkStore } from "./types";
 
 export const sdkReducers = {
   ...commonReducers,
+  pulse: combineReducers(pulse),
   qb: combineReducers(qb),
   visualizer,
   sdk,

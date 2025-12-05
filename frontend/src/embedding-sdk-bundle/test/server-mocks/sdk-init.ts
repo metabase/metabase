@@ -37,13 +37,13 @@ export const setupSdkState = ({
 }: {
   currentUser?: User;
   settingValues?: EnterpriseSettings;
-  tokenFeatures?: TokenFeatures;
+  tokenFeatures?: Partial<TokenFeatures>;
   settingDefinitions?: SettingDefinition[];
   sdkState?: SdkState;
 } & Partial<SdkStoreState> = {}) => {
   const settingValuesWithToken = {
     ...settingValues,
-    "token-features": tokenFeatures,
+    "token-features": createMockTokenFeatures(tokenFeatures),
   };
 
   setupCurrentUserEndpoint(currentUser);

@@ -35,7 +35,7 @@ export const WithSimpleEmbeddingFeatureUpsellTooltip = ({
       mode={mode}
       enableTooltip={enableTooltip}
       icon={<UpsellGem />}
-      warning={
+      hovercard={
         <UpsellCard
           title={t`Get more powerful embedding`}
           buttonLink={upgradeUrl}

@@ -62,7 +62,7 @@ export const SdkIframeEmbedRoute = () => {
     return null;
   }
 
-  const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
+  const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled();
 
   const { isGuest, locale } = embedSettings;
   const isProduction = !embedSettings._isLocalhost;
@@ -194,6 +194,7 @@ const SdkIframeEmbedView = ({
             token={settings.token}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
+            withSubscriptions={settings.withSubscriptions}
             initialParameters={settings.initialParameters}
             hiddenParameters={settings.hiddenParameters}
             drillThroughQuestionHeight="100%"

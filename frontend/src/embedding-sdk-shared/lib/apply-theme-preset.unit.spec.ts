@@ -66,4 +66,17 @@ describe("applyThemePreset", () => {
       expect(applyThemePreset(theme)).toEqual(theme);
     });
   });
+
+  describe("invalid preset", () => {
+    it("returns empty colors for unknown preset", () => {
+      const theme = {
+        preset: "invalid-preset" as any,
+        colors: { brand: "#custom" },
+      };
+
+      const result = applyThemePreset(theme);
+
+      expect(result?.colors).toEqual({ brand: "#custom" });
+    });
+  });
 });

@@ -42,23 +42,33 @@ export type SdkDashboardDisplayProps = SdkDashboardEntityInternalProps & {
   withDownloads?: boolean;
 
   /**
+   * Whether to show the subscriptions button.
+   */
+  withSubscriptions?: boolean;
+
+  /**
    * A list of [parameters to hide](https://www.metabase.com/docs/latest/embedding/public-links.html#appearance-parameters).
    * <br/>
-   * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+   * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
    * <br/>
-   * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+   * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    **/
   hiddenParameters?: string[];
 } & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
   withDownloads,
+  withSubscriptions,
   withTitle,
   withCardTitle,
   hiddenParameters,
 }: Pick<
   SdkDashboardDisplayProps,
-  "withDownloads" | "withTitle" | "withCardTitle" | "hiddenParameters"
+  | "withDownloads"
+  | "withSubscriptions"
+  | "withTitle"
+  | "withCardTitle"
+  | "hiddenParameters"
 >) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
@@ -71,6 +81,7 @@ export const useSdkDashboardParams = ({
         cardTitled: withCardTitle,
         hideDownloadButton,
         downloadsEnabled: { pdf: withDownloads, results: withDownloads },
+        withSubscriptions,
         hideParameters: hiddenParameters?.join(",") ?? null,
       },
       isNotNull,

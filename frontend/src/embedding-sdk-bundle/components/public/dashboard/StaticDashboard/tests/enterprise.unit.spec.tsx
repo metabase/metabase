@@ -1,77 +1,51 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentType } from "react";
 
 import { screen, waitFor, within } from "__support__/ui";
+import type { SdkDashboardProps } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboard";
 
+import { addEnterpriseSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
-} from "../tests/setup";
+} from "../../tests/setup";
+import { StaticDashboard } from "../StaticDashboard";
 
-import { InteractiveDashboard } from "./InteractiveDashboard";
+jest.mock("metabase/common/hooks/use-locale", () => ({
+  useLocale: jest.fn(),
+}));
 
-const setup = async (
+const setupEnterprise = async (
   options: Omit<SetupSdkDashboardOptions, "component"> = {},
 ) => {
   return setupSdkDashboard({
     ...options,
-    component: InteractiveDashboard,
+    enterprisePlugins: ["sdk_subscriptions"],
+    component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };
-
 console.warn = () => {};
 
-describe("InteractiveDashboard", () => {
-  it("should call onVisualizationChange when a card is opened", async () => {
-    const onVisualizationChange = jest.fn();
+describe("StaticDashboard", () => {
+  addEnterpriseSubscriptionsTests(setupEnterprise);
 
-    await setup({
-      dashboardName: "Test dashboard",
-      props: {
-        onVisualizationChange,
-      },
-    });
-
-    await userEvent.click(screen.getByText("Here is a card title"));
-
-    expect(
-      await screen.findByLabelText("Back to Test dashboard"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Filter")).toBeInTheDocument();
-    expect(screen.getByText("Group")).toBeInTheDocument();
-    expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
-
-    expect(onVisualizationChange).toHaveBeenCalledTimes(1);
-    expect(onVisualizationChange).toHaveBeenCalledWith("table");
-
-    await userEvent.click(screen.getByText("Table"));
-    await userEvent.click(screen.getByText("Bar"));
-
-    expect(onVisualizationChange).toHaveBeenCalledTimes(2);
-    expect(onVisualizationChange).toHaveBeenCalledWith("bar");
-  });
-
-  it("should allow users to click the dashcard title", async () => {
-    await setup({
-      dashboardName: "Test dashboard",
-    });
+  it("should not allow users to click the dashcard title", async () => {
+    await setupEnterprise();
 
     expect(screen.getByTestId("legend-label")).toHaveAttribute(
       "data-is-clickable",
-      "true",
+      "false",
     );
 
     await userEvent.click(screen.getByTestId("legend-label"));
 
     expect(
-      await screen.findByLabelText("Back to Test dashboard"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Filter")).toBeInTheDocument();
-    expect(screen.getByText("Group")).toBeInTheDocument();
-    expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
+      screen.queryByTestId("query-visualization-root"),
+    ).not.toBeInTheDocument();
   });
 
   it("should only show the download button in the dashcard when downloads are enabled", async () => {
-    await setup({
+    await setupEnterprise({
       props: {
         withDownloads: true,
       },
@@ -86,7 +60,7 @@ describe("InteractiveDashboard", () => {
   });
 
   it("should show no button in the dashcard when downloads are disabled", async () => {
-    await setup({
+    await setupEnterprise({
       props: {
         withDownloads: false,
       },
@@ -97,7 +71,7 @@ describe("InteractiveDashboard", () => {
   });
 
   it("should only show the download button if downloads are enabled", async () => {
-    await setup({
+    await setupEnterprise({
       props: { withDownloads: true },
     });
 
@@ -117,7 +91,7 @@ describe("InteractiveDashboard", () => {
   });
 
   it("should not show buttons if downloads are disabled", async () => {
-    await setup({
+    await setupEnterprise({
       props: { withDownloads: false },
     });
 
@@ -133,14 +107,14 @@ describe("InteractiveDashboard", () => {
   });
 
   it("should not show 'Add a chart' button on empty dashboards", async () => {
-    await setup({ dashcards: [] });
+    await setupEnterprise({ dashcards: [] });
 
     expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
     expect(screen.queryByText("Add a chart")).not.toBeInTheDocument();
   });
 
   it("should not allow editing the dashboard title", async () => {
-    await setup();
+    await setupEnterprise();
 
     expect(screen.getByTestId("dashboard-name-heading")).toBeDisabled();
   });

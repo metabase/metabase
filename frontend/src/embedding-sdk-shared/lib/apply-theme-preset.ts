@@ -30,7 +30,11 @@ const COLOR_GETTERS: Record<MetabaseThemePreset, () => ColorPalette> = {
 };
 
 const getPresetColors = (preset: MetabaseThemePreset): MetabaseColors => {
-  const palette = COLOR_GETTERS[preset]();
+  const palette = COLOR_GETTERS[preset]?.();
+
+  if (!palette) {
+    return {};
+  }
 
   return Object.fromEntries(
     PRESET_SDK_COLORS.map((sdkColor) => {

@@ -11,7 +11,7 @@ const setupEmbed = (elementHtml: string) => {
 describe("scenarios > embedding > sdk iframe embedding > view and curate content", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
-    H.prepareSdkIframeEmbedTest({ withTokenFeatures: true });
+    H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
   });
 
   describe("<metabase-browser> (read-only mode)", () => {

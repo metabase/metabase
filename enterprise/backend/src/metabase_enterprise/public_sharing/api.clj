@@ -59,6 +59,10 @@
   (let [document-id (api/check-404 (t2/select-one-pk :model/Document :public_uuid uuid :archived false))]
     (api/check-404 (t2/select-one-pk :model/Card :id card-id :document_id document-id :archived false))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/document/:uuid"
   "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.
 
@@ -73,6 +77,10 @@
     (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
     document))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
   "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
   be enabled."
@@ -92,6 +100,10 @@
             :constraints (qp.constraints/default-query-constraints))
     (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
   "Fetch a Card embedded in a public Document and return query results in the specified format.
   Does not require auth credentials. Public sharing must be enabled."

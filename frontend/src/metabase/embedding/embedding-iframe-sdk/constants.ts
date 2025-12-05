@@ -31,6 +31,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "dashboardId",
     "withTitle",
     "withDownloads",
+    "withSubscriptions",
     "initialParameters",
     "hiddenParameters",
     "drills",

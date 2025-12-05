@@ -187,21 +187,19 @@ const convertPropertiesToEmbedTagAttributes = (
  * @param {EnabledAuthMethods[]} enabledAuthMethods - The authentication methods to enable.
  */
 export function prepareSdkIframeEmbedTest({
-  withTokenFeatures = true,
+  withToken = "bleeding-edge",
   enabledAuthMethods = ["jwt"],
   signOut = false,
 }: {
-  withTokenFeatures?: boolean;
+  withToken?: false | "starter" | "bleeding-edge";
   enabledAuthMethods?: EnabledAuthMethods[];
   signOut?: boolean;
 } = {}) {
   restore();
   cy.signInAsAdmin();
 
-  if (withTokenFeatures) {
-    activateToken("bleeding-edge");
-  } else {
-    activateToken("starter");
+  if (withToken) {
+    activateToken(withToken);
   }
 
   cy.request("PUT", "/api/setting/enable-embedding-simple", {

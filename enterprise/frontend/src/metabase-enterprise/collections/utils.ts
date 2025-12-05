@@ -64,21 +64,22 @@ export const getIcon = (item: ObjectWithModel): IconData => {
     };
   }
 
-  if (item.is_remote_synced) {
-    return {
-      name: REMOTE_SYNC_COLLECTION.icon,
-    };
-  }
+  if (item.model === "collection") {
+    if (item.is_remote_synced) {
+      return {
+        name: REMOTE_SYNC_COLLECTION.icon,
+      };
+    }
 
-  if (
-    item.model === "collection" &&
-    (item.authority_level === "official" ||
-      item.collection_authority_level === "official")
-  ) {
-    return {
-      name: OFFICIAL_COLLECTION.icon,
-      color: OFFICIAL_COLLECTION.color,
-    };
+    if (
+      item.authority_level === "official" ||
+      item.collection_authority_level === "official"
+    ) {
+      return {
+        name: OFFICIAL_COLLECTION.icon,
+        color: OFFICIAL_COLLECTION.color,
+      };
+    }
   }
 
   if (item.model === "dataset" && item.moderated_status === "verified") {
