@@ -38,7 +38,7 @@ describe("scenarios > embedding-sdk > requests", () => {
       });
     });
 
-    it.only("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
+    it("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
       const deferreds = [defer(), defer()];
