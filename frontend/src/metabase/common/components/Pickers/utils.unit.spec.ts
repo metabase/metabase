@@ -230,7 +230,7 @@ describe("getCollectionIdPath", () => {
     expect(path).toEqual(["tenant", 6, 7, 8, 9]);
   });
 
-  it("should treat dedicated tenant collection root as a root-level item", () => {
+  it("should treat tenant collection root as a root-level item", () => {
     const path = getCollectionIdPath(
       {
         id: 1234,
@@ -245,7 +245,7 @@ describe("getCollectionIdPath", () => {
     expect(path).toEqual([1234]);
   });
 
-  it("should nest dedicated tenant collection under tenant-specific for admins", () => {
+  it("should nest tenant collection under tenant-specific for admins", () => {
     const rootPath = getCollectionIdPath(
       {
         id: "tenant-specific",

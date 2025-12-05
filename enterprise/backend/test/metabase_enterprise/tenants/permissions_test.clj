@@ -71,7 +71,7 @@
           (testing "cannot make external user group manager of tenant group"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"External users cannot be made group managers"
+                 #"Tenant users cannot be made group managers"
                  (perms/add-users-to-groups! [{:user external-user-id
                                                :group tenant-group-id
                                                :is-group-manager? true}]))))
@@ -79,7 +79,7 @@
           (testing "cannot make external user group manager of normal group"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"External users cannot be made group managers"
+                 #"Tenant users cannot be made group managers"
                  (perms/add-users-to-groups! [{:user external-user-id
                                                :group normal-group-id
                                                :is-group-manager? true}]))))
