@@ -2531,6 +2531,26 @@ databaseChangeLog:
             path: instance_analytics_views/content/v5/h2-content.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+    id: v57.2025-11-25T17:04:00
+    author: dependencies
+    comment: Add dependency_analysis_version to segment table for tracking dependency changes
+    changes:
+      - addColumn:
+          tableName: segment
+          columns:
+            - column:
+                name: dependency_analysis_version
+                type: integer
+                defaultValueNumeric: 0
+                remarks: Version number for dependency analysis to track when dependencies need recalculation
+                constraints:
+                  nullable: false
+    rollback:
+      - dropColumn:
+          tableName: segment
+          columnName: dependency_analysis_version
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
