@@ -5,51 +5,49 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
-// eslint-disable-next-line no-restricted-imports
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
-import type { InlinePromptOptions } from "./inline-prompt";
+import { useInlinePrompt } from "./inline-prompt";
+import { Extension } from "@uiw/react-codemirror";
 
 export interface UseInlineSqlEditOptions {
   question: Question;
 }
 
 export interface UseInlineSqlEditResult {
-  inlinePromptOptions: InlinePromptOptions;
+  portalElement: React.ReactPortal | null;
+  extensions: Extension[];
   proposedQuestion: Question | undefined;
   handleAcceptProposed: (datasetQuery: DatasetQuery) => void;
   handleRejectProposed: () => void;
 }
 
+// TODO: finish refactor / merge this with useInlinePrompt
 export function useInlineSqlEdit({
   question,
 }: UseInlineSqlEditOptions): UseInlineSqlEditResult {
   const { submitInput, setVisible, cancelRequest } = useMetabotAgent();
 
-  // State for managing AI-generated SQL
+  /* TODO: temp hack - communicate sql via global notifier used in navigate to handler */
   const [generatedSql, setGeneratedSql] = useState<string | undefined>();
-
-  // Bridge the global callback (temporary hack) to our state
   useEffect(() => {
     (window as any).notifyCodeEdit = (sql: string) => setGeneratedSql(sql);
     return () => {
       delete (window as any).notifyCodeEdit;
     };
   }, []);
-
   const clearGeneratedSql = useCallback(() => {
     setGeneratedSql(undefined);
   }, []);
+  /* TODO: temp hack end */
 
-  // Create a proposed question from the generated SQL
-  const proposedQuestion = useMemo(() => {
-    if (!generatedSql) {
-      return undefined;
-    }
-    const currentQuery = question.query();
-    const newQuery = Lib.withNativeQuery(currentQuery, generatedSql);
-    return question.setQuery(newQuery);
-  }, [generatedSql, question]);
+  const proposedQuestion = useMemo(
+    () =>
+      generatedSql
+        ? question.setQuery(Lib.withNativeQuery(question.query(), generatedSql))
+        : undefined,
+    [generatedSql, question],
+  );
 
   const inlinePromptOptions = useMemo(
     () => ({
@@ -75,8 +73,11 @@ export function useInlineSqlEdit({
     [submitInput, setVisible, cancelRequest],
   );
 
+  const { extensions, portalElement } = useInlinePrompt(inlinePromptOptions);
+
   return {
-    inlinePromptOptions,
+    extensions,
+    portalElement,
     proposedQuestion,
     handleAcceptProposed: clearGeneratedSql,
     handleRejectProposed: clearGeneratedSql,

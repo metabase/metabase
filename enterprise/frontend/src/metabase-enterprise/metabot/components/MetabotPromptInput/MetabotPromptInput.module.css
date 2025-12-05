@@ -4,12 +4,11 @@
   background: transparent;
   outline: none;
   width: 100%;
-  padding: 0;
-  line-height: 1.4;
+  padding: 0.5rem 0;
+  line-height: 1.7;
   color: var(--mb-color-text-dark);
-  font-size: inherit;
-  font-family: inherit;
-  min-height: 1.4em;
+  font-size: var(--mantine-font-size-md);
+  min-height: 1.7em;
   white-space: pre-wrap;
   word-break: break-word;
 
@@ -31,9 +30,9 @@
 }
 
 .content.disabled :global(.ProseMirror) {
-  opacity: 0.5;
+  opacity: 1;
+  background: transparent;
   cursor: not-allowed;
-  pointer-events: none;
 }
 
 .smartLink {
