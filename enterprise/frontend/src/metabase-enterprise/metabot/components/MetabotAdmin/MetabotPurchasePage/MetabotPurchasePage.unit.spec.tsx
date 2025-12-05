@@ -18,38 +18,25 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotPurchasePage } from ".";
 
+const nonStoreUserPageRegex = /Please ask a Metabase Store Admin/;
+const storeUserPageRegex = /After 14 days of free trial an additional amount/;
+const errorPageRegex = /Error fetching information/;
 const expectNonStoreUserPage = async () => {
-  expect(
-    await screen.findByText(/Please ask a Metabase Store Admin/),
-  ).toBeVisible();
-  expect(
-    screen.queryByText(/Additional amount for the add-on/),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.queryByText(/Error fetching information/),
-  ).not.toBeInTheDocument();
+  expect(await screen.findByText(nonStoreUserPageRegex)).toBeVisible();
+  expect(screen.queryByText(storeUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
 };
 
 const expectStoreUserPage = async () => {
-  expect(
-    screen.queryByText(/Please ask a Metabase Store Admin/),
-  ).not.toBeInTheDocument();
-  expect(
-    await screen.findByText(/Additional amount for the add-on/),
-  ).toBeVisible();
-  expect(
-    screen.queryByText(/Error fetching information/),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(storeUserPageRegex)).toBeVisible();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
 };
 
 const expectErrorPage = async () => {
-  expect(
-    screen.queryByText(/Please ask a Metabase Store Admin/),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.queryByText(/Additional amount for the add-on/),
-  ).not.toBeInTheDocument();
-  expect(await screen.findByText(/Error fetching information/)).toBeVisible();
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(errorPageRegex)).toBeVisible();
 };
 
 const setupRefreshableProperties = ({
