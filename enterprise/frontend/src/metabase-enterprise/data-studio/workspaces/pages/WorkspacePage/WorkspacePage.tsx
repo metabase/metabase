@@ -133,10 +133,8 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   useEffect(() => {
     if (activeTab) {
       setTab(activeTab.id);
-    } else {
-      setTab("setup");
     }
-  }, [id, activeTab]);
+  }, [id, activeTab, setTab]);
 
   const tabsListRef = useRef<HTMLDivElement>(null);
 
