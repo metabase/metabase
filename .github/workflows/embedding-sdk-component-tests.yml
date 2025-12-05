@@ -28,6 +28,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: false
+          webhook: false
+          snowplow: false
+          postgres: false
+          mysql: false
+          mongo: false
+
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
         with:
@@ -155,6 +168,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.decide-target-ref.outputs.target-ref }}
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: false
+          webhook: false
+          snowplow: false
+          postgres: false
+          mysql: false
+          mongo: false
 
       - name: Get the actual commit SHA from the checked out branch
         id: get-commit-sha
