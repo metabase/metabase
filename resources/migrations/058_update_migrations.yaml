@@ -835,7 +835,7 @@ databaseChangeLog:
       rollback:
         - sqlFile:
             dbms: postgresql
-            path: instance_analytics_views/content/v1/postgres-tables.sql
+            path: instance_analytics_views/tables/v1/postgres-tables.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
