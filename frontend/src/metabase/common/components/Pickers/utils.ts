@@ -74,6 +74,10 @@ export const getCollectionIdPath = (
     return ["tenant"];
   }
 
+  if (collection.id === "tenant-specific") {
+    return ["tenant-specific"];
+  }
+
   if (collection.type === "library") {
     return [collection.id];
   }

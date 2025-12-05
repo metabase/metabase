@@ -29,6 +29,7 @@ import { TenantCollectionPermissionsPage } from "./components/TenantCollectionPe
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
+import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
@@ -146,6 +147,8 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantGroupHintIcon = TenantGroupHintIcon;
     PLUGIN_TENANTS.MainNavSharedCollections = MainNavSharedCollections;
     PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
+    PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
+      TenantSpecificCollectionsItemList;
     PLUGIN_TENANTS.TenantCollectionList = TenantCollectionList;
   }
 }

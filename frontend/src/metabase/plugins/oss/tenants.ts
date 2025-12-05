@@ -23,6 +23,8 @@ const getDefaultPluginTenants = () => ({
   MainNavSharedCollections: PluginPlaceholder,
   TenantCollectionItemList: (_props: CollectionItemListProps) =>
     null as React.ReactElement | null,
+  TenantSpecificCollectionsItemList: (_props: CollectionItemListProps) =>
+    null as React.ReactElement | null,
   TenantCollectionList: PluginPlaceholder,
 });
 
@@ -44,6 +46,9 @@ export const PLUGIN_TENANTS: {
   TenantGroupHintIcon: React.ComponentType;
   MainNavSharedCollections: React.ComponentType;
   TenantCollectionItemList: (
+    props: CollectionItemListProps,
+  ) => React.ReactElement | null;
+  TenantSpecificCollectionsItemList: (
     props: CollectionItemListProps,
   ) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
