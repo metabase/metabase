@@ -5,6 +5,7 @@
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.settings.core :as settings]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -49,9 +50,10 @@
                               [(jwt-attribute-email)
                                (jwt-attribute-firstname)
                                (jwt-attribute-lastname)
-                               (jwt-attribute-tenant)
-                               (jwt-attribute-groups)])]
-    (sso-utils/filter-non-stringable-attributes (apply dissoc jwt-data excluded-keys))))
+                               (jwt-attribute-groups)]
+                              (when (settings/get :use-tenants)
+                                [(jwt-attribute-tenant)]))]
+    (sso-utils/remove-invalid-attributes (apply dissoc jwt-data excluded-keys))))
 
 (defn- decode-and-verify-jwt
   "Decode and verify a JWT token. Returns the JWT data if valid, throws on error."
@@ -91,7 +93,7 @@
                            :error :missing-email})))
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
-         :tenant-slug tenant-slug
+         :tenant-slug (when (settings/get :use-tenants) tenant-slug)
          :user-data (->> {:email email
                           :first_name first-name
                           :last_name last-name
