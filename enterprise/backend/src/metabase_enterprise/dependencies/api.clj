@@ -167,7 +167,8 @@
    :document  [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
-   :sandbox   [:table :table_id]})
+   :sandbox   [:table :table_id]
+   :segment   [:name :description :created_at :creator :creator_id :table :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -189,7 +190,8 @@
    :transform :model/Transform
    :dashboard :model/Dashboard
    :document  :model/Document
-   :sandbox   :model/Sandbox})
+   :sandbox   :model/Sandbox
+   :segment   :model/Segment})
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -211,7 +213,8 @@
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source]
    :snippet   [:id :name :description]
-   :sandbox   [:id :table_id]})
+   :sandbox   [:id :table_id]
+   :segment   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
@@ -291,7 +294,33 @@
                                                         :exclude     [:and
                                                                       [:= active-column true]
                                                                       [:= visibility-type-column nil]]
-                                                        (:only :all) nil)]}]])))))
+                                                        (:only :all) nil)]}]])
+
+                     ;; Segment with table permissions and archived filtering
+                     :model/Segment
+                     (let [archived-column (keyword (name table-name) "archived")
+                           table-id-column (keyword (name table-name) "table_id")]
+                       [:and
+                        [:= entity-type-field (name entity-type)]
+                        [:in entity-id-field {:select [:id]
+                                              :from [table-name]
+                                              :where [:and
+                                                      ;; Check that user can see the table this segment belongs to
+                                                      [:in table-id-column
+                                                       {:select [:metabase_table.id]
+                                                        :from [:metabase_table]
+                                                        :where (mi/visible-filter-clause
+                                                                :model/Table
+                                                                :metabase_table.id
+                                                                {:user-id api/*current-user-id*
+                                                                 :is-superuser? api/*is-superuser?*}
+                                                                {:perms/view-data :unrestricted
+                                                                 :perms/create-queries :query-builder})}]
+                                                      ;; Filter by archived status
+                                                      (case include-archived-items
+                                                        :exclude [:= archived-column false]
+                                                        :only [:= archived-column true]
+                                                        :all nil)]}]])))))
          entity-model)))
 
 (defn- readable-graph-dependencies
@@ -349,7 +378,8 @@
                                                       (revisions/with-last-edit-info :dashboard))
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                      (->> (map collection.root/hydrate-root-collection)))
-                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields]))
+                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
+                       (= entity-type :segment) (t2/hydrate :creator [:table :db]))
                      (mapv #(entity-value entity-type % usages)))))
             nodes-by-type)))
 
