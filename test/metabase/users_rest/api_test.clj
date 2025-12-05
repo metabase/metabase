@@ -946,6 +946,59 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
+(deftest update-login-attributes-with-different-value-types-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that login attributes can be set to strings, numbers, and booleans"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                                :last_name "User"
+                                                :email "testuser-types@metabase.com"}]
+        (let [response (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                             {:login_attributes {:string-attr "hello"
+                                                                 :number-attr 42
+                                                                 :float-attr 3.14
+                                                                 :bool-true true
+                                                                 :bool-false false}})]
+          (is (= {:string-attr "hello"
+                  :number-attr 42
+                  :float-attr 3.14
+                  :bool-true true
+                  :bool-false false}
+                 (:login_attributes response)))
+          (testing "values are persisted correctly in the database"
+            (is (= {"string-attr" "hello"
+                    "number-attr" 42
+                    "float-attr" 3.14
+                    "bool-true" true
+                    "bool-false" false}
+                   (t2/select-one-fn :login_attributes :model/User :id user-id)))))))))
+
+(deftest create-user-with-different-attribute-types-test
+  (testing "POST /api/user"
+    (testing "Test that users can be created with string, number, and boolean login attributes"
+      (with-temp-user-email! [email]
+        (let [response (mt/user-http-request :crowberto :post 200 "user"
+                                             {:first_name "Attribute"
+                                              :last_name "Types"
+                                              :email email
+                                              :login_attributes {:string-val "test-string"
+                                                                 :integer-val 123
+                                                                 :decimal-val 45.67
+                                                                 :boolean-true true
+                                                                 :boolean-false false}})]
+          (is (= {:string-val "test-string"
+                  :integer-val 123
+                  :decimal-val 45.67
+                  :boolean-true true
+                  :boolean-false false}
+                 (:login_attributes response)))
+          (testing "values are persisted correctly in the database"
+            (is (= {"string-val" "test-string"
+                    "integer-val" 123
+                    "decimal-val" 45.67
+                    "boolean-true" true
+                    "boolean-false" false}
+                   (t2/select-one-fn :login_attributes :model/User :id (:id response))))))))))
+
 (deftest login-attributes-cannot-start-with-at-symbol
   (testing "PUT /api/user/:id"
     (testing "We can't create login attributes starting with `@`"

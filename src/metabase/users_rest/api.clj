@@ -101,7 +101,7 @@
 
 (def ^:private SimpleAttributes
   "Basic attributes for users and tenants are a map of string keys to string values."
-  [:map-of :string :string])
+  [:map-of :string [:or :string :int :float :boolean]])
 
 (def ^:private SystemAttributes
   "Attributes generated from system properties must be prefixed with @."
