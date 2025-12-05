@@ -24,7 +24,7 @@ COPY . .
 RUN git config --global --add safe.directory /home/node
 
 # install frontend dependencies
-RUN yarn --frozen-lockfile
+RUN npm install -g pnpm@10 && pnpm install --frozen-lockfile
 
 RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
 
