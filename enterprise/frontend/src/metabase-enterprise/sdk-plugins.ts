@@ -5,6 +5,8 @@ PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
 import "./shared";
 
+import { initializePlugin as initializeSubscriptions } from "../embedding-sdk-ee/subscriptions";
+
 // CORE APP PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeEmbedding } from "./embedding";
@@ -24,6 +26,7 @@ export function initializePlugins() {
   initializeWhitelabelPlugin?.();
   initializeWhitelabelOverridePlugin?.();
   initializeContentTranslation?.();
+  initializeSubscriptions();
 }
 
 // "SDK EE-plugins", that are specific to the embedding sdk.

@@ -20,11 +20,12 @@
 
 (defn- segment-response [segment]
   (-> (into {} segment)
-      (dissoc :id :table_id)
+      (dissoc :id :table_id :dependency_analysis_version)
       (update :creator #(into {} %))
       (update :entity_id some?)
       (update :created_at some?)
-      (update :updated_at some?)))
+      (update :updated_at some?)
+      (update :definition map?)))
 
 (defn- mbql4-segment-definition
   "Create a legacy MBQL4 segment definition"
@@ -108,8 +109,7 @@
                                           :points_of_interest      nil
                                           :table_id                id
                                           :definition              (definition-fn 10 20)})
-                   segment-response
-                   (update :definition map?))))))))
+                   segment-response)))))))
 
 ;; ## PUT /api/segment
 
@@ -172,8 +172,7 @@
                        :table_id                456
                        :revision_message        "I got me some revisions"
                        :definition              (eq-fn 2 "cans")})
-                     segment-response
-                     (update :definition map?)))))))))
+                     segment-response))))))))
 
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
@@ -244,8 +243,7 @@
                  :archived                true
                  :definition true}
                 (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
-                    segment-response
-                    (update :definition map?))))))))
+                    segment-response)))))))
 
 ;; ## GET /api/segment/:id
 
@@ -285,8 +283,7 @@
                       :definition true}
                      (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
                          segment-response
-                         (dissoc :query_description)
-                         (update :definition map?)))))))))))
+                         (dissoc :query_description)))))))))))
 
 (deftest list-test
   (testing "GET /api/segment/"

@@ -55,7 +55,12 @@
      :bad_transforms (into [] broken-transforms)}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/check_card"
   "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
   [_route-params
@@ -90,7 +95,12 @@
    [:target {:optional true} [:maybe ms/Map]]])
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/check_transform"
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
   [_route-params
@@ -111,7 +121,12 @@
     {:success true}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
   [_route-params
@@ -152,7 +167,8 @@
    :document  [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
-   :sandbox   [:table :table_id]})
+   :sandbox   [:table :table_id]
+   :segment   [:name :description :created_at :creator :creator_id :table :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -174,7 +190,8 @@
    :transform :model/Transform
    :dashboard :model/Dashboard
    :document  :model/Document
-   :sandbox   :model/Sandbox})
+   :sandbox   :model/Sandbox
+   :segment   :model/Segment})
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -196,7 +213,8 @@
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source]
    :snippet   [:id :name :description]
-   :sandbox   [:id :table_id]})
+   :sandbox   [:id :table_id]
+   :segment   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
@@ -276,7 +294,33 @@
                                                         :exclude     [:and
                                                                       [:= active-column true]
                                                                       [:= visibility-type-column nil]]
-                                                        (:only :all) nil)]}]])))))
+                                                        (:only :all) nil)]}]])
+
+                     ;; Segment with table permissions and archived filtering
+                     :model/Segment
+                     (let [archived-column (keyword (name table-name) "archived")
+                           table-id-column (keyword (name table-name) "table_id")]
+                       [:and
+                        [:= entity-type-field (name entity-type)]
+                        [:in entity-id-field {:select [:id]
+                                              :from [table-name]
+                                              :where [:and
+                                                      ;; Check that user can see the table this segment belongs to
+                                                      [:in table-id-column
+                                                       {:select [:metabase_table.id]
+                                                        :from [:metabase_table]
+                                                        :where (mi/visible-filter-clause
+                                                                :model/Table
+                                                                :metabase_table.id
+                                                                {:user-id api/*current-user-id*
+                                                                 :is-superuser? api/*is-superuser?*}
+                                                                {:perms/view-data :unrestricted
+                                                                 :perms/create-queries :query-builder})}]
+                                                      ;; Filter by archived status
+                                                      (case include-archived-items
+                                                        :exclude [:= archived-column false]
+                                                        :only [:= archived-column true]
+                                                        :all nil)]}]])))))
          entity-model)))
 
 (defn- readable-graph-dependencies
@@ -334,10 +378,15 @@
                                                       (revisions/with-last-edit-info :dashboard))
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                      (->> (map collection.root/hydrate-root-collection)))
-                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields]))
+                       (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
+                       (= entity-type :segment) (t2/hydrate :creator [:table :db]))
                      (mapv #(entity-value entity-type % usages)))))
             nodes-by-type)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph"
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
   The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
@@ -374,6 +423,10 @@
                                            [:question :model :metric])]
    [:archived {:optional true} :boolean]])
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/dependents"
   "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of
    all that entity's dependents with :dependent_type. If the :dependent_type is :card, the dependents are further

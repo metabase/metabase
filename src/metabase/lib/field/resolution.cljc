@@ -671,9 +671,9 @@
                 (resolve-in-join query stage-number join-alias source-field id-or-name))
               (when source-field
                 (resolve-in-implicit-join query stage-number source-field id-or-name))
-              (resolve-from-previous-stage-or-source query stage-number id-or-name)
               (merge
-               (or (fallback-metadata-for-field query stage-number id-or-name)
+               (or (resolve-from-previous-stage-or-source query stage-number id-or-name)
+                   (fallback-metadata-for-field query stage-number id-or-name)
                    (fallback-metadata id-or-name))
                (when (and join-alias
                           (contains? (into #{}
