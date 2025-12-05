@@ -68,7 +68,7 @@
    (let [collection-id (be-dev/nrepl-eval
                         "metabase-enterprise.audit-app.analytics-dev"
                         "(:id (find-analytics-collection))")
-         _ (when-not collection-id
+         _ (when (= "nil" collection-id)
              (println (c/red "\n✗ Analytics collection not found. Did you run analytics:setup?"))
              (u/exit 1))
          _ (println (str "  Collection ID: " (c/cyan collection-id)))
@@ -109,14 +109,14 @@
                        "metabase-enterprise.audit-app.analytics-dev"
                        "(:id (find-analytics-collection))")]
 
-    (when db-id
+    (when-not (= "nil" db-id)
       (println (str "\nDeleting analytics dev database (ID: " (c/cyan db-id) ")..."))
       (be-dev/nrepl-eval
        "metabase-enterprise.audit-app.analytics-dev"
        (format "(delete-analytics-dev-database! %s)" db-id))
       (println (c/green "  ✓ Database deleted")))
 
-    (when collection-id
+    (when-not (= "nil" collection-id)
       (println (str "\nDeleting analytics collection (ID: " (c/cyan collection-id) ")..."))
       (be-dev/nrepl-eval
        "toucan2.core"
