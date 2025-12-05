@@ -108,8 +108,7 @@
                                         :points_of_interest      nil
                                         :table_id                (mt/id :users)
                                         :definition              (definition-fn (mt/id :users :id) 20)})
-                 segment-response
-                 ))))))
+                 segment-response))))))
 
 ;; ## PUT /api/segment
 
@@ -275,8 +274,7 @@
                     :definition              true}
                    (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
                        segment-response
-                       (dissoc :query_description)
-                       )))))))))
+                       (dissoc :query_description))))))))))
 
 (deftest list-test
   (testing "GET /api/segment/"
