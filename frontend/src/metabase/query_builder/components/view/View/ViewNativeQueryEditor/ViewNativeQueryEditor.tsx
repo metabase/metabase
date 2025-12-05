@@ -1,7 +1,7 @@
 import type { ResizableBoxProps } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
-import { useInlineSqlEdit } from "metabase-enterprise/metabot/components/MetabotInlineSQLPrompt/use-inline-sql-edit";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import type {
   SelectionRange,
@@ -87,8 +87,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
     getHighlightedNativeQueryLineNumbers,
   );
 
-  // TODO: think of a better name
-  const inlinePrompt = useInlineSqlEdit({ question });
+  const inlineSQLPrompt = PLUGIN_METABOT.useInlineSQLPrompt(question);
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
@@ -112,12 +111,12 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}
         onSetDatabaseId={onSetDatabaseId}
-        extensions={inlinePrompt.extensions}
-        proposedQuestion={inlinePrompt.proposedQuestion}
-        onAcceptProposed={inlinePrompt.handleAcceptProposed}
-        onRejectProposed={inlinePrompt.handleRejectProposed}
+        extensions={inlineSQLPrompt?.extensions}
+        proposedQuestion={inlineSQLPrompt?.proposedQuestion}
+        onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
+        onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
       />
-      {inlinePrompt.portalElement}
+      {inlineSQLPrompt?.portalElement}
     </Box>
   );
 };

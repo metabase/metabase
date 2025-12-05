@@ -66,7 +66,10 @@ export function MetabotChatInput() {
         autosize
         minRows={1}
         maxRows={4}
-        ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
+        /* TODO: fix type later... */
+        ref={
+          metabot.promptInputRef as unknown as LegacyRef<HTMLTextAreaElement>
+        }
         autoFocus
         value={metabot.prompt}
         disabled={metabot.isDoingScience}

@@ -7,8 +7,8 @@ import { useLazyListDatabasesQuery } from "metabase/api";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
-  MetabotPromptInputRef,
   MetabotContext as MetabotCtx,
+  MetabotPromptInputRef,
 } from "metabase/metabot";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -27,8 +27,6 @@ export const defaultContext = {
 };
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
-
-export type MetabotPromptInputRef = { focus: () => void };
 
 export const MetabotProvider = ({
   children,
