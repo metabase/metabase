@@ -4,7 +4,6 @@ import {
   codeBlock,
   getEmbedSidebar,
   navigateToEmbedOptionsStep,
-  navigateToGetCodeStep,
 } from "./helpers";
 
 const { H } = cy;
@@ -65,10 +64,9 @@ describe("EE without license", () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: DASHBOARD_NAME,
+        toggleSso: true,
       });
 
-      assertUpsellForOption("Existing Metabase session");
-      assertUpsellForOption("Single sign-on (SSO)");
       assertUpsellForOption("Allow people to drill through on data points");
       assertUpsellForOption("Allow downloads");
       assertUpsellForOption("Allow subscriptions");
@@ -110,28 +108,8 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should select user session auth method by default", () => {
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Authentication").should("be.visible");
-
-      cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-      cy.findByLabelText("Existing Metabase session")
-        .should("be.visible")
-        .should("not.be.checked");
-
-      cy.findByLabelText("Single sign-on (SSO)")
-        .should("be.visible")
-        .should("not.be.checked");
-    });
-  });
-
   it("toggles drill-throughs for dashboards when SSO auth method is selected", () => {
-    navigateToGetCodeStep({
+    navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
       toggleSso: true,
@@ -202,7 +180,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=sso,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
     codeBlock().should("contain", 'with-subscriptions="false"');
@@ -212,7 +190,6 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
     });
 
     getEmbedSidebar()
@@ -246,7 +223,14 @@ describe(suiteTitle, () => {
     cy.log("test non-guest embeds");
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
-      cy.findByLabelText("Existing Metabase session").click();
+      cy.button("Back").click();
+      cy.button("Back").click();
+
+      cy.findByLabelText("Metabase account (SSO)").click();
+
+      cy.button("Next").click();
+      cy.button("Next").click();
+
       cy.findByLabelText("Allow subscriptions")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
@@ -542,8 +526,8 @@ describe(suiteTitle, () => {
         event: "embed_wizard_options_completed",
         event_detail:
           experience === "chart"
-            ? "settings=custom,experience=chart,auth=sso,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
-            : "settings=custom,experience=exploration,auth=sso,isSaveEnabled=true,theme=default",
+            ? "settings=custom,experience=chart,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true,theme=default"
+            : "settings=custom,experience=exploration,auth=user-session,isSaveEnabled=true,theme=default",
       });
 
       codeBlock().should("contain", 'is-save-enabled="true"');
