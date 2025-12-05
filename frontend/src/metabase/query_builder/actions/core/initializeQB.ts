@@ -2,7 +2,6 @@ import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 import { replace } from "react-router-redux";
 
-import { databaseApi } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
@@ -15,9 +14,8 @@ import {
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser } from "metabase/selectors/user";
+import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -204,17 +202,6 @@ export async function resolveCards({
       );
 }
 
-async function loadDatabases(dispatch: any) {
-  const action = databaseApi.endpoints.listDatabases.initiate();
-  try {
-    const { data } = await dispatch(action).unwrap();
-    return data;
-  } catch (error) {
-    console.error("error loading databases", error);
-    return [];
-  }
-}
-
 export function parseHash(hash?: string) {
   let options: BlankQueryOptions = {};
   let serializedCard;
@@ -287,8 +274,7 @@ async function handleQBInit(
   const currentUser = getUser(getState());
 
   if (uiControls.queryBuilderMode === "notebook") {
-    const databases = await loadDatabases(dispatch);
-    if (!getHasDataAccess(databases)) {
+    if (!canUserCreateQueries(getState())) {
       dispatch(replace(Urls.unauthorized()));
       return;
     }

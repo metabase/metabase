@@ -1,4 +1,12 @@
-import type { ForeignKey, Schema, Table } from "metabase-types/api";
+import type {
+  BulkTableInfo,
+  BulkTableSelection,
+  BulkTableSelectionInfo,
+  ForeignKey,
+  PublishTablesResponse,
+  Schema,
+  Table,
+} from "metabase-types/api";
 
 export const createMockTable = (opts?: Partial<Table>): Table => {
   return {
@@ -42,3 +50,45 @@ export const createMockForeignKey = (
   relationship: "Mt1",
   ...opts,
 });
+
+export const createMockBulkTableInfo = (
+  opts?: Partial<BulkTableInfo>,
+): BulkTableInfo => {
+  return {
+    id: 1,
+    db_id: 1,
+    name: "TABLE",
+    display_name: "Table",
+    schema: "public",
+    is_published: false,
+    ...opts,
+  };
+};
+
+export const createMockBulkTableSelection = (
+  opts?: Partial<BulkTableSelection>,
+): BulkTableSelection => {
+  return {
+    ...opts,
+  };
+};
+
+export const createMockBulkTableSelectionInfo = (
+  opts?: Partial<BulkTableSelectionInfo>,
+): BulkTableSelectionInfo => {
+  return {
+    selected_table: null,
+    published_downstream_tables: [],
+    unpublished_upstream_tables: [],
+    ...opts,
+  };
+};
+
+export const createMockPublishTablesResponse = (
+  opts?: Partial<PublishTablesResponse>,
+): PublishTablesResponse => {
+  return {
+    target_collection: null,
+    ...opts,
+  };
+};

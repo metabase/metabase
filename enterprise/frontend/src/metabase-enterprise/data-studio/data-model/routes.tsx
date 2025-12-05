@@ -16,17 +16,21 @@ export function getDataStudioMetadataRoutes() {
         path="database/:databaseId/schema/:schemaId"
         component={DataModel}
       />
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+      />
       <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId"
+        path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
         component={DataModel}
       />
       <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+        path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
         component={DataModel}
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
@@ -40,7 +44,7 @@ export function getDataStudioMetadataRoutes() {
       </Route>
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"

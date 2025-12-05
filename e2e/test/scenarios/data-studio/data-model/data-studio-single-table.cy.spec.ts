@@ -29,10 +29,10 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("POST", "/api/ee/data-studio/table/publish-table").as(
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
     );
-    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-table").as(
+    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-tables").as(
       "unpublishTables",
     );
   });
@@ -77,9 +77,10 @@ describe("Table editing", () => {
 
       cy.log("publish the table and verify it's published");
       cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().button("Create my Library and publish").click();
+      H.modal().button("Create my Library").click();
+      H.modal().button("Publish this table").click();
       cy.wait("@publishTables");
-      H.undoToast().within(() => {
+      H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
       });
@@ -91,7 +92,7 @@ describe("Table editing", () => {
 
       cy.log("unpublish the table and verify it's unpublished");
       cy.findByRole("button", { name: /Unpublish/ }).click();
-      H.modal().button("Unpublish").click();
+      H.modal().button("Unpublish this table").click();
       cy.wait("@unpublishTables");
       H.DataStudio.nav().findByLabelText("Modeling").click();
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();

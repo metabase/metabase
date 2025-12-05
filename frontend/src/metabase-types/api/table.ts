@@ -212,22 +212,6 @@ export interface GetTableDataRequest {
   tableId: TableId;
 }
 
-export interface PublishTablesRequest {
-  database_ids?: DatabaseId[];
-  schema_ids?: SchemaId[];
-  table_ids?: TableId[];
-}
-
-export interface PublishTablesResponse {
-  target_collection: Collection;
-}
-
-export interface UnpublishTablesRequest {
-  database_ids?: DatabaseId[];
-  schema_ids?: SchemaId[];
-  table_ids?: TableId[];
-}
-
 export type TableData = {
   data: DatasetData;
   database_id: DatabaseId;
@@ -248,3 +232,31 @@ export type TableData = {
   /** A date in ISO 8601 format */
   started_at?: string;
 };
+
+export interface BulkTableInfo {
+  id: TableId;
+  db_id: DatabaseId;
+  name: string;
+  display_name: string;
+  schema: string | null;
+  is_published: boolean;
+}
+
+export interface BulkTableSelection {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+}
+
+export interface BulkTableSelectionInfo {
+  // if only one table was selected, returns this table, otherwise null
+  selected_table: BulkTableInfo | null;
+  // tables outside the selection that use selected tables for remapping
+  published_downstream_tables: BulkTableInfo[];
+  // tables outside the selection that are used for remapping by selected tables
+  unpublished_upstream_tables: BulkTableInfo[];
+}
+
+export interface PublishTablesResponse {
+  target_collection: Collection | null;
+}

@@ -5,7 +5,6 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
 import { TableOverviewPage } from "./pages/TableOverviewPage";
-
 export function getDataStudioTableRoutes() {
   return (
     <Route path="tables">

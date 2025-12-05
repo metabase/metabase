@@ -4013,7 +4013,7 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-table", {
+  return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
     table_ids: tableIds,
   });
 }

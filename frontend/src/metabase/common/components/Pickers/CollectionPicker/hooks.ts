@@ -5,6 +5,7 @@ import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionItemsQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
@@ -34,8 +35,12 @@ const personalCollectionsRoot: CollectionPickerItem = {
 export const useRootCollectionPickerItems = (
   options: CollectionItemListProps["options"],
 ) => {
-  const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  const { data: databaseData, isLoading: isLoadingDatabases } =
+    useListDatabasesQuery(undefined, { skip: !options.showDatabases });
+  const databases = databaseData?.data ?? [];
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
     useGetCollectionQuery(
@@ -80,7 +85,7 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options.showDatabases) {
+    if (options.showDatabases && databases.length > 0) {
       collectionItems.push({
         id: "databases",
         name: t`Databases`,
@@ -142,12 +147,14 @@ export const useRootCollectionPickerItems = (
     rootCollection,
     isAdmin,
     options,
+    databases.length,
     rootCollectionError,
     totalPersonalCollectionItems,
     libraryCollection,
   ]);
 
   const isLoading =
+    isLoadingDatabases ||
     isLoadingRootCollecton ||
     isLoadingPersonalCollecton ||
     isLoadingPersonalCollectionItems;

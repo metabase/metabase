@@ -1,6 +1,12 @@
 import { t } from "ttag";
 
-import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
   Button,
@@ -19,22 +25,29 @@ import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/a
 import type { Collection } from "metabase-types/api";
 
 type CreateLibraryModalProps = {
+  title?: string;
+  explanatorySentence?: string;
   isOpened: boolean;
-  withPublishInfo?: boolean;
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
 export function CreateLibraryModal({
+  title = t`Create your Library`,
+  explanatorySentence,
   isOpened,
-  withPublishInfo,
   onCreate,
   onClose,
 }: CreateLibraryModalProps) {
   return (
-    <Modal title={<ModalTitle />} opened={isOpened} onClose={onClose}>
+    <Modal
+      title={<ModalTitle title={title} />}
+      opened={isOpened}
+      onClose={onClose}
+    >
+      <FocusTrap.InitialFocus />
       <ModalBody
-        withPublishInfo={withPublishInfo}
+        explanatorySentence={explanatorySentence}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -42,28 +55,34 @@ export function CreateLibraryModal({
   );
 }
 
-function ModalTitle() {
+type ModalTitleProps = {
+  title: string;
+};
+
+function ModalTitle({ title }: ModalTitleProps) {
   return (
     <Group gap="sm">
       <Center w="2rem" h="2rem" c="brand" bg="brand-light" bdrs="md">
         <FixedSizeIcon name="repository" />
       </Center>
-      <Title order={3}>{t`Create your Library`}</Title>
+      <Title order={3}>{title}</Title>
     </Group>
   );
 }
 
 type ModalBodyProps = {
-  withPublishInfo?: boolean;
+  explanatorySentence?: string;
   onCreate: (collection: Collection) => void;
   onClose: () => void;
 };
 
-function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
+function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
   const [createLibrary] = useCreateLibraryMutation();
+  const { sendSuccessToast } = useMetadataToasts();
 
   const handleSubmit = async () => {
     const collection = await createLibrary().unwrap();
+    sendSuccessToast(t`Library created`);
     trackDataStudioLibraryCreated(collection.id);
     onCreate(collection);
   };
@@ -73,11 +92,7 @@ function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
       <Form>
         <FocusTrap.InitialFocus />
         <Stack gap="sm">
-          {withPublishInfo && (
-            <Text>
-              {t`Publishing a table means placing it in a collection in the Library so that it’s easy for your end users to find and use it in their explorations.`}
-            </Text>
-          )}
+          {explanatorySentence && <Text>{explanatorySentence}</Text>}
           <Text>
             {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
           </Text>
@@ -92,7 +107,7 @@ function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
             />
             <ListItem
               title={t`Version control`}
-              description={t`Sync your library to Git for governance`}
+              description={t`Sync your Library to Git`}
             />
             <ListItem
               title={t`High trust`}
@@ -105,11 +120,7 @@ function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
             <FormErrorMessage />
           </Box>
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-          <Button variant="filled" type="submit">
-            {withPublishInfo
-              ? t`Create my Library and publish`
-              : t`Create my Library`}
-          </Button>
+          <FormSubmitButton label={t`Create my Library`} variant="filled" />
         </Group>
       </Form>
     </FormProvider>

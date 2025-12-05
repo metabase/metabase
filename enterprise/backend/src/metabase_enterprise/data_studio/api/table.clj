@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-studio.api.table
   "/api/ee/data-studio/table endpoints for bulk table operations."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -44,6 +45,79 @@
 
 (mr/def ::data-layers
   (into [:enum {:decode/string keyword}] table/data-layers))
+
+;;; ------------------------------------------------ Remapping Graph Traversal ------------------------------------------------
+
+(defn- remapped-table-ids
+  "Find tables connected via FK remapping (Dimensions).
+  `input-field` and `output-field` are field aliases (:source_field or :target_field).
+  Returns table IDs from `output-field` that are connected to `tables` via `input-field`.
+  `tables` can be a set of table IDs or a HoneySQL subquery map."
+  [input-field output-field tables]
+  (if (empty? tables)
+    #{}
+    (let [input-table-id  (keyword (name input-field) "table_id")
+          output-table-id (keyword (name output-field) "table_id")]
+      (into #{} (map :table_id)
+            (t2/reducible-query {:select [[output-table-id :table_id]]
+                                 :from   [[(t2/table-name :model/Dimension) :dim]]
+                                 :join   [[(t2/table-name :model/Field) :source_field]
+                                          [:= :dim.field_id :source_field.id]
+                                          [(t2/table-name :model/Field) :target_field]
+                                          [:= :dim.human_readable_field_id :target_field.id]]
+                                 :where  [:and
+                                          [:= :dim.type "external"]
+                                          [:in input-table-id tables]
+                                          [:not [:in output-table-id tables]]]})))))
+
+(defn- upstream-table-ids
+  "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
+  via FK remapping (Dimensions)."
+  [source-tables]
+  (remapped-table-ids :source_field :target_field source-tables))
+
+(defn- downstream-table-ids
+  "Given a table selector (set of IDs or subquery), find all tables that depend on these tables
+  via FK remapping (Dimensions)."
+  [target-tables]
+  (remapped-table-ids :target_field :source_field target-tables))
+
+(defn- table-subquery
+  "Create a subquery that selects table IDs matching the given WHERE clause."
+  [where]
+  {:select [:id] :from [(t2/table-name :model/Table)] :where where})
+
+(defn- traverse-graph
+  "Recursively traverse the remapping graph starting from initial-ids.
+  Returns all reachable table IDs (including initial-ids)."
+  [neighbors-fn initial-ids]
+  (loop [visited initial-ids
+         frontier initial-ids]
+    (let [new-neighbors (set/difference (neighbors-fn frontier) visited)]
+      (if (empty? new-neighbors)
+        visited
+        (recur (set/union visited new-neighbors)
+               new-neighbors)))))
+
+(defn- all-upstream-table-ids
+  "Get all upstream table IDs recursively for tables matching the given WHERE clause.
+  The first hop uses a subquery to avoid materializing potentially millions of IDs;
+  subsequent hops use IDs since remappings are rare."
+  [source-table-where]
+  (let [initial-ids (upstream-table-ids (table-subquery source-table-where))]
+    (if (empty? initial-ids)
+      #{}
+      (traverse-graph upstream-table-ids initial-ids))))
+
+(defn- all-downstream-table-ids
+  "Get all downstream table IDs recursively for tables matching the given WHERE clause.
+  The first hop uses a subquery to avoid materializing potentially millions of IDs;
+  subsequent hops use IDs since remappings are rare."
+  [target-table-where]
+  (let [initial-ids (downstream-table-ids (table-subquery target-table-where))]
+    (if (empty? initial-ids)
+      #{}
+      (traverse-graph downstream-table-ids initial-ids))))
 
 (mr/def ::data-sources
   (into [:enum {:decode/string keyword}] table/data-sources))
@@ -110,8 +184,29 @@
       (maybe-sync-unhidden-tables! existing-tables set-map))
     {}))
 
-(api.macros/defendpoint :post "/publish-table"
-  "Set collection for each of selected tables"
+(api.macros/defendpoint :post "/selection"
+  "Gets information about selected tables"
+  [_route-params
+   _query-params
+   body :- ::table-selectors]
+  (api/check-superuser)
+  (let [fields            [:model/Table :id :db_id :name :display_name :schema :is_published]
+        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        selected-tables   (t2/select fields {:where where :limit 2})
+        selected-table    (when-not (next selected-tables)
+                            (first selected-tables))
+        upstream-ids      (all-upstream-table-ids where)
+        downstream-ids    (all-downstream-table-ids where)
+        upstream-tables   (when (seq upstream-ids)
+                            (t2/select fields :id [:in upstream-ids]))
+        downstream-tables (when (seq downstream-ids)
+                            (t2/select fields :id [:in downstream-ids]))]
+    {:selected_table              selected-table
+     :published_downstream_tables (filterv :is_published downstream-tables)
+     :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
+
+(api.macros/defendpoint :post "/publish-tables"
+  "Set collection for each of selected tables and all upstream dependencies recursively."
   [_route-params
    _query-params
    body :- ::table-selectors]
@@ -123,24 +218,32 @@
                               (throw (ex-info (tru "Multiple library-models collections found.")
                                               {:status-code 409}))
                               (first colls)))
-        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))]
+        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        upstream-ids      (all-upstream-table-ids where)
+        update-where      (if (seq upstream-ids)
+                            [:or where [:in :id upstream-ids]]
+                            where)]
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id (:id target-collection)
                         :is_published  true}
-               :where  where})
+               :where  update-where})
     {:target_collection target-collection}))
 
-(api.macros/defendpoint :post "/unpublish-table"
-  "Unset collection for each of selected tables"
+(api.macros/defendpoint :post "/unpublish-tables"
+  "Unset collection for each of selected tables and all downstream dependents recursively."
   [_route-params
    _query-params
    body :- ::table-selectors]
   (api/check-superuser)
-  (let [where (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))]
+  (let [where           (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        downstream-ids  (all-downstream-table-ids where)
+        update-where    (if (seq downstream-ids)
+                          [:or where [:in :id downstream-ids]]
+                          where)]
     (t2/query {:update (t2/table-name :model/Table)
                :set    {:collection_id nil
                         :is_published  false}
-               :where  where})
+               :where  update-where})
     api/generic-204-no-content))
 
 (defn- sync-schema-async!
