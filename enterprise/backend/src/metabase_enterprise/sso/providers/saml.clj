@@ -117,7 +117,8 @@
             first-name (get attrs (sso-settings/saml-attribute-firstname))
             last-name (get attrs (sso-settings/saml-attribute-lastname))
             groups (get attrs (sso-settings/saml-attribute-group))
-            tenant-slug (when (settings/get :use-tenants)
+            tenant-slug (when (and (not-empty (sso-settings/saml-attribute-tenant))
+                                   (settings/get :use-tenants))
                           (get attrs (sso-settings/saml-attribute-tenant)))
             user-attributes (sso-utils/remove-invalid-attributes attrs)]
         (when-not email
