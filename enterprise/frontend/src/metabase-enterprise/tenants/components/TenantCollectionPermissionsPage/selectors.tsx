@@ -61,7 +61,7 @@ const getTenantRootCollectionTreeItem = () => {
   const rootCollectionIcon = getCollectionIcon(ROOT_COLLECTION);
   return {
     ...ROOT_COLLECTION,
-    name: t`Tenant Root`,
+    name: t`Root shared collection`,
     icon: rootCollectionIcon.name,
     iconColor: rootCollectionIcon.color,
   };
@@ -130,7 +130,7 @@ const getTenantCollection = createSelector(
     if (collectionId === ROOT_COLLECTION.id) {
       return {
         ...ROOT_COLLECTION,
-        name: t`Tenant Root`,
+        name: t`Root shared collection`,
         children: collections,
       };
     }

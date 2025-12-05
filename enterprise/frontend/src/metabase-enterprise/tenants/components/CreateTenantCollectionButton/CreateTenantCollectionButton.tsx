@@ -30,7 +30,7 @@ export const CreateTenantCollectionButton = () => {
 
   return (
     <>
-      <Tooltip label={t`Create tenant collection`}>
+      <Tooltip label={t`Create shared collection`}>
         <ActionIcon
           size="lg"
           onClick={modal.open}
@@ -44,7 +44,7 @@ export const CreateTenantCollectionButton = () => {
 
       <Modal
         opened={isModalOpen}
-        title={t`New shared tenant collection`}
+        title={t`New shared collection`}
         onClose={modal.close}
       >
         <CreateCollectionForm

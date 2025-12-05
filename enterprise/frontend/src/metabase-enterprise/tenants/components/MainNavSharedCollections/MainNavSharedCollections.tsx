@@ -151,7 +151,7 @@ export const MainNavSharedCollections = () => {
       )}
       <Modal
         opened={modalOpen}
-        title={t`New shared tenant collection`}
+        title={t`New shared collection`}
         onClose={() => setModalOpen(false)}
       >
         <CreateCollectionForm

@@ -1,7 +1,7 @@
 const { H } = cy;
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const TENANT_ROOT_NAME = "Shared Tenant Collections";
+const TENANT_ROOT_NAME = "Shared collections";
 const TENANT_NAMESPACE = "shared-tenant-collection";
 
 /**
@@ -58,7 +58,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
   });
 
   describe("virtual tenant root display", () => {
-    it("should display Shared Tenant Collections in the entity picker when tenants are enabled", () => {
+    it("should display Shared collections in the entity picker when tenants are enabled", () => {
       setupTenantCollections().then(() => {
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.openQuestionActions();
@@ -71,7 +71,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
       });
     });
 
-    it("should NOT display Shared Tenant Collections when tenants are disabled", () => {
+    it("should NOT display Shared collections when tenants are disabled", () => {
       disableTenantsFeature();
 
       H.visitQuestion(ORDERS_QUESTION_ID);
@@ -84,7 +84,7 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
       });
     });
 
-    it("should navigate into Shared Tenant Collections and see sub-collections", () => {
+    it("should navigate into Shared collections and see sub-collections", () => {
       setupTenantCollections().then(() => {
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.openQuestionActions();

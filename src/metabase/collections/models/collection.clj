@@ -534,7 +534,7 @@
    [:namespace [:maybe [:or :keyword :string]]]])
 
 (mu/defn is-dedicated-tenant-collection-or-descendant? :- :boolean
-  "Is `collection` a Dedicated Tenant Collection, or a descendant of one?"
+  "Is `collection` a Tenant Collection, or a descendant of one?"
   [collection :- CollectionWithNamespace]
   (boolean
    ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
@@ -1535,7 +1535,7 @@
                       {:collection collection
                        :new-location new-location})))
     (when (= (:type collection) "tenant-specific-root-collection")
-      (throw (ex-info "Can't move a dedicated tenant collection" {:status-code 400})))
+      (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
@@ -1621,7 +1621,7 @@
   Descendants of Personal Collections, like Personal Collections themselves, cannot have permissions entries in the
   application database.
 
-  This also does *not* apply to Dedicated Tenant Collections or their descendants. Like Personal Collections, they
+  This also does *not* apply to Tenant Collections or their descendants. Like Personal Collections, they
   cannot have permissions entries in the application database.
 
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
@@ -1641,8 +1641,8 @@
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
 (mu/defn- check-changes-allowed-for-protected-collection
-  "If we're trying to UPDATE a Personal Collection or Dedicated Tenant Collection, make sure the proposed changes are
-  allowed. Personal Collections and DTCs have lots of restrictions -- you can't archive them, for example, nor can you
+  "If we're trying to UPDATE a Personal Collection or Tenant Collection, make sure the proposed changes are
+  allowed. Personal Collections and TCs have lots of restrictions -- you can't archive them, for example, nor can you
   transfer them to other Users."
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot
    collection-updates :- :map]
@@ -1650,7 +1650,7 @@
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [ctype        (if (:personal_owner_id collection-before-updates)
                        "Personal Collection"
-                       "Dedicated Tenant Collection")
+                       "Tenant Collection")
         unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a {0}." ctype)
                       :authority_level   (tru "You are not allowed to change the authority level of a {0}." ctype)
                       ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
