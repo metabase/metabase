@@ -129,4 +129,10 @@
      "(analytics-dev-mode! false)")
     (println (c/green "  ✓ Setting disabled"))
 
+    (println "\nResetting up normal analytics database...")
+    (be-dev/nrepl-eval
+     "metabase-enterprise.audit-app.audit"
+     "(ensure-audit-db-installed!)")
+    (println (c/green "  ✓ Normal analytics database reset"))
+
     (println (c/green "\n✓ Analytics dev mode teardown complete!"))))
