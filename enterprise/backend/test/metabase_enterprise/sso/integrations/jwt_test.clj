@@ -61,15 +61,16 @@
 
 (defmacro ^:private with-jwt-default-setup! [& body]
   `(mt/test-helpers-set-global-values!
-     (mt/with-premium-features #{:audit-app}
-       (do-with-other-sso-types-disabled!
-        (fn []
-          (mt/with-additional-premium-features #{:sso-jwt}
-            (saml-test/call-with-login-attributes-cleared!
-             (fn []
-               (call-with-default-jwt-config!
-                (fn []
-                  ~@body))))))))))
+     (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+       (mt/with-premium-features #{:audit-app}
+         (do-with-other-sso-types-disabled!
+          (fn []
+            (mt/with-additional-premium-features #{:sso-jwt}
+              (saml-test/call-with-login-attributes-cleared!
+               (fn []
+                 (call-with-default-jwt-config!
+                  (fn []
+                    ~@body)))))))))))
 
 (deftest sso-prereqs-test
   (do-with-other-sso-types-disabled!
@@ -601,7 +602,7 @@
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}]
-            (mt/with-model-cleanup [:model/User]
+            (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
               (let [response (client/client-real-response :get 302 "/auth/sso"
                                                           {:request-options {:redirect-strategy :none}}
                                                           :return_to default-redirect-uri

@@ -1013,12 +1013,13 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Collection {shared-name :name} {:name "Shared Tenant Test Collection"
                                                               :namespace collection/shared-tenant-ns}
-                       :model/Collection _normal-coll {:name "Normal Test Collection"}]
+                       :model/Collection {normal-name :name} {:name "Normal Test Collection"}]
           (let [results (->> (search-request-data :crowberto :q "Test Collection")
                              (filter #(= (:model %) "collection"))
-                             first)]
+                             (map :name)
+                             set)]
             (testing "shared-tenant-collection namespace collections are returned in search"
-              (is (=? {:name shared-name} results)))))))))
+              (is (= #{shared-name normal-name} results)))))))))
 
 (deftest shared-tenant-collection-dataset-search-test
   (testing "Search returns datasets (models) from collections in the shared-tenant-collection namespace"

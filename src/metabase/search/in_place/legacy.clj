@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.search.config
     :as search.config
