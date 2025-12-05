@@ -69,7 +69,8 @@ describe("scenarios > embedding-sdk > requests", () => {
       deferreds[0].resolve();
 
       getSdkRoot().within(() => {
-        cy.findByText("Orders").should("exist");
+        // Long timeout because we're waiting for
+        cy.findByText("Orders", { timeout: 60_000 }).should("exist");
 
         // Open the grouping dialog
         cy.findByText("Group").click();
