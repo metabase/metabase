@@ -107,7 +107,7 @@ const init = async () => {
     !runningFromJar
   ) {
     printBold(
-      "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
+      "⚠️⚠️ You don't have your frontend running. You should probably run pnpm build-hot ⚠️⚠️",
     );
   }
 

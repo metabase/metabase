@@ -7,13 +7,13 @@ Scripts for generating docs.
 From this directory, run:
 
 ```bash
-yarn install
+pnpm install
 ```
 
 Then:
 
 ```bash
-yarn generate-shortcuts
+pnpm generate-shortcuts
 ```
 Docs will be written to:
 

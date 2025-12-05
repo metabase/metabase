@@ -22,16 +22,16 @@ To complete any build of the Metabase code, you'll need to install the following
 
 3. [Node.js (https://nodejs.org/)](https://nodejs.org/) - latest LTS release
 
-4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by running:
+4. [pnpm package manager for Node.js](https://pnpm.io/) - you can install it in any OS by running:
 
 ```
-npm install --global yarn
+npm install --global pnpm
 ```
 
 On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
 
 ```
-sudo apt install openjdk-21-jdk nodejs && sudo npm install --global yarn
+sudo apt install openjdk-21-jdk nodejs && sudo npm install --global pnpm
 ```
 
 If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with:
@@ -138,7 +138,7 @@ When it’s done, you should see a message that says something like “Metabase 
 10. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command:
 
 ```
-yarn build-hot
+pnpm build-hot
 ```
 
 If you're having trouble with this step, make sure you are using the LTS version of [Node.js (https://nodejs.org/)](https://nodejs.org/).
