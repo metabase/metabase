@@ -47,7 +47,6 @@ const init = async () => {
   const userOverrides = await parseArguments(cliArguments);
 
   const { isBackendRunning } = CypressBackend;
-  const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
 
   const runningFromJar = !!options.JAR_PATH;
 
@@ -55,16 +54,13 @@ const init = async () => {
   shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml up -d");
 
   if (runningFromJar) {
-    if (isBackendRunning || isFrontendRunning) {
-      printBold("⚠️ Your backend and/or frontend are already running");
+    if (isBackendRunning) {
+      printBold("⚠️ Your backend is already running");
       console.log(`You wanted to test against a pre-built Metabase JAR:
         - It will spin up both the backend and the frontend for you
-        - Kill the existing processes and run the script again
+        - Kill the backend pid ${isBackendRunning} and run the script again
+        - Alternatively, use a different MB_JETTY_PORT in this shell and try again
         `);
-
-      isBackendRunning && console.log(`Kill backend pid: ${isBackendRunning}`);
-      isFrontendRunning &&
-        console.log(`Kill frontend pid: ${isFrontendRunning}`);
 
       process.exit(FAILURE_EXIT_CODE);
     } else {
@@ -103,6 +99,7 @@ const init = async () => {
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
   }
 
+  const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
   if (
     !isFrontendRunning &&
     options.CYPRESS_TESTING_TYPE === "e2e" &&
