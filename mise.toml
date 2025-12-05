@@ -28,6 +28,8 @@
 #
 #   3. Set MISE_PROJECT_DIR environment variable:
 #      MISE_PROJECT_DIR=/path/to/metabase yarn build
+#
+#  For more info, see: docs/developers-guide/devenv.md 'IDE and editor setup' Section
 
 [settings]
 # Automatically install tools when entering the project directory
