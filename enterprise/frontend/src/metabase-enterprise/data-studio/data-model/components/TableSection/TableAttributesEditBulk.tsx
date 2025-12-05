@@ -24,7 +24,11 @@ import { PublishModelsModal } from "../TablePicker/components/PublishModelsModal
 import S from "./TableAttributes.module.css";
 import { TableSectionGroup } from "./TableSectionGroup";
 
-export function TableAttributesEditBulk() {
+type Props = {
+  onUpdate: () => void;
+};
+
+export function TableAttributesEditBulk({ onUpdate }: Props) {
   const {
     selectedTables,
     selectedSchemas,
@@ -97,6 +101,7 @@ export function TableAttributesEditBulk() {
     if (entityType) {
       setEntityType(entityType);
     }
+    onUpdate();
   };
 
   useEffect(() => {
@@ -241,6 +246,7 @@ export function TableAttributesEditBulk() {
         databases={selectedDatabases}
         isOpen={isCreateModelsModalOpen}
         onClose={() => setIsCreateModelsModalOpen(false)}
+        onSuccess={onUpdate}
       />
 
       <SyncOptionsModal

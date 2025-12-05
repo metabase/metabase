@@ -55,7 +55,7 @@ function TestWrapper({
 
   return (
     <SelectionProvider>
-      <TableAttributesEditBulk />
+      <TableAttributesEditBulk onUpdate={() => {}} />
       <SelectionController
         initialTables={initialTables}
         onSelectionChange={() => setSelectionChanged(true)}

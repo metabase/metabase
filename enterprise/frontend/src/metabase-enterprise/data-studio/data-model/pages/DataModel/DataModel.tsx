@@ -115,6 +115,10 @@ function DataModelContent({ params }: Props) {
     },
   );
 
+  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
+    null,
+  );
+
   if (databasesData?.data?.length === 0) {
     return <NoDatabasesEmptyState />;
   }
@@ -153,6 +157,8 @@ function DataModelContent({ params }: Props) {
           schemaName={schemaName}
           tableId={navigationTableId}
           params={params}
+          setOnUpdateCallback={setOnUpdateCallback}
+          onUpdate={() => onUpdateCallback?.()}
         />
       </Stack>
 
@@ -180,7 +186,11 @@ function DataModelContent({ params }: Props) {
             maw={COLUMN_CONFIG.table.max}
             miw={COLUMN_CONFIG.table.min}
           >
-            <TableAttributesEditBulk />
+            <TableAttributesEditBulk
+              onUpdate={() => {
+                onUpdateCallback?.();
+              }}
+            />
           </Stack>
         )}
 

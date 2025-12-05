@@ -166,6 +166,8 @@ function setup({
   });
 
   const onChange = jest.fn();
+  const onUpdate = jest.fn();
+  const setOnUpdateCallback = jest.fn();
   const params = {};
 
   renderWithProviders(
@@ -176,6 +178,8 @@ function setup({
           <UncontrolledTablePicker
             initialValue={path}
             onChange={onChange}
+            onUpdate={onUpdate}
+            setOnUpdateCallback={setOnUpdateCallback}
             params={params}
           />
         </SelectionProvider>

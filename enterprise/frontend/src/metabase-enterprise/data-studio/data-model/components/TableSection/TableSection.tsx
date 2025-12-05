@@ -152,7 +152,6 @@ const TableSectionBase = ({
       });
     }
   };
-
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box className={S.header} bg="accent-gray-light" px="lg" mt="lg">

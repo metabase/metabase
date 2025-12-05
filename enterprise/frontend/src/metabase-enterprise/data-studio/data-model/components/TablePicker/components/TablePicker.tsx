@@ -31,6 +31,8 @@ interface TablePickerProps {
   path: TreePath;
   className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
+  onUpdate: () => void;
 }
 
 export function TablePicker({
@@ -38,6 +40,8 @@ export function TablePicker({
   path,
   className,
   onChange,
+  onUpdate,
+  setOnUpdateCallback,
 }: TablePickerProps) {
   const { selectedTables, selectedSchemas, selectedDatabases, resetSelection } =
     useSelection();
@@ -56,16 +60,11 @@ export function TablePicker({
   const filtersCount = getFiltersCount(filters);
 
   const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
-  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
-    null,
-  );
 
-  function handlePublishSuccess() {
-    if (onUpdateCallback) {
-      onUpdateCallback();
-    }
+  const handlePublishSuccess = () => {
+    onUpdate();
     resetSelection();
-  }
+  };
 
   useEffect(() => {
     const togglingBetweenSearchAndTree =
