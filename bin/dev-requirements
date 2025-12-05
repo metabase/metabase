@@ -63,7 +63,8 @@ main() {
 
     print_section "Installed Development Tools"
 
-    requirements_met=true
+    # Track issues for final summary
+    issues=()
 
     # Node.js
     node_version=$(get_node_version)
@@ -73,11 +74,11 @@ main() {
             print_found "Node.js $node_version (meets requirement: >= 22)"
         else
             print_warning "Node.js $node_version (required: >= 22)"
-            requirements_met=false
+            issues+=("Node.js: version $node_version is too old (need >= 22)")
         fi
     else
         print_not_found "Node.js (required: >= 22)"
-        requirements_met=false
+        issues+=("Node.js: not installed (need >= 22)")
     fi
 
     # Yarn
@@ -87,11 +88,11 @@ main() {
             print_found "Yarn $yarn_version (Yarn Classic - correct!)"
         else
             print_warning "Yarn $yarn_version (required: Yarn Classic 1.x)"
-            requirements_met=false
+            issues+=("Yarn: version $yarn_version is not Yarn Classic 1.x")
         fi
     else
         print_not_found "Yarn (required: Yarn Classic 1.x)"
-        requirements_met=false
+        issues+=("Yarn: not installed (need Yarn Classic 1.x)")
     fi
 
     # Java
@@ -106,16 +107,16 @@ main() {
         "wrong_distribution")
             print_warning "Java $java_version ($java_distribution)"
             echo "     Required: Java 21 (Eclipse Temurin)"
-            requirements_met=false
+            issues+=("Java: wrong distribution '$java_distribution' (need Eclipse Temurin)")
             ;;
         "wrong_version")
             print_warning "Java $java_version ($java_distribution)"
             echo "     Required: Java 21 (Eclipse Temurin)"
-            requirements_met=false
+            issues+=("Java: version $java_version is incorrect (need Java 21)")
             ;;
         "not_installed")
             print_not_found "Java (required: Java 21 Eclipse Temurin)"
-            requirements_met=false
+            issues+=("Java: not installed (need Java 21 Eclipse Temurin)")
             ;;
     esac
 
@@ -132,10 +133,11 @@ main() {
     else
         if [ -n "$required_clojure_version" ]; then
             print_not_found "Clojure CLI (required for Clojure $required_clojure_version)"
+            issues+=("Clojure CLI: not installed (need for Clojure $required_clojure_version)")
         else
             print_not_found "Clojure CLI"
+            issues+=("Clojure CLI: not installed")
         fi
-        requirements_met=false
     fi
 
     # Babashka
@@ -144,18 +146,7 @@ main() {
         print_found "Babashka $bb_version"
     else
         print_not_found "Babashka (required for mage task automation)"
-        requirements_met=false
-    fi
-
-    # Show warning if requirements are not met
-    if [ "$requirements_met" = false ]; then
-        echo ""
-        echo -e "  ${BOLD}${RED}⚠ REQUIREMENTS NOT MET ⚠${NC}"
-        echo ""
-        echo -e "  ${BOLD}Your current setup does not meet Metabase's requirements.${NC}"
-        echo "  The project will not work until the issues above are resolved."
-        echo ""
-        echo "  Please install or update the missing/incorrect tools listed above."
+        issues+=("Babashka: not installed (needed for mage)")
     fi
 
     print_section "Metabase Project Requirements"
@@ -185,6 +176,7 @@ main() {
 
     print_section "Recommended Setup"
 
+    echo ""
     echo -e "  ${BOLD}${GREEN}We recommend using 'mise'${NC} for version management because:"
     echo "    - Manages Node.js, Java, and other tools in one place"
     echo "    - Automatically switches versions per-project"
@@ -192,8 +184,47 @@ main() {
     echo ""
     echo "    Learn more: https://mise.jdx.dev/getting-started.html"
 
-    # Footer
-    print_header "Detection Complete"
+    if has_tool mise; then
+        echo ""
+        echo -e "  ${BOLD}${GREEN}Good news!${NC} You have mise installed."
+        echo "  If you haven't already, consider configuring Metabase to use mise via 'bin/dev-install'."
+        echo ""
+        
+        echo "Running 'mise doctor' to check your mise setup..."
+        if mise doctor &>/dev/null; then
+            print_success "${BOLD}mise doctor${NC} gives you a clean bill of health 🩺"
+        else
+            print_error "mise doctor found some issues:"
+            echo ""
+            mise doctor
+        fi
+    else
+        echo ""
+        echo -e "  ${BOLD}Next Steps:${NC}"
+        echo "    - Run './bin/dev-install' to set up your development environment automatically."
+    fi
+
+    # Final Verdict
+    print_header "Verdict"
+
+    if [ ${#issues[@]} -eq 0 ]; then
+        echo ""
+        echo -e "  ${BOLD}${GREEN}✓ You're good to go!${NC} All requirements met."
+        echo "  Your dev environment is ready to build Metabase. 🚀"
+        echo ""
+        echo ""
+    else
+        echo ""
+        echo -e "  ${BOLD}${RED}✗ Not quite there yet.${NC} Found ${#issues[@]} issue(s):"
+        echo ""
+        for issue in "${issues[@]}"; do
+            echo -e "    ${RED}•${NC} $issue"
+        done
+        echo ""
+        echo -e "  ${BOLD}Tip:${NC} Run ${GREEN}${BOLD}./bin/dev-install${NC} to fix these automatically."
+        echo ""
+        echo ""
+    fi
 
     echo "For detailed development environment setup, see:"
     echo "  docs/developers-guide/devenv.md"
