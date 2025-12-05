@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "fc7a75ca055fd560cc0eca2e335ea8f1f862f5a0"
+  },
+  "upstream": {
+    "branch": "emb-1083-show-dedicated-tenant-collections-in-entity-pickers-for"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66583,
+        "gqlID": "PR_kwDOAczgH863TLXs"
+      }
+    }
   }
 }
