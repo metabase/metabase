@@ -6,7 +6,6 @@ import {
   type TooltipWarningMode,
 } from "metabase/embedding/embedding-iframe-sdk-setup/components/warnings/TooltipWarning";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { Text } from "metabase/ui";
 
 import { WithNotAvailableWithoutSimpleEmbeddingFeatureWarning } from "./WithNotAvailableWithoutSimpleEmbeddingFeatureWarning";
 
@@ -29,11 +28,7 @@ export const WithNotAvailableForGuestEmbedsWarning = ({
       {({ disabled: disabledForOss, hoverCard: disabledForOssHoverCard }) => (
         <TooltipWarning
           enableTooltip={!disabledForOss}
-          warning={
-            <Text lh="md" p="md">
-              {t`Not available if Guest Mode is selected`}
-            </Text>
-          }
+          tooltip={t`Not available if Guest Mode is selected`}
           disabled={!!settings.isGuest}
         >
           {({

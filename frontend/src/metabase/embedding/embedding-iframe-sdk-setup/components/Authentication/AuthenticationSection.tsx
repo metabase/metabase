@@ -93,11 +93,7 @@ const WithGuestEmbedsDisabledWarning = ({
 
   return (
     <TooltipWarning
-      warning={
-        <Text lh="md" p="md">
-          {t`Disabled in the admin settings`}
-        </Text>
-      }
+      tooltip={t`Disabled in the admin settings`}
       disabled={disabled}
     >
       {children}
