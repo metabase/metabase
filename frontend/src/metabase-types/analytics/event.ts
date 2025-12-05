@@ -459,7 +459,7 @@ export type ClickActionPerformedEvent = ValidateEvent<{
 
 export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
   event: "remote_sync_branch_switched";
-  triggered_from: "sidebar" | "admin-settings";
+  triggered_from: "sidebar" | "admin-settings" | "app-bar";
 }>;
 
 export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
@@ -469,7 +469,7 @@ export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
 
 export type RemoteSyncPullChangesEvent = ValidateEvent<{
   event: "remote_sync_pull_changes";
-  triggered_from: "sidebar" | "admin-settings";
+  triggered_from: "sidebar" | "admin-settings" | "app-bar";
   event_detail?: "force";
 }>;
 

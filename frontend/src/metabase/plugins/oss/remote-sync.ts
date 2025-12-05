@@ -2,12 +2,18 @@ import type { TagDescription } from "@reduxjs/toolkit/query";
 import type { ComponentType, ReactNode } from "react";
 
 import {
+  DefaultCollectionsNavTree,
+  type DefaultCollectionsNavTreeProps,
+} from "metabase/plugins/components/DefaultCollectionsNavTree";
+import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { Collection } from "metabase-types/api";
 
 import type { SyncedCollectionsSidebarSectionProps } from "../types";
+
+export type CollectionsNavTreeProps = DefaultCollectionsNavTreeProps;
 
 export type CollectionRemoteSyncToggleProps = {
   collection: Collection;
@@ -19,6 +25,8 @@ const getDefaultPluginRemoteSync = () => ({
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   CollectionRemoteSyncToggle: PluginPlaceholder,
+  GitSyncAppBarControls: PluginPlaceholder,
+  CollectionsNavTree: DefaultCollectionsNavTree,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
@@ -34,6 +42,8 @@ export const PLUGIN_REMOTE_SYNC: {
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   CollectionRemoteSyncToggle: ComponentType<CollectionRemoteSyncToggleProps>;
+  GitSyncAppBarControls: ComponentType;
+  CollectionsNavTree: ComponentType<CollectionsNavTreeProps>;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
