@@ -12,6 +12,19 @@
   {:model/Card :card
    :model/Transform :transform})
 
+(defmulti ^:private get-db-id
+  "Gets the database id for a toucan instance"
+  {:arglists '([toucan-instance])}
+  t2/model)
+
+(defmethod get-db-id :default
+  [toucan-instance]
+  (:database_id toucan-instance))
+
+(defmethod get-db-id :model/Transform
+  [toucan-instance]
+  (some-> toucan-instance :source :query :database))
+
 (mu/defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
 
@@ -19,13 +32,14 @@
   [toucan-instance]
   (when-not (lib-be/metadata-provider-cache)
     (log/warn "FIXME: deps.findings/upsert-analysis! ran without reusing `MetadataProvider`s"))
-  (let [mp (lib-be/application-database-metadata-provider (:database_id toucan-instance))
-        model (t2/model toucan-instance)
-        results (try (deps.analysis/check-entity mp (model->dependency-type model) (:id toucan-instance))
-                     (catch Exception e
-                       {:exception (.getMessage e)}))
-        success (empty? results)]
-    (deps.analysis-finding/upsert-analysis! (model->dependency-type model) (:id toucan-instance) success results)))
+  (when-let [db-id (get-db-id toucan-instance)]
+    (let [mp (lib-be/application-database-metadata-provider db-id)
+          model (t2/model toucan-instance)
+          results (try (deps.analysis/check-entity mp (model->dependency-type model) (:id toucan-instance))
+                       (catch Exception e
+                         {:exception (.getMessage e)}))
+          success (empty? results)]
+      (deps.analysis-finding/upsert-analysis! (model->dependency-type model) (:id toucan-instance) success results))))
 
 (mu/defn analyze-entities :- :int
   [model :- [:enum :card :transform]
