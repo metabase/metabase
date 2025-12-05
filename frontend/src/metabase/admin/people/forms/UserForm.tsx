@@ -24,6 +24,10 @@ const localUserSchema = Yup.object({
   email: Yup.string().email().required(Errors.required),
 });
 
+const externalUserSchema = localUserSchema.shape({
+  tenant_id: Yup.number().required(Errors.required),
+});
+
 interface UserFormProps {
   initialValues?: Partial<User>;
   onSubmit: (val: Partial<User>) => void;
@@ -46,7 +50,8 @@ export const UserForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={localUserSchema}
+      validationSchema={external ? externalUserSchema : localUserSchema}
+      validateOnMount
       enableReinitialize
       onSubmit={onSubmit}
     >
@@ -86,6 +91,7 @@ export const UserForm = ({
             <PLUGIN_TENANTS.FormTenantWidget
               required
               name="tenant_id"
+              placeholder={t`Select a tenant`}
               disabled={edit}
             />
           )}

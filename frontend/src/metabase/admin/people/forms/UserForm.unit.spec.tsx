@@ -2,10 +2,13 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { Tenant } from "metabase-types/api";
 import {
   createMockGroup,
+  createMockTenant,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -31,16 +34,24 @@ const USER = createMockUser({
   ],
 });
 
-const setup = ({ hasEnterprisePlugins = false, initialValues = USER } = {}) => {
+const setup = ({
+  hasEnterprisePlugins = false,
+  initialValues = USER,
+  external = false,
+  tenants = [] as Tenant[],
+} = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
 
+  setupTenantEntpoints(tenants);
+
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         sandboxes: true,
+        tenants: true,
       }),
     }),
   });
@@ -54,6 +65,7 @@ const setup = ({ hasEnterprisePlugins = false, initialValues = USER } = {}) => {
       onSubmit={onSubmit}
       onCancel={onCancel}
       initialValues={initialValues}
+      external={external}
     />,
     {
       storeInitialState: state,
@@ -289,6 +301,74 @@ describe("UserForm", () => {
           await screen.findByRole("button", { name: "Update" }),
         ).toBeDisabled(),
       );
+    });
+  });
+
+  describe("External Users", () => {
+    const TENANTS = [
+      createMockTenant({ id: 1, name: "Acme Corp" }),
+      createMockTenant({ id: 2, name: "TechStart Inc" }),
+    ];
+
+    it("should require tenant_id for external users", async () => {
+      setup({
+        hasEnterprisePlugins: true,
+        external: true,
+        tenants: TENANTS,
+        initialValues: {
+          ...USER,
+          tenant_id: null,
+        },
+      });
+
+      // Wait for form to render
+      await screen.findByLabelText(/Email/);
+
+      // The submit button should be disabled initially because tenant_id is required but not set
+      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+    });
+
+    it("should allow you to submit when tenant_id is selected", async () => {
+      const { onSubmit } = setup({
+        hasEnterprisePlugins: true,
+        external: true,
+        tenants: TENANTS,
+        initialValues: {
+          ...USER,
+          tenant_id: null,
+        },
+      });
+
+      // Wait for form to render
+      await screen.findByLabelText(/Email/);
+
+      // Initially disabled because tenant_id is required but not set
+      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+
+      // Select a tenant
+      await userEvent.click(
+        await screen.findByRole("textbox", { name: "Tenant" }),
+      );
+      await userEvent.click(await screen.findByText("Acme Corp"));
+
+      // Now the button should be enabled because form is dirty and valid
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
+      });
+
+      // Submit the form
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      // Verify form was submitted with the selected tenant_id
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            ...USER,
+            tenant_id: 1,
+          }),
+          expect.anything(),
+        );
+      });
     });
   });
 });
