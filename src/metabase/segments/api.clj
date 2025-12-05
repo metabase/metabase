@@ -38,7 +38,7 @@
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/Segment :id id))
-      (t2/hydrate :creator :definition_description)))
+      (t2/hydrate :creator)))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
@@ -48,12 +48,10 @@
 
 (api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
-  [_route-params
-   {:keys [table_id]} :- [:map [:table_id {:optional true} [:maybe ms/PositiveInt]]]]
+  []
   (as-> (t2/select :model/Segment
-                   {:where (cond-> [:and [:= :archived false]]
-                             table_id (conj [:= :table_id table_id]))
-                    :order-by [[:%lower.name :asc]]}) segments
+                   :archived false
+                   {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
     (t2/hydrate segments :creator :definition_description)))
 

@@ -157,8 +157,7 @@
                   :created_at              true
                   :updated_at              true
                   :archived                false
-                  :definition              true
-                  :definition_description "Filtered by Name is cans"}
+                  :definition              true}
                  (-> (mt/user-http-request
                       :crowberto :put 200 (format "segment/%d" id)
                       {:id                      id
@@ -274,8 +273,7 @@
                     :updated_at              true
                     :entity_id               true
                     :archived                false
-                    :definition              true
-                    :definition_description "Filtered by Name is cans"}
+                    :definition              true}
                    (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
                        segment-response
                        (dissoc :query_description)
@@ -308,9 +306,7 @@
                   :definition_description "Filtered by Price is equal to 4 and Category → Name is BBQ"}]
                 (filter (fn [{segment-id :id}]
                           (contains? #{id-1 id-2 id-3} segment-id))
-                        (mt/user-http-request :rasta :get 200 "segment/"))))
-        (is (=? [{:id id-1}]
-                (mt/user-http-request :rasta :get 200 "segment/" :table_id (mt/id :users))))))))
+                        (mt/user-http-request :rasta :get 200 "segment/"))))))))
 
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"
