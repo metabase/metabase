@@ -67,7 +67,7 @@ If you use an IDE or editor that runs commands outside your interactive shell (V
 
 Shims are wrapper scripts that automatically select the correct tool version based on the current directory's `mise.toml`.
 
-First, add this to your shell profile (`.zshrc`, `.bashrc`, `.config/fish/config.fish`):
+First, add this to your shell profile (**.zshrc**, **.bashrc**, **.config/fish/config.fish**):
 
 ```bash
 export PATH="$HOME/.local/share/mise/shims:$PATH"
@@ -77,7 +77,7 @@ Then configure your editor:
 
 ### VS Code
 
-VS Code usually inherits your shell's PATH if you launch it from the terminal. If not, add to your `settings.json`:
+VS Code usually inherits your shell's PATH if you launch it from the terminal. If not, add to your **settings.json**:
 
 ```json
 {
@@ -92,14 +92,14 @@ VS Code usually inherits your shell's PATH if you launch it from the terminal. I
 
 ### Emacs
 
-Add to your Emacs config (`init.el` or `.emacs`):
+Add to your Emacs config (**init.el** or **.emacs**):
 
 ```elisp
 (add-to-list 'exec-path (expand-file-name "~/.local/share/mise/shims"))
 (setenv "PATH" (concat (expand-file-name "~/.local/share/mise/shims") ":" (getenv "PATH")))
 ```
 
-If you use `exec-path-from-shell`, it should pick up the shims automatically after you update your shell profile.
+If you use **exec-path-from-shell**, it should pick up the shims automatically after you update your shell profile.
 
 ### IntelliJ / Cursive
 

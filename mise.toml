@@ -10,7 +10,7 @@
 # Getting started:
 # 1. Run: ./bin/dev-install
 #
-# That's it. No need to do anything else. 🎉
+# The install script handles all the setup.
 # This will install mise, configure your shell, and set up all required tools.
 #
 # IDE/Editor users (not cd'd into the repo):
@@ -29,7 +29,7 @@
 #   3. Set MISE_PROJECT_DIR environment variable:
 #      MISE_PROJECT_DIR=/path/to/metabase yarn build
 #
-#  For more info, see: docs/developers-guide/devenv.md 'IDE and editor setup' Section
+#  For more info, see: docs/developers-guide/devenv.md > 'IDE and editor setup' Section
 
 [settings]
 # Automatically install tools when entering the project directory
