@@ -26,9 +26,9 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
-import { getWritableCollection } from "./ModelingSidebar/LibrarySection/LibraryCollectionTree/utils";
 import { useBuildSnippetTree, useBuildTreeForCollection } from "./hooks";
 import { type TreeItem, isCollection } from "./types";
+import { getWritableCollection } from "./utils";
 
 export function ModelingLandingPage() {
   usePageTitle(t`Modeling`);

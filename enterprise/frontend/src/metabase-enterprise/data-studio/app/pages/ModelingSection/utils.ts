@@ -1,9 +1,13 @@
 import { t } from "ttag";
 
 import { isRootCollection } from "metabase/collections/utils";
-import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionType,
+  NativeQuerySnippet,
+} from "metabase-types/api";
 
-import type { TreeItem } from "../../../types";
+import type { TreeItem } from "./types";
 
 function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   return {
@@ -68,4 +72,14 @@ export function buildSnippetTree(
   );
 
   return [{ ...rootNode, name: t`SQL snippets` }];
+}
+
+export function getWritableCollection(
+  rootCollection: Collection,
+  type: CollectionType,
+) {
+  const collection = rootCollection.children?.find(
+    (collection) => collection.type === type,
+  );
+  return collection?.can_write ? collection : undefined;
 }

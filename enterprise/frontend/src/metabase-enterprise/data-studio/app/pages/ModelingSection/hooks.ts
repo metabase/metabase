@@ -9,8 +9,8 @@ import {
 import { getIcon } from "metabase/lib/icon";
 import type { Collection } from "metabase-types/api";
 
-import { buildSnippetTree } from "./ModelingSidebar/ModelingSidebarView/SnippetsSection/utils";
 import type { TreeItem } from "./types";
+import { buildSnippetTree } from "./utils";
 
 export const useBuildTreeForCollection = (
   collection?: Collection,
@@ -37,12 +37,14 @@ export const useBuildTreeForCollection = (
           id: collection.id,
           icon: getIcon({ ...collection, model: "collection" }).name,
           data: { ...collection, model: "collection" },
+          model: "collection",
           children: items.data.map((item) => ({
             name: item.name,
             updatedAt: item["last-edit-info"]?.timestamp,
             icon: getIcon({ model: item.model }).name,
             data: item,
             id: item.id,
+            model: item.model,
           })),
         },
       ],
