@@ -376,7 +376,8 @@
   `SELECT 1` query."
   [driver details]
   (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (can-connect-with-spec? jdbc-spec)))
+    (or (:is-audit-dev details)
+        (can-connect-with-spec? jdbc-spec))))
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))
