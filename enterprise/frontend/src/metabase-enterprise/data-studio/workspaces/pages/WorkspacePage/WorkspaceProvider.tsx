@@ -60,6 +60,7 @@ export interface WorkspaceContextValue {
   setActiveTable: (table: OpenTable | undefined) => void;
   addOpenedTab: (tab: WorkspaceTab) => void;
   removeOpenedTab: (tabId: string) => void;
+  setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform) => void;
   removeOpenedTransform: (transformId: number) => void;
   editedTransforms: Map<number, EditedTransform>;
@@ -241,6 +242,16 @@ export const WorkspaceProvider = ({
           activeTable: newActiveTable,
         };
       });
+    },
+    [updateWorkspaceState],
+  );
+
+  const setOpenedTabs = useCallback(
+    (tabs: WorkspaceTab[]) => {
+      updateWorkspaceState((state) => ({
+        ...state,
+        openedTabs: tabs,
+      }));
     },
     [updateWorkspaceState],
   );
@@ -491,6 +502,7 @@ export const WorkspaceProvider = ({
       setActiveTable,
       addOpenedTab,
       removeOpenedTab,
+      setOpenedTabs,
       addOpenedTransform,
       removeOpenedTransform,
       editedTransforms: currentState.editedTransforms,
@@ -512,6 +524,7 @@ export const WorkspaceProvider = ({
       setActiveTable,
       addOpenedTab,
       removeOpenedTab,
+      setOpenedTabs,
       addOpenedTransform,
       removeOpenedTransform,
       currentState.editedTransforms,

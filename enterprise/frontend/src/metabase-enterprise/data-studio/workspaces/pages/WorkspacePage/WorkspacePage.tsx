@@ -1,3 +1,14 @@
+import type { DragEndEvent } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
+import {
+  restrictToHorizontalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -43,6 +54,7 @@ import {
   useWorkspace,
   WorkspaceProvider,
 } from "./WorkspaceProvider";
+import { Sortable } from "metabase/common/components/Sortable";
 
 type WorkspacePageProps = {
   params: {
@@ -56,6 +68,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   const { sendErrorToast } = useMetadataToasts();
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const [tab, setTab] = useState<string>("setup");
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 10 },
+  });
 
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
 
@@ -103,6 +119,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     setActiveTab,
     addOpenedTab,
     removeOpenedTab,
+    setOpenedTabs,
     addOpenedTransform,
     patchEditedTransform,
     hasUnsavedChanges,
@@ -226,6 +243,26 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     [addOpenedTab],
   );
 
+  const handleTabDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const activeId = event.active.id;
+      const overId = event.over?.id;
+      if (typeof activeId === "string" && typeof overId === "string") {
+        const activeIndex = openedTabs.findIndex(({ id }) => id === activeId);
+        const overIndex = openedTabs.findIndex(({ id }) => id === overId);
+        const reorderedTabs = arrayMove(openedTabs, activeIndex, overIndex);
+        setOpenedTabs(reorderedTabs);
+
+        // Activate the dragged tab after reordering
+        const draggedTab = reorderedTabs.find((tab) => tab.id === activeId);
+        if (draggedTab) {
+          setActiveTab(draggedTab);
+        }
+      }
+    },
+    [openedTabs, setOpenedTabs, setActiveTab],
+  );
+
   if (isLoadingWorkspace) {
     return (
       <Box p="lg">
@@ -300,49 +337,73 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               px="md"
               style={{ borderBottom: "1px solid var(--mb-color-border)" }}
             >
-              <Tabs.List ref={tabsListRef} className={styles.tabsPanel}>
-                <Tabs.Tab value="setup">
-                  <Group gap="xs" wrap="nowrap">
-                    <Icon name="database" aria-hidden />
-                    {t`Setup`}
-                  </Group>
-                </Tabs.Tab>
-                {isMetabotAvailable && (
-                  <Tabs.Tab value="metabot">
-                    <Group gap="xs" wrap="nowrap">
-                      <Icon name="message_circle" aria-hidden />
-                      {t`Agent Chat`}
-                    </Group>
-                  </Tabs.Tab>
-                )}
-                {openedTabs.map((tab, index) => (
-                  <Tabs.Tab
-                    key={tab.id}
-                    value={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab);
-                    }}
-                  >
-                    <Group gap="xs" wrap="nowrap">
-                      <Icon
-                        name={
-                          tab.type === "transform" ? "pivot_table" : "table"
-                        }
-                        aria-hidden
-                      />
-                      {tab.name}
-                      <ActionIcon size="1rem" p="0" ml="xs">
-                        <Icon
-                          name="close"
-                          size={10}
-                          aria-hidden
-                          onClick={(event) => handleTabClose(event, tab, index)}
-                        />
-                      </ActionIcon>
-                    </Group>
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
+              <DndContext
+                onDragEnd={handleTabDragEnd}
+                modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+                sensors={[pointerSensor]}
+              >
+                <SortableContext
+                  items={openedTabs}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <Tabs.List ref={tabsListRef} className={styles.tabsPanel}>
+                    <Tabs.Tab value="setup">
+                      <Group gap="xs" wrap="nowrap">
+                        <Icon name="database" aria-hidden />
+                        {t`Setup`}
+                      </Group>
+                    </Tabs.Tab>
+                    {isMetabotAvailable && (
+                      <Tabs.Tab value="metabot">
+                        <Group gap="xs" wrap="nowrap">
+                          <Icon name="message_circle" aria-hidden />
+                          {t`Agent Chat`}
+                        </Group>
+                      </Tabs.Tab>
+                    )}
+
+                    {openedTabs.map((tab, index) => (
+                      <Sortable
+                        id={tab.id}
+                        as="div"
+                        key={tab.id}
+                        draggingStyle={{ opacity: 0.5 }}
+                      >
+                        <Tabs.Tab
+                          draggable
+                          key={tab.id}
+                          value={tab.id}
+                          onClick={() => {
+                            setActiveTab(tab);
+                          }}
+                        >
+                          <Group gap="xs" wrap="nowrap">
+                            <Icon
+                              name={
+                                tab.type === "transform"
+                                  ? "pivot_table"
+                                  : "table"
+                              }
+                              aria-hidden
+                            />
+                            {tab.name}
+                            <ActionIcon size="1rem" p="0" ml="xs">
+                              <Icon
+                                name="close"
+                                size={10}
+                                aria-hidden
+                                onClick={(event) =>
+                                  handleTabClose(event, tab, index)
+                                }
+                              />
+                            </ActionIcon>
+                          </Group>
+                        </Tabs.Tab>
+                      </Sortable>
+                    ))}
+                  </Tabs.List>
+                </SortableContext>
+              </DndContext>
             </Flex>
 
             <Box flex={1} mih={0}>
