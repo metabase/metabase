@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -65,6 +67,23 @@ describe("MainNavSharedCollections > section visibility", () => {
 
   it("hides the section for non-admins when there are no collections", () => {
     setup({ isAdmin: false, tenantCollections: [] });
+
+    expect(screen.queryByText("Tenant collections")).not.toBeInTheDocument();
+  });
+
+  it("hides the section for non-admins when collections exist but are filtered out by permissions", () => {
+    const settings = mockSettings({ "use-tenants": true });
+    const currentUser = createMockUser({ is_superuser: false });
+
+    // List endpoint has some collections (exists in the DB)
+    fetchMock.get("path:/api/collection", () => MOCK_TENANT_COLLECTIONS);
+
+    // Tree endpoint returns an empty array as it is filtered by permissions
+    fetchMock.get("path:/api/collection/tree", () => []);
+
+    renderWithProviders(<MainNavSharedCollections />, {
+      storeInitialState: createMockState({ settings, currentUser }),
+    });
 
     expect(screen.queryByText("Tenant collections")).not.toBeInTheDocument();
   });
