@@ -739,6 +739,9 @@
       (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
 
+      (contains? #{"bit" "varbit" "bit varying"} (:database-type stored-field))
+      (pg-conversion identifier :text)
+
       (driver-api/json-field? stored-field)
       (if (or (::sql.qp/forced-alias opts)
               (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
@@ -807,7 +810,7 @@
   {:array         :type/*
    :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
-   :bit           :type/*
+   :bit           :type/Text
    :bool          :type/Boolean
    :boolean       :type/Boolean
    :box           :type/*
@@ -856,10 +859,10 @@
    :tsvector      :type/*
    :txid_snapshot :type/*
    :uuid          :type/UUID
-   :varbit        :type/*
+   :varbit        :type/Text
    :varchar       :type/Text
    :xml           :type/Structured
-   (keyword "bit varying")                :type/*
+   (keyword "bit varying")                :type/Text
    (keyword "character varying")          :type/Text
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
