@@ -4,6 +4,8 @@ const esmPackages = [
   "ccount",
   "character-entities-html4",
   "comma-separated-tokens",
+  "csv-parse",
+  "csv-stringify",
   "d3-*",
   "d3",
   "devlop",
