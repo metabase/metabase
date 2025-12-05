@@ -57,6 +57,9 @@ detect_arch() {
 }
 
 detect_shell() {
+    # Use $SHELL (login shell) since that's what rc files we want to configure.
+    # The user may be running this script from a different shell, but their
+    # login shell is what new terminal windows will use.
     local shell_name
     shell_name=$(basename "$SHELL")
     case "$shell_name" in
@@ -95,7 +98,7 @@ get_shell_rc_file() {
             fi
             ;;
         zsh)  echo "$HOME/.zshrc" ;;
-        fish) echo "$HOME/.config/fish/config.fish" ;;
+        fish) echo "${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish" ;;
         *)    echo "" ;;
     esac
 }
@@ -212,7 +215,7 @@ install_mise() {
         local version=$(mise --version 2>/dev/null || echo "unknown")
 
         # Check if installed via Homebrew and offer migration
-        if is_homebrew_mise; then
+        if is_homebrew_mise && has_tool brew; then
             migrate_from_homebrew
             return 0
         fi
@@ -242,15 +245,28 @@ install_mise() {
 # Shell Integration
 # =============================================================================
 
+# Check shell integration status
+# Returns via global SHELL_INTEGRATION_STATUS:
+#   "active"     - mise activation is present and uncommented
+#   "commented"  - mise activation exists but is commented out
+#   "none"       - no mise activation found
 check_shell_integration() {
     local rc_file=$1
+    SHELL_INTEGRATION_STATUS="none"
 
     if [ ! -f "$rc_file" ]; then
         return 1
     fi
 
-    # Check if mise activation is already present (even if commented out)
-    if grep -qE '(^|[[:space:]])(eval.*mise activate|mise activate)' "$rc_file" 2>/dev/null; then
+    # Check for uncommented mise activation (line that doesn't start with # after optional whitespace)
+    if grep -qE '^[^#]*(eval.*mise activate|mise activate)' "$rc_file" 2>/dev/null; then
+        SHELL_INTEGRATION_STATUS="active"
+        return 0
+    fi
+
+    # Check for commented mise activation
+    if grep -qE '^[[:space:]]*#.*(eval.*mise activate|mise activate)' "$rc_file" 2>/dev/null; then
+        SHELL_INTEGRATION_STATUS="commented"
         return 0
     fi
 
@@ -275,11 +291,31 @@ setup_shell_integration() {
         return 0
     fi
 
-    if check_shell_integration "$rc_file"; then
+    check_shell_integration "$rc_file"
+
+    if [ "$SHELL_INTEGRATION_STATUS" = "active" ]; then
         print_success "Shell integration already configured in $rc_file"
         return 0
     fi
 
+    if [ "$SHELL_INTEGRATION_STATUS" = "commented" ]; then
+        print_warning "Found commented-out mise activation in $rc_file"
+        echo "      It looks like mise activation was previously disabled."
+        echo ""
+        if ask_yes_no "Add a new mise activation line?" "n"; then
+            echo "" >> "$rc_file"
+            echo "# mise - dev tool version manager" >> "$rc_file"
+            echo "$activation_line" >> "$rc_file"
+            print_success "Added mise activation to $rc_file"
+            echo "      You may want to remove the old commented line manually."
+        else
+            print_info "Keeping current configuration"
+            echo "      To enable mise, uncomment the existing line in $rc_file"
+        fi
+        return 0
+    fi
+
+    # No mise activation found - offer to add it
     print_step "Shell integration"
     echo "      mise needs to be activated in your shell to work automatically."
     echo "      This will add the following line to $rc_file:"
@@ -320,8 +356,11 @@ install_tools() {
     fi
 
     # Trust the mise.toml file
+    # --all flag may not exist in older versions, fall back to basic trust
     if ! mise trust --all 2>/dev/null; then
-        mise trust 2>/dev/null || true
+        if ! mise trust 2>/dev/null; then
+            print_warning "Could not trust mise.toml (may need manual: mise trust)"
+        fi
     fi
 
     # Install all tools
