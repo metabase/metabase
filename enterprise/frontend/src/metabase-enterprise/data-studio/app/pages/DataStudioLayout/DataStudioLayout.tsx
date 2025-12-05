@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -21,7 +21,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { DataStudioContext } from "metabase-enterprise/data-studio/common/contexts/DataStudioContext";
 
 import S from "./DataStudioLayout.module.css";
 
@@ -30,54 +29,27 @@ type DataStudioLayoutProps = {
 };
 
 export function DataStudioLayout({ children }: DataStudioLayoutProps) {
-  const [isSidebarOpened, setIsSidebarOpened] = useState(false);
   const [isNavbarOpened, setIsNavbarOpened] = useState(false);
-  const [isSidebarAvailable, setIsSidebarAvailable] = useState(false);
-  const contextValue = useMemo(
-    () => ({
-      isSidebarOpened,
-      isSidebarAvailable,
-      isNavbarOpened,
-      setIsSidebarOpened,
-      setIsSidebarAvailable,
-      setIsNavbarOpened,
-    }),
-    [isSidebarOpened, isSidebarAvailable, isNavbarOpened],
-  );
 
   return (
-    <DataStudioContext.Provider value={contextValue}>
-      <Flex h="100%">
-        <DataStudioNav
-          isSidebarOpened={isSidebarOpened}
-          isSidebarAvailable={isSidebarAvailable}
-          isNavbarOpened={isNavbarOpened}
-          onSidebarToggle={setIsSidebarOpened}
-          onNavbarToggle={setIsNavbarOpened}
-        />
-        <Box h="100%" flex={1} miw={0}>
-          {children}
-        </Box>
-      </Flex>
-    </DataStudioContext.Provider>
+    <Flex h="100%">
+      <DataStudioNav
+        isNavbarOpened={isNavbarOpened}
+        onNavbarToggle={setIsNavbarOpened}
+      />
+      <Box h="100%" flex={1} miw={0}>
+        {children}
+      </Box>
+    </Flex>
   );
 }
 
 type DataStudioNavProps = {
-  isSidebarOpened: boolean;
-  isSidebarAvailable: boolean;
   isNavbarOpened: boolean;
-  onSidebarToggle: (isOpened: boolean) => void;
   onNavbarToggle: (isOpened: boolean) => void;
 };
 
-function DataStudioNav({
-  isSidebarOpened,
-  isSidebarAvailable,
-  isNavbarOpened,
-  onSidebarToggle,
-  onNavbarToggle,
-}: DataStudioNavProps) {
+function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
@@ -179,12 +151,6 @@ function DataStudioNav({
           to={"/"}
           showLabel={isNavbarOpened}
         />
-        {isSidebarAvailable && (
-          <DataStudioSidebarToggle
-            isSidebarOpened={isSidebarOpened}
-            onSidebarToggle={onSidebarToggle}
-          />
-        )}
       </Stack>
     </Stack>
   );
@@ -224,34 +190,6 @@ function DataStudioTab({
         <FixedSizeIcon name={icon} display="block" className={S.icon} />
         {showLabel && <Text lh="sm">{label}</Text>}
       </Box>
-    </Tooltip>
-  );
-}
-
-type DataStudioSidebarToggleProps = {
-  isSidebarOpened: boolean;
-  onSidebarToggle: (isOpened: boolean) => void;
-};
-
-function DataStudioSidebarToggle({
-  isSidebarOpened,
-  onSidebarToggle,
-}: DataStudioSidebarToggleProps) {
-  return (
-    <Tooltip
-      label={isSidebarOpened ? t`Close sidebar` : t`Open sidebar`}
-      openDelay={TOOLTIP_OPEN_DELAY}
-    >
-      <UnstyledButton
-        className={S.toggle}
-        p="0.5rem"
-        bdrs="md"
-        onClick={() => onSidebarToggle(!isSidebarOpened)}
-      >
-        <FixedSizeIcon
-          name={isSidebarOpened ? "sidebar_closed" : "sidebar_open"}
-        />
-      </UnstyledButton>
     </Tooltip>
   );
 }
