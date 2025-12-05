@@ -14,6 +14,12 @@
 
 - **Run a test:** `./bin/mage run-tests namespace/test-name`
 - **Run all tests in a namespace:** `./bin/mage run-tests namespace`
+- **Run all tests for a module:** `./bin/mage run-tests test/metabase/notification` Because the module lives in that directory.
+
+Note: the `./bin/mage run-tests` command accepts multiple args, so you can pass
+`./bin/mage run-tests namespace/test-name namespace/other-test namespace/third-test`
+to run 3 tests, or
+`./bin/mage run-tests test/metabase/module1 test/metabase/module2` to run 2 modules.
 
 ## Code Readability
 

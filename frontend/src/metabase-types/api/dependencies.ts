@@ -6,6 +6,7 @@
 import type { Card, CardType } from "./card";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";
+import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
@@ -19,7 +20,8 @@ export type DependencyType =
   | "snippet"
   | "dashboard"
   | "document"
-  | "sandbox";
+  | "sandbox"
+  | "segment";
 export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
 export type DependencyEntry = {
@@ -147,6 +149,18 @@ export type SandboxDependencyNode = BaseDependencyNode<
   SandboxDependencyNodeData
 >;
 
+export type SegmentDependencyNodeData = Pick<
+  Segment,
+  "name" | "description" | "table_id" | "created_at" | "creator_id" | "creator"
+> & {
+  table?: Table | null;
+};
+
+export type SegmentDependencyNode = BaseDependencyNode<
+  "segment",
+  SegmentDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
@@ -154,7 +168,8 @@ export type DependencyNode =
   | SnippetDependencyNode
   | DashboardDependencyNode
   | DocumentDependencyNode
-  | SandboxDependencyNode;
+  | SandboxDependencyNode
+  | SegmentDependencyNode;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;

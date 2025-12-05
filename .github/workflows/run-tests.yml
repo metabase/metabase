@@ -25,7 +25,6 @@ jobs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
-      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
       embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
@@ -102,7 +101,7 @@ jobs:
     if: |
       !cancelled() &&
       (needs.files-changed.outputs.embedding_sdk_components == 'true' ||
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
+      needs.files-changed.outputs.frontend_sources == 'true' ||
       needs.files-changed.outputs.embedding_documentation == 'true' ||
       needs.files-changed.outputs.embedding_sdk_ci == 'true')
     uses: ./.github/workflows/embedding-sdk-package-build.yml
@@ -110,12 +109,13 @@ jobs:
 
   sdk-tests:
     needs: [uberjar, embedding-sdk-package, files-changed]
+    if: always()
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
-      cli-snippets-type-check: ${{ needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' }}
+      cli-snippets-type-check: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
       docs-snippets-type-check: ${{ needs.files-changed.outputs.embedding_documentation == 'true' }}
-      documentation-validation: ${{ needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' }}
+      documentation-validation: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
       component-tests: ${{ needs.files-changed.outputs.embedding_sdk_components == 'true' }}
       host-sample-apps-tests: ${{ needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true' }}
       skip: ${{ needs.embedding-sdk-package.result != 'success' || needs.uberjar.result != 'success' }}

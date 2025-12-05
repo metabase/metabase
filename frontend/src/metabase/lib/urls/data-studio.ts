@@ -3,6 +3,7 @@ import type {
   CollectionId,
   DatabaseId,
   NativeQuerySnippetId,
+  SegmentId,
   SchemaName,
   TableId,
 } from "metabase-types/api";
@@ -127,6 +128,14 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 
 export function newDataStudioSnippet() {
   return `${dataStudioModeling()}/snippets/new`;
+}
+
+export function dataStudioSegment(segmentId: SegmentId) {
+  return `/admin/datamodel/segment/${segmentId}`;
+}
+
+export function dataStudioSegmentDependencies(segmentId: SegmentId) {
+  return `${dataStudioSegment(segmentId)}/dependencies`;
 }
 
 export function dataStudioTasks() {

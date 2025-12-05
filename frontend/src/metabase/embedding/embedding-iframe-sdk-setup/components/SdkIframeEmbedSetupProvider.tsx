@@ -1,15 +1,23 @@
 import { type ReactNode, useMemo, useState } from "react";
+import { useMount } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import { useSetting } from "metabase/common/hooks";
+import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
+import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
+import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  type SdkIframeEmbedSetupModalInitialState,
+} from "metabase/plugins";
 
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
 import {
+  useAvailableParameters,
   useGetCurrentResource,
-  useParameters,
   useParametersValues,
   useRecentItems,
 } from "../hooks";
@@ -20,12 +28,27 @@ import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
+  onClose: () => void;
 }
 
 export const SdkIframeEmbedSetupProvider = ({
   children,
   initialState,
+  onClose,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const isSimpleEmbedFeatureAvailable =
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
+
+  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
+
+  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
+
+  useMount(() => {
+    trackEmbedWizardOpened();
+  });
+
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
   const {
@@ -67,6 +90,8 @@ export const SdkIframeEmbedSetupProvider = ({
     recentDashboards,
     isRecentsLoading,
     modelCount,
+    isSimpleEmbedFeatureAvailable,
+    isGuestEmbedsEnabled,
   });
 
   // Which embed experience are we setting up?
@@ -77,20 +102,51 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const { resource, isError, isLoading, isFetching } = useGetCurrentResource({
     experience,
-    settings,
+    dashboardId: settings.dashboardId,
+    questionId: settings.questionId,
   });
 
-  const { availableParameters } = useParameters({
-    experience,
+  const { availableParameters, initialAvailableParameters } =
+    useAvailableParameters({
+      experience,
+      resource,
+    });
+
+  const {
+    embeddingParameters,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  } = useEmbeddingParameters({
+    settings,
+    updateSettings,
     resource,
+    availableParameters,
+    initialAvailableParameters,
   });
 
-  const { parametersValuesById } = useParametersValues({
+  const { parametersValuesById, previewParameterValuesBySlug } =
+    useParametersValues({
+      settings,
+      availableParameters,
+      embeddingParameters,
+    });
+
+  const {
+    signedTokenForSnippet: guestEmbedSignedTokenForSnippet,
+    signedTokenForPreview: guestEmbedSignedTokenForPreview,
+  } = useGetGuestEmbedSignedToken({
     settings,
-    availableParameters,
+    experience,
+    previewParameterValuesBySlug,
+    embeddingParameters,
   });
 
   const value: SdkIframeEmbedSetupContextType = {
+    isSimpleEmbedFeatureAvailable,
+    isSimpleEmbeddingEnabled,
+    isSimpleEmbeddingTermsAccepted,
+    isGuestEmbedsEnabled,
+    isGuestEmbedsTermsAccepted,
     currentStep,
     setCurrentStep,
     initialState,
@@ -109,7 +165,14 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentItem,
     isEmbedSettingsLoaded,
     availableParameters,
+    initialEmbeddingParameters,
     parametersValuesById,
+    previewParameterValuesBySlug,
+    embeddingParameters,
+    onEmbeddingParametersChange,
+    guestEmbedSignedTokenForSnippet,
+    guestEmbedSignedTokenForPreview,
+    onClose,
   };
 
   return (

@@ -186,6 +186,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
                       key={getRawTableFieldId(field)}
                       parent={parentField}
                       table={table}
+                      eventSource="admin"
                       onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
                     />

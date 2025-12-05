@@ -2,5 +2,5 @@
  ["src" "resources"]
 
  :deps
- {com.google.guava/guava {:mvn/version "33.4.8-jre"}
+ {com.google.guava/guava {:mvn/version "33.5.0-jre"}
   org.mongodb/mongodb-driver-sync {:mvn/version "5.6.1"}}}

@@ -1,10 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 import { setup, waitForUpdateSetting } from "./test-setup";
 
 describe("Embed flow > embedding hub step completion tracking", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -20,6 +29,7 @@ describe("Embed flow > embedding hub step completion tracking", () => {
       setup({
         jwtReady: !useExistingUserSession,
         simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: false,
         initialState: {
           useExistingUserSession,
         },
@@ -27,7 +37,6 @@ describe("Embed flow > embedding hub step completion tracking", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Next" }));
       await userEvent.click(screen.getByRole("button", { name: "Next" }));
-      await userEvent.click(screen.getByRole("button", { name: "Get code" }));
 
       const authRadio = screen.getByDisplayValue(
         useExistingUserSession ? "user-session" : "sso",
@@ -35,6 +44,8 @@ describe("Embed flow > embedding hub step completion tracking", () => {
 
       await userEvent.click(authRadio);
       expect(authRadio).toBeChecked();
+
+      await userEvent.click(screen.getByRole("button", { name: "Get code" }));
 
       const actionButton = screen.getByRole("button", {
         name: trigger === "copy" ? /Copy code/ : /Done/,

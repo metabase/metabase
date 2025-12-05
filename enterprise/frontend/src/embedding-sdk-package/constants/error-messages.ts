@@ -2,7 +2,7 @@ export const SDK_NOT_STARTED_LOADING_MESSAGE =
   "Error loading the Embedded Analytics SDK. Ensure all SDK components are wrapped in the Provider component.";
 
 export const SDK_LOADING_ERROR_MESSAGE =
-  "Error loading the Embedded Analytics SDK. Verify the instance URL is correct and reachable.";
+  "Error loading the Embedded Analytics SDK. Verify the instance is Enterprise and its URL is correct and reachable.";
 
 export const SDK_NOT_LOADED_YET_MESSAGE =
   "Error loading the Embedded Analytics SDK. The loading state is `Loaded` but the SDK bundle is not loaded yet.";

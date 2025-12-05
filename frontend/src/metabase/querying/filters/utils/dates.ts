@@ -322,10 +322,8 @@ export function getDateFilterDisplayName(
     .exhaustive();
 }
 
-function formatDate(date: Date, hasTime: boolean) {
-  return hasTime
-    ? dayjs(date).format("MMMM D, YYYY hh:mm A")
-    : dayjs(date).format("MMMM D, YYYY");
+export function formatDate(date: Date, hasTime: boolean) {
+  return hasTime ? dayjs(date).format("LL hh:mm A") : dayjs(date).format("LL");
 }
 
 function formatMonth(month: number, year: number) {

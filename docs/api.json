@@ -245,6 +245,18 @@
         } ]
       },
       "mbql.clause.coalesce" : { },
+      "mbql.clause.collate" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "collate"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        }, {
+          "type" : "string"
+        } ]
+      },
       "mbql.clause.concat" : { },
       "mbql.clause.contains" : { },
       "mbql.clause.convert-timezone" : { },
@@ -1125,6 +1137,45 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.data-studio.api.table.data-authorities" : {
+        "type" : "string",
+        "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
+      },
+      "metabase-enterprise.data-studio.api.table.data-layers" : {
+        "type" : "string",
+        "enum" : [ "copper", "bronze", "gold", "silver" ]
+      },
+      "metabase-enterprise.data-studio.api.table.data-sources" : {
+        "type" : "string",
+        "enum" : [ "source-data", "transform", "unknown", "ingested", "metabase-transform", "upload" ]
+      },
+      "metabase-enterprise.data-studio.api.table.table-selectors" : {
+        "type" : "object",
+        "properties" : {
+          "database_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "schema_ids" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "table_ids" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          }
+        }
+      },
       "metabase-enterprise.dependencies.api.card-body" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "type" : "object",
@@ -1463,6 +1514,9 @@
       "metabase-enterprise.metabot-v3.tools.api.column" : {
         "type" : "object",
         "properties" : {
+          "database_type" : {
+            "type" : "string"
+          },
           "description" : {
             "type" : "string"
           },
@@ -2641,7 +2695,7 @@
           "properties" : {
             "field_granularity" : {
               "type" : "string",
-              "enum" : [ "day", "week", "month", "quarter", "year" ]
+              "enum" : [ "minute", "hour", "day", "week", "month", "quarter", "year", "day-of-week" ]
             },
             "field_id" : {
               "type" : "string"
@@ -3094,6 +3148,9 @@
       "metabase-enterprise.metabot-v3.tools.api.table-result" : {
         "type" : "object",
         "properties" : {
+          "database_engine" : {
+            "type" : "string"
+          },
           "id" : {
             "type" : "integer"
           },
@@ -3108,6 +3165,9 @@
             "items" : {
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
             }
+          },
+          "related_by" : {
+            "type" : "string"
           },
           "display_name" : {
             "type" : "string"
@@ -3132,7 +3192,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter" : {
         "allOf" : [ {
@@ -3259,46 +3319,180 @@
         "description" : "value must be a valid attribute remappings map (attribute name -> remapped name)",
         "optional" : true
       },
+      "metabase-enterprise.support-access-grants.schema.create-grant-request" : {
+        "description" : "Schema for POST /api/ee/support-access-grants request body.",
+        "type" : "object",
+        "properties" : {
+          "grant_duration_minutes" : {
+            "type" : "integer",
+            "minimum" : 1,
+            "maximum" : 10080
+          },
+          "notes" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 255
+          },
+          "ticket_number" : {
+            "type" : "string",
+            "minLength" : 1,
+            "maxLength" : 100
+          }
+        },
+        "required" : [ "grant_duration_minutes" ]
+      },
+      "metabase-enterprise.support-access-grants.schema.current-grant-response" : {
+        "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response",
+        "description" : "Schema for GET /api/ee/support-access-grants/current response.",
+        "optional" : true
+      },
+      "metabase-enterprise.support-access-grants.schema.grant-response" : {
+        "description" : "Schema for a support access grant object in API responses.",
+        "type" : "object",
+        "properties" : {
+          "user_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "user_name" : {
+            "type" : "string"
+          },
+          "user_email" : {
+            "type" : "string"
+          },
+          "grant_end_timestamp" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "revoked_at" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "revoked_by_user_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "ticket_number" : {
+            "type" : "string"
+          },
+          "updated_at" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "created_at" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "grant_start_timestamp" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.timestamp"
+          }
+        },
+        "required" : [ "id", "user_id", "grant_start_timestamp", "grant_end_timestamp", "created_at", "updated_at" ]
+      },
+      "metabase-enterprise.support-access-grants.schema.list-grants-response" : {
+        "description" : "Schema for GET /api/ee/support-access-grants response (paginated list).",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response"
+            }
+          },
+          "limit" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "offset" : {
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "total" : {
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "data", "total", "limit", "offset" ]
+      },
+      "metabase-enterprise.support-access-grants.schema.timestamp" : {
+        "anyOf" : [ { }, { } ]
+      },
       "metabase-enterprise.transforms.api.run-trigger" : {
         "type" : "string",
         "enum" : [ "none", "global-schedule" ]
       },
       "metabase-enterprise.transforms.api.transform-source" : {
-        "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "query" : {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            },
-            "type" : {
-              "const" : "query"
-            }
-          },
-          "required" : [ "type", "query" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "body" : {
-              "type" : "string"
-            },
-            "source-database" : {
-              "type" : "integer"
-            },
-            "source-tables" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "type" : "integer"
-              }
-            },
-            "type" : {
-              "const" : "python"
-            }
-          },
-          "required" : [ "source-tables", "type", "body" ],
-          "additionalProperties" : false
-        } ]
+        "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-source"
       },
       "metabase-enterprise.transforms.api.transform-target" : {
+        "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-target"
+      },
+      "metabase-enterprise.transforms.schema.append-config" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "append"
+          }
+        },
+        "required" : [ "type" ]
+      },
+      "metabase-enterprise.transforms.schema.checkpoint-strategy" : {
+        "type" : "object",
+        "properties" : {
+          "checkpoint-filter" : {
+            "type" : "string"
+          },
+          "checkpoint-filter-unique-key" : {
+            "$ref" : "#/components/schemas/metabase.lib.metadata.column.column-unique-key"
+          },
+          "type" : {
+            "const" : "checkpoint"
+          }
+        },
+        "required" : [ "type" ]
+      },
+      "metabase-enterprise.transforms.schema.source-incremental-strategy" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.checkpoint-strategy"
+        } ]
+      },
+      "metabase-enterprise.transforms.schema.table-incremental-target" : {
+        "type" : "object",
+        "properties" : {
+          "database" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "target-incremental-strategy" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.target-incremental-strategy"
+          },
+          "type" : {
+            "const" : "table-incremental"
+          }
+        },
+        "required" : [ "type", "name", "target-incremental-strategy" ]
+      },
+      "metabase-enterprise.transforms.schema.table-target" : {
         "type" : "object",
         "properties" : {
           "database" : {
@@ -3316,11 +3510,62 @@
             } ]
           },
           "type" : {
-            "type" : "string",
-            "enum" : [ "table" ]
+            "const" : "table"
           }
         },
         "required" : [ "type", "name" ]
+      },
+      "metabase-enterprise.transforms.schema.target-incremental-strategy" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.append-config"
+        } ]
+      },
+      "metabase-enterprise.transforms.schema.transform-source" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "query" : {
+              "$ref" : "#/components/schemas/metabase.queries.schema.query"
+            },
+            "source-incremental-strategy" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.source-incremental-strategy"
+            },
+            "type" : {
+              "const" : "query"
+            }
+          },
+          "required" : [ "type", "query" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "body" : {
+              "type" : "string"
+            },
+            "source-database" : {
+              "type" : "integer"
+            },
+            "source-incremental-strategy" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.source-incremental-strategy"
+            },
+            "source-tables" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "type" : "integer"
+              }
+            },
+            "type" : {
+              "const" : "python"
+            }
+          },
+          "required" : [ "source-tables", "type", "body" ]
+        } ]
+      },
+      "metabase-enterprise.transforms.schema.transform-target" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.table-target"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.table-incremental-target"
+        } ]
       },
       "metabase.actions.schema..action.for-insert" : {
         "description" : "Schema for inserting a new Action (REST API or internally).",
@@ -4360,6 +4605,14 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
         } ]
       },
+      "metabase.legacy-mbql.schema.AggregationArg" : {
+        "description" : "Schema for the argument to an aggregation clause like `:sum`.\n\n  Strings are allowed as literals here, unlike at the top level as `::Expressions`, so `::FieldOrExpressionDef` is\n  not enough. However, nested aggregations are not allowed here, so we can't use `::ExpressionArg` either. (#66199)",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
+        }, {
+          "type" : "string"
+        } ]
+      },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
         "description" : "Additional options for any aggregation clause when wrapping it in `:aggregation-options`.",
         "type" : "object",
@@ -5183,6 +5436,8 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.text"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.split-part"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.collate"
         } ]
       },
       "metabase.legacy-mbql.schema.StringExpressionArg" : {
@@ -5395,6 +5650,10 @@
       },
       "metabase.legacy-mbql.schema.coalesce" : {
         "description" : "schema for a valid MBQL 4 :coalesce clause",
+        "allOf" : [ ]
+      },
+      "metabase.legacy-mbql.schema.collate" : {
+        "description" : "schema for a valid MBQL 4 :collate clause",
         "allOf" : [ ]
       },
       "metabase.legacy-mbql.schema.concat" : {
@@ -6001,6 +6260,10 @@
       "metabase.legacy-mbql.schema.var" : {
         "description" : "schema for a valid MBQL 4 :var clause",
         "allOf" : [ ]
+      },
+      "metabase.lib.metadata.column.column-unique-key" : {
+        "type" : "string",
+        "pattern" : "^column-unique-key-v\\d+\\$.+$"
       },
       "metabase.lib.metadata.protocols.metadata-provider" : {
         "description" : "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
@@ -6830,6 +7093,8 @@
           "$ref" : "#/components/schemas/mbql.clause.ceil"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.collate"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.concat"
         }, {
@@ -9168,6 +9433,19 @@
         "description" : "A single result metadata column as returned by the Query Processor.",
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
       },
+      "metabase.query-processor.schema.any-query" : {
+        "description" : "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized\n  yet!\n\n  This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,\n  super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet.",
+        "type" : "object",
+        "properties" : {
+          "database" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.saved-questions-virtual-database"
+            } ]
+          }
+        }
+      },
       "metabase.query-processor.schema.export-format" : {
         "description" : "Schema for valid export formats for downloading query results.",
         "type" : "string",
@@ -9271,6 +9549,14 @@
         "description" : "Schema for writing a valid table data authority.",
         "type" : "string",
         "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
+      },
+      "metabase.warehouse-schema-rest.api.table.data-layers" : {
+        "type" : "string",
+        "enum" : [ "copper", "bronze", "gold", "silver" ]
+      },
+      "metabase.warehouse-schema-rest.api.table.data-sources" : {
+        "type" : "string",
+        "enum" : [ "source-data", "transform", "unknown", "ingested", "metabase-transform", "upload" ]
       },
       "metabase.warehouses-rest.api.available-settings" : {
         "type" : "object",
@@ -12395,10 +12681,6 @@
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
-                  },
-                  "type" : {
-                    "type" : "string",
-                    "enum" : [ "remote-synced" ]
                   }
                 },
                 "required" : [ "name" ]
@@ -12549,7 +12831,7 @@
     "/api/collection/root/items" : {
       "get" : {
         "summary" : "GET /api/collection/root/items",
-        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+        "description" : "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  By default, library collections are excluded from the results; to include them, pass `?include_library=true`.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
         "parameters" : [ {
           "in" : "query",
           "name" : "models",
@@ -12592,6 +12874,14 @@
           "schema" : {
             "type" : "string",
             "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_library",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -12727,6 +13017,14 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "include-library",
           "required" : false,
           "schema" : {
             "type" : "boolean",
@@ -15890,7 +16188,7 @@
     "/api/ee/ai-entity-analysis/analyze-chart" : {
       "post" : {
         "summary" : "POST /api/ee/ai-entity-analysis/analyze-chart",
-        "description" : "Analyze a chart image using an AI vision model. This function sends the image data to a separate external AI service for analysis.",
+        "description" : "Analyze a chart image using an AI vision model. This function sends the image data to a separate external AI service\n  for analysis.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -16598,6 +16896,222 @@
           }
         },
         "tags" : [ "/api/ee/content-translation" ]
+      }
+    },
+    "/api/ee/data-studio/table/discard-values" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/discard-values",
+        "description" : "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/edit" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/edit",
+        "description" : "Bulk updating tables.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "data_authority" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-authorities"
+                  },
+                  "data_layer" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-layers"
+                  },
+                  "table_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "owner_email" : {
+                    "type" : "string"
+                  },
+                  "owner_user_id" : {
+                    "type" : "integer"
+                  },
+                  "data_source" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.data-sources"
+                  },
+                  "schema_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  },
+                  "entity_type" : {
+                    "type" : "string"
+                  },
+                  "database_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/publish-model" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/publish-model",
+        "description" : "Create a model for each of selected tables",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "database_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "schema_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  },
+                  "table_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "target_collection_id" : {
+                    "anyOf" : [ {
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "const" : "library"
+                    } ]
+                  }
+                },
+                "required" : [ ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/rescan-values" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/rescan-values",
+        "description" : "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/sync-schema" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/sync-schema",
+        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asyncronous. This call may return before all tables synced.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
       }
     },
     "/api/ee/database-replication/connection/{database-id}" : {
@@ -17760,6 +18274,61 @@
           }
         },
         "tags" : [ "/api/ee/gsheets" ]
+      }
+    },
+    "/api/ee/library/" : {
+      "post" : {
+        "summary" : "POST /api/ee/library/",
+        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires data-studio application permission.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/library" ]
+      },
+      "get" : {
+        "summary" : "GET /api/ee/library/",
+        "description" : "Get the Library. If no library exists, it doesn't fail but returns an empty response.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/library" ]
+      }
+    },
+    "/api/ee/library/tree" : {
+      "get" : {
+        "summary" : "GET /api/ee/library/tree",
+        "description" : "This matches /api/collection/tree but only returns the library collection.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/library" ]
       }
     },
     "/api/ee/logs/query_execution/{yyyy-mm}" : {
@@ -21089,6 +21658,149 @@
         "tags" : [ "/api/ee/stale" ]
       }
     },
+    "/api/ee/support-access-grant/" : {
+      "post" : {
+        "summary" : "POST /api/ee/support-access-grant/",
+        "description" : "Create a new support access grant.\n\n  Requires superuser permissions. Only one active grant can exist at a time.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for a support access grant object in API responses.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.create-grant-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      },
+      "get" : {
+        "summary" : "GET /api/ee/support-access-grant/",
+        "description" : "List support access grants with optional filtering and pagination.\n\n  Requires superuser permissions.\n\n  Query parameters:\n  - ticket-number: Filter by ticket number\n  - user-id: Filter by user who created the grant\n  - include-revoked: Include revoked grants (default false)",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "ticket-number",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "user-id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include-revoked",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for GET /api/ee/support-access-grants response (paginated list).",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.list-grants-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      }
+    },
+    "/api/ee/support-access-grant/current" : {
+      "get" : {
+        "summary" : "GET /api/ee/support-access-grant/current",
+        "description" : "Get the currently active support access grant, if one exists.\n\n  Requires superuser permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for GET /api/ee/support-access-grants/current response.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.current-grant-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      }
+    },
+    "/api/ee/support-access-grant/{id}/revoke" : {
+      "put" : {
+        "summary" : "PUT /api/ee/support-access-grant/{id}/revoke",
+        "description" : "Revoke an existing support access grant.\n\n  Requires superuser permissions. Any admin can revoke any grant.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for a support access grant object in API responses.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/support-access-grant" ]
+      }
+    },
     "/api/ee/transform-job/" : {
       "post" : {
         "summary" : "POST /api/ee/transform-job/",
@@ -21574,7 +22286,7 @@
                     "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.run-trigger"
                   },
                   "source" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.transform-source"
+                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-source"
                   },
                   "tag_ids" : {
                     "type" : "array",
@@ -21585,10 +22297,78 @@
                     }
                   },
                   "target" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.transform-target"
+                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-target"
                   }
                 },
                 "required" : [ "name", "source", "target" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transform" ]
+      }
+    },
+    "/api/ee/transform/extract-columns" : {
+      "post" : {
+        "summary" : "POST /api/ee/transform/extract-columns",
+        "description" : "Extract column names from an MBQL query without executing it.\n\n  Compiles the query to native SQL using [[qp.compile/compile-with-inline-parameters]],\n  which handles parameterized queries with template tags. Then extracts column names\n  using PreparedStatement metadata.\n\n  Returns a map with a :columns key containing a vector of column names (strings).\n  If extraction fails, returns nil for :columns.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "query" : {
+                    "$ref" : "#/components/schemas/metabase.query-processor.schema.any-query"
+                  }
+                },
+                "required" : [ "query" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transform" ]
+      }
+    },
+    "/api/ee/transform/is-simple-query" : {
+      "post" : {
+        "summary" : "POST /api/ee/transform/is-simple-query",
+        "description" : "Checks if a native SQL query string is simple enough for automatic checkpoint insertion",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "query" : {
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "query" ]
               }
             }
           }
@@ -21760,7 +22540,7 @@
                     "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.run-trigger"
                   },
                   "source" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.transform-source"
+                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-source"
                   },
                   "tag_ids" : {
                     "type" : "array",
@@ -21771,7 +22551,7 @@
                     }
                   },
                   "target" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.api.transform-target"
+                    "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-target"
                   }
                 }
               }
@@ -25815,6 +26595,25 @@
         "tags" : [ "/api/preview_embed" ]
       }
     },
+    "/api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}",
+        "description" : "Embedded version of chain filter search endpoint.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
     "/api/preview_embed/dashboard/{token}/params/{param-key}/values" : {
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/values",
@@ -27765,6 +28564,15 @@
           }
         }, {
           "in" : "query",
+          "name" : "collection",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
           "name" : "table_db_id",
           "required" : false,
           "schema" : {
@@ -28773,7 +29581,63 @@
       "get" : {
         "summary" : "GET /api/table/",
         "description" : "Get all `Tables`.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "term",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "visibility-type",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "data-layer",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-layers"
+          }
+        }, {
+          "in" : "query",
+          "name" : "data-source",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-sources"
+          }
+        }, {
+          "in" : "query",
+          "name" : "owner-user-id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "owner-email",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "orphan-only",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "unused-only",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -28789,7 +29653,7 @@
       },
       "put" : {
         "summary" : "PUT /api/table/",
-        "description" : "Update all `Table` in `ids`.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -28818,8 +29682,17 @@
                   "data_authority" : {
                     "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
+                  "data_layer" : {
+                    "type" : "string"
+                  },
                   "show_in_getting_started" : {
                     "type" : "boolean"
+                  },
+                  "owner_email" : {
+                    "type" : "string"
+                  },
+                  "owner_user_id" : {
+                    "type" : "integer"
                   },
                   "ids" : {
                     "type" : "array",
@@ -28832,6 +29705,9 @@
                   "display_name" : {
                     "type" : "string",
                     "minLength" : 1
+                  },
+                  "data_source" : {
+                    "type" : "string"
                   },
                   "caveats" : {
                     "type" : "string"
@@ -28981,12 +29857,24 @@
                   "data_authority" : {
                     "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write"
                   },
+                  "data_layer" : {
+                    "type" : "string"
+                  },
                   "show_in_getting_started" : {
                     "type" : "boolean"
+                  },
+                  "owner_email" : {
+                    "type" : "string"
+                  },
+                  "owner_user_id" : {
+                    "type" : "integer"
                   },
                   "display_name" : {
                     "type" : "string",
                     "minLength" : 1
+                  },
+                  "data_source" : {
+                    "type" : "string"
                   },
                   "caveats" : {
                     "type" : "string"

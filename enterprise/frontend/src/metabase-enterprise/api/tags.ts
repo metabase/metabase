@@ -18,6 +18,7 @@ import type {
   GetUnreferencedItemsResponse,
   PythonLibrary,
   SandboxDependencyNode,
+  SegmentDependencyNode,
   SnippetDependencyNode,
   SupportAccessGrant,
   TableDependencyNode,
@@ -243,6 +244,16 @@ function provideSandboxDependencyNodeTags(
   ];
 }
 
+function provideSegmentDependencyNodeTags(
+  node: SegmentDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("segment", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -261,6 +272,8 @@ export function provideDependencyNodeTags(
       return provideDocumentDependencyNodeTags(node);
     case "sandbox":
       return provideSandboxDependencyNodeTags(node);
+    case "segment":
+      return provideSegmentDependencyNodeTags(node);
   }
 }
 
