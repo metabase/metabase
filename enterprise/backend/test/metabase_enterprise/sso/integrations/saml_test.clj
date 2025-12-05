@@ -6,6 +6,7 @@
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.providers.saml :as saml.p]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
@@ -327,7 +328,7 @@
                (is (= default-redirect-uri
                       (get-in response [:headers "Location"])))
                (is (= (some-saml-attributes "rasta")
-                      (saml-login-attributes "rasta@metabase.com")))))))))))
+                      #p (saml-login-attributes "rasta@metabase.com")))))))))))
 
 (deftest validate-signatures-test
   ;; they were edited by hand I think, so the signatures are now incorrect (?)
@@ -916,3 +917,172 @@
                    (is (=? {"string_attr" "valid-string"
                             "number_attr" 42
                             "boolean_attr" true} user-attrs))))))))))))
+
+;;; ------------------------------------------------ Tenant Tests ----------------------------------------------------
+
+(defn- new-user-with-tenant-saml-test-response []
+  (saml-response-from-file "test_resources/saml-test-response-new-user-with-tenant.xml"))
+
+(deftest tenants-can-be-auto-provisioned-via-saml
+  (with-other-sso-types-disabled!
+    (mt/with-model-cleanup [:model/Tenant]
+      (with-saml-default-setup!
+        (mt/with-additional-premium-features #{:tenants}
+          (mt/with-temporary-setting-values [use-tenants true
+                                             saml-attribute-tenant "tenant"]
+            (do-with-some-validators-disabled!
+             (fn []
+               (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+                 (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                              default-redirect-uri)
+                       response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                   (is (successful-login? response))
+                   (is (some? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))
+                   (is (t2/exists? :model/Tenant :slug "tenant-mctenantson")))
+                 (testing "they should be able to log in again"
+                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                     (is (successful-login? response)))))))))))))
+
+(deftest new-users-should-be-set-to-the-correct-tenant-via-saml
+  (with-other-sso-types-disabled!
+    (with-saml-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true
+                                           saml-attribute-tenant "tenant"]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                        :name "Tenant McTenantson"}]
+            (do-with-some-validators-disabled!
+             (fn []
+               (mt/with-model-cleanup [:model/User]
+                 (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                              default-redirect-uri)
+                       response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                   (is (successful-login? response))
+                   (is (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))
+                 (testing "they should be able to log in again"
+                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                     (is (successful-login? response))
+                     (is (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))))))
+
+(deftest new-users-are-not-assigned-a-tenant-if-tenants-is-not-enabled-via-saml
+  (with-other-sso-types-disabled!
+    (with-saml-default-setup!
+      (mt/with-temporary-setting-values [use-tenants true
+                                         saml-attribute-tenant "tenant"]
+        (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
+                                        :name "Tenant McTenantson"}]
+          (do-with-some-validators-disabled!
+           (fn []
+             (mt/with-model-cleanup [:model/User]
+               (mt/with-temporary-setting-values [use-tenants false]
+                 (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                              default-redirect-uri)
+                       response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                   (testing "They are able to log in"
+                     (is (successful-login? response)))
+                   (testing "But don't get assigned a tenant"
+                     (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))
+               (testing "they should be able to log in without the tenant attribute configured"
+                 (mt/with-temporary-setting-values [saml-attribute-tenant nil]
+                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                     (is (successful-login? response))
+                     (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))))))
+
+(deftest a-user-cannot-log-in-with-a-deactivated-tenant-via-saml
+  (with-other-sso-types-disabled!
+    (with-saml-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true
+                                           saml-attribute-tenant "tenant"]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                        :name "Tenant McTenantson"
+                                                        :is_active false}
+                         :model/User {existing-email :email} {:tenant_id tenant-id}]
+            (do-with-some-validators-disabled!
+             (fn []
+               (testing "a new user fails to log in"
+                 (mt/with-model-cleanup [:model/User]
+                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+                     (is (not (successful-login? response))))))
+               (testing "an existing user also fails to log in"
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
+                                  "tenant" "tenant-mctenantson"})]
+                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+                     (is (not (successful-login? response))))))))))))))
+
+(deftest a-tenant-cannot-be-changed-once-set-via-saml
+  (with-other-sso-types-disabled!
+    (with-saml-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true
+                                           saml-attribute-tenant "tenant"]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                        :name "Tenant McTenantson"}
+                         :model/Tenant _ {:slug "other"
+                                          :name "Other"}
+                         :model/User {email-with-tenant :email} {:tenant_id tenant-id}]
+            (do-with-some-validators-disabled!
+             (fn []
+               (testing "tenant -> other tenant fails with correct error message"
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant
+                                  "tenant" "other"})]
+                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+                     (is (not (successful-login? response))))))))))))))
+
+(deftest external-user-requires-tenant-claim-via-saml
+  (testing "External user must include tenant claim in SAML response"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (mt/with-additional-premium-features #{:tenants}
+          (mt/with-temporary-setting-values [use-tenants true
+                                             saml-attribute-tenant "tenant"]
+            (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                          :name "Tenant McTenantson"}
+                           :model/User {email-with-tenant :email} {:tenant_id tenant-id}]
+              (do-with-some-validators-disabled!
+               (fn []
+                 ;; Use the regular new-user response which doesn't have tenant attribute
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-with-tenant})]
+                   (let [req-options (saml-post-request-options (new-user-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+                     (is (not (successful-login? response))))))))))))))
+
+(deftest internal-user-cannot-have-tenant-claim-via-saml
+  (testing "Internal user cannot log in with tenant claim in SAML response"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (mt/with-additional-premium-features #{:tenants}
+          (mt/with-temporary-setting-values [use-tenants true
+                                             saml-attribute-tenant "tenant"]
+            (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
+                                            :name "Tenant McTenantson"}
+                           :model/User {email-without-tenant :email} {:tenant_id nil}]
+              (do-with-some-validators-disabled!
+               (fn []
+                 (with-redefs [saml.p/saml-response->attributes
+                               (fn [_]
+                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email-without-tenant
+                                  "tenant" "tenant-mctenantson"})]
+                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                default-redirect-uri)
+                         response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+                     (is (not (successful-login? response))))))))))))))
