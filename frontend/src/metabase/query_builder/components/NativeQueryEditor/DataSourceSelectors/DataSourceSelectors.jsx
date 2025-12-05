@@ -175,6 +175,7 @@ const DatabaseSelector = ({
       CS.flex,
       CS.alignCenter,
       CS.ml2,
+      readOnly && CS.pointerEventsNone,
     )}
     data-testid="gui-builder-data"
   >
@@ -193,7 +194,7 @@ DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
   <Flex
-    h="55px"
+    h="3rem"
     px="md"
     align="center"
     fw="bold"
@@ -238,7 +239,7 @@ const Placeholder = ({ query, editorContext }) => {
   return (
     <Flex
       align="center"
-      h="55px"
+      h="3rem"
       className={cx(CS.textNoWrap, CS.ml2, CS.px2, CS.textMedium)}
     >
       {t`This question is written in ${language}.`}

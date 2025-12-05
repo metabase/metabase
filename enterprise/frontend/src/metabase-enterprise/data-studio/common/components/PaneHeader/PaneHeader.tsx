@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -9,7 +8,6 @@ import { getLocation } from "metabase/selectors/routing";
 import type { GroupProps, IconName } from "metabase/ui";
 import { Box, Button, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
 
-import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";
 
 interface PaneHeaderProps extends Omit<GroupProps, "title"> {
@@ -31,11 +29,11 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Group
-      className={cx(S.header, className)}
+      className={className}
+      gap="sm"
+      justify="space-between"
       px="lg"
       py="md"
-      justify="space-between"
-      gap="sm"
       wrap="nowrap"
       {...rest}
     >
@@ -136,6 +134,7 @@ type PaneHeaderActionsProps = {
   isValid?: boolean;
   isDirty?: boolean;
   isSaving?: boolean;
+  alwaysVisible?: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
@@ -145,12 +144,13 @@ export function PaneHeaderActions({
   isValid = true,
   isDirty = false,
   isSaving = false,
+  alwaysVisible = false,
   onSave,
   onCancel,
 }: PaneHeaderActionsProps) {
   const canSave = isDirty && !isSaving && isValid;
 
-  if (!isDirty && !isSaving) {
+  if (!isDirty && !isSaving && !alwaysVisible) {
     return null;
   }
 

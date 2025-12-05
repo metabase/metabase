@@ -4,6 +4,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Flex, Icon } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import {
   PaneHeader,
@@ -21,18 +22,26 @@ type TransformHeaderProps = {
   transform: Transform;
   actions?: ReactNode;
   hasMenu?: boolean;
+  isEditMode?: boolean;
 };
 
 export function TransformHeader({
   transform,
   actions,
   hasMenu = true,
+  isEditMode = false,
 }: TransformHeaderProps) {
   return (
     <PaneHeader
-      title={<TransformNameInput transform={transform} />}
+      px={0}
+      title={
+        <Flex align="center" gap="sm">
+          <Icon name="refresh_downstream" />
+          <TransformNameInput transform={transform} />
+        </Flex>
+      }
       menu={hasMenu && <TransformMoreMenu transform={transform} />}
-      tabs={<TransformTabs transform={transform} />}
+      tabs={!isEditMode && <TransformTabs transform={transform} />}
       actions={actions}
       data-testid="transforms-header"
     />
