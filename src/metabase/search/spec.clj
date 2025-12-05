@@ -17,7 +17,7 @@
     config/ee-available? (conj "document" "transform")
     ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
     ;; table and indexed-entity moved to the end because there can be a large number of them
-    true (conj "table" "indexed-entity" "metric" "card" "dataset")))
+    true (conj "table" "indexed-entity" "measure" "metric" "card" "dataset")))
 
 (def ^:private search-model->toucan-model
   (into {}
