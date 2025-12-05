@@ -6,7 +6,7 @@ on:
 env:
   DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
   TERM: xterm
-  TZ: US/Pacific # to make node match the instance tz
+  TZ: US/Pacific # to make Node match the instance tz
   MB_EDITION: "ee"
 
 jobs:

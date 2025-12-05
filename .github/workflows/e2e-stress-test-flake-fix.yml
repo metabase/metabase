@@ -88,7 +88,7 @@ jobs:
       MB_EDITION: ${{ inputs.mb_edition }}
       CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
       TERM: xterm
-      TZ: US/Pacific # to make node match the instance tz
+      TZ: US/Pacific # to make Node match the instance tz
     steps:
       - uses: actions/checkout@v4
         with:
