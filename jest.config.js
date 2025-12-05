@@ -180,3 +180,4 @@ const config = {
 
 // eslint-disable-next-line import/no-commonjs
 module.exports = config;
+module.exports.baseConfig = baseConfig;
