@@ -14,6 +14,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -50,11 +51,10 @@ import styles from "./WorkspacePage.module.css";
 import {
   type EditedTransform,
   type OpenTable,
+  WorkspaceProvider,
   type WorkspaceTab,
   useWorkspace,
-  WorkspaceProvider,
 } from "./WorkspaceProvider";
-import { Sortable } from "metabase/common/components/Sortable";
 
 type WorkspacePageProps = {
   params: {
@@ -438,6 +438,7 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
                     transform={activeTransform}
                     editedTransform={activeEditedTransform}
                     workspaceId={id}
+                    workspaceTransforms={workspaceTransforms}
                     onChange={handleTransformChange}
                     onOpenTransform={(transformId) =>
                       setTab(String(transformId))

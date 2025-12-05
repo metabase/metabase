@@ -29,6 +29,7 @@ interface Props {
   editedTransform: EditedTransform;
   transform: Transform;
   workspaceId: WorkspaceId;
+  workspaceTransforms: Transform[];
   onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transformId: TransformId) => void;
 }
@@ -38,6 +39,7 @@ export const TransformTab = ({
   editedTransform,
   transform,
   workspaceId,
+  workspaceTransforms,
   onChange,
   onOpenTransform,
 }: Props) => {
@@ -55,7 +57,7 @@ export const TransformTab = ({
   );
   const hasChanges = hasSourceChanged;
 
-  const isSaved = transform.workspace_id === workspaceId;
+  const isSaved = workspaceTransforms.some((t) => t.id === transform.id);
 
   const [runTransform] = useRunTransformMutation();
 
@@ -65,10 +67,10 @@ export const TransformTab = ({
 
       // Invalidate the workspace tables cache since transform execution
       // may affect the list of workspace tables.
-      if (transform.workspace_id) {
+      if (isSaved) {
         dispatch(
           workspaceApi.util.invalidateTags([
-            { type: "workspace", id: transform.workspace_id },
+            { type: "workspace", id: workspaceId },
           ]),
         );
       }

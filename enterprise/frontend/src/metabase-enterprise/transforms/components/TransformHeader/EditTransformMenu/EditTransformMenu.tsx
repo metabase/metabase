@@ -57,9 +57,6 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
   const existingWorkspaceIds = useMemo(() => {
     const ids = new Set<number>();
-    if (transform.workspace_id != null) {
-      ids.add(transform.workspace_id);
-    }
     downstreamMapping?.transforms?.forEach((item) => {
       if (item.workspace?.id != null) {
         ids.add(item.workspace.id);
@@ -67,7 +64,7 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     });
     addedWorkspaceIds.forEach((id) => ids.add(id));
     return ids;
-  }, [transform.workspace_id, downstreamMapping, addedWorkspaceIds]);
+  }, [downstreamMapping, addedWorkspaceIds]);
 
   const matchingWorkspaces = useMemo(
     () =>
