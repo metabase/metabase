@@ -688,9 +688,9 @@
 
     :else
     (assoc card :dataset_query (-> (:legacy_query card)
-                                   (mi/json-out-without-keywordization)
-                                   (leg-normalize/normalize-or-throw)
-                                   (lib/->pMBQL)))))
+                                   mi/json-out-without-keywordization
+                                   leg-normalize/normalize-or-throw
+                                   lib/->pMBQL))))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   [card :- :map]
