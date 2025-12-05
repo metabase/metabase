@@ -76,6 +76,10 @@
   (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :copper data_layer))
                           (filter #(= :copper (:data_layer %)) existing-tables))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/edit"
   "Bulk updating tables."
   [_route-params
@@ -144,6 +148,10 @@
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
   (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/sync-schema"
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
   - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
@@ -166,6 +174,10 @@
       (sync-schema-async! table api/*current-user-id*))
     {:status :ok}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/rescan-values"
   "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
   [_
@@ -180,6 +192,10 @@
         (quick-task/submit-task! #(sync/update-field-values-for-table! table))))
     {:status :ok}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/discard-values"
   "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."
   [_

@@ -1,4 +1,4 @@
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { idTag, listTag, tag } from "./tags";
@@ -10,30 +10,23 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/ee/library",
       }),
-      invalidatesTags: [listTag("collection"), tag("library-collection")],
+      invalidatesTags: [listTag("collection")],
     }),
-    getLibraryCollection: builder.query<Collection, void>({
+    getLibraryCollection: builder.query<CollectionItem | { data: null }, void>({
       query: () => ({
         url: `/api/ee/library`,
         method: "GET",
       }),
       providesTags: (collection) => [
-        ...(collection ? [idTag("collection", collection.id)] : []),
+        // TODO Alex P 12/05/2025 Fix the endpoint to return sensible data
+        ...(collection != null && "name" in collection
+          ? [idTag("collection", collection.id)]
+          : []),
         tag("library-collection"),
       ],
-    }),
-    getLibraryCollectionTree: builder.query<Collection[], void>({
-      query: () => ({
-        url: `/api/ee/library/tree`,
-        method: "GET",
-      }),
-      providesTags: () => [tag("library-collection")],
     }),
   }),
 });
 
-export const {
-  useCreateLibraryMutation,
-  useGetLibraryCollectionQuery,
-  useGetLibraryCollectionTreeQuery,
-} = libraryApi;
+export const { useCreateLibraryMutation, useGetLibraryCollectionQuery } =
+  libraryApi;

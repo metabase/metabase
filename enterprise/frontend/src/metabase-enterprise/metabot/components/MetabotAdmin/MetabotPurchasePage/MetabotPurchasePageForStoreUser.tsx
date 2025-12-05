@@ -90,13 +90,23 @@ export const MetabotPurchasePageForStoreUser = () => {
 
   return (
     <>
+      <video controls aria-label={t`Demonstration of Metabot AI features`}>
+        <source
+          src="https://www.metabase.com/images/features/metabot.mp4"
+          type="video/mp4"
+        />
+        {t`Your browser does not support the video tag.`}
+      </video>
       <SettingsSection
-        title={t`Monthly usage limit`}
+        title={t`Start free 14-day trial of Metabot`}
         description={
-          <Text
-            maw="35rem"
-            mt="sm"
-          >{t`Usage is measured in Metabot requests. If a chat has multiple questions, they are counted as separate Metabot requests. Usage limit applies to your whole organization.`}</Text>
+          <Text mt="sm">
+            {t`Pick a usage limit below. Usage is measured in Metabot requests.`}
+            <br />
+            {t`If a chat has multiple questions, they are counted as separate Metabot requests.`}
+            <br />
+            {t`Usage limit applies to your whole organization.`}
+          </Text>
         }
       >
         <FormProvider
@@ -117,9 +127,6 @@ export const MetabotPurchasePageForStoreUser = () => {
                 />
 
                 <Stack gap="md">
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-                  <Text maw="35rem">{t`Additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}</Text>
-
                   <Card
                     bg="var(--mb-color-bg-light)"
                     p={12}
@@ -137,6 +144,9 @@ export const MetabotPurchasePageForStoreUser = () => {
                       }
                     />
                   </Card>
+
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
+                  <Text>{t`After 14 days of free trial an additional amount for the add-on will be added to your next billing period invoice. You can cancel the add-on anytime in Metabase Store.`}</Text>
 
                   <FormSubmitButton
                     disabled={!values.terms_of_service}

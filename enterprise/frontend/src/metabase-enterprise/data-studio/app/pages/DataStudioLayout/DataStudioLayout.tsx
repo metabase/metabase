@@ -95,7 +95,6 @@ function DataStudioNav({
             icon="database"
             to={Urls.dataStudioData()}
             isSelected={isDataTab}
-            data-testid="data-studio-data-tab"
           />
         )}
         {canAccessTransforms && (
@@ -104,7 +103,6 @@ function DataStudioNav({
             icon="transform"
             to={Urls.transformList()}
             isSelected={isTransformsTab}
-            data-testid="data-studio-transforms-tab"
           />
         )}
         <DataStudioTab
@@ -112,7 +110,6 @@ function DataStudioNav({
           icon="model"
           to={Urls.dataStudioModeling()}
           isSelected={isModelingTab}
-          data-testid="data-studio-modeling-tab"
         />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
@@ -120,7 +117,6 @@ function DataStudioNav({
             icon="schema"
             to={Urls.dependencyGraph()}
             isSelected={isDependenciesTab}
-            data-testid="data-studio-dependencies-tab"
           />
         )}
       </Stack>
@@ -139,18 +135,11 @@ type DataStudioTabProps = {
   icon: IconName;
   to: string;
   isSelected: boolean;
-  "data-testid"?: string;
 };
 
 const TOOLTIP_OPEN_DELAY = 1000;
 
-function DataStudioTab({
-  label,
-  icon,
-  to,
-  isSelected,
-  "data-testid": testId,
-}: DataStudioTabProps) {
+function DataStudioTab({ label, icon, to, isSelected }: DataStudioTabProps) {
   return (
     <Tooltip label={label} position="right" openDelay={TOOLTIP_OPEN_DELAY}>
       <Box
@@ -160,7 +149,6 @@ function DataStudioTab({
         p="0.75rem"
         bdrs="md"
         aria-label={label}
-        data-testid={testId}
       >
         <FixedSizeIcon name={icon} display="block" />
       </Box>

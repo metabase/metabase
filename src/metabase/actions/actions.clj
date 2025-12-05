@@ -22,7 +22,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
-   [nano-id.core :as nano-id]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -180,7 +179,7 @@
    inputs    :- [:sequential :map]
    & {:as _opts}]
   (lib-be/with-metadata-provider-cache
-    (let [invocation-id  (nano-id/nano-id)
+    (let [invocation-id  (u/generate-nano-id)
           context-before (-> (assoc ctx :invocation-id invocation-id)
                              (update :invocation-stack u/conjv [action-kw invocation-id]))]
       (log/debug "Started perform action")

@@ -170,6 +170,26 @@
   []
   (t2/select-one :model/Collection :type library-collection-type))
 
+(defn create-library-collection!
+  "Create the Library collection. Returns Created collection. Throws if it already exists."
+  []
+  (when-not (nil? (library-collection))
+    (throw (ex-info "Library already exists" {})))
+  (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                                        :type     library-collection-type
+                                                                        :location "/"})
+        base-location (str "/" (:id library) "/")
+        models        (t2/insert-returning-instance! :model/Collection {:name     "Data"
+                                                                        :type     library-models-collection-type
+                                                                        :location base-location})
+        metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
+                                                                        :type     library-metrics-collection-type
+                                                                        :location base-location})]
+    (doseq [col [library models metrics]]
+      (t2/delete! :model/Permissions :collection_id (:id col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col))
+    library))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
@@ -2167,28 +2187,3 @@
     (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
                                                                         library-models-collection-type
                                                                         library-metrics-collection-type]]))))
-
-(defn create-library-collection!
-  "Create the Library collection. Returns Created collection. Throws if it already exists."
-  []
-  (when-not (nil? (library-collection))
-    (throw (ex-info "Library already exists" {})))
-  (let [library               (t2/insert-returning-instance! :model/Collection {:name     "Library"
-                                                                                :type     library-collection-type
-                                                                                :location "/"})
-        base-location         (location-path library)
-        models                (t2/insert-returning-instance! :model/Collection {:name     "Data"
-                                                                                :type     library-models-collection-type
-                                                                                :location base-location})
-        metrics               (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
-                                                                                :type     library-metrics-collection-type
-                                                                                :location base-location})
-        data-studio-group-ids (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (perms/application-perms-path :data-studio))]
-    (doseq [col [library models metrics]]
-      ;; clear out default permissions
-      (t2/delete! :model/Permissions :collection_id (:id col))
-      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
-
-      (doseq [group data-studio-group-ids]
-        (perms/grant-collection-readwrite-permissions! group col)))
-    library))

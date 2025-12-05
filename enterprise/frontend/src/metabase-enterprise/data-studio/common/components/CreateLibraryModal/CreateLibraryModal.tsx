@@ -15,6 +15,7 @@ import {
   Title,
 } from "metabase/ui";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
+import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/analytics";
 import type { Collection } from "metabase-types/api";
 
 type CreateLibraryModalProps = {
@@ -63,6 +64,7 @@ function ModalBody({ withPublishInfo, onCreate, onClose }: ModalBodyProps) {
 
   const handleSubmit = async () => {
     const collection = await createLibrary().unwrap();
+    trackDataStudioLibraryCreated(collection.id);
     onCreate(collection);
   };
 

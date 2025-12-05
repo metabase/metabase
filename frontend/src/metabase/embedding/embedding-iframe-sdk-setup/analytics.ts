@@ -32,6 +32,7 @@ const EMBED_SETTINGS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
   "drills",
   "withTitle",
   "withDownloads",
+  "withSubscriptions",
   "isSaveEnabled",
   "readOnly",
   "layout",
@@ -93,6 +94,7 @@ export const trackEmbedWizardOptionsCompleted = ({
   experience,
   resource,
   settings,
+  isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
   embeddingParameters,
 }: {
@@ -100,6 +102,7 @@ export const trackEmbedWizardOptionsCompleted = ({
   experience: SdkIframeEmbedSetupExperience;
   resource: Dashboard | Card | null;
   settings: Partial<SdkIframeEmbedSetupSettings>;
+  isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
   embeddingParameters: EmbeddingParameters;
 }) => {
@@ -108,6 +111,7 @@ export const trackEmbedWizardOptionsCompleted = ({
     initialState,
     experience,
     resourceId: 0,
+    isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
   });
 

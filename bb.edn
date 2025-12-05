@@ -21,11 +21,13 @@
   alias
   {:doc        "Installs 'mage' alias and autocomplete"
    :examples   [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
-                ["./bin/mage alias zsh" "Prints shell script to put into .zshrc for zsh users"]]
+                ["./bin/mage alias install fish" "Installs mage alias for fish shell"]
+                ["./bin/mage alias print zsh" "Prints shell script to put into .zshrc for zsh users"]]
    :requires   [[mage.alias :as alias]]
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum "bash" "zsh" "fish"]]]
+                [:tuple [:enum "bash" "zsh" "fish"]]
+                [:tuple [:enum "install" "print"] [:enum "bash" "zsh" "fish"]]]
    :task       (task! (alias/instructions parsed))}
 
   cljfmt-staged
@@ -201,9 +203,9 @@
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
                 [:string {:description "Files or directories (recursive) to test"}]]
-   :requires   [[mage.quick-test-runner :as qtr]] 
+   :requires   [[mage.quick-test-runner :as qtr]]
    :task       (task! (qtr/go parsed))}
-  
+
   affected-modules
   {:doc      "Prints information about which backend modules have changes compared to a Git ref e.g. `master`"
    :examples [["./bin/mage affected-modules master"]
@@ -228,6 +230,20 @@
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -play
+  {:doc        "Play sounds from mage.sound"
+   :examples   [["./bin/mage -play success" "play success sound"] ["./bin/mage -play s" "play success sound"]
+                ["./bin/mage -play error" "play error sound"]     ["./bin/mage -play e" "play error sound"]
+                ["./bin/mage -play ping" "play ping sound"]       ["./bin/mage -play p" "play ping sound"]
+                ["./bin/mage -play warning" "play warning sound"] ["./bin/mage -play w" "play warning sound"]]
+   :requires   [[mage.sound :as sound]]
+   :arg-schema [:tuple [:enum "s" "success" "e" "error" "p" "ping" "w" "warning"]]
+   :task       (task! (case (first (:arguments parsed))
+                        ("s" "success") (sound/success)
+                        ("e" "error")   (sound/error)
+                        ("p" "ping")    (sound/ping)
+                        ("w" "warning") (sound/warning)))}
 
   -token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
