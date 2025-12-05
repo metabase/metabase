@@ -87,10 +87,11 @@ describe("getCommonEmbedSettings", () => {
         "should return correct settings for $experience experience",
         ({ experience, useExistingUserSession, expected }) => {
           const result = getCommonEmbedSettings({
-            state: { isGuest: true, useExistingUserSession },
             experience,
             isGuestEmbedsEnabled: true,
             isSsoEnabledAndConfigured: true,
+            isGuest: true,
+            useExistingUserSession,
           });
 
           expect(result).toEqual(expected);
@@ -158,10 +159,11 @@ describe("getCommonEmbedSettings", () => {
           expected,
         }) => {
           const result = getCommonEmbedSettings({
-            state: { isGuest: false, useExistingUserSession },
             experience,
             isGuestEmbedsEnabled: false,
             isSsoEnabledAndConfigured,
+            isGuest: false,
+            useExistingUserSession,
           });
 
           expect(result).toEqual(expected);
@@ -170,45 +172,49 @@ describe("getCommonEmbedSettings", () => {
 
       it("should reset hiddenParameters for chart but not for dashboard in non-guest mode", () => {
         const chartResult = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: true },
           experience: "chart",
           isGuestEmbedsEnabled: false,
           isSsoEnabledAndConfigured: true,
+          isGuest: false,
+          useExistingUserSession: true,
         });
 
         const dashboardResult = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: true },
           experience: "dashboard",
           isGuestEmbedsEnabled: false,
           isSsoEnabledAndConfigured: true,
+          isGuest: false,
+          useExistingUserSession: true,
         });
 
         expect(chartResult).toHaveProperty("hiddenParameters", []);
         expect(dashboardResult).not.toHaveProperty("hiddenParameters");
       });
 
-      it("should handle undefined state", () => {
+      it("should handle `false` for isGuest and `useExistingUserSession`", () => {
         const result = getCommonEmbedSettings({
-          state: undefined,
           experience: "dashboard",
           isGuestEmbedsEnabled: false,
           isSsoEnabledAndConfigured: true,
+          isGuest: false,
+          useExistingUserSession: false,
         });
 
         expect(result).toEqual({
           isGuest: false,
           isSso: true,
-          useExistingUserSession: undefined,
+          useExistingUserSession: false,
           drills: true,
         });
       });
 
       it("should set useExistingUserSession to true when isSsoEnabledAndConfigured is false", () => {
         const result = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: false },
           experience: "dashboard",
           isGuestEmbedsEnabled: false,
           isSsoEnabledAndConfigured: false,
+          isGuest: false,
+          useExistingUserSession: false,
         });
 
         expect(result).toHaveProperty("useExistingUserSession", true);
@@ -244,10 +250,11 @@ describe("getCommonEmbedSettings", () => {
         "should return non-guest settings for $experience experience",
         ({ experience, useExistingUserSession, expected }) => {
           const result = getCommonEmbedSettings({
-            state: { isGuest: false, useExistingUserSession },
             experience,
             isGuestEmbedsEnabled: true,
             isSsoEnabledAndConfigured: true,
+            isGuest: false,
+            useExistingUserSession,
           });
 
           expect(result).toEqual(expected);
@@ -318,10 +325,11 @@ describe("getCommonEmbedSettings", () => {
       "should return correct settings for $experience experience",
       ({ experience, expected }) => {
         const result = getCommonEmbedSettings({
-          state: { isGuest: false, useExistingUserSession: false },
           experience,
           isGuestEmbedsEnabled: false,
           isSsoEnabledAndConfigured: false,
+          isGuest: false,
+          useExistingUserSession: false,
         });
 
         expect(result).toEqual(expected);
@@ -330,17 +338,19 @@ describe("getCommonEmbedSettings", () => {
 
     it("should ignore isGuestEmbedsEnabled parameter for dashboard/chart", () => {
       const resultWithTrue = getCommonEmbedSettings({
-        state: { isGuest: false, useExistingUserSession: false },
         experience: "dashboard",
         isGuestEmbedsEnabled: true,
         isSsoEnabledAndConfigured: false,
+        isGuest: false,
+        useExistingUserSession: false,
       });
 
       const resultWithFalse = getCommonEmbedSettings({
-        state: { isGuest: false, useExistingUserSession: false },
         experience: "dashboard",
         isGuestEmbedsEnabled: false,
         isSsoEnabledAndConfigured: false,
+        isGuest: false,
+        useExistingUserSession: false,
       });
 
       expect(resultWithTrue).toEqual(resultWithFalse);
@@ -356,21 +366,23 @@ describe("getCommonEmbedSettings", () => {
 
     it("should force withDownloads=true for dashboard/chart", () => {
       const result = getCommonEmbedSettings({
-        state: undefined,
         experience: "dashboard",
         isGuestEmbedsEnabled: true,
         isSsoEnabledAndConfigured: false,
+        isGuest: false,
+        useExistingUserSession: false,
       });
 
       expect(result).toHaveProperty("withDownloads", true);
     });
 
-    it("should handle undefined state", () => {
+    it("should handle false for isGuest and useExistingUserSession", () => {
       const result = getCommonEmbedSettings({
-        state: undefined,
         experience: "chart",
         isGuestEmbedsEnabled: false,
         isSsoEnabledAndConfigured: false,
+        isGuest: false,
+        useExistingUserSession: false,
       });
 
       expect(result).toEqual({
