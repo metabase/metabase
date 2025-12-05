@@ -8,13 +8,13 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/utils/all.sh"
 
 # Lock directory to prevent concurrent runs
-LOCK_DIR="$PROJECT_ROOT/logs/dev-bootstrap.lock"
+LOCK_DIR="$PROJECT_ROOT/logs/dev-deps.lock"
 
 acquire_lock() {
     mkdir -p "$(dirname "$LOCK_DIR")"
     # Use mkdir for atomic lock acquisition
     if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-        print_error "Bootstrap is already running"
+        print_error "dev-deps is already running"
         echo "      If this is a mistake, run: rm -rf $LOCK_DIR"
         exit 1
     fi
@@ -122,7 +122,7 @@ main() {
     fi
 
     echo ""
-    print_success "Bootstrap completed"
+    print_success "Dependencies downloaded"
     echo "      For more information, see docs/developers-guide/devenv.md"
     echo ""
 }

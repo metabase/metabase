@@ -391,7 +391,7 @@ main() {
     echo -e "${DIM}     - Puts everything you need on your path when you cd into the project${NC}"
     echo "  4. Install all required development tools"
     echo -e "${DIM}     - Installs Node.js, Yarn, Clojure, etc.${NC}"
-    echo "  5. Run dev-bootstrap to download project dependencies"
+    echo "  5. Run dev-deps to download project dependencies"
     echo -e "${DIM}     - Downloads and caches JavaScript and Clojure libraries${NC}"
     echo -e "${DIM}       and optionally builds a jar${NC}"
     echo ""
@@ -453,17 +453,17 @@ main() {
     # Activate mise for this script session so installed tools are available
     eval "$(mise activate bash)"
 
-    # Run dev-bootstrap
-    print_step "5. Run dev-bootstrap"
+    # Run dev-deps
+    print_step "5. Run dev-deps"
     echo ""
-    if ask_yes_no "Run dev-bootstrap to complete setup by downloading libraries?" "y"; then
+    if ask_yes_no "Run dev-deps to complete setup by downloading libraries?" "y"; then
         echo ""
-        print_step "Running bin/dev-bootstrap"
+        print_step "Running bin/dev-deps"
         echo ""
-        "$SCRIPT_DIR/dev-bootstrap"
+        "$SCRIPT_DIR/dev-deps"
     else
-        print_warning "Skipped dev-bootstrap"
-        echo "      Run './bin/dev-bootstrap' when you're ready to complete setup"
+        print_warning "Skipped dev-deps"
+        echo "      Run './bin/dev-deps' when you're ready to complete setup"
     fi
 
     print_header "Setup Complete!"
