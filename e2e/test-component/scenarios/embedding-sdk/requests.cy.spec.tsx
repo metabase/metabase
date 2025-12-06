@@ -16,6 +16,7 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { defer } from "metabase/lib/promise";
 
 describe("scenarios > embedding-sdk > requests", () => {
   describe("cache preflight requests", () => {
@@ -38,11 +39,19 @@ describe("scenarios > embedding-sdk > requests", () => {
     });
 
     it("properly performs session token refresh request when multiple data requests are triggered at the same time", () => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      const deferreds = [defer(), defer()];
+      let callCount = 0;
+
       const expiredInSeconds = 60;
       cy.clock(Date.now());
 
       cy.then(() => getSignedJwtForUser({ expiredInSeconds })).then((jwt) => {
-        mockAuthProviderAndJwtSignIn(USERS.admin, { jwt });
+        mockAuthProviderAndJwtSignIn(USERS.admin, {
+          jwt,
+          deferredReply: () => deferreds[callCount++].promise,
+        });
       });
 
       cy.mount(
@@ -51,23 +60,31 @@ describe("scenarios > embedding-sdk > requests", () => {
         </MetabaseProvider>,
       );
 
-      getSdkRoot().within(() => {
-        cy.findByText("Orders").should("exist");
+      deferreds[0].resolve();
 
-        cy.findByText("Group").click();
+      cy.then(() => {
+        getSdkRoot().within(() => {
+          cy.findByText("Orders", { timeout: 60_000 }).should("be.visible");
 
-        cy.findByRole("dialog").should("be.visible");
+          cy.findByText("Group").click();
 
-        cy.tick(1000 * (expiredInSeconds + 5));
+          cy.findByRole("dialog").should("be.visible");
 
-        cy.findByRole("dialog").contains(/^ID$/).click();
-        cy.findByRole("dialog").findByTestId("badge-remove-button").click();
+          cy.tick(1000 * (expiredInSeconds + 5));
 
-        cy.wait("@jwtProvider");
+          cy.findByRole("dialog").contains(/^ID$/).click();
+          cy.findByRole("dialog").findByTestId("badge-remove-button").click();
 
-        cy.intercept("POST", "/api/dataset").as("dataset");
-        // We ensure that both `dataset` requests are made after the token refresh request
-        cy.get("@dataset.all").should("have.length", 2);
+          // The requests should be done after we refresh the token, so where we should have 0
+          cy.get("@dataset.all").should("have.length", 0);
+
+          cy.wait("@jwtProvider").then(() => {
+            deferreds[1].resolve();
+          });
+
+          // We ensure that both `dataset` requests are made after the token refresh request
+          cy.get("@dataset.all", { timeout: 60_000 }).should("have.length", 2);
+        });
       });
     });
   });

@@ -31,12 +31,41 @@ export const getSignedJwtForUser = async ({
     .sign(secret);
 };
 
+/**
+ * Mocks the auth provider endpoint and JWT sign-in flow for testing.
+ *
+ * @param user - The user to generate a JWT for. Defaults to USERS.admin
+ * @param options - Configuration options
+ * @param options.jwt - Optional pre-signed JWT to use instead of generating one
+ * @param options.deferredReply - Optional function that returns a promise for each request, useful for E2E test timing control
+ *
+ * @example
+ * ```typescript
+ * // Basic usage
+ * mockAuthProviderAndJwtSignIn(USERS.admin);
+ *
+ * // With deferred reply for multiple E2E test calls
+ * const deferreds = [defer<void>(), defer<void>()];
+ * let callCount = 0;
+ * mockAuthProviderAndJwtSignIn(USERS.admin, {
+ *   deferredReply: () => deferreds[callCount++].promise
+ * });
+ * // Later: deferreds[0].resolve(); deferreds[1].resolve();
+ * ```
+ */
 export const mockAuthProviderAndJwtSignIn = (
   user = USERS.admin,
-  { jwt }: { jwt?: string } = {},
+  {
+    jwt,
+    deferredReply,
+  }: { jwt?: string; deferredReply?: () => Promise<unknown> } = {},
 ) => {
   cy.intercept("GET", `${AUTH_PROVIDER_URL}**`, async (req) => {
     try {
+      if (deferredReply) {
+        await deferredReply();
+      }
+
       const url = new URL(req.url);
       const responseParam = url.searchParams.get("response");
 
