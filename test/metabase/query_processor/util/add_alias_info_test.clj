@@ -814,7 +814,7 @@
                       lib/->legacy-MBQL
                       :query))))))))
 
-;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
+;;; adapted from [[metabase.query-processor.model-test/model-self-join-test]]
 (deftest ^:parallel model-duplicate-joins-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
     (let [mp    meta/metadata-provider
@@ -937,7 +937,7 @@
                                                {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]]}
                       (-> expected :query :source-query (dissoc :source-query)))))))))))
 
-;;; adapted from [[metabase.query-processor-test.uuid-test/joined-uuid-query-test]]
+;;; adapted from [[metabase.query-processor.uuid-test/joined-uuid-query-test]]
 (deftest ^:parallel resolve-field-missing-join-alias-test
   (testing "should resolve broken refs missing join-alias correctly"
     (let [mp      lib.tu.uuid-dogs-metadata-provider/metadata-provider
@@ -1265,7 +1265,7 @@
                 :stages
                 first)))))
 
-;;; see also [[metabase.driver.sql.query-processor-test/evil-field-ref-for-an-expression-test]]
+;;; see also [[metabase.driver.sql.query-processor.evil-field-ref-for-an-expression-test]]
 ;;; and [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test/evil-field-ref-for-an-expression-test]]
 (deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
   (testing "resolve the incorrect use of a :field ref for an expression correctly"

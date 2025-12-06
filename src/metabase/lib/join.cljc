@@ -357,7 +357,7 @@
                         ;; ignore `:source-field` in field refs... join `:fields` probably shouldn't be adding
                         ;; implicitly joined columns anyway (this is not something you can do in the UI at any rate).
                         ;; It might possibly be getting incorrectly propagated somewhere,
-                        ;; see [[metabase.query-processor-test.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
+                        ;; see [[metabase.query-processor.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
                         ;; for an example of where this happens. Having it here will cause `lib.equality` to fail to
                         ;; find a match.
                         ;;

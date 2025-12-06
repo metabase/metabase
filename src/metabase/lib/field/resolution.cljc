@@ -422,7 +422,7 @@
            :fk-field-id source-field-id)))
 
 ;;; See for
-;;; example [[metabase.query-processor-test.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],
+;;; example [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],
 ;;; if we have a field ref to an implicit join but the implicit join in a previous stage but that column is not
 ;;; propagated to the stage we're resolving for the query almost certainly won't work, but we can at least return
 ;;; somewhat more helpful metadata than the base fallback metadata that would give you a confusing error message.

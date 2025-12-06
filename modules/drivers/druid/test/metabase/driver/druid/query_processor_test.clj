@@ -10,8 +10,8 @@
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
