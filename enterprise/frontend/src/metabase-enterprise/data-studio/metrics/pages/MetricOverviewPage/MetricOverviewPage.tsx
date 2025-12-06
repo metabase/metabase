@@ -5,7 +5,7 @@ import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/
 
 import { MetricHeader } from "../../components/MetricHeader";
 
-import { CardOverview } from "./CardOverview";
+import { MetricOverview } from "./MetricOverview";
 
 type MetricOverviewPageParams = {
   cardId: string;
@@ -30,7 +30,7 @@ export function MetricOverviewPage({ params }: MetricOverviewPageProps) {
   return (
     <Flex direction="column" h="100%" data-testid="metric-overview-page">
       <MetricHeader card={card} />
-      <CardOverview card={card} />
+      <MetricOverview card={card} />
     </Flex>
   );
 }

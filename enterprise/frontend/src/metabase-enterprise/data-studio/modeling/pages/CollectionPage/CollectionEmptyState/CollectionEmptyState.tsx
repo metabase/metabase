@@ -30,7 +30,7 @@ function getMessages(collection: Collection) {
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
     case "models":
       return {
-        title: t`No tables or models yet`,
+        title: t`No published tables yet`,
         message: t`Publish tables in the Library to see them here.`,
       };
     case "metrics":

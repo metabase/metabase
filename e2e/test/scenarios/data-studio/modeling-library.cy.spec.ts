@@ -58,9 +58,9 @@ describe("scenarios > data studio > modeling > library", () => {
     cy.log("Select Data collection and verify it's empty");
     H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
 
-    cy.log("Verify no tables or models yet message");
+    cy.log("Verify No published tables yet message");
     H.DataStudio.Modeling.collectionPage().within(() => {
-      cy.findByText("No tables or models yet").should("be.visible");
+      cy.findByText("No published tables yet").should("be.visible");
     });
   });
 
