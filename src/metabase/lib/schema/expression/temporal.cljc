@@ -19,12 +19,7 @@
       (java.time ZoneId))]
     :cljs
     [(:require
-      ["moment" :as moment]
-      ["moment-timezone" :as mtz])]))
-
-#?(:cljs
-   ;; so the moment-timezone stuff gets loaded
-   (comment mtz/keep-me))
+      ["moment-timezone" :as moment-tz])]))
 
 (mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
@@ -187,7 +182,7 @@
            #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)
               ;; 596 timezones on moment-timezone 0.5.38
-              :cljs (.names (.-tz moment)))))
+              :cljs (.names (.-tz moment-tz)))))
     ::literal/string.zone-offset]])
 
 (mbql-clause/define-catn-mbql-clause :convert-timezone
