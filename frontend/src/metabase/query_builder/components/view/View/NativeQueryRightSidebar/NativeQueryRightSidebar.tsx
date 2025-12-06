@@ -99,6 +99,7 @@ export const NativeQueryRightSidebar = (
       ) : null;
     })
     .with({ isShowingDataReference: true }, () => (
+      // @ts-expect-error DataReference props handled by QueryBuilder container
       <DataReference {...props} onClose={toggleDataReference} />
     ))
     .with({ isShowingSnippetSidebar: true }, () => (

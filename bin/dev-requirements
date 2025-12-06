@@ -82,9 +82,9 @@ get_node_version() {
     fi
 }
 
-get_yarn_version() {
-    if command -v yarn &> /dev/null; then
-        yarn --version
+get_pnpm_version() {
+    if command -v pnpm &> /dev/null; then
+        pnpm --version
     else
         echo ""
     fi
@@ -176,11 +176,11 @@ get_babashka_version() {
     fi
 }
 
-check_yarn_classic() {
+check_pnpm_version() {
     local version=$1
     if [ -n "$version" ]; then
         local major_version=$(echo "$version" | cut -d. -f1)
-        if [ "$major_version" = "1" ]; then
+        if [ "$major_version" -ge 9 ]; then
             return 0
         fi
     fi
@@ -240,17 +240,17 @@ main() {
         requirements_met=false
     fi
 
-    # Yarn
-    yarn_version=$(get_yarn_version)
-    if [ -n "$yarn_version" ]; then
-        if check_yarn_classic "$yarn_version"; then
-            print_found "Yarn $yarn_version (Yarn Classic - correct!)"
+    # pnpm
+    pnpm_version=$(get_pnpm_version)
+    if [ -n "$pnpm_version" ]; then
+        if check_pnpm_version "$pnpm_version"; then
+            print_found "pnpm $pnpm_version (meets requirement: >= 9)"
         else
-            print_warning "Yarn $yarn_version (required: Yarn Classic 1.x)"
+            print_warning "pnpm $pnpm_version (required: >= 9)"
             requirements_met=false
         fi
     else
-        print_not_found "Yarn (required: Yarn Classic 1.x)"
+        print_not_found "pnpm (required: >= 9)"
         requirements_met=false
     fi
 
@@ -324,7 +324,7 @@ main() {
 
     echo -e "  ${BOLD}Required Tools:${NC}"
     echo "    - Node.js >= 22 (currently specified in .nvmrc)"
-    echo "    - Yarn Classic 1.x (NOT Yarn 2+, NO Corepack)"
+    echo "    - pnpm >= 9"
     echo "    - Java 21 with Eclipse Temurin distribution (for Clojure backend)"
     if [ -n "$required_clojure_version" ]; then
         echo "    - Clojure CLI (for Clojure $required_clojure_version specified in deps.edn)"

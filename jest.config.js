@@ -4,17 +4,22 @@ const esmPackages = [
   "ccount",
   "character-entities-html4",
   "comma-separated-tokens",
-  "d3-*",
+  "csv-parse",
+  "csv-stringify",
+  "d3-.*",
   "d3",
+  "delaunator",
   "devlop",
   "echarts",
   "fetch-mock",
   "hast.*",
   "html-void-elements",
+  "internmap",
   "is-absolute-url",
   "jose",
   "property-information",
   "rehype-external-links",
+  "robust-predicates",
   "space-separated-tokens",
   "stringify-entities",
   "unist-util-visit-parents",
@@ -34,15 +39,10 @@ const baseConfig = {
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
-    "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown":
       "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
-    "csv-parse/browser/esm/sync":
-      "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
-    "csv-stringify/browser/esm/sync":
-      "<rootDir>/node_modules/csv-stringify/dist/cjs/sync",
     /**
      * SDK components import root SDK folder (`embedding-sdk`) that contains the ee plugins.
      * This isn't a problem in the core app because we seem to not import to entry file directly
@@ -64,7 +64,9 @@ const baseConfig = {
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
+    // Updated pattern to handle pnpm's nested node_modules structure
+    // pnpm paths look like: node_modules/.pnpm/fetch-mock@12.5.3/node_modules/fetch-mock/
+    `/node_modules/(?!(.pnpm/.+/node_modules/)?(${esmPackages.join("|")})/)`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
@@ -159,3 +161,4 @@ const config = {
 
 // eslint-disable-next-line import/no-commonjs
 module.exports = config;
+module.exports.baseConfig = baseConfig;

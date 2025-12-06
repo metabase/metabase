@@ -35,11 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: "release"
-      - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+          sparse-checkout: |
+            release
+            .github/actions/prepare-release-scripts
+      - uses: ./.github/actions/prepare-release-scripts
       - name: Run frontend type-check
-        run: yarn --cwd release type-check
+        run: pnpm --dir release type-check
 
   release-tests-unit:
     needs: files-changed
@@ -49,11 +50,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: "release"
-      - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+          sparse-checkout: |
+            release
+            .github/actions/prepare-release-scripts
+      - uses: ./.github/actions/prepare-release-scripts
       - name: Run release unit tests
-        run: yarn --cwd release test:unit
+        run: pnpm --dir release test:unit
 
   release-test-build:
     needs: files-changed
@@ -63,10 +65,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: "release"
-      - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
-      - name: Build release bundle
-        run: yarn --cwd release build
+          sparse-checkout: |
+            release
+            .github/actions/prepare-release-scripts
+      - uses: ./.github/actions/prepare-release-scripts
       - name: Smoke test release bundle
         run: node release/dist/index.cjs

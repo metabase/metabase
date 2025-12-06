@@ -41,13 +41,13 @@ jobs:
     strategy:
       matrix:
         project:
-          - name: Main Frontend (yarn)
-            file: yarn.lock
-            package-manager: yarn
-            category: main-frontend-yarn
+          - name: Main Frontend (pnpm)
+            file: pnpm-lock.yaml
+            package-manager: pnpm
+            category: main-frontend-pnpm
           - name: Embedding SDK Template
-            file: bin/embedding-sdk/templates/yarn.lock
-            package-manager: yarn
+            file: bin/embedding-sdk/templates/pnpm-lock.yaml
+            package-manager: pnpm
             category: embedding-sdk-template
           - name: E2E Angular 20 Host App
             file: e2e/embedding-sdk-host-apps/angular-20-host-app/package-lock.json
@@ -66,8 +66,8 @@ jobs:
             package-manager: npm
             category: e2e-vite-host
           - name: Release Helper
-            file: release/yarn.lock
-            package-manager: yarn
+            file: release/pnpm-lock.yaml
+            package-manager: pnpm
             category: release-helper
     steps:
       - uses: actions/checkout@v4

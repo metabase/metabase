@@ -35,8 +35,8 @@ check_required_tools() {
         missing+=("node")
     fi
 
-    if ! command -v yarn &> /dev/null; then
-        missing+=("yarn")
+    if ! command -v pnpm &> /dev/null; then
+        missing+=("pnpm")
     fi
 
     if ! command -v java &> /dev/null; then
@@ -60,7 +60,7 @@ check_required_tools() {
 install_frontend_deps() {
     print_step "Installing frontend dependencies"
 
-    if yarn install --frozen-lockfile --prefer-offline; then
+    if pnpm install --frozen-lockfile --prefer-offline; then
         print_success "Frontend dependencies installed"
     else
         print_error "Failed to install frontend dependencies"
@@ -97,7 +97,7 @@ main() {
 
     echo "This script will:"
     echo "  1. Verify required tools are installed"
-    echo "  2. Install frontend dependencies (yarn)"
+    echo "  2. Install frontend dependencies (pnpm)"
     echo "  3. Download backend dependencies (Clojure)"
     echo "  4. Build the Metabase JAR"
     echo ""
@@ -141,7 +141,7 @@ main() {
     echo "  java --add-opens java.base/java.nio=ALL-UNNAMED -jar target/uberjar/metabase.jar"
     echo ""
     echo "To start the frontend:"
-    echo "  yarn build-hot"
+    echo "  pnpm build-hot"
     echo ""
     echo "For more information, see docs/developers-guide/devenv.md"
     echo ""
