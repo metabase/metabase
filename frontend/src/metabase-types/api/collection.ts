@@ -228,6 +228,7 @@ export interface ListCollectionsTreeRequest {
   "exclude-other-user-collections"?: boolean;
   "include-library"?: boolean;
   namespace?: string;
+  namespaces?: string[];
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
