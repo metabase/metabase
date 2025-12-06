@@ -13,3 +13,7 @@ export const getUserColorScheme = (): ColorScheme | undefined => {
     return window.MetabaseUserColorScheme;
   }
 };
+
+export const setUserColorSchemeAfterUpdate = (value: ColorScheme) => {
+  window.MetabaseUserColorScheme = value;
+};
