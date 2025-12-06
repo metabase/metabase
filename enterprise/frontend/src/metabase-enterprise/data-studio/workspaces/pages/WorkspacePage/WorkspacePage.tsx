@@ -15,9 +15,10 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { Sortable } from "metabase/common/components/Sortable";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
@@ -41,6 +42,11 @@ import {
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
+import {
+  type MetabotState,
+  metabotActions,
+} from "metabase-enterprise/metabot/state/reducer";
+import { getMetabot } from "metabase-enterprise/metabot/state/selectors";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
 
@@ -65,9 +71,21 @@ type WorkspacePageProps = {
   };
 };
 
+type MetabotConversationSnapshot = Pick<
+  MetabotState,
+  | "messages"
+  | "history"
+  | "state"
+  | "reactions"
+  | "activeToolCalls"
+  | "errorMessages"
+  | "conversationId"
+>;
+
 function WorkspacePageContent({ params }: WorkspacePageProps) {
   const id = Number(params.workspaceId);
   const dispatch = useDispatch();
+  const metabotState = useSelector(getMetabot as any) as MetabotState;
   const { sendErrorToast } = useMetadataToasts();
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const [tab, setTab] = useState<string>("setup");
@@ -76,11 +94,25 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
     activationConstraint: { distance: 10 },
   });
 
+  const metabotStateRef = useRef<MetabotState>(metabotState);
+  useEffect(() => {
+    metabotStateRef.current = metabotState;
+  }, [metabotState]);
+  const metabotSnapshots = useRef<Map<number, MetabotConversationSnapshot>>(
+    new Map(),
+  );
+
   const { data: databases = { data: [] } } = useListDatabasesQuery({});
 
   const { data: allTransforms = [] } = useListTransformsQuery({});
   const { data: workspace, isLoading: isLoadingWorkspace } =
     useGetWorkspaceQuery(id);
+  useRegisterMetabotContextProvider(async () => {
+    if (!workspace?.database_id) {
+      return;
+    }
+    return { default_database_id: workspace.database_id };
+  }, [workspace?.database_id]);
   const { data: workspaceTables = { inputs: [], outputs: [] } } =
     useGetWorkspaceTablesQuery(id);
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
@@ -183,12 +215,27 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
   }, [openedTabs, metabotContextTransform]);
 
   useEffect(() => {
-    // Keep workspace chat context isolated from other Metabot surfaces
-    // resetMetabotConversation();
+    const snapshots = metabotSnapshots.current;
+    const snapshot = snapshots.get(id);
+    if (snapshot) {
+      dispatch(metabotActions.setConversationSnapshot(snapshot));
+    } else {
+      resetMetabotConversation();
+    }
+
     return () => {
+      snapshots.set(id, {
+        messages: metabotStateRef.current.messages,
+        history: metabotStateRef.current.history,
+        state: metabotStateRef.current.state,
+        reactions: metabotStateRef.current.reactions,
+        activeToolCalls: metabotStateRef.current.activeToolCalls,
+        errorMessages: metabotStateRef.current.errorMessages,
+        conversationId: metabotStateRef.current.conversationId,
+      });
       resetMetabotConversation();
     };
-  }, [resetMetabotConversation, id]);
+  }, [id, dispatch, resetMetabotConversation]);
 
   useEffect(() => {
     if (isMetabotAvailable && isMetabotVisible) {

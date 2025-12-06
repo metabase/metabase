@@ -267,6 +267,38 @@ export const metabot = createSlice({
       state.reactions.suggestedTransforms = [];
       state.experimental.metabotReqIdOverride = undefined;
     },
+    setConversationSnapshot: (
+      state,
+      action: PayloadAction<{
+        messages: MetabotChatMessage[];
+        history: MetabotHistory;
+        state: any;
+        reactions: MetabotReactionsState;
+        activeToolCalls: MetabotToolCall[];
+        errorMessages: MetabotErrorMessage[];
+        conversationId: string;
+      }>,
+    ) => {
+      const {
+        messages,
+        history,
+        state: snapshotState,
+        reactions,
+        activeToolCalls,
+        errorMessages,
+        conversationId,
+      } = action.payload;
+
+      state.messages = messages ?? [];
+      state.history = history ?? [];
+      state.state = snapshotState ?? {};
+      state.reactions =
+        reactions ?? ({ navigateToPath: null, suggestedTransforms: [] } as any);
+      state.activeToolCalls = activeToolCalls ?? [];
+      state.errorMessages = errorMessages ?? [];
+      state.conversationId = conversationId ?? uuid();
+      state.isProcessing = false;
+    },
     resetConversationId: (state) => {
       state.conversationId = uuid();
     },
@@ -379,3 +411,4 @@ export const metabot = createSlice({
 });
 
 export const metabotReducer = metabot.reducer;
+export const metabotActions = metabot.actions;
