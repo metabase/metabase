@@ -16,15 +16,7 @@
   #?@
    (:clj
     [(:import
-      (java.time ZoneId))]
-    :cljs
-    [(:require
-      ["moment" :as moment]
-      ["moment-timezone" :as mtz])]))
-
-#?(:cljs
-   ;; so the moment-timezone stuff gets loaded
-   (comment mtz/keep-me))
+      (java.time ZoneId))]))
 
 (mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
@@ -175,6 +167,38 @@
   ;; argument. But we can't refactor everything in one go, so that will have to be a future refactor.
   [:mode     [:? [:schema [:ref ::week-mode]]]])
 
+#?(:cljs
+   (def ^:private deprecated-timezone-aliases
+     "Deprecated IANA timezone IDs that are commonly used but not included in Intl.supportedValuesOf.
+     These are legacy aliases that map to canonical timezone IDs."
+     #{"US/Alaska"
+       "US/Aleutian"
+       "US/Arizona"
+       "US/Central"
+       "US/East-Indiana"
+       "US/Eastern"
+       "US/Hawaii"
+       "US/Indiana-Starke"
+       "US/Michigan"
+       "US/Mountain"
+       "US/Pacific"
+       "US/Samoa"
+       "Canada/Atlantic"
+       "Canada/Central"
+       "Canada/Eastern"
+       "Canada/Mountain"
+       "Canada/Newfoundland"
+       "Canada/Pacific"
+       "Canada/Saskatchewan"
+       "Canada/Yukon"
+       "Brazil/Acre"
+       "Brazil/DeNoronha"
+       "Brazil/East"
+       "Brazil/West"
+       "Mexico/BajaNorte"
+       "Mexico/BajaSur"
+       "Mexico/General"}))
+
 (mr/def ::timezone-id
   [:and
    ::common/non-blank-string
@@ -186,8 +210,10 @@
           (sort
            #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)
-              ;; 596 timezones on moment-timezone 0.5.38
-              :cljs (.names (.-tz moment)))))
+              ;; 480+ timezones in Intl.supportedValuesOf (as of 2025)
+              ;; Plus 27 commonly used deprecated aliases for compatibility
+              :cljs (concat (js/Intl.supportedValuesOf "timeZone")
+                            deprecated-timezone-aliases))))
     ::literal/string.zone-offset]])
 
 (mbql-clause/define-catn-mbql-clause :convert-timezone
