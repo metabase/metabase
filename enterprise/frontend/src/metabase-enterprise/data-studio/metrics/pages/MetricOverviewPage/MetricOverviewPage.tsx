@@ -3,8 +3,9 @@ import * as Urls from "metabase/lib/urls";
 import { Center, Flex } from "metabase/ui";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 
-import { CardOverview } from "../../../common/components/CardOverview";
 import { MetricHeader } from "../../components/MetricHeader";
+
+import { CardOverview } from "./CardOverview";
 
 type MetricOverviewPageParams = {
   cardId: string;

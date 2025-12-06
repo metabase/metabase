@@ -8,7 +8,6 @@ import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import { CardMoreMenu } from "metabase-enterprise/data-studio/common/components/CardMoreMenu";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
@@ -21,6 +20,8 @@ import {
   PanelHeaderTitle,
 } from "../../../common/components/PaneHeader";
 import { NAME_MAX_LENGTH } from "../../constants";
+
+import { CardMoreMenu } from "./CardMoreMenu";
 
 type MetricHeaderProps = {
   card: Card;
