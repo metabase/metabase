@@ -890,6 +890,57 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v58.2025-12-05T17:41:51
+      author: ranquild
+      comment: Drop fk_report_card_published_table
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_report_card_published_table
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: published_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_report_card_published_table
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:52
+      author: ranquild
+      comment: Drop idx_report_card_published_table_id
+      changes:
+        - dropIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+      rollback:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_published_table_id
+            columns:
+              - column:
+                  name: published_table_id
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:52
+      author: ranquild
+      comment: Drop report_card.published_table_id
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: published_table_id
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: published_table_id
+                  type: int
+                  remarks: The table id that is 'published' by this model
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
