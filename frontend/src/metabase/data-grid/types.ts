@@ -97,6 +97,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
 
+  /** Whether the header cell is clickable (shows hover state). Defaults to true. */
+  headerClickable?: boolean;
+
   /** CSS selector for the clickable area in header */
   headerClickTargetSelector?: string;
 
@@ -142,6 +145,9 @@ export interface RowIdColumnOptions {
 export interface DataGridTheme {
   /** Table font size, defaults to ~12.5px */
   fontSize?: string;
+
+  /** Header row height in pixels, defaults to 36 */
+  headerHeight?: number;
 
   /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
   stickyBackgroundColor?: string;
@@ -218,8 +224,21 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Callback when row selection is changed */
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 
-  /** Items per page. Undefined disables pagination. */
+  /** Items per page. Enables pagination when provided. */
   pageSize?: number;
+
+  /**
+   * Total number of items across all pages.
+   * When provided along with pageIndex and onPageChange, enables server-side
+   * pagination where the component expects pre-paginated data.
+   */
+  total?: number;
+
+  /** Current page index (0-based). Required for server-side pagination. */
+  pageIndex?: number;
+
+  /** Callback when page changes. Required for server-side pagination. */
+  onPageChange?: (pageIndex: number) => void;
 
   /** Callback when a column is resized. */
   onColumnResize?: (columnName: string, width: number) => void;
@@ -295,6 +314,9 @@ export interface DataGridInstance<TData> {
   selection: DataGridSelection;
   enableRowVirtualization: boolean;
   enablePagination: boolean;
+  paginationTotal?: number;
+  paginationPageIndex?: number;
+  onPaginationChange?: (pageIndex: number) => void;
   theme?: DataGridTheme;
   getTotalHeight: () => number;
   getVisibleRows: () => MaybeVirtualRow<TData>[];

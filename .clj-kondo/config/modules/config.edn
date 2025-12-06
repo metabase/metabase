@@ -1895,6 +1895,7 @@
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
+           app-db
            collections
            driver
            events
@@ -1907,6 +1908,7 @@
            premium-features
            queries
            query-processor
+           request
            revisions
            settings
            task

@@ -1,0 +1,14 @@
+.tableContainer {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cellContent {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iconNoShrink {
+  flex-shrink: 0;
+}

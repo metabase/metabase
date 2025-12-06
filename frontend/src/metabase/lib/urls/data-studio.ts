@@ -1,8 +1,11 @@
 import type {
   CardId,
   CollectionId,
+  DatabaseId,
   NativeQuerySnippetId,
   SegmentId,
+  SchemaName,
+  TableId,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -26,6 +29,25 @@ export function dataStudio() {
 
 export function dataStudioData() {
   return `${ROOT_URL}/data`;
+}
+
+export function dataStudioDataDatabase(databaseId: DatabaseId) {
+  return `${dataStudioData()}/database/${databaseId}`;
+}
+
+export function dataStudioDataSchema(
+  databaseId: DatabaseId,
+  schema: SchemaName | null,
+) {
+  return `${dataStudioDataDatabase(databaseId)}/schema/${databaseId}:${encodeURIComponent(schema ?? "")}`;
+}
+
+export function dataStudioDataTable(
+  databaseId: DatabaseId,
+  schema: SchemaName | null,
+  tableId: TableId,
+) {
+  return `${dataStudioDataSchema(databaseId, schema)}/table/${tableId}`;
 }
 
 export function dataStudioModeling() {
@@ -114,4 +136,17 @@ export function dataStudioSegment(segmentId: SegmentId) {
 
 export function dataStudioSegmentDependencies(segmentId: SegmentId) {
   return `${dataStudioSegment(segmentId)}/dependencies`;
+}
+
+export function dataStudioTasks() {
+  return `${ROOT_URL}/tasks`;
+}
+
+export function dataStudioTasksBroken() {
+  return `${dataStudioTasks()}/broken`;
+}
+
+export function dataStudioTasksUnreferenced(entityType?: string) {
+  const base = `${dataStudioTasks()}/unreferenced`;
+  return entityType ? `${base}/${entityType}` : base;
 }

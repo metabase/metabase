@@ -3,6 +3,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
+import type { UserInfo } from "./user";
 
 export type TransformId = number;
 export type TransformTagId = number;
@@ -22,6 +23,7 @@ export type Transform = {
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
+  creator?: UserInfo;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &

@@ -67,6 +67,7 @@ const getDefaultHeaderTemplate = <TRow, TValue>({
   align,
   sortDirection,
   headerVariant,
+  headerClickable,
 }: ColumnOptions<TRow, TValue>) => {
   return function Header() {
     return (
@@ -75,6 +76,7 @@ const getDefaultHeaderTemplate = <TRow, TValue>({
         align={align}
         sort={sortDirection}
         variant={headerVariant}
+        clickable={headerClickable}
       />
     );
   };

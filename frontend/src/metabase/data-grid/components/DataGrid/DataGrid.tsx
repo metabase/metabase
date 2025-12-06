@@ -17,7 +17,6 @@ import { SortableHeader } from "metabase/data-grid/components/SortableHeader/Sor
 import {
   ADD_COLUMN_BUTTON_WIDTH,
   DEFAULT_FONT_SIZE,
-  HEADER_HEIGHT,
   PINNED_COLUMN_Z_INDEX,
 } from "metabase/data-grid/constants";
 import { isVirtualRow } from "metabase/data-grid/guards";
@@ -71,6 +70,9 @@ export const DataGrid = function DataGrid<TData>({
   classNames,
   styles,
   enablePagination,
+  paginationTotal,
+  paginationPageIndex,
+  onPaginationChange,
   showRowsCount,
   getTotalHeight,
   getVisibleRows,
@@ -156,11 +158,16 @@ export const DataGrid = function DataGrid<TData>({
           className={cx(S.table, classNames?.root)}
           data-testid="table-root"
           data-rows-count={rowsCount}
-          style={{
-            fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
-            backgroundColor,
-            ...styles?.root,
-          }}
+          style={
+            {
+              fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
+              backgroundColor,
+              "--data-grid-header-height": theme?.headerHeight
+                ? `${theme.headerHeight}px`
+                : undefined,
+              ...styles?.root,
+            } as React.CSSProperties
+          }
         >
           <div
             data-testid="table-scroll-container"
@@ -189,7 +196,6 @@ export const DataGrid = function DataGrid<TData>({
                   key={headerGroup.id}
                   className={cx(S.row, classNames?.row)}
                   style={{
-                    height: `${HEADER_HEIGHT}px`,
                     backgroundColor,
                     ...styles?.row,
                   }}
@@ -212,6 +218,7 @@ export const DataGrid = function DataGrid<TData>({
                       const style: React.CSSProperties = isPinned
                         ? {
                             width,
+                            height: "100%",
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
@@ -219,6 +226,7 @@ export const DataGrid = function DataGrid<TData>({
                           }
                         : {
                             width,
+                            height: "100%",
                           };
 
                       const headerContent = isPinned ? (
@@ -401,6 +409,9 @@ export const DataGrid = function DataGrid<TData>({
           <Footer
             table={table}
             enablePagination={enablePagination}
+            paginationTotal={paginationTotal}
+            paginationPageIndex={paginationPageIndex}
+            onPaginationChange={onPaginationChange}
             showRowsCount={showRowsCount}
             rowsTruncated={rowsTruncated}
             style={styles?.footer}

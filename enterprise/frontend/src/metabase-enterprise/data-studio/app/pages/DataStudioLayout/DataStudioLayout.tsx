@@ -78,6 +78,7 @@ function DataStudioNav({
   const isDataTab = pathname.startsWith(Urls.dataStudioData());
   const isTransformsTab = pathname.startsWith(Urls.transformList());
   const isModelingTab = pathname.startsWith(Urls.dataStudioModeling());
+  const isTasksTab = pathname.startsWith(Urls.dataStudioTasks());
   const isDependenciesTab = pathname.startsWith(Urls.dependencyGraph());
 
   return (
@@ -104,6 +105,12 @@ function DataStudioNav({
           icon="model"
           to={Urls.dataStudioModeling()}
           isSelected={isModelingTab}
+        />
+        <DataStudioTab
+          label={t`Tasks`}
+          icon="list"
+          to={Urls.dataStudioTasks()}
+          isSelected={isTasksTab}
         />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
