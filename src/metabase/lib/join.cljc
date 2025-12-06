@@ -1,6 +1,6 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
-  (:refer-clojure :exclude [mapv run! some empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -36,7 +36,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv run! some empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- join? [x]
   (= (lib.dispatch/dispatch-value x) :mbql/join))

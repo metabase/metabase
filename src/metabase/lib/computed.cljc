@@ -2,9 +2,11 @@
   "A first cut at smarter, more granular memoization of derived data about queries.
 
   Only a corner of the vision is implemented here so far, it's expanding as needed in response to user perf issues."
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [get-in]]))
 
 (def ^:private weak-map
   "A global weak map using queries as keys. Since CLJ(S) maps are immutable, if the map changes it is a new pointer,

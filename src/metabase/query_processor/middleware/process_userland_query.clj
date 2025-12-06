@@ -5,7 +5,7 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
-  (:refer-clojure :exclude [every? empty?])
+  (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
@@ -16,7 +16,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty?]]
+   [metabase.util.performance :refer [every? empty? get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 

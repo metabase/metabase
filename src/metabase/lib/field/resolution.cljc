@@ -1,7 +1,7 @@
 (ns metabase.lib.field.resolution
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
-  (:refer-clojure :exclude [not-empty some select-keys #?(:clj empty?)])
+  (:refer-clojure :exclude [not-empty some select-keys get-in #?(:clj empty?)])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -26,7 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [not-empty some select-keys #?(:clj empty?)]]))
+   [metabase.util.performance :refer [not-empty some select-keys get-in #?(:clj empty?)]]))
 
 (mr/def ::id-or-name
   [:or :string ::lib.schema.id/field])

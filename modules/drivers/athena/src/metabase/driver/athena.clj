@@ -1,5 +1,5 @@
 (ns metabase.driver.athena
-  (:refer-clojure :exclude [some select-keys mapv empty? not-empty])
+  (:refer-clojure :exclude [some select-keys mapv empty? not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -19,7 +19,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [some select-keys mapv empty? not-empty]])
+   [metabase.util.performance :refer [some select-keys mapv empty? not-empty get-in]])
   (:import
    (java.sql Connection DatabaseMetaData Date ResultSet Time Types)
    (java.time OffsetDateTime ZonedDateTime)
