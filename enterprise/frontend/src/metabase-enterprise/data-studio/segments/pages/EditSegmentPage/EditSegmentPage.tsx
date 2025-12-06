@@ -39,7 +39,9 @@ export function EditSegmentPage({ params, route }: EditSegmentPageProps) {
     table,
     isLoading: isLoadingTable,
     error: tableError,
-  } = useLoadTableWithMetadata(segment?.table_id);
+  } = useLoadTableWithMetadata(segment?.table_id, {
+    includeForeignTables: true,
+  });
 
   const [updateSegment, { isLoading: isSaving }] = useUpdateSegmentMutation();
   const [deleteSegment, { isLoading: isRemoving }] = useDeleteSegmentMutation();
