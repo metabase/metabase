@@ -136,7 +136,7 @@ jobs:
         with:
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
       - name: Build
-        run: ./bin/build.sh
+        run: yarn build:uberjar
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
