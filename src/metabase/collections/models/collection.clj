@@ -93,6 +93,14 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
+(def transforms-ns
+  "Namespace for transforms"
+  :transforms)
+
+(def snippets-ns
+  "Namespace for snippets"
+  :snippets)
+
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))

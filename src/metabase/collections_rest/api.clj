@@ -441,6 +441,14 @@
             [:= :collection_id (:id collection)]
             [:= :archived (boolean archived?)]]})
 
+(defmethod collection-children-query :transform
+  [_model collection {:keys [pinned-state]}]
+  {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+   :from   [[:transform :transform]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :collection_id (:id collection)]]})
+
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
   (for [row rows]
@@ -801,7 +809,8 @@
     :document   :model/Document
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
-    :timeline   :model/Timeline))
+    :timeline   :model/Timeline
+    :transform  :model/Transform))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -987,7 +996,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :transform]
                                       (premium-features/enable-documents?) (conj :document))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))

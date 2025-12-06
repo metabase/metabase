@@ -56,6 +56,7 @@
   (m/assoc-some root-collection
                 :name (case (keyword collection-namespace)
                         :snippets (tru "Top folder")
+                        :transforms (tru "Transforms")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :is_personal false
