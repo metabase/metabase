@@ -73,11 +73,11 @@
   "library")
 
 (def ^:constant library-data-collection-type
-  "The value of the `:type` field for collections that only allow models."
+  "The value of the `:type` field for collections that only allow tables."
   "library-data")
 
 (def ^:constant library-metrics-collection-type
-  "The value of the `:type` field for collections that only allow models."
+  "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
 (defn- trash-collection* []
