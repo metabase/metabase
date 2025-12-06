@@ -77,8 +77,8 @@ describe("Table editing", () => {
 
       cy.log("publish the table and verify it's published");
       cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().button("Create my Library").click();
-      H.modal().button("Publish this table").click();
+      H.modal().findByText("Create my Library").click();
+      H.modal().findByText("Publish this table").click();
       cy.wait("@publishTables");
       H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");

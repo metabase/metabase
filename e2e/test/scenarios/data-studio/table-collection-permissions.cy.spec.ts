@@ -284,7 +284,7 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Products").should("be.visible");
         cy.findByText("Reviews").should("be.visible");
         cy.findByText("People").should("not.exist");
-        cy.button("Publish these tables").click();
+        cy.findByText("Publish these tables").click();
       });
       H.undoToast().findByText("Published").should("be.visible");
 

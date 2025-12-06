@@ -117,8 +117,8 @@ describe("bulk table operations", () => {
 
       cy.log("publish the tables and verify they are published");
       cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().button("Create my Library").click();
-      H.modal().button("Publish these tables").click();
+      H.modal().findByText("Create my Library").click();
+      H.modal().findByText("Publish these tables").click();
       cy.wait("@publishTables");
       H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");
@@ -196,7 +196,7 @@ describe("bulk table operations", () => {
     H.selectDropdown().contains("Ingested").click();
 
     cy.findByRole("button", { name: /Publish/ }).click();
-    H.modal().button("Publish these tables").click();
+    H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
     TablePicker.getDatabase("Writable Postgres12").click();

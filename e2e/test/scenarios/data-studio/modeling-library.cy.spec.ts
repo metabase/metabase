@@ -35,7 +35,7 @@ describe("scenarios > data studio > modeling > library", () => {
     cy.log("Create library via modal");
     H.modal().within(() => {
       cy.findByText("Create your Library").should("be.visible");
-      cy.button("Create my Library").click();
+      cy.findByText("Create my Library").click();
     });
 
     cy.wait("@createLibrary");
