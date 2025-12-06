@@ -17,11 +17,12 @@
 
 (defn- segment-response [segment]
   (-> (into {} segment)
-      (dissoc :id :table_id)
+      (dissoc :id :table_id :dependency_analysis_version)
       (update :creator #(into {} %))
       (update :entity_id some?)
       (update :created_at some?)
-      (update :updated_at some?)))
+      (update :updated_at some?)
+      (update :definition map?)))
 
 ;; ## /api/segment/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same

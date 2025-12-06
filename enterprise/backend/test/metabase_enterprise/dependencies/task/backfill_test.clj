@@ -247,5 +247,5 @@
                 dep-version-after (t2/select-one-fn :dependency_analysis_version :model/Card :id card-id)
                 deps-after (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
             (is (= 0 revision-count-after))
-            (is (= 2 dep-version-after))
+            (is (= 3 dep-version-after))
             (is (= 1 deps-after))))))))
