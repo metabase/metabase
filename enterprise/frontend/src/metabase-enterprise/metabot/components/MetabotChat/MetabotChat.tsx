@@ -82,6 +82,11 @@ export const MetabotChat = ({
       side="right"
       width="30rem"
       aria-hidden={!metabot.visible}
+      style={{
+        boxShadow: metabot.profileOverride
+          ? "inset 0px 0px 33px -10px var(--mb-color-brand)"
+          : "unset",
+      }}
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
@@ -91,6 +96,14 @@ export const MetabotChat = ({
               {metabot.profileOverride
                 ? t`Using profile: ${metabot.profileOverride}`
                 : t`Metabot isn't perfect. Double-check results.`}
+              {metabot.profileOverride && (
+                <Button
+                  ml="xs"
+                  size="compact-xs"
+                  variant="subtle"
+                  onClick={() => metabot.setProfileOverride("unset")}
+                >{t`Reset`}</Button>
+              )}
             </Text>
           </Flex>
 

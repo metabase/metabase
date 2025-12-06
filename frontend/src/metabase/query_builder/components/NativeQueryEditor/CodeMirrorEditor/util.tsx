@@ -10,6 +10,7 @@ import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
 import type { Location, SelectionRange as Range } from "../types";
+import { METAKEY } from "metabase/lib/browser";
 
 export function convertIndexToPosition(value: string, index: number): Location {
   let row = 0;
@@ -264,10 +265,8 @@ export const getPlaceholderText = (engine?: string | null): string => {
 
   const engineType = getEngineNativeType(engine);
 
-  if (PLUGIN_METABOT.isEnabled()) {
-    if (engineType === "sql") {
-      return t`Write your SQL here, or have Metabot help you`;
-    }
+  if (PLUGIN_METABOT.isEnabled() && engineType === "sql") {
+    return t`Write your SQL here, or press ${METAKEY} + e to have SQL generated for you.`;
   }
 
   switch (true) {

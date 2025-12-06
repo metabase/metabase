@@ -38,6 +38,7 @@ import {
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
+  getProfile,
   getUserPromptForMessageId,
 } from "./selectors";
 import type { MetabotStoreState, SlashCommand } from "./types";
@@ -53,7 +54,6 @@ export const {
   setNavigateToPath,
   toolCallStart,
   toolCallEnd,
-  setProfileOverride,
   setMetabotReqIdOverride,
   setDebugMode,
   addSuggestedTransform,
@@ -103,6 +103,16 @@ export const setVisible =
     }
 
     dispatch(metabot.actions.setVisible(isVisible));
+  };
+
+export const setProfileOverride =
+  (profile: string | undefined) => (dispatch: Dispatch, getState: any) => {
+    const currentProfile = getProfile(getState() as any);
+    if (profile && currentProfile !== profile) {
+      dispatch(resetConversation());
+      const nextProfile = profile === "unset" ? undefined : profile;
+      dispatch(metabot.actions.setProfileOverride(nextProfile));
+    }
   };
 
 export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
@@ -277,6 +287,10 @@ export const sendAgentRequest = createAsyncThunk<
                 };
 
                 dispatch(addAgentMessage(message));
+              })
+              .with({ type: "code_edit" }, (part) => {
+                // TODO: notify the editor w/o using a global notifier fn...
+                (window as any).notifyCodeEdit(part.value.value);
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
