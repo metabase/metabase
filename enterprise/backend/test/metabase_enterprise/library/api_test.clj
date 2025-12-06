@@ -33,5 +33,5 @@
                                           :type          :metric}]
              (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
                (is (= "Library" (:name response)))
-               (is (= ["table" "metric"] (:below response)))
+               (is (= ["metric" "table"] (:below response)))
                (is (= ["collection"] (:here response)))))))))))
