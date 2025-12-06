@@ -60,7 +60,7 @@
   (t2/select :model/Collection
              {:where    [:and
                          [:in :type [collection/library-collection-type
-                                     collection/library-models-collection-type
+                                     collection/library-data-collection-type
                                      collection/library-metrics-collection-type]]
                          (collection/visible-collection-filter-clause
                           :id

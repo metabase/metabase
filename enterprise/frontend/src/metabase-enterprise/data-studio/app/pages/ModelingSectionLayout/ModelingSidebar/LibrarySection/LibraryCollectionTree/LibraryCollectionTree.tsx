@@ -17,22 +17,15 @@ type LibraryCollectionTreeProps = {
   rootCollection: Collection;
   selectedCollectionId: CollectionId | undefined;
   hasDataAccess: boolean;
-  hasNativeWrite: boolean;
 };
 
 export function LibraryCollectionTree({
   rootCollection,
   selectedCollectionId,
   hasDataAccess,
-  hasNativeWrite,
 }: LibraryCollectionTreeProps) {
   const collectionTree = useMemo(
     () => buildCollectionTree([rootCollection]),
-    [rootCollection],
-  );
-
-  const modelCollection = useMemo(
-    () => getWritableCollection(rootCollection, "library-models"),
     [rootCollection],
   );
 
@@ -66,21 +59,12 @@ export function LibraryCollectionTree({
           return null;
         }
 
-        const canCreateModel = hasDataAccess && modelCollection != null;
         const canCreateMetric = hasDataAccess && metricCollection != null;
-        if (!canCreateModel && !canCreateMetric) {
+        if (!canCreateMetric) {
           return null;
         }
 
-        return (
-          <CreateCardMenu
-            modelCollectionId={modelCollection?.id}
-            metricCollectionId={metricCollection?.id}
-            canCreateModel={canCreateModel}
-            canCreateMetric={canCreateMetric}
-            canCreateNativeQuery={hasNativeWrite}
-          />
-        );
+        return <CreateCardMenu metricCollectionId={metricCollection?.id} />;
       }}
       role="tree"
       onSelect={handleCollectionSelect}

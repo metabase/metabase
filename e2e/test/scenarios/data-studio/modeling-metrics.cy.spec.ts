@@ -22,7 +22,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
       H.DataStudio.Modeling.emptyPage().should("be.visible");
       H.DataStudio.Modeling.emptyPage()
         .parent()
-        .findByText("Build your semantic layer with models and metrics.")
+        .findByText("Build your semantic layer with tables and metrics.")
         .should("be.visible");
     });
   });

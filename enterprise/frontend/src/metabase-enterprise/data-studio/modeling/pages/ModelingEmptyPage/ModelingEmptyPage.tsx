@@ -9,8 +9,8 @@ export function ModelingEmptyPage() {
     <Center h="100%" bg="bg-light" data-testid="modeling-empty-page">
       <EmptyState
         illustrationElement={<img src={EmptyDashboardBot} />}
-        title={t`Pick a collection or create a new model or metric`}
-        message={t`Build your semantic layer with models and metrics.`}
+        title={t`Pick a collection or create a new metric`}
+        message={t`Build your semantic layer with tables and metrics.`}
       />
     </Center>
   );

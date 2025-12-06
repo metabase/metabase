@@ -552,13 +552,13 @@
                all-types (flatten-tree-types response)]
            (is (not-any? #{collection/library-collection-type} all-types))
            (is (not-any? #{collection/library-metrics-collection-type} all-types))
-           (is (not-any? #{collection/library-models-collection-type} all-types))))
+           (is (not-any? #{collection/library-data-collection-type} all-types))))
        (testing "Can choose to include include library items"
          (let [response (mt/user-http-request :rasta :get 200 "collection/tree" :include-library true)
                all-types (flatten-tree-types response)]
            (is (some #{collection/library-collection-type} all-types))
            (is (some #{collection/library-metrics-collection-type} all-types))
-           (is (some #{collection/library-models-collection-type} all-types))))))))
+           (is (some #{collection/library-data-collection-type} all-types))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |

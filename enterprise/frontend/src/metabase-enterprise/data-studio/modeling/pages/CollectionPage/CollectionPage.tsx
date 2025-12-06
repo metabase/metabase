@@ -36,7 +36,7 @@ export function CollectionPage({ params }: CollectionPageProps) {
     error: itemsError,
   } = useListCollectionItemsQuery({
     id: params.collectionId,
-    models: ["dataset", "metric", "table"],
+    models: ["table", "metric"],
   });
   const items = data?.data ?? [];
   const isLoading = isLoadingCollection || isLoadingItems;

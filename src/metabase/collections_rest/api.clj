@@ -101,7 +101,7 @@
                        (when-not include-library?
                          [:or [:= nil :type]
                           [:not-in :type [collection/library-collection-type
-                                          collection/library-models-collection-type
+                                          collection/library-data-collection-type
                                           collection/library-metrics-collection-type]]])
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-filter-clause
@@ -677,7 +677,7 @@
           [:or [:= nil :type]
            [:not [:in :type [collection/library-collection-type
                              collection/library-metrics-collection-type
-                             collection/library-models-collection-type]]]])
+                             collection/library-data-collection-type]]]])
         (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:

@@ -17,15 +17,15 @@ const LIBRARY_COLLECTION = createMockCollection({
   below: ["dataset", "metric"],
 });
 
-const LIBRARY_MODELS_COLELCTION = createMockCollectionItem({
+const LIBRARY_DATA_COLLECTION = createMockCollectionItem({
   name: "data",
-  type: "library-models",
+  type: "library-data",
   model: "collection",
   id: 1338,
   here: ["dataset"],
 });
 
-const LIBRARY_METRICS_COLELCTION = createMockCollectionItem({
+const LIBRARY_METRICS_COLLECTION = createMockCollectionItem({
   name: "metrics",
   type: "library-metrics",
   model: "collection",
@@ -38,7 +38,7 @@ describe("library", () => {
     fetchMock.get("/api/ee/library", LIBRARY_COLLECTION);
     setupCollectionItemsEndpoint({
       collection: LIBRARY_COLLECTION,
-      collectionItems: [LIBRARY_MODELS_COLELCTION, LIBRARY_METRICS_COLELCTION],
+      collectionItems: [LIBRARY_DATA_COLLECTION, LIBRARY_METRICS_COLLECTION],
     });
 
     setup(
@@ -58,8 +58,8 @@ describe("library", () => {
     setupCollectionItemsEndpoint({
       collection: LIBRARY_COLLECTION,
       collectionItems: [
-        { ...LIBRARY_MODELS_COLELCTION, here: undefined },
-        { ...LIBRARY_METRICS_COLELCTION, here: undefined },
+        { ...LIBRARY_DATA_COLLECTION, here: undefined },
+        { ...LIBRARY_METRICS_COLLECTION, here: undefined },
       ],
     });
 
@@ -79,13 +79,13 @@ describe("library", () => {
     setupCollectionItemsEndpoint({
       collection: LIBRARY_COLLECTION,
       collectionItems: [
-        LIBRARY_MODELS_COLELCTION,
-        { ...LIBRARY_METRICS_COLELCTION, here: undefined },
+        LIBRARY_DATA_COLLECTION,
+        { ...LIBRARY_METRICS_COLLECTION, here: undefined },
       ],
     });
 
     setupCollectionItemsEndpoint({
-      collection: LIBRARY_MODELS_COLELCTION,
+      collection: LIBRARY_DATA_COLLECTION,
       collectionItems: [
         createMockCollectionItem({ model: "dataset", name: "Surprise" }),
       ],
@@ -103,7 +103,7 @@ describe("library", () => {
     fetchMock.get("/api/ee/library", LIBRARY_COLLECTION);
     setupCollectionItemsEndpoint({
       collection: LIBRARY_COLLECTION,
-      collectionItems: [LIBRARY_MODELS_COLELCTION, LIBRARY_METRICS_COLELCTION],
+      collectionItems: [LIBRARY_DATA_COLLECTION, LIBRARY_METRICS_COLLECTION],
     });
 
     setup(

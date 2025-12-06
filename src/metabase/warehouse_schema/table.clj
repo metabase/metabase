@@ -56,8 +56,7 @@
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                                 [:segments :definition_description] :metrics :collection]
-                         (premium-features/has-feature? :transforms) (conj :transform)
-                         api/*is-superuser?*                         (conj :published_models))]
+                         (premium-features/has-feature? :transforms) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))

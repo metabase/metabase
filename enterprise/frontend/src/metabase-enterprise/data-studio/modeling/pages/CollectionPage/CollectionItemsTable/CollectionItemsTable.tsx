@@ -45,7 +45,7 @@ export function CollectionItemsTable({ items }: CollectionItemsTableProps) {
   );
 
   return (
-    <Table aria-label={t`Table of models and metrics`}>
+    <Table aria-label={t`Table of tables and metrics`}>
       <colgroup>
         <NameColumn {...sharedProps} />
         <TableColumn {...descriptionProps} width="60%" />
