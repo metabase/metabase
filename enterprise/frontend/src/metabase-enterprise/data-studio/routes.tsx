@@ -17,6 +17,7 @@ import { ModelingSectionLayout } from "./app/pages/ModelingSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { getDataStudioMeasureRoutes } from "./measures/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
 import { getDataStudioModelRoutes } from "./models/routes";
@@ -56,6 +57,7 @@ export function getDataStudioRoutes(
           {getDataStudioModelRoutes()}
           {getDataStudioMetricRoutes()}
           {getDataStudioSegmentRoutes()}
+          {getDataStudioMeasureRoutes()}
           {getDataStudioSnippetRoutes()}
           {getDataStudioGlossaryRoutes()}
         </Route>

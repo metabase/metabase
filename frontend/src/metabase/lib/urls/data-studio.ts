@@ -3,6 +3,7 @@ import type {
   CollectionId,
   DatabaseId,
   FieldId,
+  MeasureId,
   NativeQuerySnippetId,
   SchemaName,
   SegmentId,
@@ -24,7 +25,11 @@ function getQueryString({ collectionId }: OptionalParams) {
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export const DATA_STUDIO_TABLE_METADATA_TABS = ["field", "segments"] as const;
+export const DATA_STUDIO_TABLE_METADATA_TABS = [
+  "field",
+  "segments",
+  "measures",
+] as const;
 export type DataStudioTableMetadataTab =
   (typeof DATA_STUDIO_TABLE_METADATA_TABS)[number];
 
@@ -108,6 +113,18 @@ export function dataStudioSegment(segmentId: SegmentId) {
 
 export function newDataStudioSegment(tableId: TableId) {
   return `${dataStudioModeling()}/segments/new?tableId=${tableId}`;
+}
+
+export function dataStudioTableMeasures(tableId: TableId) {
+  return `${dataStudioTable(tableId)}/measures`;
+}
+
+export function dataStudioMeasure(measureId: MeasureId) {
+  return `${dataStudioModeling()}/measures/${measureId}`;
+}
+
+export function newDataStudioMeasure(tableId: TableId) {
+  return `${dataStudioModeling()}/measures/new?tableId=${tableId}`;
 }
 
 export type NewDataStudioQueryModelParams = {
