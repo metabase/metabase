@@ -924,7 +924,7 @@ databaseChangeLog:
                   name: published_table_id
 
   - changeSet:
-      id: v58.2025-12-05T17:41:52
+      id: v58.2025-12-05T17:41:53
       author: ranquild
       comment: Drop report_card.published_table_id
       changes:
