@@ -225,6 +225,36 @@ describe("scenarios > documents > public", () => {
     verifyDocumentIsReadOnly();
   });
 
+  it("should display metabot blocks in a read-only state", () => {
+    const text = "Some metabot prompt";
+    H.createDocument({
+      name: "Document with metabot block",
+      document: {
+        content: [
+          {
+            type: "metabot",
+            content: [{ type: "text", text }],
+          },
+        ],
+        type: "doc",
+      },
+      collection_id: null,
+      idAlias: "documentId",
+    });
+    visitPublicDocument();
+
+    cy.log("Click the metabot block and enter text");
+    H.documentContent().findByText(text).click();
+    cy.realType("a");
+
+    cy.log("Verify the text wasn't updated");
+    H.documentContent().findByText(text).should("exist");
+
+    cy.log("Verify that run/close buttons don't exist but a metabot icon does");
+    H.documentContent().find("button").should("not.exist");
+    H.documentContent().icon("metabot").should("exist");
+  });
+
   it("should allow downloading results from embedded cards", () => {
     // Create a document with an embedded card
     createTestDocumentWithCard("Download Test Document");

@@ -204,29 +204,31 @@ const SupportingTextComponent = ({
       </div>
 
       {/* Would be nice to use a real `button` here, but that prevents ProseMirror plugin dragstart events from firing */}
-      <div
-        role="button"
-        tabIndex={0}
-        data-drag-handle
-        ref={dragElRef}
-        contentEditable={false}
-        aria-label={t`Supporting text`}
-        className={S.handle}
-        onClick={() => {
-          const pos = getPos();
-          pos && editor.commands.setNodeSelection(pos);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Backspace" || e.key === "Delete") {
+      {canWrite && (
+        <div
+          role="button"
+          tabIndex={0}
+          data-drag-handle
+          ref={dragElRef}
+          contentEditable={false}
+          aria-label={t`Supporting text`}
+          className={S.handle}
+          onClick={() => {
             const pos = getPos();
-            deleteNode();
-            cleanupFlexContainerNodes(editor.view);
-            if (pos != null) {
-              editor.commands.focus(pos);
+            pos && editor.commands.setNodeSelection(pos);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace" || e.key === "Delete") {
+              const pos = getPos();
+              deleteNode();
+              cleanupFlexContainerNodes(editor.view);
+              if (pos != null) {
+                editor.commands.focus(pos);
+              }
             }
-          }
-        }}
-      />
+          }}
+        />
+      )}
       {document && !isWithinIframe() && (
         <Box
           pos="absolute"
