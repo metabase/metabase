@@ -2,10 +2,10 @@
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:refer-clojure :exclude [mapv])
   (:require
-   [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [clojure.xml :as xml]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -420,7 +420,7 @@
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
   (let [parsed (-> (io/resource "timezones/windowsZones.xml")
-                   io/reader
+                   io/input-stream
                    xml/parse)
         sanitized (sanitize-contents parsed)
         data (-> sanitized :content second :content first :content)]
