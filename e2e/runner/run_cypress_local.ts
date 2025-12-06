@@ -46,7 +46,8 @@ const init = async () => {
   const cliArguments = process.argv.slice(2);
   const userOverrides = await parseArguments(cliArguments);
 
-  const { isBackendRunning } = CypressBackend;
+  const backendPid = CypressBackend.getBackendPid();
+  const isBackendRunning = !!backendPid;
 
   const runningFromJar = !!options.JAR_PATH;
 
@@ -58,7 +59,7 @@ const init = async () => {
       printBold("⚠️ Your backend is already running");
       console.log(`You wanted to test against a pre-built Metabase JAR:
         - It will spin up both the backend and the frontend for you
-        - Kill the backend pid ${isBackendRunning} and run the script again
+        - Kill the backend pid ${backendPid} and run the script again
         - Alternatively, use a different MB_JETTY_PORT in this shell and try again
         `);
 
@@ -71,7 +72,7 @@ const init = async () => {
     if (isBackendRunning) {
       printBold("⚠️ Your backend is already running");
       console.log(`If tests fail or if something doesn't work:
-      - Kill the pid ${isBackendRunning}
+      - Kill the pid ${backendPid}
       - Run *yarn test-cypress* again
       - This will spin up the live backend with the correct settings for e2e tests
     `);

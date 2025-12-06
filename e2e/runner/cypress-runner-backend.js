@@ -18,7 +18,7 @@ function getJvmOptsFromDepsEdn(alias = "e2e") {
 process.env.MB_DB_FILE = process.env.MB_DB_FILE || tempDbPath;
 process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
 
-if (!process.CI) {
+if (!process.env.CI) {
   // Use a temporary copy of the sample db so it won't use and lock the db used for local development
   process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = path.resolve(
     __dirname,
@@ -85,9 +85,10 @@ const CypressBackend = {
   },
 };
 
-const isBackendRunning = shell(
-  `lsof -ti:${process.env.MB_JETTY_PORT} || echo ""`,
-  { quiet: true },
-);
+function getBackendPid() {
+  return shell(`lsof -ti:${process.env.MB_JETTY_PORT} || echo ""`, {
+    quiet: true,
+  });
+}
 
-module.exports = { ...CypressBackend, isBackendRunning };
+module.exports = { ...CypressBackend, getBackendPid };
