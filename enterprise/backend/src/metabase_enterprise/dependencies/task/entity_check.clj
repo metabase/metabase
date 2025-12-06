@@ -32,7 +32,7 @@
     (-> (reduce (fn [batch-size entity-type]
                   (if (< batch-size 1)
                     (reduced 0)
-                    (let [processed (deps.findings/analyze-entities entity-type batch-size)]
+                    (let [processed (deps.findings/analyze-batch! entity-type batch-size)]
                       (when (pos? processed)
                         (log/info "Updated" processed "entities of type" entity-type))
                       (- batch-size processed))))

@@ -1,9 +1,10 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
+   [metabase.graph.core :as graph]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -229,10 +230,9 @@
   {:card :model/Card
    :transform :model/Transform})
 
-(defn- reset-dependent-analyses! [type instance]
-  (models.analysis-finding/reset-analysis! type [(:id instance)])
-  (doseq [[dep-type dep-ids] (models.dependency/transitive-dependents {type [instance]})]
-    (models.analysis-finding/reset-analysis! dep-type dep-ids)))
+(defn- get-children [graph type id]
+  (get (graph/children-of graph [[type id]])
+       [type id]))
 
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-update ::check-card-dependents)
@@ -240,8 +240,15 @@
 
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
+  (deps.findings/upsert-analysis! object)
   (when (premium-features/has-feature? :dependencies)
-    (reset-dependent-analyses! :card object)))
+    (let [graph (models.dependency/filtered-graph-dependents
+                 (fn [type-field _id-field]
+                   [:not= type-field "transform"]))
+          child-cards (-> (models.dependency/transitive-dependents graph {:card [object]})
+                          :card)]
+      (doseq [instances (partition 50 50 nil child-cards)]
+        (deps.findings/analyze-instances! (t2/select :model/Card :id [:in instances]))))))
 
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/update-transform ::check-transform-dependents)
@@ -250,4 +257,4 @@
 (methodical/defmethod events/publish-event! ::check-transform-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (reset-dependent-analyses! :transform object)))
+    (deps.findings/upsert-analysis! object)))

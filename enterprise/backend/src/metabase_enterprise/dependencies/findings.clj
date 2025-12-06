@@ -25,7 +25,7 @@
   [toucan-instance]
   (some-> toucan-instance :source :query :database))
 
-(mu/defn upsert-analysis!
+(defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
 
   If any row exists already, it is replaced. If it does not exist, it is created."
@@ -41,14 +41,18 @@
           success (empty? results)]
       (deps.analysis-finding/upsert-analysis! (model->dependency-type model) (:id toucan-instance) success results))))
 
-(mu/defn analyze-entities :- :int
+(defn analyze-instances!
+  [instances]
+  (lib-be/with-metadata-provider-cache
+    (doseq [instance instances]
+      (try (upsert-analysis! instance)
+           (catch Exception e
+             (log/errorf e "Analyzing entity %s %s failed"
+                         (t2/model instance) (:id instance)))))))
+
+(mu/defn analyze-batch! :- :int
   [model :- [:enum :card :transform]
    batch-size :- :int]
-  (lib-be/with-metadata-provider-cache
-    (let [instances (deps.analysis-finding/instances-for-analysis model batch-size)]
-      (doseq [instance instances]
-        (try (upsert-analysis! instance)
-             (catch Exception e
-               (log/errorf e "Analyzing entity %s %s failed"
-                           model (:id instance)))))
-      (count instances))))
+  (let [instances (deps.analysis-finding/instances-for-analysis model batch-size)]
+    (analyze-instances! instances)
+    (count instances)))

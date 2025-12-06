@@ -379,7 +379,7 @@
                          (t2/select-one-fn :dependency_analysis_version :model/Sandbox :id sandbox-id)))
                   (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))))))
 
-(deftest card-update-works-with-no-analyses-test
+(deftest ^:sequential card-update-works-with-no-analyses-test
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
@@ -400,7 +400,7 @@
                                    :analyzed_entity_type :card
                                    :analyzed_entity_id [:in [parent-card-id child-card-id]]))))))))
 
-(deftest card-update-clears-analyses-test
+(deftest ^:sequential card-update-clears-analyses-test
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
@@ -440,7 +440,7 @@
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]])))))))))
 
-(deftest transform-update-works-with-no-analyses-test
+(deftest ^:sequential transform-update-works-with-no-analyses-test
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
@@ -469,7 +469,7 @@
                                    :analyzed_entity_type :transform
                                    :analyzed_entity_id transform-id))))))))
 
-(deftest transform-update-clears-analyses-test
+(deftest ^:sequential transform-update-clears-analyses-test
   (mt/with-test-user :rasta
     (let [mp (mt/metadata-provider)
           products-id (mt/id :products)
