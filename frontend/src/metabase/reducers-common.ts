@@ -5,6 +5,7 @@ import { combineReducers } from "@reduxjs/toolkit";
 import { Api } from "metabase/api";
 import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 import * as parameters from "metabase/parameters/reducers";
+import analyticsExport from "metabase/redux/analytics-export";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
 import { reducer as downloads } from "metabase/redux/downloads";
@@ -30,6 +31,7 @@ export const commonReducers = {
   undo,
   entities,
   upload,
+  analyticsExport,
   auth,
   [Api.reducerPath]: Api.reducer,
   modal,

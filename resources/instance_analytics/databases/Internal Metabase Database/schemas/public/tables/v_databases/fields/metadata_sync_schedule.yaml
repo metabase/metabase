@@ -4,10 +4,7 @@ description: null
 created_at: '2023-10-31T21:26:33.02415Z'
 active: true
 visibility_type: normal
-table_id:
-- Internal Metabase Database
-- public
-- v_databases
+table_id: [Internal Metabase Database, public, v_databases]
 database_type: varchar
 base_type: type/Text
 effective_type: type/Text
@@ -29,14 +26,13 @@ caveats: null
 points_of_interest: null
 nfc_path: null
 serdes/meta:
-- id: Internal Metabase Database
-  model: Database
-- id: public
-  model: Schema
-- id: v_databases
-  model: Table
-- id: metadata_sync_schedule
-  model: Field
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_databases, model: Table}
+- {id: metadata_sync_schedule, model: Field}
+database_default: null
 database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
 database_partitioned: null
-entity_id: apZM2TMWfZbN_CY7Ai-xD
