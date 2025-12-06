@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
 
-import { SectionLayout, SectionTitle } from "../../components/SectionLayout";
+import { SectionLayout } from "../../components/SectionLayout";
 
 type DependenciesSectionLayoutProps = {
   children?: ReactNode;
@@ -14,9 +14,5 @@ export function DependenciesSectionLayout({
 }: DependenciesSectionLayoutProps) {
   usePageTitle(t`Dependency graph`);
 
-  return (
-    <SectionLayout title={<SectionTitle title={t`Dependency graph`} />}>
-      {children}
-    </SectionLayout>
-  );
+  return <SectionLayout>{children}</SectionLayout>;
 }

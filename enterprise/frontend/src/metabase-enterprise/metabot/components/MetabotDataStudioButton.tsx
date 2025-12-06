@@ -4,12 +4,12 @@ import { METAKEY } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocation } from "metabase/selectors/routing";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 
-export const MetabotDataStudioButton = () => {
+export const MetabotDataStudioButton = (props: ActionIconProps) => {
   const metabot = useMetabotAgent();
   const location = useSelector(getLocation);
   const disabled = !location.pathname?.startsWith(Urls.transformList());
@@ -29,14 +29,13 @@ export const MetabotDataStudioButton = () => {
   return (
     <Tooltip label={label}>
       <ActionIcon
-        variant="subtle"
-        bd="1px solid var(--mb-color-border)"
         p="sm"
         h="2.25rem"
         w="2.25rem"
         disabled={disabled}
         aria-label={label}
         onClick={handleClick}
+        {...props}
       >
         <Icon c={disabled ? undefined : "text-primary"} name="metabot" />
       </ActionIcon>

@@ -28,8 +28,16 @@ export function dataStudioData() {
   return `${ROOT_URL}/data`;
 }
 
-export function dataStudioModeling() {
-  return `${ROOT_URL}/modeling`;
+export function dataStudioModeling({
+  expandedIds,
+}: { expandedIds?: CollectionId[] } = {}) {
+  let query = "";
+  if (expandedIds?.length) {
+    const params = new URLSearchParams();
+    expandedIds.forEach((id) => params.append("expandedId", String(id)));
+    query = `?${params.toString()}`;
+  }
+  return `${ROOT_URL}/modeling${query}`;
 }
 
 export type NewDataStudioQueryModelParams = {
@@ -89,7 +97,7 @@ export function dataStudioMetricDependencies(cardId: CardId) {
 }
 
 export function dataStudioGlossary() {
-  return `${dataStudioModeling()}/glossary`;
+  return `${dataStudio()}/glossary`;
 }
 
 export function dataStudioCollection(collectionId: CollectionId) {

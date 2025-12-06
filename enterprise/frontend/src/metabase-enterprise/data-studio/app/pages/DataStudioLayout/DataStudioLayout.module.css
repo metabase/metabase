@@ -2,8 +2,18 @@
   border-right: 1px solid var(--mb-color-border);
 }
 
+.opened {
+  width: 300px;
+}
+
+.icon {
+  color: var(--mb-color-text-secondary);
+}
+
 .tab {
-  background-color: var(--mb-color-bg-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 
   &:hover,
   &.selected {
@@ -18,5 +28,9 @@
   &:hover,
   &.selected {
     color: var(--mb-color-brand);
+
+    .icon {
+      color: inherit;
+    }
   }
 }
