@@ -102,7 +102,6 @@ const MentionSuggestionComponent = forwardRef<
         selectedIndex={selectedIndex}
         onItemSelect={handlers.selectItem}
         onFooterClick={handlers.openModal}
-        query={query}
         searchResults={searchResults}
         modal={modal}
         onModalSelect={handlers.handleModalSelect}
