@@ -39,6 +39,7 @@ export interface BaseUser {
   last_login: string;
   first_login: string;
   updated_at: string;
+  deactivated_at?: string | null;
 }
 
 export interface UserPermissions {
