@@ -213,3 +213,15 @@
          (take limit)
          (map postprocess-search-result)
          enrich-with-collection-descriptions)))
+
+(defn search-tool
+  "Handler for the /search and /search_v2 tool endpoints.
+  Wraps [[search]] with error handling and response formatting."
+  [args]
+  (try
+    (let [results (search args)]
+      {:structured_output {:data        results
+                           :total_count (count results)}})
+    (catch Exception e
+      (log/error e "Error in search")
+      {:output (str "Search failed: " (or (ex-message e) "Unknown error"))})))
