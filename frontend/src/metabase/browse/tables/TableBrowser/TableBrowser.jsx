@@ -7,6 +7,7 @@ import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { titleize } from "metabase/lib/formatting/strings"; 
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
@@ -105,7 +106,7 @@ const TableBrowserItem = ({
     <BrowseCard
       to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
       icon="table"
-      title={table.display_name || table.name}
+      title={titleize(table.display_name || table.name)}
       onClick={() => trackTableClick(table.id)}
     >
       <>
