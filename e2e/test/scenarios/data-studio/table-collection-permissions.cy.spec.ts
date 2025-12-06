@@ -323,7 +323,7 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Products").should("be.visible");
         cy.findByText("Orders").should("be.visible");
         cy.findByText("People").should("not.exist");
-        cy.button("Unpublish these tables").click();
+        cy.findByText("Unpublish these tables").click();
       });
       H.undoToast().findByText("Unpublished").should("be.visible");
 
@@ -475,7 +475,7 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.DataModel.visitDataStudio();
       H.DataModel.TablePicker.getTable("Products").click();
       cy.findByRole("button", { name: /Unpublish/ }).click();
-      H.modal().button("Unpublish this table").click();
+      H.modal().findByText("Unpublish this table").click();
       H.undoToast().findByText("Unpublished").should("be.visible");
 
       cy.signIn("nodata");
@@ -488,7 +488,7 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.DataModel.visitDataStudio();
       H.DataModel.TablePicker.getTable("Products").click();
       cy.findByRole("button", { name: /Unpublish/ }).click();
-      H.modal().button("Unpublish this table").click();
+      H.modal().findByText("Unpublish this table").click();
       H.undoToast().findByText("Unpublished").should("be.visible");
 
       cy.signIn("nodata");

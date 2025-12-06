@@ -92,7 +92,7 @@ describe("Table editing", () => {
 
       cy.log("unpublish the table and verify it's unpublished");
       cy.findByRole("button", { name: /Unpublish/ }).click();
-      H.modal().button("Unpublish this table").click();
+      H.modal().findByText("Unpublish this table").click();
       cy.wait("@unpublishTables");
       H.DataStudio.nav().findByLabelText("Modeling").click();
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();

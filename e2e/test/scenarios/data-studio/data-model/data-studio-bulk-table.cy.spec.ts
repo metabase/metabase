@@ -132,7 +132,7 @@ describe("bulk table operations", () => {
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       cy.findByRole("button", { name: /Unpublish/ }).click();
-      H.modal().button("Unpublish these tables").click();
+      H.modal().findByText("Unpublish these tables").click();
       cy.wait("@unpublishTables");
       H.DataStudio.nav().findByLabelText("Modeling").click();
       H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
