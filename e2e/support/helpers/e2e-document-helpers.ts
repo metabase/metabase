@@ -92,7 +92,7 @@ function visitDocumentCommentById(
   commentId?: CommentId,
 ) {
   const alias = `documentQuery-${documentId}`;
-  cy.intercept("GET", `/api/ee/document/${documentId}`).as(alias);
+  cy.intercept("GET", `/api/document/${documentId}`).as(alias);
 
   const hash = commentId == null ? "" : `#comment-${commentId}`;
   cy.visit(`/document/${documentId}/comments/${nodeId}${hash}`);
@@ -102,7 +102,7 @@ function visitDocumentCommentById(
 
 const visitDocumentById = (id: DocumentId) => {
   const alias = `documentQuery-${id}`;
-  cy.intercept("GET", `/api/ee/document/${id}`).as(alias);
+  cy.intercept("GET", `/api/document/${id}`).as(alias);
 
   cy.visit(`/document/${id}`);
 

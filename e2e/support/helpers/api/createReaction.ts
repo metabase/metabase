@@ -7,7 +7,7 @@ export const createReaction = ({
   comment_id: CommentId;
   emoji: string;
 }): Cypress.Chainable<Cypress.Response<Comment>> => {
-  return cy.request<Comment>("POST", `/api/ee/comment/${comment_id}/reaction`, {
+  return cy.request<Comment>("POST", `/api/comment/${comment_id}/reaction`, {
     emoji,
   });
 };

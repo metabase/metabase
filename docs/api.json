@@ -16586,9 +16586,9 @@
         "tags" : [ "/api/ee/cloud-add-ons" ]
       }
     },
-    "/api/ee/comment/" : {
+    "/api/comment/" : {
       "get" : {
-        "summary" : "GET /api/ee/comment/",
+        "summary" : "GET /api/comment/",
         "description" : "Get comments for an entity",
         "parameters" : [ {
           "in" : "query",
@@ -16619,10 +16619,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/comment" ]
+        "tags" : [ "/api/comment" ]
       },
       "post" : {
-        "summary" : "POST /api/ee/comment/",
+        "summary" : "POST /api/comment/",
         "description" : "Create a new comment",
         "parameters" : [ ],
         "responses" : {
@@ -16671,12 +16671,12 @@
             }
           }
         },
-        "tags" : [ "/api/ee/comment" ]
+        "tags" : [ "/api/comment" ]
       }
     },
-    "/api/ee/comment/mentions" : {
+    "/api/comment/mentions" : {
       "get" : {
-        "summary" : "GET /api/ee/comment/mentions",
+        "summary" : "GET /api/comment/mentions",
         "description" : "Get a list of entities suitable for mentions. NOTE: only users for now.",
         "parameters" : [ ],
         "responses" : {
@@ -16690,12 +16690,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/comment" ]
+        "tags" : [ "/api/comment" ]
       }
     },
-    "/api/ee/comment/{comment-id}" : {
+    "/api/comment/{comment-id}" : {
       "put" : {
-        "summary" : "PUT /api/ee/comment/{comment-id}",
+        "summary" : "PUT /api/comment/{comment-id}",
         "description" : "Update a comment",
         "parameters" : [ {
           "in" : "path",
@@ -16738,10 +16738,10 @@
             }
           }
         },
-        "tags" : [ "/api/ee/comment" ]
+        "tags" : [ "/api/comment" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/comment/{comment-id}",
+        "summary" : "DELETE /api/comment/{comment-id}",
         "description" : "Soft delete a comment",
         "parameters" : [ {
           "in" : "path",
@@ -16764,12 +16764,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/comment" ]
+        "tags" : [ "/api/comment" ]
       }
     },
-    "/api/ee/comment/{comment-id}/reaction" : {
+    "/api/comment/{comment-id}/reaction" : {
       "post" : {
-        "summary" : "POST /api/ee/comment/{comment-id}/reaction",
+        "summary" : "POST /api/comment/{comment-id}/reaction",
         "description" : "Toggle a reaction on a comment",
         "parameters" : [ {
           "in" : "path",
@@ -16809,7 +16809,7 @@
             }
           }
         },
-        "tags" : [ "/api/ee/comment" ]
+        "tags" : [ "/api/comment" ]
       }
     },
     "/api/ee/content-translation/csv" : {
@@ -17548,9 +17548,9 @@
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
-    "/api/ee/document/" : {
+    "/api/document/" : {
       "get" : {
-        "summary" : "GET /api/ee/document/",
+        "summary" : "GET /api/document/",
         "description" : "Gets existing `Documents`.",
         "parameters" : [ ],
         "responses" : {
@@ -17564,10 +17564,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       },
       "post" : {
-        "summary" : "POST /api/ee/document/",
+        "summary" : "POST /api/document/",
         "description" : "Create a new `Document`.",
         "parameters" : [ ],
         "responses" : {
@@ -17673,12 +17673,12 @@
             }
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       }
     },
-    "/api/ee/document/public" : {
+    "/api/document/public" : {
       "get" : {
-        "summary" : "GET /api/ee/document/public",
+        "summary" : "GET /api/document/public",
         "description" : "List all Documents that have public links.\n\n  Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,\n  and `:public_uuid`. Documents are only actually accessible via the public endpoint if public sharing is\n  currently enabled. Archived Documents are excluded from the results.\n\n  This endpoint is used to populate the public links listing in the Admin settings UI.\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.",
         "parameters" : [ ],
         "responses" : {
@@ -17718,12 +17718,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       }
     },
-    "/api/ee/document/{document-id}" : {
+    "/api/document/{document-id}" : {
       "get" : {
-        "summary" : "GET /api/ee/document/{document-id}",
+        "summary" : "GET /api/document/{document-id}",
         "description" : "Returns an existing Document by ID.",
         "parameters" : [ {
           "in" : "path",
@@ -17746,10 +17746,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       },
       "put" : {
-        "summary" : "PUT /api/ee/document/{document-id}",
+        "summary" : "PUT /api/document/{document-id}",
         "description" : "Updates an existing `Document`.",
         "parameters" : [ {
           "in" : "path",
@@ -17866,10 +17866,10 @@
             }
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/document/{document-id}",
+        "summary" : "DELETE /api/document/{document-id}",
         "description" : "Permanently deletes an archived Document.",
         "parameters" : [ {
           "in" : "path",
@@ -17892,12 +17892,12 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       }
     },
-    "/api/ee/document/{document-id}/card/{card-id}/query/{export-format}" : {
+    "/api/document/{document-id}/card/{card-id}/query/{export-format}" : {
       "post" : {
-        "summary" : "POST /api/ee/document/{document-id}/card/{card-id}/query/{export-format}",
+        "summary" : "POST /api/document/{document-id}/card/{card-id}/query/{export-format}",
         "description" : "Download query results for a Card embedded in a Document.\n\n  Returns query results in the requested format. The user must have read access to the document\n  to download results. If the card's query fails, standard query error responses are returned.\n\n  Route parameters:\n  - document-id: ID of the document containing the card\n  - card-id: ID of the card to download results from\n  - export-format: Output format (csv, xlsx, json)\n\n  Body parameters (snake_case):\n  - parameters: Optional query parameters (array of maps or JSON string)\n  - format_rows: Whether to apply formatting to results (boolean, default false)\n  - pivot_results: Whether to pivot results (boolean, default false)",
         "parameters" : [ {
           "in" : "path",
@@ -17969,12 +17969,12 @@
             }
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       }
     },
-    "/api/ee/document/{document-id}/public-link" : {
+    "/api/document/{document-id}/public-link" : {
       "post" : {
-        "summary" : "POST /api/ee/document/{document-id}/public-link",
+        "summary" : "POST /api/document/{document-id}/public-link",
         "description" : "Generate a publicly-accessible UUID for a Document.\n\n  Creates a public link that allows viewing the Document without authentication. If the Document already has\n  a public UUID, returns the existing one rather than generating a new one. This enables sharing the Document\n  via `GET /api/ee/public/document/:uuid`.\n\n  Returns a map containing `:uuid` (the public UUID string).\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.",
         "parameters" : [ {
           "in" : "path",
@@ -18012,10 +18012,10 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/document/{document-id}/public-link",
+        "summary" : "DELETE /api/document/{document-id}/public-link",
         "description" : "Remove the public link for a Document.\n\n  Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.\n  This revokes public access to the Document - the existing public link will no longer work.\n\n  Returns a 204 No Content response on success.\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.\n  Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link.",
         "parameters" : [ {
           "in" : "path",
@@ -18038,7 +18038,7 @@
             "description" : "Server error response"
           }
         },
-        "tags" : [ "/api/ee/document" ]
+        "tags" : [ "/api/document" ]
       }
     },
     "/api/ee/email/override" : {

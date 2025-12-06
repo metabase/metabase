@@ -326,7 +326,6 @@ export const tokenFeatures = [
   "table_data_editing",
   "remote_sync",
   "dependencies",
-  "documents",
   "semantic_search",
   "transforms",
   "transforms-python",

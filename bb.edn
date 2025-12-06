@@ -190,8 +190,8 @@
                    ;; note: no quoting -> expect it to be int
                    code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
                (if (:port opts)
-                 (nrepl-eval "metabase-enterprise.comments.core" code (:port opts))
-                 (nrepl-eval "metabase-enterprise.comments.core" code)))}
+                 (nrepl-eval "metabase.comments.core" code (:port opts))
+                 (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
   {:doc        "Quickly run tests locally. Pass dirs/files as arguments to run them."

@@ -12,16 +12,16 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import type { MetabotChatInputRef } from "metabase/metabot";
-import { getSetting } from "metabase/selectors/settings";
-import { Box, Icon, UnstyledButton } from "metabase/ui";
-import { createMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
+import { createMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
-} from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
-import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
+} from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
+import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
+import { getSetting } from "metabase/selectors/settings";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 
 import S from "./MetabotChatEditor.module.css";
 import {
