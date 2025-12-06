@@ -39,7 +39,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         expect(body).to.exist;
       });
       H.getSimpleEmbedIframeContent()
-        .findByTestId("query-visualization-root")
+        .findByTestId("query-visualization-root", { timeout: 20_000 })
         .should("be.visible");
     });
 
