@@ -6,8 +6,8 @@
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.metadata.util :as lib.metadata.util]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -88,7 +88,7 @@
 
 (mu/defn- ->cached-metadata-provider :- [:maybe ::lib.metadata.protocols/cached-metadata-provider]
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
-  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)]
+  (let [metadata-provider (lib.metadata.util/->metadata-provider metadata-providerable)]
     (when (lib.metadata.protocols/cached-metadata-provider? metadata-provider)
       metadata-provider)))
 
