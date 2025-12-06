@@ -8,7 +8,6 @@ export const createWrappedSearchResult = (
 
   return {
     ...result,
-    getUrl: options.getUrl ?? (() => "/collection/root"),
     getCollection: options.getCollection ?? (() => result.collection),
   };
 };

@@ -16,7 +16,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls/questions";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
@@ -164,7 +163,6 @@ const Questions = createEntity({
 
   objectSelectors: {
     getName: (card) => card && card.name,
-    getUrl: (card, opts) => card && Urls.question(card, opts),
     getColor: () => color("text-medium"),
     getCollection: (card) => card && normalizedCollection(card.collection),
   },

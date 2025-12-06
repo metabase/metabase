@@ -10,7 +10,6 @@ import type {
 } from "metabase-types/api";
 
 export interface WrappedResult extends SearchResult {
-  getUrl: () => string;
   getCollection: () => SearchResult["collection"];
 }
 

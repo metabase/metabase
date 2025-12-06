@@ -5,7 +5,6 @@ import {
 } from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { SegmentSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -71,13 +70,6 @@ const Segments = createEntity({
 
   objectSelectors: {
     getName: (segment) => segment && segment.name,
-    getUrl: (segment) =>
-      Urls.tableRowsQuery(
-        segment.database_id,
-        segment.table_id,
-        null,
-        segment.id,
-      ),
     getColor: (segment) => color("filter"),
   },
 });

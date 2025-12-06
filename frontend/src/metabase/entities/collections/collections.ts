@@ -18,7 +18,6 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls/collections";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
@@ -141,7 +140,6 @@ const Collections = createEntity({
 
   objectSelectors: {
     getName: (collection?: Collection) => collection?.name,
-    getUrl: (collection?: Collection) => Urls.collection(collection),
   },
 
   selectors: {
