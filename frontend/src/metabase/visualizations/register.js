@@ -8,6 +8,7 @@ import {
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { ComboChart } from "./visualizations/ComboChart";
+import { CommentsDashboard } from "./visualizations/CommentsDashboard";
 import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
@@ -50,6 +51,7 @@ export default function () {
   registerVisualization(SankeyChart);
 
   registerVisualization(ActionViz);
+  registerVisualization(CommentsDashboard);
   registerVisualization(DashCardPlaceholder);
   registerVisualization(Heading);
   registerVisualization(LinkViz);
