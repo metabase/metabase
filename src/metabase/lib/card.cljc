@@ -97,7 +97,8 @@
               ;; original DB field but should not be treated as FKs unless the metadata is configured
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
-              (assoc :fk-target-field-id nil))]
+              (assoc :fk-target-field-id nil :fk-target-column-name nil :fk-target-card-id nil))]
+
     (-> col
         lib.field.util/update-keys-for-col-from-previous-stage
         (merge (when card-id
@@ -182,8 +183,8 @@
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
-  [:id :description :display-name :semantic-type :fk-target-field-id :settings :visibility-type
-   :lib/source-display-name])
+  [:id :description :display-name :semantic-type :fk-target-field-id #_#_:fk-target-column-name
+                                                                       :fk-target-card-id :settings :visibility-type :lib/source-display-name])
 
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these

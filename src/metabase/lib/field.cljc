@@ -434,7 +434,8 @@
    {:metabase.lib.join/join-alias :join-alias
     :fk-field-id                  :source-field
     :fk-join-alias                :source-field-join-alias
-    :fk-field-name                :source-field-name}))
+    :fk-field-name                :source-field-name
+    :fk-card-id                   :source-card}))
 
 (defn- select-renamed-keys [m old->new]
   (-> m

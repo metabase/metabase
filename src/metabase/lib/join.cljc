@@ -972,9 +972,10 @@
                                (lib.metadata.calculation/returned-columns query stage-number target)))]
     (not-empty
      (into []
-           (keep (fn [{:keys [fk-target-field-id], :as col}]
+           (keep (fn [{:keys [fk-target-field-id fk-target-column-name fk-target-card-id], :as col}]
                    (when (and (lib.types.isa/foreign-key? col)
-                              fk-target-field-id)
+                              (or fk-target-field-id
+                                  fk-target-column-name))
                      (when-let [target-column (m/find-first (fn [target-column]
                                                               (= fk-target-field-id
                                                                  (:id target-column)))

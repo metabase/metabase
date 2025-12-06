@@ -1117,6 +1117,31 @@
                                               {:dataset_query updated-query})]
             (is (= metadata (:result_metadata updated)))))))))
 
+(deftest can-update-model-to-model-foreign-keys-test
+  (let [query (updating-card-updates-metadata-query)]
+    (testing "Can update model->model foreign keys"
+      (mt/with-model-cleanup [:model/Card]
+        (let [{metadata :result_metadata
+               card-id  :id :as card} (mt/user-http-request
+                                       :crowberto :post 200
+                                       "card"
+                                       (card-with-name-and-query "card-name"
+                                                                 query))
+              ;; simulate a user changing the query without rerunning the query
+              updated   (mt/user-http-request
+                         :crowberto :put 200 (str "card/" card-id)
+                         (-> card
+                             (update :result_metadata vec)
+                             (assoc-in [:result_metadata 1 :fk_target_column_name] "id")
+                             (assoc-in [:result_metadata 1 :fk_target_card_id] 114)
+                             (assoc-in [:result_metadata 1 :semantic_type] :type/FK)))
+              retrieved (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
+          (is (=? [{}
+                   {:semantic_type "type/FK"
+                    :fk_target_card_id 114
+                    :fk_target_column_name "id"}]
+                  (:result_metadata retrieved))))))))
+
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
     (mt/with-non-admin-groups-no-root-collection-perms
