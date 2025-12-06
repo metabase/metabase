@@ -24,8 +24,8 @@ export function getLibraryCollectionType(
   switch (type) {
     case "library":
       return "root";
-    case "library-models":
-      return "models";
+    case "library-data":
+      return "data";
     case "library-metrics":
       return "metrics";
   }
@@ -49,7 +49,7 @@ export function canPlaceEntityInCollection(
     return false;
   }
 
-  if (collectionType === "library-models") {
+  if (collectionType === "library-data") {
     return entityType === "dataset";
   }
 
@@ -70,7 +70,7 @@ export function canPlaceEntityInCollectionOrDescendants(
 
   if (collectionType === "library") {
     return (
-      canPlaceEntityInCollection(entityType, "library-models") ||
+      canPlaceEntityInCollection(entityType, "library-data") ||
       canPlaceEntityInCollection(entityType, "library-metrics")
     );
   }
@@ -122,7 +122,7 @@ export const useGetLibraryChildCollectionByType = ({
 };
 
 // This hook will return the library collection if there are both metrics and models in the library,
-// the library-metrics collection if the library has no models, or the library-models collection
+// the library-metrics collection if the library has no models, or the library-data collection
 // if the library has no metrics
 export const useGetResolvedLibraryCollection = ({
   skip = false,

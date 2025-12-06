@@ -942,6 +942,28 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+
+  - changeSet:
+      id: v58.2025-12-05T17:41:54
+      author: ranquild
+      comment: Rename collection.type 'library-models' to 'library-data'
+      changes:
+        - update:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  value: 'library-data'
+            where: type = 'library-models'
+      rollback:
+        - update:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  value: 'library-models'
+            where: type = 'library-data'
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

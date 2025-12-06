@@ -14,7 +14,7 @@
          (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
            (is (= {:data nil} response))))
        (let [_          (collection/create-library-collection!)
-             models-id  (t2/select-one-pk :model/Collection :type collection/library-models-collection-type)
+             models-id  (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)
              metrics-id (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
              response   (mt/user-http-request :crowberto :get 200 "ee/library")]
          (testing "When library exists, but no content"

@@ -29,7 +29,7 @@
 
 (deftest check-allowed-content-model
   (mt/with-premium-features #{:data-studio}
-    (mt/with-temp [:model/Collection allow-models {:name "Test Base Library" :type collection/library-models-collection-type}]
+    (mt/with-temp [:model/Collection allow-models {:name "Test Base Library" :type collection/library-data-collection-type}]
       (testing "Can only add allowed content types"
         (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id allow-models)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add models to the 'Models' collection"
@@ -54,7 +54,7 @@
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:data-studio}
     (mt/with-temp [:model/Collection library {:name "Test Library" :type collection/library-collection-type}
-                   :model/Collection models {:name "Test Semantic Model Layer" :type collection/library-models-collection-type}
+                   :model/Collection models {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                    :model/Collection metrics {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}]
       (doseq [col [library models metrics]]
         (testing (str "Checking type " (:type col))

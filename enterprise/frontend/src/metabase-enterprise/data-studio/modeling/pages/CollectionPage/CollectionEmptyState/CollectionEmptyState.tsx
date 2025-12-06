@@ -28,7 +28,7 @@ export function CollectionEmptyState({
 
 function getMessages(collection: Collection) {
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection.type)) {
-    case "models":
+    case "data":
       return {
         title: t`No published tables yet`,
         message: t`Publish tables in the Library to see them here.`,
