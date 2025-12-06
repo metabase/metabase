@@ -32,11 +32,11 @@
     (mt/with-temp [:model/Collection allow-models {:name "Test Base Library" :type collection/library-data-collection-type}]
       (testing "Can only add allowed content types"
         (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id allow-models)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add models to the 'Models' collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id allow-models) "/")}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add models to the 'Models' collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id allow-models)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add models to the 'Models' collection"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-models)}))))))))
 
 (deftest check-allowed-content-metric

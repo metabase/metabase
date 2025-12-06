@@ -50,7 +50,7 @@ export function canPlaceEntityInCollection(
   }
 
   if (collectionType === "library-data") {
-    return entityType === "dataset";
+    return entityType === "table";
   }
 
   if (collectionType === "library-metrics") {

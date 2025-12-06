@@ -134,7 +134,7 @@
   (= (:type collection) library-collection-type))
 
 (defn- is-library-data-collection?
-  "Is this the library-data (named 'Data') collection?"
+  "Is this the Data collection?"
   [collection]
   (= (:type collection) library-data-collection-type))
 
@@ -179,13 +179,13 @@
                                                                         :type     library-collection-type
                                                                         :location "/"})
         base-location (str "/" (:id library) "/")
-        models        (t2/insert-returning-instance! :model/Collection {:name     "Data"
+        data          (t2/insert-returning-instance! :model/Collection {:name     "Data"
                                                                         :type     library-data-collection-type
                                                                         :location base-location})
         metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
                                                                         :type     library-metrics-collection-type
                                                                         :location base-location})]
-    (doseq [col [library models metrics]]
+    (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions :collection_id (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col))
     library))

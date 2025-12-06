@@ -16,8 +16,8 @@
                                                                                           collection/library-metrics-collection-type}
                                                                                         content-type)))
         (throw (ex-info "Cannot add anything to the Library collection" {})))
-      (when (and (= collection-type collection/library-data-collection-type) (not (= :model content-type)))
-        (throw (ex-info "Can only add models to the 'Models' collection" {})))
+      (when (and (= collection-type collection/library-data-collection-type) (not (= :table content-type)))
+        (throw (ex-info "Can only add tables to the 'Data' collection" {})))
       (when (and (= collection-type collection/library-metrics-collection-type) (not (= :metric content-type)))
         (throw (ex-info "Can only add metrics to the 'Metrics' collection" {})))))
   true)
