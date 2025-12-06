@@ -35,3 +35,21 @@
   [workspace]
   (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
     (format "mb_isolation_%s_%s" instance-slug (:id workspace))))
+
+(def ^:private password-char-sets
+  "Character sets for password generation. Cycles through these to ensure representation from each."
+  ["ABCDEFGHJKLMNPQRSTUVWXYZ"
+   "abcdefghjkmnpqrstuvwxyz"
+   "23456789"
+   "!#$%&*+-="])
+
+(defn random-isolated-password
+  "Generate a random password suitable for most database engines.
+   Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
+   by cycling through the character sets. Result is shuffled for randomness."
+  []
+  (->> (cycle password-char-sets)
+       (take 32)
+       (map rand-nth)
+       shuffle
+       (apply str)))
