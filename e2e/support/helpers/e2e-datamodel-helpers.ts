@@ -8,6 +8,7 @@ import type {
 export const DataModel = {
   visit,
   visitDataStudio,
+  visitDataStudioSegments,
   get: getDataModel,
   TablePicker: {
     get: getTablePicker,
@@ -63,6 +64,24 @@ export const DataModel = {
   PreviewSection: {
     get: getPreviewSection,
     getPreviewTypeInput: getPreviewTabsInput,
+  },
+  SegmentList: {
+    get: getSegmentList,
+    getEmptyState: getSegmentListEmptyState,
+    getNewSegmentLink: getSegmentListNewLink,
+    getSegment: getSegmentListItem,
+    getSegments: getSegmentListItems,
+  },
+  SegmentEditor: {
+    get: getSegmentEditor,
+    getNameInput: getSegmentEditorNameInput,
+    getDescriptionInput: getSegmentEditorDescriptionInput,
+    getFilterPlaceholder: getSegmentEditorFilterPlaceholder,
+    getRowCount: getSegmentEditorRowCount,
+    getPreviewLink: getSegmentEditorPreviewLink,
+    getSaveButton: getSegmentEditorSaveButton,
+    getActionsButton: getSegmentEditorActionsButton,
+    getBreadcrumb: getSegmentEditorBreadcrumb,
   },
 };
 
@@ -396,4 +415,80 @@ function getPreviewSection() {
 
 function getPreviewTabsInput() {
   return getPreviewSection().findByLabelText("Preview type");
+}
+
+/** segment list helpers */
+
+function visitDataStudioSegments(options: {
+  databaseId: DatabaseId;
+  schemaId: SchemaId;
+  tableId: TableId;
+}) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "datamodel/visit/metadata",
+  );
+  cy.visit(
+    `/data-studio/data/database/${options.databaseId}/schema/${options.schemaId}/table/${options.tableId}/segments`,
+  );
+  cy.wait("@datamodel/visit/metadata");
+}
+
+function getSegmentList() {
+  return cy.findByRole("tabpanel");
+}
+
+function getSegmentListEmptyState() {
+  return getSegmentList().findByText("No segments yet");
+}
+
+function getSegmentListNewLink() {
+  return getSegmentList().findByRole("link", { name: /New segment/i });
+}
+
+function getSegmentListItem(name: string) {
+  return getSegmentList().findByRole("listitem", { name });
+}
+
+function getSegmentListItems() {
+  return getSegmentList().findAllByRole("listitem");
+}
+
+/** segment editor helpers */
+
+function getSegmentEditor() {
+  return cy.get(
+    "[data-testid='new-segment-page'], [data-testid='edit-segment-page']",
+  );
+}
+
+function getSegmentEditorNameInput() {
+  return getSegmentEditor().findByPlaceholderText("New segment");
+}
+
+function getSegmentEditorDescriptionInput() {
+  return getSegmentEditor().findByLabelText("Description");
+}
+
+function getSegmentEditorFilterPlaceholder() {
+  return getSegmentEditor().findByText("Add filters to narrow your answer");
+}
+
+function getSegmentEditorRowCount() {
+  return getSegmentEditor().findByText(/\d+ rows/);
+}
+
+function getSegmentEditorPreviewLink() {
+  return getSegmentEditor().findByRole("link", { name: /Preview/i });
+}
+
+function getSegmentEditorSaveButton() {
+  return getSegmentEditor().button("Save");
+}
+
+function getSegmentEditorActionsButton() {
+  return cy.findByLabelText("Segment actions");
+}
+
+function getSegmentEditorBreadcrumb(tableName: string) {
+  return getSegmentEditor().findByText(`${tableName} segments`);
 }
