@@ -38,11 +38,13 @@ jobs:
             echo "Merging into master or a release branch. All driver tests will run."
           else
             echo "Checking for changes in relevant modules..."
-            if ./bin/mage can-skip-driver-tests "${{ github.event.pull_request.base.ref }}"; then
-              echo 'skip=true' >> $GITHUB_OUTPUT
-            else
-              echo 'skip=false' >> $GITHUB_OUTPUT
-            fi
+# DS tmp, remove pre-merge
+            echo 'skip=false' >> $GITHUB_OUTPUT
+#            if ./bin/mage can-skip-driver-tests "${{ github.event.pull_request.base.ref }}"; then
+#              echo 'skip=true' >> $GITHUB_OUTPUT
+#            else
+#              echo 'skip=false' >> $GITHUB_OUTPUT
+#            fi
           fi
         shell: bash
 
@@ -99,11 +101,10 @@ jobs:
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
-# DS 2025-09-26 temporarily disabled while we diagnose flakes
-#          - name: Transforms Python Tests
-#            test-args: >-
-#              :only-tags [:mb/transforms-python-test]
-#            needs-python-runner: true
+          - name: Transforms Python Tests
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+            needs-python-runner: true
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -1050,12 +1051,10 @@ jobs:
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
-
-# DS 2025-09-26 temporarily disabled while we diagnose flakes
-#          - name: Transforms Python Tests
-#            test-args: >-
-#              :only-tags [:mb/transforms-python-test]
-#            needs-python-runner: true
+          - name: Transforms Python Tests
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+            needs-python-runner: true
     env:
       CI: 'true'
       DRIVERS: snowflake
