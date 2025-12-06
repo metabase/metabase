@@ -8,6 +8,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -16,6 +17,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -466,3 +468,53 @@
 (deftest deps-flags-when-supported-driver-is-not-covered-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
                         (driver/native-query-deps ::mock-deps-driver nil nil))))
+
+(defn create-index-test-impl [schema]
+  (let [driver      driver/*driver*
+        suffix      (str (System/currentTimeMillis))
+        table-name  (str "test_table_" suffix)
+        qualified-table-name (if schema (str schema "." table-name) table-name)
+        index-name  #(str "test_index_" % "_" suffix)
+        database-id (mt/id)
+        cleanup     (fn []
+                      (try
+                        (driver/drop-table! driver database-id qualified-table-name)
+                        (catch Throwable t
+                          (log/fatal t "Could not clean up test table!")
+                          (throw t))))]
+    (when schema
+      (driver/create-schema-if-needed! driver (driver/connection-spec driver database-id) schema))
+    (testing "throws a driver-specific exception if the table does not exist"
+      (is (thrown? Throwable (driver/create-index! driver database-id schema table-name (index-name "a") [:a]))))
+    (try
+      (driver/create-table! driver database-id qualified-table-name {:a [:int], :b [:int], :c [:int]})
+      (testing "single part index"
+        (testing "nil return"                               ; give room for return to acquire meaning later if needed without breakage
+          (is (nil? (driver/create-index! driver database-id schema table-name (index-name "a") [:a]))))
+        (testing "created"
+          (is (= #{{:type       :normal-column-index
+                    :index-name (index-name "a")
+                    :value      "a"}}
+                 (driver/describe-table-indexes driver database-id {:schema schema :name table-name}))))
+        (testing "drop it"
+          (testing "nil return"
+            (is (nil? (driver/drop-index! driver database-id schema (index-name "a")))))
+          (testing "dropped"
+            (is (empty? (driver/describe-table-indexes driver database-id {:schema schema :name table-name}))))))
+      (testing "multi column index"
+        (driver/create-index! driver database-id schema table-name (index-name "b_c") [:b :c])
+        (testing "created (leading column only due to describe-table-indexes ignoring subsequent parts"
+          (is (= #{{:type       :normal-column-index
+                    :index-name (index-name "b_c")
+                    :value      "b"}}
+                 (driver/describe-table-indexes driver database-id {:schema schema :name table-name})))))
+      (finally
+        (cleanup)))))
+
+(deftest create-index-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/index-ddl)
+    (create-index-test-impl nil)))
+
+(deftest create-index-schema-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/index-ddl :schemas)
+    (create-index-test-impl "flibble")))
