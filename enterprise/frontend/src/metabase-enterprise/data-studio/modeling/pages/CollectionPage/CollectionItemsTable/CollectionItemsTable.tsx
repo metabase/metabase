@@ -11,9 +11,9 @@ import {
   TableColumn,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
+import type { CollectionItem } from "metabase-types/api";
 
 import { ItemRow } from "./ItemRow";
-import type { ModelingItem } from "./types";
 import { DEFAULT_SORTING_OPTIONS, sortItems } from "./utils";
 
 const CONTAINER_NAME = "ItemsTableContainer";
@@ -32,7 +32,7 @@ const menuProps = {
 };
 
 interface CollectionItemsTableProps {
-  items: ModelingItem[];
+  items: CollectionItem[];
   skeleton?: boolean;
 }
 

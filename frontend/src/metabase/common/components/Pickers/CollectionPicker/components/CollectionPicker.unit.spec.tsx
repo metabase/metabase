@@ -2,7 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
+import {
+  setupCollectionItemsEndpoint,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import {
   act,
   mockGetBoundingClientRect,
@@ -148,6 +151,7 @@ const setup = ({
   });
 
   setupCollectionTreeMocks(collectionTree);
+  setupDatabasesEndpoints([]);
 
   function TestComponent() {
     const [path, setPath] = useState<CollectionPickerStatePath>();

@@ -1,12 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import {
-  type KeyboardEvent,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -16,8 +10,7 @@ import {
   type NumberFormatter,
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
-import { DataModelContext } from "metabase/metadata/pages/shared/DataModelContext";
-import { getUrl } from "metabase/metadata/pages/shared/utils";
+import * as Urls from "metabase/lib/urls";
 import { Box, Checkbox, Flex, Icon, Skeleton, Stack, rem } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
@@ -365,7 +358,6 @@ const ResultsItem = ({
   ownerNameById,
 }: ResultsItemProps) => {
   const { selectedItemsCount } = useSelection();
-  const { baseUrl } = useContext(DataModelContext);
   const { value, label, type, isExpanded, isLoading, key, level, disabled } =
     item;
   const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
@@ -504,7 +496,7 @@ const ResultsItem = ({
         transform: `translateY(${start}px)`,
         pointerEvents: disabled ? "none" : undefined,
       }}
-      to={getUrl(baseUrl, {
+      to={Urls.dataStudioData({
         databaseId: value?.databaseId,
         schemaName:
           type === "schema" || isTableNode(item)
@@ -642,7 +634,7 @@ function getPublishedDisplay(item: FlatItem): React.ReactNode {
     return null;
   }
 
-  return item.table.published_as_model ? (
+  return item.table.is_published ? (
     <Icon name="verified_round" aria-label={t`Published`} />
   ) : null;
 }

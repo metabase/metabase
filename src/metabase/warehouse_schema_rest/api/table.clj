@@ -137,7 +137,7 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn :model/Table id)
-        (t2/hydrate :db :pk_field)
+        (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

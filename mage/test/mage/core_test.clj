@@ -3,8 +3,8 @@
    [babashka.tasks :as bt]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.alias-test]
+   [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))

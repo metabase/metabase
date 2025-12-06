@@ -18,6 +18,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -62,7 +63,9 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (api/read-check :model/Database database))
+      (when-not (or (mi/can-read? :model/Database database)
+                    (perms/user-has-published-table-permission-for-database? database))
+        (api/throw-403)))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)

@@ -4,11 +4,11 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
+import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {
-  getHasDataAccess,
-  getHasDatabaseWithJsonEngine,
-  getHasNativeWrite,
-} from "metabase/selectors/data";
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
 
@@ -22,8 +22,8 @@ const mapStateToProps = (
   state: State,
   { databases = [] }: MenuDatabaseProps,
 ) => ({
-  hasDataAccess: getHasDataAccess(databases),
-  hasNativeWrite: getHasNativeWrite(databases),
+  hasDataAccess: canUserCreateQueries(state),
+  hasNativeWrite: canUserCreateNativeQueries(state),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(databases),
 });
 
