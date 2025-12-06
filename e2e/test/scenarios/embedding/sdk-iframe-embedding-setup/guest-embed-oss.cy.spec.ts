@@ -127,6 +127,16 @@ describe(
 
         // Experience step
         getEmbedSidebar().within(() => {
+          cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+
+          ["Metabase account (SSO)"].forEach((text) => {
+            cy.findAllByTestId("tooltip-warning")
+              .filter(`:contains("${text}")`)
+              .within(() => {
+                cy.findByTestId("upsell-gem").should("be.visible");
+              });
+          });
+
           ["Exploration", "Browser"].forEach((label) => {
             cy.findByLabelText(label).should("be.disabled");
             cy.get("label")
@@ -166,9 +176,6 @@ describe(
         });
 
         // Options step
-        cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-        cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
-
         cy.findByLabelText("Allow people to drill through on data points")
           .should("be.visible")
           .should("be.disabled");
@@ -181,7 +188,6 @@ describe(
           .should("be.disabled");
 
         [
-          "Single sign-on (SSO)",
           "Allow people to drill through on data points",
           "Allow downloads",
           "Allow people to save new questions",

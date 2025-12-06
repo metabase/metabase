@@ -189,7 +189,8 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-export type SdkIframeEmbedGuestEmbedSettings = {
+export type SdkIframeEmbedAuthTypeSettings = {
+  isSso: boolean;
   isGuest: boolean;
 };
 

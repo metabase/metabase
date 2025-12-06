@@ -1,6 +1,4 @@
 import { mockEmbedJsToDevServer } from "e2e/support/helpers";
-import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
-import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
 import {
   codeBlock,
@@ -37,8 +35,6 @@ describe("OSS", { tags: "@OSS" }, () => {
         resourceName: DASHBOARD_NAME,
       });
 
-      assertUpsellForOption("Existing Metabase session");
-      assertUpsellForOption("Single sign-on (SSO)");
       assertUpsellForOption("Allow people to drill through on data points");
       assertUpsellForOption("Allow downloads");
       assertUpsellForOption("Allow subscriptions");
@@ -68,8 +64,6 @@ describe("EE without license", () => {
         resourceName: DASHBOARD_NAME,
       });
 
-      assertUpsellForOption("Existing Metabase session");
-      assertUpsellForOption("Single sign-on (SSO)");
       assertUpsellForOption("Allow people to drill through on data points");
       assertUpsellForOption("Allow downloads");
       assertUpsellForOption("Allow subscriptions");
@@ -111,68 +105,12 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should select user session auth method by default", () => {
+  it("toggles drill-throughs for dashboards when SSO auth method is selected", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Authentication").should("be.visible");
-
-      cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-      cy.findByLabelText("Existing Metabase session")
-        .should("be.visible")
-        .should("not.be.checked");
-
-      cy.findByLabelText("Single sign-on (SSO)")
-        .should("be.visible")
-        .should("not.be.checked");
-    });
-  });
-
-  it("should disable SSO radio button when JWT and SAML are not configured", () => {
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
-    });
-  });
-
-  it("should enable SSO radio button when JWT is configured", () => {
-    enableJwtAuth();
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
-    });
-  });
-
-  it("should enable SSO radio button when SAML is configured", () => {
-    enableSamlAuth();
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
-    });
-  });
-
-  it("toggles drill-throughs for dashboards when non-authorized auth method is selected", () => {
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-    });
-
-    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
@@ -212,8 +150,8 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
-    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow downloads")
@@ -282,7 +220,14 @@ describe(suiteTitle, () => {
     cy.log("test non-guest embeds");
     getEmbedSidebar().within(() => {
       cy.button("Back").click();
-      cy.findByLabelText("Existing Metabase session").click();
+      cy.button("Back").click();
+      cy.button("Back").click();
+
+      cy.findByLabelText("Metabase account (SSO)").click();
+
+      cy.button("Next").click();
+      cy.button("Next").click();
+
       cy.findByLabelText("Allow subscriptions")
         .closest("[data-testid=tooltip-warning]")
         .icon("info")
@@ -300,8 +245,8 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
-    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow subscriptions")
@@ -392,12 +337,12 @@ describe(suiteTitle, () => {
     codeBlock().should("contain", 'with-title="false"');
   });
 
-  it("toggles drill-through for charts for non-authorized auth mode", () => {
+  it("toggles drill-through for charts for SSO auth mode", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      toggleSso: true,
     });
-    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
@@ -469,8 +414,8 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
+      toggleSso: true,
     });
-    cy.findByLabelText("Existing Metabase session").click();
 
     cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
@@ -530,11 +475,13 @@ describe(suiteTitle, () => {
     it(`toggles save button for ${experience}`, () => {
       navigateToEmbedOptionsStep(
         experience === "chart"
-          ? { experience: "chart", resourceName: QUESTION_NAME }
-          : { experience: "exploration" },
+          ? {
+              experience: "chart",
+              resourceName: QUESTION_NAME,
+              toggleSso: true,
+            }
+          : { experience: "exploration", toggleSso: true },
       );
-
-      cy.findByLabelText("Existing Metabase session").click();
 
       if (experience === "exploration") {
         cy.log("visualize a question to enable the save button");
@@ -704,8 +651,8 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      toggleSso: true,
     });
-    cy.findByLabelText("Existing Metabase session").click();
 
     cy.log("click on brand color picker");
     cy.findByTestId("brand-color-picker").findByRole("button").click();

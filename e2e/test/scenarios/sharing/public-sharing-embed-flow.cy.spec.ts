@@ -41,6 +41,7 @@ describe(suiteTitle, () => {
       .findByText("Orders in a dashboard", { timeout: 10_000 })
       .should("be.visible");
 
+    getEmbedSidebar().findByText("Back").should("not.exist");
     getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
@@ -67,51 +68,12 @@ describe(suiteTitle, () => {
       .findByText("Orders", { timeout: 10_000 })
       .should("be.visible");
 
+    getEmbedSidebar().findByText("Back").should("not.exist");
     getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail: "settings=default",
-    });
-  });
-
-  it("tracks default resources for pre-selected dashboard", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.openSharingMenu("Embed");
-    H.embedModalEnableEmbedding();
-
-    H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.log("go back to resource selection step");
-    getEmbedSidebar().within(() => {
-      cy.findByText("Back").click();
-      cy.findByText("Select a dashboard to embed").should("be.visible");
-      cy.findByText("Next").click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selection_completed",
-      event_detail: "isDefaultResource=true,experience=dashboard",
-    });
-  });
-
-  it("tracks default resources for pre-selected question", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openSharingMenu("Embed");
-    H.embedModalEnableEmbedding();
-
-    H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.log("go back to resource selection step");
-    getEmbedSidebar().within(() => {
-      cy.findByText("Back").click();
-      cy.findByText("Select a chart to embed").should("be.visible");
-      cy.findByText("Next").click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selection_completed",
-      event_detail: "isDefaultResource=true,experience=chart",
     });
   });
 });

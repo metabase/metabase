@@ -26,9 +26,16 @@ export interface SdkIframeEmbedSetupContextType {
   isGuestEmbedsEnabled: boolean;
   isGuestEmbedsTermsAccepted: boolean;
 
+  isSsoEnabledAndConfigured: boolean;
+
   // Navigation
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
+  handleNext: () => void;
+  handleBack: () => void;
+  canGoBack: boolean;
+  isFirstStep: boolean;
+  isLastStep: boolean;
 
   // Initial state
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;

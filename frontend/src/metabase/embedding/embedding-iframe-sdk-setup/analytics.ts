@@ -20,9 +20,13 @@ import {
   getResourceIdFromSettings,
 } from "./utils/get-default-sdk-iframe-embed-setting";
 
+export const UTM_LOCATION = "embedded_analytics_js_wizard";
+
 export const UPSELL_CAMPAIGN_EXPERIENCE = "embedding_experience";
 export const UPSELL_CAMPAIGN_AUTH = "embedding_auth";
 export const UPSELL_CAMPAIGN_BEHAVIOR = "embedding_behavior";
+
+export const SETUP_SSO_CAMPAIGN = "embedding_get_code";
 
 /**
  * Tracking every embed settings would bloat Snowplow, so we only track
@@ -90,12 +94,12 @@ const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
   _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
 
 export const trackEmbedWizardOptionsCompleted = ({
-  initialState,
   experience,
   resource,
   settings,
   isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
   embeddingParameters,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
@@ -104,15 +108,18 @@ export const trackEmbedWizardOptionsCompleted = ({
   settings: Partial<SdkIframeEmbedSetupSettings>;
   isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
   embeddingParameters: EmbeddingParameters;
 }) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
-    initialState,
     experience,
     resourceId: 0,
     isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
+    isGuest: !!settings.isGuest,
+    useExistingUserSession: !!settings.useExistingUserSession,
   });
 
   // Does the embed settings diverge from the experience defaults?

@@ -135,6 +135,8 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       // Experience step
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+
         cy.findByTestId("upsell-gem").should("not.exist");
 
         cy.findByText("Chart").click();
@@ -167,8 +169,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       });
 
       // Options step
-      cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-
+      cy.findByLabelText("Guest").should("not.exist");
       cy.findByLabelText("Allow people to drill through on data points")
         .should("be.visible")
         .should("be.disabled");
@@ -337,7 +338,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         getEmbedSidebar().within(() => {
-          cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+          cy.findByLabelText("Guest").should("not.exist");
         });
 
         H.setEmbeddingParameter("Product ID", "Locked");
@@ -352,9 +353,14 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
           codeBlock().first().should("not.contain", "locked-parameters=");
 
           cy.findByText("Back").click();
+          cy.findByText("Back").click();
+          cy.findByText("Back").click();
 
-          cy.findByLabelText("Single sign-on (SSO)").click();
+          cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+          cy.findByLabelText("Metabase account (SSO)").click();
 
+          cy.findByText("Next").click();
+          cy.findByText("Next").click();
           cy.findByText("Get code").click();
 
           codeBlock().first().should("contain", "dashboard-id=");

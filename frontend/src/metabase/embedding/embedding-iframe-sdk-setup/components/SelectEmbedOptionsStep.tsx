@@ -1,16 +1,11 @@
-import { type ReactNode, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { useHasEmailSetup, useSetting } from "metabase/common/hooks";
-import {
-  UPSELL_CAMPAIGN_AUTH,
-  UPSELL_CAMPAIGN_BEHAVIOR,
-} from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
-import { SimpleThemeSwitcherSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection";
-import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
-import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
+import { useHasEmailSetup } from "metabase/common/hooks";
+import { UPSELL_CAMPAIGN_BEHAVIOR } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
+import { WithNotAvailableWithoutSimpleEmbeddingFeatureWarning } from "metabase/embedding/embedding-iframe-sdk-setup/components/Common/WithNotAvailableWithoutSimpleEmbeddingFeatureWarning";
 import type {
   MetabaseColors,
   MetabaseThemePreset,
@@ -22,7 +17,6 @@ import {
   Flex,
   HoverCard,
   Icon,
-  Radio,
   Stack,
   Text,
 } from "metabase/ui";
@@ -30,14 +24,12 @@ import {
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
+import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
+import { AuthenticationSection } from "./Authentication/AuthenticationSection";
+import { WithNotAvailableForGuestEmbedsWarning } from "./Common/WithNotAvailableForGuestEmbedsWarning";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
 import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
-import {
-  TooltipWarning,
-  type TooltipWarningMode,
-} from "./warnings/TooltipWarning";
-import { WithSimpleEmbeddingFeatureUpsellTooltip } from "./warnings/WithSimpleEmbeddingFeatureUpsellTooltip";
 
 export const SelectEmbedOptionsStep = () => (
   <Stack gap="md">
@@ -48,126 +40,6 @@ export const SelectEmbedOptionsStep = () => (
     <LegacyStaticEmbeddingAlert />
   </Stack>
 );
-
-const AuthenticationSection = () => {
-  const {
-    isSimpleEmbedFeatureAvailable,
-    experience,
-    settings,
-    updateSettings,
-  } = useSdkIframeEmbedSetupContext();
-
-  const isQuestionOrDashboardEmbed = isQuestionOrDashboardSettings(
-    experience,
-    settings,
-  );
-
-  const isJwtEnabled = useSetting("jwt-enabled");
-  const isSamlEnabled = useSetting("saml-enabled");
-  const isJwtConfigured = useSetting("jwt-configured");
-  const isSamlConfigured = useSetting("saml-configured");
-
-  const isSsoEnabledAndConfigured =
-    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
-
-  const authType = getAuthTypeForSettings(settings);
-
-  const handleAuthTypeChange = (value: string) => {
-    const isGuest = value === "guest-embed";
-    const useExistingUserSession = value === "user-session";
-
-    updateSettings({
-      isGuest,
-      useExistingUserSession,
-    });
-  };
-
-  /* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */
-  const existingMetabaseSessionLabel = t`Existing Metabase session`;
-
-  return (
-    <Card p="md">
-      <Stack gap="md" p="xs">
-        <Text size="lg" fw="bold">
-          {t`Authentication`}
-        </Text>
-
-        <Radio.Group value={authType} onChange={handleAuthTypeChange}>
-          <Stack gap="sm">
-            {isQuestionOrDashboardEmbed && (
-              <WithGuestEmbedsDisabledWarning>
-                {({ disabled }) => (
-                  <Radio
-                    disabled={disabled}
-                    value="guest-embed"
-                    label={t`Guest`}
-                  />
-                )}
-              </WithGuestEmbedsDisabledWarning>
-            )}
-
-            <WithSimpleEmbeddingFeatureUpsellTooltip
-              enableTooltip={!isSimpleEmbedFeatureAvailable}
-              campaign={UPSELL_CAMPAIGN_AUTH}
-            >
-              {({ disabled }) => (
-                <Radio
-                  value="user-session"
-                  label={
-                    disabled ? (
-                      existingMetabaseSessionLabel
-                    ) : (
-                      <Flex align="center" gap="xs">
-                        <Text>{existingMetabaseSessionLabel}</Text>
-                        <HoverCard position="bottom">
-                          <HoverCard.Target>
-                            <Icon
-                              name="info"
-                              size={14}
-                              c="text-medium"
-                              cursor="pointer"
-                              style={{ flexShrink: 0 }}
-                            />
-                          </HoverCard.Target>
-                          <HoverCard.Dropdown>
-                            <Text lh="md" p="md" style={{ width: 300 }}>
-                              {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-                              {t`This option lets you test Embedded Analytics JS locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser. This may not work on Safari and Firefox. We recommend testing this in Chrome.`}
-                            </Text>
-                          </HoverCard.Dropdown>
-                        </HoverCard>
-                      </Flex>
-                    )
-                  }
-                  disabled={disabled}
-                />
-              )}
-            </WithSimpleEmbeddingFeatureUpsellTooltip>
-
-            <WithSimpleEmbeddingFeatureUpsellTooltip
-              enableTooltip={!isSimpleEmbedFeatureAvailable}
-              campaign={UPSELL_CAMPAIGN_AUTH}
-            >
-              {({ disabled }) => (
-                <Radio
-                  value="sso"
-                  label={t`Single sign-on (SSO)`}
-                  disabled={disabled || !isSsoEnabledAndConfigured}
-                />
-              )}
-            </WithSimpleEmbeddingFeatureUpsellTooltip>
-          </Stack>
-        </Radio.Group>
-
-        {authType === "sso" && (
-          <Text size="sm" c="text-medium">
-            {t`Select this option if you have already set up SSO. This option relies on SSO to sign in your application users into the embedded iframe, and groups and permissions to enforce limits on what users can access. `}
-          </Text>
-        )}
-      </Stack>
-    </Card>
-  );
-};
 
 const BehaviorSection = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
@@ -443,84 +315,5 @@ const AppearanceSection = () => {
       {appearanceSection && <Divider mt="lg" mb="md" />}
       {appearanceSection}
     </Card>
-  );
-};
-
-const WithGuestEmbedsDisabledWarning = ({
-  children,
-}: {
-  children: (data: { disabled: boolean }) => ReactNode;
-}) => {
-  const { isGuestEmbedsEnabled } = useSdkIframeEmbedSetupContext();
-
-  const disabled = !isGuestEmbedsEnabled;
-
-  return (
-    <TooltipWarning
-      tooltip={t`Disabled in the admin settings`}
-      disabled={disabled}
-    >
-      {children}
-    </TooltipWarning>
-  );
-};
-
-const WithNotAvailableWithoutSimpleEmbeddingFeatureWarning = ({
-  mode,
-  children,
-  campaign,
-}: {
-  mode?: TooltipWarningMode;
-  children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
-  campaign: string;
-}) => {
-  const { isSimpleEmbedFeatureAvailable } = useSdkIframeEmbedSetupContext();
-
-  return (
-    <WithSimpleEmbeddingFeatureUpsellTooltip
-      mode={mode}
-      enableTooltip={!isSimpleEmbedFeatureAvailable}
-      campaign={campaign}
-    >
-      {({ disabled, hoverCard }) => children({ disabled, hoverCard })}
-    </WithSimpleEmbeddingFeatureUpsellTooltip>
-  );
-};
-
-const WithNotAvailableForGuestEmbedsWarning = ({
-  mode,
-  children,
-  campaign,
-}: {
-  mode?: TooltipWarningMode;
-  children: (data: { disabled: boolean; hoverCard: ReactNode }) => ReactNode;
-  campaign: string;
-}) => {
-  const { settings } = useSdkIframeEmbedSetupContext();
-
-  return (
-    <WithNotAvailableWithoutSimpleEmbeddingFeatureWarning
-      mode={mode}
-      campaign={campaign}
-    >
-      {({ disabled: disabledForOss, hoverCard: disabledForOssHoverCard }) => (
-        <TooltipWarning
-          enableTooltip={!disabledForOss}
-          tooltip={t`Not available if Guest Mode is selected`}
-          disabled={!!settings.isGuest}
-        >
-          {({
-            disabled: disabledForGuestEmbeds,
-            hoverCard: disabledForGuestEmbedsHoverCard,
-          }) =>
-            children({
-              disabled: disabledForOss || disabledForGuestEmbeds,
-              hoverCard:
-                disabledForOssHoverCard || disabledForGuestEmbedsHoverCard,
-            })
-          }
-        </TooltipWarning>
-      )}
-    </WithNotAvailableWithoutSimpleEmbeddingFeatureWarning>
   );
 };
