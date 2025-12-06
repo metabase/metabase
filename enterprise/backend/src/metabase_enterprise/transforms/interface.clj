@@ -35,7 +35,9 @@
 
   - `:run-method`
      Expected to be either `:cron` (for scheduled runs) or `:manual` (for ad-hoc or test runs)
-     Used for instrumentation / metadata purposes."
+     Used for instrumentation / metadata purposes.
+
+  Do not use this directly. Use [[metabase-enterprise.transforms.execute/execute!]] instead."
   {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
     (transform->transform-type transform)))
