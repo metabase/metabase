@@ -2036,6 +2036,122 @@ databaseChangeLog:
             baseTableName: transform
             constraintName: fk_transform_collection_id
 
+  - changeSet:
+      id: v58.2025-12-04T10:00:00
+      author: piranha
+      comment: Add status column to workspace table for async creation tracking
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: status
+                  type: varchar(20)
+                  remarks: Status of workspace setup
+                  defaultValue: "ready"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: status
+
+  - changeSet:
+      id: v58.2025-12-04T10:00:01
+      author: piranha
+      comment: Create workspace_log table for tracking async workspace setup progress
+      changes:
+        - createTable:
+            tableName: workspace_log
+            remarks: Log entries for async workspace setup progress
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: FK to workspace being set up
+                  constraints:
+                    nullable: false
+              - column:
+                  name: task
+                  type: varchar(255)
+                  remarks: Name of the setup task
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the task was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the task was updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When the task started
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: ${timestamp_type}
+                  remarks: When the task completed
+              - column:
+                  name: status
+                  type: varchar(20)
+                  remarks: Task status (started, success, failed)
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: Details on the task result if any
+      rollback:
+        - dropTable:
+            tableName: workspace_log
+
+  - changeSet:
+      id: v58.2025-12-04T10:00:02
+      author: piranha
+      comment: Add index on workspace_log.workspace_id
+      changes:
+        - createIndex:
+            tableName: workspace_log
+            indexName: idx_workspace_log_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_log
+            indexName: idx_workspace_log_workspace_id
+
+  - changeSet:
+      id: v58.2025-12-04T10:00:03
+      author: piranha
+      comment: Add foreign key constraint from workspace_log.workspace_id to workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_log
+            baseColumnNames: workspace_id
+            constraintName: fk_workspace_log_workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_log
+            constraintName: fk_workspace_log_workspace_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

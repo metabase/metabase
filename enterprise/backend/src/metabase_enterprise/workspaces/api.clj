@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.dag :as ws.dag]
+   [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.promotion :as ws.promotion]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -104,6 +105,7 @@
    [:name :string]
    [:collection_id :int]
    [:database_id :int]
+   [:status [:enum :pending :ready]]
    [:created_at :any]
    [:updated_at :any]
    [:archived_at [:maybe :any]]])
@@ -166,7 +168,7 @@
 
 (defn- ws->response [ws]
   (select-keys ws
-               [:id :name :collection_id :database_id :created_at :updated_at :archived_at :contents]))
+               [:id :name :collection_id :database_id :status :created_at :updated_at :archived_at :contents]))
 
 ;;; routes
 
@@ -287,6 +289,30 @@
   (-> (api/check-404 (t2/select-one :model/Workspace :id id))
       (t2/hydrate :contents)
       ws->response))
+
+(api.macros/defendpoint :get "/:id/log"
+  :- [:map
+      [:workspace_id ms/PositiveInt]
+      [:status [:enum :pending :ready]]
+      [:logs [:sequential [:map
+                           [:id ms/PositiveInt]
+                           [:workspace_id ms/PositiveInt]
+                           [:task :keyword]
+                           [:started_at :any]
+                           [:completed_at [:maybe :any]]
+                           [:status [:maybe :keyword]]
+                           [:message [:maybe :string]]]]]]
+  "Get workspace creation status and recent log entries for polling during async setup"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params]
+  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
+        logs      (t2/select :model/WorkspaceLog
+                             :workspace_id id
+                             {:order-by [[:started_at :desc]]
+                              :limit    20})]
+    {:workspace_id id
+     :status       (:status workspace)
+     :logs         logs}))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
