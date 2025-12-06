@@ -35,8 +35,7 @@ export function MenuCell({ item }: MenuCellProps) {
     return <Cell />;
   }
 
-  const deleteLabel =
-    item.model === "metric" ? t`Delete metric` : t`Delete model`;
+  const deleteLabel = item.model === "metric" ? t`Delete metric` : t`Delete`;
 
   return (
     <Cell onClick={stopPropagation} className={S.menuCell}>
