@@ -17,7 +17,7 @@ export function CreateCardMenu({ metricCollectionId }: CreateCardMenuProps) {
 
   return (
     <Menu position="bottom-end">
-      <Tooltip label={t`Create a metric`}>
+      <Tooltip label={t`Create metric`}>
         <Menu.Target>
           <Button
             w={24}
@@ -25,7 +25,7 @@ export function CreateCardMenu({ metricCollectionId }: CreateCardMenuProps) {
             size="compact-xs"
             variant="subtle"
             c="text-medium"
-            aria-label={t`Create a metric`}
+            aria-label={t`Create metric`}
             leftSection={<FixedSizeIcon name="add" size={16} />}
             onClick={handleClick}
           />
