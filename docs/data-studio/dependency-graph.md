@@ -29,13 +29,13 @@ For example, a question’s upstream dependencies might include the table it que
 
 **Downstream dependents** are the items that rely on your selection.
 
-For a table, this might include questions built on it, models that reference it, and dashboards that include those questions
+For a table, this might include questions built on it, models that reference it, and dashboards that include those questions.
 
 Each item in the graph shows:
 
 - Type (table, model, question, etc.)
-- Name.
-- Dependent counts showing how many other items rely on it.
+- Name
+- Dependent counts showing how many other items rely on it
 
 These counts make it easy to see how important an item is. Items with many dependents usually need extra care before making changes.
 
@@ -43,20 +43,20 @@ You can click any dependent count to open a details panel on the right, where yo
 
 **Search**
 
-- Find items by name.
-- See each item’s title and collection location.
+- Find items by name
+- See each item’s title and collection location
 
 **Filter**
 
-- Verified items.
-- Items in dashboards.
-- Items in official collections.
-- Items not in personal collections.
+- Verified items
+- Items in dashboards
+- Items in official collections
+- Items not in personal collections
 
 **Sort**
 
-- Name.
-- Location.
-- View count.
+- Name
+- Location
+- View count
 
 Sorting by view count helps you see which dependents are used most often.
