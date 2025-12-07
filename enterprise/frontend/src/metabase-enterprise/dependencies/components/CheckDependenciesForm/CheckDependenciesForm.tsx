@@ -162,20 +162,27 @@ function getItemLink(item: DependencyItem) {
 
 function getItemDescription(item: DependencyItem) {
   if (item.type === "card") {
-    const { collection, dashboard } = item.card;
+    const { collection, dashboard, document } = item.card;
 
     if (collection != null) {
       const ancestors = collection.effective_ancestors ?? [];
-      const breadcrumbs = [
-        ...ancestors.map((ancestor) => ({
-          title: ancestor.name,
-          to: Urls.collection(ancestor),
-        })),
-        { title: collection.name, to: Urls.collection(collection) },
-        ...(dashboard != null
-          ? [{ title: dashboard.name, to: Urls.dashboard(dashboard) }]
-          : []),
-      ];
+      const breadcrumbs = ancestors.map((ancestor) => ({
+        title: ancestor.name,
+        to: Urls.collection(ancestor),
+      }));
+      if (dashboard != null) {
+        breadcrumbs.push({
+          title: dashboard.name,
+          to: Urls.dashboard(dashboard),
+        });
+      } else if (document != null) {
+        breadcrumbs.push({ title: document.name, to: Urls.document(document) });
+      } else if (collection != null) {
+        breadcrumbs.push({
+          title: collection.name,
+          to: Urls.collection(collection),
+        });
+      }
 
       return (
         <Group gap="sm" wrap="nowrap">
