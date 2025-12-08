@@ -2975,6 +2975,48 @@
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
 
+(deftest share-card-audit-log-test
+  (testing "POST /api/card/:id/public_link creates audit log entry"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card {card-id :id :as _card}]
+          (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" card-id))
+          (is (partial=
+               {:topic :card-public-link-created
+                :user_id (mt/user->id :crowberto)
+                :model "Card"
+                :model_id card-id}
+               (mt/latest-audit-log-entry :card-public-link-created card-id)))
+
+          (testing "Does not create duplicate audit log entry when returning existing public link"
+            (let [audit-log-count-before (count (mt/all-entries-for :card-public-link-created
+                                                                    :model/Card
+                                                                    card-id))]
+              (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" card-id))
+              (is (= audit-log-count-before
+                     (count (mt/all-entries-for :card-public-link-created
+                                                :model/Card
+                                                card-id)))
+                  "Should not create additional audit log entry for existing public link"))))))))
+
+(deftest unshare-card-audit-log-test
+  (testing "DELETE /api/card/:id/public_link creates audit log entry"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card {card-id :id :as _card} (shared-card)]
+          (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" card-id))
+          (is (partial=
+               {:topic :card-public-link-deleted
+                :user_id (mt/user->id :crowberto)
+                :model "Card"
+                :model_id card-id}
+               (mt/latest-audit-log-entry :card-public-link-deleted card-id)))
+          (testing "Does not create duplicate audit entries if not public"
+            (let [all-events-before (mt/all-entries-for nil :model/Card card-id)]
+              (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" card-id))
+              (is (= all-events-before
+                     (mt/all-entries-for nil :model/Card card-id))))))))))
+
 (deftest test-that-we-can-fetch-a-list-of-publicly-accessible-cards
   (testing "GET /api/card/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
