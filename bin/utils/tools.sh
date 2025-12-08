@@ -189,7 +189,7 @@ detect_version_managers() {
         managers+=("asdf")
     fi
 
-    # mise - Dev tools version manager (formerly rtx)
+    # mise - Dev tools version manager
     if has_tool mise || [ -d "$HOME/.local/share/mise" ] || [ -d "$HOME/.mise" ]; then
         managers+=("mise")
     fi
