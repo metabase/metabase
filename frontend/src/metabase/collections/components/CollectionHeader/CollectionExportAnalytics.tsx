@@ -24,7 +24,7 @@ export function CollectionExportAnalytics() {
           <Text size="sm" c="tooltip-text">
             {t`Export analytics content`}
           </Text>
-          <Text size="sm" c="var(--mb-color-tooltip-text-secondary)">
+          <Text size="sm" c="tooltip-text-secondary">
             {t`Download as .tar.gz for local development`}
           </Text>
         </Box>
