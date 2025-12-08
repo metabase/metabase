@@ -10,6 +10,7 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.models.metabot-use-case :as metabot-use-case]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -24,7 +25,9 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- store-message! [conversation-id profile-id messages]
+(defn- store-message!
+  "Store a message in the conversation. Takes either use-case-id (preferred) or profile-id (legacy/dev override)."
+  [conversation-id {:keys [use-case-id profile-id]} messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -42,6 +45,7 @@
                  :data            messages
                  :usage           (:usage finish)
                  :role            (:role (first messages))
+                 :use_case_id     use-case-id
                  :profile_id      profile-id
                  :total_tokens    (->> (vals (:usage finish))
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
@@ -52,23 +56,29 @@
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id profile_id message context history conversation_id state]}]
-  (let [message    (metabot-v3.envelope/user-message message)
-        metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
-        session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
-    (store-message! conversation_id profile-id [message])
+  [{:keys [metabot_id use_case profile_id message context history conversation_id state]}]
+  (let [message       (metabot-v3.envelope/user-message message)
+        metabot-id    (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        metabot-pk    (metabot-v3.config/normalize-metabot-id metabot-id)
+        use-case-obj  (when use_case
+                        (metabot-use-case/use-case-for-metabot metabot-pk use_case))
+        use-case-id   (:id use-case-obj)
+        session-id    (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+        tracking-info {:use-case-id use-case-id
+                       :profile-id  profile_id}]
+    (store-message! conversation_id tracking-info [message])
     (metabot-v3.client/streaming-request
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id
-      :profile-id      profile-id
+      :use-case        use_case
+      :profile-id      profile_id
       :session-id      session-id
       :conversation-id conversation_id
       :message         message
       :history         history
       :state           state
       :on-complete     (fn [lines]
-                         (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
+                         (store-message! conversation_id tracking-info (metabot-v3.u/aisdk->messages :assistant lines))
                          :store-in-db)})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -80,6 +90,7 @@
   [_route-params
    _query-params
    body :- [:map
+            [:use_case :string]
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]

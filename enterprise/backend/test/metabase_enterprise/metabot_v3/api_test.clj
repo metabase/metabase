@@ -43,7 +43,8 @@
                                                         :context         {}
                                                         :conversation_id conversation-id
                                                         :history         [historical-message]
-                                                        :state           {}}
+                                                        :state           {}
+                                                        :use_case        "nlq"}
                                                        (m/assoc-some :metabot_id metabot-id)))
                     conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                     messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
@@ -100,7 +101,7 @@
         (search.tu/with-index-disabled
           (mt/with-premium-features #{:metabot-v3}
             (with-redefs [client/ai-url      (constantly ai-url)
-                          api/store-message! (fn [_conv-id _prof-id msgs]
+                          api/store-message! (fn [_conv-id _tracking-info msgs]
                                                (reset! messages msgs))
                           sr/async-cancellation-poll-interval-ms 5]
               (testing "Closing body stream drops connection"
@@ -111,7 +112,8 @@
                                                   :context         {}
                                                   :conversation_id (str (random-uuid))
                                                   :history         []
-                                                  :state           {}})]
+                                                  :state           {}
+                                                  :use_case        "nlq"})]
                   (.read ^java.io.InputStream body) ;; start the handler
                   (.close ^java.io.Closeable body)
                   (u/poll {:thunk       #(deref canceled)
