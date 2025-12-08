@@ -1,11 +1,12 @@
 (ns metabase-enterprise.workspaces.driver.bigquery
-  "BigQuery-specific implementations for workspace isolation.
+  "BigQuery workspace isolation using service account impersonation.
 
-  BigQuery differences from SQL-based drivers:
-  - Uses IAM policies instead of SQL GRANT statements
-  - Uses service account impersonation instead of user/password authentication
-  - Datasets are equivalent to schemas in other databases
-  - Permissions are managed via Google Cloud IAM, not database-level grants"
+  Uses GCP IAM instead of SQL GRANT statements. Each workspace gets its own
+  service account (created automatically) with table-level read permissions.
+
+  Required GCP setup for the main service account:
+  - Roles: `roles/bigquery.admin`, `roles/iam.serviceAccountAdmin`
+  - APIs: `bigquery.googleapis.com`, `iam.googleapis.com`"
   (:require
    [metabase-enterprise.workspaces.driver.common :as driver.common]
    [metabase-enterprise.workspaces.isolation :as isolation]
