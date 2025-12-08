@@ -673,7 +673,7 @@ export const WorkspacePage = ({ params }: WorkspacePageProps) => {
 
   return (
     <WorkspaceProvider workspaceId={workspaceId}>
-      <WorkspacePageContent params={params} />
+      <WorkspacePageContent key={workspaceId} params={params} />
     </WorkspaceProvider>
   );
 };

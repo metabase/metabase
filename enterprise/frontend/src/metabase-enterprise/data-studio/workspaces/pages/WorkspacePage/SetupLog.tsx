@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import LoadingAndGenericErrorWrapper from "metabase/common/components/LoadingAndGenericErrorWrapper";
-import { Group, Icon, Loader, Stack } from "metabase/ui";
+import { Group, Icon, Loader, Stack, Tooltip } from "metabase/ui";
 import { useGetWorkspaceLogQuery } from "metabase-enterprise/api";
 import type {
   WorkspaceId,
@@ -42,7 +42,11 @@ export const SetupLog = ({ workspaceId }: SetupTabProps) => {
       {logs.map((log) => {
         return (
           <Group gap="xs" key={log.id}>
-            <LogIcon status={log.status} />
+            <Tooltip disabled={!log.message} label={log.message}>
+              <Group>
+                <LogIcon status={log.status} />
+              </Group>
+            </Tooltip>
 
             <span>
               {translateTask(log.task)}
