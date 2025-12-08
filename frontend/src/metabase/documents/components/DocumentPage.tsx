@@ -36,7 +36,6 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -50,6 +49,7 @@ import type {
 import {
   trackDocumentBookmark,
   trackDocumentCreated,
+  trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
 import {
@@ -416,14 +416,6 @@ export const DocumentPage = ({
 
   usePageTitle(documentData?.name || t`New document`, { titleIndex: 1 });
 
-  const trackUnsavedChangesWarningEvent = useCallback(() => {
-    trackSimpleEvent({
-      event: "unsaved_changes_warning_displayed",
-      triggered_from: "document",
-      target_id: documentData?.id ?? null,
-    });
-  }, [documentData?.id]);
-
   const isLeaveConfirmModalOpen = useMemo(
     () =>
       hasUnsavedChanges() &&
@@ -434,9 +426,8 @@ export const DocumentPage = ({
 
   useEffect(() => {
     if (isLeaveConfirmModalOpen) {
-      trackUnsavedChangesWarningEvent();
+      trackDocumentUnsavedChangesWarningDisplayed();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only track when the modal is opened
   }, [isLeaveConfirmModalOpen]);
 
   return (
@@ -521,7 +512,7 @@ export const DocumentPage = ({
           route={route}
           onOpenChange={(open) => {
             if (open) {
-              trackUnsavedChangesWarningEvent();
+              trackDocumentUnsavedChangesWarningDisplayed();
             }
           }}
         />
