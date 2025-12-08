@@ -19,8 +19,8 @@
   (mt/with-premium-features #{:data-studio}
     (without-library
      (testing "POST /api/ee/data-studio/table/(un)publish-table"
-       (testing "publishes tables into the library-models collection"
-         (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-models-collection-type}]
+       (testing "publishes tables into the library-data collection"
+         (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
            (testing "normal users are not allowed to publish"
              (mt/user-http-request :rasta :post 403 "ee/data-studio/table/publish-tables"
                                    {:table_ids [(mt/id :users) (mt/id :venues)]}))
@@ -50,14 +50,14 @@
                     :collection_id nil
                     :is_published false}
                    (t2/select-one :model/Table (mt/id :users))))))
-       (testing "returns 404 when no library-models collection exists"
+       (testing "returns 404 when no library-data collection exists"
          (is (= "Not found."
                 (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
                                       {:table_ids [(mt/id :users)]}))))
-       (testing "returns 409 when multiple library-models collections exist"
-         (mt/with-temp [:model/Collection _ {:type collection/library-models-collection-type}
-                        :model/Collection _ {:type collection/library-models-collection-type}]
-           (is (= "Multiple library-models collections found."
+       (testing "returns 409 when multiple library-data collections exist"
+         (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
+                        :model/Collection _ {:type collection/library-data-collection-type}]
+           (is (= "Multiple library-data collections found."
                   (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
                                         {:table_ids [(mt/id :users)]})))))))))
 
@@ -593,7 +593,7 @@
 (deftest publish-tables-with-upstream-dependencies-test
   (mt/with-premium-features #{:data-studio}
     (testing "POST /api/ee/data-studio/table/publish-tables publishes upstream dependencies"
-      (mt/with-temp [:model/Collection _                      {:type collection/library-models-collection-type}
+      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
                      ;; Products table (upstream)
                      :model/Table      {products-id :id}    {:db_id db-id :name "products" :is_published false}
@@ -620,7 +620,7 @@
 (deftest publish-tables-recursive-upstream-test
   (mt/with-premium-features #{:data-studio}
     (testing "POST /api/ee/data-studio/table/publish-tables publishes recursive upstream dependencies"
-      (mt/with-temp [:model/Collection _                      {:type collection/library-models-collection-type}
+      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
                      ;; Customers table (upstream of orders)
                      :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published false}
@@ -658,7 +658,7 @@
 (deftest unpublish-tables-with-downstream-dependents-test
   (mt/with-premium-features #{:data-studio}
     (testing "POST /api/ee/data-studio/table/unpublish-tables unpublishes downstream dependents"
-      (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-models-collection-type}
+      (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
                      ;; Products table (upstream, published)
                      :model/Table      {products-id :id}    {:db_id db-id :name "products" :is_published true
@@ -687,7 +687,7 @@
 (deftest unpublish-tables-recursive-downstream-test
   (mt/with-premium-features #{:data-studio}
     (testing "POST /api/ee/data-studio/table/unpublish-tables unpublishes recursive downstream dependents"
-      (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-models-collection-type}
+      (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
                      ;; Customers table (upstream of orders, published)
                      :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published true

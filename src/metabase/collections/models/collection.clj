@@ -72,12 +72,12 @@
   "The value of the `:type` field for library collections."
   "library")
 
-(def ^:constant library-models-collection-type
-  "The value of the `:type` field for collections that only allow models."
-  "library-models")
+(def ^:constant library-data-collection-type
+  "The value of the `:type` field for collections that only allow tables."
+  "library-data")
 
 (def ^:constant library-metrics-collection-type
-  "The value of the `:type` field for collections that only allow models."
+  "The value of the `:type` field for collections that only allow metrics."
   "library-metrics")
 
 (defn- trash-collection* []
@@ -133,10 +133,10 @@
   [collection]
   (= (:type collection) library-collection-type))
 
-(defn- is-library-models-collection?
-  "Is this the library-models (named 'Data') collection?"
+(defn- is-library-data-collection?
+  "Is this the Data collection?"
   [collection]
-  (= (:type collection) library-models-collection-type))
+  (= (:type collection) library-data-collection-type))
 
 (defn- is-library-metrics-collection?
   "Is this the Metrics collection?"
@@ -179,13 +179,13 @@
                                                                         :type     library-collection-type
                                                                         :location "/"})
         base-location (str "/" (:id library) "/")
-        models        (t2/insert-returning-instance! :model/Collection {:name     "Data"
-                                                                        :type     library-models-collection-type
+        data          (t2/insert-returning-instance! :model/Collection {:name     "Data"
+                                                                        :type     library-data-collection-type
                                                                         :location base-location})
         metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
                                                                         :type     library-metrics-collection-type
                                                                         :location base-location})]
-    (doseq [col [library models metrics]]
+    (doseq [col [library data metrics]]
       (t2/delete! :model/Permissions :collection_id (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col))
     library))
@@ -208,7 +208,7 @@
   (cond-> collection
     (is-trash? collection) (assoc :name (tru "Trash"))
     (is-library? collection) (assoc :name (tru "Library"))
-    (is-library-models-collection? collection) (assoc :name (tru "Data"))
+    (is-library-data-collection? collection) (assoc :name (tru "Data"))
     (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
@@ -2185,5 +2185,5 @@
   [collection-id]
   (when collection-id
     (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
-                                                                        library-models-collection-type
+                                                                        library-data-collection-type
                                                                         library-metrics-collection-type]]))))

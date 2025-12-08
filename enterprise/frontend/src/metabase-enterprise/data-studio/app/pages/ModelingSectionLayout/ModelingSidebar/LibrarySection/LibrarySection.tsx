@@ -25,7 +25,6 @@ export function LibrarySection({
   collections,
   selectedCollectionId,
   hasDataAccess,
-  hasNativeWrite,
 }: LibrarySectionProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -48,7 +47,6 @@ export function LibrarySection({
         rootCollection={rootCollection}
         selectedCollectionId={selectedCollectionId}
         hasDataAccess={hasDataAccess}
-        hasNativeWrite={hasNativeWrite}
       />
     );
   }

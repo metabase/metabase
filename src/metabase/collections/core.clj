@@ -15,7 +15,7 @@
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   library-collection
-  library-models-collection-type
+  library-data-collection-type
   create-library-collection!
   moving-into-remote-synced?
   moving-from-remote-synced?

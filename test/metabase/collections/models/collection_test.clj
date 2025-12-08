@@ -3312,7 +3312,7 @@
   (mt/with-discard-model-updates! [:model/Collection]
     (testing "Can create a library if none exist"
       (t2/update! :model/Collection :type collection/library-collection-type {:type nil})
-      (t2/update! :model/Collection :type collection/library-models-collection-type {:type nil})
+      (t2/update! :model/Collection :type collection/library-data-collection-type {:type nil})
       (t2/update! :model/Collection :type collection/library-metrics-collection-type {:type nil})
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
@@ -3329,12 +3329,12 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries
     (t2/delete! :model/Collection :type [:in [collection/library-collection-type
-                                              collection/library-models-collection-type
+                                              collection/library-data-collection-type
                                               collection/library-metrics-collection-type]])))
 
 (deftest is-library-collection?
   (mt/with-temp [:model/Collection {library-id :id} {:name "Test Library" :type collection/library-collection-type}
-                 :model/Collection {models-id :id} {:name "Test Semantic Model Layer" :type collection/library-models-collection-type}
+                 :model/Collection {models-id :id} {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                  :model/Collection {metrics-id :id} {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}
                  :model/Collection {regular-collection-id :id} {:name "Regular Collection" :type nil}]
     (testing "Correctly identifies library collections"
