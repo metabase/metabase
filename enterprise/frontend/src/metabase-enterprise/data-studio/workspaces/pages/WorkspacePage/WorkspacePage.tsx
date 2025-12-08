@@ -515,7 +515,10 @@ function WorkspacePageContent({ params }: WorkspacePageProps) {
               }}
             >
               <Tabs.Panel value="setup" h="100%" p="md">
-                <SetupTab databaseName={sourceDb?.name} />
+                <SetupTab
+                  databaseName={sourceDb?.name}
+                  workspaceId={workspace.id}
+                />
               </Tabs.Panel>
 
               {isMetabotAvailable && (
