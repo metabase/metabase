@@ -1,6 +1,6 @@
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 
-export const getSsoTypeForSettings = (
+export const getAuthSubTypeForSettings = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) =>
   settings.isGuest

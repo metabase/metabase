@@ -29,7 +29,7 @@ export const AuthenticationSection = () => {
 
   const handleAuthTypeChange = (value: string) => {
     const isGuest = value === "guest-embed";
-    const isSso = !isGuest;
+    const isSso = value === "sso";
 
     if (isGuest) {
       // Reset experience to default when switching to guest embeds

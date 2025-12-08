@@ -146,7 +146,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
         event_detail:
-          "auth=guest-embed,experience=chart,isDefaultExperience=true",
+          "authType=guest-embed,experience=chart,isDefaultExperience=true",
       });
 
       // Entity selection step
@@ -220,7 +220,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
         event_detail:
-          "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,ssoType=none",
+          "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,authSubType=none",
       });
 
       // Visit embed page

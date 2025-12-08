@@ -39,7 +39,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -56,13 +56,13 @@ describe(suiteTitle, () => {
     });
   });
 
-  it("should not display a warning when a user session is selected", () => {
+  it("should not display a warning when a user session is selected and JWT is configured", () => {
     enableJwtAuth();
 
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -78,7 +78,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -91,7 +91,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -118,7 +118,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -131,7 +131,7 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
         event_detail:
-          "experience=dashboard,snippetType=frontend,ssoType=user-session",
+          "experience=dashboard,snippetType=frontend,authSubType=user-session",
       });
     });
   });
@@ -141,7 +141,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -154,7 +154,7 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
         event_detail:
-          "experience=dashboard,snippetType=frontend,ssoType=user-session",
+          "experience=dashboard,snippetType=frontend,authSubType=user-session",
       });
     });
   });
@@ -165,7 +165,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -175,7 +175,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
-        event_detail: "experience=dashboard,snippetType=frontend,ssoType=sso",
+        event_detail:
+          "experience=dashboard,snippetType=frontend,authSubType=sso",
       });
     });
   });
@@ -184,7 +185,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {
@@ -197,7 +198,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {

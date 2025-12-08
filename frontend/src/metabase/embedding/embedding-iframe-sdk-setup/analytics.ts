@@ -4,8 +4,8 @@ import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
-import { getSsoTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sso-type-for-settings";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
@@ -181,13 +181,13 @@ export const trackEmbedWizardCodeCopied = ({
   snippetType: "frontend" | "server";
   settings: SdkIframeEmbedSetupSettings;
 }) => {
-  const ssoType = getSsoTypeForSettings(settings);
+  const authSubType = getAuthSubTypeForSettings(settings);
 
   const eventDetailsParts: (string | null)[] = [
     `experience=${experience}`,
     `snippetType=${snippetType}`,
     ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-    `ssoType=${ssoType}`,
+    `authSubType=${authSubType}`,
   ];
 
   trackSimpleEvent({

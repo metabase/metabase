@@ -109,7 +109,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar()
@@ -150,7 +150,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar()
@@ -245,7 +245,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar()
@@ -341,7 +341,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     getEmbedSidebar()
@@ -414,7 +414,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     cy.log("chart title should be visible by default");
@@ -478,9 +478,9 @@ describe(suiteTitle, () => {
           ? {
               experience: "chart",
               resourceName: QUESTION_NAME,
-              toggleSso: true,
+              preselectSso: true,
             }
-          : { experience: "exploration", toggleSso: true },
+          : { experience: "exploration", preselectSso: true },
       );
 
       if (experience === "exploration") {
@@ -651,7 +651,7 @@ describe(suiteTitle, () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
-      toggleSso: true,
+      preselectSso: true,
     });
 
     cy.log("click on brand color picker");

@@ -6,7 +6,7 @@ import {
   UTM_LOCATION,
 } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { getSsoTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sso-type-for-settings";
+import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
 import { Alert, Anchor, Card, Icon, Radio, Stack, Text } from "metabase/ui";
 
 const utmTags = {
@@ -16,26 +16,24 @@ const utmTags = {
   utm_content: UTM_LOCATION,
 };
 
-export const SsoTypeSection = () => {
+export const MetabaseAccountSection = () => {
   const { isSsoEnabledAndConfigured, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
 
-  const { url: setupSsoUrl, showMetabaseLinks } = useDocsUrl(
-    "embedding/sdk/authentication",
-    {
-      utm: utmTags,
-    },
-  );
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Only for admins
+  const { url: setupSsoUrl } = useDocsUrl("embedding/sdk/authentication", {
+    utm: utmTags,
+  });
 
   if (isGuestEmbed) {
     return null;
   }
 
-  const ssoTypeValue = getSsoTypeForSettings(settings);
+  const authSubType = getAuthSubTypeForSettings(settings);
 
-  const handleSsoTypeChange = (value: string) => {
+  const handleAuthSubTypeChange = (value: string) => {
     const useExistingUserSession = value === "user-session";
 
     updateSettings({ useExistingUserSession });
@@ -52,7 +50,7 @@ export const SsoTypeSection = () => {
             }
           </Text>
 
-          <Radio.Group value={ssoTypeValue} onChange={handleSsoTypeChange}>
+          <Radio.Group value={authSubType} onChange={handleAuthSubTypeChange}>
             <Stack gap="sm">
               <Radio
                 disabled={!isSsoEnabledAndConfigured}
@@ -72,21 +70,17 @@ export const SsoTypeSection = () => {
       {!isSsoEnabledAndConfigured && !!settings.useExistingUserSession && (
         <Alert icon={<Icon name="warning" size={16} />} color="warning">
           <Text size="md" lh="lg">
-            {jt`The code below will only work for local testing. To get production ready code, configure ${
-              showMetabaseLinks ? (
-                <Anchor
-                  key="configure-sso"
-                  href={setupSsoUrl}
-                  target="_blank"
-                  size="md"
-                  lh="lg"
-                >
-                  {t`JWT SSO or SAML`}
-                </Anchor>
-              ) : (
-                t`JWT SSO or SAML`
-              )
-            }.`}
+            {jt`The code below will only work for local testing. To get production ready code, configure ${(
+              <Anchor
+                key="configure-sso"
+                href={setupSsoUrl}
+                target="_blank"
+                size="md"
+                lh="lg"
+              >
+                {t`JWT SSO or SAML`}
+              </Anchor>
+            )}.`}
           </Text>
         </Alert>
       )}
