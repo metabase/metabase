@@ -1,4 +1,6 @@
-(ns hooks.common.modules)
+(ns hooks.common.modules
+  (:require
+   [clojure.string :as str]))
 
 (defn ignored-namespace? [config ns-symb]
   (some
@@ -17,12 +19,17 @@
     (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
   [ns-symb]
   {:pre [(simple-symbol? ns-symb)]}
-  (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
-               second
-               (symbol "enterprise"))
-      (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
-              second
-              symbol)))
+  ;; treat something like `metabase.driver-test` (for a module that hasn't fully been updated to use `.core`
+  ;; namespaces) as being in the `driver` module
+  (let [ns-symb (if (str/ends-with? (name ns-symb) "-test")
+                  (symbol (str/replace (name ns-symb) #"-test$" ""))
+                  ns-symb)]
+    (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+                 second
+                 (symbol "enterprise"))
+        (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
+                second
+                symbol))))
 
 (defn module-api-namespaces
   "Set of API namespace symbols for a given module. `:any` means you can use anything, there are no API namespaces for

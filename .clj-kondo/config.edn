@@ -67,6 +67,7 @@
   :metabase/namespace-name                                   {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
+  :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
   :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
   :metabase/validate-logging                                 {:level :warning}
@@ -448,8 +449,8 @@
   metabase.premium-features.settings/define-premium-feature                             clojure.core/def
   metabase.pulse.dashboard-subscription-test/with-dashboard-sub-for-card                clojure.core/let
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
-  metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
-  metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
+  metabase.query-processor.pipeline-queries-test/pmbql-query                       clojure.core/->
+  metabase.query-processor.pipeline-queries-test/run-pmbql-query                   clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
@@ -539,7 +540,7 @@
    metabase.dashboards-rest.api-test/with-simple-dashboard-with-tabs                                                         hooks.common/with-one-binding
    metabase.dashboards.models.dashboard-tab-test/with-dashtab-in-personal-collection                                         hooks.common/with-one-top-level-binding
    metabase.dashboards.models.dashboard-test/with-dash-in-collection!                                                        hooks.common/with-three-bindings
-   metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
+   metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor.expressions-test/calculate-bird-scarcity
    metabase.driver.mongo-test/with-describe-table-for-sample                                                                 hooks.metabase.driver.mongo-test/with-describe-table-for-sample
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
@@ -579,8 +580,8 @@
    metabase.queries-rest.api.card-test/with-card-param-values-fixtures                                                       hooks.common/let-one-with-optional-value
    metabase.queries-rest.api.card-test/with-temp-native-card                                                                 hooks.common/with-two-bindings
    metabase.queries-rest.api.card-test/with-temp-native-card-with-params                                                     hooks.common/with-two-bindings
-   metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
-   metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
+   metabase.query-processor.expressions-test/calculate-bird-scarcity                                                         hooks.metabase.query-processor.expressions-test/calculate-bird-scarcity
+   metabase.query-processor.filter-test/count-with-filter-clause                                                             hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings
    metabase.request.core/with-current-request                                                                                hooks.common/with-used-first-arg
    metabase.request.core/with-current-user                                                                                   hooks.common/with-used-first-arg

@@ -420,7 +420,7 @@
   (merge
    ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
    ;; formatting to display values of the column" according
-   ;; to [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
+   ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
    (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
      {:unit temporal-unit})
    col))
