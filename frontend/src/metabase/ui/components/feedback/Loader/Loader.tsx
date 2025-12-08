@@ -9,6 +9,17 @@ const SIZES: Record<string, string> = {
   xl: "3.5rem",
 };
 
-export const Loader = ({ size = "md", ...props }: LoaderProps) => (
-  <MantineLoader {...props} size={getSize(SIZES[size])} />
-);
+type CustomLoader = (() => React.JSX.Element) | undefined;
+
+let customLoader: CustomLoader;
+
+export const setCustomLoader = (component: CustomLoader) => {
+  customLoader = component;
+};
+
+export const Loader = ({ size = "md", ...props }: LoaderProps) => {
+  if (customLoader) {
+    return customLoader();
+  }
+  return <MantineLoader {...props} size={getSize(SIZES[size])} />;
+};
