@@ -20,14 +20,9 @@ const collectionPage = () => cy.findByTestId("collection-page");
 export const DataStudio = {
   header: () => cy.findByTestId("data-studio-header"),
   nav: () => cy.findByTestId("data-studio-nav"),
-  transformsButton: () => DataStudio.header().findByText("Transforms"),
-  jobsButton: () => DataStudio.header().findByText("Jobs"),
-  runsButton: () => DataStudio.header().findByText("Runs"),
-  exitButton: () => DataStudio.header().findByText("Exit data studio"),
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),
-    content: () => cy.findByTestId("transforms-content"),
-    sidebar: () => cy.findByTestId("transforms-sidebar"),
+    list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
@@ -37,8 +32,15 @@ export const DataStudio = {
   },
   Jobs: {
     header: () => cy.findByTestId("jobs-header"),
-    content: () => cy.findByTestId("transforms-content"),
-    sidebar: () => cy.findByTestId("jobs-sidebar"),
+    list: () => cy.findByTestId("transforms-job-list"),
+    editor: () => cy.findByTestId("transforms-jobs-editor"),
+  },
+  Runs: {
+    list: () => cy.findByTestId("transforms-run-list"),
+    content: () => cy.findByTestId("transforms-run-content"),
+  },
+  Dependencies: {
+    content: () => cy.findByTestId("transforms-dependencies-content"),
   },
   PythonLibrary: {
     header: () => cy.findByTestId("python-library-header"),

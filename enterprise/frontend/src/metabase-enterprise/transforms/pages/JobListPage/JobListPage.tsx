@@ -50,7 +50,7 @@ export const JobListPage = () => {
       <TransformsSectionHeader
         leftSection={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
       />
-      <Stack px="3.5rem">
+      <Stack px="3.5rem" data-testid="transforms-job-list">
         <Flex gap="0.5rem">
           <TextInput
             placeholder="Search..."

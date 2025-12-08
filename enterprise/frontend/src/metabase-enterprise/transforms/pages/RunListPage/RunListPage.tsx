@@ -29,7 +29,13 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <Stack className={S.body} bg="bg-light" h="100%" gap={0}>
+    <Stack
+      bg="bg-light"
+      className={S.body}
+      data-testid="transforms-run-list"
+      gap={0}
+      h="100%"
+    >
       <TransformsSectionHeader
         leftSection={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
       />

@@ -58,7 +58,7 @@ export const TransformListPageSidebar = () => {
           <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
         }
       />
-      <Stack px="3.5rem">
+      <Stack px="3.5rem" data-testid="transforms-list">
         <Flex gap="md">
           <TextInput
             placeholder="Search..."
