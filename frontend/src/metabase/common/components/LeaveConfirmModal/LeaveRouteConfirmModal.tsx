@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useEffect } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
+import { usePrevious } from "react-use";
 
 import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
 
@@ -30,11 +31,13 @@ const _LeaveRouteConfirmModal = ({
     route,
     router,
   });
+  const previousIsOpened = usePrevious(opened);
 
   useEffect(() => {
-    onOpenChange?.(opened);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only update upon open state changes
-  }, [opened]);
+    if (previousIsOpened !== opened) {
+      onOpenChange?.(opened);
+    }
+  }, [opened, previousIsOpened, onOpenChange]);
 
   const handleConfirm = () => {
     confirm();
