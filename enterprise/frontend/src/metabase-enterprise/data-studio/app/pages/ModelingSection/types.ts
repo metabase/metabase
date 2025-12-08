@@ -11,7 +11,7 @@ export type TreeItem = {
   icon: IconName;
   updatedAt?: string;
   model: CollectionItemModel;
-  data: (Collection | CollectionItem) & {
+  data: (Collection | Omit<CollectionItem, "getUrl">) & {
     model: CollectionItem["model"];
     namespace?: CollectionNamespace;
   };
@@ -20,7 +20,7 @@ export type TreeItem = {
 };
 
 export const isCollection = (
-  c: Collection | CollectionItem,
+  c: Collection | Omit<CollectionItem, "getUrl">,
 ): c is Collection => {
   return Object.keys(c).includes("namespace");
 };
