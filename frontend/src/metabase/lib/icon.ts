@@ -84,7 +84,7 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     ) {
       case "root":
         return { name: "repository" };
-      case "models":
+      case "data":
         return { name: "table" };
       case "metrics":
         return { name: "metric" };

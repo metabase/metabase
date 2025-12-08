@@ -1,18 +1,17 @@
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
 import { Flex, Stack } from "metabase/ui";
+import { OverviewVisualization } from "metabase-enterprise/data-studio/common/components/OverviewVisualization";
 import type { Card } from "metabase-types/api";
 
-import { OverviewVisualization } from "../OverviewVisualization";
-
-import S from "./CardOverview.module.css";
 import { DescriptionSection } from "./DescriptionSection";
+import S from "./MetricOverview.module.css";
 import { QuerySourceSection } from "./QuerySourceSection";
 
-type CardOverviewProps = {
+type MetricOverviewProps = {
   card: Card;
 };
 
-export function CardOverview({ card }: CardOverviewProps) {
+export function MetricOverview({ card }: MetricOverviewProps) {
   return (
     <Flex className={S.root} p="lg" flex={1} bg="bg-light">
       <Flex direction="column" flex={1} mah={700}>

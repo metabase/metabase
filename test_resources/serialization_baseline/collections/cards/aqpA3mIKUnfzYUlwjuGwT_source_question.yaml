@@ -35,6 +35,5 @@ dashboard_id: null
 document_id: null
 embedding_type: null
 metabase_version: v1.57.1-SNAPSHOT (d027b42)
-published_table_id: null
 source_card_id: null
 type: model

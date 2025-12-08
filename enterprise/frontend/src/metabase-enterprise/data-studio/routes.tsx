@@ -19,7 +19,6 @@ import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioModelingRoutes } from "./modeling/routes";
-import { getDataStudioModelRoutes } from "./models/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
@@ -53,7 +52,6 @@ export function getDataStudioRoutes(
         <Route path="modeling" component={ModelingSectionLayout}>
           {getDataStudioModelingRoutes()}
           {getDataStudioTableRoutes()}
-          {getDataStudioModelRoutes()}
           {getDataStudioMetricRoutes()}
           {getDataStudioSegmentRoutes()}
           {getDataStudioSnippetRoutes()}
