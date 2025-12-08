@@ -21,6 +21,8 @@ import {
   createMockRecentTableItem,
   createMockSearchResult,
   createMockTokenFeatures,
+  createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import type { SettingsState } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -407,7 +409,16 @@ describe("CommandSuggestion", () => {
         items={[]}
         range={{ from: 0, to: 0 }}
       />,
-      { storeInitialState: createMockState({ settings: mockSettings({}) }) },
+      {
+        storeInitialState: createMockState({
+          currentUser: createMockUser({
+            permissions: createMockUserPermissions({
+              can_create_queries: true,
+            }),
+          }),
+          settings: mockSettings({}),
+        }),
+      },
     );
 
     await userEvent.click(await screen.findByRole("option", { name: "Chart" }));
