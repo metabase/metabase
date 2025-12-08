@@ -334,7 +334,7 @@ describe("isNamespaceRoot", () => {
   it("should return true for tenant root", () => {
     const item = {
       id: "tenant",
-      name: "Tenant Collections",
+      name: "Shared collections",
       model: "collection" as const,
       namespace: "shared-tenant-collection",
     };
@@ -380,7 +380,7 @@ describe("isNamespaceRoot", () => {
 describe("shouldDisableItemForSavingModel", () => {
   const tenantRoot = {
     id: "tenant",
-    name: "Tenant Collections",
+    name: "Shared collections",
     model: "collection" as const,
     namespace: "shared-tenant-collection",
   };
@@ -450,7 +450,7 @@ describe("shouldDisableItemForSavingModel", () => {
 describe("getDisabledReasonForSavingModel", () => {
   const tenantRoot = {
     id: "tenant",
-    name: "Tenant Collections",
+    name: "Shared collections",
     model: "collection" as const,
     namespace: "shared-tenant-collection",
   };

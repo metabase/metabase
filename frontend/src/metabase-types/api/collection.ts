@@ -159,6 +159,7 @@ export interface CollectionItem {
   setCollectionPreview?: (isEnabled: boolean) => void;
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
+  is_remote_synced?: boolean;
 }
 
 export interface CollectionListQuery {

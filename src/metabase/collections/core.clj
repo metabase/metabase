@@ -16,6 +16,7 @@
   check-remote-synced-dependents
   library-collection
   library-data-collection-type
+  location-path
   create-library-collection!
   moving-into-remote-synced?
   moving-from-remote-synced?

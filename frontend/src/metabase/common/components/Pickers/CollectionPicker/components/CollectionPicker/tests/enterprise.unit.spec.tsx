@@ -12,11 +12,11 @@ describe("tenant collections", () => {
     setup();
 
     expect(
-      await screen.findByRole("link", { name: /Tenant Collections/ }),
+      await screen.findByRole("link", { name: /Shared collections/ }),
     ).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("link", { name: /Tenant Collections/ }),
+      screen.getByRole("link", { name: /Shared collections/ }),
     );
 
     expect(
@@ -39,7 +39,7 @@ describe("tenant collections", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: /Tenant Collections/ }),
+      await screen.findByRole("link", { name: /Shared collections/ }),
     ).toHaveAttribute("data-active", "true");
 
     expect(await screen.findByRole("link", { name: /tcol/ })).toHaveAttribute(
@@ -61,7 +61,7 @@ describe("restrictToNamespace option", () => {
 
     // Tenant root should be visible
     expect(
-      await screen.findByRole("link", { name: /Tenant Collections/ }),
+      await screen.findByRole("link", { name: /Shared collections/ }),
     ).toBeInTheDocument();
 
     // Regular collections should NOT be visible
@@ -92,7 +92,7 @@ describe("restrictToNamespace option", () => {
     // Tenant root should NOT be visible
     await waitFor(() => {
       expect(
-        screen.queryByRole("link", { name: /Tenant Collections/ }),
+        screen.queryByRole("link", { name: /Shared collections/ }),
       ).not.toBeInTheDocument();
     });
   });
@@ -110,7 +110,7 @@ describe("restrictToNamespace option", () => {
       await screen.findByRole("link", { name: /Our Analytics/ }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("link", { name: /Tenant Collections/ }),
+      await screen.findByRole("link", { name: /Shared collections/ }),
     ).toBeInTheDocument();
   });
 });

@@ -2287,11 +2287,11 @@
 
 (deftest ^:parallel remote-synced-dependents-no-dependents-test
   (testing "when there are no dependents"
-    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+    (mt/with-temp [:model/Collection _ {:name "Remote-Synced" :location "/" :is_remote_synced true}
                    :model/Card {card-id :id} {:name "Test Card"
                                               :database_id (mt/id)
                                               :dataset_query (mt/mbql-query venues)}]
-      (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id card-id})))
+      (is (= [] (collection/remote-synced-dependents (t2/instance :model/Card {:id card-id})))
           "Should return empty seq when card has no dependents"))))
 
 (deftest ^:parallel remote-synced-dependents-in-remote-synced-test
@@ -2304,7 +2304,7 @@
                                                :collection_id remote-synced-id
                                                :database_id (mt/id)
                                                :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
+      (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id base-card-id}))]
         (is (= 1 (count dependents))
             "Should find one dependent")
         (is (= {"Card" dep-card} (first dependents))
@@ -2312,7 +2312,7 @@
 
 (deftest ^:parallel remote-synced-dependents-outside-remote-synced-test
   (testing "when dependents are outside remote-synced collection"
-    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
+    (mt/with-temp [:model/Collection {_remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Collection {regular-id :id} {:name "Regular"}
                    :model/Card {base-card-id :id} {:name "Base Card"
                                                    :database_id (mt/id)
@@ -2321,10 +2321,10 @@
                                   :collection_id regular-id
                                   :database_id (mt/id)
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-      (is (= [] (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id})))
+      (is (= [] (collection/remote-synced-dependents (t2/instance :model/Card {:id base-card-id})))
           "Should not return dependents outside the remote-synced collection"))))
 
-(deftest ^:parallel remote-synced-dependents-archived-test
+(deftest remote-synced-dependents-archived-test
   (testing "when dependents are archived"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Card {base-card-id :id} {:name "Base Card"
@@ -2337,14 +2337,14 @@
                                   :archived true
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (is (= #{{"Collection" remote-synced-id}}
-             (set  (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))))
+             (set (collection/remote-synced-dependents (t2/instance :model/Card {:id base-card-id}))))
           "Should not return archived dependents"))))
 
 (deftest ^:parallel remote-synced-dependents-non-card-models-test
   (testing "for non-card models"
-    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}
+    (mt/with-temp [:model/Collection {_coll-id :id} {:is_remote_synced true}
                    :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-      (is (= [] (collection/remote-synced-dependents coll-id (t2/instance :model/Dashboard {:id dash-id})))
+      (is (= [] (collection/remote-synced-dependents (t2/instance :model/Dashboard {:id dash-id})))
           "Should return empty seq for dashboard with no deps"))))
 
 (deftest ^:parallel remote-synced-dependents-with-parameters-test
@@ -2363,7 +2363,7 @@
                                                                 :values_source_config {:card_id base-card-id}}]}]
       ;; Create a card with parameters, then update it to have the correct JSON format
       ;; The parameters should be stored as JSON with "card-id" (hyphenated)
-      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
+      (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id base-card-id}))]
         (is (= 1 (count dependents))
             "Should find one dependent using parameters")
         (is (= dep-card-id (get (first dependents) "Card"))
@@ -2371,12 +2371,12 @@
 
 (deftest ^:parallel remote-synced-dependents-with-template-tags-test
   (testing "when card has dependents using template tags"
-    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
+    (mt/with-temp [:model/Collection {_remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Card {base-card-id :id} {:name "Base Card"
                                                    :database_id (mt/id)
                                                    :dataset_query (mt/mbql-query venues)}
                    :model/Card {dep-card-id :id} {:name "Dependent Card with Template Tags"
-                                                  :collection_id remote-synced-id
+                                                  :collection_id _remote-synced-id
                                                   :database_id (mt/id)
                                                   :dataset_query (mt/native-query {:query "SELECT * FROM {{card}}"
                                                                                    :template-tags {:card {:type "card"
@@ -2384,7 +2384,7 @@
                                                                                                           :card-id base-card-id}}})}]
       ;; Create a card with template tags
       ;; The dataset_query should contain "card-id" in the template tags
-      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
+      (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id base-card-id}))]
         (is (= 1 (count dependents))
             "Should find one dependent using template tags")
         (is (= dep-card-id (get (first dependents) "Card"))
@@ -2416,7 +2416,7 @@
                                                                                :template-tags {:card {:type "card"
                                                                                                       :display-name "Card"
                                                                                                       :card-id base-card-id}}})}]
-      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))]
+      (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id base-card-id}))]
         (is (= 3 (count dependents))
             "Should find all three types of dependents")
         (is (= #{dep1-id dep2-id dep3-id} (set (mapcat vals dependents)))
@@ -2441,16 +2441,16 @@
                    :model/Dashboard {dashboard-id :id} {:collection_id remote-synced-id}
                    :model/DashboardCard _ {:dashboard_id dashboard-id
                                            :card_id dep-card-id}]
-      (let [dependents (collection/remote-synced-dependents remote-synced-id source-coll)]
+      (let [dependents (collection/remote-synced-dependents source-coll)]
         (is (= 2 (count dependents))
             "Should find dependents of cards in the collection")
-        (is (= #{{"Card" dep-card-id} {"Card" dep-card-2-id}}  (set dependents))
+        (is (= #{{"Card" dep-card-id} {"Card" dep-card-2-id}} (set dependents))
             "Should return the dependent cards")))))
 
 (deftest ^:parallel remote-synced-dependents-with-collection-no-cards-test
   (testing "when a collection with no cards is passed to remote-synced-dependents"
     (mt/with-temp [:model/Collection {empty-coll-id :id} {:name "Empty Collection" :location "/"}]
-      (let [dependents (collection/remote-synced-dependents empty-coll-id (t2/instance :model/Collection {:id empty-coll-id}))]
+      (let [dependents (collection/remote-synced-dependents (t2/instance :model/Collection {:id empty-coll-id}))]
         (is (= [] dependents)
             "Should return empty seq for collection with no cards")))))
 
@@ -2476,7 +2476,7 @@
                                                     :collection_id remote-synced-id
                                                     :database_id (mt/id)
                                                     :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-2-id)})}]
-      (let [dependents (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Collection {:id parent-coll-id}))]
+      (let [dependents (collection/remote-synced-dependents (t2/instance :model/Collection {:id parent-coll-id}))]
         (is (= 2 (count dependents))
             "Should find dependents of cards in parent and child collections")
         (is (= #{dep-card-1-id dep-card-2-id} (set (mapcat vals dependents)))
@@ -2484,12 +2484,12 @@
 
 (deftest ^:parallel remote-synced-dependents-with-other-models-test
   (testing "when other model types are passed to remote-synced-dependents"
-    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}
+    (mt/with-temp [:model/Collection {_coll-id :id} {:is_remote_synced true}
                    :model/Dashboard {dash-id :id} {:name "Test Dashboard"}
                    :model/Pulse {pulse-id :id} {:name "Test Pulse"}]
-      (is (= [] (collection/remote-synced-dependents coll-id (t2/instance :model/Dashboard {:id dash-id})))
+      (is (= [] (collection/remote-synced-dependents (t2/instance :model/Dashboard {:id dash-id})))
           "Should return empty seq for Dashboard models")
-      (is (= [] (collection/remote-synced-dependents coll-id (t2/instance :model/Pulse {:id pulse-id})))
+      (is (= [] (collection/remote-synced-dependents (t2/instance :model/Pulse {:id pulse-id})))
           "Should return empty seq for Pulse models"))))
 
 (deftest ^:parallel check-remote-synced-dependents-throws-test
@@ -2505,11 +2505,11 @@
                                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Used by remote synced content."
-                            (collection/check-remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id})))
+                            (collection/check-remote-synced-dependents (t2/instance :model/Card {:id base-card-id})))
           "Should throw exception when model has remote-synced dependents")
 
       (try
-        (collection/check-remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))
+        (collection/check-remote-synced-dependents (t2/instance :model/Card {:id base-card-id}))
         (catch clojure.lang.ExceptionInfo e
           (let [data (ex-data e)]
             (is (= 400 (:status-code data))
@@ -2525,7 +2525,7 @@
                                               :database_id (mt/id)
                                               :dataset_query (mt/mbql-query venues)}]
       (let [card (t2/instance :model/Card {:id card-id})
-            result (collection/check-remote-synced-dependents nil card)]
+            result (collection/check-remote-synced-dependents card)]
         (is (= card result)
             "Should return the same model when no remote-synced dependents")))))
 
@@ -2543,7 +2543,7 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Used by remote synced content."
-                            (collection/check-remote-synced-dependents remote-synced-id (t2/instance :model/Collection {:id source-coll-id})))
+                            (collection/check-remote-synced-dependents (t2/instance :model/Collection {:id source-coll-id})))
           "Should throw exception when collection contains cards with remote-synced dependents"))))
 
 (deftest ^:parallel remote-synced-dependents-with-dashboard-test
@@ -2566,7 +2566,7 @@
                                                                   :size_x 4 :size_y 4}]
 
       (testing "Returns only dashboards in remote-synced collections"
-        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (contains? (set dependents) {"Dashboard" remote-synced-dashboard-id "DashboardCard" rs-dashcard-id})
               "Should include dashboard in remote-synced collection")
           (is (not (contains? (set dependents) {"Dashboard" regular-dashboard-id "DashboardCard" non-rs-dashcard-id}))
@@ -2587,7 +2587,7 @@
                                                            :size_x 4 :size_y 4}]
 
       (testing "Returns dashboards from nested remote-synced collections"
-        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (= #{{"Collection" remote-synced-coll-id} {"Dashboard" nested-dashboard-id "DashboardCard" dashcard-id}}
                  (set dependents))
               "Should include dashboard in nested remote-synced collection"))))))
@@ -2606,7 +2606,7 @@
                                            :size_x 4 :size_y 4}]
 
       (testing "Does not return archived dashboards"
-        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (= {"Collection" remote-synced-coll-id} (first dependents))
               "Should not include archived dashboard even if in remote-synced collection"))))))
 
@@ -2628,7 +2628,7 @@
                                                                :position 0}]
 
       (testing "Returns dashboards that reference cards through series"
-        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id remote-synced-card-id}))]
+        (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id remote-synced-card-id}))]
           (is (= #{{"Collection" remote-synced-coll-id} {"Dashboard" remote-synced-dashboard-id "DashboardCard" dashcard-id "DashboardCardSeries" series-id}}
                  (set dependents))
               "Should include dashboard that references card through series"))))))
@@ -2649,7 +2649,7 @@
                                            :size_x 4 :size_y 4}]
 
       (testing "Returns both card and dashboard dependencies"
-        (let [dependents (collection/remote-synced-dependents remote-synced-coll-id (t2/instance :model/Card {:id source-card-id}))
+        (let [dependents (collection/remote-synced-dependents (t2/instance :model/Card {:id source-card-id}))
               dependent-models (mapcat keys dependents)]
           (is (some #(= "Card" %) dependent-models)
               "Should include dependent cards")
