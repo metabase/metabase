@@ -63,9 +63,7 @@ export function ModelingLandingPage() {
     (item: TreeItem) => {
       // Casting because these should not be collections, but collection items with
       // numbers for IDs
-      if (item.model === "dataset") {
-        dispatch(push(Urls.dataStudioModel(item.id as number)));
-      } else if (item.model === "metric") {
+      if (item.model === "metric") {
         dispatch(push(Urls.dataStudioMetric(item.id as number)));
       } else if (item.model === "snippet") {
         dispatch(push(Urls.dataStudioSnippet(item.id as number)));
