@@ -1,4 +1,8 @@
-import type { CollectionId, IndexedEntity } from "metabase-types/api";
+import type {
+  CollectionId,
+  DatabaseId,
+  IndexedEntity,
+} from "metabase-types/api";
 
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
@@ -17,6 +21,7 @@ export type UrlableModel = {
   database?: {
     id: number;
   };
+  database_id?: DatabaseId;
   collection_id?: CollectionId | null;
 };
 
@@ -27,6 +32,8 @@ const NOT_FOUND_URL = "/404";
  * anything in metabase, just put it through here
  */
 export function modelToUrl(item: UrlableModel): string {
+  const databaseId = item.database_id ?? item.database?.id;
+
   switch (item.model) {
     case "card":
       return question({
@@ -42,8 +49,8 @@ export function modelToUrl(item: UrlableModel): string {
     case "dashboard":
       return dashboard(item);
     case "table":
-      if (item?.database?.id) {
-        return tableRowsQuery(item.database.id, item.id);
+      if (databaseId != null) {
+        return tableRowsQuery(databaseId, item.id);
       }
       return NOT_FOUND_URL;
     case "collection":

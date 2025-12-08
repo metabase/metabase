@@ -108,7 +108,7 @@ describe("scenarios > admin > transforms", () => {
         cy.findByText("Our analytics").should("not.exist");
         cy.findByText("Browse all").should("exist");
         cy.findByText("Data").click();
-        cy.findByText("Trusted Orders Model").should("exist");
+        cy.findByText("Orders").should("exist");
       });
     });
 

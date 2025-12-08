@@ -77,6 +77,16 @@
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
 
+(mr/def ::publicize
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])
+
+(mr/def :event/dashboard-public-link-created ::publicize)
+(mr/def :event/dashboard-public-link-deleted ::publicize)
+(mr/def :event/card-public-link-created ::publicize)
+(mr/def :event/card-public-link-deleted ::publicize)
+
 ;; user events
 
 (mr/def ::user
