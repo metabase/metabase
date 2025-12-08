@@ -397,8 +397,8 @@
 ;;
 ;; It would even be better if we could use countIf and sumIf directly
 ;;
-;; metabase.query-processor-test.count-where-test
-;; metabase.query-processor-test.share-test
+;; metabase.query-processor.count-where-test
+;; metabase.query-processor.share-test
 (defmethod sql.qp/->honeysql [:clickhouse :count-where]
   [driver [_ pred]]
   [:case

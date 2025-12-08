@@ -879,7 +879,6 @@
   ;;    clj -X:dev:ee:ee-dev:test:test/qp
   :test/qp
   {:exec-args {:only ["test/metabase/query_processor"
-                      "test/metabase/query_processor_test"
                       metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
@@ -906,7 +905,6 @@
                       "test/metabase/lib_be"
                       "test/metabase/legacy_mbql"
                       "test/metabase/query_processor"
-                      "test/metabase/query_processor_test"
                       metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
