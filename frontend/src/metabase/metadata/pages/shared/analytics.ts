@@ -1,17 +1,10 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { MetadataEditEventDetail } from "metabase-types/analytics";
 
-import type {
-  MetadataEditAnalyticsDetail,
-  MetadataEventSource,
-} from "../DataModelV1/types";
-
-export const trackMetadataChange = (
-  detail: MetadataEditAnalyticsDetail,
-  triggered_from: MetadataEventSource,
-) => {
+export const trackMetadataChange = (detail: MetadataEditEventDetail) => {
   trackSimpleEvent({
     event: "metadata_edited",
     event_detail: detail,
-    triggered_from,
+    triggered_from: "admin",
   });
 };

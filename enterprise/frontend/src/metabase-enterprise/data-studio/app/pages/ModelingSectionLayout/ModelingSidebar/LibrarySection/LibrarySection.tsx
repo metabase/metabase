@@ -7,12 +7,11 @@ import { isLibraryCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { trackDataStudioLibraryCreated } from "metabase-enterprise/data-studio/analytics";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { ModelingSidebarSection } from "../ModelingSidebarSection";
 
-import { CreateLibraryModal } from "./CreateLibraryModal";
 import { LibraryCollectionTree } from "./LibraryCollectionTree";
 
 export type LibrarySectionProps = {
@@ -40,7 +39,6 @@ export function LibrarySection({
 
   const handleCreate = (collection: Collection) => {
     closeModal();
-    trackDataStudioLibraryCreated(collection.id);
     dispatch(push(Urls.dataStudioCollection(collection.id)));
   };
 
@@ -63,9 +61,11 @@ export function LibrarySection({
           icon="repository"
           onClick={openModal}
         />
-        {isModalOpened && (
-          <CreateLibraryModal onCreate={handleCreate} onClose={closeModal} />
-        )}
+        <CreateLibraryModal
+          isOpened={isModalOpened}
+          onCreate={handleCreate}
+          onClose={closeModal}
+        />
       </>
     );
   }

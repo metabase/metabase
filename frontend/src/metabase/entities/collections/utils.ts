@@ -45,7 +45,7 @@ export function getCollectionIcon(
     case "root":
       return { name: "repository" };
     case "models":
-      return { name: "model" };
+      return { name: "table" };
     case "metrics":
       return { name: "metric" };
   }

@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
@@ -13,10 +11,7 @@ import {
 } from "../../../common/components/PaneHeader";
 
 import { CollectionEmptyState } from "./CollectionEmptyState";
-import {
-  CollectionItemsTable,
-  type ModelingItem,
-} from "./CollectionItemsTable";
+import { CollectionItemsTable } from "./CollectionItemsTable";
 import S from "./CollectionPage.module.css";
 
 type CollectionPageParams = {
@@ -41,20 +36,11 @@ export function CollectionPage({ params }: CollectionPageProps) {
     error: itemsError,
   } = useListCollectionItemsQuery({
     id: params.collectionId,
-    models: ["dataset", "metric"],
+    models: ["dataset", "metric", "table"],
   });
+  const items = data?.data ?? [];
   const isLoading = isLoadingCollection || isLoadingItems;
   const error = collectionError ?? itemsError;
-
-  const items = useMemo(() => {
-    if (!data?.data) {
-      return [];
-    }
-    return data.data.filter(
-      (item): item is ModelingItem =>
-        item.model === "dataset" || item.model === "metric",
-    );
-  }, [data]);
 
   if (isLoading || error != null || collection == null) {
     return (
