@@ -1137,6 +1137,57 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.data-studio.api.table.bulk-table-info" : {
+        "description" : "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "is_published" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name", "display_name", "is_published" ]
+      },
+      "metabase-enterprise.data-studio.api.table.bulk-table-selection-info" : {
+        "description" : "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type.",
+        "type" : "object",
+        "properties" : {
+          "published_downstream_tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-info"
+            }
+          },
+          "selected_table" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-info"
+          },
+          "unpublished_upstream_tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-info"
+            }
+          }
+        },
+        "required" : [ "published_downstream_tables", "unpublished_upstream_tables" ]
+      },
       "metabase-enterprise.data-studio.api.table.data-authorities" : {
         "type" : "string",
         "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
@@ -1148,6 +1199,16 @@
       "metabase-enterprise.data-studio.api.table.data-sources" : {
         "type" : "string",
         "enum" : [ "source-data", "transform", "unknown", "ingested", "metabase-transform", "upload" ]
+      },
+      "metabase-enterprise.data-studio.api.table.publish-tables-response" : {
+        "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
+        "type" : "object",
+        "properties" : {
+          "target_collection" : {
+            "description" : "value must be an instance of :model/Collection"
+          }
+        },
+        "required" : [ ]
       },
       "metabase-enterprise.data-studio.api.table.table-selectors" : {
         "type" : "object",
@@ -5299,6 +5360,8 @@
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemporalLiteral"
           }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.ExpressionArg"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
           }, {
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime"
           } ]
@@ -12840,7 +12903,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "dashboard", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
+              "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
             }
           }
         }, {
@@ -13255,7 +13318,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "dashboard", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
+              "enum" : [ "dashboard", "table", "dataset", "no_models", "timeline", "snippet", "collection", "document", "pulse", "metric", "card" ]
             }
           }
         }, {
@@ -16905,7 +16968,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -16933,7 +17003,16 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "map with no other keys",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : { },
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -16997,14 +17076,21 @@
         "tags" : [ "/api/ee/data-studio/table" ]
       }
     },
-    "/api/ee/data-studio/table/publish-model" : {
+    "/api/ee/data-studio/table/publish-tables" : {
       "post" : {
-        "summary" : "POST /api/ee/data-studio/table/publish-model",
-        "description" : "Create a model for each of selected tables",
+        "summary" : "POST /api/ee/data-studio/table/publish-tables",
+        "description" : "Set collection for each of selected tables and all upstream dependencies recursively.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.publish-tables-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17017,40 +17103,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "database_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  },
-                  "schema_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "string"
-                    }
-                  },
-                  "table_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  },
-                  "target_collection_id" : {
-                    "anyOf" : [ {
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "const" : "library"
-                    } ]
-                  }
-                },
-                "required" : [ ]
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
               }
             }
           }
@@ -17065,7 +17118,49 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/selection" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/selection",
+        "description" : "Gets information about selected tables",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.bulk-table-selection-info"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17093,7 +17188,49 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-studio.api.table.table-selectors"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-studio/table/unpublish-tables" : {
+      "post" : {
+        "summary" : "POST /api/ee/data-studio/table/unpublish-tables",
+        "description" : "Unset collection for each of selected tables and all downstream dependents recursively.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "null",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17465,7 +17602,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
           }
         }, {
           "in" : "query",
@@ -17508,7 +17645,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
           }
         }, {
           "in" : "query",
@@ -17516,7 +17653,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox" ]
+            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
           }
         }, {
           "in" : "query",
@@ -18279,7 +18416,7 @@
     "/api/ee/library/" : {
       "post" : {
         "summary" : "POST /api/ee/library/",
-        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires data-studio application permission.",
+        "description" : "Creates the Library if it doesn't exist. Returns the created collection.\n\n  Requires superuser permissions.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
