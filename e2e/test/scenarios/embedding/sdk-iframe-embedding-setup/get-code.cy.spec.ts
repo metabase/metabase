@@ -35,7 +35,7 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should disable SSO radio button when JWT and SAML are not configured", () => {
+  it("should disable SSO radio button (and show info message) when JWT and SAML are not configured", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -44,6 +44,32 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Single sign-on").should("be.disabled");
+      cy.findByLabelText("Existing session (local testing only)").should(
+        "be.enabled",
+      );
+      cy.findByLabelText("Existing session (local testing only)").should(
+        "be.checked",
+      );
+      cy.findByText(/The code below will only work for local testing/).should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("should not display a warning when a user session is selected", () => {
+    enableJwtAuth();
+
+    navigateToGetCodeStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+      toggleSso: true,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Existing session (local testing only)").click();
+      cy.findByText(/The code below will only work for local testing/).should(
+        "not.exist",
+      );
     });
   });
 
