@@ -16,22 +16,11 @@ describe("scenarios > data studio > modeling > metrics", () => {
     createLibraryWithItems();
   });
 
-  describe("empty state", () => {
-    it("should show empty state when no collections are selected", () => {
-      visitModelingPage();
-      H.DataStudio.Modeling.emptyPage().should("be.visible");
-      H.DataStudio.Modeling.emptyPage()
-        .parent()
-        .findByText("Build your semantic layer with tables and metrics.")
-        .should("be.visible");
-    });
-  });
-
   it("should create a new metric with proper validation and save to collection", () => {
     visitModelingPage();
 
     cy.log("Create a new metric");
-    H.DataStudio.ModelingSidebar.createCardMenuButton().click();
+    H.DataStudio.Modeling.newButton().click();
     H.popover().findByText("Metric").click();
 
     H.DataStudio.Metrics.queryEditor().should("be.visible");
@@ -67,7 +56,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.url().should("match", /\/data-studio\/modeling\/metrics\/\d+$/);
 
     H.DataStudio.Metrics.overviewPage().within(() => {
-      cy.findByText("Total Revenue").should("be.visible");
+      cy.findAllByText("Total Revenue").should("have.length", 2); // breadcrumbs + header
       cy.findByText("Sum of all order totals across the store").should(
         "be.visible",
       );
@@ -107,13 +96,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
-    cy.log("Select Metrics collection from sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Verify metric overview page displays correct data");
@@ -136,10 +119,6 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.log("Verify updated name appears in collection view");
     cy.visit("/data-studio/modeling");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     H.DataStudio.Modeling.metricItem("Updated Orders Metric").should(
       "be.visible",
     );
@@ -149,13 +128,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
-    cy.log("Select Metrics collection from sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Navigate to definition tab");
@@ -178,13 +151,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
-    cy.log("Select Metrics collection from sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Navigate to definition tab");
@@ -197,7 +164,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     H.popover().findByText("Total").click();
 
     cy.log("Try to navigate away");
-    H.DataStudio.ModelingSidebar.glossaryLink().click();
+    H.DataStudio.nav().findByRole("link", { name: "Glossary" }).click();
 
     cy.log("Verify unsaved changes modal appears");
     H.modal().within(() => {
@@ -212,14 +179,6 @@ describe("scenarios > data studio > modeling > metrics", () => {
   it("should archive and restore a metric", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
-
-    cy.log("Select Metrics collection from sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-
-    cy.log("Wait for collection page to load");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
 
     cy.log("Click on the metric from the collection view");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
@@ -243,13 +202,9 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.log("Verify metric is removed from collection view");
     cy.visit("/data-studio/modeling");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
-    H.DataStudio.Modeling.collectionPage()
-      .findByText("No metrics yet")
-      .should("be.visible");
+    cy.findByRole("table")
+      .findByText("Trusted Orders Metric")
+      .should("not.exist");
 
     cy.log("Navigate to trash");
     cy.visit("/trash");
@@ -267,10 +222,6 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.log("Verify metric is restored in collection view");
     cy.visit("/data-studio/modeling");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     cy.findByRole("table")
       .findByText("Trusted Orders Metric")
       .should("be.visible");
@@ -280,13 +231,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
-    cy.log("Select Metrics collection from sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Verify metric is loaded");
@@ -308,13 +253,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
-    cy.log("Select Metrics collection from sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Verify metric is loaded");
@@ -350,15 +289,11 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.log("Verify duplicate metric is created");
     H.DataStudio.Metrics.overviewPage()
-      .findByText("Trusted Orders Metric - Duplicate")
-      .should("be.visible");
+      .findAllByText("Trusted Orders Metric - Duplicate")
+      .should("have.length", 2); // breadcrumbs + header
 
     cy.log("Verify both metrics appear in collection view");
-    cy.visit("/data-studio/modeling");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
+    H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
     cy.findByRole("table").within(() => {
       cy.findByText("Trusted Orders Metric").should("be.visible");
       cy.findByText("Trusted Orders Metric - Duplicate").should("be.visible");
@@ -369,13 +304,7 @@ describe("scenarios > data studio > modeling > metrics", () => {
     cy.log("Navigate to Data Studio Modeling");
     cy.visit("/data-studio/modeling");
 
-    cy.log("Select Metrics collection from sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-
     cy.log("Click on the metric from the collection view");
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
 
     cy.log("Verify metric is loaded");
@@ -398,17 +327,13 @@ describe("scenarios > data studio > modeling > metrics", () => {
 
     cy.log("Verify metric is no longer in Metrics collection");
     cy.visit("/data-studio/modeling");
-    H.DataStudio.ModelingSidebar.collectionsTree()
-      .findByText("Metrics")
-      .click();
-    H.DataStudio.Modeling.collectionPage().should("be.visible");
-    H.DataStudio.Modeling.collectionPage()
-      .findByText("No metrics yet")
-      .should("be.visible");
+    cy.findByRole("table")
+      .findByText("Trusted Orders Metric")
+      .should("not.exist");
   });
 });
 
 function visitModelingPage() {
   cy.visit("/data-studio/modeling");
-  H.DataStudio.ModelingSidebar.root().should("be.visible");
+  H.DataStudio.Modeling.modelingPage().should("be.visible");
 }
