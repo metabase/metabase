@@ -19,6 +19,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(def INNER-LIMIT "Limit for number of nested things we are ready to return w/o thinking about it too much" 20)
+
 ;;; schemas
 
 (mr/def ::entity-type [:enum :transform])
@@ -106,8 +108,8 @@
    [:collection_id :int]
    [:database_id :int]
    [:status [:enum :pending :ready]]
-   [:created_at :any]
-   [:updated_at :any]
+   [:created_at ms/TemporalInstant]
+   [:updated_at ms/TemporalInstant]
    [:archived_at [:maybe :any]]])
 
 (def ^:private FullWorkspace
@@ -294,11 +296,13 @@
   :- [:map
       [:workspace_id ms/PositiveInt]
       [:status [:enum :pending :ready]]
+      [:updated_at :any]
+      [:last_completed_at [:maybe :any]]
       [:logs [:sequential [:map
                            [:id ms/PositiveInt]
-                           [:workspace_id ms/PositiveInt]
                            [:task :keyword]
                            [:started_at :any]
+                           [:updated_at :any]
                            [:completed_at [:maybe :any]]
                            [:status [:maybe :keyword]]
                            [:message [:maybe :string]]]]]]
@@ -306,13 +310,17 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        logs      (t2/select :model/WorkspaceLog
+        logs      (t2/select [:model/WorkspaceLog
+                              :id :task :started_at :completed_at :status :message
+                              :updated_at]
                              :workspace_id id
                              {:order-by [[:started_at :desc]]
-                              :limit    20})]
-    {:workspace_id id
-     :status       (:status workspace)
-     :logs         logs}))
+                              :limit    INNER-LIMIT})]
+    {:workspace_id      id
+     :status            (:status workspace)
+     :logs              logs
+     :updated_at        (->> (map :updated_at logs) sort reverse first)
+     :last_completed_at (->> (seq (keep :completed_at logs)) sort reverse first)}))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace

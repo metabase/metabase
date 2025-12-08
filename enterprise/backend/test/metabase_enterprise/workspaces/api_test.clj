@@ -481,11 +481,13 @@
   (testing "GET /api/ee/workspace/:id/log returns status and log entries"
     (let [{ws-id :id} (ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                       {:name "log-test" :database_id (mt/id)}))]
-      (is (=? {:workspace_id ws-id
-               :status       "ready"
-               :logs         [{:task   "database-isolation"
-                               :status "success"}
-                              {:task "workspace-setup"}]}
+      (is (=? {:workspace_id      ws-id
+               :status            "ready"
+               :updated_at        some?
+               :last_completed_at some?
+               :logs              [{:task   "database-isolation"
+                                    :status "success"}
+                                   {:task "workspace-setup"}]}
               (mt/user-http-request :crowberto :get 200
                                     (format "ee/workspace/%d/log" ws-id)))))))
 

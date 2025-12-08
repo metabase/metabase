@@ -30,7 +30,7 @@
                     :transform.workspace_id [:in ids]
                     {:left-join [[:workspace_mapping_transform :wmt] [:= :wmt.downstream_id :transform.id]
                                  [:transform :upstream]              [:= :upstream.id :wmt.upstream_id]]
-                     :order-by [:created_at]}))
+                     :order-by [:id]}))
        (mapv #(-> %
                   (update :upstream json/decode+kw)
                   (assoc :type entity-type)))))
