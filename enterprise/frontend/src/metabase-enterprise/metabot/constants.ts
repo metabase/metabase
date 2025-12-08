@@ -72,4 +72,7 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get search_tables() {
     return t`Searching database tables`;
   },
+  get read_resource() {
+    return t`Reading resources`;
+  },
 };
