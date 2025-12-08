@@ -2,5 +2,16 @@
   "base": {
     "name": "tenants-rebased",
     "hash": "295f8a944833b7b7812aa2219d2633635e29ed69"
+  },
+  "upstream": {
+    "branch": "uxw-2474-fix-external-group-tooltip-referencing-all-internal-users"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 66654,
+        "gqlID": "PR_kwDOAczgH863tEtm"
+      }
+    }
   }
 }
