@@ -65,14 +65,9 @@
                 without-license))
         (u/announce "License information generated at %s" output-filename)))
 
-    (u/step "Run `pnpm licenses list`"
-      (let [license-text (str/join \newline
-                                   (u/sh {:dir    u/project-root-directory
-                                          :quiet? true}
-                                         "pnpm" "licenses" "list" "--long"))]
-        (spit (u/filename u/project-root-directory
-                          "resources"
-                          "license-frontend-third-party.txt") license-text)))))
+    (u/step "Generate frontend license disclaimer"
+      (u/sh {:dir u/project-root-directory}
+            "pnpm" "generate-license-disclaimer"))))
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
