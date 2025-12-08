@@ -52,7 +52,7 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
         event_detail:
-          "auth=guest-embed,experience=dashboard,isDefaultExperience=true",
+          "authType=guest-embed,experience=dashboard,isDefaultExperience=true",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -83,7 +83,7 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
         event_detail:
-          "auth=guest-embed,experience=chart,isDefaultExperience=false",
+          "authType=guest-embed,experience=chart,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -105,7 +105,7 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
         event_detail:
-          "auth=sso,experience=exploration,isDefaultExperience=false",
+          "authType=sso,experience=exploration,isDefaultExperience=false",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -128,7 +128,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "auth=sso,experience=browser,isDefaultExperience=false",
+        event_detail:
+          "authType=sso,experience=browser,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -182,7 +183,7 @@ describe(suiteTitle, () => {
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_experience_completed",
           event_detail:
-            "auth=guest-embed,experience=chart,isDefaultExperience=false",
+            "authType=guest-embed,experience=chart,isDefaultExperience=false",
         });
 
         H.waitForSimpleEmbedIframesToLoad();
@@ -225,7 +226,7 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_experience_completed",
-      event_detail: "auth=sso,experience=metabot,isDefaultExperience=false",
+      event_detail: "authType=sso,experience=metabot,isDefaultExperience=false",
     });
 
     H.getSimpleEmbedIframeContent().within(() => {

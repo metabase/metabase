@@ -71,7 +71,7 @@ export const trackEmbedWizardExperienceCompleted = ({
   const isDefaultExperience = experience === defaultExperience;
 
   const eventDetailsParts: string[] = [
-    `auth=${authType}`,
+    `authType=${authType}`,
     `experience=${experience}`,
     `isDefaultExperience=${isDefaultExperience}`,
   ];
@@ -156,7 +156,7 @@ export const trackEmbedWizardOptionsCompleted = ({
       ...[
         `experience=${experience}`,
         ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-        `auth=${authType}`,
+        `authType=${authType}`,
         ...buildEventDetailsPartsForSettings(settings),
         ...(settings.isGuest ? [`params=${JSON.stringify(params)}`] : []),
         `theme=${hasCustomTheme ? "custom" : "default"}`,
