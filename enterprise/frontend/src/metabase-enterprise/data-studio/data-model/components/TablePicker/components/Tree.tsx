@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import type { TableId } from "metabase-types/api";
@@ -41,9 +42,10 @@ import { TablePickerResults } from "./Results";
 interface Props {
   path: TreePath;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
+  setOnUpdateCallback: (callback: (() => void) | null) => void;
 }
 
-export function Tree({ path, onChange }: Props) {
+export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const {
     selectedTables,
     setSelectedTables,
@@ -54,7 +56,7 @@ export function Tree({ path, onChange }: Props) {
   } = useSelection();
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
-  const { tree, reload } = useTableLoader(path);
+  const { tree, reload } = useTableLoader();
 
   const items = flatten(tree, {
     isExpanded,
@@ -66,6 +68,32 @@ export function Tree({ path, onChange }: Props) {
       databases: selectedDatabases,
     },
   });
+
+  /**
+   * Initial loading of all databases, schemas, tables for the current path
+   */
+  useEffect(() => {
+    reload(path);
+  }, [reload, path]);
+
+  /**
+   * onUpdateCallback depends on the items, and they are changing very often.
+   * We don't want to re-register it each time items changed.
+   * Otherwise, it causes an infinity loop.
+   */
+  const itemsRef = useLatest(items);
+  const refetchSelectedTables = useCallback(() => {
+    const selectedTableNodes = itemsRef.current
+      .filter((item) => isTableNode(item))
+      .filter((tableNode) => selectedTables.has(tableNode.value.tableId));
+
+    selectedTableNodes.forEach((tableNode) => reload(tableNode.value));
+  }, [itemsRef, reload, selectedTables]);
+
+  useEffect(() => {
+    setOnUpdateCallback(() => refetchSelectedTables);
+    return () => setOnUpdateCallback(null);
+  }, [refetchSelectedTables, setOnUpdateCallback]);
 
   useEffect(() => {
     const expandedDatabases = items.filter(

@@ -173,6 +173,62 @@ describe("bulk table operations", () => {
       .should("have.text", "Bobby Tables");
   });
 
+  describe(
+    "several databases with several schemas at once",
+    { tags: ["@external"] },
+    () => {
+      [{ withFilter: false }, { withFilter: true }].forEach(
+        ({ withFilter }) => {
+          beforeEach(() => {
+            H.restore("postgres-writable");
+            H.activateToken("bleeding-edge");
+            H.createLibrary();
+            cy.signInAsAdmin();
+            H.resetTestTable({ type: "postgres", table: "multi_schema" });
+            H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+            H.DataModel.visitDataStudio();
+            if (withFilter) {
+              TablePicker.getSearchInput().type("a");
+            }
+            TablePicker.getDatabase("Writable Postgres12").click();
+            TablePicker.getDatabase("Sample Database").click();
+            TablePicker.getTable("Accounts")
+              .find('input[type="checkbox"]')
+              .check();
+            TablePicker.getSchema("Domestic").click();
+            TablePicker.getTable("Animals")
+              .find('input[type="checkbox"]')
+              .check();
+          });
+
+          it(`should show actual owner in the table after the change withFilter=${withFilter}`, () => {
+            H.selectHasValue("Owner", "").click();
+            H.selectDropdown().contains("Bobby Tables").click();
+
+            ["Accounts", "Animals"].forEach((tableName) => {
+              TablePicker.getTable(tableName)
+                .findByTestId("table-owner")
+                .should("have.text", "Bobby Tables");
+            });
+          });
+
+          it(`should show actual published stated in the table after it's published withFilter=${withFilter}`, () => {
+            cy.findByRole("button", { name: /Publish/ }).click();
+            H.modal().findByText("Publish these tables").click();
+            cy.wait("@publishTables");
+
+            ["Accounts", "Animals"].forEach((tableName) => {
+              TablePicker.getTable(tableName)
+                .findByTestId("table-published")
+                .findByLabelText("Published")
+                .should("be.visible");
+            });
+          });
+        },
+      );
+    },
+  );
+
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");
