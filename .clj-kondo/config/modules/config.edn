@@ -105,7 +105,6 @@
    :uses #{api
            app-db
            appearance
-           channel
            config
            driver
            eid-translation

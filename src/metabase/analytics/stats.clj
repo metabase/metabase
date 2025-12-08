@@ -13,7 +13,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
@@ -130,7 +129,7 @@
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
-   :slack_configured                     (slack/slack-configured?)
+   :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
@@ -767,7 +766,7 @@
     :enabled   (setting/get :email-configured?)}
    {:name      :slack
     :available true
-    :enabled   (slack/slack-configured?)}
+    :enabled   (setting/get :slack-configured?)}
    {:name      :sso-google
     :available true
     :enabled   (setting/get :google-auth-configured)}
