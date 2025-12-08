@@ -31,7 +31,9 @@
   (mt/with-premium-features #{:data-studio}
     (mt/with-temp [:model/Collection allow-tables {:name "Test Base Library" :type collection/library-data-collection-type}]
       (testing "Can only add allowed content types"
-        (is (some? (t2/insert! :model/Table (merge (mt/with-temp-defaults :model/Table) {:collection_id (:id allow-tables), :is_published true}))))
+        (mt/with-temp [:model/Table table {:collection_id (:id allow-tables)
+                                           :is_published  true}]
+          (is (some? table)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id allow-tables) "/")}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
@@ -45,7 +47,9 @@
   (mt/with-premium-features #{:data-studio}
     (mt/with-temp [:model/Collection allow-metrics {:name "Test Base Library" :type collection/library-metrics-collection-type}]
       (testing "Can only add allowed content types"
-        (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric, :collection_id (:id allow-metrics)}))))
+        (mt/with-temp [:model/Card card {:collection_id (:id allow-metrics)
+                                         :type          :metric}]
+          (is (some? card)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
                               (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id allow-metrics) "/")}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
