@@ -210,19 +210,10 @@
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
-(api.macros/defendpoint :put "/:id"
-  "Update a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   body :- [:map
-            [:name {:optional true} :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transforms.schema/transform-source]
-            [:target {:optional true} ::transforms.schema/transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
+(defn update-transform!
+  "Update a transform. Validates features, database support, cycles, and target conflicts.
+   Returns the updated transform with hydrated associations."
+  [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -247,17 +238,36 @@
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 
+(api.macros/defendpoint :put "/:id"
+  "Update a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name {:optional true} :string]
+            [:description {:optional true} [:maybe :string]]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
+            [:run_trigger {:optional true} ::run-trigger]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+  (api/check-superuser)
+  (update-transform! id body))
+
+(defn delete-transform!
+  "Delete a transform and publish the delete event."
+  [transform]
+  (t2/delete! :model/Transform (:id transform))
+  (events/publish-event! :event/transform-delete
+                         {:object transform
+                          :user-id api/*current-user-id*})
+  nil)
+
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (t2/delete! :model/Transform id)
-    (events/publish-event! :event/transform-delete
-                           {:object transform
-                            :user-id api/*current-user-id*}))
-  nil)
+  (delete-transform! (api/check-404 (t2/select-one :model/Transform id))))
 
 (api.macros/defendpoint :delete "/:id/table"
   "Delete a transform's output table."
@@ -279,14 +289,12 @@
       (transforms.canceling/cancel-run! (:id run))))
   nil)
 
-(api.macros/defendpoint :post "/:id/run"
-  "Run a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        _         (check-feature-enabled! transform)
-        start-promise (promise)]
+(defn run-transform!
+  "Run a transform. Returns a 202 response with run_id.
+   The transform must already be fetched and validated."
+  [transform]
+  (check-feature-enabled! transform)
+  (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/execute! transform {:start-promise start-promise
                                              :run-method :manual}))
@@ -298,6 +306,13 @@
       (-> (response/response {:message (deferred-tru "Transform run started")
                               :run_id run-id})
           (assoc :status 202)))))
+
+(api.macros/defendpoint :post "/:id/run"
+  "Run a transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (run-transform! (api/check-404 (t2/select-one :model/Transform id))))
 
 (defn- extract-columns-from-query
   "Attempts to extract column names from an MBQL query without executing it.

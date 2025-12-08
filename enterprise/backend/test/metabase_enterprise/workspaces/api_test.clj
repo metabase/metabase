@@ -520,3 +520,116 @@
                  {:task   :workspace-setup
                   :status :failure}]
                 (t2/select :model/WorkspaceLog :workspace_id ws-id {:order-by [[:started_at :desc]]})))))))
+
+;;; ---------------------------------------- Workspace Transform CRUD Tests ----------------------------------------
+
+(deftest get-workspace-transforms-test
+  (testing "GET /api/ee/workspace/:id/transform"
+    (mt/with-temp [:model/Workspace workspace {:name "List Transforms Test"}
+                   :model/Transform tx1 {:name         "Transform 1"
+                                         :workspace_id (:id workspace)}
+                   :model/Transform tx2 {:name         "Transform 2"
+                                         :workspace_id (:id workspace)}
+                   :model/Transform _tx3 {:name "Global Transform"}]
+      (testing "returns transforms in workspace"
+        (is (=? {:items [{:id (:id tx1)}
+                         {:id (:id tx2)}]}
+                (mt/user-http-request :crowberto :get 200
+                                      (ws-url (:id workspace) "/transform")))))
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403
+                                     (ws-url (:id workspace) "/transform"))))))
+    (testing "returns empty list when no transforms"
+      (mt/with-temp [:model/Workspace workspace {:name "Empty Workspace"}]
+        (is (= {:items []}
+               (mt/user-http-request :crowberto :get 200
+                                     (ws-url (:id workspace) "/transform"))))))
+    (testing "returns 404 for non-existent workspace"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "ee/workspace/999999/transform"))))))
+
+(deftest get-workspace-transform-by-id-test
+  (testing "GET /api/ee/workspace/:id/transform/:txid"
+    (mt/with-temp [:model/Workspace workspace1 {:name "Workspace 1"}
+                   :model/Workspace workspace2 {:name "Workspace 2"}
+                   :model/Transform transform {:name         "My Transform"
+                                               :description  "Test description"
+                                               :workspace_id (:id workspace1)}]
+      (testing "returns specific transform"
+        (is (=? {:id          (:id transform)
+                 :name        "My Transform"
+                 :description "Test description"}
+                (mt/user-http-request :crowberto :get 200
+                                      (ws-url (:id workspace1) (str "/transform/" (:id transform)))))))
+      (testing "returns 404 if transform not in workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404
+                                     (ws-url (:id workspace2) (str "/transform/" (:id transform)))))))
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403
+                                     (ws-url (:id workspace1) (str "/transform/" (:id transform))))))))))
+
+(deftest update-workspace-transform-test
+  (testing "PUT /api/ee/workspace/:id/transform/:txid"
+    (mt/with-temp [:model/Workspace workspace1 {:name "Workspace 1"}
+                   :model/Workspace workspace2 {:name "Workspace 2"}
+                   :model/Transform transform {:name         "Original Name"
+                                               :description  "Original description"
+                                               :workspace_id (:id workspace1)}]
+      (testing "updates transform"
+        (is (=? {:id          (:id transform)
+                 :name        "Updated Name"
+                 :description "Updated description"}
+                (mt/user-http-request :crowberto :put 200
+                                      (ws-url (:id workspace1) (str "/transform/" (:id transform)))
+                                      {:name        "Updated Name"
+                                       :description "Updated description"})))
+        (is (= "Updated Name" (t2/select-one-fn :name :model/Transform (:id transform)))))
+      (testing "returns 404 if transform not in workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404
+                                     (ws-url (:id workspace2) (str "/transform/" (:id transform)))
+                                     {:name "Should Fail"}))))
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403
+                                     (ws-url (:id workspace1) (str "/transform/" (:id transform)))
+                                     {:name "Should Fail"})))))))
+
+(deftest delete-workspace-transform-test
+  (testing "DELETE /api/ee/workspace/:id/transform/:txid"
+    (mt/with-temp [:model/Workspace workspace1 {:name "Workspace 1"}
+                   :model/Workspace workspace2 {:name "Workspace 2"}
+                   :model/Transform transform1 {:name         "Transform in WS1"
+                                                :workspace_id (:id workspace1)}
+                   :model/Transform transform2 {:name         "To Delete"
+                                                :workspace_id (:id workspace1)}]
+      (testing "returns 404 if transform not in workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404
+                                     (ws-url (:id workspace2) (str "/transform/" (:id transform1)))))))
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403
+                                     (ws-url (:id workspace1) (str "/transform/" (:id transform1)))))))
+      (testing "deletes transform"
+        (is (nil? (mt/user-http-request :crowberto :delete 204
+                                        (ws-url (:id workspace1) (str "/transform/" (:id transform2))))))
+        (is (nil? (t2/select-one :model/Transform (:id transform2))))))))
+
+(deftest run-workspace-transform-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/run"
+    (mt/with-temp [:model/Workspace workspace1 {:name "Workspace 1"}
+                   :model/Workspace workspace2 {:name "Workspace 2"}
+                   :model/Transform transform {:name         "Transform in WS1"
+                                               :workspace_id (:id workspace1)}]
+      (testing "returns 404 if transform not in workspace"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404
+                                     (ws-url (:id workspace2) (str "/transform/" (:id transform) "/run"))))))
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (ws-url (:id workspace1) (str "/transform/" (:id transform) "/run")))))))))
