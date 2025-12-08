@@ -1,9 +1,13 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import { Button } from "metabase/ui";
-import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import {
+  useUpdateTransformMutation,
+  workspaceApi,
+} from "metabase-enterprise/api";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
-import type { DatabaseId, Transform } from "metabase-types/api";
+import type { DatabaseId, Transform, WorkspaceId } from "metabase-types/api";
 
 import { type EditedTransform, useWorkspace } from "./WorkspaceProvider";
 
@@ -11,16 +15,19 @@ interface Props {
   databaseId: DatabaseId;
   editedTransform: EditedTransform;
   transform: Transform;
+  workspaceId: WorkspaceId;
 }
 
 export const SaveTransformButton = ({
   databaseId,
   editedTransform,
   transform,
+  workspaceId,
 }: Props) => {
+  const dispatch = useDispatch();
   const [updateTransform] = useUpdateTransformMutation();
 
-  const { setActiveTransform, removeEditedTransform } = useWorkspace();
+  const { updateTransformState } = useWorkspace();
 
   const hasSourceChanged = !isSameSource(
     editedTransform.source,
@@ -31,7 +38,7 @@ export const SaveTransformButton = ({
   const hasChanges = hasSourceChanged || hasTargetNameChanged;
 
   const handleClick = async () => {
-    const response = await updateTransform({
+    const updated = await updateTransform({
       id: transform.id,
       source: editedTransform.source,
       name: editedTransform.name,
@@ -41,10 +48,15 @@ export const SaveTransformButton = ({
         schema: transform.target.schema,
         database: databaseId,
       },
-    });
+    }).unwrap();
 
-    removeEditedTransform(transform.id);
-    setActiveTransform(response.data);
+    updateTransformState(updated, null);
+    dispatch(
+      workspaceApi.util.invalidateTags([
+        { type: "workspace", id: workspaceId },
+        { type: "transform", id: transform.id },
+      ]),
+    );
   };
 
   return (

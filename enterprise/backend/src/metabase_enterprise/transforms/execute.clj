@@ -9,15 +9,14 @@
 
   For workspace transforms, execution must go through the workspace-specific endpoint.
   Calling this function directly with a workspace transform will throw a 404 error."
-  [transform opts]
-  (when (:workspace_id transform)
-    (throw (ex-info "Workspace transforms must be executed through the workspace API"
-                    {:status-code 404
-                     :transform-id (:id transform)
-                     :workspace-id (:workspace_id transform)})))
-  (transforms.i/execute! transform opts))
-
-#_(metabase-enterprise.workspaces.isolation/with-workspace-isolation (toucan2.core/select-one :model/Workspace 3)
-    (transforms.i/execute! (toucan2.core/select-one :model/Transform 5) {:run-method :manual}))
-
-#_(toucan2.core/select :model/Transform 5)
+  [transform {:keys [start-promise] :as opts}]
+  ;; This is used on FE for workspace transform execution until proper API is provided in workspaces module!
+  ;; Hence temp enabling that.
+  ;; TODO: Cleanup when moving to woskapce transform execution api.
+  (if false #_(:workspace_id transform)
+      (deliver start-promise
+               (ex-info "Workspace transforms must be executed through the workspace API"
+                        {:status-code 404
+                         :transform-id (:id transform)
+                         :workspace-id (:workspace_id transform)}))
+      (transforms.i/execute! transform opts)))

@@ -1620,28 +1620,6 @@ databaseChangeLog:
             indexName: idx_collection_workspace_id
 
   - changeSet:
-      id: v58.2025-11-26T13:35:00
-      validCheckSum: ANY
-      author: qnkhuat
-      comment: Add foreign key constraint from collection.workspace_id to workspace (for proper rollback ordering)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_collection_workspace_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: collection
-            baseColumnNames: workspace_id
-            constraintName: fk_collection_workspace_id
-            referencedTableName: workspace
-            referencedColumnNames: id
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: collection
-            constraintName: fk_collection_workspace_id
-
-  - changeSet:
       id: v58.2025-11-26T13:35:02
       validCheckSum: ANY
       author: christruter

@@ -1,17 +1,23 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
-import { Form, FormProvider, FormTextInput } from "metabase/forms";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Button, Group, Icon, Stack, Text, rem } from "metabase/ui";
-import { useRunTransformMutation } from "metabase-enterprise/api";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Box, Button, Group, Icon, Stack, rem } from "metabase/ui";
+import { useRunTransformMutation, workspaceApi } from "metabase-enterprise/api";
+import {
+  deactivateSuggestedTransform,
+  getMetabotSuggestedTransform,
+} from "metabase-enterprise/metabot/state";
 import { UpdateTargetModal } from "metabase-enterprise/transforms/pages/TransformTargetPage/TargetSection/UpdateTargetModal";
 import {
   isSameSource,
   isTransformRunning,
 } from "metabase-enterprise/transforms/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type {
   DatabaseId,
   DraftTransformSource,
@@ -20,7 +26,6 @@ import type {
   WorkspaceId,
 } from "metabase-types/api";
 
-import { useTransformValidation } from "./AddTransformMenu";
 import { CheckOutTransformButton } from "./CheckOutTransformButton";
 import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "./TransformEditor";
@@ -31,6 +36,7 @@ interface Props {
   editedTransform: EditedTransform;
   transform: Transform;
   workspaceId: WorkspaceId;
+  workspaceTransforms: Transform[];
   onChange: (patch: Partial<EditedTransform>) => void;
   onOpenTransform: (transformId: TransformId) => void;
 }
@@ -40,31 +46,75 @@ export const TransformTab = ({
   editedTransform,
   transform,
   workspaceId,
+  workspaceTransforms,
   onChange,
   onOpenTransform,
 }: Props) => {
   const { updateTransformState } = useWorkspace();
-  const { sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
     isChangeTargetModalOpen,
     { open: openChangeTargetModal, close: closeChangeTargetModal },
   ] = useDisclosure();
+  const dispatch = useDispatch();
+  const suggestedTransform = useSelector((state) =>
+    getMetabotSuggestedTransform(state, transform.id),
+  );
+  const metadata = useSelector(getMetadata);
+
+  const normalizeSource = useCallback(
+    (source: DraftTransformSource) => {
+      if (source.type !== "query") {
+        return source;
+      }
+
+      const question = Question.create({
+        dataset_query: source.query,
+        metadata,
+      });
+      const query = question.query();
+      const { isNative } = Lib.queryDisplayInfo(query);
+      const normalizedQuery = isNative
+        ? Lib.withNativeQuery(query, Lib.rawNativeQuery(query))
+        : query;
+
+      return {
+        type: "query",
+        query: question.setQuery(normalizedQuery).datasetQuery(),
+      };
+    },
+    [metadata],
+  );
+
+  const proposedSource =
+    suggestedTransform?.source &&
+    !isSameSource(suggestedTransform.source, editedTransform.source)
+      ? normalizeSource(suggestedTransform.source)
+      : undefined;
 
   const hasSourceChanged = !isSameSource(
     editedTransform.source,
     transform.source,
   );
-  const hasTargetNameChanged =
-    transform.target.name !== editedTransform.target.name;
-  const hasChanges = hasSourceChanged || hasTargetNameChanged;
+  const hasChanges = hasSourceChanged;
 
-  const isSaved = transform.workspace_id === workspaceId;
+  const isSaved = workspaceTransforms.some((t) => t.id === transform.id);
 
   const [runTransform] = useRunTransformMutation();
 
   const handleRun = async () => {
     try {
       await runTransform(transform.id).unwrap();
+
+      // Invalidate the workspace tables cache since transform execution
+      // may affect the list of workspace tables.
+      if (isSaved) {
+        dispatch(
+          workspaceApi.util.invalidateTags([
+            { type: "workspace", id: workspaceId },
+          ]),
+        );
+      }
     } catch (error) {
       console.error("Failed to run transform", error);
     }
@@ -74,57 +124,34 @@ export const TransformTab = ({
     onChange({ source });
   };
 
-  const handleNameChange = useCallback(
-    (name: string) => {
-      onChange({
-        target: {
-          type: editedTransform.target.type,
-          name,
-        },
-      });
-    },
-    [onChange, editedTransform.target.type],
-  );
+  const handleAcceptProposed = useCallback(() => {
+    if (proposedSource == null) {
+      return;
+    }
 
-  const validationSchemaExtension = useTransformValidation({
-    databaseId,
-    workspaceId,
-  });
+    if (!isSaved) {
+      sendErrorToast(
+        t`Add this transform to the workspace before applying Metabot changes.`,
+      );
+      return;
+    }
 
-  const validationSchema = useMemo(
-    () =>
-      Yup.object({
-        targetName:
-          validationSchemaExtension?.targetName ||
-          Yup.string().required("Target table name is required"),
-        targetSchema: Yup.string().nullable(),
-      }),
-    [validationSchemaExtension],
-  );
+    onChange({ source: proposedSource });
+    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
+  }, [
+    proposedSource,
+    onChange,
+    dispatch,
+    suggestedTransform?.id,
+    isSaved,
+    sendErrorToast,
+  ]);
 
-  const initialValues = useMemo(
-    () => ({
-      targetName: editedTransform.target.name,
-      targetSchema: transform.target.schema || null,
-    }),
-    [editedTransform.target.name, transform.target.schema],
-  );
-
-  const handleFormSubmit = useCallback(
-    (values: typeof initialValues) => {
-      handleNameChange(values.targetName);
-    },
-    [handleNameChange],
-  );
-
-  const handleFieldChange = useCallback(
-    (field: string, value: string) => {
-      if (field === "targetName") {
-        handleNameChange(value);
-      }
-    },
-    [handleNameChange],
-  );
+  const handleRejectProposed = useCallback(() => {
+    if (suggestedTransform) {
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
+    }
+  }, [dispatch, suggestedTransform]);
 
   const handleTargetUpdate = useCallback(
     (updatedTransform: Transform) => {
@@ -174,29 +201,12 @@ export const TransformTab = ({
       >
         <Group>
           {isSaved && (
-            <FormProvider
-              key={transform.id}
-              initialValues={initialValues}
-              validationSchema={validationSchema}
-              onSubmit={handleFormSubmit}
-            >
-              <Form>
-                <Group>
-                  <Text
-                    c="text-dark"
-                    component="label"
-                    fw="bold"
-                  >{t`Output table`}</Text>
-                  <FormTextInput
-                    name="targetName"
-                    miw={rem(300)}
-                    onChange={(e) =>
-                      handleFieldChange("targetName", e.target.value)
-                    }
-                  />
-                </Group>
-              </Form>
-            </FormProvider>
+            <Button
+              leftSection={<Icon name="pencil_lines" />}
+              size="sm"
+              disabled={isRunning || hasChanges}
+              onClick={openChangeTargetModal}
+            >{t`Change target`}</Button>
           )}
         </Group>
 
@@ -211,19 +221,11 @@ export const TransformTab = ({
           )}
 
           {isSaved && (
-            <Button
-              leftSection={<Icon name="pencil_lines" />}
-              size="sm"
-              disabled={isRunning}
-              onClick={openChangeTargetModal}
-            >{t`Change target`}</Button>
-          )}
-
-          {isSaved && (
             <SaveTransformButton
               databaseId={databaseId}
               editedTransform={editedTransform}
               transform={transform}
+              workspaceId={workspaceId}
             />
           )}
 
@@ -242,6 +244,9 @@ export const TransformTab = ({
           <TransformEditor
             disabled={!isSaved}
             source={editedTransform.source}
+            proposedSource={proposedSource}
+            onAcceptProposed={handleAcceptProposed}
+            onRejectProposed={handleRejectProposed}
             onChange={handleSourceChange}
           />
         </Box>

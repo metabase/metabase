@@ -14,7 +14,7 @@ export const useMetabotReactions = () => {
   ) as ReturnType<typeof getMetabotReactionsState>;
 
   const setNavigateToPath = useCallback(
-    async (navigateToPath: string) => {
+    async (navigateToPath: string | null) => {
       dispatch(setNavigateToPathAction(navigateToPath));
     },
     [dispatch],

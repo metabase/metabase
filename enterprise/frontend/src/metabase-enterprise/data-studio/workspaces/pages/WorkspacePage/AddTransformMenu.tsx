@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
@@ -12,7 +12,6 @@ import {
 import {
   CreateTransformModal,
   type NewTransformValues,
-  type ValidationSchemaExtension,
 } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import {
   getInitialNativeSource,
@@ -23,6 +22,7 @@ import type {
   DatabaseId,
   Transform,
   TransformSource,
+  TransformTarget,
   WorkspaceId,
 } from "metabase-types/api";
 
@@ -161,109 +161,50 @@ export const AddTransformMenu = ({
   );
 };
 
-type ValidationResult = true | Yup.ValidationError;
-type DebouncedValidateFn = ((value: string, schema: string | null) => void) & {
-  cancel: () => void;
-};
-
 export const useTransformValidation = ({
   databaseId,
+  target,
   workspaceId,
 }: {
   databaseId: DatabaseId;
+  target?: TransformTarget;
   workspaceId: WorkspaceId;
-}): ValidationSchemaExtension => {
-  /**
-   * Async Yup validation for targetName field uniqueness with proper cancellation.
-   */
+}) => {
   const [validateTableName] = useValidateTableNameMutation();
-  const debouncedValidateRef = useRef<{
-    validate: DebouncedValidateFn;
-    pendingResolve: ((result: ValidationResult) => void) | null;
-    abortController: AbortController | null;
-  }>();
 
-  const VALIDATION_DEBOUNCE_MS = 500;
-
-  const getDebouncedValidate = useCallback(() => {
-    if (!debouncedValidateRef.current) {
-      const validate = _.debounce(
-        async (value: string, schema: string | null) => {
-          if (!value) {
-            return new Yup.ValidationError("Table name is required");
-          }
-
-          // Cancel any pending request
-          debouncedValidateRef.current?.abortController?.abort();
-          const abortController = new AbortController();
-          if (debouncedValidateRef.current) {
-            debouncedValidateRef.current.abortController = abortController;
-          }
-
-          try {
-            const result = await validateTableName({
-              id: workspaceId,
-              db_id: databaseId,
-              target: { type: "table", name: value, schema },
-            }).unwrap();
-
-            // Check if this request was aborted
-            if (abortController.signal.aborted) {
-              return;
-            }
-
-            const validationResult =
-              result === "OK" ||
-              new Yup.ValidationError(result ?? "Invalid table name");
-            debouncedValidateRef.current?.pendingResolve?.(validationResult);
-          } catch (error: unknown) {
-            // Ignore aborted requests
-            if (abortController.signal.aborted) {
-              return;
-            }
-
-            const errorMessage =
-              (error as { data?: string })?.data ?? "Validation failed";
-            debouncedValidateRef.current?.pendingResolve?.(
-              new Yup.ValidationError(errorMessage),
-            );
-          }
-        },
-        VALIDATION_DEBOUNCE_MS,
-      );
-      debouncedValidateRef.current = {
-        validate,
-        pendingResolve: null,
-        abortController: null,
-      };
-    }
-    return debouncedValidateRef.current;
-  }, [databaseId, workspaceId, validateTableName]);
-
-  return useMemo(
+  const yupSchema = useMemo(
     () => ({
       targetName: Yup.string()
         .required("Target table name is required")
         .test(async (value, context) => {
-          const debounced = getDebouncedValidate();
-          debounced.validate.cancel();
-          debounced.abortController?.abort();
-
           if (!value) {
             return context.createError({
               message: "Target table name is required",
             });
           }
+
           const schema = context.parent.targetSchema;
 
-          return new Promise<true | Yup.ValidationError>((resolve) => {
-            debounced.pendingResolve = resolve;
-            debounced.validate(value, schema);
-          }).then((result) => {
-            return result === true || context.createError(result);
-          });
+          if (target && target.name === value && target.schema === schema) {
+            return true;
+          }
+
+          try {
+            const message = await validateTableName({
+              id: workspaceId,
+              db_id: databaseId,
+              target: { type: "table", name: value, schema },
+            }).unwrap();
+
+            return message === "OK" ? true : context.createError({ message });
+          } catch (error) {
+            const message = getErrorMessage(error);
+            return context.createError({ message });
+          }
         }),
     }),
-    [getDebouncedValidate],
+    [databaseId, target, workspaceId, validateTableName],
   );
+
+  return yupSchema;
 };

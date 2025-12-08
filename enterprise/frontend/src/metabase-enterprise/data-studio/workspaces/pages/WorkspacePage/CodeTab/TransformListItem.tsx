@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Box, type BoxProps, Icon, type IconName, Text } from "metabase/ui";
 
+import { StatusDot } from "../components/StatusDot/StatusDot";
+
 import S from "./TransformListItem.module.css";
 
 type TransformListItemProps = {
@@ -28,7 +30,7 @@ export const TransformListItem = ({
       <Text className={S.name} c={isActive ? "brand" : "text-dark"} truncate>
         {name}
       </Text>
-      {isEdited && <Box className={S.statusDot} />}
+      {isEdited && <StatusDot status="changed" />}
 
       <Box className={S.menu} flex="0 0 auto">
         {menu}

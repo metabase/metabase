@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
 import { Stack, Text } from "metabase/ui";
-import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type { Transform, WorkspaceId } from "metabase-types/api";
 
 import { useWorkspace } from "../WorkspaceProvider";
@@ -26,7 +25,7 @@ export const CodeTab = ({
   workspaceTransforms,
   onTransformClick,
 }: CodeTabProps) => {
-  const { editedTransforms } = useWorkspace();
+  const { editedTransforms, hasTransformEdits } = useWorkspace();
 
   const workspaceTransformsUpstreamIds = useMemo(
     () => new Set(workspaceTransforms.map((t) => t.upstream_id)),
@@ -34,10 +33,7 @@ export const CodeTab = ({
   );
   const availableTransforms = useMemo(() => {
     return transforms.filter((transform) => {
-      return (
-        transform.workspace_id == null &&
-        !workspaceTransformsUpstreamIds.has(transform.id)
-      );
+      return !workspaceTransformsUpstreamIds.has(transform.id);
     });
   }, [workspaceTransformsUpstreamIds, transforms]);
 
@@ -61,12 +57,7 @@ export const CodeTab = ({
         <Stack gap={0}>
           <Text fw={600}>{t`Workspace Transforms`}</Text>
           {workspaceTransforms.map((transform) => {
-            const edited = editedTransforms.get(transform.id);
-            const isEdited =
-              edited != null &&
-              (!isSameSource(edited.source, transform.source) ||
-                edited.name !== transform.name ||
-                edited.target.name !== transform.target.name);
+            const isEdited = hasTransformEdits(transform);
 
             return (
               <TransformListItem
