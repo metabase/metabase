@@ -736,7 +736,7 @@
                                                            :id (:id card)
                                                            :type "card")]
                         (is (empty? (:edges response))
-                            "Should have no edges when table is filtered out")))))))))))
+                            "Should have no edges when table is filtered out")))))))))))))
 
 (deftest graph-returns-dashboard-for-cards-test
   (testing "Graph endpoints return dashboard data for cards in dashboards"
