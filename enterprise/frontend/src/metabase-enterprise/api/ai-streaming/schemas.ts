@@ -1,5 +1,6 @@
 import * as Yup from "yup";
 
+import type { MetabotCodeEdit } from "metabase-enterprise/metabot/state";
 import type { MetabotTodoItem, SuggestedTransform } from "metabase-types/api";
 
 export const dataPartSchema = Yup.object({
@@ -21,11 +22,7 @@ export type KnownDataPart =
   | { type: "state"; version: 1; value: Record<string, any> }
   | { type: "todo_list"; version: 1; value: MetabotTodoItem[] }
   | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }
-  | {
-      type: "code_edit";
-      version: 1;
-      value: { bufferId: string; mode: "rewrite"; value: string };
-    };
+  | { type: "code_edit"; version: 1; value: MetabotCodeEdit };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),

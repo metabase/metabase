@@ -59,6 +59,8 @@ export const {
   addSuggestedTransform,
   activateSuggestedTransform,
   deactivateSuggestedTransform,
+  addSuggestedCodeEdit,
+  deactivateSuggestedCodeEdit,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -289,8 +291,7 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(addAgentMessage(message));
               })
               .with({ type: "code_edit" }, (part) => {
-                // TODO: notify the editor w/o using a global notifier fn...
-                (window as any).notifyCodeEdit(part.value.value);
+                dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));

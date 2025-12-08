@@ -100,8 +100,16 @@ export type MetabotSuggestedTransform = SuggestedTransform & {
   suggestionId: string; // internal unique identifier for marking active/inactive
 };
 
+export type MetabotCodeEdit = {
+  bufferId: string;
+  mode: "rewrite";
+  value: string;
+  active?: boolean;
+};
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  suggestedCodeEdits: MetabotCodeEdit[];
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
@@ -133,6 +141,8 @@ export const getMetabotInitialState = (): MetabotState => ({
   state: {},
   reactions: {
     navigateToPath: null,
+    suggestedCodeEdits: [],
+    // NOTE: suggestedTransforms should be folded into suggestedCodeEdits eventually
     suggestedTransforms: [],
   },
   activeToolCalls: [],
@@ -329,6 +339,24 @@ export const metabot = createSlice({
         if (t.id === action.payload) {
           t.active = false;
         }
+      });
+    },
+    addSuggestedCodeEdit: (
+      state,
+      { payload }: PayloadAction<MetabotCodeEdit>,
+    ) => {
+      // mark all other edits w/ same buffer id as inactive before adding new one
+      state.reactions.suggestedCodeEdits.forEach((t) => {
+        t.active = t.bufferId === payload.bufferId ? false : t.active;
+      });
+      state.reactions.suggestedCodeEdits.push(payload);
+    },
+    deactivateSuggestedCodeEdit: (
+      state,
+      action: PayloadAction<MetabotCodeEdit["bufferId"] | undefined>,
+    ) => {
+      state.reactions.suggestedCodeEdits.forEach((t) => {
+        t.active = t.bufferId === action.payload ? false : t.active;
       });
     },
   },

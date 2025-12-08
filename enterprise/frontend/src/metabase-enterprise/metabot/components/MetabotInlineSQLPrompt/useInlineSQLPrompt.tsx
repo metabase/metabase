@@ -4,7 +4,12 @@ import type { Extension } from "@uiw/react-codemirror";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
+import {
+  deactivateSuggestedCodeEdit,
+  getMetabotSuggestedCodeEdit,
+} from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
@@ -54,12 +59,10 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
     question.databaseId(),
   );
 
-  /* TODO: temp hack - communicate sql via global notifier used in navigate to handler */
-  const [generatedSql, setGeneratedSql] = useState<string | undefined>();
-  useEffect(() => {
-    (window as any).notifyCodeEdit = (sql: string) => setGeneratedSql(sql);
-  }, []);
-  /* TODO: temp hack end */
+  const dispatch = useDispatch();
+  const generatedSql = useSelector((state) =>
+    getMetabotSuggestedCodeEdit(state, "default"),
+  )?.value;
 
   // HACK: Closing and reopening the widget when we receive generated SQL
   // to force CodeMirror to recalculate gutter positions. The line numbers
@@ -69,18 +72,18 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   // happen correctly
   useEffect(() => {
     if (generatedSql && portalTarget?.view) {
-      const { view } = portalTarget;
       requestAnimationFrame(() => {
-        view.dispatch({ effects: hideEffect.of() });
-        view.dispatch({ effects: toggleEffect.of({ view }) });
+        portalTarget.view.dispatch({ effects: hideEffect.of() });
+        portalTarget.view.dispatch({
+          effects: toggleEffect.of({ view: portalTarget.view }),
+        });
         // Focus the SQL editor after reopening
         requestAnimationFrame(() => {
-          view.focus();
+          portalTarget.view.focus();
         });
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generatedSql]);
+  }, [generatedSql, portalTarget?.view]);
 
   const hideInput = () => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });
@@ -88,7 +91,7 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   };
 
   const resetInput = () => {
-    setGeneratedSql(undefined);
+    dispatch(deactivateSuggestedCodeEdit("default"));
     hideInput();
   };
 

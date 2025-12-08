@@ -1,10 +1,13 @@
 import type { EditorView } from "@codemirror/view";
 
-import type { MetabotCodeEditorBufferContext } from "metabase-types/api";
+import type {
+  DatabaseId,
+  MetabotCodeEditorBufferContext,
+} from "metabase-types/api";
 
 export function extractMetabotBufferContext(
   view: EditorView,
-  databaseId: number,
+  databaseId: DatabaseId | null,
 ): MetabotCodeEditorBufferContext {
   const state = view.state;
   const selection = state.selection.main;
