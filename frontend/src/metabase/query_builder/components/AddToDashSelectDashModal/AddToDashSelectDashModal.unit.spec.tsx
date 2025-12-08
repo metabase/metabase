@@ -6,6 +6,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupMostRecentlyViewedDashboard,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -235,6 +236,7 @@ const setup = async ({
   setupRecentViewsAndSelectionsEndpoints([]);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
+  setupDatabasesEndpoints([]);
 
   collections.forEach((collection) => {
     setupCollectionItemsEndpoint({

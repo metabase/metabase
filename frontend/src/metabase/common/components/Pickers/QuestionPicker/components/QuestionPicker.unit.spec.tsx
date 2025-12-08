@@ -6,6 +6,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupDashboardItemsEndpoint,
+  setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -253,6 +254,7 @@ interface SetupOpts {
 const commonSetup = () => {
   mockGetBoundingClientRect();
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupDatabasesEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,

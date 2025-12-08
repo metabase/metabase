@@ -1854,9 +1854,9 @@
            database-routing
            driver
            events
-           lib
-           lib-be
-           queries
+           models
+           permissions
+           premium-features
            request
            sync
            util

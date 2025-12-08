@@ -3202,3 +3202,28 @@
   (mt/with-temp [:model/Collection {a-id :id} {:archived true}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
+
+(deftest published-tables-not-in-collection-items-oss-test
+  (testing "In OSS (without :data-studio feature), published tables should NOT appear in collection items"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                     :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
+                     :model/Table {table-id :id} {:collection_id coll-id
+                                                  :is_published  true
+                                                  :name          "Published Table"}]
+        (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                 (str "collection/" coll-id "/items")))]
+          (testing "Card should appear"
+            (is (some #(= card-id (:id %)) items)
+                "Card should be in collection items"))
+          (testing "Published table should NOT appear"
+            (is (not (some #(= table-id (:id %)) items))
+                "Published table should NOT be in collection items in OSS"))))))
+  (testing "In OSS (without :data-studio feature), published tables should NOT appear in root collection items"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Table {table-id :id} {:collection_id nil
+                                                  :is_published  true
+                                                  :name          "Root Published Table"}]
+        (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
+          (is (not (some #(= table-id (:id %)) items))
+              "Published table should NOT be in root collection items in OSS"))))))

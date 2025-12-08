@@ -1,5 +1,5 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, TableId } from "metabase-types/api";
 
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   trackSimpleEvent({
@@ -8,10 +8,10 @@ export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   });
 };
 
-export const trackDataStudioTablePublished = (id: number | null) => {
+export const trackDataStudioTablePublished = (id: TableId | null) => {
   trackSimpleEvent({
     event: "data_studio_table_published",
-    target_id: id,
+    target_id: id != null ? Number(id) : null,
   });
 };
 
