@@ -35,7 +35,10 @@ export const SetupTab = ({ databaseName, workspaceId }: SetupTabProps) => {
       <Stack gap="xs">
         <Text fw="bold">{t`Setup log`}</Text>
 
-        <SetupLog workspaceId={workspaceId} />
+        <SetupLog
+          key={workspaceId} // avoid showing status of other workspaces (forces RTK query hook remount)
+          workspaceId={workspaceId}
+        />
       </Stack>
     </Stack>
   );
