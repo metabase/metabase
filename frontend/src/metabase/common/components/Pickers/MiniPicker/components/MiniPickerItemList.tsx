@@ -289,14 +289,12 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 }
 
 function SearchItemList({ query }: { query: string }) {
-  const { onChange, models, libraryCollection, isHidden } =
-    useMiniPickerContext();
+  const { onChange, models, isHidden } = useMiniPickerContext();
 
   const { data: searchResponse, isLoading } = useSearchQuery({
     q: query,
     models: models as SearchModel[],
     limit: 50,
-    ...(libraryCollection ? { collection: libraryCollection.id } : {}),
   });
 
   const searchResults: MiniPickerPickableItem[] = (
