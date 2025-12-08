@@ -1165,35 +1165,32 @@
   All remote-synced collections are treated as a unified pool - dependents in any remote-synced collection
   (regardless of root) are returned.
 
-  Takes original-collection-id (the id of the collection the model was originally at) and model (the model to check
-  dependents for).
+  Takes model (the model to check dependents for).
 
   Returns a sequence of models immediately dependent on the provided model that are in any remote-synced collection."
-  [original-collection-id {:keys [id archived] :as model}]
-  (if-not original-collection-id
-    []
-    (let [;; Get ALL top-level remote-synced collections
-          all-remote-synced-roots (t2/select-pks-set :model/Collection
-                                                     {:where [:and
-                                                              [:= :is_remote_synced true]
-                                                              [:= :location "/"]]})
+  [{:keys [id archived] :as model}]
+  (let [;; Get ALL top-level remote-synced collections
+        all-remote-synced-roots (t2/select-pks-set :model/Collection
+                                                   {:where [:and
+                                                            [:= :is_remote_synced true]
+                                                            [:= :location "/"]]})
           ;; Traverse descendants of all remote-synced roots combined
-          all-remote-synced-descendants (reduce (fn [accum root-id]
-                                                  (merge-with concat accum
-                                                              (traverse-descendants ["Collection" root-id] true)))
-                                                {}
-                                                all-remote-synced-roots)]
-      (case (t2/model model)
-        :model/Collection
+        all-remote-synced-descendants (reduce (fn [accum root-id]
+                                                (merge-with concat accum
+                                                            (traverse-descendants ["Collection" root-id] true)))
+                                              {}
+                                              all-remote-synced-roots)]
+    (case (t2/model model)
+      :model/Collection
         ;; Get all descendants of the collection being moved and see if any of them are present in the
         ;; set of all descendants across all remote-synced roots
-        (->> (traverse-descendants ["Collection" id] (not archived))
-             keys
-             (mapcat #(get all-remote-synced-descendants %)))
+      (->> (traverse-descendants ["Collection" id] (not archived))
+           keys
+           (mapcat #(get all-remote-synced-descendants %)))
 
         ;; If this is not a collection see if the provided model appears anywhere in the descendants of
         ;; any remote-synced collection
-        (get all-remote-synced-descendants [(name (t2/model model)) id] [])))))
+      (get all-remote-synced-descendants [(name (t2/model model)) id] []))))
 
 (defn non-remote-synced-dependencies
   "Finds dependencies of a model that are not contained in ANY remote-synced collection.
@@ -1237,13 +1234,13 @@
 (defn check-remote-synced-dependents
   "Checks if a model has remote-synced-dependents and throws if it does.
 
-  Takes original-collection-id (where the model is being moved from) and model (the model to check dependencies for).
+  Takes model (the model to check dependencies for).
 
   Returns the model if no remote-synced dependents are found.
 
   Throws an ex-info object with remote-synced-dependencies and a 400 status code if dependents are found."
-  [original-collection-id model]
-  (when-let [remote-synced-deps (not-empty (remote-synced-dependents original-collection-id model))]
+  [model]
+  (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
                     {:remote-synced-models remote-synced-deps
                      :status-code 400})))
@@ -1296,10 +1293,10 @@
       (when (remote-synced-collection? collection-after-update)
         (check-non-remote-synced-dependencies model-after-update)
         (when (api/column-will-change? :archived model-before-update model-after-update)
-          (check-remote-synced-dependents collection-after-update model-after-update)))
+          (check-remote-synced-dependents model-after-update)))
       (when (and (api/column-will-change? :collection_id model-before-update model-after-update)
                  (moving-from-remote-synced? collection-before-update collection-after-update))
-        (check-remote-synced-dependents collection-before-update model-after-update)))))
+        (check-remote-synced-dependents model-after-update)))))
 
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
@@ -1451,7 +1448,7 @@
                     {:archived true})))
     (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
       (when (:is_remote_synced updated-collection)
-        (check-remote-synced-dependents (parent-id* updated-collection) updated-collection)))))
+        (check-remote-synced-dependents updated-collection)))))
 
 (mu/defn unarchive-collection!
   "Mark a collection as unarchived, along with any children that were archived along with the collection."
@@ -1553,7 +1550,7 @@
         (when into-remote-synced?
           (check-non-remote-synced-dependencies collection))
         (when (moving-from-remote-synced? (parent-id* collection) (parent-id* {:location new-location}))
-          (check-remote-synced-dependents (parent-id* collection) collection))))))
+          (check-remote-synced-dependents collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |

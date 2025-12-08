@@ -1,0 +1,74 @@
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background-color: var(--mb-color-bg-light);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  height: 2rem;
+  margin-inline-end: 2rem;
+}
+
+.branchButton {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--mb-color-bg-medium);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.branchName {
+  font-weight: 700;
+  font-size: 0.875rem;
+  line-height: 1;
+  color: var(--mb-color-text-medium);
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.divider {
+  width: 1px;
+  height: 2rem;
+  background-color: var(--mb-color-border);
+  margin: 0;
+}
+
+.syncButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--mb-color-text-medium);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--mb-color-bg-medium);
+    color: var(--mb-color-text-dark);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+}

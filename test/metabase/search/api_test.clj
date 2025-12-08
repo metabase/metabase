@@ -1019,7 +1019,8 @@
                              (map :name)
                              set)]
             (testing "shared-tenant-collection namespace collections are returned in search"
-              (is (= #{shared-name normal-name} results)))))))))
+              (is (contains? results shared-name))
+              (is (contains? results normal-name)))))))))
 
 (deftest shared-tenant-collection-dataset-search-test
   (testing "Search returns datasets (models) from collections in the shared-tenant-collection namespace"

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
    [medley.core :as m]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -111,17 +112,29 @@
   "Update Remote Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [remote-sync-type] :as settings}
+   {:keys [remote-sync-type collections] :as settings}
    :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
-       [:remote-sync-branch {:optional true} [:maybe :string]]]]
+       [:remote-sync-branch {:optional true} [:maybe :string]]
+       [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
+  ;; Check if trying to change collections while in read-only mode
+  (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
+    (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
+                   "Cannot change synced collections when remote-sync-type is read-only."))
+  (when (seq collections)
+    (try
+      (remote-sync.core/bulk-set-remote-sync collections)
+      (catch Exception e
+        (throw (ex-info (or (ex-message e) "Invalid collection settings")
+                        {:error       (ex-message e)
+                         :status-code 400} e)))))
   (try
-    (settings/check-and-update-remote-settings! settings)
+    (settings/check-and-update-remote-settings! (dissoc settings :collections))
     (catch Exception e
       (throw (ex-info (or (ex-message e) "Invalid settings")
                       {:error       (ex-message e)

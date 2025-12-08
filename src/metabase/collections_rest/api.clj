@@ -1493,7 +1493,7 @@
         ;; Enabling remote sync - check that all dependencies are also remote-synced
         (collection/check-non-remote-synced-dependencies collection)
         ;; Disabling remote sync - check that nothing in remote-synced collections depends on this
-        (collection/check-remote-synced-dependents (:id collection) collection)))))
+        (collection/check-remote-synced-dependents collection)))))
 
 (defn- cascade-remote-synced-to-descendants!
   "Updates is_remote_synced on all descendant collections when a top-level collection is toggled.
