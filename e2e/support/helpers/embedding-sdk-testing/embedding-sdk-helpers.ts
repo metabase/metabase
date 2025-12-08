@@ -33,9 +33,16 @@ export const getSignedJwtForUser = async ({
 
 export const mockAuthProviderAndJwtSignIn = (
   user = USERS.admin,
-  { jwt }: { jwt?: string } = {},
+  {
+    jwt,
+    waitForPromise,
+  }: { jwt?: string; waitForPromise?: () => Promise<any> } = {},
 ) => {
   cy.intercept("GET", `${AUTH_PROVIDER_URL}**`, async (req) => {
+    const p = waitForPromise ? waitForPromise() : Promise.resolve();
+
+    await p;
+
     try {
       const url = new URL(req.url);
       const responseParam = url.searchParams.get("response");
