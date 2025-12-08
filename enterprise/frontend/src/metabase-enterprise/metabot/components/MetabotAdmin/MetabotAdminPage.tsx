@@ -97,6 +97,10 @@ export function MetabotAdminPage() {
             <MetabotCollectionConfigurationPane metabot={metabot} />
           )}
 
+          {!isEmbedMetabot && (
+            <MetabotTransformsConfigurationPane metabot={metabot} />
+          )}
+
           <MetabotPromptSuggestionPane metabot={metabot} />
         </SettingsSection>
       </ErrorBoundary>
@@ -181,6 +185,36 @@ function MetabotVerifiedContentConfigurationPane({
         size="sm"
       />
     </Stack>
+  );
+}
+
+function MetabotTransformsConfigurationPane({
+  metabot,
+}: {
+  metabot: MetabotInfo;
+}) {
+  const [updateMetabot, { isLoading: isUpdating }] = useUpdateMetabotMutation();
+  const transformsUseCase = metabot.use_cases?.find(
+    (uc) => uc.name === "transforms",
+  );
+
+  if (!transformsUseCase) {
+    return null;
+  }
+
+  return (
+    <Switch
+      label={t`Enable transforms?`}
+      checked={transformsUseCase.enabled}
+      onChange={(e) =>
+        updateMetabot({
+          id: metabot.id,
+          use_cases: [{ id: transformsUseCase.id, enabled: e.target.checked }],
+        })
+      }
+      disabled={isUpdating}
+      size="sm"
+    />
   );
 }
 

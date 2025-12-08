@@ -14,15 +14,16 @@
 ;;; ------------------------------------------------- Default Use Cases ------------------------------------------------
 
 (def ^:private internal-metabot-use-cases
-  "Default use cases for the internal metabot."
-  [{:name "nlq"}
-   {:name "sql"}
-   {:name "transforms"}
-   {:name "omnibot"}])
+  "Default use cases for the internal metabot.
+   Currently only omnibot and transforms are enabled by default."
+  [{:name "nlq"        :enabled false}
+   {:name "sql"        :enabled false}
+   {:name "transforms" :enabled true}
+   {:name "omnibot"    :enabled true}])
 
 (def ^:private embedded-metabot-use-cases
   "Default use cases for the embedded metabot."
-  [{:name "embedding"}])
+  [{:name "embedding" :enabled true}])
 
 (defn default-use-cases-for-metabot
   "Return the default use cases for a metabot based on its entity_id."
@@ -95,7 +96,6 @@
   "Hydrate the list of use cases for a collection of metabots, creating defaults if missing."
   [_model hydration-key metabots]
   (let [metabot-ids    (map :id metabots)
-        metabot-by-id  (into {} (map (juxt :id identity)) metabots)
         ;; Select all existing use cases in one query
         all-existing   (when (seq metabot-ids)
                          (t2/select :model/MetabotUseCase
@@ -133,7 +133,7 @@
         (serdes/infer-self-path "MetabotUseCase" entity)))
 
 (defmethod serdes/make-spec "MetabotUseCase" [_model-name _opts]
-  {:copy      [:entity_id :name]
+  {:copy      [:entity_id :name :enabled]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :metabot_id (serdes/parent-ref)}})
