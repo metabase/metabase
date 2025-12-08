@@ -31,11 +31,37 @@ export interface EditedTransform {
   };
 }
 
+export interface Tab {
+  id: string;
+  name: string;
+  type: "transform" | "table";
+}
+
+export interface TransformTab extends Tab {
+  type: "transform";
+  transform: Transform;
+}
+
+export interface TableTab extends Tab {
+  type: "table";
+  table: OpenTable;
+}
+
+export type WorkspaceTab = TransformTab | TableTab;
+
 export interface WorkspaceContextValue {
-  openedTransforms: Transform[];
-  activeTransform: Transform | undefined;
-  activeEditedTransform: EditedTransform | undefined;
+  workspaceId: number;
+  openedTabs: WorkspaceTab[];
+  activeTransform?: Transform;
+  activeEditedTransform?: EditedTransform;
+  activeTable?: OpenTable;
+  activeTab?: WorkspaceTab;
+  setActiveTab: (tab: WorkspaceTab | undefined) => void;
   setActiveTransform: (transform: Transform | undefined) => void;
+  setActiveTable: (table: OpenTable | undefined) => void;
+  addOpenedTab: (tab: WorkspaceTab) => void;
+  removeOpenedTab: (tabId: string) => void;
+  setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform) => void;
   removeOpenedTransform: (transformId: number) => void;
   editedTransforms: Map<number, EditedTransform>;
@@ -51,11 +77,6 @@ export interface WorkspaceContextValue {
   ) => void;
   hasUnsavedChanges: () => boolean;
   hasTransformEdits: (originalTransform: Transform) => boolean;
-  openedTables: OpenTable[];
-  activeTable: OpenTable | undefined;
-  setActiveTable: (table: OpenTable | undefined) => void;
-  addOpenedTable: (table: OpenTable) => void;
-  removeOpenedTable: (tableId: TableId) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -63,12 +84,13 @@ const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
 );
 
 interface WorkspaceState {
-  openedTransforms: Transform[];
-  activeTransform: Transform | undefined;
+  openedTabs: WorkspaceTab[];
+  activeTransform?: Transform;
+  activeEditedTransform?: Transform;
+  activeTable?: OpenTable;
+  activeTab?: WorkspaceTab;
   editedTransforms: Map<number, EditedTransform>;
   runTransforms: Set<number>;
-  openedTables: OpenTable[];
-  activeTable: OpenTable | undefined;
 }
 
 interface WorkspaceProviderProps {
@@ -77,12 +99,12 @@ interface WorkspaceProviderProps {
 }
 
 const createEmptyWorkspaceState = (): WorkspaceState => ({
-  openedTransforms: [],
+  openedTabs: [],
   activeTransform: undefined,
+  activeTable: undefined,
+  activeTab: undefined,
   editedTransforms: new Map(),
   runTransforms: new Set(),
-  openedTables: [],
-  activeTable: undefined,
 });
 
 export const WorkspaceProvider = ({
@@ -103,14 +125,7 @@ export const WorkspaceProvider = ({
     return newState;
   }, [workspaceId, workspaceStates]);
 
-  const {
-    openedTransforms,
-    activeTransform,
-    editedTransforms,
-    runTransforms,
-    openedTables,
-    activeTable,
-  } = currentState;
+  const { openedTabs, activeTransform, activeTable, activeTab } = currentState;
 
   const updateWorkspaceState = useCallback(
     (updater: (state: WorkspaceState) => WorkspaceState) => {
@@ -124,69 +139,189 @@ export const WorkspaceProvider = ({
     [workspaceId],
   );
 
-  const setActiveTransform = useCallback(
-    (transform: Transform | undefined) => {
+  const setActiveTab = useCallback(
+    (tab: WorkspaceTab | undefined) => {
+      updateWorkspaceState((state) => {
+        const newActiveTab = tab;
+        let newActiveTransform = state.activeTransform;
+        let newActiveTable = state.activeTable;
+
+        if (tab?.type === "transform") {
+          newActiveTransform = tab.transform;
+          newActiveTable = undefined;
+        } else if (tab?.type === "table") {
+          newActiveTable = tab.table;
+          newActiveTransform = undefined;
+        } else {
+          newActiveTransform = undefined;
+          newActiveTable = undefined;
+        }
+
+        return {
+          ...state,
+          activeTab: newActiveTab,
+          activeTransform: newActiveTransform,
+          activeTable: newActiveTable,
+        };
+      });
+    },
+    [updateWorkspaceState],
+  );
+
+  const addOpenedTab = useCallback(
+    (tab: WorkspaceTab) => {
+      updateWorkspaceState((state) => {
+        const exists = state.openedTabs.some((item) => item.id === tab.id);
+        if (exists) {
+          return {
+            ...state,
+            activeTab: tab,
+            activeTransform:
+              tab.type === "transform" ? tab.transform : state.activeTransform,
+            activeTable: tab.type === "table" ? tab.table : state.activeTable,
+          };
+        }
+
+        const newOpenedTabs = [...state.openedTabs, tab];
+        return {
+          ...state,
+          openedTabs: newOpenedTabs,
+          activeTab: tab,
+          activeTransform:
+            tab.type === "transform" ? tab.transform : state.activeTransform,
+          activeTable: tab.type === "table" ? tab.table : state.activeTable,
+        };
+      });
+    },
+    [updateWorkspaceState],
+  );
+
+  const removeOpenedTab = useCallback(
+    (tabId: string) => {
+      updateWorkspaceState((state) => {
+        const filteredTabs = state.openedTabs.filter(
+          (item) => item.id !== tabId,
+        );
+
+        const removedTab = state.openedTabs.find((item) => item.id === tabId);
+        const wasActive = state.activeTab?.id === tabId;
+
+        let newActiveTab = state.activeTab;
+        let newActiveTransform = state.activeTransform;
+        let newActiveTable = state.activeTable;
+
+        if (wasActive && removedTab) {
+          const currentIndex = state.openedTabs.findIndex(
+            (item) => item.id === tabId,
+          );
+
+          const preferPrevious = currentIndex > 0;
+          const fallbackTab = preferPrevious
+            ? state.openedTabs[currentIndex - 1]
+            : filteredTabs[0];
+
+          if (fallbackTab) {
+            newActiveTab = fallbackTab;
+            newActiveTransform =
+              fallbackTab.type === "transform"
+                ? fallbackTab.transform
+                : undefined;
+            newActiveTable =
+              fallbackTab.type === "table" ? fallbackTab.table : undefined;
+          } else {
+            newActiveTab = undefined;
+            newActiveTransform = undefined;
+            newActiveTable = undefined;
+          }
+        }
+
+        return {
+          ...state,
+          openedTabs: filteredTabs,
+          activeTab: newActiveTab,
+          activeTransform: newActiveTransform,
+          activeTable: newActiveTable,
+        };
+      });
+    },
+    [updateWorkspaceState],
+  );
+
+  const setOpenedTabs = useCallback(
+    (tabs: WorkspaceTab[]) => {
       updateWorkspaceState((state) => ({
         ...state,
-        activeTransform: transform,
+        openedTabs: tabs,
       }));
+    },
+    [updateWorkspaceState],
+  );
+
+  const setActiveTransform = useCallback(
+    (transform: Transform | undefined) => {
+      updateWorkspaceState((state) => {
+        if (transform) {
+          const existingTab = state.openedTabs.find(
+            (tab) =>
+              tab.type === "transform" && tab.transform.id === transform.id,
+          );
+
+          if (existingTab) {
+            return {
+              ...state,
+              activeTab: existingTab,
+              activeTransform: transform,
+              activeTable: undefined,
+            };
+          } else {
+            const newTransformTab: TransformTab = {
+              id: `transform-${transform.id}`,
+              name: transform.name,
+              type: "transform",
+              transform,
+            };
+
+            return {
+              ...state,
+              openedTabs: [...state.openedTabs, newTransformTab],
+              activeTab: newTransformTab,
+              activeTransform: transform,
+              activeTable: undefined,
+            };
+          }
+        } else {
+          return {
+            ...state,
+            activeTab:
+              state.activeTab?.type === "transform"
+                ? undefined
+                : state.activeTab,
+            activeTransform: undefined,
+          };
+        }
+      });
     },
     [updateWorkspaceState],
   );
 
   const addOpenedTransform = useCallback(
     (transform: Transform) => {
-      updateWorkspaceState((state) => {
-        const exists = state.openedTransforms.some(
-          (item) => item.id === transform.id,
-        );
-        if (exists) {
-          return state;
-        }
-        return {
-          ...state,
-          openedTransforms: [...state.openedTransforms, transform],
-        };
-      });
+      const transformTab: TransformTab = {
+        id: `transform-${transform.id}`,
+        name: transform.name,
+        type: "transform",
+        transform,
+      };
+      addOpenedTab(transformTab);
     },
-    [updateWorkspaceState],
+    [addOpenedTab],
   );
 
   const removeOpenedTransform = useCallback(
     (transformId: number) => {
-      updateWorkspaceState((state) => {
-        const filteredTransforms = state.openedTransforms.filter(
-          (item) => item.id !== transformId,
-        );
-
-        // If the removed transform was active, update to a neighboring transform
-        let newActiveTransform = state.activeTransform;
-        if (state.activeTransform?.id === transformId) {
-          const currentIndex = state.openedTransforms.findIndex(
-            (item) => item.id === transformId,
-          );
-
-          // Prefer the transform before (previous), otherwise use the one after (next)
-          if (currentIndex > 0) {
-            // Use the previous transform
-            newActiveTransform = state.openedTransforms[currentIndex - 1];
-          } else if (filteredTransforms.length > 0) {
-            // Use the next transform (which is now at index 0 after filtering)
-            newActiveTransform = filteredTransforms[0];
-          } else {
-            // No more transforms, set to undefined
-            newActiveTransform = undefined;
-          }
-        }
-
-        return {
-          ...state,
-          openedTransforms: filteredTransforms,
-          activeTransform: newActiveTransform,
-        };
-      });
+      removeOpenedTab(`transform-${transformId}`);
     },
-    [updateWorkspaceState],
+    [removeOpenedTab],
   );
 
   const patchEditedTransform = useCallback(
@@ -215,8 +350,20 @@ export const WorkspaceProvider = ({
         }
         const newRunTransforms = new Set(state.runTransforms);
         newRunTransforms.delete(transformId);
+
+        const newOpenedTabs = state.openedTabs.map((tab) => {
+          if (tab.type === "transform" && tab.transform.id === transformId) {
+            return {
+              ...tab,
+              name: newEditedTransform.name,
+            };
+          }
+          return tab;
+        });
+
         return {
           ...state,
+          openedTabs: newOpenedTabs,
           editedTransforms: newEditedTransforms,
           runTransforms: newRunTransforms,
         };
@@ -242,9 +389,16 @@ export const WorkspaceProvider = ({
   const updateTransformState = useCallback(
     (transform: Transform, editedTransform?: EditedTransform | null) => {
       updateWorkspaceState((state) => {
-        const openedTransforms = state.openedTransforms.map((item) =>
-          item.id === transform.id ? transform : item,
-        );
+        const newOpenedTabs = state.openedTabs.map((tab) => {
+          if (tab.type === "transform" && tab.transform.id === transform.id) {
+            return {
+              ...tab,
+              transform,
+              name: transform.name,
+            };
+          }
+          return tab;
+        });
 
         const newEditedTransforms = new Map(state.editedTransforms);
         if (editedTransform == null) {
@@ -258,7 +412,7 @@ export const WorkspaceProvider = ({
 
         return {
           ...state,
-          openedTransforms,
+          openedTabs: newOpenedTabs,
           activeTransform:
             state.activeTransform?.id === transform.id
               ? transform
@@ -272,12 +426,12 @@ export const WorkspaceProvider = ({
   );
 
   const hasUnsavedChanges = useCallback(() => {
-    return editedTransforms.size > 0;
-  }, [editedTransforms]);
+    return currentState.editedTransforms.size > 0;
+  }, [currentState.editedTransforms]);
 
   const hasTransformEdits = useCallback(
     (originalTransform: Transform) => {
-      const edited = editedTransforms.get(originalTransform.id);
+      const edited = currentState.editedTransforms.get(originalTransform.id);
       return (
         edited != null &&
         (!isSameSource(edited.source, originalTransform.source) ||
@@ -285,117 +439,104 @@ export const WorkspaceProvider = ({
           edited.target.name !== originalTransform.target.name)
       );
     },
-    [editedTransforms],
+    [currentState.editedTransforms],
   );
 
   const setActiveTable = useCallback(
     (table: OpenTable | undefined) => {
-      updateWorkspaceState((state) => ({
-        ...state,
-        activeTable: table,
-      }));
-    },
-    [updateWorkspaceState],
-  );
-
-  const addOpenedTable = useCallback(
-    (table: OpenTable) => {
       updateWorkspaceState((state) => {
-        const exists = state.openedTables.some(
-          (item) => item.tableId === table.tableId,
-        );
-        if (exists) {
-          return {
-            ...state,
-            activeTable: table,
-          };
-        }
-        return {
-          ...state,
-          openedTables: [...state.openedTables, table],
-          activeTable: table,
-        };
-      });
-    },
-    [updateWorkspaceState],
-  );
-
-  const removeOpenedTable = useCallback(
-    (tableId: TableId) => {
-      updateWorkspaceState((state) => {
-        const filteredTables = state.openedTables.filter(
-          (item) => item.tableId !== tableId,
-        );
-
-        let newActiveTable = state.activeTable;
-        if (state.activeTable?.tableId === tableId) {
-          const currentIndex = state.openedTables.findIndex(
-            (item) => item.tableId === tableId,
+        if (table) {
+          const existingTab = state.openedTabs.find(
+            (tab) =>
+              tab.type === "table" && tab.table.tableId === table.tableId,
           );
 
-          if (currentIndex > 0) {
-            newActiveTable = state.openedTables[currentIndex - 1];
-          } else if (filteredTables.length > 0) {
-            newActiveTable = filteredTables[0];
+          if (existingTab) {
+            return {
+              ...state,
+              activeTab: existingTab,
+              activeTable: table,
+              activeTransform: undefined,
+            };
           } else {
-            newActiveTable = undefined;
-          }
-        }
+            const newTableTab: TableTab = {
+              id: `table-${table.tableId}`,
+              name: table.schema ? `${table.schema}.${table.name}` : table.name,
+              type: "table",
+              table,
+            };
 
-        return {
-          ...state,
-          openedTables: filteredTables,
-          activeTable: newActiveTable,
-        };
+            return {
+              ...state,
+              openedTabs: [...state.openedTabs, newTableTab],
+              activeTab: newTableTab,
+              activeTable: table,
+              activeTransform: undefined,
+            };
+          }
+        } else {
+          return {
+            ...state,
+            activeTab:
+              state.activeTab?.type === "table" ? undefined : state.activeTab,
+            activeTable: undefined,
+          };
+        }
       });
     },
     [updateWorkspaceState],
   );
 
   const activeEditedTransform = activeTransform
-    ? (editedTransforms.get(activeTransform.id) ?? activeTransform)
+    ? (currentState.editedTransforms.get(activeTransform.id) ?? activeTransform)
     : activeTransform;
 
   const value = useMemo(
     () => ({
-      openedTransforms,
+      workspaceId,
+      openedTabs,
       activeTransform,
+      activeTable,
+      activeTab,
       activeEditedTransform,
+      setActiveTab,
       setActiveTransform,
+      setActiveTable,
+      addOpenedTab,
+      removeOpenedTab,
+      setOpenedTabs,
       addOpenedTransform,
       removeOpenedTransform,
-      editedTransforms,
+      editedTransforms: currentState.editedTransforms,
       patchEditedTransform,
       removeEditedTransform,
-      runTransforms,
+      runTransforms: currentState.runTransforms,
       updateTransformState,
       hasUnsavedChanges,
       hasTransformEdits,
-      openedTables,
-      activeTable,
-      setActiveTable,
-      addOpenedTable,
-      removeOpenedTable,
     }),
     [
-      openedTransforms,
+      workspaceId,
+      openedTabs,
       activeTransform,
+      activeTable,
+      activeTab,
       activeEditedTransform,
-      editedTransforms,
-      runTransforms,
+      setActiveTab,
       setActiveTransform,
+      setActiveTable,
+      addOpenedTab,
+      removeOpenedTab,
+      setOpenedTabs,
       addOpenedTransform,
       removeOpenedTransform,
+      currentState.editedTransforms,
+      currentState.runTransforms,
       patchEditedTransform,
       removeEditedTransform,
       updateTransformState,
       hasUnsavedChanges,
       hasTransformEdits,
-      openedTables,
-      activeTable,
-      setActiveTable,
-      addOpenedTable,
-      removeOpenedTable,
     ],
   );
 
@@ -414,4 +555,8 @@ export const useWorkspace = (): WorkspaceContextValue => {
   }
 
   return context;
+};
+
+export const useOptionalWorkspace = (): WorkspaceContextValue | undefined => {
+  return useContext(WorkspaceContext);
 };

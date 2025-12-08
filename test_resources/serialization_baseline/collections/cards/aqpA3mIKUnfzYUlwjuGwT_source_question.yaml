@@ -34,7 +34,8 @@ archived_directly: false
 dashboard_id: null
 document_id: null
 embedding_type: null
-metabase_version: v1.57.1-SNAPSHOT (d027b42)
+metabase_version: v1.57.1-SNAPSHOT (d7abfb5)
 published_table_id: null
 source_card_id: null
 type: model
+workspace_id: null

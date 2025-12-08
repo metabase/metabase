@@ -1,12 +1,29 @@
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
-export const MetabotTab = () => {
+type MetabotTabProps = {
+  transform?: Transform;
+  source?: DraftTransformSource;
+};
+
+const MetabotContextRegistration = ({ transform, source }: MetabotTabProps) => {
+  useRegisterMetabotTransformContext(transform, source);
+  return null;
+};
+
+export const MetabotTab = ({ transform, source }: MetabotTabProps) => {
   const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
   const MetabotChat = PLUGIN_METABOT.MetabotChat;
+  const metabotConfig = {
+    // Show top-level mention menu for transforms and databases.
+    suggestionModels: ["transform", "database"],
+  };
 
   return (
     <MetabotProvider>
-      <MetabotChat />
+      <MetabotContextRegistration transform={transform} source={source} />
+      <MetabotChat config={metabotConfig} />
     </MetabotProvider>
   );
 };

@@ -11,12 +11,18 @@ type TransformEditorProps = {
   disabled: boolean;
   source: DraftTransformSource;
   onChange: (source: DraftTransformSource) => void;
+  proposedSource?: DraftTransformSource;
+  onAcceptProposed?: () => void;
+  onRejectProposed?: () => void;
 };
 
 export function TransformEditor({
   disabled,
   source,
   onChange,
+  proposedSource,
+  onAcceptProposed,
+  onRejectProposed,
 }: TransformEditorProps) {
   const [uiState, setUiState] = useState(getInitialUiStateForTransform);
   const uiOptions = useMemo(
@@ -34,14 +40,15 @@ export function TransformEditor({
   return (
     <TransformQueryPageEditor
       source={source}
+      proposedSource={proposedSource}
       isDirty={false}
       uiState={uiState}
       setUiState={setUiState}
       uiOptions={uiOptions}
       databases={[]}
       setSourceAndRejectProposed={handleSourceChange}
-      acceptProposed={_.noop}
-      rejectProposed={_.noop}
+      acceptProposed={onAcceptProposed ?? _.noop}
+      rejectProposed={onRejectProposed ?? _.noop}
     />
   );
 }

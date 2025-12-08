@@ -33,10 +33,7 @@ export const CodeTab = ({
   );
   const availableTransforms = useMemo(() => {
     return transforms.filter((transform) => {
-      return (
-        transform.workspace_id == null &&
-        !workspaceTransformsUpstreamIds.has(transform.id)
-      );
+      return !workspaceTransformsUpstreamIds.has(transform.id);
     });
   }, [workspaceTransformsUpstreamIds, transforms]);
 
