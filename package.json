@@ -364,6 +364,7 @@
     "promise-loader": "^1.0.0",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.3",
+    "querystring-es3": "^0.2.1",
     "raf": "^3.4.0",
     "react-docgen-typescript-plugin": "^1.0.6",
     "react-refresh": "^0.14.2",

@@ -1,4 +1,5 @@
 import { getIn } from "icepick";
+import querystring from "querystring";
 import _ from "underscore";
 
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
@@ -107,7 +108,7 @@ export function getDashboardDrillUrl(clicked) {
   };
 
   const path = Urls.dashboard({ id: targetId });
-  return `${path}?${new URLSearchParams(queryParams).toString()}`;
+  return `${path}?${querystring.stringify(queryParams)}`;
 }
 
 export function getDashboardDrillQuestionUrl(question, clicked) {
@@ -155,7 +156,7 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
         parameters,
         queryParams,
       )
-    : `${ML_Urls.getUrl(targetQuestion)}?${new URLSearchParams(queryParams).toString()}`;
+    : `${ML_Urls.getUrl(targetQuestion)}?${querystring.stringify(queryParams)}`;
 }
 
 function getClickBehavior(clicked) {

@@ -1,4 +1,5 @@
 import type { LocationDescriptorObject } from "history";
+import querystring from "querystring";
 import { replace } from "react-router-redux";
 
 import { Questions } from "metabase/entities/questions";
@@ -209,7 +210,7 @@ export function parseHash(hash?: string) {
   if (hash) {
     const cleanHash = hash.replace(/^#/, "");
     if (cleanHash.charAt(0) === "?") {
-      options = Object.fromEntries(new URLSearchParams(cleanHash.substring(1)));
+      options = querystring.parse(cleanHash.substring(1));
     } else {
       serializedCard = cleanHash;
     }
