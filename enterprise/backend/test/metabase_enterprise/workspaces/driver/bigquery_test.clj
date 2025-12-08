@@ -4,11 +4,6 @@
    [metabase-enterprise.workspaces.driver.bigquery :as bigquery]
    [metabase-enterprise.workspaces.driver.common :as driver.common]))
 
-(deftest workspace-service-account-email-test
-  (testing "Generates correct service account email format"
-    (is (= "mb-workspace-123@my-project.iam.gserviceaccount.com"
-           (#'bigquery/workspace-service-account-email "my-project" {:id 123})))))
-
 (deftest isolation-namespace-name-test
   (testing "Uses common namespace naming"
     (let [workspace {:id "550e8400-e29b-41d4-a716-446655440000"}]
