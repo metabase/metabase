@@ -520,6 +520,16 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
+(defn- reset-magic-group-membership!
+  [user-id tenant-id]
+  (perms/allow-changing-all-users-group-members
+    (perms/allow-changing-all-external-users-group-members
+     (t2/delete! :model/PermissionsGroupMembership :user_id user-id)
+     (when tenant-id
+       (perms/add-user-to-group! user-id (perms/all-external-users-group)))
+     (when (nil? tenant-id)
+       (perms/add-user-to-group! user-id (perms/all-users-group))))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -540,7 +550,8 @@
        [:is_superuser           {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
-       [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
+       [:locale                 {:optional true} [:maybe ms/ValidLocale]]
+       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -570,10 +581,14 @@
         (when-let [changes (not-empty
                             (u/select-keys-when body
                                                 :present (cond-> #{:first_name :last_name :locale}
-                                                           api/*is-superuser?* (conj :login_attributes))
+                                                           api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! :model/User id changes)
+          (when (contains? changes :tenant_id)
+            (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
+                           "Superusers cannot be external users")
+            (reset-magic-group-membership! id (:tenant_id changes)))
           (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))

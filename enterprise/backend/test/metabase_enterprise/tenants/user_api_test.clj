@@ -141,3 +141,71 @@
                                             {:user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id tenant-group-id
                                                                        :is_group_manager true}]}))))))))))
+
+(deftest tenant-users-can-be-converted-to-internal-users-test
+  (testing "Tenant users can be converted to internal users"
+    (mt/with-premium-features #{:tenants :advanced-permissions}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/User {user-id :id} {:tenant_id tenant-id}
+                       :model/PermissionsGroup {pg-id :id} {:is_tenant_group true}
+                       :model/PermissionsGroupMembership _ {:user_id user-id
+                                                            :group_id pg-id}]
+          (testing "before: the user is a member of the All External Users group and the group we added them to"
+            (is (= #{(u/the-id (perms/all-external-users-group))
+                     pg-id}
+                   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))))
+          ;; make the change
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:tenant_id nil})
+          (testing "the user is now a normal user"
+            (is (nil? (t2/select-one-fn :tenant_id :model/User user-id))))
+          (testing "the user is now ONLY a member of the All Users group"
+            (is (= #{(u/the-id (perms/all-users-group))}
+                   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))))))))
+
+(deftest internal-users-can-be-converted-to-tenant-users-test
+  (testing "internal users can be converted to tenant users"
+    (mt/with-premium-features #{:tenants :advanced-permissions}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/User {user-id :id} {}
+                       :model/PermissionsGroup {pg-id :id} {:is_tenant_group false}
+                       :model/PermissionsGroupMembership _ {:user_id user-id
+                                                            :group_id pg-id}]
+          (testing "before: the user is a member of the All Users group and the group we added them to"
+            (is (= #{(u/the-id (perms/all-users-group))
+                     pg-id}
+                   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))))
+          ;; make the change
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:tenant_id tenant-id})
+          (testing "the user is now a tenant user"
+            (is (= tenant-id (t2/select-one-fn :tenant_id :model/User user-id))))
+          (testing "the user is now ONLY a member of All External Users"
+            (is (= #{(u/the-id (perms/all-external-users-group))}
+                   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))))))))
+
+(deftest cannot-turn-an-external-user-into-a-superuser
+  (testing "external users can't become superusers"
+    (mt/with-premium-features #{:tenants :advanced-permissions}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/User {user-id :id} {:tenant_id tenant-id}]
+          (mt/user-http-request :crowberto :put 400 (str "user/" user-id) {:is_superuser true}))))))
+
+(deftest cannot-make-an-external-user-and-superuser
+  (testing "can't make a user an external user + a superuser"
+    (mt/with-premium-features #{:tenants :advanced-permissions}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/User {user-id :id} {}]
+          (mt/user-http-request :crowberto :put 400 (str "user/" user-id) {:tenant_id tenant-id :is_superuser true}))))))
+
+(deftest superusers-lose-admin-access-if-they-become-tenant-users
+  (testing "superusers can't become tenant users"
+    (mt/with-premium-features #{:tenants :advanced-permissions}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/User {user-id :id} {:is_superuser true}]
+          (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:tenant_id tenant-id})
+          (is (= #{(u/the-id (perms/all-external-users-group))}
+                 (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))))))))
