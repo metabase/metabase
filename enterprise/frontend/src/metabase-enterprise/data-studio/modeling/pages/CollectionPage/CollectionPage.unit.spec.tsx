@@ -102,7 +102,7 @@ describe("CollectionPage", () => {
 
     await waitForLoaderToBeRemoved();
     expect(
-      await screen.findByText("No models or metrics yet"),
+      await screen.findByText("No tables or metrics yet"),
     ).toBeInTheDocument();
   });
 
@@ -179,7 +179,7 @@ describe("CollectionPage", () => {
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
   });
 
-  it("should request only models and metrics from API", async () => {
+  it("should request only tables, models, and metrics from API", async () => {
     await setup({
       collectionItems: [TEST_MODEL_ITEM, TEST_METRIC_ITEM],
     });
@@ -194,7 +194,7 @@ describe("CollectionPage", () => {
 
     const url = new URL(itemsCall.url);
     const models = url.searchParams.getAll("models");
-    expect(models).toEqual(["dataset", "metric"]);
+    expect(models).toEqual(["dataset", "metric", "table"]);
   });
 
   it("should show collection name in page header", async () => {

@@ -104,7 +104,6 @@ export {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
-  type UserWithApplicationPermissions,
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";

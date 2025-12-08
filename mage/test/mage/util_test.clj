@@ -17,7 +17,10 @@
             (str/replace (re-pattern (str new-content "$")) ""))))
 
 (deftest updated-files-returns-all-kinds-of-files
-  (let [extension->path (-> (group-by fs/extension (fs/glob u/project-root-directory "**.*"))
+  (let [all-files (map str (fs/glob u/project-root-directory "**.*"))
+        git-ignored-files (u/git-ignored-files all-files)
+        ok-files (remove git-ignored-files all-files)
+        extension->path (-> (group-by fs/extension ok-files)
                             (update-vals (comp str first))
                             (select-keys ["clj" "cljc" "cljs" "edn" "js" "ts" "jsx" "json" "css" "html" "md"]))]
     (doseq [[_ path] extension->path]

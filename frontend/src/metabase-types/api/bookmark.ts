@@ -11,6 +11,7 @@ export const BOOKMARK_TYPES = [
   "snippet",
   "indexed-entity",
   "document",
+  "table",
 ] as const;
 export type BookmarkType = (typeof BOOKMARK_TYPES)[number];
 export type BookmarkId = string;

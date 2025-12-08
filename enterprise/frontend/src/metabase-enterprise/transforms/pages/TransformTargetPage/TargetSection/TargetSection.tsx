@@ -91,7 +91,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
           <TargetItemLink
             label={database.name}
             icon="database"
-            to={Urls.dataModelDatabase(database.id)}
+            to={Urls.dataModel({ databaseId: database.id })}
             data-testid="database-link"
           />
           <TargetItemDivider />
@@ -104,7 +104,10 @@ function TargetInfo({ transform }: TargetInfoProps) {
             icon="folder"
             to={
               table || targetSchemaExists
-                ? Urls.dataModelSchema(database.id, target.schema)
+                ? Urls.dataModel({
+                    databaseId: database.id,
+                    schemaName: target.schema,
+                  })
                 : undefined
             }
             tooltip={
@@ -249,7 +252,11 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
   return (
     <Button
       component={Link}
-      to={Urls.dataModelTable(table.db_id, table.schema, table.id)}
+      to={Urls.dataModel({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+      })}
       leftSection={<Icon name="label" aria-hidden />}
       data-testid="table-metadata-link"
     >

@@ -20,12 +20,10 @@ import {
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
+import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
-  getHasDataAccess,
-  getHasDatabaseWithActionsEnabled,
-  getHasNativeWrite,
-} from "metabase/selectors/data";
-import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
   getUserIsAdmin,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
@@ -57,8 +55,8 @@ export const useCommandPaletteBasicActions = ({
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;

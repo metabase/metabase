@@ -8,7 +8,10 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.test-util :as search.tu]))
+   [metabase.search.test-util :as search.tu]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
                                   (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
@@ -140,6 +143,7 @@
                       [:= :search_index.non_temporal_dim_ids "[1]"]
                       [:= :search_index.has_temporal_dim true]
                       [:in :search_index.display_type ["line"]]
-                      [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]}}
+                      [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
+                      [:not= :search_index.model [:inline "table"]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))
