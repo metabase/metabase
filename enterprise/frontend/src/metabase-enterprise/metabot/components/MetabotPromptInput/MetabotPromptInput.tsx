@@ -5,7 +5,7 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { EditorContent , useEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
