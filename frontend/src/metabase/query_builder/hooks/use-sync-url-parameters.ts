@@ -1,4 +1,3 @@
-import querystring from "querystring";
 import { useEffect, useMemo } from "react";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -44,8 +43,8 @@ export function useSyncUrlParameters({
 const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
 
 function buildSearchString(object: Record<string, any>) {
-  const currentSearchParams = querystring.parse(
-    window.location.search.replace("?", ""),
+  const currentSearchParams = Object.fromEntries(
+    new URLSearchParams(window.location.search.replace("?", "")),
   );
   const filteredSearchParams = Object.fromEntries(
     Object.entries(currentSearchParams).filter((entry) =>
@@ -53,9 +52,9 @@ function buildSearchString(object: Record<string, any>) {
     ),
   );
 
-  const search = querystring.stringify({
+  const search = new URLSearchParams({
     ...filteredSearchParams,
     ...object,
-  });
+  } as Record<string, string>).toString();
   return search ? `?${search}` : "";
 }

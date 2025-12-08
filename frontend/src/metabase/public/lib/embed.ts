@@ -1,5 +1,4 @@
 import { CompactSign } from "jose"; // using jose because jsonwebtoken doesn't work on the web :-/
-import querystring from "querystring";
 
 import type {
   EmbedResource,
@@ -69,6 +68,8 @@ export function optionsToHashParams(
       delete options[name];
     }
   }
-  const query = querystring.stringify(options);
+  const query = new URLSearchParams(
+    options as Record<string, string>,
+  ).toString();
   return query ? `#${query}` : ``;
 }

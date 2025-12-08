@@ -1,5 +1,4 @@
 import EventEmitter from "events";
-import querystring from "querystring";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
@@ -165,7 +164,7 @@ export class Api extends EventEmitter {
                   : data,
               );
         } else {
-          const qs = querystring.stringify(data);
+          const qs = new URLSearchParams(data).toString();
           if (qs) {
             url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
           }

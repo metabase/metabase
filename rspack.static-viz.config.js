@@ -134,7 +134,6 @@ module.exports = (env) => {
         stream: require.resolve("stream-browserify"),
         buffer: require.resolve("buffer/"),
         process: require.resolve("process/browser"),
-        querystring: require.resolve("querystring-es3"),
       },
     },
     optimization: {
