@@ -1,18 +1,16 @@
+import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, FixedSizeIcon, Icon, Loader, Menu } from "metabase/ui";
 import { ForwardRefLink } from "metabase/common/components/Link";
-
-import * as Urls from "metabase/lib/urls";
-import { useState } from "react";
-import { CollectionId } from "metabase-types/api";
-import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useSelector } from "metabase/lib/redux";
-
+import * as Urls from "metabase/lib/urls";
+import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
+import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import type { CollectionId } from "metabase-types/api";
 
 export const CreateMenu = ({
   modelCollectionId,
