@@ -1,8 +1,10 @@
+import querystring from "querystring";
+
 import { safeJsonParse } from "metabase/lib/json-parse";
 
 function parseQueryStringOptions(s: string) {
   const options: Record<string, string | string[] | boolean | undefined> =
-    Object.fromEntries(new URLSearchParams(s));
+    querystring.parse(s);
   for (const name in options) {
     const value = options[name];
     if (value === "") {
@@ -37,26 +39,8 @@ export function parseSearchOptions(search: string) {
   return parseQueryStringOptions(search.replace(/^\?/, ""));
 }
 
-export function stringifyHashOptions(
-  options: Record<
-    string,
-    string | number | boolean | string[] | null | undefined
-  >,
-) {
-  const entries: [string, string][] = [];
-  for (const [key, value] of Object.entries(options)) {
-    if (value === undefined || value === null) {
-      continue;
-    }
-    if (Array.isArray(value)) {
-      for (const v of value) {
-        entries.push([key, String(v)]);
-      }
-    } else {
-      entries.push([key, String(value)]);
-    }
-  }
-  return new URLSearchParams(entries).toString().replace(/=true\b/g, "");
+export function stringifyHashOptions(options: querystring.ParsedUrlQueryInput) {
+  return querystring.stringify(options).replace(/=true\b/g, "");
 }
 
 export function isMac() {

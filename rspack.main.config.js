@@ -259,6 +259,7 @@ const config = {
       buffer: require.resolve("buffer/"),
       url: require.resolve("url/"),
       events: require.resolve("events/"),
+      querystring: require.resolve("querystring-es3"),
     },
   },
   optimization: {
