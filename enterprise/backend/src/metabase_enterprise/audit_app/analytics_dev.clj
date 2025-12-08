@@ -139,7 +139,7 @@
             :when (and (.isFile file)
                        (.endsWith (.getName file) ".yaml")
                        (not (= (.getName file) (str canonical-db-id ".yaml"))))]
-      (let [relative-path (.relativize (.toPath source-dir) (.toPath file))
+      (let [relative-path (.relativize (.toPath (io/file source-dir)) (.toPath file))
             target-file (io/file temp-path (.toFile relative-path))]
         (.mkdirs (.getParentFile target-file))
         (let [yaml-data (yaml/parse-string (slurp file))
