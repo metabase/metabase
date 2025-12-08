@@ -10,6 +10,7 @@
   "com.onelogin"                     {:resource "MIT.txt"}
   "com.vladsch.flexmark"             {:resource "BSD.txt"}
   "io.netty"                         {:resource "apache2_0.txt"}
+  "org.apache.datasketches"          {:resource "apache2_0.txt"}
   "org.apache.hadoop"                {:resource "apache2_0.txt"}
   "org.clojure"                      {:resource "EPL.txt"}
   "org.eclipse.jetty"                {:resource "apache2_0.txt"}
