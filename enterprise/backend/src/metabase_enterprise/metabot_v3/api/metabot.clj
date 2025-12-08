@@ -24,7 +24,7 @@
   "List configured metabot instances"
   []
   (api/check-superuser)
-  {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
+  {:items (t2/hydrate (t2/select :model/Metabot {:order-by [[:name :asc]]}) :use_cases)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -34,7 +34,7 @@
   "Retrieve one metabot instance"
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/Metabot :id id)))
+  (api/check-404 (t2/hydrate (t2/select-one :model/Metabot :id id) :use_cases)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
