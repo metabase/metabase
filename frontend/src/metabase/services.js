@@ -203,8 +203,8 @@ export const PublicApi = {
   prefetchDashcardValues: GET(
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
-  document: GET(`/api/ee/public/document/:uuid`),
-  documentCardQuery: GET(`/api/ee/public/document/:uuid/card/:cardId`),
+  document: GET(`/api/public/document/:uuid`),
+  documentCardQuery: GET(`/api/public/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {

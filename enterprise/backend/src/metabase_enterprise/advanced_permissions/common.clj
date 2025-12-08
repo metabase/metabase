@@ -55,9 +55,7 @@
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
-  This function is meant to be used for GET /api/user/current.
-  Note: `:can_create_queries` and `:can_create_native_queries` are set by `add-query-permissions` before this
-  function is called, so we don't need to set them here."
+  This function is meant to be used for GET /api/user/current."
   [user]
   (let [permissions-set @api/*current-user-permissions-set*
         user-id         api/*current-user-id*]

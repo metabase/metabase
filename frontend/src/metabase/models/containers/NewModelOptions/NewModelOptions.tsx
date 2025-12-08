@@ -7,7 +7,6 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
-import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
@@ -36,16 +35,9 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
     getSetting(state, "last-used-native-database-id"),
   );
 
-  const urlCollectionId = Urls.extractEntityId(
+  const collectionId = Urls.extractEntityId(
     location.query.collectionId as string,
   );
-
-  const libraryModelsCollection =
-    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
-      type: "library-models",
-    });
-
-  const collectionId = urlCollectionId || libraryModelsCollection?.id;
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 

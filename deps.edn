@@ -671,7 +671,7 @@
                                    "test/metabase/channel/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"
-                                   "enterprise/frontend/src/metabase-enterprise/documents/components/Editor/data/data\\.json$"]}}
+                                   "frontend/src/metabase/documents/components/Editor/data/data\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
