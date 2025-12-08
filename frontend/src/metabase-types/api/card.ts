@@ -61,7 +61,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection_position: number | null;
   dashboard: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
-  document_id?: DocumentId;
+  document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
