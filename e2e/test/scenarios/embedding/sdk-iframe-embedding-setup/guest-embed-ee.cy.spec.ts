@@ -207,7 +207,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_options_completed",
         event_detail:
-          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest-embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
+          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
       });
 
       // Get code step
