@@ -1,4 +1,3 @@
-import querystring from "querystring";
 import _ from "underscore";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
@@ -390,7 +389,7 @@ const getOrigin = (url) => {
 const getLocation = (url) => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
-    const query = querystring.parse(search.substring(1));
+    const query = Object.fromEntries(new URLSearchParams(search.substring(1)));
     return {
       pathname: getPathnameWithoutSubPath(pathname),
       search,

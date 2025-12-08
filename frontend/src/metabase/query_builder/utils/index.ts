@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import querystring from "querystring";
 import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/lib/card";
@@ -33,7 +32,7 @@ export function getCurrentQueryParams() {
     window.location.search.charAt(0) === "?"
       ? window.location.search.slice(1)
       : window.location.search;
-  return querystring.parse(search);
+  return Object.fromEntries(new URLSearchParams(search));
 }
 
 type QueryParams = ReturnType<typeof getCurrentQueryParams>;

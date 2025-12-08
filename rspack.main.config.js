@@ -257,7 +257,6 @@ const config = {
     },
     fallback: {
       buffer: require.resolve("buffer/"),
-      querystring: require.resolve("querystring-es3"),
       url: require.resolve("url/"),
       events: require.resolve("events/"),
     },
