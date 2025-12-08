@@ -34,7 +34,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:h2 base-type] [_ _] database-type))
 
 (defmethod tx/dbdef->connection-details :h2
-  [_driver #_context dbdef]
+  [_driver _context dbdef]
   {:db (str "mem:" (tx/escaped-database-name dbdef)
             ;; TODO (Ngoc 2025-12-05) we want admins user because workspaces tests need to be able to create
             ;; user and grant privileges and stuffs. is it safe???
