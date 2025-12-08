@@ -182,7 +182,6 @@ function TableBodyRow<T>({
         position: "absolute",
         transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
         paddingLeft: `${depth + 1}rem`,
-        cursor: canExpand ? "pointer" : "unset",
       }}
       onClick={
         canExpand

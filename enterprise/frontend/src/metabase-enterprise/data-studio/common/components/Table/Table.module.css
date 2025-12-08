@@ -10,6 +10,7 @@
   font-size: 14px;
   line-height: 20px;
   background: inherit;
+  cursor: pointer;
 
   &:hover {
     background-color: var(--mb-color-brand-light);

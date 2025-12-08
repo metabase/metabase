@@ -66,6 +66,8 @@ export function ModelingLandingPage() {
         dispatch(push(Urls.dataStudioMetric(item.id as number)));
       } else if (item.model === "snippet") {
         dispatch(push(Urls.dataStudioSnippet(item.id as number)));
+      } else if (item.model === "table") {
+        dispatch(push(Urls.dataStudioTable(item.id as number)));
       }
     },
     [dispatch],
