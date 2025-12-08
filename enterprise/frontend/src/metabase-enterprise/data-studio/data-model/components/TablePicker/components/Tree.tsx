@@ -1,5 +1,4 @@
-import { useCallback, useEffect } from "react";
-import { useLatest } from "react-use";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import type { TableId } from "metabase-types/api";
@@ -58,16 +57,25 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
   const { isExpanded, toggle } = useExpandedState(path);
   const { tree, reload } = useTableLoader();
 
-  const items = flatten(tree, {
-    isExpanded,
-    addLoadingNodes: true,
-    canFlattenSingleSchema: true,
-    selection: {
-      tables: selectedTables,
-      schemas: selectedSchemas,
-      databases: selectedDatabases,
-    },
-  });
+  /**
+   * onUpdateCallback depends on the items, and they are changing very often.
+   * We don't want to re-register it each time items changed.
+   * Otherwise, it causes an infinity loop.
+   */
+  const items = useMemo(
+    () =>
+      flatten(tree, {
+        isExpanded,
+        addLoadingNodes: true,
+        canFlattenSingleSchema: true,
+        selection: {
+          tables: selectedTables,
+          schemas: selectedSchemas,
+          databases: selectedDatabases,
+        },
+      }),
+    [tree, isExpanded, selectedTables, selectedSchemas, selectedDatabases],
+  );
 
   /**
    * Initial loading of all databases, schemas, tables for the current path
@@ -76,19 +84,13 @@ export function Tree({ path, onChange, setOnUpdateCallback }: Props) {
     reload(path);
   }, [reload, path]);
 
-  /**
-   * onUpdateCallback depends on the items, and they are changing very often.
-   * We don't want to re-register it each time items changed.
-   * Otherwise, it causes an infinity loop.
-   */
-  const itemsRef = useLatest(items);
   const refetchSelectedTables = useCallback(() => {
-    const selectedTableNodes = itemsRef.current
+    const selectedTableNodes = items
       .filter((item) => isTableNode(item))
       .filter((tableNode) => selectedTables.has(tableNode.value.tableId));
 
     selectedTableNodes.forEach((tableNode) => reload(tableNode.value));
-  }, [itemsRef, reload, selectedTables]);
+  }, [items, reload, selectedTables]);
 
   useEffect(() => {
     setOnUpdateCallback(() => refetchSelectedTables);
