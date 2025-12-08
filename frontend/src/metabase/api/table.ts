@@ -173,3 +173,23 @@ export const {
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;
+
+export const fetchForeignTablesMetadata = (
+  table: Table,
+  params?: Omit<GetTableQueryMetadataRequest, "id">,
+) => {
+  return (dispatch: (action: unknown) => void) => {
+    const fkTableIds = new Set<TableId>();
+    for (const field of table.fields ?? []) {
+      if (field.target?.table_id != null) {
+        fkTableIds.add(field.target.table_id);
+      }
+    }
+
+    fkTableIds.forEach((id) =>
+      dispatch(
+        tableApi.endpoints.getTableQueryMetadata.initiate({ id, ...params }),
+      ),
+    );
+  };
+};
