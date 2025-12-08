@@ -145,7 +145,7 @@ export interface CollectionItem {
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
   getIcon?: () => IconProps;
-  getUrl?: (opts?: Record<string, unknown>) => string;
+  getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (
     isArchived: boolean,
     opts?: Record<string, unknown>,

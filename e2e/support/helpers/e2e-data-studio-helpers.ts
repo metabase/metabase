@@ -134,7 +134,8 @@ export const DataStudio = {
     },
   },
   Modeling: {
-    emptyPage: () => cy.findByTestId("modeling-empty-page"),
+    emptyPage: () =>
+      modelingPage().findByText("No tables, metrics, or snippets yet"),
     collectionPage: collectionPage,
     modelingPage,
     collectionTitle: () => collectionPage().findByRole("heading"),

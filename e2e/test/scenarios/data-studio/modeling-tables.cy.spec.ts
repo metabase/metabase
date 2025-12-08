@@ -46,10 +46,6 @@ describe("scenarios > data studio > modeling > tables", () => {
       H.popover().findByText("Unpublish").click();
       H.modal().findByText("Unpublish this table").click();
       H.DataStudio.Modeling.emptyPage().should("be.visible");
-      H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
-      H.DataStudio.Modeling.collectionPage()
-        .findByText("No published tables yet")
-        .should("be.visible");
     });
   });
 

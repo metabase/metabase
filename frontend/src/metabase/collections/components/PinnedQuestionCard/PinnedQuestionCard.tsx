@@ -13,7 +13,6 @@ import {
 import EventSandbox from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import { getIcon } from "metabase/lib/icon";
-import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -79,7 +78,7 @@ const PinnedQuestionCard = ({
 
   return (
     <CardRoot
-      to={modelToUrl(item)}
+      to={item.getUrl()}
       isPreview={isPreview}
       className={cx(CS.hoverChild, CS.hoverVisibility)}
     >
