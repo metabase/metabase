@@ -147,5 +147,7 @@ export const DataStudio = {
       cy.findAllByTestId("dataset-name").contains(name),
     tableItem: (name: string) =>
       modelingPage().findAllByTestId("table-name").contains(name),
+    result: (name: string) => modelingPage().findByText(name).closest("tr"),
+    newButton: () => modelingPage().findByRole("button", { name: /New/ }),
   },
 };

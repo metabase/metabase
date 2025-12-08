@@ -15,7 +15,7 @@ describe("scenarios > data studio > snippets", () => {
     it("should create a new snippet with proper validation", () => {
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.createSnippetButton().click();
+      H.DataStudio.Modeling.newButton().click();
       H.popover().findByText("New snippet").click();
 
       H.DataStudio.Snippets.newPage().should("be.visible");
@@ -45,11 +45,10 @@ describe("scenarios > data studio > snippets", () => {
         cy.findByText(/by Bobby Tables/).should("be.visible");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
+      H.DataStudio.Modeling.modelingPage()
         .findByText("Test snippet")
-        .should("be.visible")
-        .closest("[role='menuitem']")
-        .should("have.attr", "data-selected", "true");
+        .should("be.visible");
     });
   });
 
@@ -62,13 +61,7 @@ describe("scenarios > data studio > snippets", () => {
 
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editPage().should("be.visible");
 
@@ -91,13 +84,7 @@ describe("scenarios > data studio > snippets", () => {
 
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
@@ -118,17 +105,11 @@ describe("scenarios > data studio > snippets", () => {
 
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
-      H.DataStudio.ModelingSidebar.glossaryLink().click();
+      H.DataStudio.nav().findByRole("link", { name: "Glossary" }).click();
 
       H.modal().within(() => {
         cy.findByText("Discard your changes?").should("be.visible");
@@ -149,13 +130,7 @@ describe("scenarios > data studio > snippets", () => {
 
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
       H.DataStudio.Snippets.editPage().within(() => {
         cy.findByText("Bold text").should("have.css", "font-weight", "700");
         cy.findByText("italic text").should("have.css", "font-style", "italic");
@@ -172,13 +147,7 @@ describe("scenarios > data studio > snippets", () => {
 
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("SQL snippets")
-        .click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .findByText("Test snippet")
-        .click();
+      H.DataStudio.Modeling.modelingPage().findByText("Test snippet").click();
 
       cy.findByTestId("snippet-header").findByRole("button").click();
       H.popover().findByText("Delete").click();
@@ -189,7 +158,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@updateSnippet");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.Modeling.modelingPage()
         .findByText("Test snippet")
         .should("not.exist");
     });
@@ -205,8 +174,8 @@ describe("scenarios > data studio > snippets", () => {
     it("should be able to create a folder and snippet inside it", () => {
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.createSnippetButton().click();
-      H.popover().findByText("New folder").click();
+      H.DataStudio.Modeling.newButton().click();
+      H.popover().findByText("New snippet folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Give your folder a name").type("Test Folder");
@@ -217,12 +186,11 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@createCollection");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
-        .click()
+      H.DataStudio.Modeling.modelingPage()
         .findByText("Test Folder")
         .should("be.visible");
 
-      H.DataStudio.ModelingSidebar.createSnippetButton().click();
+      H.DataStudio.Modeling.newButton().click();
       H.popover().findByText("New snippet").click();
 
       H.DataStudio.Snippets.nameInput().type("Folder snippet");
@@ -236,7 +204,8 @@ describe("scenarios > data studio > snippets", () => {
 
       cy.wait("@createSnippet");
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
+      H.DataStudio.Modeling.modelingPage()
         .findByText("Folder snippet")
         .should("be.visible");
     });
@@ -248,11 +217,7 @@ describe("scenarios > data studio > snippets", () => {
 
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("SQL snippets").click();
-
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("Test Folder")
-        .findByLabelText("Collection options")
-        .click();
+      H.DataStudio.Modeling.result("Test Folder").icon("ellipsis").click();
 
       H.popover().findByText("Edit folder details").click();
 
@@ -264,7 +229,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.wait("@updateCollection");
       });
 
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.Modeling.modelingPage()
         .findByText("Updated Folder")
         .should("be.visible");
     });
@@ -276,19 +241,13 @@ describe("scenarios > data studio > snippets", () => {
 
       visitModelingPage();
 
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("SQL snippets").click();
-
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("Test Folder")
-        .findByLabelText("Collection options")
-        .click();
+      H.DataStudio.Modeling.result("Test Folder").icon("ellipsis").click();
 
       H.popover().findByText("Archive").click();
 
       cy.wait("@updateCollection");
 
-      H.DataStudio.ModelingSidebar.snippetsTreeItem("SQL snippets").click();
-
-      H.DataStudio.ModelingSidebar.snippetsTree()
+      H.DataStudio.Modeling.modelingPage()
         .findByText("Test Folder")
         .should("not.exist");
     });
@@ -297,5 +256,5 @@ describe("scenarios > data studio > snippets", () => {
 
 function visitModelingPage() {
   cy.visit("/data-studio/modeling");
-  H.DataStudio.ModelingSidebar.root().should("be.visible");
+  H.DataStudio.Modeling.modelingPage().should("be.visible");
 }
