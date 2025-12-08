@@ -362,11 +362,11 @@
   (-> (ws.common/create-workspace! api/*current-user-id* body)
       ws->response))
 
-(api.macros/defendpoint :post "/:id/name" :- Workspace
-  "Update a workspace's name"
+(api.macros/defendpoint :put "/:id" :- Workspace
+  "Update simple workspace properties, like name."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [name]} :- [:map [:name [:string {:min 1}]]]]
+   {:keys [name]} :- [:map {:closed true} [:name [:string {:min 1}]]]]
   (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
     (api/check-400 (nil? (:archived_at <>)) "Cannot update an archived workspace"))
   (t2/update! :model/Workspace id {:name name})
