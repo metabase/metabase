@@ -21,7 +21,7 @@ dataset_query: {}
 result_metadata: null
 visualization_settings:
   column_settings: null
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - id: 1z82DAj_YUJAsCZZaacxK
   label: linked_card
@@ -29,6 +29,6 @@ serdes/meta:
 archived_directly: false
 dashboard_id: null
 document_id: null
-metabase_version: v0.55.1-SNAPSHOT (29786d3)
+metabase_version: v1.58.0-SNAPSHOT (d5e5626)
 source_card_id: null
 type: question
