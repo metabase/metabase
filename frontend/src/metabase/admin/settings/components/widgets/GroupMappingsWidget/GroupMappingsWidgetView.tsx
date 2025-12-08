@@ -1,11 +1,14 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useField } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import type { MappingsType } from "metabase/admin/types";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { FormSwitch } from "metabase/forms";
+import type { GenericErrorResponse } from "metabase/lib/errors/types";
 import { isDefaultGroup } from "metabase/lib/groups";
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { EnterpriseSettingKey, GroupInfo } from "metabase-types/api";
@@ -36,12 +39,6 @@ const noMappingText = (
   return t`No mappings yet`;
 };
 
-type SaveError = {
-  data?: {
-    message?: string;
-  };
-} | null;
-
 type GroupMappingsWidgetViewProps = {
   groupHeading: string;
   groupPlaceholder: string;
@@ -65,18 +62,11 @@ export function GroupMappingsWidgetView({
   mappings,
   settingKey,
 }: GroupMappingsWidgetViewProps) {
-  const [showAddRow, setShowAddRow] = useState(false);
-  const [saveError, setSaveError] = useState<SaveError>({});
+  const [showAddRow, { open: openAddRow, close: closeAddRow }] =
+    useDisclosure();
+  const [saveError, setSaveError] = useState<GenericErrorResponse | null>(null);
 
   const groups = allGroups.filter(groupIsMappable);
-
-  const handleShowAddRow = () => {
-    setShowAddRow(true);
-  };
-
-  const handleHideAddRow = () => {
-    setShowAddRow(false);
-  };
 
   const handleAddMapping = async (name: string) => {
     const mappingsPlusNewMapping = { ...mappings, [name]: [] };
@@ -86,10 +76,10 @@ export function GroupMappingsWidgetView({
         key: mappingSetting,
         value: mappingsPlusNewMapping,
       });
-      setShowAddRow(false);
+      closeAddRow();
       setSaveError(null);
     } catch (error) {
-      setSaveError(error as SaveError);
+      setSaveError(error as GenericErrorResponse);
     }
   };
 
@@ -106,7 +96,7 @@ export function GroupMappingsWidgetView({
         await updateSetting({ key: mappingSetting, value: updatedMappings });
         setSaveError(null);
       } catch (error) {
-        setSaveError(error as SaveError);
+        setSaveError(error as GenericErrorResponse);
       }
     };
 
@@ -128,7 +118,7 @@ export function GroupMappingsWidgetView({
       onSuccess?.();
       setSaveError(null);
     } catch (error) {
-      setSaveError(error as SaveError);
+      setSaveError(error as GenericErrorResponse);
     }
   };
 
@@ -164,7 +154,7 @@ export function GroupMappingsWidgetView({
               className={S.addMappingButton}
               variant="filled"
               size="sm"
-              onClick={handleShowAddRow}
+              onClick={openAddRow}
             >
               {t`New mapping`}
             </Button>
@@ -184,7 +174,7 @@ export function GroupMappingsWidgetView({
               <AddMappingRow
                 mappings={mappings}
                 placeholder={groupPlaceholder}
-                onCancel={handleHideAddRow}
+                onCancel={closeAddRow}
                 onAdd={handleAddMapping}
               />
             )}
@@ -214,9 +204,9 @@ export function GroupMappingsWidgetView({
           </AdminContentTable>
         </Box>
       </Box>
-      {saveError?.data?.message && (
+      {saveError && (
         <Text c="error" fw={700} m="sm">
-          {saveError.data.message}
+          {getErrorMessage(saveError)}
         </Text>
       )}
     </Stack>

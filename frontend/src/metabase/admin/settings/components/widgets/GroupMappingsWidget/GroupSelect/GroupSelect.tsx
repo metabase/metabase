@@ -10,6 +10,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
+import { isNotNull } from "metabase/lib/types";
 import { Box, Checkbox, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
@@ -29,9 +30,7 @@ type GroupSection = {
 function getSections(groups: GroupInfo[]): GroupSection[] {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
-  const topGroups = [defaultGroup, adminGroup].filter(
-    (g): g is GroupInfo => g != null,
-  );
+  const topGroups = [defaultGroup, adminGroup].filter(isNotNull);
   const groupsExceptDefaultAndAdmin = groups.filter(
     (g) => !isAdminGroup(g) && !isDefaultGroup(g),
   );
