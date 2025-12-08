@@ -14,6 +14,7 @@ import {
   Card,
   FixedSizeIcon,
   Flex,
+  Group,
   Icon,
   Menu,
   Stack,
@@ -21,6 +22,8 @@ import {
 } from "metabase/ui";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { SectionLayout } from "../../components/SectionLayout";
@@ -72,9 +75,21 @@ export function ModelingLandingPage() {
     },
     [dispatch],
   );
-  const { tree: modelsTree } = useBuildTreeForCollection(modelCollection);
-  const { tree: metricsTree } = useBuildTreeForCollection(metricCollection);
-  const { tree: snippetTree } = useBuildSnippetTree();
+  const {
+    tree: modelsTree,
+    hasChildren: hasModels,
+    isLoading: loadingModels,
+  } = useBuildTreeForCollection(modelCollection);
+  const {
+    tree: metricsTree,
+    hasChildren: hasMetrics,
+    isLoading: loadingMetrics,
+  } = useBuildTreeForCollection(metricCollection);
+  const {
+    tree: snippetTree,
+    hasChildren: hasSnippets,
+    isLoading: loadingSnippets,
+  } = useBuildSnippetTree();
 
   const filteredTree = useTreeFilter({
     data: [...modelsTree, ...metricsTree, ...snippetTree],
@@ -82,10 +97,19 @@ export function ModelingLandingPage() {
     searchProps: ["name"],
   });
 
+  const libraryHasContent = hasModels || hasMetrics || hasSnippets;
+  const isLoading = loadingModels || loadingMetrics || loadingSnippets;
+
   return (
     <>
       <SectionLayout>
-        <Stack px="3.5rem" pt="4rem" bg="background-light" mih="100%">
+        <Stack
+          px="3.5rem"
+          pt="4rem"
+          bg="background-light"
+          mih="100%"
+          data-testid="modeling-page"
+        >
           <Flex gap="0.5rem">
             <TextInput
               placeholder="Search..."
@@ -98,68 +122,74 @@ export function ModelingLandingPage() {
             <CreateMenu metricCollectionId={metricCollection?.id} />
           </Flex>
           <Card withBorder p={0}>
-            <Table
-              data={filteredTree}
-              columns={[
-                {
-                  accessorKey: "name",
-                  header: "Name",
-                  meta: { width: "auto" },
-                  cell: ({ getValue, row }) => {
-                    const data = row.original;
-                    return (
-                      <>
-                        {data.icon && <Icon name={data.icon} c="brand" />}
-                        {getValue()}
-                      </>
-                    );
+            {isLoading ? (
+              <ListLoadingState />
+            ) : !libraryHasContent ? (
+              <ListEmptyState label={t`No tables, metrics, or snippets yet`} />
+            ) : (
+              <Table
+                data={filteredTree}
+                columns={[
+                  {
+                    accessorKey: "name",
+                    header: "Name",
+                    meta: { width: "auto" },
+                    cell: ({ getValue, row }) => {
+                      const data = row.original;
+                      return (
+                        <Group data-testid={`${data.model}-name`} gap="sm">
+                          {data.icon && <Icon name={data.icon} c="brand" />}
+                          {getValue()}
+                        </Group>
+                      );
+                    },
                   },
-                },
-                {
-                  accessorKey: "updatedAt",
-                  header: "Updated At",
-                  cell: ({ getValue }) => {
-                    const value = getValue() as string;
+                  {
+                    accessorKey: "updatedAt",
+                    header: "Updated At",
+                    cell: ({ getValue }) => {
+                      const value = getValue() as string;
 
-                    return value && dayjs(value).format("MMM D, h:mm: A");
+                      return value && dayjs(value).format("MMM D, h:mm: A");
+                    },
                   },
-                },
-                {
-                  id: "actions",
-                  header: "",
-                  size: 24,
-                  cell: ({ row: { original } }) => {
-                    const { data } = original;
-                    if (
-                      isCollection(data) &&
-                      data.model === "collection" &&
-                      data.namespace === "snippets"
-                    ) {
-                      if (data.id === "root") {
-                        return (
-                          <RootSnippetsCollectionMenu
-                            setPermissionsCollectionId={
-                              setPermissionsCollectionId
-                            }
-                          />
-                        );
-                      } else {
-                        return (
-                          <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
-                            collection={data}
-                            onEditDetails={setEditingCollection}
-                            onChangePermissions={setPermissionsCollectionId}
-                          />
-                        );
+                  {
+                    id: "actions",
+                    header: "",
+                    size: 24,
+                    cell: ({ row: { original } }) => {
+                      const { data } = original;
+                      if (
+                        isCollection(data) &&
+                        data.model === "collection" &&
+                        data.namespace === "snippets"
+                      ) {
+                        if (data.id === "root") {
+                          return (
+                            <RootSnippetsCollectionMenu
+                              setPermissionsCollectionId={
+                                setPermissionsCollectionId
+                              }
+                            />
+                          );
+                        } else {
+                          return (
+                            <PLUGIN_SNIPPET_FOLDERS.CollectionMenu
+                              collection={data}
+                              onEditDetails={setEditingCollection}
+                              onChangePermissions={setPermissionsCollectionId}
+                            />
+                          );
+                        }
                       }
-                    }
 
-                    return null;
+                      return null;
+                    },
                   },
-                },
-              ]}
-              onSelect={handleItemSelect}
-            />
+                ]}
+                onSelect={handleItemSelect}
+              />
+            )}
           </Card>
         </Stack>
       </SectionLayout>

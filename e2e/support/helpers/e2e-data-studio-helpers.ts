@@ -4,6 +4,7 @@ import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
 const modelingSidebar = () => cy.findByTestId("modeling-sidebar");
+const modelingPage = () => cy.findByTestId("modeling-page");
 const collectionsSection = () => cy.findByTestId("collections-section");
 const snippetsSection = () => cy.findByTestId("snippets-section");
 const glossarySection = () => cy.findByTestId("glossary-section");
@@ -135,12 +136,13 @@ export const DataStudio = {
   Modeling: {
     emptyPage: () => cy.findByTestId("modeling-empty-page"),
     collectionPage: collectionPage,
+    modelingPage,
     collectionTitle: () => collectionPage().findByRole("heading"),
     metricItem: (name: string) =>
       cy.findAllByTestId("metric-name").contains(name),
     modelItem: (name: string) =>
       cy.findAllByTestId("dataset-name").contains(name),
     tableItem: (name: string) =>
-      cy.findAllByTestId("table-name").contains(name),
+      modelingPage().findAllByTestId("table-name").contains(name),
   },
 };

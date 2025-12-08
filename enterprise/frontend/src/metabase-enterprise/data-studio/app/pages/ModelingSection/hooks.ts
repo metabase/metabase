@@ -16,6 +16,7 @@ export const useBuildTreeForCollection = (
   collection?: Collection,
 ): {
   isLoading: boolean;
+  hasChildren?: boolean;
   tree: TreeItem[];
 } => {
   const { data: items, isLoading } = useListCollectionItemsQuery(
@@ -31,6 +32,7 @@ export const useBuildTreeForCollection = (
     }
     return {
       isLoading,
+      hasChildren: items.data.length > 0,
       tree: [
         {
           name: collection.name,
@@ -55,6 +57,7 @@ export const useBuildTreeForCollection = (
 export const useBuildSnippetTree = (): {
   isLoading: boolean;
   tree: TreeItem[];
+  hasChildren?: boolean;
 } => {
   const { data: snippets, isLoading: loadingSnippets } = useListSnippetsQuery();
   const { data: snippetCollections, isLoading: loadingCollections } =
@@ -78,6 +81,7 @@ export const useBuildSnippetTree = (): {
     return {
       isLoading: false,
       tree: buildSnippetTree(snippetCollections, snippets),
+      hasChildren: snippets.length > 0 || snippetCollections.length > 1,
     };
   }, [loadingSnippets, loadingCollections, snippets, snippetCollections]);
 };
