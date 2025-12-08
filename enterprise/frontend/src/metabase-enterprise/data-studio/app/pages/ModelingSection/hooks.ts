@@ -20,7 +20,7 @@ export const useBuildTreeForCollection = (
   tree: TreeItem[];
 } => {
   const { data: items, isLoading } = useListCollectionItemsQuery(
-    collection ? { id: collection.id } : skipToken,
+    collection ? { id: collection.id, models: ["metric", "table"] } : skipToken,
   );
 
   return useMemo(() => {

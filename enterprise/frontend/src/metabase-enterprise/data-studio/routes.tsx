@@ -13,16 +13,11 @@ import type { State } from "metabase-types/store";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
-import { ModelingLandingPage } from "./app/pages/ModelingSection";
+import { ModelingLandingPage } from "./app/pages/ModelingSection/";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
-<<<<<<< HEAD
-import { getDataStudioModelingRoutes } from "./modeling/routes";
-=======
-import { getDataStudioModelRoutes } from "./models/routes";
->>>>>>> 2c16b095a00 (New Data Studio UX)
 import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
@@ -56,7 +51,6 @@ export function getDataStudioRoutes(
         {getDataStudioGlossaryRoutes()}
         <Route path="modeling">
           <IndexRoute component={ModelingLandingPage} />
-          {getDataStudioModelingRoutes()}
           {getDataStudioTableRoutes()}
           {getDataStudioMetricRoutes()}
           {getDataStudioSegmentRoutes()}
