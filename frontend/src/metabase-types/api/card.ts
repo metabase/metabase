@@ -13,7 +13,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { DocumentId } from "./document";
+import type { Document, DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -32,6 +32,7 @@ import type { SmartScalarComparison } from "./visualization-settings";
 export type CardType = "model" | "question" | "metric";
 
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
+export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -61,6 +62,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   dashboard: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
   document_id?: DocumentId;
+  document?: CardDocumentInfo | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
 

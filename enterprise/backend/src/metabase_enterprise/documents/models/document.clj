@@ -17,6 +17,10 @@
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
+(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :document]
+  [_original-model _k]
+  :model/Document)
+
 (t2/deftransforms :model/Document
   {:document mi/transform-json})
 

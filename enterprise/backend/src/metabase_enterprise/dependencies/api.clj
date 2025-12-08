@@ -19,7 +19,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -36,21 +35,18 @@
   (let [broken-card-ids (keys card)
         broken-cards (when (seq broken-card-ids)
                        (-> (t2/select :model/Card :id [:in broken-card-ids])
-                           (t2/hydrate [:collection :effective_ancestors] :dashboard)))
+                           (t2/hydrate [:collection :effective_ancestors] :dashboard :document)))
         broken-transform-ids (keys transform)
         broken-transforms (when (seq broken-transform-ids)
                             (t2/select :model/Transform :id [:in broken-transform-ids]))]
     {:success (and (empty? broken-card-ids)
                    (empty? broken-transform-ids))
-     :bad_cards (into [] (comp (filter (fn [card]
-                                         (if (mi/can-read? card)
-                                           card
-                                           (do (log/debugf "Eliding broken card %d - not readable by the user" (:id card))
-                                               nil))))
+     :bad_cards (into [] (comp (filter mi/can-read?)
                                (map (fn [card]
                                       (-> card
                                           collection.root/hydrate-root-collection
-                                          (update :dashboard #(some-> % (select-keys [:id :name])))))))
+                                          (update :dashboard #(some-> % (select-keys [:id :name])))
+                                          (update :document #(some-> % (select-keys [:id :name])))))))
                       broken-cards)
      :bad_transforms (into [] broken-transforms)}))
 

@@ -69,6 +69,46 @@
             (is (= {:bad_cards [], :bad_transforms [], :success true}
                    response))))))))
 
+(deftest check-card-hydrates-dashboard-and-document-test
+  (testing "POST /api/ee/dependencies/check_card hydrates dashboard and document for cards"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-temp [:model/User user {:email "test@test.com"}
+                         :model/Dashboard dashboard {}
+                         :model/Document document {}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [metadata-provider (mt/metadata-provider)
+                    ;; Create base card querying real orders table
+                    base-card         (card/create-card! (basic-card) user)
+                    ;; Create dependent cards that filter on TOTAL
+                    base-card-meta    (lib.metadata/card metadata-provider (:id base-card))
+                    dependent-query   (let [q (lib/query metadata-provider base-card-meta)
+                                            cols (lib/filterable-columns q)
+                                            total-col (m/find-first #(= (:id %) (mt/id :orders :total)) cols)]
+                                        (lib/filter q (lib/> total-col 100)))
+                    dashboard-card    (card/create-card!
+                                       (merge (card-with-query "Dashboard card" dependent-query) {:dashboard_id (:id dashboard)})
+                                       user)
+                    document-card     (card/create-card!
+                                       (merge (card-with-query "Document card" dependent-query) {:document_id (:id document)})
+                                       user)
+                    ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
+                    proposed-query    (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :products)))
+                    proposed-card     {:id (:id base-card)
+                                       :type :question
+                                       :dataset_query proposed-query
+                                       :result_metadata nil}]
+                (is (=? {:success       false
+                         :bad_cards      [{:id           (:id dashboard-card)
+                                           :dashboard_id (:id dashboard)
+                                           :dashboard    (select-keys dashboard [:id :name])}
+                                          {:id           (:id document-card)
+                                           :document_id  (:id document)
+                                           :document     (select-keys document [:id :name])}]
+                         :bad_transforms []}
+                        (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)))))))))))
+
 (deftest check-card-removing-column-breaks-downstream-test
   (testing "POST /api/ee/dependencies/check_card detects when removing a column breaks downstream cards"
     (mt/dataset test-data
