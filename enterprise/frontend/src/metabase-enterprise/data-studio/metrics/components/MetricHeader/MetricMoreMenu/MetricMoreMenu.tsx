@@ -1,8 +1,9 @@
 import { type ReactNode, useState } from "react";
+import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
@@ -12,32 +13,22 @@ import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
-type CardModalType = "move" | "copy" | "archive";
+type MetricModalType = "move" | "copy" | "archive";
 
-type CardMoreMenuProps = {
+type MetricMoreMenuProps = {
   card: Card;
-  onCopy?: (newCard: Card) => void;
-  onArchive?: () => void;
-  onUnarchive?: () => void;
 };
 
-export function CardMoreMenu({
-  card,
-  onCopy,
-  onArchive,
-  onUnarchive,
-}: CardMoreMenuProps) {
-  const [modalType, setModalType] = useState<CardModalType>();
+export function MetricMoreMenu({ card }: MetricMoreMenuProps) {
+  const [modalType, setModalType] = useState<MetricModalType>();
+
   return (
     <>
-      <CardMenu card={card} onOpenModal={setModalType} />
+      <MetricMenu card={card} onOpenModal={setModalType} />
       {modalType != null && (
-        <CardModal
+        <MetricModal
           card={card}
           modalType={modalType}
-          onCopy={onCopy}
-          onArchive={onArchive}
-          onUnarchive={onUnarchive}
           onClose={() => setModalType(undefined)}
         />
       )}
@@ -45,12 +36,12 @@ export function CardMoreMenu({
   );
 }
 
-type CardMenuProps = {
+type MetricMenuProps = {
   card: Card;
-  onOpenModal: (modalType: CardModalType) => void;
+  onOpenModal: (modalType: MetricModalType) => void;
 };
 
-function CardMenu({ card, onOpenModal }: CardMenuProps) {
+function MetricMenu({ card, onOpenModal }: MetricMenuProps) {
   const menuItems: ReactNode[] = [];
   const metadata = useSelector(getMetadata);
   const query = Lib.fromJsQueryAndMetadata(metadata, card.dataset_query);
@@ -120,34 +111,40 @@ function CardMenu({ card, onOpenModal }: CardMenuProps) {
   );
 }
 
-type CardModalProps = {
+type MetricModalProps = {
   card: Card;
-  modalType: CardModalType;
-  onCopy?: (newCard: Card) => void;
-  onArchive?: () => void;
-  onUnarchive?: () => void;
+  modalType: MetricModalType;
   onClose: () => void;
 };
 
-function CardModal({
-  card,
-  modalType,
-  onCopy,
-  onArchive,
-  onUnarchive,
-  onClose,
-}: CardModalProps) {
+function MetricModal({ card, modalType, onClose }: MetricModalProps) {
+  const dispatch = useDispatch();
+
+  const handleCopy = (newCard: Card) => {
+    dispatch(push(Urls.dataStudioMetric(newCard.id)));
+  };
+
+  const handleArchive = () => {
+    dispatch(push(Urls.dataStudioModeling()));
+  };
+
+  const handleUnarchive = () => {
+    dispatch(push(Urls.dataStudioMetric(card.id)));
+  };
+
   switch (modalType) {
     case "move":
       return <MoveCardModal card={card} onClose={onClose} />;
     case "copy":
-      return <CardCopyModal card={card} onCopy={onCopy} onClose={onClose} />;
+      return (
+        <CardCopyModal card={card} onCopy={handleCopy} onClose={onClose} />
+      );
     case "archive":
       return (
         <ArchiveCardModal
           card={card}
-          onArchive={onArchive}
-          onUnarchive={onUnarchive}
+          onArchive={handleArchive}
+          onUnarchive={handleUnarchive}
           onClose={onClose}
         />
       );

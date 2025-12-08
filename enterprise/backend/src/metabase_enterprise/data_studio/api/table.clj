@@ -232,10 +232,10 @@
    body :- ::table-selectors]
   (api/check-superuser)
   (let [target-collection (api/let-404 [colls (seq (t2/select :model/Collection
-                                                              :type collection/library-models-collection-type
+                                                              :type collection/library-data-collection-type
                                                               {:limit 2}))]
                             (if (next colls)
-                              (throw (ex-info (tru "Multiple library-models collections found.")
+                              (throw (ex-info (tru "Multiple library-data collections found.")
                                               {:status-code 409}))
                               (first colls)))
         where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
