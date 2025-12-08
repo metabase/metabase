@@ -20,7 +20,7 @@ export const createDocument = ({
   cy.log(`Create a document: ${name}`);
 
   return cy
-    .request("POST", "/api/ee/document", {
+    .request("POST", "/api/document", {
       name,
       collection_id,
       document,

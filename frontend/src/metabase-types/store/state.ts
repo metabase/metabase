@@ -2,6 +2,7 @@ import type { RouterState } from "react-router-redux";
 
 import type { Api } from "metabase/api/api";
 import type { User } from "metabase-types/api";
+import type { DocumentsState } from "metabase-types/store/documents";
 
 import type { AdminState } from "./admin";
 import type { AppState } from "./app";
@@ -48,6 +49,7 @@ export interface State {
     future: VisualizerState[];
   };
   "metabase-api": MetabaseApiState;
+  documents: DocumentsState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;
