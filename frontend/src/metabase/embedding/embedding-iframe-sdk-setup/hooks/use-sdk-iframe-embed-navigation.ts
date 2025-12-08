@@ -54,10 +54,11 @@ export function useSdkIframeEmbedNavigation({
 
     match(currentStep)
       .with("select-embed-experience", () => {
-        trackEmbedWizardExperienceCompleted(
+        trackEmbedWizardExperienceCompleted({
           experience,
-          defaultSettings.experience,
-        );
+          defaultExperience: defaultSettings.experience,
+          settings,
+        });
       })
       .with("select-embed-resource", () => {
         trackEmbedWizardResourceSelectionCompleted({

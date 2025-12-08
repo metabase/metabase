@@ -9,6 +9,7 @@ import {
   DEFAULT_EXPERIENCE,
   useHandleExperienceChange,
 } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-handle-experience-change";
+import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 
 export const AuthenticationSection = () => {
@@ -24,7 +25,7 @@ export const AuthenticationSection = () => {
     return null;
   }
 
-  const authType = settings.isGuest ? "guest-embed" : "sso";
+  const authType = getAuthTypeForSettings(settings);
 
   const handleAuthTypeChange = (value: string) => {
     const isGuest = value === "guest-embed";

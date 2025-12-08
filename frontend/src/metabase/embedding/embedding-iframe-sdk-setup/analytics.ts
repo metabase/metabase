@@ -5,6 +5,7 @@ import type {
   SdkIframeEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
+import { getSsoTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sso-type-for-settings";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
@@ -57,15 +58,29 @@ const EMBED_SETTINGS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
 export const trackEmbedWizardOpened = () =>
   trackSimpleEvent({ event: "embed_wizard_opened" });
 
-export const trackEmbedWizardExperienceCompleted = (
-  experience: SdkIframeEmbedSetupExperience,
-  defaultExperience: SdkIframeEmbedSetupExperience,
-) =>
+export const trackEmbedWizardExperienceCompleted = ({
+  experience,
+  defaultExperience,
+  settings,
+}: {
+  experience: SdkIframeEmbedSetupExperience;
+  defaultExperience: SdkIframeEmbedSetupExperience;
+  settings: Partial<SdkIframeEmbedSetupSettings>;
+}) => {
+  const authType = getAuthTypeForSettings(settings);
+  const isDefaultExperience = experience === defaultExperience;
+
+  const eventDetailsParts: string[] = [
+    `auth=${authType}`,
+    `experience=${experience}`,
+    `isDefaultExperience=${isDefaultExperience}`,
+  ];
+
   trackSimpleEvent({
     event: "embed_wizard_experience_completed",
-    event_detail:
-      experience === defaultExperience ? "default" : `custom=${experience}`,
+    event_detail: buildEventDetails(eventDetailsParts),
   });
+};
 
 export const trackEmbedWizardResourceSelectionCompleted = ({
   experience,
@@ -166,13 +181,13 @@ export const trackEmbedWizardCodeCopied = ({
   snippetType: "frontend" | "server";
   settings: SdkIframeEmbedSetupSettings;
 }) => {
-  const authType = getAuthTypeForSettings(settings);
+  const ssoType = getSsoTypeForSettings(settings);
 
   const eventDetailsParts: (string | null)[] = [
     `experience=${experience}`,
     `snippetType=${snippetType}`,
     ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-    `auth=${authType}`,
+    `ssoType=${ssoType}`,
   ];
 
   trackSimpleEvent({

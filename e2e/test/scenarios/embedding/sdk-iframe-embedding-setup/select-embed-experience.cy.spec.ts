@@ -81,7 +81,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=chart",
+        event_detail:
+          "auth=guest-embed,experience=chart,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -102,7 +103,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=exploration",
+        event_detail:
+          "auth=sso,experience=exploration,isDefaultExperience=false",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -125,7 +127,7 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=browser",
+        event_detail: "auth=sso,experience=browser,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -178,7 +180,8 @@ describe(suiteTitle, () => {
 
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_experience_completed",
-          event_detail: "custom=chart",
+          event_detail:
+            "auth=guest-embed,experience=chart,isDefaultExperience=false",
         });
 
         H.waitForSimpleEmbedIframesToLoad();
@@ -221,7 +224,7 @@ describe(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_experience_completed",
-      event_detail: "custom=metabot",
+      event_detail: "auth=sso,experience=metabot,isDefaultExperience=false",
     });
 
     H.getSimpleEmbedIframeContent().within(() => {

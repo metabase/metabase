@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useUpdateSettingsMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
-import { MetabaseAccountSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/MetabseAccountSection";
+import { SsoTypeSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/SsoTypeSection";
 import { CopyCodeSnippetButton } from "metabase/embedding/embedding-iframe-sdk-setup/components/CodeSnippet/CopyCodeSnippetButton";
 import { useSdkIframeEmbedServerSnippet } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-sdk-iframe-embed-server-snippet";
 import { EmbedServerSnippetLanguageSelect } from "metabase/public/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
@@ -47,7 +47,7 @@ export const GetCodeStep = () => {
 
   return (
     <Stack gap="md">
-      {!isGuestEmbed && <MetabaseAccountSection />}
+      {!isGuestEmbed && <SsoTypeSection />}
 
       <Card p="md">
         <Text size="lg" fw="bold" mb="md">

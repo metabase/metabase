@@ -6,6 +6,7 @@ import {
   UTM_LOCATION,
 } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
+import { getSsoTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-sso-type-for-settings";
 import { Alert, Anchor, Card, Icon, Radio, Stack, Text } from "metabase/ui";
 
 const utmTags = {
@@ -15,7 +16,7 @@ const utmTags = {
   utm_content: UTM_LOCATION,
 };
 
-export const MetabaseAccountSection = () => {
+export const SsoTypeSection = () => {
   const { isSsoEnabledAndConfigured, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
 
@@ -32,9 +33,9 @@ export const MetabaseAccountSection = () => {
     return null;
   }
 
-  const ssoTypeValue = settings.useExistingUserSession ? "user-session" : "sso";
+  const ssoTypeValue = getSsoTypeForSettings(settings);
 
-  const handleAuthTypeChange = (value: string) => {
+  const handleSsoTypeChange = (value: string) => {
     const useExistingUserSession = value === "user-session";
 
     updateSettings({ useExistingUserSession });
@@ -51,7 +52,7 @@ export const MetabaseAccountSection = () => {
             }
           </Text>
 
-          <Radio.Group value={ssoTypeValue} onChange={handleAuthTypeChange}>
+          <Radio.Group value={ssoTypeValue} onChange={handleSsoTypeChange}>
             <Stack gap="sm">
               <Radio
                 disabled={!isSsoEnabledAndConfigured}
