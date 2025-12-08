@@ -2,8 +2,8 @@ import cx from "classnames";
 import { forwardRef } from "react";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Icon, UnstyledButton } from "metabase/ui";
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
 import { MetabotPromptInput } from "../../MetabotPromptInput";
 

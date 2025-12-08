@@ -1,27 +1,26 @@
 import Document from "@tiptap/extension-document";
-import { EditorContent } from "@tiptap/react";
 import HardBreak from "@tiptap/extension-hard-break";
 import Paragraph from "@tiptap/extension-paragraph";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { useEditor } from "@tiptap/react";
+import { EditorContent , useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { getSetting } from "metabase/selectors/settings";
-import { createMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
+import { createMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
-} from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
-import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
+} from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
+import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
+import { getSetting } from "metabase/selectors/settings";
 
 import S from "./MetabotPromptInput.module.css";
 import {

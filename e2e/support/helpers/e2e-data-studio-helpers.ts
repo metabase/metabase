@@ -56,7 +56,7 @@ export const DataStudio = {
     glossarySection,
     glossaryLink: () => glossarySection().findByText("Glossary"),
     createCardMenuButton: () =>
-      collectionsSection().findByLabelText("Create model or metric"),
+      collectionsSection().findByLabelText("Create metric"),
     createSnippetButton: () =>
       snippetsSection().findByLabelText("Create snippet"),
     snippetCollectionOptionsButton: () =>

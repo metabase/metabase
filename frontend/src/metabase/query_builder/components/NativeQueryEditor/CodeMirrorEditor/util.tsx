@@ -3,6 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
+import { METAKEY } from "metabase/lib/browser";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -10,7 +11,6 @@ import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
 import type { Location, SelectionRange as Range } from "../types";
-import { METAKEY } from "metabase/lib/browser";
 
 export function convertIndexToPosition(value: string, index: number): Location {
   let row = 0;

@@ -16,6 +16,8 @@ export const TAG_TYPES = [
   "database",
   "dataset",
   "document",
+  "public-document",
+  "comment",
   "embedding-hub-checklist",
   "field",
   "field-values",
