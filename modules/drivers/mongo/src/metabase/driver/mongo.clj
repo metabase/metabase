@@ -596,7 +596,7 @@
 
 (defmethod driver/connection-spec :mongo
   [_driver database]
-  (:details database))
+  (driver/maybe-swap-details (:id database) (:details database)))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for MongoDB that dispatches on type."

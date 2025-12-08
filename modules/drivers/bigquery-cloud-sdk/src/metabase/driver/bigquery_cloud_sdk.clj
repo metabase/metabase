@@ -41,6 +41,8 @@
     BigQueryException
     BigQueryOptions
     Dataset
+    BigQuery$DatasetOption
+    DatasetId
     Field
     Field$Mode
     FieldValue
@@ -1025,7 +1027,7 @@
 (defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
   ;; Return the database details directly since we don't use a JDBC spec for bigquery
-  (:details database))
+  (driver/maybe-swap-details (:id database) (:details database)))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
   [_]
@@ -1050,8 +1052,17 @@
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
-    (driver/execute-raw-queries! driver conn-spec sql)))
+  ;; Check if dataset exists using the BigQuery API before trying to create.
+  ;; This is important for workspace isolation where the impersonated SA has
+  ;; access to an existing isolated dataset but cannot create new datasets.
+  (let [details    (get conn-spec :details conn-spec)
+        client     (database-details->client details)
+        project-id (get-project-id details)
+        dataset-id (DatasetId/of project-id schema)]
+    (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
+      ;; Dataset doesn't exist, try to create it
+      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+        (driver/execute-raw-queries! driver conn-spec sql)))))
 
 (defmethod driver/schema-exists? :bigquery-cloud-sdk
   [_driver db-id schema]
