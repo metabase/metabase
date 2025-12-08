@@ -1,9 +1,7 @@
 // @ts-check
 
-const { baseConfig } = require("./jest.config.js");
+const { baseConfig } = require("./jest.base.config.js");
 
-/** @type {import('jest').Config} */
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   ...baseConfig,
   testMatch: ["<rootDir>/frontend/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
