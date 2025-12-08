@@ -164,7 +164,14 @@ export class Api extends EventEmitter {
                   : data,
               );
         } else {
-          const qs = new URLSearchParams(data).toString();
+          const flattenedEntries = Object.entries(data).flatMap(
+            ([key, value]) =>
+              Array.isArray(value)
+                ? value.map((v) => [key, v])
+                : [[key, value]],
+          );
+          const params = new URLSearchParams(flattenedEntries);
+          const qs = params.toString();
           if (qs) {
             url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
           }
