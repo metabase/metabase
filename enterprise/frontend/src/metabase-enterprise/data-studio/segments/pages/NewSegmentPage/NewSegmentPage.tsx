@@ -27,7 +27,9 @@ export function NewSegmentPage({ route, location }: NewSegmentPageProps) {
   const tableIdParam = new URLSearchParams(location.search).get("tableId");
   const tableId = tableIdParam ? Number(tableIdParam) : undefined;
 
-  const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
+  const { table, isLoading, error } = useLoadTableWithMetadata(tableId, {
+    includeForeignTables: true,
+  });
 
   const [createSegment, { isLoading: isSaving }] = useCreateSegmentMutation();
 

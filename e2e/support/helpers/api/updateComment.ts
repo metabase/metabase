@@ -7,7 +7,7 @@ export const updateComment = ({
 }: Partial<UpdateCommentRequest>): Cypress.Chainable<
   Cypress.Response<Comment>
 > => {
-  return cy.request<Comment>("PUT", `/api/ee/comment/${id}`, {
+  return cy.request<Comment>("PUT", `/api/comment/${id}`, {
     content,
     is_resolved,
   });

@@ -130,22 +130,6 @@ export function newDataStudioNativeModel(
   return `${dataStudioModeling()}/models/new/native${getQueryString(params)}`;
 }
 
-export function dataStudioModel(cardId: CardId) {
-  return `${dataStudioModeling()}/models/${cardId}`;
-}
-
-export function dataStudioModelQuery(cardId: CardId) {
-  return `${dataStudioModel(cardId)}/query`;
-}
-
-export function dataStudioModelFields(cardId: CardId) {
-  return `${dataStudioModel(cardId)}/fields`;
-}
-
-export function dataStudioModelDependencies(cardId: CardId) {
-  return `${dataStudioModel(cardId)}/dependencies`;
-}
-
 export type NewDataStudioMetricProps = {
   collectionId?: CollectionId;
 };
