@@ -21,7 +21,7 @@ export function CollectionExportAnalytics() {
     <Tooltip
       label={
         <Box ta="center">
-          <Text size="sm" c="var(--mb-color-tooltip-text)">
+          <Text size="sm" c="tooltip-text">
             {t`Export analytics content`}
           </Text>
           <Text size="sm" c="var(--mb-color-tooltip-text-secondary)">
