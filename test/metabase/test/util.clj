@@ -1589,12 +1589,12 @@
   [topic model model-id]
   (assert (int? model-id) "Must provide an integer id for the model")
   (assert (isa? model :metabase/model))
-  (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                 {:order-by [[:id :desc]]
-                  :where [:and
-                          [:= :model (name model)]
-                          [:= :model_id model-id]
-                          (when topic [:= :topic (name topic)])]}))
+  (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
+             {:order-by [[:id :desc]]
+              :where [:and
+                      [:= :model (name model)]
+                      [:= :model_id model-id]
+                      (when topic [:= :topic (name topic)])]}))
 
 (defn repeat-concurrently
   "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."
