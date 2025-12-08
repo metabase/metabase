@@ -42,7 +42,11 @@ export const PaneHeader = ({
       {...rest}
     >
       <Stack gap="sm">
-        {breadcrumbs && <Box mb="lg" mt="sm">{breadcrumbs}</Box>}
+        {breadcrumbs && (
+          <Box mb="lg" mt="sm">
+            {breadcrumbs}
+          </Box>
+        )}
         <Group align="center" gap="xs" wrap="nowrap">
           {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
           {title}
