@@ -106,11 +106,14 @@ export const useMetabotAgent = () => {
   const submitInput = useCallback(
     async (
       prompt: string | Omit<MetabotUserChatMessage, "id" | "role">,
-      profile?: string,
+      options?: {
+        profile?: string | undefined;
+        preventOpenSidebar?: boolean;
+      },
     ) => {
-      setProfileOverride(profile);
+      setProfileOverride(options?.profile);
 
-      if (!visible) {
+      if (!visible && !options?.preventOpenSidebar) {
         setVisible(true);
       }
 

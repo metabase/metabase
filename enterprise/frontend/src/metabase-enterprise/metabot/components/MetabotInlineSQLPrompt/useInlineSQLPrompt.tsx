@@ -57,6 +57,25 @@ export function useInlineSQLPrompt(question: Question): UseInlineSqlEditResult {
   }, []);
   /* TODO: temp hack end */
 
+  // HACK: Close and reopen widget when we receive generated SQL to force
+  // CodeMirror to recalculate gutter positions. The line numbers and diff
+  // UI seem to not respect the height of the prompt input and forcing a
+  // remeasure wasn't working either.
+  useEffect(() => {
+    if (generatedSql && portalTarget?.view) {
+      const { view } = portalTarget;
+      requestAnimationFrame(() => {
+        view.dispatch({ effects: hideEffect.of() });
+        view.dispatch({ effects: toggleEffect.of({ view }) });
+        // Focus the SQL editor after reopening
+        requestAnimationFrame(() => {
+          view.focus();
+        });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedSql]);
+
   const hideInput = () => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });
     portalTarget?.view.focus();

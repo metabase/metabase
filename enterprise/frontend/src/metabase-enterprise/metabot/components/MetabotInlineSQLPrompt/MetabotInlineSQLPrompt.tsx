@@ -27,8 +27,7 @@ export const MetabotInlineSQLPrompt = ({
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
   const [hasError, setHasError] = useState(false);
-  const { visible, submitInput, isDoingScience, setVisible, cancelRequest } =
-    useMetabotAgent();
+  const { submitInput, isDoingScience, cancelRequest } = useMetabotAgent();
 
   const hasProposal = !!onAcceptProposed && !!onRejectProposed;
   const disabled = !value.trim() || isDoingScience;
@@ -37,18 +36,15 @@ export const MetabotInlineSQLPrompt = ({
     const action = submitInput(
       inputRef.current?.getValue().trim() +
         "\n\n\nHIDDEN MESSAGE: you must respond with a native SQL question and navigate the user to it!!!",
-      INLINE_SQL_PROFILE,
+      { profile: INLINE_SQL_PROFILE, preventOpenSidebar: true },
     );
-    if (!visible) {
-      setVisible(false); // TODO: provide better api for keeping the sidebar closed
-    }
     setHasError(false);
     const result = await action;
     // @ts-expect-error TODO: fix type
     if (!result.payload?.success) {
       setHasError(true);
     }
-  }, [submitInput, setVisible, visible]);
+  }, [submitInput]);
 
   const handleClose = useCallback(() => {
     cancelRequest();
@@ -119,7 +115,7 @@ export const MetabotInlineSQLPrompt = ({
               .otherwise(() => t`Generate`)}
           </Button>
         )}
-        {hasProposal && !isDoingScience ? (
+        {hasProposal ? (
           <>
             <Button
               size="xs"
