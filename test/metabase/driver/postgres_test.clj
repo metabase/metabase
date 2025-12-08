@@ -2049,12 +2049,14 @@
                     {:field-name "var_bit", :base-type {:native "VARBIT(16)"}}
                     {:field-name "bit_varying", :base-type {:native "BIT VARYING(32)"}}]
                    [[(pg-obj "BIT" "1") (pg-obj "BIT" "10101010") (pg-obj "BIT" "1101") (pg-obj "BIT" "111000111")]
-                    [(pg-obj "BIT" "0") (pg-obj "BIT" "00001111") (pg-obj "BIT" "10101") (pg-obj "BIT" "1001001")]]]])
+                    [(pg-obj "BIT" "0") (pg-obj "BIT" "00001111") (pg-obj "BIT" "10101") (pg-obj "BIT" "1001001")]
+                    [nil nil nil nil]]]])
       (let [mp (mt/metadata-provider)
             base-query (lib/query mp (lib.metadata/table mp (mt/id :bit_string_table)))]
         (testing "can query all rows"
           (is (= [[1 "1" "10101010" "1101" "111000111"]
-                  [2 "0" "00001111" "10101" "1001001"]]
+                  [2 "0" "00001111" "10101" "1001001"]
+                  [3 nil nil nil nil]]
                  (mt/rows (qp/process-query base-query)))))
         (testing "can filter by single_bit column"
           (let [single-bit-col (mt/id :bit_string_table :single_bit)
@@ -2083,4 +2085,23 @@
                           (lib/filter (lib/= (lib.metadata/field mp bit-varying-col)
                                              "1001001")))]
             (is (= [[2 "0" "00001111" "10101" "1001001"]]
-                   (mt/rows (qp/process-query query))))))))))
+                   (mt/rows (qp/process-query query))))))
+        (let [fixed-bit-col (mt/id :bit_string_table :fixed_bit)]
+          (testing "can filter with not equals"
+            (let [query (-> base-query
+                            (lib/filter (lib/!= (lib.metadata/field mp fixed-bit-col)
+                                                "00001111")))]
+              (is (= [[1 "1" "10101010" "1101" "111000111"]
+                      [3 nil nil nil nil]]
+                     (mt/rows (qp/process-query query))))))
+          (testing "can filter with is empty"
+            (let [query (-> base-query
+                            (lib/filter (lib/is-empty (lib.metadata/field mp fixed-bit-col))))]
+              (is (= [[3 nil nil nil nil]]
+                     (mt/rows (qp/process-query query))))))
+          (testing "can filter with is not empty"
+            (let [query (-> base-query
+                            (lib/filter (lib/not-empty (lib.metadata/field mp fixed-bit-col))))]
+              (is (= [[1 "1" "10101010" "1101" "111000111"]
+                      [2 "0" "00001111" "10101" "1001001"]]
+                     (mt/rows (qp/process-query query)))))))))))
