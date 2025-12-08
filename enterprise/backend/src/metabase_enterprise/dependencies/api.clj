@@ -19,7 +19,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
