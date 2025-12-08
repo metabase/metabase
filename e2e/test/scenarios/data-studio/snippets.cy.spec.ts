@@ -7,6 +7,9 @@ describe("scenarios > data studio > snippets", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
+    // TODO: We likely shouln't need to do this to access the data studio modeling page
+    H.createLibrary();
+
     cy.intercept("POST", "/api/native-query-snippet").as("createSnippet");
     cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");
   });
