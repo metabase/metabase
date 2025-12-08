@@ -1,0 +1,4 @@
+{
+  "subject": "Fix external group tooltip referencing All Internal Users",
+  "body": "Closes UXW-2474\n"
+}
