@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
@@ -9,20 +10,23 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
 import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
+import { Button } from "metabase/ui";
 
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
 
 export const HomePage = (): JSX.Element => {
   const { isLoadingDash } = useDashboardRedirect();
+  const [isOpen, { open, close }] = useDisclosure(false);
   if (isLoadingDash) {
     return <LoadingAndErrorWrapper loading={isLoadingDash} />;
   }
 
   return (
     <HomeLayout>
-      <OmniPickerModal opened onClose={() => {}} />
       <HomeContent />
+      <Button onClick={open} mt="xl">OmniPicker</Button>
+      <OmniPickerModal opened={isOpen} onClose={close} />
     </HomeLayout>
   );
 };

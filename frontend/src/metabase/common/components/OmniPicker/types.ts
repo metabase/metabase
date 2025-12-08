@@ -8,7 +8,7 @@ import type {
 
 export type OmniPickerCollectionItem = Pick<
   CollectionItem,
-  "id" | "name" | "model" | "here" | "below" | "moderated_status"
+  "id" | "name" | "model" | "here" | "below" | "moderated_status" | "display"
 > & {
   id: CollectionItem["id"] | CollectionId;
 };
