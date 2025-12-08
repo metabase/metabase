@@ -56,7 +56,7 @@
                  (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
                  ;; Grant access on the isolation schema
                  (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
-      (jdbc/execute! jdbc-spec [#p sql]))
+      (jdbc/execute! jdbc-spec [sql]))
     {:schema           schema-name
      :database_details {:db new-db}}))
 
