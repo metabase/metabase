@@ -24,7 +24,7 @@
     (sql.qp/mbql->native driver/*driver* (qp.preprocess/preprocess query))))
 
 (deftest isolation-e2e-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace :transforms/table)
     (mt/with-model-cleanup [:model/Transform :model/Workspace]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform 1"
                                                           :source {:type  "query"

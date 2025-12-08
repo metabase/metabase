@@ -28,25 +28,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- service-account-credentials
+  "Parse ServiceAccountCredentials from database details."
+  ^ServiceAccountCredentials [{:keys [service-account-json]}]
+  (ServiceAccountCredentials/fromStream
+   (ByteArrayInputStream. (.getBytes ^String service-account-json))))
+
 (defn- get-project-id
   "Extract project ID from database details."
-  [{:keys [project-id service-account-json] :as _details}]
-  (or project-id
-      (when service-account-json
-        (.getProjectId (ServiceAccountCredentials/fromStream
-                        (ByteArrayInputStream. (.getBytes ^String service-account-json)))))))
-
-(defn- database-details->credentials
-  "Get ServiceAccountCredentials from database details."
-  ^ServiceAccountCredentials [details]
-  (ServiceAccountCredentials/fromStream
-   (ByteArrayInputStream. (.getBytes ^String (:service-account-json details)))))
+  [{:keys [project-id] :as details}]
+  (or project-id (.getProjectId (service-account-credentials details))))
 
 (defn- database-details->client
   "Create a BigQuery client from database details."
   ^BigQuery [details]
-  (let [creds (-> (database-details->credentials details)
-                  (.createScoped ["https://www.googleapis.com/auth/bigquery"]))]
+  (let [creds (.createScoped (service-account-credentials details)
+                             ["https://www.googleapis.com/auth/bigquery"])]
     (-> (BigQueryOptions/newBuilder)
         (.setCredentials creds)
         (.build)
@@ -55,8 +52,8 @@
 (defn- database-details->iam-client
   "Create an IAM Admin client from database details."
   ^IAMClient [details]
-  (let [creds (-> (database-details->credentials details)
-                  (.createScoped ["https://www.googleapis.com/auth/cloud-platform"]))]
+  (let [creds (.createScoped (service-account-credentials details)
+                             ["https://www.googleapis.com/auth/cloud-platform"])]
     (IAMClient/create
      (-> (IAMSettings/newBuilder)
          (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
@@ -73,6 +70,15 @@
         (subs 0 (min 30 (count sa-id)))
         u/lower-case-en)))
 
+(defn- service-account-exists?
+  "Check if a service account exists."
+  [^IAMClient iam-client ^String project-id ^String sa-email]
+  (try
+    (.getServiceAccount iam-client (format "projects/%s/serviceAccounts/%s" project-id sa-email))
+    true
+    (catch com.google.api.gax.rpc.NotFoundException _
+      false)))
+
 (defn- create-workspace-service-account!
   "Create a service account for a workspace if it doesn't exist.
    Returns the service account email."
@@ -80,48 +86,56 @@
   (let [sa-id        (workspace-service-account-id workspace)
         sa-email     (format "%s@%s.iam.gserviceaccount.com" sa-id project-id)
         project-name (format "projects/%s" project-id)]
-    (log/infof "Creating service account %s in project %s" sa-id project-id)
-    (try
-      ;; Try to create the service account
-      (let [request (-> (CreateServiceAccountRequest/newBuilder)
-                        (.setName project-name)
-                        (.setAccountId sa-id)
-                        (.setServiceAccount
-                         (-> (ServiceAccount/newBuilder)
-                             (.setDisplayName (format "Metabase Workspace %s" (:id workspace)))
-                             (.setDescription "Auto-created by Metabase for workspace isolation")
-                             (.build)))
-                        (.build))]
-        (.createServiceAccount iam-client request)
-        (log/infof "Created service account: %s" sa-email))
-      (catch com.google.api.gax.rpc.AlreadyExistsException _
-        (log/debugf "Service account already exists: %s" sa-email))
-      (catch Exception e
-        (log/errorf e "Failed to create service account %s" sa-email)
-        (throw e)))
+    ;; Check if already exists first
+    (if (service-account-exists? iam-client project-id sa-email)
+      (log/debugf "Service account already exists: %s" sa-email)
+      (do
+        (log/infof "Creating service account %s in project %s" sa-id project-id)
+        (let [request (-> (CreateServiceAccountRequest/newBuilder)
+                          (.setName project-name)
+                          (.setAccountId sa-id)
+                          (.setServiceAccount
+                           (-> (ServiceAccount/newBuilder)
+                               (.setDisplayName (format "Metabase Workspace %s" (:id workspace)))
+                               (.setDescription "Auto-created by Metabase for workspace isolation")
+                               (.build)))
+                          (.build))]
+          (.createServiceAccount iam-client request)
+          (log/infof "Created service account: %s" sa-email))))
     sa-email))
+
+(defn- has-role-binding?
+  "Check if a policy already has a binding for the given role and member."
+  [^Policy policy ^String role ^String member]
+  (some (fn [^Binding binding]
+          (and (= (.getRole binding) role)
+               (some #(= % member) (.getMembersList binding))))
+        (.getBindingsList policy)))
 
 (defn- grant-impersonation-permission!
   "Grant the main service account permission to impersonate the workspace service account."
   [^IAMClient iam-client ^String project-id ^String main-sa-email ^String workspace-sa-email]
-  (let [resource (format "projects/%s/serviceAccounts/%s" project-id workspace-sa-email)]
+  (let [resource (format "projects/%s/serviceAccounts/%s" project-id workspace-sa-email)
+        role     "roles/iam.serviceAccountTokenCreator"
+        member   (format "serviceAccount:%s" main-sa-email)]
     (try
       ;; Get current policy
-      (let [current-policy (.getIamPolicy iam-client resource)
-            ;; Add binding for serviceAccountTokenCreator role
-            new-binding (-> (Binding/newBuilder)
-                            (.setRole "roles/iam.serviceAccountTokenCreator")
-                            (.addMembers (format "serviceAccount:%s" main-sa-email))
-                            (.build))
-            updated-policy (-> (Policy/newBuilder current-policy)
-                               (.addBindings new-binding)
-                               (.build))
-            request (-> (SetIamPolicyRequest/newBuilder)
-                        (.setResource resource)
-                        (.setPolicy updated-policy)
-                        (.build))]
-        (.setIamPolicy iam-client request)
-        (log/infof "Granted impersonation permission on %s to %s" workspace-sa-email main-sa-email))
+      (let [current-policy (.getIamPolicy iam-client resource)]
+        ;; Only add if not already granted
+        (when-not (has-role-binding? current-policy role member)
+          (let [new-binding    (-> (Binding/newBuilder)
+                                   (.setRole role)
+                                   (.addMembers member)
+                                   (.build))
+                updated-policy (-> (Policy/newBuilder current-policy)
+                                   (.addBindings new-binding)
+                                   (.build))
+                request        (-> (SetIamPolicyRequest/newBuilder)
+                                   (.setResource resource)
+                                   (.setPolicy updated-policy)
+                                   (.build))]
+            (.setIamPolicy iam-client request)
+            (log/infof "Granted impersonation permission on %s to %s" workspace-sa-email main-sa-email))))
       (catch Exception e
         (log/warn e "Failed to grant impersonation permission (may already exist)")))))
 
@@ -130,34 +144,36 @@
    This is needed for roles like bigquery.jobUser that must be granted at project level."
   [details ^String project-id ^String service-account-email ^String role]
   (log/infof "Granting project role %s to %s" role service-account-email)
-  (let [creds          (-> (database-details->credentials details)
-                           (.createScoped ["https://www.googleapis.com/auth/cloud-platform"]))
+  (let [creds          (.createScoped (service-account-credentials details)
+                                      ["https://www.googleapis.com/auth/cloud-platform"])
         settings       (-> (ProjectsSettings/newBuilder)
                            (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
                                                       (getCredentials [_] creds)))
                            (.build))
         projects-client (ProjectsClient/create settings)
-        resource       (format "projects/%s" project-id)]
+        resource       (format "projects/%s" project-id)
+        member         (format "serviceAccount:%s" service-account-email)]
     (try
       ;; Get current policy
       (let [get-request    (-> (GetIamPolicyRequest/newBuilder)
                                (.setResource resource)
                                (.build))
-            current-policy (.getIamPolicy projects-client get-request)
-            ;; Add new binding for the role
-            new-binding    (-> (Binding/newBuilder)
-                               (.setRole role)
-                               (.addMembers (format "serviceAccount:%s" service-account-email))
-                               (.build))
-            updated-policy (-> (Policy/newBuilder current-policy)
-                               (.addBindings new-binding)
-                               (.build))
-            set-request    (-> (SetIamPolicyRequest/newBuilder)
-                               (.setResource resource)
-                               (.setPolicy updated-policy)
-                               (.build))]
-        (.setIamPolicy projects-client set-request)
-        (log/infof "Granted %s on project %s to %s" role project-id service-account-email))
+            current-policy (.getIamPolicy projects-client get-request)]
+        ;; Only add if not already granted
+        (when-not (has-role-binding? current-policy role member)
+          (let [new-binding    (-> (Binding/newBuilder)
+                                   (.setRole role)
+                                   (.addMembers member)
+                                   (.build))
+                updated-policy (-> (Policy/newBuilder current-policy)
+                                   (.addBindings new-binding)
+                                   (.build))
+                set-request    (-> (SetIamPolicyRequest/newBuilder)
+                                   (.setResource resource)
+                                   (.setPolicy updated-policy)
+                                   (.build))]
+            (.setIamPolicy projects-client set-request)
+            (log/infof "Granted %s on project %s to %s" role project-id service-account-email))))
       (finally
         (.close projects-client)))))
 
@@ -168,8 +184,8 @@
                                       :or   {max-attempts 120
                                              interval-ms  1000}}]
   (log/info "Waiting for IAM impersonation to be ready...")
-  (let [base-creds  (-> (database-details->credentials details)
-                        (.createScoped ["https://www.googleapis.com/auth/bigquery"]))
+  (let [base-creds  (.createScoped (service-account-credentials details)
+                                   ["https://www.googleapis.com/auth/bigquery"])
         project-id  (get-project-id details)]
     (loop [attempt 1]
       (log/debugf "Checking impersonation readiness (attempt %d/%d)" attempt max-attempts)
@@ -219,6 +235,14 @@
     "roles/bigquery.dataOwner"  Acl$Role/OWNER
     (throw (ex-info (str "Unknown role: " role-name) {:role role-name}))))
 
+(defn- has-acl-entry?
+  "Check if an ACL list already has an entry for the given entity and role."
+  [acl-list ^Acl$User entity ^Acl$Role role]
+  (some (fn [^Acl acl]
+          (and (= (.getEntity acl) entity)
+               (= (.getRole acl) role)))
+        acl-list))
+
 (defn- grant-dataset-acl!
   "Grant an ACL role on a dataset to a service account."
   [^BigQuery client ^DatasetId dataset-id ^String service-account-email ^String role-name]
@@ -226,12 +250,15 @@
   (let [dataset     (.getDataset client dataset-id (into-array BigQuery$DatasetOption []))
         current-acl (into [] (.getAcl dataset))
         acl-role    (role-name->acl-role role-name)
-        new-acl-entry (Acl/of (Acl$User. service-account-email) acl-role)
-        updated-acl (conj current-acl new-acl-entry)
-        updated-dataset (-> (.toBuilder dataset)
-                            (.setAcl updated-acl)
-                            (.build))]
-    (.update client updated-dataset (into-array BigQuery$DatasetOption []))))
+        acl-user    (Acl$User. service-account-email)]
+    ;; Only add if not already granted
+    (when-not (has-acl-entry? current-acl acl-user acl-role)
+      (let [new-acl-entry   (Acl/of acl-user acl-role)
+            updated-acl     (conj current-acl new-acl-entry)
+            updated-dataset (-> (.toBuilder dataset)
+                                (.setAcl updated-acl)
+                                (.build))]
+        (.update client updated-dataset (into-array BigQuery$DatasetOption []))))))
 
 (defmethod isolation/init-workspace-database-isolation! :bigquery-cloud-sdk
   [database workspace]
@@ -239,7 +266,7 @@
         client       (database-details->client details)
         iam-client   (database-details->iam-client details)
         project-id   (get-project-id details)
-        main-sa-email (.getClientEmail (database-details->credentials details))
+        main-sa-email (.getClientEmail (service-account-credentials details))
         dataset-name (driver.common/isolation-namespace-name workspace)]
 
     (try
@@ -261,11 +288,12 @@
         ;; Wait for IAM permissions to propagate by polling until impersonation works
         (wait-for-impersonation-ready! details ws-sa-email)
 
-        ;; Create the isolated dataset (using main SA credentials, not impersonated)
-        (let [dataset-info (-> (DatasetInfo/newBuilder dataset-id)
-                               (.setDescription (format "Metabase workspace isolation for workspace %s" (:id workspace)))
-                               (.build))]
-          (.create client dataset-info (into-array BigQuery$DatasetOption [])))
+        ;; Create the isolated dataset if it doesn't exist (using main SA credentials, not impersonated)
+        (when-not (.getDataset client dataset-id (into-array BigQuery$DatasetOption []))
+          (let [dataset-info (-> (DatasetInfo/newBuilder dataset-id)
+                                 (.setDescription (format "Metabase workspace isolation for workspace %s" (:id workspace)))
+                                 (.build))]
+            (.create client dataset-info (into-array BigQuery$DatasetOption []))))
 
         ;; Grant the workspace service account dataEditor role on the isolated dataset
         ;; dataEditor allows: create/update/delete tables, insert/update/delete data
@@ -280,21 +308,27 @@
       (finally
         (.close iam-client)))))
 
+(defn- has-table-iam-binding?
+  "Check if a table IAM policy already has a binding for the given role and identity."
+  [^com.google.cloud.Policy policy ^Role role ^Identity identity]
+  (let [bindings (.getBindings policy)
+        identity-set (get bindings role)]
+    (and identity-set (.contains identity-set identity))))
+
 (defn- grant-table-read-access!
   "Grant read access on a specific table to a service account using table-level IAM."
   [^BigQuery client ^TableId table-id ^String service-account-email]
   (log/debugf "Granting read access on table %s to %s" table-id service-account-email)
   (let [current-policy (.getIamPolicy client table-id (into-array BigQuery$IAMOption []))
-        ;; Use com.google.cloud.Role and Identity for BigQuery table-level IAM
         role           (Role/of "roles/bigquery.dataViewer")
-        sa-identity    (Identity/serviceAccount service-account-email)
-        ;; addIdentity signature: (Role role, Identity first, Identity... others)
-        updated-policy (-> current-policy
-                           (.toBuilder)
-                           (.addIdentity role sa-identity (into-array Identity []))
-                           (.build))]
-    ;; setIamPolicy signature: (TableId tableId, Policy policy, IAMOption... options)
-    (.setIamPolicy client table-id updated-policy (into-array BigQuery$IAMOption []))))
+        sa-identity    (Identity/serviceAccount service-account-email)]
+    ;; Only add if not already granted
+    (when-not (has-table-iam-binding? current-policy role sa-identity)
+      (let [updated-policy (-> current-policy
+                               (.toBuilder)
+                               (.addIdentity role sa-identity (into-array Identity []))
+                               (.build))]
+        (.setIamPolicy client table-id updated-policy (into-array BigQuery$IAMOption []))))))
 
 (defmethod isolation/grant-read-access-to-tables! :bigquery-cloud-sdk
   [database ws-sa-email tables]
@@ -330,19 +364,18 @@
     (log/debugf "Duplicating table structure: %s.%s -> %s.%s"
                 source-schema source-table isolated-schema isolated-table)
 
-    ;; Get source table schema
-    (let [source-table-obj (.getTable client source-table-id (into-array BigQuery$TableOption []))
-          _                (when-not source-table-obj
-                             (throw (ex-info "Source table not found"
-                                             {:source-schema source-schema
-                                              :source-table source-table})))
-          schema           (.. source-table-obj getDefinition getSchema)
-
-          ;; Create structure-only copy in isolated dataset
-          table-info       (-> (TableInfo/newBuilder isolated-table-id
-                                                     (StandardTableDefinition/of schema))
-                               (.build))]
-      (.create client table-info (into-array BigQuery$TableOption [])))
+    ;; Get source table schema and create isolated copy if it doesn't exist
+    (when-not (.getTable client isolated-table-id (into-array BigQuery$TableOption []))
+      (let [source-table-obj (.getTable client source-table-id (into-array BigQuery$TableOption []))
+            _                (when-not source-table-obj
+                               (throw (ex-info "Source table not found"
+                                               {:source-schema source-schema
+                                                :source-table source-table})))
+            schema           (.. source-table-obj getDefinition getSchema)
+            table-info       (-> (TableInfo/newBuilder isolated-table-id
+                                                       (StandardTableDefinition/of schema))
+                                 (.build))]
+        (.create client table-info (into-array BigQuery$TableOption []))))
 
     ;; Sync the new table metadata into Metabase
     (let [table-metadata (ws.sync/sync-transform-mirror! database isolated-schema isolated-table)]

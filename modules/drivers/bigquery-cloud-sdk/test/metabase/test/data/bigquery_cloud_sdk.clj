@@ -64,8 +64,10 @@
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
-   :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)})
+  {:project-id #_(tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+   "hairai---staging"
+   :service-account-json #_(tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)
+   (slurp "/Users/earther/Desktop/metabase-hairai-staging-key.json")})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
