@@ -1,16 +1,17 @@
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, IndexedEntity } from "metabase-types/api";
 
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
 import { document } from "./documents";
+import { indexedEntity } from "./indexed-entities";
 import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
 import { timeline } from "./timelines";
 import { transform } from "./transforms";
 
 export type UrlableModel = {
-  id: number;
+  id: any;
   model: string;
   name: string;
   database?: {
@@ -19,7 +20,13 @@ export type UrlableModel = {
   collection_id?: CollectionId | null;
 };
 
-export function modelToUrl(item: UrlableModel) {
+const NOT_FOUND_URL = "/404";
+
+/**
+ * this isn't the best-named function in the codebase, but if you want to get a url for basically
+ * anything in metabase, just put it through here
+ */
+export function modelToUrl(item: UrlableModel): string {
   switch (item.model) {
     case "card":
       return question({
@@ -38,7 +45,7 @@ export function modelToUrl(item: UrlableModel) {
       if (item?.database?.id) {
         return tableRowsQuery(item.database.id, item.id);
       }
-      return null;
+      return NOT_FOUND_URL;
     case "collection":
       return collection(item);
     case "document":
@@ -46,10 +53,12 @@ export function modelToUrl(item: UrlableModel) {
     case "timeline":
       return timeline(item);
     case "user":
-      return null;
+      return NOT_FOUND_URL;
     case "transform":
       return transform(item.id);
+    case "indexed-entity":
+      return indexedEntity(item as IndexedEntity);
     default:
-      return null;
+      return NOT_FOUND_URL;
   }
 }

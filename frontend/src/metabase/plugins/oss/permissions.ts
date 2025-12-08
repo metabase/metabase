@@ -20,15 +20,6 @@ import type { State } from "metabase-types/store";
 
 import type { PluginGroupManagersType } from "../types";
 
-// Types
-export interface UserWithApplicationPermissions extends User {
-  permissions?: {
-    can_access_monitoring: boolean;
-    can_access_setting: boolean;
-    can_access_subscription: boolean;
-  };
-}
-
 const getDefaultAdminPermissionsDatabaseRoutes = () => [];
 const getDefaultAdminPermissionsDatabaseGroupRoutes = () => [];
 const getDefaultAdminPermissionsDatabasePostActions = () => ({

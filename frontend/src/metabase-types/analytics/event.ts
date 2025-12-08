@@ -3,10 +3,6 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
-import type {
-  MetadataEditAnalyticsDetail,
-  MetadataEventSource,
-} from "metabase/metadata/pages/DataModelV1/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
@@ -98,7 +94,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "dataset"
     | "indexed-entity"
     | "snippet"
-    | "document";
+    | "document"
+    | "table";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -410,10 +407,27 @@ export type LearnAboutDataClickedEvent = ValidateEvent<{
   event: "learn_about_our_data_clicked";
 }>;
 
+export type MetadataEditEventDetail =
+  | "type_casting"
+  | "semantic_type_change"
+  | "visibility_change"
+  | "filtering_change"
+  | "display_values"
+  | "json_unfolding"
+  | "formatting";
+
+export type MetadataEditEventTriggeredFrom = "admin" | "data_studio";
+
 export type MetadataEditEvent = ValidateEvent<{
   event: "metadata_edited";
-  event_detail: MetadataEditAnalyticsDetail;
-  triggered_from: MetadataEventSource;
+  event_detail: MetadataEditEventDetail;
+  triggered_from: MetadataEditEventTriggeredFrom;
+}>;
+
+export type BookmarkTableEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "table";
+  triggered_from: "collection_list";
 }>;
 
 export type BookmarkQuestionEvent = ValidateEvent<{
@@ -498,6 +512,7 @@ export type RemoteSyncEvent =
   | RemoteSyncDeactivatedEvent;
 
 export type BookmarkEvent =
+  | BookmarkTableEvent
   | BookmarkQuestionEvent
   | BookmarkModelEvent
   | BookmarkMetricEvent

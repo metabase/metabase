@@ -1752,6 +1752,8 @@
   ;; delete all collection children
   (t2/delete! :model/Collection :location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
+    (t2/update! :model/Table :collection_id [:in affected-collection-ids] {:collection_id nil
+                                                                           :is_published  false})
     (doseq [model [:model/Card
                    :model/Dashboard
                    :model/NativeQuerySnippet

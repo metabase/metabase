@@ -230,17 +230,26 @@
                         (t2/hydrate :can_write))]
     (if shallow
       (shallow-tree-from-collection-id collections)
-      (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (case (keyword card-type)
-                                                        :model :dataset
-                                                        :metric :metric
-                                                        :card) conj collection-id))
-                                        {:dataset #{}
-                                         :metric  #{}
-                                         :card    #{}}
-                                        (t2/reducible-query {:select-distinct [:collection_id :type]
-                                                             :from            [:report_card]
-                                                             :where           [:= :archived false]}))
+      (let [collection-type-ids (merge (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                                                 (update acc (case (keyword card-type)
+                                                               :model :dataset
+                                                               :metric :metric
+                                                               :card) conj collection-id))
+                                               {:dataset #{}
+                                                :metric  #{}
+                                                :card    #{}}
+                                               (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                                    :from            [:report_card]
+                                                                    :where           [:= :archived false]}))
+                                       ;; Tables in collections are an EE feature (data-studio)
+                                       (when (premium-features/has-feature? :data-studio)
+                                         {:table (->> (t2/query {:select-distinct [:collection_id]
+                                                                 :from :metabase_table
+                                                                 :where [:and
+                                                                         [:= :is_published true]
+                                                                         [:= :archived_at nil]]})
+                                                      (map :collection_id)
+                                                      (into #{}))}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -258,7 +267,8 @@
     "pulse"                             ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
-    "timeline"})
+    "timeline"
+    "table"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -388,7 +398,7 @@
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
-                  [:= :collection_id (:id collection)]
+                  [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
@@ -497,11 +507,11 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
-                      [:= :collection_id (:id collection)]
+                      [:= :c.collection_id (:id collection)]
                       [:= :c.archived_directly false]])
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
@@ -595,11 +605,11 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
+                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
-                      [:= :collection_id (:id collection)]
+                      [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
                    [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
@@ -700,6 +710,26 @@
   [_ collection options]
   (collection-query collection options))
 
+(defmethod collection-children-query :table
+  [_ collection {:keys [archived? pinned-state]}]
+  {:select [:t.id
+            [:t.id :table_id]
+            [:t.display_name :name]
+            :t.description
+            :t.collection_id
+            [:t.db_id :database_id]
+            [[:!= :t.archived_at nil] :archived]
+            [(h2x/literal "table") :model]]
+   :from   [[:metabase_table :t]]
+   :where  [:and
+            [:= :t.is_published true]
+            (poison-when-pinned-clause pinned-state)
+            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+            [:= :t.collection_id (:id collection)]
+            (if archived?
+              [:!= :t.archived_at nil]
+              [:= :t.archived_at nil])]})
+
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
   (let [descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
@@ -726,6 +756,20 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
+        ;; Tables in collections are an EE feature (data-studio)
+        collections-containing-tables
+        (if (premium-features/has-feature? :data-studio)
+          (->> (when (seq descendant-collection-ids)
+                 (t2/query {:select-distinct [:collection_id]
+                            :from :metabase_table
+                            :where [:and
+                                    [:= :is_published true]
+                                    [:= :archived_at nil]
+                                    [:in :collection_id descendant-collection-ids]]}))
+               (map :collection_id)
+               (into #{}))
+          #{})
+
         collections-containing-dashboards
         (->> (when (seq descendant-collection-ids)
                (t2/query {:select-distinct [:collection_id]
@@ -746,7 +790,8 @@
 
         child-type->coll-id-set
         (merge child-type->coll-id-set
-               {:collection collections-containing-collections
+               {:table collections-containing-tables
+                :collection collections-containing-collections
                 :dashboard collections-containing-dashboards})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
@@ -776,6 +821,10 @@
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
             update-personal-collection)))))
+
+(defmethod post-process-collection-children :table
+  [_ _ _collection rows]
+  (map #(update % :archived api/bit->boolean) rows))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
@@ -809,6 +858,7 @@
     :document   :model/Document
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
+    :table      :model/Table
     :timeline   :model/Timeline
     :transform  :model/Transform))
 
@@ -997,6 +1047,8 @@
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :transform]
+                                      ;; Tables in collections are an EE feature (data-studio)
+                                      (premium-features/has-feature? :data-studio) (conj :table)
                                       (premium-features/enable-documents?) (conj :document))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))

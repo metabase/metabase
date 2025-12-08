@@ -835,6 +835,61 @@ databaseChangeLog:
             tableName: segment
             columnName: dependency_analysis_version
 
+  - changeSet:
+      id: v58.2025-11-25T17:41:50
+      author: metamben
+      comment: Add collection_id column to metabase_table for publishing tables to collections
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection this table is published to (null if not published or published to root)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v58.2025-11-25T17:41:51
+      author: metamben
+      comment: Add index on metabase_table.collection_id
+      changes:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v58.2025-11-25T17:41:52
+      author: metamben
+      comment: Add foreign key constraint from metabase_table.collection_id to collection.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: collection_id
+            constraintName: fk_metabase_table_collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v58.2025-11-25T17:41:53
+      author: metamben
+      comment: Add is_published column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_published
+                  type: ${boolean.type}
+                  remarks: Whether this table is published
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
 
   - changeSet:
       id: v58.2025-12-03T17:08:36
