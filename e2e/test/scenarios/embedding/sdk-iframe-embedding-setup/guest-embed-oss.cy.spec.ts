@@ -152,7 +152,7 @@ describe(
 
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_experience_completed",
-          event_detail: "custom=chart",
+          event_detail: "auth=sso,experience=chart,isDefaultExperience=true",
         });
 
         // Entity selection step
@@ -255,7 +255,7 @@ describe(
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_code_copied",
           event_detail:
-            "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest-embed",
+            "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,ssoType=none",
         });
 
         // Visit embed page

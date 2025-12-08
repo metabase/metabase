@@ -2,4 +2,9 @@ import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-i
 
 export const getSsoTypeForSettings = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
-) => (settings.useExistingUserSession ? "user-session" : "sso");
+) =>
+  settings.isGuest
+    ? "none"
+    : settings.useExistingUserSession
+      ? "user-session"
+      : "sso";

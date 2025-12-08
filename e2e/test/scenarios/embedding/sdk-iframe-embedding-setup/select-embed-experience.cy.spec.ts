@@ -51,7 +51,8 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "default",
+        event_detail:
+          "auth=guest-embed,experience=dashboard,isDefaultExperience=true",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
