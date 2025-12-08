@@ -1,0 +1,4 @@
+type: database
+version: 0.0.0
+display_name: My Awesome Database
+type: Snowflake

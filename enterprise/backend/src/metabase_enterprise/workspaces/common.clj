@@ -16,6 +16,7 @@
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
+;; should be encapsulated in our dag namespace, or dependency module
 (defn check-no-card-dependencies!
   "Check that transforms don't depend on cards. Throws 400 if they do."
   [transform-ids]
@@ -24,6 +25,7 @@
                    (format "Cannot add transforms that depend on saved questions (cards). Found dependencies on card IDs: %s"
                            (pr-str (vec card-ids))))))
 
+;; wrong, should just be a 404 (not a global id)
 (defn check-transforms-not-in-workspace!
   "Check that none of the transforms already belong to a workspace. Throws 400 if any do."
   [transform-ids]
@@ -72,7 +74,8 @@
      :inputs     []
      :outputs    []}
     (let [graph        (ws.dag/path-induced-subgraph upstream)
-          db-ids       (when-let [table-ids (seq (keep :id (concat (:inputs graph) (:outputs graph))))]
+          ;; TODO weaken this, to only check the output databases, for future compatibility with cross-db phyton xforms
+          db-ids       (when-let [table-ids (seq (keep :id (concat #_(:inputs graph) (:outputs graph))))]
                          (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
           _            (assert (<= (count db-ids) 1) "All inputs and outputs must belong to the same database.")]
       ;; One reason this is here, is that I don't want the DAG module to have the single-DWH assumption.

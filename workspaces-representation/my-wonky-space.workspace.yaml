@@ -1,0 +1,8 @@
+type: workspace
+version: 0.0.0
+name: my-wonky-space
+display: My Wonky Space
+database: ref:warehouse
+working_set:
+  - ref:my-transform-1
+  - ref:my-transform-2

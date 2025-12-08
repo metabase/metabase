@@ -1,0 +1,21 @@
+type: transform
+version: 0.0.0
+name: AppOfhW5az8abidxygJ6X
+display_name: Something from AppDb
+source:
+  type: native
+  query: SELECT * FROM customers WHERE total_lifetime_value > 0;
+tags:
+  - hourly
+# Not in regular representation
+# What's nice: this actually could make sense outside of workspaces.
+# - within the representation graph, the ref-id is used
+# - when we start to load the entity, use this instead
+# ... wait, how does their branch already handle generating names on export?
+entity_id: FFHVHgrU_vzS_UApHILtH
+
+target:
+  type: table
+  database: ref:warehouse
+  schema: cleaned
+  table: real_customers
