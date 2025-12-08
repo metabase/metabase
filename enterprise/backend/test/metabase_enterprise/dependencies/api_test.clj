@@ -741,34 +741,35 @@
 (deftest graph-returns-dashboard-for-cards-test
   (testing "Graph endpoints return dashboard data for cards in dashboards"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/Card :model/Dependency]
-        (mt/with-temp [:model/User user {:email "test@test.com"}
-                       :model/Dashboard dashboard {:name "Test Dashboard"}]
-          (let [base-card (card/create-card! (basic-card "Base Card") user)
-                dashboard-card (card/create-card! (assoc (wrap-card base-card)
-                                                         :dashboard_id (:id dashboard))
-                                                  user)]
-            (testing "GET /api/ee/dependencies/graph returns dashboard with :id and :name"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
-                                                   :id (:id dashboard-card)
-                                                   :type :card)
-                    card-node (first (filter #(= (:id %) (:id dashboard-card)) (:nodes response)))]
-                (is (= {:id (:id dashboard) :name "Test Dashboard"}
-                       (get-in card-node [:data :dashboard])))
-                (is (= (:id dashboard)
-                       (get-in card-node [:data :dashboard_id])))))
-            (testing "GET /api/ee/dependencies/graph/dependents returns dashboard with :id and :name"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
-                                                   :id (:id base-card)
-                                                   :type :card
-                                                   :dependent_type :card
-                                                   :dependent_card_type :question)
-                    card-node (first (filter #(= (:id %) (:id dashboard-card)) response))]
-                (is (some? card-node))
-                (is (= {:id (:id dashboard) :name "Test Dashboard"}
-                       (get-in card-node [:data :dashboard])))
-                (is (= (:id dashboard)
-                       (get-in card-node [:data :dashboard_id])))))))))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (mt/with-temp [:model/User user {:email "test@test.com"}
+                         :model/Dashboard dashboard {:name "Test Dashboard"}]
+            (let [base-card (card/create-card! (basic-card "Base Card") user)
+                  dashboard-card (card/create-card! (assoc (wrap-card base-card)
+                                                           :dashboard_id (:id dashboard))
+                                                    user)]
+              (testing "GET /api/ee/dependencies/graph returns dashboard with :id and :name"
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                     :id (:id dashboard-card)
+                                                     :type :card)
+                      card-node (first (filter #(= (:id %) (:id dashboard-card)) (:nodes response)))]
+                  (is (= {:id (:id dashboard) :name "Test Dashboard"}
+                         (get-in card-node [:data :dashboard])))
+                  (is (= (:id dashboard)
+                         (get-in card-node [:data :dashboard_id])))))
+              (testing "GET /api/ee/dependencies/graph/dependents returns dashboard with :id and :name"
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                     :id (:id base-card)
+                                                     :type :card
+                                                     :dependent_type :card
+                                                     :dependent_card_type :question)
+                      card-node (first (filter #(= (:id %) (:id dashboard-card)) response))]
+                  (is (some? card-node))
+                  (is (= {:id (:id dashboard) :name "Test Dashboard"}
+                         (get-in card-node [:data :dashboard])))
+                  (is (= (:id dashboard)
+                         (get-in card-node [:data :dashboard_id]))))))))))))
 
 (deftest graph-returns-document-for-cards-test
   (testing "Graph endpoints return document data for cards in documents"
