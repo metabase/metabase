@@ -373,6 +373,49 @@ describe("Tenants - management", () => {
     lacksGlobeIcon("All Internal Users");
   });
 
+  it("should show 'All External Users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
+    cy.request("PUT", "/api/setting", { "use-tenants": true });
+
+    // Create a tenant group
+    cy.request("POST", "/api/permissions/group", {
+      name: "Test Tenant Group",
+      is_tenant_group: true,
+    }).then(({ body: group }) => {
+      const tenantGroupId = group.id;
+
+      cy.visit(`/admin/permissions/data/group/${tenantGroupId}`);
+
+      cy.findByRole("radio", { name: "Groups" }).click({ force: true });
+
+      cy.findByRole("menuitem", { name: "All External Users" }).click();
+
+      cy.log("sample database's view data permission should be 'Can view'");
+      getPermissionRowPermissions("Sample Database")
+        .first()
+        .should("contain", "Can view");
+
+      cy.findByRole("menuitem", { name: "Test Tenant Group" }).click();
+
+      cy.log("tenant group view data permission should be 'Blocked'");
+      getPermissionRowPermissions("Sample Database")
+        .first()
+        .should("contain", "Blocked");
+
+      cy.log("tenant group permission should contain a warning");
+      getPermissionRowPermissions("Sample Database")
+        .first()
+        .findByLabelText("warning icon")
+        .realHover();
+
+      // Tooltip must reference "All External Users" not "All Internal Users"
+      H.tooltip().should(
+        "contain",
+        'The "All External Users" group has a higher level of access',
+      );
+      H.tooltip().should("not.contain", "All Internal Users");
+    });
+  });
+
   it("should not show send email modal when creating tenant users when SMTP is configured", () => {
     H.setupSMTP();
     cy.request("PUT", "/api/setting", {

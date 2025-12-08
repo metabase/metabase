@@ -196,7 +196,9 @@ export const getDatabasesPermissionEditor = createSelector(
     }
 
     const isExternal =
-      !!externalUsersGroup && externalUsersGroup.id === groupId;
+      !!externalUsersGroup &&
+      (PLUGIN_TENANTS.isExternalUsersGroup(group) ||
+        PLUGIN_TENANTS.isTenantGroup(group));
 
     const hasSingleSchema =
       databaseId != null &&
