@@ -261,3 +261,13 @@ export interface MoveCollectionDashboardCandidatesRequest {
 export interface MoveCollectionDashboardCandidatesResult {
   moved: CardId[];
 }
+
+type LibraryChild = {
+  description: string;
+  id: number;
+  name: string;
+};
+
+export type GetLibraryCollectionResponse =
+  | (CollectionItem & { effective_children: LibraryChild[] })
+  | { data: null };

@@ -19,15 +19,15 @@ describe("scenarios > data studio > modeling > library", () => {
     cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
 
     cy.log("Navigate to Data Studio Modeling");
-    cy.visit("/data-studio/modeling");
+    H.DataModel.visitDataStudio();
+    H.DataStudio.nav().findByLabelText("Library").click();
 
-    cy.log("Click Library sidebar section to open modal");
-    H.DataStudio.ModelingSidebar.root()
-      .findByText("Library")
-      .should("be.visible")
-      .click();
+    cy.log("Closing the modal should send you back");
+    H.modal().button("Cancel").click();
+    H.DataModel.get().should("exist");
 
     cy.log("Create library via modal");
+    H.DataStudio.nav().findByLabelText("Library").click();
     H.modal().within(() => {
       cy.findByText("Create your Library").should("be.visible");
       cy.findByText("Create my Library").click();
@@ -36,32 +36,25 @@ describe("scenarios > data studio > modeling > library", () => {
     cy.wait("@createLibrary");
     cy.wait("@getCollectionTree");
 
-    cy.log("Verify library collections appear in sidebar");
-    H.DataStudio.ModelingSidebar.collectionsTree().within(() => {
-      cy.findByText("Data").should("be.visible");
-      cy.findByText("Metrics").should("be.visible");
-    });
-
     cy.log("Verify tracking event is triggered");
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_library_created",
     });
 
     cy.log("Verify empty state shows on library root");
-    H.DataStudio.Modeling.collectionPage().within(() => {
-      cy.findByText("No tables or metrics yet").should("be.visible");
-      cy.findByText(
-        "Tables and metrics in this collection will appear here.",
-      ).should("be.visible");
+    H.DataStudio.Modeling.emptyPage().should("be.visible");
+
+    H.DataStudio.Modeling.modelingPage().button(/New/).click();
+    H.popover().findByText("New snippet folder").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Give your folder a name").type("My Snippets");
+      cy.button("Create").click();
     });
 
-    cy.log("Select Data collection and verify it's empty");
-    H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
-
-    cy.log("Verify No published tables yet message");
-    H.DataStudio.Modeling.collectionPage().within(() => {
-      cy.findByText("No published tables yet").should("be.visible");
-    });
+    cy.log("Verify library collections appear in the modeling table");
+    H.DataStudio.Modeling.collectionItem("Data").should("be.visible");
+    H.DataStudio.Modeling.collectionItem("Metrics").should("be.visible");
+    H.DataStudio.Modeling.collectionItem("SQL snippets").should("be.visible");
   });
 
   it("should be available in the data picker", () => {

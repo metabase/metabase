@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
-import { push } from "react-router-redux";
+import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
@@ -20,6 +20,7 @@ import {
   Stack,
   TextInput,
 } from "metabase/ui";
+import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { Table } from "metabase-enterprise/data-studio/common/components/Table";
 import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
@@ -43,11 +44,12 @@ export function ModelingLandingPage() {
     useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>();
 
-  const { data: collections = [] } = useListCollectionsTreeQuery({
-    "exclude-other-user-collections": true,
-    "exclude-archived": true,
-    "include-library": true,
-  });
+  const { data: collections = [], isLoading: isLoadingCollections } =
+    useListCollectionsTreeQuery({
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+      "include-library": true,
+    });
 
   const libraryCollection = collections.find(isLibraryCollection);
 
@@ -204,6 +206,12 @@ export function ModelingLandingPage() {
           onClose={() => setPermissionsCollectionId(null)}
         />
       )}
+      <CreateLibraryModal
+        isOpened={!isLoadingCollections && !libraryCollection}
+        onClose={() => {
+          dispatch(goBack());
+        }}
+      />
     </>
   );
 }

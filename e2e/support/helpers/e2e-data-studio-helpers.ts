@@ -149,5 +149,7 @@ export const DataStudio = {
       modelingPage().findAllByTestId("table-name").contains(name),
     result: (name: string) => modelingPage().findByText(name).closest("tr"),
     newButton: () => modelingPage().findByRole("button", { name: /New/ }),
+    collectionItem: (name: string) =>
+      modelingPage().findAllByTestId("collection-name").contains(name),
   },
 };
