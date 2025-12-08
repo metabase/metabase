@@ -132,7 +132,7 @@ describe("scenarios > data studio > modeling > models", () => {
     H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
     H.DataStudio.Modeling.collectionPage().should("be.visible");
     H.DataStudio.Modeling.collectionPage()
-      .findByText("No models yet")
+      .findByText("No tables or models yet")
       .should("be.visible");
 
     cy.log("Navigate to trash");
@@ -275,7 +275,7 @@ describe("scenarios > data studio > modeling > models", () => {
     H.DataStudio.ModelingSidebar.collectionsTree().findByText("Data").click();
     H.DataStudio.Modeling.collectionPage().should("be.visible");
     H.DataStudio.Modeling.collectionPage()
-      .findByText("No models yet")
+      .findByText("No tables or models yet")
       .should("be.visible");
   });
 });

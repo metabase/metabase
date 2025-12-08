@@ -43,9 +43,10 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
     <SdkDashboard
       {...(normalizedProps as SdkDashboardProps)}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled }) =>
-        downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
-      }
+      dashboardActions={[
+        DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+        DASHBOARD_ACTION.DOWNLOAD_PDF,
+      ]}
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>
         withDownloads &&

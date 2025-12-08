@@ -13,6 +13,7 @@ export * from "./collection";
 export * from "./comment";
 export * from "./constants";
 export * from "./dashboard";
+export * from "./data-studio";
 export * from "./database";
 export * from "./dataset";
 export * from "./document";

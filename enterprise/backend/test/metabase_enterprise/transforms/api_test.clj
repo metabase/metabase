@@ -913,10 +913,19 @@
                                      :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
 
+(defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:clickhouse :redshift :bigquery-cloud-sdk :snowflake]]
+  (defmethod driver/database-supports? [driver ::extract-columns-from-query]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel extract-columns-from-query-test
   (testing "POST /api/ee/transform/extract-columns"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
-                           :clickhouse :redshift :bigquery-cloud-sdk)
+    (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
+                                                           ::extract-columns-from-query]})
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (letfn [(make-native-query [sql]

@@ -5,14 +5,14 @@ import { getCommonEmbedSettings } from "./get-common-embed-settings";
 
 jest.mock("metabase/plugins", () => ({
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP: {
-    isFeatureEnabled: jest.fn(),
+    isEnabled: jest.fn(),
   },
 }));
 
-const mockIsFeatureEnabled = (enabled: boolean) => {
-  (
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled as jest.Mock
-  ).mockReturnValue(enabled);
+const mockIsPluginEnabled = (enabled: boolean) => {
+  (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled as jest.Mock).mockReturnValue(
+    enabled,
+  );
 };
 
 describe("getCommonEmbedSettings", () => {
@@ -22,7 +22,7 @@ describe("getCommonEmbedSettings", () => {
 
   describe("when simple embed feature is available (Enterprise)", () => {
     beforeEach(() => {
-      mockIsFeatureEnabled(true);
+      mockIsPluginEnabled(true);
     });
 
     describe("with guest embeds enabled and state.isGuest is true", () => {
@@ -210,7 +210,7 @@ describe("getCommonEmbedSettings", () => {
 
   describe("when simple embed feature is not available (OSS)", () => {
     beforeEach(() => {
-      mockIsFeatureEnabled(false);
+      mockIsPluginEnabled(false);
     });
 
     it.each<{

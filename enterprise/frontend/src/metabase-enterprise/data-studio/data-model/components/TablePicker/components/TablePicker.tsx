@@ -22,7 +22,6 @@ import type { ChangeOptions, FilterState, TreePath } from "../types";
 import { getFiltersCount } from "../utils";
 
 import { FilterPopover } from "./FilterPopover";
-import { PublishModelsModal } from "./PublishModelsModal";
 import { SearchNew } from "./SearchNew";
 import { Tree } from "./Tree";
 
@@ -39,9 +38,7 @@ export function TablePicker({
   className,
   onChange,
 }: TablePickerProps) {
-  const { selectedTables, selectedSchemas, selectedDatabases, resetSelection } =
-    useSelection();
-
+  const { resetSelection } = useSelection();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const previousDeferredQuery = usePrevious(deferredQuery);
@@ -54,18 +51,6 @@ export function TablePicker({
   });
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
-
-  const [isCreateModelsModalOpen, setIsCreateModelsModalOpen] = useState(false);
-  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
-    null,
-  );
-
-  function handlePublishSuccess() {
-    if (onUpdateCallback) {
-      onUpdateCallback();
-    }
-    resetSelection();
-  }
 
   useEffect(() => {
     const togglingBetweenSearchAndTree =
@@ -145,29 +130,11 @@ export function TablePicker({
 
       <Box mih={0} flex="1 1 auto">
         {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree
-            path={path}
-            onChange={onChange}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
+          <Tree path={path} onChange={onChange} />
         ) : (
-          <SearchNew
-            query={deferredQuery}
-            params={params}
-            filters={filters}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
+          <SearchNew query={deferredQuery} params={params} filters={filters} />
         )}
       </Box>
-
-      <PublishModelsModal
-        tables={selectedTables}
-        schemas={selectedSchemas}
-        databases={selectedDatabases}
-        isOpen={isCreateModelsModalOpen}
-        onClose={() => setIsCreateModelsModalOpen(false)}
-        onSuccess={handlePublishSuccess}
-      />
     </Stack>
   );
 }

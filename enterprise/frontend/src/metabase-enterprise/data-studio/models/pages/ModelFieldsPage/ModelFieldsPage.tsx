@@ -81,7 +81,6 @@ function ModelFieldsPageBody({
 }: ModelFieldsPageBodyProps) {
   const [fields, setFields] = useState(card.result_metadata ?? []);
   const [activeFieldName, setActiveFieldName] = useState<string>();
-  const [isSorting, setIsSorting] = useState(false);
   const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const isReadOnly = !card.can_write;
@@ -107,7 +106,6 @@ function ModelFieldsPageBody({
   };
 
   const handleSave = async () => {
-    setIsSorting(false);
     const { error } = await updateCard({
       id: card.id,
       result_metadata: fields,
@@ -122,7 +120,6 @@ function ModelFieldsPageBody({
   const handleCancel = () => {
     setFields(card.result_metadata ?? []);
     setActiveFieldName(undefined);
-    setIsSorting(false);
   };
 
   const resetRef = useLatest(handleCancel);
@@ -150,12 +147,9 @@ function ModelFieldsPageBody({
             <ModelFieldList
               fields={fields}
               activeFieldName={activeFieldName}
-              isSorting={isSorting}
               isReadOnly={isReadOnly}
               onSelectField={handleSelectField}
               onChangeField={handleChangeField}
-              onChangeSorting={setFields}
-              onToggleSorting={setIsSorting}
             />
             {activeField != null ? (
               <ModelFieldDetails

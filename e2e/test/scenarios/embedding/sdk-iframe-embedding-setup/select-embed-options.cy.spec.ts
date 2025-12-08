@@ -16,6 +16,82 @@ const QUESTION_NAME = "Orders, Count";
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
 
+describe("OSS", { tags: "@OSS" }, () => {
+  describe(suiteTitle, () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+      H.updateSetting("enable-embedding-simple", true);
+
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      mockEmbedJsToDevServer();
+    });
+
+    it("should show upsell for Allow subscriptions option", () => {
+      navigateToEmbedOptionsStep({
+        experience: "dashboard",
+        resourceName: DASHBOARD_NAME,
+      });
+
+      assertUpsellForOption("Existing Metabase session");
+      assertUpsellForOption("Single sign-on (SSO)");
+      assertUpsellForOption("Allow people to drill through on data points");
+      assertUpsellForOption("Allow downloads");
+      assertUpsellForOption("Allow subscriptions");
+    });
+  });
+});
+
+describe("EE without license", () => {
+  describe(suiteTitle, () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("starter");
+      H.enableTracking();
+      H.updateSetting("enable-embedding-simple", true);
+
+      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      mockEmbedJsToDevServer();
+    });
+
+    it("should show upsell for Allow subscriptions option", () => {
+      navigateToEmbedOptionsStep({
+        experience: "dashboard",
+        resourceName: DASHBOARD_NAME,
+      });
+
+      assertUpsellForOption("Existing Metabase session");
+      assertUpsellForOption("Single sign-on (SSO)");
+      assertUpsellForOption("Allow people to drill through on data points");
+      assertUpsellForOption("Allow downloads");
+      assertUpsellForOption("Allow subscriptions");
+    });
+  });
+});
+
+function assertUpsellForOption(label: string) {
+  getEmbedSidebar()
+    .findByLabelText(label)
+    .closest("[data-testid=tooltip-warning]")
+    .icon("gem")
+    .realHover();
+
+  H.hovercard().should("contain.text", "Get more powerful embedding");
+  H.hovercard().should(
+    "contain.text",
+    "Upgrade to get access to embeds with single sign-on, drill through, advanced theming, the SDK for React, and more.",
+  );
+  H.hovercard().should("contain.text", "Upgrade to Metabase Pro");
+}
+
 describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
@@ -126,7 +202,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=default",
+        "settings=custom,experience=dashboard,auth=user-session,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -137,6 +213,7 @@ describe(suiteTitle, () => {
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
+    cy.findByLabelText("Existing Metabase session").click();
 
     getEmbedSidebar()
       .findByLabelText("Allow downloads")
@@ -162,10 +239,121 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=true,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=default",
     });
 
-    codeBlock().should("contain", 'with-downloads="true"');
+    codeBlock().should("contain", 'with-subscriptions="false"');
+  });
+
+  it("cannot select subscriptions for dashboard when email is not set up", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .should("not.be.checked")
+      .and("be.disabled");
+
+    cy.log("Email warning should only be shown on non-guest embedding");
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .closest("[data-testid=tooltip-warning]")
+      .icon("info")
+      .realHover();
+    H.tooltip().should(
+      "contain.text",
+      "Not available if Guest Mode is selected",
+    );
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Subscriptions" })
+      .should("not.exist");
+
+    cy.log("snippet should show subscriptions as false");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
+
+    cy.log("test non-guest embeds");
+    getEmbedSidebar().within(() => {
+      cy.button("Back").click();
+      cy.findByLabelText("Existing Metabase session").click();
+      cy.findByLabelText("Allow subscriptions")
+        .closest("[data-testid=tooltip-warning]")
+        .icon("info")
+        .realHover();
+    });
+    H.hovercard().should(
+      "contain.text",
+      "To allow subscriptions, set up email in admin settings",
+    );
+  });
+
+  it("toggles subscriptions for dashboard when email is set up", () => {
+    H.setupSMTP();
+
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+    cy.findByLabelText("Existing Metabase session").click();
+
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Subscriptions" })
+      .should("not.exist");
+
+    cy.log("turn on subscriptions");
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .click()
+      .should("be.checked");
+
+    cy.log(
+      "assert that unchecking subscriptions will close the subscription sidebar",
+    );
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByRole("button", { name: "Subscriptions" })
+        .should("be.visible")
+        .click();
+
+      cy.findByRole("heading", { name: "Email this dashboard" }).should(
+        "be.visible",
+      );
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .click()
+      .should("not.be.checked");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("heading", { name: "Email this dashboard" })
+      .should("not.exist");
+
+    cy.log("toggle subscriptions back on");
+    getEmbedSidebar()
+      .findByLabelText("Allow subscriptions")
+      .click()
+      .should("be.checked");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withSubscriptions=true,withTitle=true,isSaveEnabled=false,theme=default",
+    });
+
+    codeBlock().should("contain", 'with-subscriptions="true"');
   });
 
   it("toggles dashboard title for dashboards", () => {
@@ -198,7 +386,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
     });
 
     codeBlock().should("contain", 'with-title="false"');
@@ -472,7 +660,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
+        'settings=custom,experience=dashboard,guestEmbedEnabled=false,auth=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,params={"disabled":0,"locked":0,"enabled":0},theme=custom',
     });
 
     codeBlock().should("contain", '"theme": {');
@@ -505,6 +693,14 @@ describe(suiteTitle, () => {
   });
 
   it("derives colors for dark theme palette", () => {
+    /**
+     * There's a problem on CI where the hovercard on allow subscriptions is open
+     * when email is not set up and that is counted in H.popover() making H.popover().within() failed.
+     *
+     * Setting up the email should prevent such a hovercard from showing up.
+     */
+    H.setupSMTP();
+
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -520,12 +716,14 @@ describe(suiteTitle, () => {
 
     cy.log("change primary text color");
     cy.findByTestId("text-primary-color-picker").findByRole("button").click();
+
     H.popover().within(() => {
       cy.findByDisplayValue("#303D46").clear().type("#F1F1F1");
     });
 
     cy.log("change background color");
     cy.findByTestId("background-color-picker").findByRole("button").click();
+
     H.popover().within(() => {
       cy.findByDisplayValue("#FFFFFF").clear().type("#121212");
     });
@@ -541,7 +739,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=false,theme=custom",
+        "settings=custom,experience=dashboard,auth=user-session,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=custom",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
