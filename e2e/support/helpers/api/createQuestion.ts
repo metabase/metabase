@@ -37,10 +37,6 @@ export type QuestionDetails = {
    */
   dashboard_id?: Card["dashboard_id"];
   /**
-   * Parent document in which to store this question.
-   */
-  document_id?: Card["document_id"];
-  /**
    * Used on the frontend to determine whether the question is pinned or not.
    */
   collection_position?: Card["collection_position"];
